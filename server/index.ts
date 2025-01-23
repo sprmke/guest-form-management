@@ -1,28 +1,20 @@
 import express from 'express'
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
+import { PDFDocument } from 'pdf-lib'
+import fs from 'fs'
 import * as dotenv from 'dotenv'
 import cors from 'cors'
+import path from 'path'
+import { fileURLToPath } from 'url'
 
 dotenv.config()
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase credentials')
-}
-
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Debug log for Resend API key
-console.log('Resend API Key exists:', !!process.env.RESEND_API_KEY)
-
 const resendApiKey = process.env.RESEND_API_KEY
-if (!resendApiKey) {
-  throw new Error('Missing Resend API key')
-}
 const resend = new Resend(resendApiKey)
 
 const app = express()
@@ -33,66 +25,99 @@ app.use(cors({
   allowedHeaders: ['Content-Type']
 }))
 
-app.use(express.json())
+app.use(express.json({ limit: '10mb' }))
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 async function generatePDF(formData: any) {
-  const pdfDoc = await PDFDocument.create()
-  const page = pdfDoc.addPage()
-  const { height } = page.getSize()
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  try {
+    const templatePath = path.join(__dirname, 'templates', 'guest-form-template.pdf')
+    
+    console.log('Template path:', templatePath)
+    console.log('Directory exists:', fs.existsSync(path.dirname(templatePath)))
+    console.log('Template exists:', fs.existsSync(templatePath))
+    
+    if (!fs.existsSync(templatePath)) {
+      throw new Error(`Template file not found at: ${templatePath}`)
+    }
 
-  let yOffset = height - 50
-  const lineHeight = 25
+    const templateBytes = fs.readFileSync(templatePath)
+    console.log('Template file size:', templateBytes.length, 'bytes')
 
-  const addLine = (text: string) => {
-    page.drawText(text, {
-      x: 50,
-      y: yOffset,
-      size: 12,
-      font,
-    })
-    yOffset -= lineHeight
+    const pdfDoc = await PDFDocument.load(templateBytes)
+    const form = pdfDoc.getForm()
+
+    // Log all form fields for debugging
+    const fields = form.getFields()
+    console.log('Form fields found:', fields.length)
+    console.log('Available form fields:', fields.map(field => ({
+      name: field.getName(),
+      type: field.constructor.name
+    })))
+
+    // Only proceed with filling if we have fields
+    if (fields.length > 0) {
+      // Try to fill each field, logging success or failure
+      const fieldMappings = {
+        'unitOwner': formData.full_name,
+        'ownerOnsiteContactPerson': formData.full_name,
+        // 'Tower Unit No': formData.address,
+        // 'Tower Unit No:': formData.address,
+        // 'Contact No': formData.contact_number,
+        // 'Contact No:': formData.contact_number,
+        // 'Email': formData.email,
+        // 'Email:': formData.email
+      }
+
+      for (const [fieldName, value] of Object.entries(fieldMappings)) {
+        try {
+          const field = form.getTextField(fieldName)
+          if (field) {
+            console.log(`Successfully found and filling field: ${fieldName}`)
+            field.setText(String(value))
+          }
+        } catch (e) {
+          console.log(`Could not set field "${fieldName}":`, e.message)
+        }
+      }
+
+      // Flatten the form to make it non-editable
+      form.flatten()
+    } else {
+      console.log('Warning: No form fields found in the PDF template')
+    }
+
+    return await pdfDoc.save()
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    throw new Error('Failed to generate PDF')
   }
-
-  addLine(`Guest Information Form`)
-  addLine(`Facebook Name: ${formData.facebook_name}`)
-  addLine(`Full Name: ${formData.full_name}`)
-  addLine(`Email: ${formData.email}`)
-  addLine(`Contact Number: ${formData.contact_number}`)
-  addLine(`Address: ${formData.address}`)
-  addLine(`Check-in/Check-out: ${formData.check_in_out}`)
-  
-  if (formData.other_guests?.length) {
-    addLine(`Other Guests: ${formData.other_guests.join(', ')}`)
-  }
-  
-  if (formData.requests) {
-    addLine(`Requests: ${formData.requests}`)
-  }
-  
-  addLine(`Found Through: ${formData.find_us}`)
-  addLine(`Needs Parking: ${formData.need_parking ? 'Yes' : 'No'}`)
-  addLine(`Has Pets: ${formData.has_pets ? 'Yes' : 'No'}`)
-
-  return await pdfDoc.save()
 }
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok' })
+})
 
 app.post('/api/submit-form', async (req, res) => {
   try {
+    console.log('Received form submission request')
     const formData = req.body
-    console.log('Received form data:', formData)
-
+    
     if (!formData) {
+      console.error('No form data provided')
       return res.status(400).json({ 
         success: false,
         error: 'No form data provided' 
       })
     }
 
-    // Validate required fields
+    console.log('Form data received:', formData)
+
     const requiredFields = ['facebook_name', 'full_name', 'email', 'contact_number', 'address', 'check_in_out', 'find_us']
     for (const field of requiredFields) {
       if (!formData[field]) {
+        console.error(`Missing required field: ${field}`)
         return res.status(400).json({ 
           success: false,
           error: `Missing required field: ${field}` 
@@ -100,7 +125,7 @@ app.post('/api/submit-form', async (req, res) => {
       }
     }
 
-    // Insert data into Supabase
+    console.log('Inserting data into Supabase...')
     const { data, error: dbError } = await supabase
       .from('guest_submissions')
       .insert([{
@@ -124,19 +149,18 @@ app.post('/api/submit-form', async (req, res) => {
       return res.status(500).json({ 
         success: false,
         error: 'Database error',
-        message: dbError.message
+        details: dbError.message
       })
     }
 
     console.log('Successfully saved to database')
 
-    // Generate PDF
+    console.log('Generating PDF...')
     const pdfBytes = await generatePDF(formData)
     console.log('PDF generated successfully')
 
-    // Send email using Resend
     try {
-      console.log('Attempting to send email...')
+      console.log('Sending email...')
       const emailResult = await resend.emails.send({
         from: 'Guest Form <onboarding@resend.dev>',
         to: ['michaeldmanlulu@gmail.com', formData.email],
@@ -161,9 +185,7 @@ app.post('/api/submit-form', async (req, res) => {
 
       console.log('Email sent successfully:', emailResult)
     } catch (emailError) {
-      console.error('Resend error:', emailError)
-      // Don't return error response, just log it
-      console.error('Failed to send email:', emailError instanceof Error ? emailError.message : 'Unknown error')
+      console.error('Email sending error:', emailError)
     }
 
     res.json({ 
@@ -172,11 +194,11 @@ app.post('/api/submit-form', async (req, res) => {
       message: 'Form submitted successfully'
     })
   } catch (error) {
-    console.error('Error processing form:', error)
+    console.error('Server error:', error)
     res.status(500).json({ 
       success: false,
       error: 'Server error',
-      message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      details: error instanceof Error ? error.message : 'An unexpected error occurred'
     })
   }
 })

@@ -106,31 +106,31 @@ export function GuestForm() {
         has_pets: values.hasPets
       }
 
-      // Use environment variable for API URL with fallback
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://your-production-api-url.com';
+      const apiUrl = import.meta.env.VITE_API_URL
+
       const response = await fetch(`${apiUrl}/api/submit-form`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData)
-      })
-
-      const result = await response.json()
-
-      if (!result.success) {
-        throw new Error(result.message || result.error || 'Failed to submit form')
+      });
+      const result = await response.json();
+      if (!result.ok || !result.success) {
+        const errorMessage = result.error || result.details || `Server error: ${response.status}`;
+        throw new Error(errorMessage);
       }
 
-      alert('Form submitted successfully!')
-      form.reset(generateRandomData()) // Generate new random data after successful submission
+      form.reset(generateRandomData())
       setOtherGuests([''])
       setSubmitError(null)
+      alert('Form submitted successfully!')
     } catch (error) {
       console.error('Error submitting form:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to submit form. Please try again.'
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'An unexpected error occurred. Please try again.'
       setSubmitError(errorMessage)
-      alert(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -154,7 +154,7 @@ export function GuestForm() {
         </div>
 
         {submitError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <div className="relative px-4 py-3 mb-4 text-red-700 border border-red-200 rounded bg-red-50" role="alert">
             <strong className="font-bold">Error: </strong>
             <span className="block sm:inline">{submitError}</span>
           </div>
