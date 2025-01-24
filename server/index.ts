@@ -10,11 +10,13 @@ import { fileURLToPath } from 'url'
 
 dotenv.config()
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY
+// Supabase confirguration
+const supabaseUrl = process.env.VITE_SUPABASE_URL ?? ''
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY ?? ''
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-const resendApiKey = process.env.RESEND_API_KEY
+// Resend coniguration
+const resendApiKey = process.env.RESEND_API_KEY ?? ''
 const resend = new Resend(resendApiKey)
 
 const app = express()
@@ -62,12 +64,6 @@ async function generatePDF(formData: any) {
       const fieldMappings = {
         'unitOwner': formData.full_name,
         'ownerOnsiteContactPerson': formData.full_name,
-        // 'Tower Unit No': formData.address,
-        // 'Tower Unit No:': formData.address,
-        // 'Contact No': formData.contact_number,
-        // 'Contact No:': formData.contact_number,
-        // 'Email': formData.email,
-        // 'Email:': formData.email
       }
 
       for (const [fieldName, value] of Object.entries(fieldMappings)) {
@@ -114,7 +110,7 @@ app.post('/api/submit-form', async (req, res) => {
 
     console.log('Form data received:', formData)
 
-    const requiredFields = ['facebook_name', 'full_name', 'email', 'contact_number', 'address', 'check_in_out', 'find_us']
+    const requiredFields = ['facebook_name', 'full_name', 'email', 'contact_number', 'address', 'check_in_out']
     for (const field of requiredFields) {
       if (!formData[field]) {
         console.error(`Missing required field: ${field}`)
@@ -135,11 +131,11 @@ app.post('/api/submit-form', async (req, res) => {
         contact_number: formData.contact_number,
         address: formData.address,
         check_in_out: formData.check_in_out,
-        other_guests: formData.other_guests || [],
-        requests: formData.requests || '',
+        other_guests: formData.other_guests ?? [],
+        requests: formData.requests ?? '',
         find_us: formData.find_us,
-        need_parking: formData.need_parking || false,
-        has_pets: formData.has_pets || false
+        need_parking: formData.need_parking ?? false,
+        has_pets: formData.has_pets ?? false
       }])
       .select()
       .single()
@@ -166,10 +162,9 @@ app.post('/api/submit-form', async (req, res) => {
         to: ['michaeldmanlulu@gmail.com', formData.email],
         subject: 'New Guest Form Submission',
         html: `
-          <h1>New Guest Form Submission</h1>
-          <p>A new guest form has been submitted with the following details:</p>
+          <h1>Azure North Monaco 2604 - Guest Form</h1>
           <ul>
-            <li>Name: ${formData.full_name}</li>
+            <li>Primary Guest: ${formData.full_name}</li>
             <li>Email: ${formData.email}</li>
             <li>Check-in/out: ${formData.check_in_out}</li>
           </ul>
@@ -203,7 +198,7 @@ app.post('/api/submit-form', async (req, res) => {
   }
 })
 
-const port = process.env.PORT || 3001
+const port = process.env.PORT ?? 3001
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
 })
