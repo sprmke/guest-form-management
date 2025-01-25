@@ -110,7 +110,7 @@ app.post('/api/submit-form', async (req, res) => {
 
     console.log('Form data received:', formData)
 
-    const requiredFields = ['facebook_name', 'full_name', 'email', 'contact_number', 'address', 'check_in_out']
+    const requiredFields = ['guestFacebookName', 'primaryGuestName', 'guestEmail', 'guestPhoneNumber', 'guestAddress', 'checkInDate', 'checkOutDate']
     for (const field of requiredFields) {
       if (!formData[field]) {
         console.error(`Missing required field: ${field}`)
@@ -125,17 +125,21 @@ app.post('/api/submit-form', async (req, res) => {
     const { data, error: dbError } = await supabase
       .from('guest_submissions')
       .insert([{
-        facebook_name: formData.facebook_name,
-        full_name: formData.full_name,
-        email: formData.email,
-        contact_number: formData.contact_number,
-        address: formData.address,
-        check_in_out: formData.check_in_out,
-        other_guests: formData.other_guests ?? [],
-        requests: formData.requests ?? '',
-        find_us: formData.find_us,
-        need_parking: formData.need_parking ?? false,
-        has_pets: formData.has_pets ?? false
+        guest_facebook_name: formData.guestFacebookName,
+        primary_guest_name: formData.primaryGuestName,
+        guest_email: formData.guestEmail,
+        guest_phone_number: formData.guestPhoneNumber,
+        guest_address: formData.guestAddress,
+        check_in_date: formData.checkInDate,
+        check_out_date: formData.checkOutDate,
+        guest2_name: formData.guest2Name,
+        guest3_name: formData.guest3Name,
+        guest4_name: formData.guest4Name,
+        guest5_name: formData.guest5Name,
+        guest_special_requests: formData.guestSpecialRequests,
+        find_us: formData.findUs,
+        need_parking: formData.needParking,
+        has_pets: formData.hasPets
       }])
       .select()
       .single()
@@ -159,14 +163,15 @@ app.post('/api/submit-form', async (req, res) => {
       console.log('Sending email...')
       const emailResult = await resend.emails.send({
         from: 'Guest Form <onboarding@resend.dev>',
-        to: ['michaeldmanlulu@gmail.com', formData.email],
+        to: ['michaeldmanlulu@gmail.com', formData.guestEmail],
         subject: 'New Guest Form Submission',
         html: `
           <h1>Azure North Monaco 2604 - Guest Form</h1>
           <ul>
-            <li>Primary Guest: ${formData.full_name}</li>
-            <li>Email: ${formData.email}</li>
-            <li>Check-in/out: ${formData.check_in_out}</li>
+            <li>Primary Guest: ${formData.primaryGuestName}</li>
+            <li>Email: ${formData.guestEmail}</li>
+            <li>Check-in: ${formData.checkInDate}</li>
+            <li>Check-out: ${formData.checkOutDate}</li>
           </ul>
           <p>Please find the complete details in the attached PDF.</p>
         `,

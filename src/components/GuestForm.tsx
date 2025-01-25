@@ -9,15 +9,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react"
 
 const formSchema = z.object({
-  facebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  checkIn: z.string().min(1, "Please select check-in date"),
-  checkOut: z.string().min(1, "Please select check-out date"),
-  otherGuests: z.array(z.string()).optional(),
-  requests: z.string().optional(),
+  guestFacebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
+  primaryGuestName: z.string().min(2, "Full name must be at least 2 characters"),
+  guestEmail: z.string().email("Invalid email address"),
+  guestPhoneNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  guestAddress: z.string().min(5, "Address must be at least 5 characters"),
+  checkInDate: z.string().min(1, "Please select check-in date"),
+  checkOutDate: z.string().min(1, "Please select check-out date"),
+  guest2Name: z.string().optional(),
+  guest3Name: z.string().optional(),
+  guest4Name: z.string().optional(),
+  guest5Name: z.string().optional(),
+  guestSpecialRequests: z.string().optional(),
   findUs: z.string().min(1, "Please select how you found us"),
   needParking: z.boolean().default(false),
   hasPets: z.boolean().default(false),
@@ -57,15 +60,18 @@ const generateRandomData = () => {
   const checkOut = checkOutDate.toISOString().split('T')[0]
 
   return {
-    facebookName: `${fullName} FB`,
-    fullName,
-    email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-    contactNumber: `${randomNumber(100, 999)}${randomNumber(100, 999)}${randomNumber(1000, 9999)}`,
-    address: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
-    checkIn,
-    checkOut,
-    otherGuests: [],
-    requests: randomElement(requests),
+    guestFacebookName: `${fullName} FB`,
+    primaryGuestName: fullName,
+    guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
+    guestPhoneNumber: `${randomNumber(100, 999)}${randomNumber(100, 999)}${randomNumber(1000, 9999)}`,
+    guestAddress: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
+    checkInDate: checkIn,
+    checkOutDate: checkOut,
+    guest2Name: '',
+    guest3Name: '',
+    guest4Name: '',
+    guest5Name: '',
+    guestSpecialRequests: randomElement(requests),
     findUs: randomElement(findUsSources),
     needParking: Math.random() > 0.5,
     hasPets: Math.random() > 0.5,
@@ -74,12 +80,17 @@ const generateRandomData = () => {
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [otherGuests, setOtherGuests] = useState<string[]>([''])
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: generateRandomData()
+    defaultValues: {
+      ...generateRandomData(),
+      guest2Name: '',
+      guest3Name: '',
+      guest4Name: '',
+      guest5Name: '',
+    }
   })
 
   // Generate new random data on page load
@@ -93,17 +104,21 @@ export function GuestForm() {
     
     try {
       const formData = {
-        facebook_name: values.facebookName,
-        full_name: values.fullName,
-        email: values.email,
-        contact_number: values.contactNumber,
-        address: values.address,
-        check_in_out: `${values.checkIn} to ${values.checkOut}`,
-        other_guests: otherGuests.filter(guest => guest.trim() !== ''),
-        requests: values.requests || '',
-        find_us: values.findUs,
-        need_parking: values.needParking,
-        has_pets: values.hasPets
+        guestFacebookName: values.guestFacebookName,
+        primaryGuestName: values.primaryGuestName,
+        guestEmail: values.guestEmail,
+        guestPhoneNumber: values.guestPhoneNumber,
+        guestAddress: values.guestAddress,
+        checkInDate: values.checkInDate,
+        checkOutDate: values.checkOutDate,
+        guest2Name: values.guest2Name || '',
+        guest3Name: values.guest3Name || '',
+        guest4Name: values.guest4Name || '',
+        guest5Name: values.guest5Name || '',
+        guestSpecialRequests: values.guestSpecialRequests || '',
+        findUs: values.findUs,
+        needParking: values.needParking,
+        hasPets: values.hasPets
       }
 
       const apiUrl = import.meta.env.VITE_API_URL
@@ -121,8 +136,13 @@ export function GuestForm() {
         throw new Error(errorMessage);
       }
 
-      form.reset(generateRandomData())
-      setOtherGuests([''])
+      form.reset({
+        ...generateRandomData(),
+        guest2Name: '',
+        guest3Name: '',
+        guest4Name: '',
+        guest5Name: '',
+      })
       setSubmitError(null)
       alert('Form submitted successfully!')
     } catch (error) {
@@ -136,19 +156,11 @@ export function GuestForm() {
     }
   }
 
-  const addGuestField = () => {
-    setOtherGuests([...otherGuests, ''])
-  }
-
-  const handleGenerateNewData = () => {
-    form.reset(generateRandomData())
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex justify-end mb-4">
-          <Button type="button" variant="outline" onClick={handleGenerateNewData}>
+          <Button type="button" variant="outline" onClick={() => form.reset(generateRandomData())}>
             Generate New Data
           </Button>
         </div>
@@ -162,10 +174,10 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="facebookName"
+          name="guestFacebookName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Facebook Name *</FormLabel>
+              <FormLabel>Guest Facebook Name *</FormLabel>
               <FormControl>
                 <Input placeholder="Your Facebook name" {...field} />
               </FormControl>
@@ -176,12 +188,12 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="fullName"
+          name="primaryGuestName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Name *</FormLabel>
+              <FormLabel>Primary Guest Name *</FormLabel>
               <FormControl>
-                <Input placeholder="Your full name" {...field} />
+                <Input placeholder="Primary guest's full name" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -190,12 +202,12 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="email"
+          name="guestEmail"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email *</FormLabel>
+              <FormLabel>Guest Email *</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="your.email@example.com" {...field} />
+                <Input type="email" placeholder="guest@example.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -204,10 +216,10 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="contactNumber"
+          name="guestPhoneNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Contact Number *</FormLabel>
+              <FormLabel>Guest Phone Number *</FormLabel>
               <FormControl>
                 <Input type="tel" placeholder="Your contact number" {...field} />
               </FormControl>
@@ -218,12 +230,12 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="address"
+          name="guestAddress"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Address *</FormLabel>
+              <FormLabel>Guest Address *</FormLabel>
               <FormControl>
-                <Input placeholder="Your address" {...field} />
+                <Input placeholder="Complete address" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -233,7 +245,7 @@ export function GuestForm() {
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="checkIn"
+            name="checkInDate"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Check-in Date *</FormLabel>
@@ -247,7 +259,7 @@ export function GuestForm() {
 
           <FormField
             control={form.control}
-            name="checkOut"
+            name="checkOutDate"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Check-out Date *</FormLabel>
@@ -262,26 +274,59 @@ export function GuestForm() {
 
         <div className="space-y-4">
           <label className="block text-sm font-medium">Additional Guests</label>
-          {otherGuests.map((guest, index) => (
-            <Input
-              key={index}
-              placeholder={`Guest ${index + 1}`}
-              value={guest}
-              onChange={(e) => {
-                const newGuests = [...otherGuests]
-                newGuests[index] = e.target.value
-                setOtherGuests(newGuests)
-              }}
-            />
-          ))}
-          <Button type="button" variant="outline" onClick={addGuestField}>
-            Add more guests
-          </Button>
+          <FormField
+            control={form.control}
+            name="guest2Name"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Guest 2 Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="guest3Name"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Guest 3 Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="guest4Name"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Guest 4 Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="guest5Name"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <Input placeholder="Guest 5 Name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
         <FormField
           control={form.control}
-          name="requests"
+          name="guestSpecialRequests"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Special Requests</FormLabel>
