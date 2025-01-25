@@ -43,6 +43,7 @@ const generateRandomData = () => {
 
   const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
   const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
+  const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`
   
   const firstName = randomElement(firstNames)
   const lastName = randomElement(lastNames)
@@ -59,6 +60,12 @@ const generateRandomData = () => {
   checkOutDate.setDate(futureDate.getDate() + randomNumber(1, 7))
   const checkOut = checkOutDate.toISOString().split('T')[0]
 
+  // Randomly decide how many additional guests (0-4)
+  const numAdditionalGuests = randomNumber(0, 4)
+  const additionalGuests = Array(4).fill('').map((_, index) => 
+    index < numAdditionalGuests ? generateRandomName() : ''
+  )
+
   return {
     guestFacebookName: `${fullName} FB`,
     primaryGuestName: fullName,
@@ -67,10 +74,10 @@ const generateRandomData = () => {
     guestAddress: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
     checkInDate: checkIn,
     checkOutDate: checkOut,
-    guest2Name: '',
-    guest3Name: '',
-    guest4Name: '',
-    guest5Name: '',
+    guest2Name: additionalGuests[0],
+    guest3Name: additionalGuests[1],
+    guest4Name: additionalGuests[2],
+    guest5Name: additionalGuests[3],
     guestSpecialRequests: randomElement(requests),
     findUs: randomElement(findUsSources),
     needParking: Math.random() > 0.5,
@@ -84,13 +91,7 @@ export function GuestForm() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      ...generateRandomData(),
-      guest2Name: '',
-      guest3Name: '',
-      guest4Name: '',
-      guest5Name: '',
-    }
+    defaultValues: generateRandomData()
   })
 
   // Generate new random data on page load
@@ -136,13 +137,7 @@ export function GuestForm() {
         throw new Error(errorMessage);
       }
 
-      form.reset({
-        ...generateRandomData(),
-        guest2Name: '',
-        guest3Name: '',
-        guest4Name: '',
-        guest5Name: '',
-      })
+      form.reset(generateRandomData())
       setSubmitError(null)
       alert('Form submitted successfully!')
     } catch (error) {
