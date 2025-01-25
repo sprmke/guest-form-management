@@ -23,6 +23,9 @@ const formSchema = z.object({
   guestSpecialRequests: z.string().optional(),
   findUs: z.string().min(1, "Please select how you found us"),
   needParking: z.boolean().default(false),
+  carPlateNumber: z.string().optional(),
+  carBrandModel: z.string().optional(),
+  carColor: z.string().optional(),
   hasPets: z.boolean().default(false),
 })
 
@@ -40,10 +43,13 @@ const generateRandomData = () => {
     'Quiet room requested',
     ''
   ]
+  const carBrands = ['Toyota Camry', 'Honda Civic', 'Ford Mustang', 'BMW 3 Series', 'Mercedes C-Class']
+  const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray']
 
   const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
   const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
   const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`
+  const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`
   
   const firstName = randomElement(firstNames)
   const lastName = randomElement(lastNames)
@@ -66,6 +72,8 @@ const generateRandomData = () => {
     index < numAdditionalGuests ? generateRandomName() : ''
   )
 
+  const needParking = Math.random() > 0.5
+
   return {
     guestFacebookName: `${fullName} FB`,
     primaryGuestName: fullName,
@@ -80,7 +88,10 @@ const generateRandomData = () => {
     guest5Name: additionalGuests[3],
     guestSpecialRequests: randomElement(requests),
     findUs: randomElement(findUsSources),
-    needParking: Math.random() > 0.5,
+    needParking,
+    carPlateNumber: needParking ? generateRandomPlate() : '',
+    carBrandModel: needParking ? randomElement(carBrands) : '',
+    carColor: needParking ? randomElement(carColors) : '',
     hasPets: Math.random() > 0.5,
   }
 }
@@ -119,6 +130,9 @@ export function GuestForm() {
         guestSpecialRequests: values.guestSpecialRequests ?? '',
         findUs: values.findUs,
         needParking: values.needParking,
+        carPlateNumber: values.carPlateNumber ?? '',
+        carBrandModel: values.carBrandModel ?? '',
+        carColor: values.carColor ?? '',
         hasPets: values.hasPets
       }
 
@@ -132,7 +146,7 @@ export function GuestForm() {
         body: JSON.stringify(formData)
       });
       const result = await response.json();
-      if (!result.ok ?? !result.success) {
+      if (!result.success) {
         const errorMessage = result.error ?? result.details ?? `Server error: ${response.status}`;
         throw new Error(errorMessage);
       }
@@ -376,6 +390,52 @@ export function GuestForm() {
               </FormItem>
             )}
           />
+
+          {form.watch("needParking") && (
+            <div className="pl-6 space-y-4">
+              <FormField
+                control={form.control}
+                name="carPlateNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Car Plate Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter car plate number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="carBrandModel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Car Brand & Model</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter car brand and model" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="carColor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Car Color</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter car color" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
 
           <FormField
             control={form.control}

@@ -125,21 +125,24 @@ app.post('/api/submit-form', async (req, res) => {
     const { data, error: dbError } = await supabase
       .from('guest_submissions')
       .insert([{
-        guestFacebookName: formData.guestFacebookName,
-        primaryGuestName: formData.primaryGuestName,
-        guestEmail: formData.guestEmail,
-        guestPhoneNumber: formData.guestPhoneNumber,
-        guestAddress: formData.guestAddress,
-        checkInDate: formData.checkInDate,
-        checkOutDate: formData.checkOutDate,
-        guest2Name: formData.guest2Name,
-        guest3Name: formData.guest3Name,
-        guest4Name: formData.guest4Name,
-        guest5Name: formData.guest5Name,
-        guestSpecialRequests: formData.guestSpecialRequests,
-        findUs: formData.findUs,
-        needParking: formData.needParking,
-        hasPets: formData.hasPets
+        guest_facebook_name: formData.guestFacebookName,
+        primary_guest_name: formData.primaryGuestName,
+        guest_email: formData.guestEmail,
+        guest_phone_number: formData.guestPhoneNumber,
+        guest_address: formData.guestAddress,
+        check_in_date: formData.checkInDate,
+        check_out_date: formData.checkOutDate,
+        guest2_name: formData.guest2Name,
+        guest3_name: formData.guest3Name,
+        guest4_name: formData.guest4Name,
+        guest5_name: formData.guest5Name,
+        guest_special_requests: formData.guestSpecialRequests,
+        find_us: formData.findUs,
+        need_parking: formData.needParking,
+        car_plate_number: formData.carPlateNumber,
+        car_brand_model: formData.carBrandModel,
+        car_color: formData.carColor,
+        has_pets: formData.hasPets
       }])
       .select()
       .single()
