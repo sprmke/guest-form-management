@@ -112,11 +112,11 @@ export function GuestForm() {
         guestAddress: values.guestAddress,
         checkInDate: values.checkInDate,
         checkOutDate: values.checkOutDate,
-        guest2Name: values.guest2Name || '',
-        guest3Name: values.guest3Name || '',
-        guest4Name: values.guest4Name || '',
-        guest5Name: values.guest5Name || '',
-        guestSpecialRequests: values.guestSpecialRequests || '',
+        guest2Name: values.guest2Name ?? '',
+        guest3Name: values.guest3Name ?? '',
+        guest4Name: values.guest4Name ?? '',
+        guest5Name: values.guest5Name ?? '',
+        guestSpecialRequests: values.guestSpecialRequests ?? '',
         findUs: values.findUs,
         needParking: values.needParking,
         hasPets: values.hasPets
@@ -132,8 +132,8 @@ export function GuestForm() {
         body: JSON.stringify(formData)
       });
       const result = await response.json();
-      if (!result.ok || !result.success) {
-        const errorMessage = result.error || result.details || `Server error: ${response.status}`;
+      if (!result.ok ?? !result.success) {
+        const errorMessage = result.error ?? result.details ?? `Server error: ${response.status}`;
         throw new Error(errorMessage);
       }
 
