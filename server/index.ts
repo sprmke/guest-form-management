@@ -177,6 +177,7 @@ app.post('/api/submit-form', async (req, res) => {
           <ul>
             <li>Booking Information:
               <ul>
+                <li>Tower & Unit No.: Monaco Tower, Unit 2604</li>
                 <li>Check-in: ${formData.checkInDate}</li>
                 <li>Check-out: ${formData.checkOutDate}</li>
               </ul>
