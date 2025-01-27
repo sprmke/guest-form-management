@@ -142,11 +142,15 @@ app.post('/api/submit-form', async (req, res) => {
         car_plate_number: formData.carPlateNumber,
         car_brand_model: formData.carBrandModel,
         car_color: formData.carColor,
-        has_pets: formData.hasPets
+        has_pets: formData.hasPets,
+        pet_name: formData.petName,
+        pet_breed: formData.petBreed,
+        pet_age: formData.petAge,
+        pet_vaccination_date: formData.petVaccinationDate
       }])
       .select()
       .single()
-
+  
     if (dbError) {
       console.error('Database error:', dbError)
       return res.status(500).json({ 
@@ -175,6 +179,16 @@ app.post('/api/submit-form', async (req, res) => {
             <li>Email: ${formData.guestEmail}</li>
             <li>Check-in: ${formData.checkInDate}</li>
             <li>Check-out: ${formData.checkOutDate}</li>
+            ${formData.hasPets ? `
+            <li>Pet Information:
+              <ul>
+                <li>Name: ${formData.petName}</li>
+                <li>Breed: ${formData.petBreed}</li>
+                <li>Age: ${formData.petAge}</li>
+                <li>Last Vaccination: ${formData.petVaccinationDate}</li>
+              </ul>
+            </li>
+            ` : ''}
           </ul>
           <p>Please find the complete details in the attached PDF.</p>
         `,

@@ -27,6 +27,10 @@ const formSchema = z.object({
   carBrandModel: z.string().optional(),
   carColor: z.string().optional(),
   hasPets: z.boolean().default(false),
+  petName: z.string().optional(),
+  petBreed: z.string().optional(),
+  petAge: z.string().optional(),
+  petVaccinationDate: z.string().optional(),
 })
 
 const generateRandomData = () => {
@@ -45,6 +49,8 @@ const generateRandomData = () => {
   ]
   const carBrands = ['Toyota Camry', 'Honda Civic', 'Ford Mustang', 'BMW 3 Series', 'Mercedes C-Class']
   const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray']
+  const petNames = ['Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky']
+  const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon']
 
   const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
   const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
@@ -66,6 +72,11 @@ const generateRandomData = () => {
   checkOutDate.setDate(futureDate.getDate() + randomNumber(1, 7))
   const checkOut = checkOutDate.toISOString().split('T')[0]
 
+  // Generate vaccination date between 1-12 months ago
+  const vaccinationDate = new Date()
+  vaccinationDate.setMonth(vaccinationDate.getMonth() - randomNumber(1, 12))
+  const lastVaccination = vaccinationDate.toISOString().split('T')[0]
+
   // Randomly decide how many additional guests (0-4)
   const numAdditionalGuests = randomNumber(0, 4)
   const additionalGuests = Array(4).fill('').map((_, index) => 
@@ -73,6 +84,7 @@ const generateRandomData = () => {
   )
 
   const needParking = Math.random() > 0.5
+  const hasPets = Math.random() > 0.5
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -92,7 +104,11 @@ const generateRandomData = () => {
     carPlateNumber: needParking ? generateRandomPlate() : '',
     carBrandModel: needParking ? randomElement(carBrands) : '',
     carColor: needParking ? randomElement(carColors) : '',
-    hasPets: Math.random() > 0.5,
+    hasPets,
+    petName: hasPets ? randomElement(petNames) : '',
+    petBreed: hasPets ? randomElement(petBreeds) : '',
+    petAge: hasPets ? `${randomNumber(1, 15)} years` : '',
+    petVaccinationDate: hasPets ? lastVaccination : '',
   }
 }
 
@@ -133,7 +149,11 @@ export function GuestForm() {
         carPlateNumber: values.carPlateNumber ?? '',
         carBrandModel: values.carBrandModel ?? '',
         carColor: values.carColor ?? '',
-        hasPets: values.hasPets
+        hasPets: values.hasPets,
+        petName: values.petName ?? '',
+        petBreed: values.petBreed ?? '',
+        petAge: values.petAge ?? '',
+        petVaccinationDate: values.petVaccinationDate ?? '',
       }
 
       const apiUrl = import.meta.env.VITE_API_URL
@@ -454,6 +474,66 @@ export function GuestForm() {
               </FormItem>
             )}
           />
+
+          {form.watch("hasPets") && (
+            <div className="pl-6 space-y-4">
+              <FormField
+                control={form.control}
+                name="petName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pet Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter pet name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="petBreed"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pet Breed</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter pet breed" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="petAge"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pet Age</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter pet age" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="petVaccinationDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Last Vaccination Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
         </div>
 
         <Button type="submit" disabled={isSubmitting}>
