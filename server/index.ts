@@ -179,6 +179,15 @@ app.post('/api/submit-form', async (req, res) => {
             <li>Email: ${formData.guestEmail}</li>
             <li>Check-in: ${formData.checkInDate}</li>
             <li>Check-out: ${formData.checkOutDate}</li>
+            ${formData.needParking ? `
+            <li>Car Information:
+              <ul>
+                <li>Car Plate Number: ${formData.carPlateNumber}</li>
+                <li>Car Brand & Model: ${formData.carBrandModel}</li>
+                <li>Car Color: ${formData.carColor}</li>
+              </ul>
+            </li>
+            ` : ''}
             ${formData.hasPets ? `
             <li>Pet Information:
               <ul>
