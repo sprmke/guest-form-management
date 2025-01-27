@@ -185,8 +185,16 @@ app.post('/api/submit-form', async (req, res) => {
             <li>Guest Information:
               <ul>
                 <li>Primary Guest: ${formData.primaryGuestName}</li>
-                <li>Email: ${formData.guestEmail}</li>
-                <li>Phone Number: ${formData.guestPhoneNumber}</li>
+                <li>Guest Email: ${formData.guestEmail}</li>
+                <li>Guest Phone Number: ${formData.guestPhoneNumber}</li>
+                <li>Other Guests:
+                  <ul>
+                    ${formData.guest2_name ? `<li>${formData.guest2_name}</li>` : ''}
+                    ${formData.guest3_name ? `<li>${formData.guest3_name}</li>` : ''}
+                    ${formData.guest4_name ? `<li>${formData.guest4_name}</li>` : ''}
+                    ${formData.guest5_name ? `<li>${formData.guest5_name}</li>` : ''}
+                  </ul>
+                </li>
               </ul>
             </li>
             ${formData.needParking ? `
