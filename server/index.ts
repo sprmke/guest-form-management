@@ -175,11 +175,19 @@ app.post('/api/submit-form', async (req, res) => {
         html: `
           <h1>Azure North Monaco 2604 - Guest Form</h1>
           <ul>
-            <li>Primary Guest: ${formData.primaryGuestName}</li>
-            <li>Email: ${formData.guestEmail}</li>
-            <li>Phone Number: ${formData.guestPhoneNumber}</li>
-            <li>Check-in: ${formData.checkInDate}</li>
-            <li>Check-out: ${formData.checkOutDate}</li>
+            <li>Booking Information:
+              <ul>
+                <li>Check-in: ${formData.checkInDate}</li>
+                <li>Check-out: ${formData.checkOutDate}</li>
+              </ul>
+            </li>
+            <li>Guest Information:
+              <ul>
+                <li>Primary Guest: ${formData.primaryGuestName}</li>
+                <li>Email: ${formData.guestEmail}</li>
+                <li>Phone Number: ${formData.guestPhoneNumber}</li>
+              </ul>
+            </li>
             ${formData.needParking ? `
             <li>Car Information:
               <ul>
