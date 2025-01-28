@@ -142,6 +142,9 @@ export function GuestForm() {
     
     try {
       const formData = {
+        unitOwner: 'Arianna Perez',
+        towerAndUnitNumber: 'Monaco 2604',
+        ownerOnsiteContactPerson: 'Arianna Perez',
         guestFacebookName: values.guestFacebookName,
         primaryGuestName: values.primaryGuestName,
         guestEmail: values.guestEmail,
