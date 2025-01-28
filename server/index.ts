@@ -179,7 +179,7 @@ app.post('/api/submit-form', async (req, res) => {
       const emailResult = await resend.emails.send({
         from: 'Guest Form <onboarding@resend.dev>',
         to: ['michaeldmanlulu@gmail.com'],
-        cc: ['kamehome.azurenorth', formData.guestEmail],
+        cc: ['kamehome.azurenorth@gmail.com', formData.guestEmail],
         subject: 'New Guest Form Submission',
         html: `
           <h1>Azure North Monaco 2604 - Guest Form</h1>
