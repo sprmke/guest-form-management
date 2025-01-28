@@ -2,11 +2,39 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
+
+const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
+  try {
+    // Handle empty or invalid input
+    if (!time) {
+      return isCheckIn ? "02:00 pm" : "11:00 am"
+    }
+    
+    // Split the time into hours and minutes
+    const [hours, minutes] = time.split(':').map(num => parseInt(num))
+    
+    // Handle invalid numbers
+    if (isNaN(hours) || isNaN(minutes)) {
+      return isCheckIn ? "02:00 pm" : "11:00 am"
+    }
+    
+    // Determine period and format hour
+    const period = hours >= 12 ? 'pm' : 'am'
+    const formattedHour = (hours % 12 || 12).toString().padStart(2, '0')
+    const formattedMinutes = minutes.toString().padStart(2, '0')
+    
+    // Return formatted time
+    return `${formattedHour}:${formattedMinutes} ${period}`
+  } catch (error) {
+    console.error('Error formatting time:', error)
+    return isCheckIn ? "02:00 pm" : "11:00 am"
+  }
+}
 
 const formSchema = z.object({
   guestFacebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
@@ -167,8 +195,8 @@ export function GuestForm() {
         petBreed: values.petBreed ?? '',
         petAge: values.petAge ?? '',
         petVaccinationDate: values.petVaccinationDate ?? '',
-        checkInTime: values.checkInTime,
-        checkOutTime: values.checkOutTime,
+        checkInTime: formatTimeToAMPM(values.checkInTime, true),
+        checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
         nationality: values.nationality,
         numberOfAdults: values.numberOfAdults,
         numberOfChildren: values.numberOfChildren,
@@ -315,8 +343,15 @@ export function GuestForm() {
               <FormItem>
                 <FormLabel>Check-in Time</FormLabel>
                 <FormControl>
-                  <Input type="time" {...field} />
+                  <Input 
+                    type="time" 
+                    {...field}
+                    placeholder="Select time"
+                  />
                 </FormControl>
+                <FormDescription className="text-xs">
+                  Will be formatted as "02:00 pm"
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -345,8 +380,15 @@ export function GuestForm() {
               <FormItem>
                 <FormLabel>Check-out Time</FormLabel>
                 <FormControl>
-                  <Input type="time" {...field} />
+                  <Input 
+                    type="time" 
+                    {...field}
+                    placeholder="Select time"
+                  />
                 </FormControl>
+                <FormDescription className="text-xs">
+                  Will be formatted as "11:00 am"
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
