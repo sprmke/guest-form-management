@@ -132,6 +132,11 @@ app.post('/api/submit-form', async (req, res) => {
         guest_address: formData.guestAddress,
         check_in_date: formData.checkInDate,
         check_out_date: formData.checkOutDate,
+        check_in_time: formData.checkInTime,
+        check_out_time: formData.checkOutTime,
+        nationality: formData.nationality,
+        number_of_adults: formData.numberOfAdults,
+        number_of_children: formData.numberOfChildren,
         guest2_name: formData.guest2Name,
         guest3_name: formData.guest3Name,
         guest4_name: formData.guest4Name,
@@ -179,21 +184,24 @@ app.post('/api/submit-form', async (req, res) => {
             <li>Booking Information:
               <ul>
                 <li>Tower & Unit No.: Monaco Tower, Unit 2604</li>
-                <li>Check-in: ${formData.checkInDate}</li>
-                <li>Check-out: ${formData.checkOutDate}</li>
+                <li>Check-in: ${formData.checkInDate} at ${formData.checkInTime}</li>
+                <li>Check-out: ${formData.checkOutDate} at ${formData.checkOutTime}</li>
               </ul>
             </li>
             <li>Guest Information:
               <ul>
                 <li>Primary Guest: ${formData.primaryGuestName}</li>
+                <li>Nationality: ${formData.nationality}</li>
                 <li>Guest Email: ${formData.guestEmail}</li>
                 <li>Guest Phone Number: ${formData.guestPhoneNumber}</li>
+                <li>Number of Adults: ${formData.numberOfAdults}</li>
+                <li>Number of Children: ${formData.numberOfChildren}</li>
                 <li>Other Guests:
                   <ul>
-                    ${formData.guest2_name ? `<li>${formData.guest2_name}</li>` : ''}
-                    ${formData.guest3_name ? `<li>${formData.guest3_name}</li>` : ''}
-                    ${formData.guest4_name ? `<li>${formData.guest4_name}</li>` : ''}
-                    ${formData.guest5_name ? `<li>${formData.guest5_name}</li>` : ''}
+                    ${formData.guest2Name ? `<li>${formData.guest2Name}</li>` : ''}
+                    ${formData.guest3Name ? `<li>${formData.guest3Name}</li>` : ''}
+                    ${formData.guest4Name ? `<li>${formData.guest4Name}</li>` : ''}
+                    ${formData.guest5Name ? `<li>${formData.guest5Name}</li>` : ''}
                   </ul>
                 </li>
               </ul>

@@ -31,6 +31,11 @@ const formSchema = z.object({
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
+  checkInTime: z.string().default("14:00"),
+  checkOutTime: z.string().default("11:00"),
+  nationality: z.string().default("Filipino"),
+  numberOfAdults: z.number().min(1).max(4),
+  numberOfChildren: z.number().min(0).max(3),
 })
 
 const generateRandomData = () => {
@@ -109,6 +114,11 @@ const generateRandomData = () => {
     petBreed: hasPets ? randomElement(petBreeds) : '',
     petAge: hasPets ? `${randomNumber(1, 15)} years` : '',
     petVaccinationDate: hasPets ? lastVaccination : '',
+    checkInTime: "14:00",
+    checkOutTime: "11:00",
+    nationality: "Filipino",
+    numberOfAdults: randomNumber(1, 4),
+    numberOfChildren: randomNumber(0, 3),
   }
 }
 
@@ -154,6 +164,11 @@ export function GuestForm() {
         petBreed: values.petBreed ?? '',
         petAge: values.petAge ?? '',
         petVaccinationDate: values.petVaccinationDate ?? '',
+        checkInTime: values.checkInTime,
+        checkOutTime: values.checkOutTime,
+        nationality: values.nationality,
+        numberOfAdults: values.numberOfAdults,
+        numberOfChildren: values.numberOfChildren,
       }
 
       const apiUrl = import.meta.env.VITE_API_URL
@@ -184,6 +199,10 @@ export function GuestForm() {
       setIsSubmitting(false)
     }
   }
+
+  // Calculate total number of additional guests needed
+  const totalGuests = (form.watch("numberOfAdults") || 1) + (form.watch("numberOfChildren") || 0)
+  const additionalGuestsNeeded = Math.max(0, totalGuests - 1) // -1 because primary guest is counted separately
 
   return (
     <Form {...form}>
@@ -288,6 +307,22 @@ export function GuestForm() {
 
           <FormField
             control={form.control}
+            name="checkInTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Check-in Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
             name="checkOutDate"
             render={({ field }) => (
               <FormItem>
@@ -299,59 +334,99 @@ export function GuestForm() {
               </FormItem>
             )}
           />
+
+          <FormField
+            control={form.control}
+            name="checkOutTime"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Check-out Time</FormLabel>
+                <FormControl>
+                  <Input type="time" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
 
-        <div className="space-y-4">
-          <label className="block text-sm font-medium">Additional Guests</label>
+        <FormField
+          control={form.control}
+          name="nationality"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nationality</FormLabel>
+              <FormControl>
+                <Input {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="guest2Name"
+            name="numberOfAdults"
             render={({ field }) => (
               <FormItem>
+                <FormLabel>Number of Adults (max 4)</FormLabel>
                 <FormControl>
-                  <Input placeholder="Guest 2 Name" {...field} />
+                  <Input 
+                    type="number" 
+                    min="1" 
+                    max="4" 
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
+
           <FormField
             control={form.control}
-            name="guest3Name"
+            name="numberOfChildren"
             render={({ field }) => (
               <FormItem>
+                <FormLabel>Number of Children</FormLabel>
                 <FormControl>
-                  <Input placeholder="Guest 3 Name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="guest4Name"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input placeholder="Guest 4 Name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="guest5Name"
-            render={({ field }) => (
-              <FormItem>
-                <FormControl>
-                  <Input placeholder="Guest 5 Name" {...field} />
+                  <Input 
+                    type="number" 
+                    min="0" 
+                    max="3" 
+                    {...field}
+                    onChange={e => field.onChange(parseInt(e.target.value))} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
         </div>
+
+        {/* Dynamic Additional Guests Fields */}
+        {additionalGuestsNeeded > 0 && (
+          <div className="space-y-4">
+            <label className="block text-sm font-medium">Additional Guests</label>
+            {Array.from({ length: additionalGuestsNeeded }).map((_, index) => (
+              <FormField
+                key={index}
+                control={form.control}
+                name={`guest${index + 2}Name` as keyof z.infer<typeof formSchema>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input placeholder={`Guest ${index + 2} Name`} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            ))}
+          </div>
+        )}
 
         <FormField
           control={form.control}
@@ -401,8 +476,8 @@ export function GuestForm() {
                 <FormControl>
                   <Input
                     type="checkbox"
-                    checked={field.value}
-                    onChange={field.onChange}
+                    checked={field.value as boolean}
+                    onChange={(e) => field.onChange(e.target.checked)}
                     className="w-4 h-4"
                   />
                 </FormControl>
@@ -465,8 +540,8 @@ export function GuestForm() {
                 <FormControl>
                   <Input
                     type="checkbox"
-                    checked={field.value}
-                    onChange={field.onChange}
+                    checked={field.value as boolean}
+                    onChange={(e) => field.onChange(e.target.checked)}
                     className="w-4 h-4"
                   />
                 </FormControl>
