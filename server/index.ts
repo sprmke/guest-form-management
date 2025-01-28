@@ -125,6 +125,9 @@ app.post('/api/submit-form', async (req, res) => {
     const { data, error: dbError } = await supabase
       .from('guest_submissions')
       .insert([{
+        unit_owner: formData.unitOwner,
+        tower_and_unit_number: formData.towerAndUnitNumber,
+        owner_onsite_contact_person: formData.ownerOnsiteContactPerson,
         guest_facebook_name: formData.guestFacebookName,
         primary_guest_name: formData.primaryGuestName,
         guest_email: formData.guestEmail,
