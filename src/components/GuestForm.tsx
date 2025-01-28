@@ -34,8 +34,8 @@ const formSchema = z.object({
   checkInTime: z.string().default("14:00"),
   checkOutTime: z.string().default("11:00"),
   nationality: z.string().default("Filipino"),
-  numberOfAdults: z.number().min(1).max(4),
-  numberOfChildren: z.number().min(0).max(3),
+  numberOfAdults: z.number().min(1),
+  numberOfChildren: z.number().min(0),
 })
 
 const generateRandomData = () => {
@@ -200,9 +200,9 @@ export function GuestForm() {
     }
   }
 
-  // Calculate total number of additional guests needed
+  // Calculate total number of additional guests needed, capped at 4
   const totalGuests = (form.watch("numberOfAdults") || 1) + (form.watch("numberOfChildren") || 0)
-  const additionalGuestsNeeded = Math.max(0, totalGuests - 1) // -1 because primary guest is counted separately
+  const additionalGuestsNeeded = Math.min(4, Math.max(0, totalGuests - 1)) // Cap at 4 additional guests
 
   return (
     <Form {...form}>
@@ -370,14 +370,17 @@ export function GuestForm() {
             name="numberOfAdults"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Number of Adults (max 4)</FormLabel>
+                <FormLabel>Number of Adults</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
-                    min="1" 
-                    max="4" 
+                    min="1"
                     {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))} 
+                    onChange={e => {
+                      const value = parseInt(e.target.value) || 1;
+                      const validValue = Math.max(1, value);
+                      field.onChange(validValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -387,17 +390,20 @@ export function GuestForm() {
 
           <FormField
             control={form.control}
-            name="numberOfChildren"
+            name="numberOfChildren" 
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Number of Children</FormLabel>
                 <FormControl>
                   <Input 
                     type="number" 
-                    min="0" 
-                    max="3" 
+                    min="0"
                     {...field}
-                    onChange={e => field.onChange(parseInt(e.target.value))} 
+                    onChange={e => {
+                      const value = parseInt(e.target.value) || 0;
+                      const validValue = Math.max(0, value);
+                      field.onChange(validValue);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
