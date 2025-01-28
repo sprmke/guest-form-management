@@ -15,7 +15,7 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL ?? ''
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY ?? ''
 const supabase = createClient(supabaseUrl, supabaseKey)
 
-// Resend coniguration
+// Resend configuration
 const resendApiKey = process.env.RESEND_API_KEY ?? ''
 const resend = new Resend(resendApiKey)
 
@@ -62,8 +62,38 @@ async function generatePDF(formData: any) {
     if (fields.length > 0) {
       // Try to fill each field, logging success or failure
       const fieldMappings = {
-        'unitOwner': formData.full_name,
-        'ownerOnsiteContactPerson': formData.full_name,
+        // Unit and Owner Information
+        'unitOwner': formData.unitOwner,
+        'towerAndUnitNumber': formData.towerAndUnitNumber,
+        'ownerOnsiteContactPerson': formData.ownerOnsiteContactPerson,
+        
+        // Primary Guest Information
+        'primaryGuestName': formData.primaryGuestName,
+        'guestEmail': formData.guestEmail,
+        'guestPhoneNumber': formData.guestPhoneNumber,
+        'guestAddress': formData.guestAddress,
+        'nationality': formData.nationality,
+        
+        // Check-in/out Information
+        'checkInDate': formData.checkInDate,
+        'checkOutDate': formData.checkOutDate,
+        'checkInTime': formData.checkInTime,
+        'checkOutTime': formData.checkOutTime,
+        
+        // Guest Count
+        'numberOfAdults': String(formData.numberOfAdults),
+        'numberOfChildren': String(formData.numberOfChildren),
+        
+        // Additional Guests
+        'guest2Name': formData.guest2Name,
+        'guest3Name': formData.guest3Name,
+        'guest4Name': formData.guest4Name,
+        'guest5Name': formData.guest5Name,
+        
+        // Parking Information
+        'carPlateNumber': formData.carPlateNumber,
+        'carBrandModel': formData.carBrandModel,
+        'carColor': formData.carColor,
       }
 
       for (const [fieldName, value] of Object.entries(fieldMappings)) {
@@ -71,7 +101,9 @@ async function generatePDF(formData: any) {
           const field = form.getTextField(fieldName)
           if (field) {
             console.log(`Successfully found and filling field: ${fieldName}`)
-            field.setText(String(value))
+            field.setText(value ? String(value) : '')
+          } else {
+            console.log(`Field not found in PDF: ${fieldName}`)
           }
         } catch (e) {
           console.log(`Could not set field "${fieldName}":`, e.message)
