@@ -217,7 +217,7 @@ export function GuestForm() {
         </div>
 
         {submitError && (
-          <div className="relative px-4 py-3 mb-4 text-red-700 border border-red-200 rounded bg-red-50" role="alert">
+          <div className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200" role="alert">
             <strong className="font-bold">Error: </strong>
             <span className="block sm:inline">{submitError}</span>
           </div>
@@ -465,10 +465,10 @@ export function GuestForm() {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Facebook">Facebook</SelectItem>
+                  <SelectItem value="Google">Tiktok</SelectItem>
                   <SelectItem value="Instagram">Instagram</SelectItem>
                   <SelectItem value="Friend">Friend</SelectItem>
-                  <SelectItem value="Google">Google</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  <SelectItem value="Others">Others</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
