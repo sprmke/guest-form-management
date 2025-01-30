@@ -258,7 +258,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Facebook Name *</FormLabel>
               <FormControl>
-                <Input placeholder="Your Facebook name" {...field} />
+                <Input placeholder="Your username/name in Facebook" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -272,7 +272,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Primary Guest Name *</FormLabel>
               <FormControl>
-                <Input placeholder="Primary guest's full name" {...field} />
+                <Input placeholder="Full name of Primary Guest" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -286,7 +286,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Email *</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="guest@example.com" {...field} />
+                <Input type="email" placeholder="Ex. juandelacruz@gmail.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -300,7 +300,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Phone Number *</FormLabel>
               <FormControl>
-                <Input type="tel" placeholder="Your contact number" {...field} />
+                <Input type="tel" placeholder="Ex. 0987 654 3210" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -314,7 +314,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Address *</FormLabel>
               <FormControl>
-                <Input placeholder="Complete address" {...field} />
+                <Input placeholder="City, Province" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -345,8 +345,8 @@ export function GuestForm() {
                 <FormControl>
                   <Input 
                     type="time" 
+                    placeholder="02:00 pm"
                     {...field}
-                    placeholder="Select time"
                   />
                 </FormControl>
                 <FormDescription className="text-xs">
@@ -382,8 +382,8 @@ export function GuestForm() {
                 <FormControl>
                   <Input 
                     type="time" 
+                    placeholder="11:00 am"
                     {...field}
-                    placeholder="Select time"
                   />
                 </FormControl>
                 <FormDescription className="text-xs">
@@ -402,7 +402,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Nationality</FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} placeholder="Ex. Filipino" />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -546,7 +546,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Car Plate Number</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter car plate number" {...field} />
+                      <Input placeholder="Ex. ABC123" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -560,7 +560,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Car Brand & Model</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter car brand and model" {...field} />
+                      <Input placeholder="Ex. Honda Civic" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -574,7 +574,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Car Color</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter car color" {...field} />
+                      <Input placeholder="Ex. Red" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -610,7 +610,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Pet Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter pet name" {...field} />
+                      <Input placeholder="Ex. Max" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -624,7 +624,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Pet Breed</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter pet breed" {...field} />
+                      <Input placeholder="Ex. Labrador" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -638,7 +638,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Pet Age</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter pet age" {...field} />
+                      <Input placeholder="Ex. 2 years old" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
