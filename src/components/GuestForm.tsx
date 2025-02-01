@@ -349,9 +349,6 @@ export function GuestForm() {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  Will be formatted as "02:00 pm"
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -386,9 +383,6 @@ export function GuestForm() {
                     {...field}
                   />
                 </FormControl>
-                <FormDescription className="text-xs">
-                  Will be formatted as "11:00 am"
-                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}
