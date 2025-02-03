@@ -178,6 +178,7 @@ app.post('/api/submit-form', async (req, res) => {
         guest5_name: formData.guest5Name,
         guest_special_requests: formData.guestSpecialRequests,
         find_us: formData.findUs,
+        find_us_details: formData.findUsDetails,
         need_parking: formData.needParking,
         car_plate_number: formData.carPlateNumber,
         car_brand_model: formData.carBrandModel,

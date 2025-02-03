@@ -50,6 +50,7 @@ const formSchema = z.object({
   guest5Name: z.string().optional(),
   guestSpecialRequests: z.string().optional(),
   findUs: z.string().min(1, "Please select how you found us"),
+  findUsDetails: z.string().optional(),
   needParking: z.boolean().default(false),
   carPlateNumber: z.string().optional(),
   carBrandModel: z.string().optional(),
@@ -72,6 +73,13 @@ const generateRandomData = () => {
   const streets = ['Main St', 'Oak Ave', 'Maple Rd', 'Cedar Ln', 'Pine Dr', 'Elm St', 'Park Ave']
   const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia']
   const findUsSources = ['Facebook', 'Instagram', 'Friend', 'Google', 'Other']
+  const findUsDetails = [
+    'John Smith recommended us',
+    'Maria Garcia told me about your place',
+    'Found through local community',
+    'Travel blog recommendation',
+    ''
+  ]
   const requests = [
     'Early check-in if possible',
     'Late check-out needed',
@@ -133,6 +141,7 @@ const generateRandomData = () => {
     guest5Name: additionalGuests[3],
     guestSpecialRequests: randomElement(requests),
     findUs: randomElement(findUsSources),
+    findUsDetails: randomElement(findUsDetails),
     needParking,
     carPlateNumber: needParking ? generateRandomPlate() : '',
     carBrandModel: needParking ? randomElement(carBrands) : '',
@@ -186,6 +195,7 @@ export function GuestForm() {
         guest5Name: values.guest5Name ?? '',
         guestSpecialRequests: values.guestSpecialRequests ?? '',
         findUs: values.findUs,
+        findUsDetails: values.findUsDetails,
         needParking: values.needParking,
         carPlateNumber: values.carPlateNumber ?? '',
         carBrandModel: values.carBrandModel ?? '',
@@ -493,7 +503,7 @@ export function GuestForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>How did you find us? *</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select onValueChange={field.onChange} defaultValue={field.value || "Facebook"}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select how you found us" />
@@ -501,7 +511,8 @@ export function GuestForm() {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="Facebook">Facebook</SelectItem>
-                  <SelectItem value="Google">Tiktok</SelectItem>
+                  <SelectItem value="Airbnb">Airbnb</SelectItem>
+                  <SelectItem value="Tiktok">Tiktok</SelectItem>
                   <SelectItem value="Instagram">Instagram</SelectItem>
                   <SelectItem value="Friend">Friend</SelectItem>
                   <SelectItem value="Others">Others</SelectItem>
@@ -511,6 +522,31 @@ export function GuestForm() {
             </FormItem>
           )}
         />
+
+        {(form.watch("findUs") === "Friend" || form.watch("findUs") === "Others") && (
+          <FormField
+            control={form.control}
+            name="findUsDetails"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {form.watch("findUs") === "Friend" ? "Friend's Name" : "Please specify where you found us"}
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder={
+                      form.watch("findUs") === "Friend" 
+                        ? "Enter your friend's name" 
+                        : "Please specify how you found us"
+                    } 
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <div className="space-y-4">
           <FormField
