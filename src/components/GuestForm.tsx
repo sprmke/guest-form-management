@@ -478,9 +478,9 @@ export function GuestForm() {
           name="guestSpecialRequests"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Special Requests</FormLabel>
+              <FormLabel>Requests/notes to unit owner</FormLabel>
               <FormControl>
-                <Textarea placeholder="Any special requests or notes" {...field} />
+                <Textarea placeholder="Any special requests or notes to unit owner" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
