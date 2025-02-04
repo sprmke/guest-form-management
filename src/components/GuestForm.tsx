@@ -17,6 +17,24 @@ const toCapitalCase = (text: string): string => {
     .join(' ');
 };
 
+// Utility function to format date to MM-DD-YYYY
+const formatDate = (dateString: string): string => {
+  try {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '';
+    
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const year = date.getFullYear();
+    
+    return `${month}-${day}-${year}`;
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return dateString;
+  }
+};
+
 const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
   try {
     // Handle empty or invalid input
@@ -199,6 +217,11 @@ export function GuestForm() {
       petName: values.petName ? toCapitalCase(values.petName) : '',
       petBreed: values.petBreed ? toCapitalCase(values.petBreed) : '',
       findUsDetails: values.findUsDetails ? toCapitalCase(values.findUsDetails) : '',
+      checkInTime: formatTimeToAMPM(values.checkInTime, true),
+      checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
+      checkInDate: formatDate(values.checkInDate),
+      checkOutDate: formatDate(values.checkOutDate),
+      petVaccinationDate: values.petVaccinationDate ? formatDate(values.petVaccinationDate) : '',
     }
 
     setIsSubmitting(true)
