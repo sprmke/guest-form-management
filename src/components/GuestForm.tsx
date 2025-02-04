@@ -8,6 +8,15 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
 
+// Utility function to format text to capital case
+const toCapitalCase = (text: string): string => {
+  if (!text) return text;
+  return text
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
   try {
     // Handle empty or invalid input
@@ -174,6 +183,24 @@ export function GuestForm() {
   }, [])
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    // Transform values to capital case before submission
+    const transformedValues = {
+      ...values,
+      guestFacebookName: toCapitalCase(values.guestFacebookName),
+      primaryGuestName: toCapitalCase(values.primaryGuestName),
+      guestAddress: toCapitalCase(values.guestAddress),
+      guest2Name: values.guest2Name ? toCapitalCase(values.guest2Name) : '',
+      guest3Name: values.guest3Name ? toCapitalCase(values.guest3Name) : '',
+      guest4Name: values.guest4Name ? toCapitalCase(values.guest4Name) : '',
+      guest5Name: values.guest5Name ? toCapitalCase(values.guest5Name) : '',
+      nationality: toCapitalCase(values.nationality),
+      carBrandModel: values.carBrandModel ? toCapitalCase(values.carBrandModel) : '',
+      carColor: values.carColor ? toCapitalCase(values.carColor) : '',
+      petName: values.petName ? toCapitalCase(values.petName) : '',
+      petBreed: values.petBreed ? toCapitalCase(values.petBreed) : '',
+      findUsDetails: values.findUsDetails ? toCapitalCase(values.findUsDetails) : '',
+    }
+
     setIsSubmitting(true)
     setSubmitError(null)
     
@@ -182,34 +209,9 @@ export function GuestForm() {
         unitOwner: 'Arianna Perez',
         towerAndUnitNumber: 'Monaco 2604',
         ownerOnsiteContactPerson: 'Arianna Perez',
-        guestFacebookName: values.guestFacebookName,
-        primaryGuestName: values.primaryGuestName,
-        guestEmail: values.guestEmail,
-        guestPhoneNumber: values.guestPhoneNumber,
-        guestAddress: values.guestAddress,
-        checkInDate: values.checkInDate,
-        checkOutDate: values.checkOutDate,
-        guest2Name: values.guest2Name ?? '',
-        guest3Name: values.guest3Name ?? '',
-        guest4Name: values.guest4Name ?? '',
-        guest5Name: values.guest5Name ?? '',
-        guestSpecialRequests: values.guestSpecialRequests ?? '',
-        findUs: values.findUs,
-        findUsDetails: values.findUsDetails,
-        needParking: values.needParking,
-        carPlateNumber: values.carPlateNumber ?? '',
-        carBrandModel: values.carBrandModel ?? '',
-        carColor: values.carColor ?? '',
-        hasPets: values.hasPets,
-        petName: values.petName ?? '',
-        petBreed: values.petBreed ?? '',
-        petAge: values.petAge ?? '',
-        petVaccinationDate: values.petVaccinationDate ?? '',
-        checkInTime: formatTimeToAMPM(values.checkInTime, true),
-        checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
-        nationality: values.nationality,
-        numberOfAdults: values.numberOfAdults,
-        numberOfChildren: values.numberOfChildren,
+        ownerContactNumber: '0962 541 2941',
+        numberOfNights: Math.ceil((new Date(values.checkOutDate).getTime() - new Date(values.checkInDate).getTime()) / (1000 * 60 * 60 * 24)).toString(),
+        ...transformedValues
       }
 
       const apiUrl = import.meta.env.VITE_API_URL
@@ -268,7 +270,11 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Facebook Name *</FormLabel>
               <FormControl>
-                <Input placeholder="Your username/name in Facebook" {...field} />
+                <Input 
+                  placeholder="Your username/name in Facebook" 
+                  {...field} 
+                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -282,7 +288,11 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Primary Guest Name *</FormLabel>
               <FormControl>
-                <Input placeholder="Full name of Primary Guest" {...field} />
+                <Input 
+                  placeholder="Full name of Primary Guest" 
+                  {...field} 
+                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -324,7 +334,11 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Address *</FormLabel>
               <FormControl>
-                <Input placeholder="City, Province" {...field} />
+                <Input 
+                  placeholder="City, Province" 
+                  {...field} 
+                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -406,7 +420,11 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Nationality</FormLabel>
               <FormControl>
-                <Input {...field} placeholder="Ex. Filipino" />
+                <Input 
+                  {...field} 
+                  placeholder="Ex. Filipino" 
+                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -473,7 +491,11 @@ export function GuestForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input placeholder={`Guest ${index + 2} Name`} {...field} />
+                      <Input 
+                        placeholder={`Guest ${index + 2} Name`} 
+                        {...field} 
+                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -540,6 +562,7 @@ export function GuestForm() {
                         : "Please specify how you found us"
                     } 
                     {...field} 
+                    onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
                   />
                 </FormControl>
                 <FormMessage />
@@ -590,7 +613,11 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Car Brand & Model</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex. Honda Civic" {...field} />
+                      <Input 
+                        placeholder="Ex. Honda Civic" 
+                        {...field} 
+                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -604,7 +631,11 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Car Color</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex. Red" {...field} />
+                      <Input 
+                        placeholder="Ex. Red" 
+                        {...field} 
+                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -640,7 +671,11 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Pet Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex. Max" {...field} />
+                      <Input 
+                        placeholder="Ex. Max" 
+                        {...field} 
+                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -654,7 +689,11 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Pet Breed</FormLabel>
                     <FormControl>
-                      <Input placeholder="Ex. Labrador" {...field} />
+                      <Input 
+                        placeholder="Ex. Labrador" 
+                        {...field} 
+                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
