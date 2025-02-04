@@ -66,6 +66,7 @@ async function generatePDF(formData: any) {
         'unitOwner': formData.unitOwner,
         'towerAndUnitNumber': formData.towerAndUnitNumber,
         'ownerOnsiteContactPerson': formData.ownerOnsiteContactPerson,
+        'ownerContactNumber': formData.ownerContactNumber,
         
         // Primary Guest Information
         'primaryGuestName': formData.primaryGuestName,
@@ -79,6 +80,7 @@ async function generatePDF(formData: any) {
         'checkOutDate': formData.checkOutDate,
         'checkInTime': formData.checkInTime,
         'checkOutTime': formData.checkOutTime,
+        'numberOfNights': formData.numberOfNights,
         
         // Guest Count
         'numberOfAdults': String(formData.numberOfAdults),
