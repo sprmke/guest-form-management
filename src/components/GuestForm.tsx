@@ -516,7 +516,8 @@ export function GuestForm() {
                     <FormControl>
                       <Input 
                         placeholder={`Guest ${index + 2} Name`} 
-                        {...field} 
+                        {...field}
+                        value={field.value?.toString() ?? ''}
                         onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
                       />
                     </FormControl>
@@ -601,9 +602,9 @@ export function GuestForm() {
             render={({ field }) => (
               <FormItem className="flex items-center space-x-2">
                 <FormControl>
-                  <Input
+                  <input
                     type="checkbox"
-                    checked={field.value as boolean}
+                    checked={field.value}
                     onChange={(e) => field.onChange(e.target.checked)}
                     className="w-4 h-4"
                   />
@@ -673,9 +674,9 @@ export function GuestForm() {
             render={({ field }) => (
               <FormItem className="flex items-center space-x-2">
                 <FormControl>
-                  <Input
+                  <input
                     type="checkbox"
-                    checked={field.value as boolean}
+                    checked={field.value}
                     onChange={(e) => field.onChange(e.target.checked)}
                     className="w-4 h-4"
                   />
