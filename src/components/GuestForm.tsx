@@ -9,44 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useState, useEffect } from "react"
 import { formatDate, formatTimeToAMPM, toCapitalCase } from "@/utils/formatters"
 import { generateRandomData } from "@/utils/mockData"
-
-export const formSchema = z.object({
-  guestFacebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
-  primaryGuestName: z.string().min(2, "Full name must be at least 2 characters"),
-  guestEmail: z.string().email("Invalid email address"),
-  guestPhoneNumber: z.string().min(10, "Contact number must be at least 10 digits"),
-  guestAddress: z.string().min(5, "Address must be at least 5 characters"),
-  checkInDate: z.string().min(1, "Please select check-in date"),
-  checkOutDate: z.string().min(1, "Please select check-out date"),
-  guest2Name: z.string().optional(),
-  guest3Name: z.string().optional(),
-  guest4Name: z.string().optional(),
-  guest5Name: z.string().optional(),
-  guestSpecialRequests: z.string().optional(),
-  findUs: z.string().min(1, "Please select how you found us"),
-  findUsDetails: z.string().optional(),
-  needParking: z.boolean().default(false),
-  carPlateNumber: z.string().optional(),
-  carBrandModel: z.string().optional(),
-  carColor: z.string().optional(),
-  hasPets: z.boolean().default(false),
-  petName: z.string().optional(),
-  petBreed: z.string().optional(),
-  petAge: z.string().optional(),
-  petVaccinationDate: z.string().optional(),
-  checkInTime: z.string().default("14:00"),
-  checkOutTime: z.string().default("11:00"),
-  nationality: z.string().default("Filipino"),
-  numberOfAdults: z.number().min(1),
-  numberOfChildren: z.number().min(0),
-})
+import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<GuestFormData>({
+    resolver: zodResolver(guestFormSchema),
     defaultValues: generateRandomData()
   })
 
@@ -55,7 +25,7 @@ export function GuestForm() {
     form.reset(generateRandomData())
   }, [])
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: GuestFormData) {
     // Transform values to capital case before submission
     const transformedValues = {
       ...values,
@@ -365,7 +335,7 @@ export function GuestForm() {
               <FormField
                 key={index}
                 control={form.control}
-                name={`guest${index + 2}Name` as keyof z.infer<typeof formSchema>}
+                name={`guest${index + 2}Name` as keyof GuestFormData}
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
