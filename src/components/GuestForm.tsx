@@ -7,63 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect } from "react"
+import { formatDate, formatTimeToAMPM, toCapitalCase } from "@/utils/formatters"
+import { generateRandomData } from "@/utils/mockData"
 
-// Utility function to format text to capital case
-const toCapitalCase = (text: string): string => {
-  if (!text) return text;
-  return text
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-};
-
-// Utility function to format date to MM-DD-YYYY
-const formatDate = (dateString: string): string => {
-  try {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return '';
-    
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const year = date.getFullYear();
-    
-    return `${month}-${day}-${year}`;
-  } catch (error) {
-    console.error('Error formatting date:', error);
-    return dateString;
-  }
-};
-
-const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
-  try {
-    // Handle empty or invalid input
-    if (!time) {
-      return isCheckIn ? "02:00 pm" : "11:00 am"
-    }
-    
-    // Split the time into hours and minutes
-    const [hours, minutes] = time.split(':').map(num => parseInt(num))
-    
-    // Handle invalid numbers
-    if (isNaN(hours) || isNaN(minutes)) {
-      return isCheckIn ? "02:00 pm" : "11:00 am"
-    }
-    
-    // Determine period and format hour
-    const period = hours >= 12 ? 'pm' : 'am'
-    const formattedHour = (hours % 12 || 12).toString().padStart(2, '0')
-    const formattedMinutes = minutes.toString().padStart(2, '0')
-    
-    // Return formatted time
-    return `${formattedHour}:${formattedMinutes} ${period}`
-  } catch (error) {
-    console.error('Error formatting time:', error)
-    return isCheckIn ? "02:00 pm" : "11:00 am"
-  }
-}
-
-const formSchema = z.object({
+export const formSchema = z.object({
   guestFacebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
   primaryGuestName: z.string().min(2, "Full name must be at least 2 characters"),
   guestEmail: z.string().email("Invalid email address"),
@@ -93,98 +40,6 @@ const formSchema = z.object({
   numberOfAdults: z.number().min(1),
   numberOfChildren: z.number().min(0),
 })
-
-const generateRandomData = () => {
-  const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa']
-  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis']
-  const streets = ['Main St', 'Oak Ave', 'Maple Rd', 'Cedar Ln', 'Pine Dr', 'Elm St', 'Park Ave']
-  const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia']
-  const findUsSources = ['Facebook', 'Instagram', 'Friend', 'Google', 'Other']
-  const findUsDetails = [
-    'John Smith recommended us',
-    'Maria Garcia told me about your place',
-    'Found through local community',
-    'Travel blog recommendation',
-    ''
-  ]
-  const requests = [
-    'Early check-in if possible',
-    'Late check-out needed',
-    'Extra towels please',
-    'Ground floor preferred',
-    'Quiet room requested',
-    ''
-  ]
-  const carBrands = ['Toyota Camry', 'Honda Civic', 'Ford Mustang', 'BMW 3 Series', 'Mercedes C-Class']
-  const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray']
-  const petNames = ['Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky']
-  const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon']
-
-  const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)]
-  const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min)
-  const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`
-  const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`
-  
-  const firstName = randomElement(firstNames)
-  const lastName = randomElement(lastNames)
-  const fullName = `${firstName} ${lastName}`
-  
-  // Generate a date between today and next 30 days for check-in
-  const today = new Date()
-  const futureDate = new Date()
-  futureDate.setDate(today.getDate() + randomNumber(1, 30))
-  const checkIn = futureDate.toISOString().split('T')[0]
-  
-  // Generate check-out date 1-7 days after check-in
-  const checkOutDate = new Date(futureDate)
-  checkOutDate.setDate(futureDate.getDate() + randomNumber(1, 7))
-  const checkOut = checkOutDate.toISOString().split('T')[0]
-
-  // Generate vaccination date between 1-12 months ago
-  const vaccinationDate = new Date()
-  vaccinationDate.setMonth(vaccinationDate.getMonth() - randomNumber(1, 12))
-  const lastVaccination = vaccinationDate.toISOString().split('T')[0]
-
-  // Randomly decide how many additional guests (0-4)
-  const numAdditionalGuests = randomNumber(0, 4)
-  const additionalGuests = Array(4).fill('').map((_, index) => 
-    index < numAdditionalGuests ? generateRandomName() : ''
-  )
-
-  const needParking = Math.random() > 0.5
-  const hasPets = Math.random() > 0.5
-
-  return {
-    guestFacebookName: `${fullName} FB`,
-    primaryGuestName: fullName,
-    guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-    guestPhoneNumber: `${randomNumber(100, 999)}${randomNumber(100, 999)}${randomNumber(1000, 9999)}`,
-    guestAddress: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
-    checkInDate: checkIn,
-    checkOutDate: checkOut,
-    guest2Name: additionalGuests[0],
-    guest3Name: additionalGuests[1],
-    guest4Name: additionalGuests[2],
-    guest5Name: additionalGuests[3],
-    guestSpecialRequests: randomElement(requests),
-    findUs: randomElement(findUsSources),
-    findUsDetails: randomElement(findUsDetails),
-    needParking,
-    carPlateNumber: needParking ? generateRandomPlate() : '',
-    carBrandModel: needParking ? randomElement(carBrands) : '',
-    carColor: needParking ? randomElement(carColors) : '',
-    hasPets,
-    petName: hasPets ? randomElement(petNames) : '',
-    petBreed: hasPets ? randomElement(petBreeds) : '',
-    petAge: hasPets ? `${randomNumber(1, 15)} years` : '',
-    petVaccinationDate: hasPets ? lastVaccination : '',
-    checkInTime: "14:00",
-    checkOutTime: "11:00",
-    nationality: "Filipino",
-    numberOfAdults: randomNumber(1, 4),
-    numberOfChildren: randomNumber(0, 3),
-  }
-}
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
