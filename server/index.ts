@@ -22,6 +22,21 @@ if (!supabaseUrl || !supabaseKey) {
 // Initialize Supabase client
 const supabase = createClient(supabaseUrl, supabaseKey)
 
+// Add a health check for Supabase connection
+const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('guest_submissions').select('count').limit(1)
+    if (error) throw error
+    console.log('Supabase connection successful')
+  } catch (error) {
+    console.error('Supabase connection error:', error)
+    throw new Error('Failed to connect to Supabase')
+  }
+}
+
+// Call this when server starts
+checkSupabaseConnection()
+
 // Resend configuration
 const resendApiKey = process.env.RESEND_API_KEY ?? ''
 const resend = new Resend(resendApiKey)
