@@ -202,7 +202,13 @@ app.post('/api/submit-form', async (req, res) => {
       .single()
   
     if (dbError) {
-      console.error('Database error:', dbError)
+      console.error('Database error:', {
+        message: dbError.message,
+        details: dbError.details,
+        hint: dbError.hint,
+        code: dbError.code,
+        stack: new Error().stack
+      })
       return res.status(500).json({ 
         success: false,
         error: 'Database error',
