@@ -46,43 +46,66 @@ async function getTemplateBytes(): Promise<Uint8Array> {
 }
 
 export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> {
-  // Get template bytes (either from local file or storage)
-  const templateBytes = await getTemplateBytes()
-  
-  // Load the template
-  const pdfDoc = await PDFDocument.load(templateBytes)
-  const form = pdfDoc.getForm()
+  try {
+    console.log('Generating PDF...');
+    const templateBytes = await getTemplateBytes()
+    const pdfDoc = await PDFDocument.load(templateBytes)
+    const form = pdfDoc.getForm()
 
-  // Fill form fields
-  const fields = {
-    'facebook_name': formData.guestFacebookName,
-    'guest_name': formData.primaryGuestName,
-    'email': formData.guestEmail,
-    'phone': formData.guestPhoneNumber,
-    'address': formData.guestAddress,
-    'check_in': formData.checkInDate,
-    'check_out': formData.checkOutDate,
-    'special_requests': formData.guestSpecialRequests || '',
-    'found_through': formData.findUs || '',
-    'need_parking': formData.needParking ? 'Yes' : 'No',
-    'has_pets': formData.hasPets ? 'Yes' : 'No',
-    'pet_vaccination': formData.petVaccinationDate || ''
-  }
-
-  // Fill each field in the form
-  for (const [key, value] of Object.entries(fields)) {
-    try {
-      const field = form.getTextField(key)
-      if (field) {
-        field.setText(value.toString())
-      }
-    } catch (error) {
-      console.warn(`Field ${key} not found in template`)
+    const fieldMappings: Record<string, string | undefined> = {
+      // Unit and Owner Information
+      'unitOwner': formData.unitOwner,
+      'towerAndUnitNumber': formData.towerAndUnitNumber,
+      'ownerOnsiteContactPerson': formData.ownerOnsiteContactPerson,
+      'ownerContactNumber': formData.ownerContactNumber,
+      
+      // Primary Guest Information
+      'primaryGuestName': formData.primaryGuestName,
+      'guestEmail': formData.guestEmail,
+      'guestPhoneNumber': formData.guestPhoneNumber,
+      'guestAddress': formData.guestAddress,
+      'nationality': formData.nationality,
+      
+      // Check-in/out Information
+      'checkInDate': formData.checkInDate,
+      'checkOutDate': formData.checkOutDate,
+      'checkInTime': formData.checkInTime,
+      'checkOutTime': formData.checkOutTime,
+      'numberOfNights': String(formData.numberOfNights),
+      
+      // Guest Count
+      'numberOfAdults': String(formData.numberOfAdults),
+      'numberOfChildren': String(formData.numberOfChildren),
+      
+      // Additional Guests
+      'guest2Name': formData.guest2Name,
+      'guest3Name': formData.guest3Name,
+      'guest4Name': formData.guest4Name,
+      'guest5Name': formData.guest5Name,
+      
+      // Parking Information
+      'carPlateNumber': formData.carPlateNumber,
+      'carBrandModel': formData.carBrandModel,
+      'carColor': formData.carColor,
     }
+
+    for (const [fieldName, value] of Object.entries(fieldMappings)) {
+      try {
+        const field = form.getTextField(fieldName)
+        if (field) {
+          field.setText(value ? String(value) : '')
+        }
+      } catch (error) {
+        console.warn(`⚠️ Could not set field "${fieldName}":`, error instanceof Error ? error.message : 'Unknown error')
+      }
+    }
+
+    form.flatten()
+    const pdfBytes = await pdfDoc.save()
+    console.log('PDF generated successfully')
+    return pdfBytes
+  } catch (error) {
+    console.error('Error generating PDF:', error)
+    throw new Error('Failed to generate PDF')
   }
-
-  // Flatten the form to prevent further editing
-  form.flatten()
-
-  return await pdfDoc.save()
 } 
