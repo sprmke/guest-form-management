@@ -67,10 +67,33 @@ export function GuestForm() {
     setSubmitError(null)
     
     try {
+      // Transform values to format fields before submission
+      const transformedValues = {
+        ...values,
+        guestFacebookName: toCapitalCase(values.guestFacebookName),
+        primaryGuestName: toCapitalCase(values.primaryGuestName),
+        guestAddress: toCapitalCase(values.guestAddress),
+        guest2Name: values.guest2Name ? toCapitalCase(values.guest2Name) : '',
+        guest3Name: values.guest3Name ? toCapitalCase(values.guest3Name) : '',
+        guest4Name: values.guest4Name ? toCapitalCase(values.guest4Name) : '',
+        guest5Name: values.guest5Name ? toCapitalCase(values.guest5Name) : '',
+        nationality: toCapitalCase(values.nationality),
+        carBrandModel: values.carBrandModel ? toCapitalCase(values.carBrandModel) : '',
+        carColor: values.carColor ? toCapitalCase(values.carColor) : '',
+        petName: values.petName ? toCapitalCase(values.petName) : '',
+        petBreed: values.petBreed ? toCapitalCase(values.petBreed) : '',
+        findUsDetails: values.findUsDetails ? toCapitalCase(values.findUsDetails) : '',
+        checkInTime: formatTimeToAMPM(values.checkInTime, true),
+        checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
+        checkInDate: formatDate(values.checkInDate),
+        checkOutDate: formatDate(values.checkOutDate),
+        petVaccinationDate: values.petVaccinationDate ? formatDate(values.petVaccinationDate) : ''
+      }
+
       const formData = new FormData();
       
       // Add all form values to FormData
-      Object.entries(values).forEach(([key, value]) => {
+      Object.entries(transformedValues).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           formData.append(key, value.toString());
         }
