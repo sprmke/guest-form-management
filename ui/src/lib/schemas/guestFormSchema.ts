@@ -17,7 +17,6 @@ export const guestFormSchema = z.object({
   nationality: z.string().min(1, "Nationality is required").default("Filipino"),
   numberOfAdults: z.number().min(1, "At least 1 adult is required").default(1),
   numberOfChildren: z.number().min(0).default(0),
-  numberOfNights: z.number().min(1, "Number of nights must be at least 1"),
   
   // Optional fields
   guest2Name: z.string().optional(),
@@ -26,6 +25,7 @@ export const guestFormSchema = z.object({
   guest5Name: z.string().optional(),
   guestSpecialRequests: z.string().optional(),
   findUsDetails: z.string().optional(),
+  numberOfNights: z.number().optional(),
   
   // Parking related fields
   needParking: z.boolean().default(false),

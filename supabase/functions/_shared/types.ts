@@ -16,7 +16,6 @@ export interface GuestFormData {
   nationality: string;
   numberOfAdults: number;
   numberOfChildren: number;
-  numberOfNights: number;
   
   // Optional fields
   guest2Name?: string;
@@ -25,6 +24,7 @@ export interface GuestFormData {
   guest5Name?: string;
   guestSpecialRequests?: string;
   findUsDetails?: string;
+  numberOfNights?: number;
   
   // Parking related fields
   needParking: boolean;
