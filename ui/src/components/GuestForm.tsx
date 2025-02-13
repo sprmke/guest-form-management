@@ -154,7 +154,7 @@ export function GuestForm() {
               <FormLabel>Guest Facebook Name *</FormLabel>
               <FormControl>
                 <Input 
-                  placeholder="Your username/name in Facebook" 
+                  placeholder="Your username/full name in Facebook" 
                   {...field} 
                   onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
                 />
