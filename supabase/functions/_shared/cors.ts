@@ -1,7 +1,7 @@
 const ALLOWED_ORIGINS = [
   'http://localhost:5173',  // Vite dev server
   'http://localhost:4173',  // Vite preview
-  'https://guest-form-management.vercel.app'  // Production
+  'https://guest-form-management-ui.vercel.app'  // Production
 ];
 
 export const corsHeaders = {
