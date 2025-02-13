@@ -5,7 +5,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { formatDate, formatTimeToAMPM, toCapitalCase } from "@/utils/formatters"
 import { generateRandomData } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
@@ -13,6 +13,7 @@ import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSche
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
@@ -21,72 +22,87 @@ export function GuestForm() {
 
   // Generate new random data on page load
   useEffect(() => {
-    form.reset(generateRandomData())
-  }, [])
+    const randomData = generateRandomData();
+    form.reset(randomData);
+    
+    // Set the dummy file in the file input
+    if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
+      setDummyFile(randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+    }
+  }, []);
+
+  // Update file input when generating new data
+  const handleGenerateNewData = () => {
+    const randomData = generateRandomData();
+    form.reset(randomData);
+    
+    // Set the dummy file in the file input
+    if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
+      setDummyFile(randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+    }
+  };
 
   async function onSubmit(values: GuestFormData) {
-    // Transform values to capital case before submission
-    const transformedValues = {
-      ...values,
-      guestFacebookName: toCapitalCase(values.guestFacebookName),
-      primaryGuestName: toCapitalCase(values.primaryGuestName),
-      guestAddress: toCapitalCase(values.guestAddress),
-      guest2Name: values.guest2Name ? toCapitalCase(values.guest2Name) : '',
-      guest3Name: values.guest3Name ? toCapitalCase(values.guest3Name) : '',
-      guest4Name: values.guest4Name ? toCapitalCase(values.guest4Name) : '',
-      guest5Name: values.guest5Name ? toCapitalCase(values.guest5Name) : '',
-      nationality: toCapitalCase(values.nationality),
-      carBrandModel: values.carBrandModel ? toCapitalCase(values.carBrandModel) : '',
-      carColor: values.carColor ? toCapitalCase(values.carColor) : '',
-      petName: values.petName ? toCapitalCase(values.petName) : '',
-      petBreed: values.petBreed ? toCapitalCase(values.petBreed) : '',
-      findUsDetails: values.findUsDetails ? toCapitalCase(values.findUsDetails) : '',
-      checkInTime: formatTimeToAMPM(values.checkInTime, true),
-      checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
-      checkInDate: formatDate(values.checkInDate),
-      checkOutDate: formatDate(values.checkOutDate),
-      petVaccinationDate: values.petVaccinationDate ? formatDate(values.petVaccinationDate) : '',
-    }
-
     setIsSubmitting(true)
     setSubmitError(null)
     
     try {
-      const formData = {
-        unitOwner: 'Arianna Perez',
-        towerAndUnitNumber: 'Monaco 2604',
-        ownerOnsiteContactPerson: 'Arianna Perez',
-        ownerContactNumber: '0962 541 2941',
-        numberOfNights: Math.ceil((new Date(values.checkOutDate).getTime() - new Date(values.checkInDate).getTime()) / (1000 * 60 * 60 * 24)).toString(),
-        ...transformedValues
+      const formData = new FormData();
+      
+      // Add all form values to FormData
+      Object.entries(values).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value.toString());
+        }
+      });
+
+      // Add additional fixed values
+      formData.append('unitOwner', 'Arianna Perez');
+      formData.append('towerAndUnitNumber', 'Monaco 2604');
+      formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
+      formData.append('ownerContactNumber', '0962 541 2941');
+      formData.append('numberOfNights', Math.ceil((new Date(values.checkOutDate).getTime() - new Date(values.checkInDate).getTime()) / (1000 * 60 * 60 * 24)).toString());
+
+      // Add payment receipt file if it exists from file input, otherwise use dummy image
+      const fileInput = document.querySelector<HTMLInputElement>('input[name="paymentReceipt"]');
+      if (fileInput?.files?.[0]) {
+        formData.append('paymentReceipt', fileInput.files[0]);
+      } else if (values.paymentReceiptUrl && values.paymentReceiptFileName) {
+        // Convert dummy image URL to File object for testing
+        try {
+          const response = await fetch(values.paymentReceiptUrl);
+          const blob = await response.blob();
+          const file = new File([blob], values.paymentReceiptFileName, { type: 'image/jpeg' });
+          formData.append('paymentReceipt', file);
+        } catch (error) {
+          console.warn('Failed to load dummy image, continuing without payment receipt');
+        }
       }
 
-      const apiUrl = import.meta.env.VITE_API_URL
+      const apiUrl = import.meta.env.VITE_API_URL;
 
       const response = await fetch(`${apiUrl}/api/submit-form`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData)
+        body: formData // Send as FormData instead of JSON
       });
+
       const result = await response.json();
       if (!result.success) {
         const errorMessage = result.error ?? result.details ?? `Server error: ${response.status}`;
         throw new Error(errorMessage);
       }
 
-      form.reset(generateRandomData())
-      setSubmitError(null)
-      alert('Form submitted successfully!')
+      form.reset(generateRandomData());
+      setSubmitError(null);
+      alert('Form submitted successfully!');
     } catch (error) {
-      console.error('Error submitting form:', error)
+      console.error('Error submitting form:', error);
       const errorMessage = error instanceof Error 
         ? error.message 
-        : 'An unexpected error occurred. Please try again.'
-      setSubmitError(errorMessage)
+        : 'An unexpected error occurred. Please try again.';
+      setSubmitError(errorMessage);
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
@@ -98,7 +114,7 @@ export function GuestForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex justify-end mb-4">
-          <Button type="button" variant="outline" onClick={() => form.reset(generateRandomData())}>
+          <Button type="button" variant="outline" onClick={handleGenerateNewData}>
             Generate New Data
           </Button>
         </div>
@@ -577,6 +593,22 @@ export function GuestForm() {
               />
             </div>
           )}
+        </div>
+
+        <div className="space-y-4">
+          <label className="block text-sm font-medium">Payment Receipt</label>
+          <div className="mt-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              name="paymentReceipt"
+              accept="image/*"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
+            />
+          </div>
+          <p className="mt-1 text-sm text-gray-500">
+            Upload your payment receipt (JPG, PNG, or GIF only)
+          </p>
         </div>
 
         <Button type="submit" disabled={isSubmitting}>
