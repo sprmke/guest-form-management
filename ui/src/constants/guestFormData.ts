@@ -1,6 +1,6 @@
 import { GuestFormData } from "@/lib/schemas/guestFormSchema";
 
-export const defaultFormValues: GuestFormData = {
+export const defaultFormValues: Partial<GuestFormData> = {
     guestFacebookName: '',
     primaryGuestName: '',
     guestEmail: '',
