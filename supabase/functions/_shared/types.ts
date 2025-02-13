@@ -1,5 +1,6 @@
 // UI Form Data Interface (camelCase)
 export interface GuestFormData {
+  // Required fields
   guestFacebookName: string;
   primaryGuestName: string;
   guestEmail: string;
@@ -7,33 +8,47 @@ export interface GuestFormData {
   guestAddress: string;
   checkInDate: string;
   checkOutDate: string;
-  checkInTime?: string;
-  checkOutTime?: string;
-  nationality?: string;
-  numberOfAdults?: string | number;
-  numberOfChildren?: string | number;
-  numberOfNights?: string | number;
+  findUs: string;
+  
+  // Required fields with defaults
+  checkInTime: string;
+  checkOutTime: string;
+  nationality: string;
+  numberOfAdults: number;
+  numberOfChildren: number;
+  numberOfNights: number;
+  
+  // Optional fields
   guest2Name?: string;
   guest3Name?: string;
   guest4Name?: string;
   guest5Name?: string;
   guestSpecialRequests?: string;
-  findUs: string;
   findUsDetails?: string;
-  needParking?: string | boolean;
+  
+  // Parking related fields
+  needParking: boolean;
   carPlateNumber?: string;
   carBrandModel?: string;
   carColor?: string;
-  hasPets?: string | boolean;
+  
+  // Pet related fields
+  hasPets: boolean;
   petName?: string;
   petBreed?: string;
   petAge?: string;
   petVaccinationDate?: string;
+  
+  // Payment receipt fields
   paymentReceipt?: File;
-  unitOwner?: string;
-  towerAndUnitNumber?: string;
-  ownerOnsiteContactPerson?: string;
-  ownerContactNumber?: string;
+  paymentReceiptUrl?: string;
+  paymentReceiptFileName?: string;
+  
+  // Unit and owner information
+  unitOwner: string;
+  towerAndUnitNumber: string;
+  ownerOnsiteContactPerson: string;
+  ownerContactNumber: string;
 }
 
 // Database Schema Interface (snake_case)
@@ -114,6 +129,7 @@ const validateGuestName = (name: string | undefined): string | undefined => {
 
 // Transform function to convert form data to database schema
 export const transformFormToSubmission = (formData: GuestFormData, fileUrl?: string, fileName?: string): GuestSubmission => {
+
   return {
     guest_facebook_name: formData.guestFacebookName,
     primary_guest_name: formData.primaryGuestName,
