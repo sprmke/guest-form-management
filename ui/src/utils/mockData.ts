@@ -109,8 +109,13 @@ export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
     nationality: "Filipino",
     numberOfAdults: randomNumber(1, 4),
     numberOfChildren: randomNumber(0, 3),
+    numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
     paymentReceiptUrl: generateDummyImage(),
     paymentReceiptFileName: `receipt_${new Date().getTime()}.jpg`,
+    unitOwner: "Arianna Perez",
+    towerAndUnitNumber: "Monaco 2604",
+    ownerOnsiteContactPerson: "Arianna Perez",
+    ownerContactNumber: "0962 541 2941"
   };
 }; 
 
