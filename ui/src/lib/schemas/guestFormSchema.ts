@@ -29,6 +29,8 @@ export const guestFormSchema = z.object({
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
+  paymentReceiptUrl: z.string().optional(),
+  paymentReceiptFileName: z.string().optional(),
 })
 
 export type GuestFormData = z.infer<typeof guestFormSchema> 
