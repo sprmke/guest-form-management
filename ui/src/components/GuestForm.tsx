@@ -99,9 +99,6 @@ export function GuestForm() {
 
       const response = await fetch(`${apiUrl}/submit-form`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
         body: formData
       });
 
