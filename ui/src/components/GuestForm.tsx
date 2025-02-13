@@ -20,6 +20,26 @@ export function GuestForm() {
     defaultValues: generateRandomData()
   })
 
+  // Set dummy file in file input
+  const setDummyFile = async (url: string, filename: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const file = new File([blob], filename, { type: 'image/jpeg' });
+      
+      // Create a DataTransfer object and add our file
+      const dataTransfer = new DataTransfer();
+      dataTransfer.items.add(file);
+      
+      // Set the file input's files
+      if (fileInputRef.current) {
+        fileInputRef.current.files = dataTransfer.files;
+      }
+    } catch (error) {
+      console.warn('Failed to load dummy image:', error);
+    }
+  };
+
   // Generate new random data on page load
   useEffect(() => {
     const randomData = generateRandomData();
