@@ -5,6 +5,36 @@ import type { GuestFormData } from '../types/guestForm';
 export class DatabaseService {
   private static supabase = createClient(config.supabase.url, config.supabase.anonKey);
 
+  static async uploadPaymentReceipt(file: Buffer, fileName: string): Promise<string> {
+    const fileExt = fileName.split('.').pop();
+    const uniqueFileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    const filePath = `payment-receipts/${uniqueFileName}`;
+
+    const { data, error } = await this.supabase
+      .storage
+      .from('guest-form-uploads')
+      .upload(filePath, file, {
+        contentType: 'image/*',
+        upsert: false
+      });
+
+    if (error) {
+      console.error('Storage upload error:', error);
+      throw new Error('Failed to upload payment receipt');
+    }
+    
+    if (data) {
+      console.log('Payment receipt uploaded successfully:', filePath);
+    }
+
+    const { data: { publicUrl } } = this.supabase
+      .storage
+      .from('guest-form-uploads')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  }
+
   static async saveGuestSubmission(formData: GuestFormData) {
     const { data, error } = await this.supabase
       .from('guest_submissions')
@@ -39,7 +69,9 @@ export class DatabaseService {
         pet_name: formData.petName,
         pet_breed: formData.petBreed,
         pet_age: formData.petAge,
-        pet_vaccination_date: formData.petVaccinationDate
+        pet_vaccination_date: formData.petVaccinationDate,
+        payment_receipt_url: formData.paymentReceiptUrl,
+        payment_receipt_file_name: formData.paymentReceiptFileName
       }])
       .select()
       .single();
