@@ -6,90 +6,60 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect, useRef } from "react"
-import { formatDate, formatTimeToAMPM, toCapitalCase } from "@/utils/formatters"
-import { generateRandomData } from "@/utils/mockData"
+import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
+import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
+import { defaultFormValues } from "@/constants/guestFormData"
+
+const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
+const apiUrl = import.meta.env.VITE_API_URL;
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: generateRandomData()
+    defaultValues: isProduction ? defaultFormValues : generateRandomData()
   })
 
-  // Set dummy file in file input
-  const setDummyFile = async (url: string, filename: string) => {
-    try {
-      const response = await fetch(url);
-      const blob = await response.blob();
-      const file = new File([blob], filename, { type: 'image/jpeg' });
-      
-      // Create a DataTransfer object and add our file
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      
-      // Set the file input's files
-      if (fileInputRef.current) {
-        fileInputRef.current.files = dataTransfer.files;
-      }
-    } catch (error) {
-      console.warn('Failed to load dummy image:', error);
-    }
-  };
-
-  // Generate new random data on page load
+  // Generate new random data on page load only in non-production
   useEffect(() => {
+    if (isProduction) return;
+
     const randomData = generateRandomData();
     form.reset(randomData);
     
     // Set the dummy file in the file input
     if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
-      setDummyFile(randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+      setDummyFile(fileInputRef, randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
     }
   }, []);
 
   // Update file input when generating new data
   const handleGenerateNewData = () => {
+    if (isProduction) return;
+
     const randomData = generateRandomData();
     form.reset(randomData);
     
     // Set the dummy file in the file input
     if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
-      setDummyFile(randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+      setDummyFile(fileInputRef, randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
     }
   };
 
   async function onSubmit(values: GuestFormData) {
     setIsSubmitting(true)
     setSubmitError(null)
+    setSubmitSuccess(false)
     
     try {
       // Transform values to format fields before submission
-      const transformedValues = {
-        ...values,
-        guestFacebookName: toCapitalCase(values.guestFacebookName),
-        primaryGuestName: toCapitalCase(values.primaryGuestName),
-        guestAddress: toCapitalCase(values.guestAddress),
-        guest2Name: values.guest2Name ? toCapitalCase(values.guest2Name) : '',
-        guest3Name: values.guest3Name ? toCapitalCase(values.guest3Name) : '',
-        guest4Name: values.guest4Name ? toCapitalCase(values.guest4Name) : '',
-        guest5Name: values.guest5Name ? toCapitalCase(values.guest5Name) : '',
-        nationality: toCapitalCase(values.nationality),
-        carBrandModel: values.carBrandModel ? toCapitalCase(values.carBrandModel) : '',
-        carColor: values.carColor ? toCapitalCase(values.carColor) : '',
-        petName: values.petName ? toCapitalCase(values.petName) : '',
-        petBreed: values.petBreed ? toCapitalCase(values.petBreed) : '',
-        findUsDetails: values.findUsDetails ? toCapitalCase(values.findUsDetails) : '',
-        checkInTime: formatTimeToAMPM(values.checkInTime, true),
-        checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
-        checkInDate: formatDate(values.checkInDate),
-        checkOutDate: formatDate(values.checkOutDate),
-        petVaccinationDate: values.petVaccinationDate ? formatDate(values.petVaccinationDate) : ''
-      }
-
+      const transformedValues = transformFieldValues(values);
+      
       const formData = new FormData();
       
       // Add all form values to FormData
@@ -106,14 +76,19 @@ export function GuestForm() {
       formData.append('ownerContactNumber', '0962 541 2941');
       formData.append('numberOfNights', Math.ceil((new Date(values.checkOutDate).getTime() - new Date(values.checkInDate).getTime()) / (1000 * 60 * 60 * 24)).toString());
 
-      // Add payment receipt file if it exists from file input, otherwise use dummy image
+      // Add payment receipt file if it exists
       const fileInput = document.querySelector<HTMLInputElement>('input[name="paymentReceipt"]');
       if (fileInput?.files?.[0]) {
-        formData.append('paymentReceipt', fileInput.files[0]);
+        const file = fileInput.files[0];
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          throw new Error('Payment receipt file size must be less than 5MB');
+        }
+        formData.append('paymentReceipt', file);
       } else if (values.paymentReceiptUrl && values.paymentReceiptFileName) {
-        // Convert dummy image URL to File object for testing
         try {
           const response = await fetch(values.paymentReceiptUrl);
+          if (!response.ok) throw new Error('Failed to fetch dummy image');
           const blob = await response.blob();
           const file = new File([blob], values.paymentReceiptFileName, { type: 'image/jpeg' });
           formData.append('paymentReceipt', file);
@@ -122,28 +97,51 @@ export function GuestForm() {
         }
       }
 
-      const apiUrl = import.meta.env.VITE_API_URL;
-
-      const response = await fetch(`${apiUrl}/api/submit-form`, {
+      const response = await fetch(`${apiUrl}/submit-form`, {
         method: 'POST',
-        body: formData // Send as FormData instead of JSON
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: formData
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.error || 
+          errorData.message || 
+          `HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`
+        );
+      }
 
       const result = await response.json();
       if (!result.success) {
-        const errorMessage = result.error ?? result.details ?? `Server error: ${response.status}`;
+        const errorMessage = result.error || 
+          (result.details?.message) || 
+          'Failed to submit form';
+        console.error('Form submission failed:', result);
         throw new Error(errorMessage);
       }
 
-      form.reset(generateRandomData());
+      // Reset form and show success message
+      form.reset(isProduction ? defaultFormValues : generateRandomData());
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       setSubmitError(null);
-      alert('Form submitted successfully!');
-    } catch (error) {
-      console.error('Error submitting form:', error);
+      setSubmitSuccess(true);
+      setTimeout(() => setSubmitSuccess(false), 5000); // Hide success message after 5 seconds
+    } catch (error: unknown) {
+      console.error('Error submitting form:', {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
       const errorMessage = error instanceof Error 
-        ? error.message 
+        ? `Error: ${error.message}` 
         : 'An unexpected error occurred. Please try again.';
       setSubmitError(errorMessage);
+      setSubmitSuccess(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -156,11 +154,20 @@ export function GuestForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="flex justify-end mb-4">
-          <Button type="button" variant="outline" onClick={handleGenerateNewData}>
-            Generate New Data
-          </Button>
-        </div>
+        {!isProduction && (
+          <div className="flex justify-end mb-4">
+            <Button type="button" variant="outline" onClick={handleGenerateNewData}>
+              Generate New Data
+            </Button>
+          </div>
+        )}
+
+        {submitSuccess && (
+          <div className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200" role="alert">
+            <strong className="font-bold">Success! </strong>
+            <span className="block sm:inline">Your form has been submitted successfully.</span>
+          </div>
+        )}
 
         {submitError && (
           <div className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200" role="alert">
@@ -654,8 +661,18 @@ export function GuestForm() {
           </p>
         </div>
 
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Submitting...' : 'Submit'}
+        <Button type="submit" disabled={isSubmitting} className={isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}>
+          {isSubmitting ? (
+            <span className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Submitting...
+            </span>
+          ) : (
+            'Submit'
+          )}
         </Button>
       </form>
     </Form>

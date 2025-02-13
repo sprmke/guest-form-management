@@ -113,3 +113,23 @@ export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
     paymentReceiptFileName: `receipt_${new Date().getTime()}.jpg`,
   };
 }; 
+
+// Set dummy file in file input
+export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElement>, url: string, filename: string) => {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const file = new File([blob], filename, { type: 'image/jpeg' });
+    
+    // Create a DataTransfer object and add our file
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    
+    // Set the file input's files
+    if (fileInputRef.current) {
+      fileInputRef.current.files = dataTransfer.files;
+    }
+  } catch (error) {
+    console.warn('Failed to load dummy image:', error);
+  }
+};

@@ -1,0 +1,36 @@
+# For detailed configuration reference documentation, visit:
+# https://supabase.com/docs/guides/local-development/cli/config
+project_id = "guest-form-management"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[api.tls]
+enabled = false
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[storage.buckets.payment-receipts]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/gif", "application/pdf"]
+
+[edge_runtime]
+enabled = true
+policy = "oneshot"
+inspector_port = 8083 

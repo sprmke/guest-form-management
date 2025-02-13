@@ -7,9 +7,11 @@
     "api"
   ],
   "scripts": {
+    "dev": "./dev.sh",
     "dev:ui": "cd ui && npm run dev",
-    "dev:api": "cd api && npm run dev",
-    "dev": "concurrently \"npm run dev:ui\" \"npm run dev:api\"",
+    "dev:api": "supabase functions serve submit-form --env-file ./supabase/.env.local",
+    "start:supabase": "supabase start",
+    "stop:supabase": "supabase stop",
     "build:ui": "cd ui && npm run build",
     "build:api": "cd api && npm run build",
     "build": "npm run build:ui && npm run build:api"
