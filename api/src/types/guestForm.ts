@@ -49,4 +49,8 @@ export interface GuestFormData {
   petBreed?: string;
   petAge?: string;
   petVaccinationDate?: string;
+
+  // Payment Information
+  paymentReceiptUrl?: string;
+  paymentReceiptFileName?: string;
 } 

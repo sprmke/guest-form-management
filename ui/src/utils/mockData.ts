@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formSchema } from "@/components/GuestForm";
+import { guestFormSchema } from "@/lib/schemas/guestFormSchema";
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
@@ -31,7 +31,26 @@ const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (m
 const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`;
 const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`;
 
-export const generateRandomData = (): z.infer<typeof formSchema> => {
+const generateDummyImage = () => {
+  const now = new Date();
+  const formattedDateTime = now.toLocaleString('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  }).replace(/[/,]/g, '-').replace(/:/g, '-').replace(/\s/g, '_');
+  
+  const width = 800;
+  const height = 600;
+  const backgroundColor = '808080';
+  const textColor = 'FFFFFF';
+  return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=Receipt_${formattedDateTime}`;
+};
+
+export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
   const firstName = randomElement(firstNames);
   const lastName = randomElement(lastNames);
   const fullName = `${firstName} ${lastName}`;
@@ -90,5 +109,7 @@ export const generateRandomData = (): z.infer<typeof formSchema> => {
     nationality: "Filipino",
     numberOfAdults: randomNumber(1, 4),
     numberOfChildren: randomNumber(0, 3),
+    paymentReceiptUrl: generateDummyImage(),
+    paymentReceiptFileName: `receipt_${new Date().getTime()}.jpg`,
   };
 }; 
