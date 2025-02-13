@@ -13,7 +13,6 @@ import { defaultFormValues } from "@/constants/guestFormData"
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
-console.log('API URL:', apiUrl); // Debug log
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,15 +52,13 @@ export function GuestForm() {
   };
 
   async function onSubmit(values: GuestFormData) {
-    console.log('Submit function called'); // Debug log
     setIsSubmitting(true)
     setSubmitError(null)
     setSubmitSuccess(false)
     
     try {
-      console.log('Transforming values'); // Debug log
+      // Transform values to format fields before submission
       const transformedValues = transformFieldValues(values);
-      console.log('Transformed values:', transformedValues); // Debug log
       
       const formData = new FormData();
       
@@ -99,13 +96,10 @@ export function GuestForm() {
         }
       }
 
-      console.log('Making fetch request to:', `${apiUrl}/submit-form`); // Debug log
       const response = await fetch(`${apiUrl}/submit-form`, {
         method: 'POST',
         body: formData
       });
-
-      console.log('Response received:', response); // Debug log
 
       if (!response.ok) {
         const errorData = await response.json();
