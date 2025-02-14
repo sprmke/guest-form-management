@@ -72,6 +72,21 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     <p>Please find the complete details in the attached PDF.</p>
   `
 
+  // Convert Uint8Array to base64 string efficiently
+  let base64PDF = null;
+  if (pdfBuffer) {
+    // Use TextEncoder to convert the buffer to base64 in chunks
+    const chunks: string[] = [];
+    const chunkSize = 32768; // Process 32KB chunks
+    
+    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
+      const chunk = pdfBuffer.slice(i, i + chunkSize);
+      chunks.push(String.fromCharCode.apply(null, chunk));
+    }
+    
+    base64PDF = btoa(chunks.join(''));
+  }
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -83,7 +98,13 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: ['michaeldmanlulu@gmail.com', 'kamehome.azurenorth@gmail.com'],
       subject: 'Guest Form Submission Confirmation',
       html: emailContent,
-      ...(pdfBuffer ? { attachments: [{ filename: 'guest-form-submission.pdf', content: pdfBuffer }] } : {})
+      ...(base64PDF ? {
+        attachments: [{
+          filename: 'guest-form-submission.pdf',
+          content: base64PDF,
+          encoding: 'base64'
+        }]
+      } : {})
     })
   })
 

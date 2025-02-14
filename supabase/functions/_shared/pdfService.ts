@@ -1,48 +1,26 @@
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GuestFormData } from './types.ts'
-import { join, fromFileUrl, dirname } from "https://deno.land/std@0.168.0/path/mod.ts"
 
 async function getTemplateBytes(): Promise<Uint8Array> {
-  const isProduction = Deno.env.get('ENVIRONMENT') === 'production'
+  console.log('Fetching PDF template from Supabase Storage...');
   
-  if (isProduction) {
-    // In production, fetch from Supabase Storage
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
 
-    const { data: templateData, error: downloadError } = await supabase
-      .storage
-      .from('templates')
-      .download('guest-form-template.pdf')
+  const { data: templateData, error: downloadError } = await supabase
+    .storage
+    .from('templates')
+    .download('guest-form-template.pdf')
 
-    if (downloadError) {
-      console.error('Error downloading template:', downloadError)
-      throw new Error('Failed to download PDF template')
-    }
-
-    return new Uint8Array(await templateData.arrayBuffer())
-  } else {
-    // In development, read directly from local file
-    try {
-      // Get the current module's directory
-      const currentDir = dirname(fromFileUrl(import.meta.url))
-      console.log('Current directory:', currentDir)
-      
-      // Look for template in the _shared/templates directory
-      const templatePath = join(currentDir, 'templates', 'guest-form-template.pdf')
-      console.log('Attempting to read template from:', templatePath)
-      
-      const fileBytes = await Deno.readFile(templatePath)
-      console.log('Successfully read template file, size:', fileBytes.length)
-      return fileBytes
-    } catch (error) {
-      console.error('Error reading local template:', error)
-      throw new Error('Failed to read local PDF template: ' + error.message)
-    }
+  if (downloadError) {
+    console.error('Error downloading template:', downloadError)
+    throw new Error('Failed to download PDF template')
   }
+
+  return new Uint8Array(await templateData.arrayBuffer())
 }
 
 export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> {
