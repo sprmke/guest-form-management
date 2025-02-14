@@ -26,8 +26,7 @@ serve(async (req) => {
     const { data, submissionData } = await DatabaseService.processFormData(formData)
 
     // Generate PDF
-    // const pdfBuffer = await generatePDF(data)
-    const pdfBuffer = null
+    const pdfBuffer = await generatePDF(data)
 
     // Send email
     await sendEmail(data, pdfBuffer)
