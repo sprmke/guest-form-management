@@ -18,11 +18,13 @@ export class DatabaseService {
 
       // Handle file upload if present
       const paymentReceipt = formData.get('paymentReceipt') as File;
-      if (paymentReceipt) {
-        const { url, fileName } = await UploadService.uploadPaymentReceipt(paymentReceipt);
-        paymentReceiptUrl = url;
-        paymentReceiptFileName = fileName;
+      if (!paymentReceipt) {
+        throw new Error('Payment receipt is required');
       }
+      
+      const { url, fileName } = await UploadService.uploadPaymentReceipt(paymentReceipt);
+      paymentReceiptUrl = url;
+      paymentReceiptFileName = fileName;
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
@@ -40,7 +42,11 @@ export class DatabaseService {
       console.log('Form data processed successfully');
       
       // Transform and save to database
-      const dbData = transformFormToSubmission(data, paymentReceiptUrl ?? undefined, paymentReceiptFileName ?? undefined);
+      if (!paymentReceiptUrl || !paymentReceiptFileName) {
+        throw new Error('Failed to upload payment receipt');
+      }
+      
+      const dbData = transformFormToSubmission(data, paymentReceiptUrl, paymentReceiptFileName);
       const submissionData = await this.saveGuestSubmission(dbData);
 
       return { data, submissionData };
