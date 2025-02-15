@@ -41,9 +41,9 @@ export const guestFormSchema = z.object({
   petVaccinationDate: z.string().optional(),
   
   // Payment receipt fields
-  paymentReceipt: z.instanceof(File).optional(),
-  paymentReceiptUrl: z.string().optional(),
-  paymentReceiptFileName: z.string().optional(),
+  paymentReceipt: z.instanceof(File, { message: "Please upload your payment receipt" }),
+  paymentReceiptUrl: z.string().min(1, "Payment receipt URL is required"),
+  paymentReceiptFileName: z.string().min(1, "Payment receipt file name is required"),
   
   // Unit and owner information with defaults
   unitOwner: z.string().default("Arianna Perez"),
