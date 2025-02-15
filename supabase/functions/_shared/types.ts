@@ -40,9 +40,9 @@ export interface GuestFormData {
   petVaccinationDate?: string;
   
   // Payment receipt fields
-  paymentReceipt?: File;
-  paymentReceiptUrl?: string;
-  paymentReceiptFileName?: string;
+  paymentReceipt: File;
+  paymentReceiptUrl: string;
+  paymentReceiptFileName: string;
   
   // Unit and owner information
   unitOwner: string;
@@ -85,8 +85,8 @@ export interface GuestSubmission {
   pet_breed?: string;
   pet_age?: string;
   pet_vaccination_date?: string;
-  payment_receipt_url?: string;
-  payment_receipt_file_name?: string;
+  payment_receipt_url: string;
+  payment_receipt_file_name: string;
   unit_owner: string;
   tower_and_unit_number: string;
   owner_onsite_contact_person: string;
@@ -128,7 +128,7 @@ const validateGuestName = (name: string | undefined): string | undefined => {
 };
 
 // Transform function to convert form data to database schema
-export const transformFormToSubmission = (formData: GuestFormData, fileUrl?: string, fileName?: string): GuestSubmission => {
+export const transformFormToSubmission = (formData: GuestFormData, fileUrl: string, fileName: string): GuestSubmission => {
 
   return {
     guest_facebook_name: formData.guestFacebookName,
