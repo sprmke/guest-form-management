@@ -11,7 +11,7 @@ import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
 
-const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
+const isProduction = true;
 const apiUrl = import.meta.env.VITE_API_URL;
 
 export function GuestForm() {
@@ -126,7 +126,6 @@ export function GuestForm() {
       }
       setSubmitError(null);
       setSubmitSuccess(true);
-      setTimeout(() => setSubmitSuccess(false), 5000); // Hide success message after 5 seconds
     } catch (error: unknown) {
       console.error('Error submitting form:', {
         error,
@@ -155,20 +154,6 @@ export function GuestForm() {
             <Button type="button" variant="outline" onClick={handleGenerateNewData}>
               Generate New Data
             </Button>
-          </div>
-        )}
-
-        {submitSuccess && (
-          <div className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200" role="alert">
-            <strong className="font-bold">Success! </strong>
-            <span className="block sm:inline">Your form has been submitted successfully.</span>
-          </div>
-        )}
-
-        {submitError && (
-          <div className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200" role="alert">
-            <strong className="font-bold">Error: </strong>
-            <span className="block sm:inline">{submitError}</span>
           </div>
         )}
 
@@ -434,7 +419,7 @@ export function GuestForm() {
           name="findUs"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>How did you find us? *</FormLabel>
+              <FormLabel>How did you find us?</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value || "Facebook"}>
                 <FormControl>
                   <SelectTrigger>
@@ -495,7 +480,7 @@ export function GuestForm() {
                     className="w-4 h-4"
                   />
                 </FormControl>
-                <FormLabel className="!mt-0">Need Parking?</FormLabel>
+                <FormLabel className="!mt-0">Need Pay Parking?</FormLabel>
               </FormItem>
             )}
           />
@@ -642,20 +627,44 @@ export function GuestForm() {
         </div>
 
         <div className="space-y-4">
-          <label className="block text-sm font-medium">Payment Receipt</label>
-          <div className="mt-1">
-            <input
-              ref={fileInputRef}
-              type="file"
-              name="paymentReceipt"
-              accept="image/*"
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100"
-            />
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
-            Upload your payment receipt (JPG, PNG, or GIF only)
-          </p>
+          <FormField
+            control={form.control}
+            name="paymentReceipt"
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormItem>
+                <FormLabel>Payment Receipt *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      onChange(file || null);
+                    }}
+                    className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
+                    {...field}
+                    ref={fileInputRef}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
+        
+        {submitSuccess && (
+          <div className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200" role="alert">
+            <strong className="font-bold">Success! </strong>
+            <span className="block sm:inline">Your form has been submitted successfully.</span>
+          </div>
+        )}
+
+        {submitError && (
+          <div className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200" role="alert">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{submitError}</span>
+          </div>
+        )}
 
         <Button type="submit" disabled={isSubmitting} className={isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}>
           {isSubmitting ? (
