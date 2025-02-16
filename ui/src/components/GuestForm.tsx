@@ -22,31 +22,27 @@ export function GuestForm() {
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: defaultFormValues
+    defaultValues: isProduction ? defaultFormValues : generateRandomData()
   })
 
   // Generate new random data on page load only in non-production
   useEffect(() => {
     if (isProduction) return;
 
-    const loadRandomData = async () => {
-      const randomData = await generateRandomData();
-      form.reset(randomData);
-      
-      // Set the dummy file in the file input
-      if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
-        setDummyFile(fileInputRef, randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
-      }
-    };
-
-    loadRandomData();
+    const randomData = generateRandomData();
+    form.reset(randomData);
+    
+    // Set the dummy file in the file input
+    if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
+      setDummyFile(fileInputRef, randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+    }
   }, []);
 
   // Update file input when generating new data
-  const handleGenerateNewData = async () => {
+  const handleGenerateNewData = () => {
     if (isProduction) return;
 
-    const randomData = await generateRandomData();
+    const randomData = generateRandomData();
     form.reset(randomData);
     
     // Set the dummy file in the file input
@@ -125,7 +121,7 @@ export function GuestForm() {
 
       // Reset form and show success message
       if (!isProduction) {
-        const newData = await generateRandomData();
+        const newData = generateRandomData();
         form.reset(newData);
       } else {
         form.reset(defaultFormValues);

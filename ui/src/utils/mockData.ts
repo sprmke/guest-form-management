@@ -56,7 +56,7 @@ const generateDummyFile = async (url: string, filename: string): Promise<File> =
   return new File([blob], filename, { type: 'image/jpeg' });
 };
 
-export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
+export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
   const firstName = randomElement(firstNames);
   const lastName = randomElement(lastNames);
   const fullName = `${firstName} ${lastName}`;
@@ -88,7 +88,6 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
 
   const dummyImageUrl = generateDummyImage();
   const filename = `receipt_${new Date().getTime()}.jpg`;
-  const paymentReceipt = await generateDummyFile(dummyImageUrl, filename);
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -120,7 +119,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     numberOfAdults: randomNumber(1, 4),
     numberOfChildren: randomNumber(0, 3),
     numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
-    paymentReceipt,
+    paymentReceipt: new File([], filename, { type: 'image/jpeg' }),
     paymentReceiptUrl: dummyImageUrl,
     paymentReceiptFileName: filename,
     unitOwner: "Arianna Perez",
@@ -128,7 +127,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     ownerOnsiteContactPerson: "Arianna Perez",
     ownerContactNumber: "0962 541 2941"
   };
-}; 
+};
 
 // Set dummy file in file input
 export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElement>, url: string, filename: string) => {
