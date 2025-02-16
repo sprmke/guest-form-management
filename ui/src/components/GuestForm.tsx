@@ -11,7 +11,7 @@ import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
 
-const isProduction = true;
+const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
 
 export function GuestForm() {
