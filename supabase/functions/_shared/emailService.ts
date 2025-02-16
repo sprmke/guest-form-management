@@ -73,7 +73,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   `
 
   // Convert Uint8Array to base64 string efficiently
-  let base64PDF = null;
+  let base64PDF: string | null = null;
   if (pdfBuffer) {
     // Use TextEncoder to convert the buffer to base64 in chunks
     const chunks: string[] = [];
