@@ -95,7 +95,8 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     },
     body: JSON.stringify({
       from: 'Guest Form <onboarding@resend.dev>',
-      to: ['michaeldmanlulu@gmail.com', 'kamehome.azurenorth@gmail.com'],
+      to: ['michaeldmanlulu@gmail.com'],
+      cc: ['kamehome.azurenorth@gmail.com'],
       subject: 'Guest Form Submission Confirmation',
       html: emailContent,
       ...(base64PDF ? {
