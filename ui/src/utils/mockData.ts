@@ -50,7 +50,13 @@ const generateDummyImage = () => {
   return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=Receipt_${formattedDateTime}`;
 };
 
-export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
+const generateDummyFile = async (url: string, filename: string): Promise<File> => {
+  const response = await fetch(url);
+  const blob = await response.blob();
+  return new File([blob], filename, { type: 'image/jpeg' });
+};
+
+export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
   const firstName = randomElement(firstNames);
   const lastName = randomElement(lastNames);
   const fullName = `${firstName} ${lastName}`;
@@ -82,6 +88,7 @@ export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
 
   const dummyImageUrl = generateDummyImage();
   const filename = `receipt_${new Date().getTime()}.jpg`;
+  const paymentReceipt = await generateDummyFile(dummyImageUrl, filename);
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -113,7 +120,7 @@ export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
     numberOfAdults: randomNumber(1, 4),
     numberOfChildren: randomNumber(0, 3),
     numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
-    paymentReceipt: new File([], filename, { type: 'image/jpeg' }),
+    paymentReceipt,
     paymentReceiptUrl: dummyImageUrl,
     paymentReceiptFileName: filename,
     unitOwner: "Arianna Perez",
