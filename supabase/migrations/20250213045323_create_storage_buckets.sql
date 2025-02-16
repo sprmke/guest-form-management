@@ -44,22 +44,3 @@ USING (bucket_id = 'templates');
 -- Grant necessary permissions
 GRANT ALL ON storage.objects TO public;
 GRANT ALL ON storage.buckets TO public;
-
--- Create default folders
-DO $$
-BEGIN
-  -- Create public folder in payment-receipts bucket
-  INSERT INTO storage.objects (id, bucket_id, name, owner, created_at, updated_at, last_accessed_at, metadata, version)
-  VALUES (
-    gen_random_uuid(),
-    'payment-receipts',
-    'public/',
-    NULL,
-    NOW(),
-    NOW(),
-    NOW(),
-    '{"mimetype": "application/x-directory", "size": 0}',
-    '1'
-  )
-  ON CONFLICT (bucket_id, name) DO NOTHING;
-END $$; 
