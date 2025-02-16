@@ -50,7 +50,9 @@ const generateDummyImage = () => {
   return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=Receipt_${formattedDateTime}`;
 };
 
-const generateDummyFile = async (url: string, filename: string): Promise<File> => {
+const generateDummyFile = async (): Promise<File> => {
+  const url = generateDummyImage();
+  const filename = `receipt_${new Date().getTime()}.jpg`;
   const response = await fetch(url);
   const blob = await response.blob();
   return new File([blob], filename, { type: 'image/jpeg' });
@@ -86,9 +88,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   const needParking = Math.random() > 0.5;
   const hasPets = Math.random() > 0.5;
 
-  const dummyImageUrl = generateDummyImage();
-  const filename = `receipt_${new Date().getTime()}.jpg`;
-  const paymentReceipt = await generateDummyFile(dummyImageUrl, filename);
+  const paymentReceipt = await generateDummyFile();
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -121,8 +121,6 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     numberOfChildren: randomNumber(0, 3),
     numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
     paymentReceipt,
-    paymentReceiptUrl: dummyImageUrl,
-    paymentReceiptFileName: filename,
     unitOwner: "Arianna Perez",
     towerAndUnitNumber: "Monaco 2604",
     ownerOnsiteContactPerson: "Arianna Perez",
@@ -131,12 +129,8 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
 };
 
 // Set dummy file in file input
-export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElement>, url: string, filename: string) => {
+export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElement>, file: File) => {
   try {
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const file = new File([blob], filename, { type: 'image/jpeg' });
-    
     // Create a DataTransfer object and add our file
     const dataTransfer = new DataTransfer();
     dataTransfer.items.add(file);
@@ -146,6 +140,6 @@ export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElemen
       fileInputRef.current.files = dataTransfer.files;
     }
   } catch (error) {
-    console.warn('Failed to load dummy image:', error);
+    console.warn('Failed to set dummy file:', error);
   }
 };

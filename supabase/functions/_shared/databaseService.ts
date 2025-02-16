@@ -11,10 +11,6 @@ export class DatabaseService {
   static async processFormData(formData: FormData): Promise<{ data: GuestFormData; submissionData: any }> {
     try {
       console.log('Processing form data...');
-      
-      // Initialize receipt variables
-      let paymentReceiptUrl: string | null = null;
-      let paymentReceiptFileName: string | null = null;
 
       // Handle file upload if present
       const paymentReceipt = formData.get('paymentReceipt') as File;
@@ -22,9 +18,10 @@ export class DatabaseService {
         throw new Error('Payment receipt is required');
       }
       
-      const { url, fileName } = await UploadService.uploadPaymentReceipt(paymentReceipt);
-      paymentReceiptUrl = url;
-      paymentReceiptFileName = fileName;
+      const {
+        url: paymentReceiptUrl,
+        fileName: paymentReceiptFileName
+      } = await UploadService.uploadPaymentReceipt(paymentReceipt);
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};

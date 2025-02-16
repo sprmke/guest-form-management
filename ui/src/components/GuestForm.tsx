@@ -38,8 +38,8 @@ export function GuestForm() {
     form.reset(randomData);
     
     // Set the dummy file in the file input
-    if (randomData.paymentReceiptUrl && randomData.paymentReceiptFileName) {
-      setDummyFile(fileInputRef, randomData.paymentReceiptUrl, randomData.paymentReceiptFileName);
+    if (randomData.paymentReceipt) {
+      setDummyFile(fileInputRef, randomData.paymentReceipt);
     }
   };
 
@@ -69,23 +69,13 @@ export function GuestForm() {
 
       // Add payment receipt file if it exists
       const fileInput = document.querySelector<HTMLInputElement>('input[name="paymentReceipt"]');
-      if (fileInput?.files?.[0]) {
-        const file = fileInput.files[0];
+      const [file] = fileInput?.files ?? [];
+      if (file) {
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
           throw new Error('Payment receipt file size must be less than 5MB');
         }
         formData.append('paymentReceipt', file);
-      } else if (values.paymentReceiptUrl && values.paymentReceiptFileName) {
-        try {
-          const response = await fetch(values.paymentReceiptUrl);
-          if (!response.ok) throw new Error('Failed to fetch dummy image');
-          const blob = await response.blob();
-          const file = new File([blob], values.paymentReceiptFileName, { type: 'image/jpeg' });
-          formData.append('paymentReceipt', file);
-        } catch (error) {
-          console.warn('Failed to load dummy image, continuing without payment receipt');
-        }
       }
 
       const response = await fetch(`${apiUrl}/submit-form`, {
