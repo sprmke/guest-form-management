@@ -112,12 +112,18 @@ const toNumber = (value: string | number | undefined): number | undefined => {
 };
 
 // Helper function to format date to MM-DD-YYYY
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${month}-${day}-${year}`;
+const formatDate = (dateStr: string | undefined): string | undefined => {
+  if (!dateStr) return undefined;
+  try {
+    const date = new Date(dateStr);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${month}-${day}-${year}`;
+  } catch (error) {
+    console.warn('Invalid date:', dateStr);
+    return undefined;
+  }
 };
 
 // Helper function to validate guest name
@@ -136,8 +142,8 @@ export const transformFormToSubmission = (formData: GuestFormData, fileUrl: stri
     guest_email: formData.guestEmail,
     guest_phone_number: formData.guestPhoneNumber,
     guest_address: formData.guestAddress,
-    check_in_date: formatDate(formData.checkInDate),
-    check_out_date: formatDate(formData.checkOutDate),
+    check_in_date: formatDate(formData.checkInDate) || '',
+    check_out_date: formatDate(formData.checkOutDate) || '',
     check_in_time: formData.checkInTime,
     check_out_time: formData.checkOutTime,
     nationality: formData.nationality,
