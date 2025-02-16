@@ -50,12 +50,6 @@ const generateDummyImage = () => {
   return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=Receipt_${formattedDateTime}`;
 };
 
-const generateDummyFile = async (url: string, filename: string): Promise<File> => {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new File([blob], filename, { type: 'image/jpeg' });
-};
-
 export const generateRandomData = (): z.infer<typeof guestFormSchema> => {
   const firstName = randomElement(firstNames);
   const lastName = randomElement(lastNames);
