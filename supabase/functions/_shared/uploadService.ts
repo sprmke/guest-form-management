@@ -7,30 +7,48 @@ export class UploadService {
   );
 
   static async uploadPaymentReceipt(file: File): Promise<{ url: string; fileName: string }> {
-    console.log('Processing payment receipt upload...');
-    
-    const fileExt = file.name.split('.').pop();
-    const tempFileName = `${Date.now()}-payment-receipt.${fileExt}`;
+    try {
+      // Generate a unique file name
+      const fileName = `payment_receipt_${Date.now()}_${file.name}`;
+      const { url } = await this.uploadFile(file, fileName, 'payment-receipts');
+      return { url, fileName };
+    } catch (error) {
+      console.error('Error uploading payment receipt:', error);
+      throw new Error('Failed to upload payment receipt');
+    }
+  }
 
+  static async uploadValidId(file: File): Promise<{ url: string; fileName: string }> {
+    try {
+      // Generate a unique file name
+      const fileName = `valid_id_${Date.now()}_${file.name}`;
+      const { url } = await this.uploadFile(file, fileName, 'valid-ids');
+      return { url, fileName };
+    } catch (error) {
+      console.error('Error uploading valid ID:', error);
+      throw new Error('Failed to upload valid ID');
+    }
+  }
+
+  static async uploadFile(file: File, fileName: string, bucket: string): Promise<{ url: string }> {
+    console.log(`Processing ${bucket} upload...`);
+    
     const { error: uploadError } = await this.supabase
       .storage
-      .from('payment-receipts')
-      .upload(tempFileName, file);
+      .from(bucket)
+      .upload(fileName, file);
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
-      throw new Error('Failed to upload payment receipt');
+      console.error(`${bucket} upload error:`, uploadError);
+      throw new Error(`Failed to upload file to ${bucket}`);
     }
 
     const { data: { publicUrl } } = this.supabase
       .storage
-      .from('payment-receipts')
-      .getPublicUrl(tempFileName);
+      .from(bucket)
+      .getPublicUrl(fileName);
 
-    console.log('Payment receipt uploaded successfully');
-    return {
-      url: publicUrl,
-      fileName: tempFileName
-    };
+    console.log(`${bucket} uploaded successfully`);
+    return { url: publicUrl };
   }
 } 
