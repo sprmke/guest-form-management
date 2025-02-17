@@ -12,21 +12,26 @@ export class DatabaseService {
     try {
       console.log('Processing form data...');
 
-      // Handle file upload if present
+      // Handle payment receipt upload
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (!paymentReceipt) {
         throw new Error('Payment receipt is required');
       }
       
-      const {
-        url: paymentReceiptUrl,
-        fileName: paymentReceiptFileName
-      } = await UploadService.uploadPaymentReceipt(paymentReceipt);
+      const { url: paymentReceiptUrl } = await UploadService.uploadPaymentReceipt(paymentReceipt);
+
+      // Handle valid ID upload
+      const validId = formData.get('validId') as File;
+      if (!validId) {
+        throw new Error('Valid ID is required');
+      }
+      
+      const { url: validIdUrl } = await UploadService.uploadValidId(validId);
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       formData.forEach((value, key) => {
-        if (key !== 'paymentReceipt') { // Skip the file field
+        if (key !== 'paymentReceipt' && key !== 'validId') { // Skip the file fields
           formDataObj[key] = value;
         }
       });
@@ -39,11 +44,19 @@ export class DatabaseService {
       console.log('Form data processed successfully');
       
       // Transform and save to database
-      if (!paymentReceiptUrl || !paymentReceiptFileName) {
+      if (!paymentReceiptUrl) {
         throw new Error('Failed to upload payment receipt');
       }
       
-      const dbData = transformFormToSubmission(data, paymentReceiptUrl, paymentReceiptFileName);
+      if (!validIdUrl) {
+        throw new Error('Failed to upload valid ID');
+      }
+      
+      const dbData = transformFormToSubmission(
+        data, 
+        paymentReceiptUrl,
+        validIdUrl
+      );
       const submissionData = await this.saveGuestSubmission(dbData);
 
       return { data, submissionData };
