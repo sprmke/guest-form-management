@@ -69,8 +69,8 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
     ),
     
     -- Payment receipt
-    payment_receipt_url TEXT,
-    payment_receipt_file_name TEXT,
+    payment_receipt_url TEXT NOT NULL,
+    valid_id_url TEXT NOT NULL,
     
     -- Fixed values
     unit_owner TEXT NOT NULL,
