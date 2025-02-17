@@ -31,7 +31,7 @@ const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (m
 const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`;
 const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`;
 
-const generateDummyImage = () => {
+const generateDummyImage = (prefix: string) => {
   const now = new Date();
   const formattedDateTime = now.toLocaleString('en-US', {
     year: 'numeric',
@@ -47,15 +47,27 @@ const generateDummyImage = () => {
   const height = 600;
   const backgroundColor = '808080';
   const textColor = 'FFFFFF';
-  return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=Receipt_${formattedDateTime}`;
+  return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=${prefix}_${formattedDateTime}`;
 };
 
-const generateDummyFile = async (): Promise<File> => {
-  const url = generateDummyImage();
-  const filename = `receipt_${new Date().getTime()}.jpg`;
+const generateDummyFile = async (prefix: string): Promise<File> => {
+  const url = generateDummyImage(prefix);
+  const filename = `${prefix.toLowerCase()}_${new Date().getTime()}.jpg`;
   const response = await fetch(url);
   const blob = await response.blob();
   return new File([blob], filename, { type: 'image/jpeg' });
+};
+
+// Set dummy file in file input
+export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, file: File | null) => {
+  if (!fileInputRef.current || !file) return;
+
+  // Create a DataTransfer object
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+
+  // Set the files
+  fileInputRef.current.files = dataTransfer.files;
 };
 
 export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
@@ -88,7 +100,9 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   const needParking = Math.random() > 0.5;
   const hasPets = Math.random() > 0.5;
 
-  const paymentReceipt = await generateDummyFile();
+  // Generate dummy files
+  const paymentReceipt = await generateDummyFile('Receipt');
+  const validId = await generateDummyFile('ValidID');
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -121,25 +135,10 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     numberOfChildren: randomNumber(0, 3),
     numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
     paymentReceipt,
+    validId,
     unitOwner: "Arianna Perez",
     towerAndUnitNumber: "Monaco 2604",
     ownerOnsiteContactPerson: "Arianna Perez",
     ownerContactNumber: "0962 541 2941"
   };
-};
-
-// Set dummy file in file input
-export const setDummyFile = async (fileInputRef: React.RefObject<HTMLInputElement>, file: File) => {
-  try {
-    // Create a DataTransfer object and add our file
-    const dataTransfer = new DataTransfer();
-    dataTransfer.items.add(file);
-    
-    // Set the file input's files
-    if (fileInputRef.current) {
-      fileInputRef.current.files = dataTransfer.files;
-    }
-  } catch (error) {
-    console.warn('Failed to set dummy file:', error);
-  }
 };
