@@ -40,8 +40,9 @@ export const guestFormSchema = z.object({
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
   
-  // Payment receipt fields
+  // File upload fields
   paymentReceipt: z.instanceof(File, { message: "Please upload your payment receipt" }),
+  validId: z.instanceof(File, { message: "Please upload your valid ID" }),
   
   // Unit and owner information with defaults
   unitOwner: z.string().default("Arianna Perez"),
