@@ -10,6 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
+import { addFileToFormData } from "@/utils/helpers"
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -19,6 +20,7 @@ export function GuestForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const validIdInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
@@ -37,9 +39,12 @@ export function GuestForm() {
     const randomData = await generateRandomData();
     form.reset(randomData);
     
-    // Set the dummy file in the file input
+    // Set the dummy files in the file inputs
     if (randomData.paymentReceipt) {
       setDummyFile(fileInputRef, randomData.paymentReceipt);
+    }
+    if (randomData.validId) {
+      setDummyFile(validIdInputRef, randomData.validId);
     }
   };
 
@@ -54,9 +59,9 @@ export function GuestForm() {
       
       const formData = new FormData();
       
-      // Add all form values to FormData, excluding paymentReceipt
+      // Add all form values to FormData, excluding paymentReceipt and validId
       Object.entries(transformedValues).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && key !== 'paymentReceipt') {
+        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId') {
           formData.append(key, value.toString());
         }
       });
@@ -67,16 +72,9 @@ export function GuestForm() {
       formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
       formData.append('ownerContactNumber', '0962 541 2941');
 
-      // Add payment receipt file if it exists
-      const fileInput = document.querySelector<HTMLInputElement>('input[name="paymentReceipt"]');
-      const [file] = fileInput?.files ?? [];
-      if (file) {
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          throw new Error('Payment receipt file size must be less than 5MB');
-        }
-        formData.append('paymentReceipt', file);
-      }
+      // Add files to form data with validation
+      addFileToFormData(formData, 'paymentReceipt');
+      addFileToFormData(formData, 'validId');
 
       const response = await fetch(`${apiUrl}/submit-form`, {
         method: 'POST',
@@ -631,6 +629,30 @@ export function GuestForm() {
                     className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
                     {...field}
                     ref={fileInputRef}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="validId"
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormItem>
+                <FormLabel>Valid ID *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      onChange(file || null);
+                    }}
+                    className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
+                    {...field}
+                    ref={validIdInputRef}
                   />
                 </FormControl>
                 <FormMessage />
