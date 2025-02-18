@@ -11,65 +11,14 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   }
 
   const emailContent = `
-    <h1>New Guest Form Submission</h1>
-    <p>Dear Admin,</p>
-    <p>A new guest form has been submitted. Here are the details:</p>
-    <ul>
-      <li>Unit Information:
-        <ul>
-          <li>Unit Owner: ${formData.unitOwner}</li>
-          <li>Tower & Unit Number: ${formData.towerAndUnitNumber}</li>
-          <li>Onsite Contact Person: ${formData.ownerOnsiteContactPerson}</li>
-          <li>Contact Number: ${formData.ownerContactNumber}</li>
-        </ul>
-      </li>
-      <li>Primary Guest:
-        <ul>
-          <li>Name: ${formData.primaryGuestName}</li>
-          <li>Email: ${formData.guestEmail}</li>
-          <li>Phone: ${formData.guestPhoneNumber}</li>
-          <li>Address: ${formData.guestAddress}</li>
-          <li>Nationality: ${formData.nationality || 'Not specified'}</li>
-        </ul>
-      </li>
-      <li>Stay Details:
-        <ul>
-          <li>Check-in: ${formData.checkInDate} ${formData.checkInTime || ''}</li>
-          <li>Check-out: ${formData.checkOutDate} ${formData.checkOutTime || ''}</li>
-          <li>Number of Nights: ${formData.numberOfNights || 'Not specified'}</li>
-          <li>Number of Adults: ${formData.numberOfAdults || 'Not specified'}</li>
-          <li>Number of Children: ${formData.numberOfChildren || 'Not specified'}</li>
-        </ul>
-      </li>
-      <li>Additional Guests:
-        <ul>
-          ${formData.guest2Name ? `<li>${formData.guest2Name}</li>` : ''}
-          ${formData.guest3Name ? `<li>${formData.guest3Name}</li>` : ''}
-          ${formData.guest4Name ? `<li>${formData.guest4Name}</li>` : ''}
-          ${formData.guest5Name ? `<li>${formData.guest5Name}</li>` : ''}
-        </ul>
-      </li>
-      ${formData.needParking ? `
-      <li>Car Information:
-        <ul>
-          <li>Car Plate Number: ${formData.carPlateNumber}</li>
-          <li>Car Brand & Model: ${formData.carBrandModel}</li>
-          <li>Car Color: ${formData.carColor}</li>
-        </ul>
-      </li>
-      ` : ''}
-      ${formData.hasPets ? `
-      <li>Pet Information:
-        <ul>
-          <li>Name: ${formData.petName}</li>
-          <li>Breed: ${formData.petBreed}</li>
-          <li>Age: ${formData.petAge}</li>
-          <li>Last Vaccination: ${formData.petVaccinationDate}</li>
-        </ul>
-      </li>
-      ` : ''}
-    </ul>
-    <p>Please find the complete details in the attached PDF.</p>
+    <h3>Monaco 2604 - GAF Request (${formData.checkInDate})</h3>
+    <p>Good day,</p>
+    <p>Please find attached Guest Advice Form request for ${formData.checkInDate}, for ${formData.towerAndUnitNumber}, for your approval.</p>
+    <p>Let me know if you need any further information.</p>
+    <p>Thank you.</p>
+    <p>Best regards,</p>
+    <p>Arianna Perez</p>
+    <p>Unit Owner, Monaco 2604</p>
   `
 
   // Convert Uint8Array to base64 string efficiently
@@ -94,10 +43,9 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Guest Form <onboarding@resend.dev>',
-      to: ['michaeldmanlulu@gmail.com'],
-      cc: ['kamehome.azurenorth@gmail.com'],
-      subject: 'Guest Form Submission Confirmation',
+      from: 'kamehome.azurenorth@gmail.com',
+      to: ['kamehome.azurenorth@gmail.com', 'michaeldmanlulu@gmail.com'],
+      subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
