@@ -43,7 +43,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Monaco 2604 - GAF Request - <onboarding@resend.dev>',
+      from: 'Guest Form <onboarding@resend.dev>',
       to: ['kamehome.azurenorth@gmail.com'],
       subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
