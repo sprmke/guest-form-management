@@ -43,13 +43,13 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'kamehome.azurenorth@gmail.com',
-      to: ['kamehome.azurenorth@gmail.com', 'michaeldmanlulu@gmail.com'],
+      from: 'Monaco 2604 - GAF Request - <onboarding@resend.dev>',
+      to: ['kamehome.azurenorth@gmail.com'],
       subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
-          filename: 'guest-form-submission.pdf',
+          filename: `MONACO_2604_GAF-${formData.checkInDate}.pdf`,
           content: base64PDF,
           encoding: 'base64'
         }]
