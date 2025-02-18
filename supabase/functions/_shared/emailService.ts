@@ -13,7 +13,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   const emailContent = `
     <h3>Monaco 2604 - GAF Request (${formData.checkInDate})</h3>
     <p>Good day,</p>
-    <p>Please find attached Guest Advice Form request for ${formData.checkInDate}, for ${formData.towerAndUnitNumber}, for your approval.</p>
+    <p>Attached is the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated ${formData.checkInDate}, for your approval.</p>
     <p>Let me know if you need any further information.</p>
     <p>Thank you.</p>
     <p>Best regards,</p>
@@ -43,7 +43,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Monaco 2604 - GAF Request - <onboarding@resend.dev>',
+      from: 'kamehome.azurenorth@gmail.com',
       to: ['kamehome.azurenorth@gmail.com'],
       subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
