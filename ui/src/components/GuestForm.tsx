@@ -323,7 +323,7 @@ export function GuestForm() {
                     variant="outline"
                     className="px-3 rounded-r-none"
                     onClick={() => {
-                      const newValue = Math.max(1, Math.min(4, (parseInt(field.value as string) || 1) - 1));
+                      const newValue = Math.max(1, Math.min(4, (parseInt((field as any).value as string) || 1) - 1));
                       field.onChange(newValue);
                     }}
                   >
@@ -352,7 +352,7 @@ export function GuestForm() {
                     variant="outline"
                     className="px-3 rounded-l-none"
                     onClick={() => {
-                      const newValue = Math.min(4, (parseInt(field.value as string) || 1) + 1);
+                      const newValue = Math.min(4, (parseInt((field as any).value as string) || 1) + 1);
                       field.onChange(newValue);
                     }}
                   >
@@ -376,7 +376,7 @@ export function GuestForm() {
                     variant="outline"
                     className="px-3 rounded-r-none"
                     onClick={() => {
-                      const newValue = Math.max(0, Math.min(4, (parseInt(field.value as string) || 0) - 1));
+                      const newValue = Math.max(0, Math.min(4, (parseInt((field as any).value as string) || 0) - 1));
                       field.onChange(newValue);
                     }}
                   >
@@ -405,7 +405,7 @@ export function GuestForm() {
                     variant="outline"
                     className="px-3 rounded-l-none"
                     onClick={() => {
-                      const newValue = Math.min(4, (parseInt(field.value as string) || 0) + 1);
+                      const newValue = Math.min(4, (parseInt((field as any).value as string) || 0) + 1);
                       field.onChange(newValue);
                     }}
                   >
