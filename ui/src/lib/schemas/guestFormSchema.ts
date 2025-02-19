@@ -19,42 +19,10 @@ export const guestFormSchema = z.object({
   numberOfChildren: z.number().min(0).max(4),
   
   // Optional fields
-  guest2Name: z.string().optional().superRefine((val, ctx) => {
-    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
-    if (totalGuests >= 2 && !val) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Guest 2 name is required",
-      });
-    }
-  }),
-  guest3Name: z.string().optional().superRefine((val, ctx) => {
-    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
-    if (totalGuests >= 3 && !val) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Guest 3 name is required",
-      });
-    }
-  }),
-  guest4Name: z.string().optional().superRefine((val, ctx) => {
-    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
-    if (totalGuests >= 4 && !val) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Guest 4 name is required",
-      });
-    }
-  }),
-  guest5Name: z.string().optional().superRefine((val, ctx) => {
-    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
-    if (totalGuests >= 5 && !val) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Guest 5 name is required",
-      });
-    }
-  }),
+  guest2Name: z.string().optional(),
+  guest3Name: z.string().optional(),
+  guest4Name: z.string().optional(),
+  guest5Name: z.string().optional(),
   guestSpecialRequests: z.string().optional(),
   findUsDetails: z.string().optional(),
   numberOfNights: z.number().optional(),
@@ -81,6 +49,21 @@ export const guestFormSchema = z.object({
   towerAndUnitNumber: z.string().default("Monaco 2604"),
   ownerOnsiteContactPerson: z.string().default("Arianna Perez"),
   ownerContactNumber: z.string().default("0962 541 2941"),
-})
+}).superRefine((data, ctx) => {
+  const totalGuests = data.numberOfAdults + data.numberOfChildren;
+  
+  if (totalGuests >= 2 && !data.guest2Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 2 name is required", path: ["guest2Name"] });
+  }
+  if (totalGuests >= 3 && !data.guest3Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 3 name is required", path: ["guest3Name"] });
+  }
+  if (totalGuests >= 4 && !data.guest4Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 4 name is required", path: ["guest4Name"] });
+  }
+  if (totalGuests >= 5 && !data.guest5Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 5 name is required", path: ["guest5Name"] });
+  }
+});
 
 export type GuestFormData = z.infer<typeof guestFormSchema> 
