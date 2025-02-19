@@ -317,18 +317,48 @@ export function GuestForm() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Number of Adults</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="1"
-                    {...field}
-                    onChange={e => {
-                      const value = parseInt(e.target.value) || 1;
-                      const validValue = Math.max(1, value);
-                      field.onChange(validValue);
+                <div className="flex items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="px-3 rounded-r-none"
+                    onClick={() => {
+                      const newValue = Math.max(1, Math.min(4, (parseInt(field.value as string) || 1) - 1));
+                      field.onChange(newValue);
                     }}
-                  />
-                </FormControl>
+                  >
+                    -
+                  </Button>
+                  <FormControl>
+                    <Input 
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="1"
+                      max="4"
+                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      {...field}
+                      onChange={e => {
+                        const value = e.target.value === '' ? '1' : e.target.value;
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue)) {
+                          field.onChange(Math.max(1, Math.min(4, numValue)));
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="px-3 rounded-l-none"
+                    onClick={() => {
+                      const newValue = Math.min(4, (parseInt(field.value as string) || 1) + 1);
+                      field.onChange(newValue);
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -336,22 +366,52 @@ export function GuestForm() {
 
           <FormField
             control={form.control}
-            name="numberOfChildren" 
+            name="numberOfChildren"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Number of Children</FormLabel>
-                <FormControl>
-                  <Input 
-                    type="number" 
-                    min="0"
-                    {...field}
-                    onChange={e => {
-                      const value = parseInt(e.target.value) || 0;
-                      const validValue = Math.max(0, value);
-                      field.onChange(validValue);
+                <div className="flex items-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="px-3 rounded-r-none"
+                    onClick={() => {
+                      const newValue = Math.max(0, Math.min(4, (parseInt(field.value as string) || 0) - 1));
+                      field.onChange(newValue);
                     }}
-                  />
-                </FormControl>
+                  >
+                    -
+                  </Button>
+                  <FormControl>
+                    <Input 
+                      type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      min="0"
+                      max="4"
+                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      {...field}
+                      onChange={e => {
+                        const value = e.target.value === '' ? '0' : e.target.value;
+                        const numValue = parseInt(value);
+                        if (!isNaN(numValue)) {
+                          field.onChange(Math.max(0, Math.min(4, numValue)));
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="px-3 rounded-l-none"
+                    onClick={() => {
+                      const newValue = Math.min(4, (parseInt(field.value as string) || 0) + 1);
+                      field.onChange(newValue);
+                    }}
+                  >
+                    +
+                  </Button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
