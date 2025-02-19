@@ -322,9 +322,13 @@ export function GuestForm() {
                     type="button"
                     variant="outline"
                     className="px-3 rounded-r-none"
+                    disabled={field.value <= 1 || (field.value + (form.getValues("numberOfChildren") || 0) <= 1)}
                     onClick={() => {
-                      const newValue = Math.max(1, Math.min(4, (parseInt((field as any).value as string) || 1) - 1));
-                      field.onChange(newValue);
+                      const currentChildren = form.getValues("numberOfChildren") || 0;
+                      const newValue = Math.max(1, (parseInt((field as any).value as string) || 1) - 1);
+                      if (newValue + currentChildren <= 4) {
+                        field.onChange(newValue);
+                      }
                     }}
                   >
                     -
@@ -340,22 +344,19 @@ export function GuestForm() {
                       tabIndex={-1}
                       className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
                       {...field}
-                      onChange={e => {
-                        const value = e.target.value === '' ? '1' : e.target.value;
-                        const numValue = parseInt(value);
-                        if (!isNaN(numValue)) {
-                          field.onChange(Math.max(1, Math.min(4, numValue)));
-                        }
-                      }}
                     />
                   </FormControl>
                   <Button
                     type="button"
                     variant="outline"
                     className="px-3 rounded-l-none"
+                    disabled={(field.value + (form.getValues("numberOfChildren") || 0)) >= 4}
                     onClick={() => {
-                      const newValue = Math.min(4, (parseInt((field as any).value as string) || 1) + 1);
-                      field.onChange(newValue);
+                      const currentChildren = form.getValues("numberOfChildren") || 0;
+                      const newValue = (parseInt((field as any).value as string) || 1) + 1;
+                      if (newValue + currentChildren <= 4) {
+                        field.onChange(newValue);
+                      }
                     }}
                   >
                     +
@@ -377,9 +378,13 @@ export function GuestForm() {
                     type="button"
                     variant="outline"
                     className="px-3 rounded-r-none"
+                    disabled={field.value <= 0}
                     onClick={() => {
-                      const newValue = Math.max(0, Math.min(4, (parseInt((field as any).value as string) || 0) - 1));
-                      field.onChange(newValue);
+                      const currentAdults = form.getValues("numberOfAdults") || 1;
+                      const newValue = Math.max(0, (parseInt((field as any).value as string) || 0) - 1);
+                      if (newValue + currentAdults <= 4) {
+                        field.onChange(newValue);
+                      }
                     }}
                   >
                     -
@@ -395,22 +400,20 @@ export function GuestForm() {
                       tabIndex={-1}
                       className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
                       {...field}
-                      onChange={e => {
-                        const value = e.target.value === '' ? '0' : e.target.value;
-                        const numValue = parseInt(value);
-                        if (!isNaN(numValue)) {
-                          field.onChange(Math.max(0, Math.min(4, numValue)));
-                        }
-                      }}
                     />
                   </FormControl>
                   <Button
                     type="button"
+                    color="green"
                     variant="outline"
                     className="px-3 rounded-l-none"
+                    disabled={(field.value + (form.getValues("numberOfAdults") || 1)) >= 4}
                     onClick={() => {
-                      const newValue = Math.min(4, (parseInt((field as any).value as string) || 0) + 1);
-                      field.onChange(newValue);
+                      const currentAdults = form.getValues("numberOfAdults") || 1;
+                      const newValue = (parseInt((field as any).value as string) || 0) + 1;
+                      if (newValue + currentAdults <= 4) {
+                        field.onChange(newValue);
+                      }
                     }}
                   >
                     +
