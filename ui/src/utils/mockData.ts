@@ -70,7 +70,7 @@ export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, fi
   fileInputRef.current.files = dataTransfer.files;
 };
 
-export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
+export async function generateRandomData(): Promise<z.infer<typeof guestFormSchema>> {
   const firstName = randomElement(firstNames);
   const lastName = randomElement(lastNames);
   const fullName = `${firstName} ${lastName}`;
@@ -91,11 +91,16 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   vaccinationDate.setMonth(vaccinationDate.getMonth() - randomNumber(1, 12));
   const lastVaccination = vaccinationDate.toISOString().split('T')[0];
 
-  // Randomly decide how many additional guests (0-4)
-  const numAdditionalGuests = randomNumber(0, 4);
-  const additionalGuests = Array(4).fill('').map((_, index) => 
-    index < numAdditionalGuests ? generateRandomName() : ''
-  );
+  // Generate random number of adults (1-3) and children (0-3) with total <= 4
+  const numberOfAdults = Math.max(1, Math.min(3, Math.floor(Math.random() * 3) + 1));
+  const maxChildren = Math.min(3, 4 - numberOfAdults);
+  const numberOfChildren = Math.floor(Math.random() * (maxChildren + 1));
+
+  // Generate additional guest names based on total guests
+  const totalGuests = numberOfAdults + numberOfChildren;
+  const guest2Name = totalGuests >= 2 ? generateRandomName() : undefined;
+  const guest3Name = totalGuests >= 3 ? generateRandomName() : undefined;
+  const guest4Name = totalGuests >= 4 ? generateRandomName() : undefined;
 
   const needParking = Math.random() > 0.5;
   const hasPets = Math.random() > 0.5;
@@ -112,10 +117,9 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     guestAddress: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
     checkInDate: checkIn,
     checkOutDate: checkOut,
-    guest2Name: additionalGuests[0],
-    guest3Name: additionalGuests[1],
-    guest4Name: additionalGuests[2],
-    guest5Name: additionalGuests[3],
+    guest2Name,
+    guest3Name,
+    guest4Name,
     guestSpecialRequests: randomElement(requests),
     findUs: randomElement(findUsSources),
     findUsDetails: randomElement(findUsDetails),
@@ -131,8 +135,8 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     checkInTime: "14:00",
     checkOutTime: "11:00",
     nationality: "Filipino",
-    numberOfAdults: randomNumber(1, 4),
-    numberOfChildren: randomNumber(0, 3),
+    numberOfAdults,
+    numberOfChildren,
     numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
     paymentReceipt,
     validId,
@@ -141,4 +145,4 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     ownerOnsiteContactPerson: "Arianna Perez",
     ownerContactNumber: "0962 541 2941"
   };
-};
+}
