@@ -12,13 +12,35 @@ export class DatabaseService {
     try {
       console.log('Processing form data...');
 
+      // Get required form fields
+      const fullName = formData.get('primaryGuestName') as string;
+      const checkInDate = formData.get('checkInDate') as string;
+      const checkOutDate = formData.get('checkOutDate') as string;
+
+      if (!fullName) {
+        throw new Error('Full Name is required');
+      }
+
+      if (!checkInDate || !checkOutDate) {
+        throw new Error('Check-in and check-out dates are required');
+      }
+
+      // Format dates to YYYY-MM-DD
+      const formattedCheckIn = new Date(checkInDate).toISOString().split('T')[0];
+      const formattedCheckOut = new Date(checkOutDate).toISOString().split('T')[0];
+
       // Handle payment receipt upload
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (!paymentReceipt) {
         throw new Error('Payment receipt is required');
       }
       
-      const { url: paymentReceiptUrl } = await UploadService.uploadPaymentReceipt(paymentReceipt);
+      const paymentReceiptUrl = await UploadService.uploadPaymentReceipt(
+        paymentReceipt,
+        fullName,
+        formattedCheckIn,
+        formattedCheckOut
+      );
 
       // Handle valid ID upload
       const validId = formData.get('validId') as File;
@@ -26,7 +48,12 @@ export class DatabaseService {
         throw new Error('Valid ID is required');
       }
       
-      const { url: validIdUrl } = await UploadService.uploadValidId(validId);
+      const validIdUrl = await UploadService.uploadValidId(
+        validId,
+        fullName,
+        formattedCheckIn,
+        formattedCheckOut
+      );
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
