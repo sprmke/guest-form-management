@@ -147,7 +147,7 @@ export function GuestForm() {
           name="guestFacebookName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Guest Facebook Name *</FormLabel>
+              <FormLabel>Guest Facebook Name <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input 
                   placeholder="Your username/full name in Facebook" 
@@ -165,7 +165,7 @@ export function GuestForm() {
           name="primaryGuestName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Primary Guest Name *</FormLabel>
+              <FormLabel>Primary Guest Name <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input 
                   placeholder="Full name of Primary Guest" 
@@ -183,7 +183,7 @@ export function GuestForm() {
           name="guestEmail"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Guest Email *</FormLabel>
+              <FormLabel>Guest Email <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input type="email" placeholder="Ex. juandelacruz@gmail.com" {...field} />
               </FormControl>
@@ -197,7 +197,7 @@ export function GuestForm() {
           name="guestPhoneNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Guest Phone Number *</FormLabel>
+              <FormLabel>Guest Phone Number <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input type="tel" placeholder="Ex. 0987 654 3210" {...field} />
               </FormControl>
@@ -211,7 +211,7 @@ export function GuestForm() {
           name="guestAddress"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Guest Address *</FormLabel>
+              <FormLabel>Guest Address <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input 
                   placeholder="City, Province" 
@@ -230,7 +230,7 @@ export function GuestForm() {
             name="checkInDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Check-in Date *</FormLabel>
+                <FormLabel>Check-in Date <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>
@@ -264,7 +264,7 @@ export function GuestForm() {
             name="checkOutDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Check-out Date *</FormLabel>
+                <FormLabel>Check-out Date <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <Input type="date" {...field} />
                 </FormControl>
@@ -421,7 +421,9 @@ export function GuestForm() {
         {/* Dynamic Additional Guests Fields */}
         {additionalGuestsNeeded > 0 && (
           <div className="space-y-4">
-            <label className="block text-sm font-medium">Additional Guests *</label>
+            <label className="block text-sm font-medium">
+              Additional Guests <span className="text-red-500">*</span>
+            </label>
             {Array.from({ length: additionalGuestsNeeded }).map((_, index) => (
               <FormField
                 key={index}
@@ -678,7 +680,7 @@ export function GuestForm() {
             name="validId"
             render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
-                <FormLabel>Valid ID *</FormLabel>
+                <FormLabel>Valid ID <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <Input
                     type="file"
@@ -702,7 +704,7 @@ export function GuestForm() {
             name="paymentReceipt"
             render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
-                <FormLabel>Payment Receipt *</FormLabel>
+                <FormLabel>Payment Receipt <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
                   <Input
                     type="file"
