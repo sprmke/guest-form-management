@@ -421,7 +421,7 @@ export function GuestForm() {
         {/* Dynamic Additional Guests Fields */}
         {additionalGuestsNeeded > 0 && (
           <div className="space-y-4">
-            <label className="block text-sm font-medium">Additional Guests</label>
+            <label className="block text-sm font-medium">Additional Guests *</label>
             {Array.from({ length: additionalGuestsNeeded }).map((_, index) => (
               <FormField
                 key={index}
@@ -431,10 +431,11 @@ export function GuestForm() {
                   <FormItem>
                     <FormControl>
                       <Input 
-                        placeholder={`Guest ${index + 2} Name`} 
+                        placeholder={`Guest ${index + 2} - Full Name (Required)`} 
                         {...field}
                         value={field.value?.toString() ?? ''}
                         onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                        required
                       />
                     </FormControl>
                     <FormMessage />
