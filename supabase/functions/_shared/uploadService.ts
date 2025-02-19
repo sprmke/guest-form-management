@@ -6,6 +6,13 @@ export class UploadService {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
+  private static formatName(fullName: string): string {
+    return fullName
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '_');
+  }
+
   private static generateFileName(
     prefix: string,
     fullName: string,
@@ -13,7 +20,8 @@ export class UploadService {
     checkOutDate: string,
     originalFileName: string
   ): string {
-    return `${prefix}_${checkInDate}_${checkOutDate}_${fullName}${this.getFileExtension(originalFileName)}`;
+    const formattedName = this.formatName(fullName);
+    return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}${this.getFileExtension(originalFileName)}`;
   }
 
   static async uploadPaymentReceipt(
