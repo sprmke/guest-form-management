@@ -6,24 +6,52 @@ export class UploadService {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  static async uploadPaymentReceipt(file: File): Promise<{ url: string; fileName: string }> {
+  private static generateFileName(
+    prefix: string,
+    fullName: string,
+    checkInDate: string,
+    checkOutDate: string,
+    originalFileName: string
+  ): string {
+    return `${prefix}_${checkInDate}_${checkOutDate}_${fullName}${this.getFileExtension(originalFileName)}`;
+  }
+
+  static async uploadPaymentReceipt(
+    file: File, 
+    fullName: string, 
+    checkInDate: string,
+    checkOutDate: string
+  ): Promise<{ url: string; fileName: string }> {
     try {
-      // Generate a unique file name
-      const fileName = `payment_receipt_${Date.now()}_${file.name}`;
-      const { url } = await this.uploadFile(file, fileName, 'payment-receipts');
-      return { url, fileName };
+      const fileName = this.generateFileName(
+        'payment_receipt',
+        fullName,
+        checkInDate,
+        checkOutDate,
+        file.name
+      );
+      return await this.uploadFile(file, fileName, 'payment-receipts');
     } catch (error) {
       console.error('Error uploading payment receipt:', error);
       throw new Error('Failed to upload payment receipt');
     }
   }
 
-  static async uploadValidId(file: File): Promise<{ url: string; fileName: string }> {
+  static async uploadValidId(
+    file: File, 
+    fullName: string, 
+    checkInDate: string,
+    checkOutDate: string
+  ): Promise<{ url: string; fileName: string }> {
     try {
-      // Generate a unique file name
-      const fileName = `valid_id_${Date.now()}_${file.name}`;
-      const { url } = await this.uploadFile(file, fileName, 'valid-ids');
-      return { url, fileName };
+      const fileName = this.generateFileName(
+        'valid_id',
+        fullName,
+        checkInDate,
+        checkOutDate,
+        file.name
+      );
+      return await this.uploadFile(file, fileName, 'valid-ids');
     } catch (error) {
       console.error('Error uploading valid ID:', error);
       throw new Error('Failed to upload valid ID');
@@ -49,6 +77,11 @@ export class UploadService {
       .getPublicUrl(fileName);
 
     console.log(`${bucket} uploaded successfully`);
-    return { url: publicUrl };
+    return publicUrl;
   }
-} 
+
+  // Add helper method to get file extension
+  private static getFileExtension(filename: string): string {
+    return filename.substring(filename.lastIndexOf('.'));
+  }
+}
