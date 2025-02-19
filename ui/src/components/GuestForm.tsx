@@ -129,7 +129,7 @@ export function GuestForm() {
 
   // Calculate total number of additional guests needed, capped at 4
   const totalGuests = (form.watch("numberOfAdults") || 1) + (form.watch("numberOfChildren") || 0)
-  const additionalGuestsNeeded = Math.min(4, Math.max(0, totalGuests - 1)) // Cap at 4 additional guests
+  const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)) // Cap at 3 additional guests
 
   return (
     <Form {...form}>
@@ -336,7 +336,9 @@ export function GuestForm() {
                       pattern="[0-9]*"
                       min="1"
                       max="4"
-                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      readOnly
+                      tabIndex={-1}
+                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
                       {...field}
                       onChange={e => {
                         const value = e.target.value === '' ? '1' : e.target.value;
@@ -389,7 +391,9 @@ export function GuestForm() {
                       pattern="[0-9]*"
                       min="0"
                       max="4"
-                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      readOnly
+                      tabIndex={-1}
+                      className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
                       {...field}
                       onChange={e => {
                         const value = e.target.value === '' ? '0' : e.target.value;

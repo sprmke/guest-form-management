@@ -67,9 +67,6 @@ export const guestFormSchema = z.object({
   if (totalGuests >= 4 && !data.guest4Name) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 4 name is required", path: ["guest4Name"] });
   }
-  if (totalGuests >= 5 && !data.guest5Name) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Guest 5 name is required", path: ["guest5Name"] });
-  }
 });
 
 export type GuestFormData = z.infer<typeof guestFormSchema> 
