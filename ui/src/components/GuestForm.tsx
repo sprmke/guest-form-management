@@ -675,30 +675,6 @@ export function GuestForm() {
         <div className="space-y-4">
           <FormField
             control={form.control}
-            name="paymentReceipt"
-            render={({ field: { onChange, value, ...field } }) => (
-              <FormItem>
-                <FormLabel>Payment Receipt *</FormLabel>
-                <FormControl>
-                  <Input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      onChange(file || null);
-                    }}
-                    className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
-                    {...field}
-                    ref={fileInputRef}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="validId"
             render={({ field: { onChange, value, ...field } }) => (
               <FormItem>
@@ -714,6 +690,30 @@ export function GuestForm() {
                     className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
                     {...field}
                     ref={validIdInputRef}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="paymentReceipt"
+            render={({ field: { onChange, value, ...field } }) => (
+              <FormItem>
+                <FormLabel>Payment Receipt *</FormLabel>
+                <FormControl>
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      onChange(file || null);
+                    }}
+                    className="flex px-3 py-2 w-full h-10 text-sm rounded-md border border-input bg-background ring-offset-background file:border-0 file:font-semibold file:bg-green-50 file:rounded-sm file:text-green-700 hover:file:bg-green-100"
+                    {...field}
+                    ref={fileInputRef}
                   />
                 </FormControl>
                 <FormMessage />
