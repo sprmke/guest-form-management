@@ -15,14 +15,46 @@ export const guestFormSchema = z.object({
   checkInTime: z.string().min(1, "Check-in time is required").default("14:00"),
   checkOutTime: z.string().min(1, "Check-out time is required").default("11:00"),
   nationality: z.string().min(1, "Nationality is required").default("Filipino"),
-  numberOfAdults: z.number().min(1, "At least 1 adult is required").default(1),
-  numberOfChildren: z.number().min(0).default(0),
+  numberOfAdults: z.number().min(1).max(4),
+  numberOfChildren: z.number().min(0).max(4),
   
   // Optional fields
-  guest2Name: z.string().optional(),
-  guest3Name: z.string().optional(),
-  guest4Name: z.string().optional(),
-  guest5Name: z.string().optional(),
+  guest2Name: z.string().optional().superRefine((val, ctx) => {
+    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
+    if (totalGuests >= 2 && !val) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Guest 2 name is required",
+      });
+    }
+  }),
+  guest3Name: z.string().optional().superRefine((val, ctx) => {
+    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
+    if (totalGuests >= 3 && !val) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Guest 3 name is required",
+      });
+    }
+  }),
+  guest4Name: z.string().optional().superRefine((val, ctx) => {
+    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
+    if (totalGuests >= 4 && !val) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Guest 4 name is required",
+      });
+    }
+  }),
+  guest5Name: z.string().optional().superRefine((val, ctx) => {
+    const totalGuests = ctx.parent.numberOfAdults + ctx.parent.numberOfChildren;
+    if (totalGuests >= 5 && !val) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Guest 5 name is required",
+      });
+    }
+  }),
   guestSpecialRequests: z.string().optional(),
   findUsDetails: z.string().optional(),
   numberOfNights: z.number().optional(),
