@@ -1,5 +1,11 @@
 import * as z from "zod"
 
+const today = new Date();
+const tomorrow = new Date(today);
+tomorrow.setDate(tomorrow.getDate() + 1);
+
+const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
 export const guestFormSchema = z.object({
   // Required fields
   guestFacebookName: z.string().min(2, "Facebook name must be at least 2 characters"),
@@ -7,8 +13,8 @@ export const guestFormSchema = z.object({
   guestEmail: z.string().email("Invalid email address"),
   guestPhoneNumber: z.string().min(10, "Contact number must be at least 10 digits"),
   guestAddress: z.string().min(5, "Address must be at least 5 characters"),
-  checkInDate: z.string().min(1, "Please select check-in date"),
-  checkOutDate: z.string().min(1, "Please select check-out date"),
+  checkInDate: z.string().min(1, "Please select check-in date").default(formatDate(today)),
+  checkOutDate: z.string().min(1, "Please select check-out date").default(formatDate(tomorrow)),
   findUs: z.string().min(1, "Please select how you found us"),
   
   // Required fields with defaults
