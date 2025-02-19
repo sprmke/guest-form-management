@@ -162,24 +162,6 @@ export function GuestForm() {
 
         <FormField
           control={form.control}
-          name="primaryGuestName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Primary Guest Name <span className="text-red-500">*</span></FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder="Full name of Primary Guest" 
-                  {...field} 
-                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
           name="guestEmail"
           render={({ field }) => (
             <FormItem>
@@ -424,6 +406,24 @@ export function GuestForm() {
             )}
           />
         </div>
+
+        <FormField
+          control={form.control}
+          name="primaryGuestName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Primary Guest Name <span className="text-red-500">*</span></FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder="Primary Guest - Full Name" 
+                  {...field} 
+                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* Dynamic Additional Guests Fields */}
         {additionalGuestsNeeded > 0 && (
