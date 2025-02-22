@@ -1,4 +1,5 @@
 import { z } from "zod";
+import dayjs from "dayjs";
 import { guestFormSchema } from "@/lib/schemas/guestFormSchema";
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa'];
@@ -32,16 +33,7 @@ const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(l
 const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`;
 
 const generateDummyImage = (prefix: string) => {
-  const now = new Date();
-  const formattedDateTime = now.toLocaleString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  }).replace(/[/,]/g, '-').replace(/:/g, '-').replace(/\s/g, '_');
+  const formattedDateTime = dayjs().format('YYYY-MM-DD_HH-mm-ss');
   
   const width = 800;
   const height = 600;
@@ -52,7 +44,7 @@ const generateDummyImage = (prefix: string) => {
 
 const generateDummyFile = async (prefix: string): Promise<File> => {
   const url = generateDummyImage(prefix);
-  const filename = `${prefix.toLowerCase()}_${new Date().getTime()}.jpg`;
+  const filename = `${prefix.toLowerCase()}_${dayjs().valueOf()}.jpg`;
   const response = await fetch(url);
   const blob = await response.blob();
   return new File([blob], filename, { type: 'image/jpeg' });
@@ -76,20 +68,14 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   const fullName = `${firstName} ${lastName}`;
   
   // Generate a date between today and next 30 days for check-in
-  const today = new Date();
-  const futureDate = new Date();
-  futureDate.setDate(today.getDate() + randomNumber(1, 30));
-  const checkIn = futureDate.toISOString().split('T')[0];
+  const today = dayjs();
+  const checkIn = today.add(randomNumber(1, 30), 'day').format('YYYY-MM-DD');
   
   // Generate check-out date 1-7 days after check-in
-  const checkOutDate = new Date(futureDate);
-  checkOutDate.setDate(futureDate.getDate() + randomNumber(1, 7));
-  const checkOut = checkOutDate.toISOString().split('T')[0];
+  const checkOut = dayjs(checkIn).add(randomNumber(1, 7), 'day').format('YYYY-MM-DD');
 
   // Generate vaccination date between 1-12 months ago
-  const vaccinationDate = new Date();
-  vaccinationDate.setMonth(vaccinationDate.getMonth() - randomNumber(1, 12));
-  const lastVaccination = vaccinationDate.toISOString().split('T')[0];
+  const lastVaccination = today.subtract(randomNumber(1, 12), 'month').format('YYYY-MM-DD');
 
   // Generate random number of adults (1-3) and children (0-3) with total <= 4
   const numberOfAdults = Math.max(1, Math.min(3, Math.floor(Math.random() * 3) + 1));
@@ -108,6 +94,9 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   // Generate dummy files
   const paymentReceipt = await generateDummyFile('Receipt');
   const validId = await generateDummyFile('ValidID');
+
+  // Calculate number of nights using dayjs
+  const numberOfNights = dayjs(checkOut).diff(dayjs(checkIn), 'day');
 
   return {
     guestFacebookName: `${fullName} FB`,
@@ -137,7 +126,7 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
     nationality: "Filipino",
     numberOfAdults,
     numberOfChildren,
-    numberOfNights: Math.ceil((checkOutDate.getTime() - futureDate.getTime()) / (1000 * 60 * 60 * 24)),
+    numberOfNights,
     paymentReceipt,
     validId,
     unitOwner: "Arianna Perez",
