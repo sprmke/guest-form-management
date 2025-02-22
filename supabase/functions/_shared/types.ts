@@ -1,3 +1,5 @@
+import dayjs from 'https://esm.sh/dayjs@1.11.10'
+
 // UI Form Data Interface (camelCase)
 export interface GuestFormData {
   // Required fields
@@ -113,11 +115,7 @@ const toNumber = (value: string | number | undefined): number | undefined => {
 
 // Helper function to format date to MM-DD-YYYY
 const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const year = date.getFullYear();
-  return `${month}-${day}-${year}`;
+  return dayjs(dateStr).format('MM-DD-YYYY');
 };
 
 // Helper function to validate guest name

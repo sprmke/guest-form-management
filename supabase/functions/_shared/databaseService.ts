@@ -1,3 +1,4 @@
+import dayjs from 'https://esm.sh/dayjs@1.11.10'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, transformFormToSubmission } from './types.ts'
 import { UploadService } from './uploadService.ts'
@@ -26,8 +27,8 @@ export class DatabaseService {
       }
 
       // Format dates to YYYY-MM-DD
-      const formattedCheckIn = new Date(checkInDate).toISOString().split('T')[0];
-      const formattedCheckOut = new Date(checkOutDate).toISOString().split('T')[0];
+      const formattedCheckIn = dayjs(checkInDate).format('YYYY-MM-DD');
+      const formattedCheckOut = dayjs(checkOutDate).format('YYYY-MM-DD');
 
       // Handle payment receipt upload
       const paymentReceipt = formData.get('paymentReceipt') as File;
