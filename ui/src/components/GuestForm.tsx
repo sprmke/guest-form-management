@@ -11,6 +11,7 @@ import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
 import { addFileToFormData } from "@/utils/helpers"
+import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -26,6 +27,8 @@ export function GuestForm() {
     resolver: zodResolver(guestFormSchema),
     defaultValues: defaultFormValues
   })
+
+  const today = getTodayDate(); // Replace the existing today declaration
 
   // Generate new random data on page load only in non-production
   useEffect(() => {
@@ -214,7 +217,12 @@ export function GuestForm() {
               <FormItem>
                 <FormLabel>Check-in Date <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input 
+                    type="date" 
+                    min={today}
+                    {...field}
+                    onChange={(e) => handleCheckInDateChange(e, form)}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -248,7 +256,14 @@ export function GuestForm() {
               <FormItem>
                 <FormLabel>Check-out Date <span className="text-red-500">*</span></FormLabel>
                 <FormControl>
-                  <Input type="date" {...field} />
+                  <Input 
+                    type="date" 
+                    min={form.watch('checkInDate') ? form.watch('checkInDate') : today}
+                    {...field}
+                    onChange={(e) => {
+                      field.onChange(e.target.value);
+                    }}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

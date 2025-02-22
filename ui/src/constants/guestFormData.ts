@@ -1,4 +1,7 @@
 import { GuestFormData } from "@/lib/schemas/guestFormSchema";
+import { getDefaultDates, formatDateToYYYYMMDD } from "@/utils/dates";
+
+const { today, tomorrow } = getDefaultDates();
 
 export const defaultFormValues: Partial<GuestFormData> = {
     guestFacebookName: '',
@@ -6,8 +9,8 @@ export const defaultFormValues: Partial<GuestFormData> = {
     guestEmail: '',
     guestPhoneNumber: '',
     guestAddress: '',
-    checkInDate: '',
-    checkOutDate: '',
+    checkInDate: formatDateToYYYYMMDD(today),
+    checkOutDate: formatDateToYYYYMMDD(tomorrow),
     checkInTime: '14:00',
     checkOutTime: '11:00',
     nationality: 'Filipino',
