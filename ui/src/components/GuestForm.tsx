@@ -33,7 +33,7 @@ export function GuestForm() {
 
   // Generate new random data on page load only in non-production
   useEffect(() => {
-    // handleGenerateNewData();
+    handleGenerateNewData();
   }, []);
 
   // Update file input when generating new data

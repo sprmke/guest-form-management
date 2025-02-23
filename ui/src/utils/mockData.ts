@@ -4,33 +4,51 @@ import { guestFormSchema } from "@/lib/schemas/guestFormSchema";
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
-const streets = ['Main St', 'Oak Ave', 'Maple Rd', 'Cedar Ln', 'Pine Dr', 'Elm St', 'Park Ave'];
-const cities = ['New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia'];
-const findUsSources = ['Facebook', 'Instagram', 'Friend', 'Google', 'Other'];
-const findUsDetails = [
-  'John Smith recommended us',
-  'Maria Garcia told me about your place',
-  'Found through local community',
-  'Travel blog recommendation',
-  ''
-];
+const cities = ['San Fernando', 'Angeles', 'Mabalacat', 'Manila', 'Quezon', 'Makati', 'Pasig', 'Taguig'];
+const provinces = ['Pampanga', 'Metro Manila', 'Bulacan', 'Bataan', 'Zambales', 'Cavite', 'Laguna', 'Batangas'];
+const findUsSources = ['Facebook', 'Airbnb', 'Tiktok', 'Instagram', 'Friend', 'Others'];
+const carBrands = ['Toyota Vios', 'Honda Civic', 'Ford Ranger', 'Mitsubishi Xpander', 'Nissan Navara'];
+const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray'];
+const petNames = ['Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky'];
+const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon'];
 const requests = [
   'Early check-in if possible',
   'Late check-out needed',
   'Extra towels please',
   'Ground floor preferred',
   'Quiet room requested',
+  'Need extra pillows',
+  'Prefer higher floor',
   ''
 ];
-const carBrands = ['Toyota Camry', 'Honda Civic', 'Ford Mustang', 'BMW 3 Series', 'Mercedes C-Class'];
-const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray'];
-const petNames = ['Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky'];
-const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon'];
 
 const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
 const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min);
-const generateRandomName = () => `${randomElement(firstNames)} ${randomElement(lastNames)}`;
-const generateRandomPlate = () => `${randomElement(['A', 'B', 'C', 'D', 'E'])}${randomNumber(100, 999)}${randomElement(['X', 'Y', 'Z'])}${randomNumber(10, 99)}`;
+
+// Generate a valid name with at least 2 words, each word >= 2 characters
+const generateRandomName = () => {
+  const firstName = randomElement(firstNames);
+  const middleInitial = randomElement(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']);
+  const lastName = randomElement(lastNames);
+  return `${firstName} ${middleInitial}. ${lastName}`;
+};
+
+// Generate a valid plate number format
+const generateRandomPlate = () => {
+  const letters = randomElement(['ABC', 'XYZ', 'DEF', 'GHI', 'JKL']);
+  const numbers = randomNumber(100, 999);
+  return `${letters} ${numbers}`;
+};
+
+// Generate a valid phone number starting with 09
+const generateRandomPhoneNumber = () => {
+  return `09${randomNumber(100000000, 999999999)}`;
+};
+
+// Generate a valid address in "City, Province" format
+const generateRandomAddress = () => {
+  return `${randomElement(cities)}, ${randomElement(provinces)}`;
+};
 
 const generateDummyImage = (prefix: string) => {
   const formattedDateTime = dayjs().format('YYYY-MM-DD_HH-mm-ss');
@@ -63,9 +81,7 @@ export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, fi
 };
 
 export async function generateRandomData(): Promise<z.infer<typeof guestFormSchema>> {
-  const firstName = randomElement(firstNames);
-  const lastName = randomElement(lastNames);
-  const fullName = `${firstName} ${lastName}`;
+  const fullName = generateRandomName();
   
   // Generate a date between today and next 30 days for check-in
   const today = dayjs();
@@ -98,29 +114,42 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   // Calculate number of nights using dayjs
   const numberOfNights = dayjs(checkOut).diff(dayjs(checkIn), 'day');
 
+  const findUs = randomElement(findUsSources);
+  const findUsDetails = findUs === 'Friend' 
+    ? `${generateRandomName()} recommended your place`
+    : findUs === 'Others'
+    ? randomElement([
+        'Google search',
+        'Walk-in inquiry',
+        'Property agent referral',
+        'Local community group',
+        'Travel blog recommendation'
+      ])
+    : undefined;
+
   return {
-    guestFacebookName: `${fullName} FB`,
+    guestFacebookName: fullName,
     primaryGuestName: fullName,
-    guestEmail: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-    guestPhoneNumber: `${randomNumber(100, 999)}${randomNumber(100, 999)}${randomNumber(1000, 9999)}`,
-    guestAddress: `${randomNumber(1, 999)} ${randomElement(streets)}, ${randomElement(cities)}`,
+    guestEmail: `${fullName.toLowerCase().replace(/[^a-z]/g, '')}@example.com`,
+    guestPhoneNumber: generateRandomPhoneNumber(),
+    guestAddress: generateRandomAddress(),
     checkInDate: checkIn,
     checkOutDate: checkOut,
     guest2Name,
     guest3Name,
     guest4Name,
     guestSpecialRequests: randomElement(requests),
-    findUs: randomElement(findUsSources),
-    findUsDetails: randomElement(findUsDetails),
+    findUs,
+    findUsDetails,
     needParking,
-    carPlateNumber: needParking ? generateRandomPlate() : '',
-    carBrandModel: needParking ? randomElement(carBrands) : '',
-    carColor: needParking ? randomElement(carColors) : '',
+    carPlateNumber: needParking ? generateRandomPlate() : undefined,
+    carBrandModel: needParking ? randomElement(carBrands) : undefined,
+    carColor: needParking ? randomElement(carColors) : undefined,
     hasPets,
-    petName: hasPets ? randomElement(petNames) : '',
-    petBreed: hasPets ? randomElement(petBreeds) : '',
-    petAge: hasPets ? `${randomNumber(1, 15)} years` : '',
-    petVaccinationDate: hasPets ? lastVaccination : '',
+    petName: hasPets ? randomElement(petNames) : undefined,
+    petBreed: hasPets ? randomElement(petBreeds) : undefined,
+    petAge: hasPets ? `${randomNumber(1, 15)} years` : undefined,
+    petVaccinationDate: hasPets ? lastVaccination : undefined,
     checkInTime: "14:00",
     checkOutTime: "11:00",
     nationality: "Filipino",
