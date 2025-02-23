@@ -9,10 +9,10 @@ export const guestFormSchema = z.object({
   guestFacebookName: z.string()
     .min(1, "Your Facebook name is required")
     .refine(
-      validateName,
+      (val) => validateName(val),
       "Please enter the exact name of your Facebook account"
     ),
-  primaryGuestName:  z.string()
+  primaryGuestName: z.string()
     .min(1, "Primary guest name is required")
     .refine(
       (val) => validateName(val),
@@ -27,7 +27,16 @@ export const guestFormSchema = z.object({
       (val) => /^09\d{9}$/.test(val),
       "Please enter a valid 11-digit phone number starting with '09' (ex. 09876543210)"
     ),
-  guestAddress: z.string().min(5, "Please enter your city and province"),
+  guestAddress: z.string()
+    .min(1, "Please enter your City and Province")
+    .transform(val => val.trim())
+    .refine(
+      (val) => {
+        const [city, province] = val.split(',').map(part => part.trim());
+        return city && province && !val.includes(',,') && city.length >= 2 && province.length >= 2;
+      },
+      "Please follow this address format: City, Province (ex. San Fernando, Pampanga)"
+    ),
   checkInDate: z.string().min(1, "Please select your check-in date").default(formatDateToYYYYMMDD(today)),
   checkOutDate: z.string().min(1, "Please select your check-out date").default(formatDateToYYYYMMDD(tomorrow)),
   findUs: z.string().min(1, "Please tell us how you found us"),
