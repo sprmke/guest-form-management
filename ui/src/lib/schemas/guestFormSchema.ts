@@ -19,11 +19,18 @@ export const guestFormSchema = z.object({
       "Please enter the complete name of the primary guest"
     ),
   guestEmail: z.string().email("Please enter a valid email address"),
-  guestPhoneNumber: z.string().min(10, "Please enter a valid contact number"),
-  guestAddress: z.string().min(5, "Please enter your City and Province address"),
+  guestPhoneNumber: z.string()
+    .min(11, "Phone number must be 11 digits (ex. 09876543210)")
+    .max(11, "Phone number must be 11 digits (ex. 09876543210)")
+    .transform(val => val.replace(/\s+/g, '')) // Remove all whitespace
+    .refine(
+      (val) => /^09\d{9}$/.test(val),
+      "Please enter a valid 11-digit phone number starting with '09' (ex. 09876543210)"
+    ),
+  guestAddress: z.string().min(5, "Please enter your city and province"),
   checkInDate: z.string().min(1, "Please select your check-in date").default(formatDateToYYYYMMDD(today)),
   checkOutDate: z.string().min(1, "Please select your check-out date").default(formatDateToYYYYMMDD(tomorrow)),
-  findUs: z.string().min(1, "Please tell us how you found our listing"),
+  findUs: z.string().min(1, "Please tell us how you found us"),
   
   // Required fields with defaults
   checkInTime: z.string().min(1, "Please select your preferred check-in time").default("14:00"),
