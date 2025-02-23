@@ -99,18 +99,6 @@ export const guestFormSchema = z.object({
   towerAndUnitNumber: z.string().default("Monaco 2604"),
   ownerOnsiteContactPerson: z.string().default("Arianna Perez"),
   ownerContactNumber: z.string().default("0962 541 2941"),
-}).superRefine((data, ctx) => {
-  const totalGuests = data.numberOfAdults + data.numberOfChildren;
-  
-  if (totalGuests >= 2 && !data.guest2Name) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the second guest", path: ["guest2Name"] });
-  }
-  if (totalGuests >= 3 && !data.guest3Name) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the third guest", path: ["guest3Name"] });
-  }
-  if (totalGuests >= 4 && !data.guest4Name) {
-    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the fourth guest", path: ["guest4Name"] });
-  }
 });
 
 export type GuestFormData = z.infer<typeof guestFormSchema> 
