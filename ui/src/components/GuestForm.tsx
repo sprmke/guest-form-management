@@ -25,7 +25,8 @@ export function GuestForm() {
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: defaultFormValues
+    defaultValues: defaultFormValues,
+    mode: "all"
   })
 
   const today = getTodayDate(); // Replace the existing today declaration
@@ -443,10 +444,10 @@ export function GuestForm() {
           name="primaryGuestName"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Primary Guest Name <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>1. Primary Guest - Name <span className="text-red-500">*</span></FormLabel>
               <FormControl>
                 <Input 
-                  placeholder="Primary Guest - Full Name" 
+                  placeholder="Complete name of Primary Guest"
                   {...field} 
                   onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
                 />
@@ -459,9 +460,6 @@ export function GuestForm() {
         {/* Dynamic Additional Guests Fields */}
         {additionalGuestsNeeded > 0 && (
           <div className="space-y-4">
-            <label className="block text-sm font-medium">
-              Additional Guests <span className="text-red-500">*</span>
-            </label>
             {Array.from({ length: additionalGuestsNeeded }).map((_, index) => (
               <FormField
                 key={index}
@@ -469,13 +467,23 @@ export function GuestForm() {
                 name={`guest${index + 2}Name` as keyof GuestFormData}
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>
+                     {index + 2}. {
+                       index + 2 === 2 ? "Second" :
+                       index + 2 === 3 ? "Third" :
+                       "Fourth"
+                     } Guest - Name <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder={`Guest ${index + 2} - Full Name (Required)`} 
+                        placeholder={`Complete name of ${
+                          index + 2 === 2 ? "Second Guest" :
+                          index + 2 === 3 ? "Third Guest" :
+                          "Fourth Guest"
+                        }`}
                         {...field}
                         value={field.value?.toString() ?? ''}
                         onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
-                        required
                       />
                     </FormControl>
                     <FormMessage />

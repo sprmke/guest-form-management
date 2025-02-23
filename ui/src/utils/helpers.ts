@@ -11,7 +11,8 @@ export const addFileToFormData = (formData: FormData, fieldName: string, maxSize
 };
 
 // Custom name validation function
-export const validateName = (name: string) => {
+export const validateName = (name: string = '') => {
+  if (!name) return false;
   const words = name.trim().split(/\s+/);
   if (words.length < 2) return false;
   return words.every(word => word.length >= 2);
