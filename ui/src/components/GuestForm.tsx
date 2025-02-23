@@ -32,7 +32,7 @@ export function GuestForm() {
 
   // Generate new random data on page load only in non-production
   useEffect(() => {
-    handleGenerateNewData();
+    // handleGenerateNewData();
   }, []);
 
   // Update file input when generating new data
@@ -184,7 +184,23 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Guest Phone Number <span className="text-red-500">*</span></FormLabel>
               <FormControl>
-                <Input type="tel" placeholder="Ex. 0987 654 3210" {...field} />
+                <Input 
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Ex. 09876543210"
+                  {...field}
+                  value={field.value || ''}
+                  onChange={(e) => {
+                    // Only allow numbers
+                    const value = e.target.value.replace(/[^\d]/g, '');
+                    // Limit to 11 digits
+                    const trimmed = value.slice(0, 11);
+                    field.onChange(trimmed);
+                    
+                    // Trigger validation on change
+                    form.trigger("guestPhoneNumber");
+                  }}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
