@@ -10,10 +10,38 @@ export const addFileToFormData = (formData: FormData, fieldName: string, maxSize
   formData.append(fieldName, file);
 };
 
+// Handle name input change
+export const handleNameInputChange = (
+  e: React.ChangeEvent<HTMLInputElement>,
+  onChange: (value: string) => void,
+  transformValue: (value: string) => string = (v) => v
+) => {
+  const input = e.target;
+  const start = input.selectionStart;
+  const end = input.selectionEnd;
+  const value = transformValue(input.value);
+  
+  onChange(value);
+  
+  // Restore cursor position after React rerender
+  requestAnimationFrame(() => {
+    input.selectionStart = start;
+    input.selectionEnd = end;
+  });
+};
+
 // Custom name validation function
 export const validateName = (name: string = '') => {
   if (!name) return false;
   const words = name.trim().split(/\s+/);
+  
+  // Must have at least 2 words
   if (words.length < 2) return false;
-  return words.every(word => word.length >= 2);
+
+  // First and last words must be at least 2 characters
+  if (words[0].length < 2 || words[words.length - 1].length < 2) return false;
+
+  // Middle parts can be single letters (for initials) or 2+ characters
+  const middleWords = words.slice(1, -1);
+  return middleWords.every(word => word.length >= 1);
 };

@@ -10,7 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { addFileToFormData } from "@/utils/helpers"
+import { addFileToFormData, handleNameInputChange } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
@@ -156,7 +156,7 @@ export function GuestForm() {
                 <Input 
                   placeholder="Your username/full name in Facebook" 
                   {...field} 
-                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                  onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
                 />
               </FormControl>
               <FormMessage />
@@ -449,7 +449,7 @@ export function GuestForm() {
                 <Input 
                   placeholder="Complete name of Primary Guest"
                   {...field} 
-                  onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                  onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
                 />
               </FormControl>
               <FormMessage />
@@ -483,7 +483,7 @@ export function GuestForm() {
                         }`}
                         {...field}
                         value={field.value?.toString() ?? ''}
-                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                        onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
                       />
                     </FormControl>
                     <FormMessage />
