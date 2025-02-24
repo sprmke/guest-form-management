@@ -448,7 +448,7 @@ export function GuestForm() {
 
         {totalGuests >= 4 && (
           <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
-            <span className="block text-sm sm:inline">Please note that Azure North only allows a maximum of 4 adults on the guest form. However, our unit can accommodate up to 4 adults and 2 children. But if you're more than 4 adults, please inform us directly on our Facebook page.</span>
+            <span className="block text-sm sm:inline">Please note that Azure North only allows a maximum of 4 pax on the guest form. However, our unit can accommodate up to 4 adults and 2 children. But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.</span>
           </div>
         )}
 
