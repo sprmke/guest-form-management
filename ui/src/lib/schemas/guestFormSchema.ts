@@ -99,6 +99,33 @@ export const guestFormSchema = z.object({
   towerAndUnitNumber: z.string().default("Monaco 2604"),
   ownerOnsiteContactPerson: z.string().default("Arianna Perez"),
   ownerContactNumber: z.string().default("0962 541 2941"),
+}).superRefine((data, ctx) => {
+  const totalGuests = data.numberOfAdults + data.numberOfChildren;
+  
+  // Validate guest names based on total guests
+  if (totalGuests >= 2 && !data.guest2Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the second guest", path: ["guest2Name"] });
+  }
+  if (totalGuests >= 3 && !data.guest3Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the third guest", path: ["guest3Name"] });
+  }
+  if (totalGuests >= 4 && !data.guest4Name) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the fourth guest", path: ["guest4Name"] });
+  }
+
+  // Validate check-in and check-out times when dates are the same
+  if (data.checkInDate === data.checkOutDate) {
+    const checkInTime = data.checkInTime ? new Date(`1970-01-01T${data.checkInTime}`) : null;
+    const checkOutTime = data.checkOutTime ? new Date(`1970-01-01T${data.checkOutTime}`) : null;
+
+    if (checkInTime && checkOutTime && checkOutTime <= checkInTime) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Check-out time must be later than check-in time when checking out on the same day",
+        path: ["checkOutTime"]
+      });
+    }
+  }
 });
 
 export type GuestFormData = z.infer<typeof guestFormSchema> 

@@ -279,6 +279,7 @@ export function GuestForm() {
                     {...field}
                     onChange={(e) => {
                       field.onChange(e.target.value);
+                      form.trigger("checkOutTime");
                     }}
                   />
                 </FormControl>
