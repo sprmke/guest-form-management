@@ -141,7 +141,7 @@ export function GuestForm() {
     }
   }
 
-  // Calculate total number of additional guests needed, capped at 4
+  // Calculate total number of additional guests needed, capped at 6
   const totalGuests = (form.watch("numberOfAdults") || 1) + (form.watch("numberOfChildren") || 0)
   const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)) // Cap at 3 additional guests
 
@@ -347,13 +347,11 @@ export function GuestForm() {
                     type="button"
                     variant="outline"
                     className="px-3 rounded-r-none"
-                    disabled={field.value <= 1 || (field.value + (form.getValues("numberOfChildren") || 0) <= 1)}
+                    disabled={field.value <= 1} // Always require at least 1 adult
                     onClick={() => {
                       const currentChildren = form.getValues("numberOfChildren") || 0;
-                      const newValue = Math.max(1, (parseInt((field as any).value as string) || 1) - 1);
-                      if (newValue + currentChildren <= 4) {
-                        field.onChange(newValue);
-                      }
+                      const newValue = Math.max(1, (field.value || 1) - 1);
+                      field.onChange(newValue);
                     }}
                   >
                     -
@@ -375,11 +373,11 @@ export function GuestForm() {
                     type="button"
                     variant="outline"
                     className="px-3 rounded-l-none"
-                    disabled={(field.value + (form.getValues("numberOfChildren") || 0)) >= 4}
+                    disabled={field.value >= 4 || totalGuests >= 6} // Max 4 adults or total 6 guests
                     onClick={() => {
                       const currentChildren = form.getValues("numberOfChildren") || 0;
-                      const newValue = (parseInt((field as any).value as string) || 1) + 1;
-                      if (newValue + currentChildren <= 4) {
+                      const newValue = Math.min(4, (field.value || 1) + 1);
+                      if (newValue + currentChildren <= 6) {
                         field.onChange(newValue);
                       }
                     }}
@@ -406,10 +404,8 @@ export function GuestForm() {
                     disabled={field.value <= 0}
                     onClick={() => {
                       const currentAdults = form.getValues("numberOfAdults") || 1;
-                      const newValue = Math.max(0, (parseInt((field as any).value as string) || 0) - 1);
-                      if (newValue + currentAdults <= 4) {
-                        field.onChange(newValue);
-                      }
+                      const newValue = Math.max(0, (field.value || 0) - 1);
+                      field.onChange(newValue);
                     }}
                   >
                     -
@@ -420,7 +416,7 @@ export function GuestForm() {
                       inputMode="numeric"
                       pattern="[0-9]*"
                       min="0"
-                      max="4"
+                      max="5"
                       readOnly
                       tabIndex={-1}
                       className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
@@ -432,11 +428,11 @@ export function GuestForm() {
                     color="green"
                     variant="outline"
                     className="px-3 rounded-l-none"
-                    disabled={(field.value + (form.getValues("numberOfAdults") || 1)) >= 4}
+                    disabled={totalGuests >= 6 || field.value >= 5} // Max total 6 guests or 5 children
                     onClick={() => {
                       const currentAdults = form.getValues("numberOfAdults") || 1;
-                      const newValue = (parseInt((field as any).value as string) || 0) + 1;
-                      if (newValue + currentAdults <= 4) {
+                      const newValue = (field.value || 0) + 1;
+                      if (newValue + currentAdults <= 6) {
                         field.onChange(newValue);
                       }
                     }}
@@ -449,6 +445,12 @@ export function GuestForm() {
             )}
           />
         </div>
+
+        {totalGuests >= 4 && (
+          <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+            <span className="block text-sm sm:inline">Please note that Azure North only allows a maximum of 4 adults on the guest form. However, our unit can accommodate up to 4 adults and 2 children. But if you're more than 4 adults, please inform us directly on our Facebook page.</span>
+          </div>
+        )}
 
         <FormField
           control={form.control}
