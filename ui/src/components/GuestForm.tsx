@@ -13,6 +13,7 @@ import { defaultFormValues } from "@/constants/guestFormData"
 import { addFileToFormData, handleNameInputChange } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
+import { HelpCircle } from 'lucide-react'
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -349,7 +350,6 @@ export function GuestForm() {
                     className="px-3 rounded-r-none"
                     disabled={field.value <= 1} // Always require at least 1 adult
                     onClick={() => {
-                      const currentChildren = form.getValues("numberOfChildren") || 0;
                       const newValue = Math.max(1, (field.value || 1) - 1);
                       field.onChange(newValue);
                     }}
@@ -403,7 +403,6 @@ export function GuestForm() {
                     className="px-3 rounded-r-none"
                     disabled={field.value <= 0}
                     onClick={() => {
-                      const currentAdults = form.getValues("numberOfAdults") || 1;
                       const newValue = Math.max(0, (field.value || 0) - 1);
                       field.onChange(newValue);
                     }}
@@ -448,7 +447,12 @@ export function GuestForm() {
 
         {totalGuests >= 4 && (
           <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
-            <span className="block text-sm sm:inline">Please note that Azure North only allows a maximum of 4 pax on the guest form. However, our unit can accommodate up to 4 adults and 2 children. But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.</span>
+            <div className="flex gap-2 items-start">
+              <HelpCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+              <span className="block text-sm sm:inline">
+                Please note that Azure North only allows a maximum of 4 pax on the guest form. However, our unit can accommodate up to 4 adults and 2 children. But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.
+              </span>
+            </div>
           </div>
         )}
 
@@ -594,6 +598,15 @@ export function GuestForm() {
 
           {form.watch("needParking") && (
             <div className="pl-6 space-y-4">
+              <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+                <div className="flex flex-col gap-y-4 text-sm">
+                  <p className="font-bold">🚙 Azure North Parking Reminder</p>
+                  <p>Please note that vehicles without a designated parking slot are allowed to enter for <span className="font-semibold">drop-off only</span> in front of the Tower entrance.</p>
+                  <p><span className="font-semibold">FREE parking is available outside Azure North</span> in front of the gate entrance and Home Depot, just 3-5 minutes walk to Azure North Monaco Tower.</p>
+                  <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">P400 per night</span>. To ensure hassle-free entry to our unit, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
+                </div>
+              </div>
+
               <FormField
                 control={form.control}
                 name="carPlateNumber"
