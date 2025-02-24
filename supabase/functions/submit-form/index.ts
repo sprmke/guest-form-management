@@ -3,6 +3,7 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
 import { generatePDF } from '../_shared/pdfService.ts'
 import { sendEmail } from '../_shared/emailService.ts'
+import { CalendarService } from '../_shared/calendarService.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -18,6 +19,12 @@ serve(async (req) => {
       throw new Error(`Method ${req.method} not allowed`)
     }
 
+    // Get URL parameters
+    const url = new URL(req.url)
+    const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
+    const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
+    const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
+
     // Get and process form data
     const formData = await req.formData()
     console.log('Received form data:', Object.fromEntries(formData.entries()))
@@ -25,11 +32,21 @@ serve(async (req) => {
     // Process form data and save to database
     const { data, submissionData } = await DatabaseService.processFormData(formData)
 
-    // Generate PDF
-    const pdfBuffer = await generatePDF(data)
+    let pdfBuffer = null
+    // Generate PDF if enabled
+    if (isPDFGenerationEnabled) {
+      pdfBuffer = await generatePDF(data)
+    }
 
-    // Send email
-    await sendEmail(data, pdfBuffer)
+    // Send email if enabled
+    if (isSendEmailEnabled) {
+      await sendEmail(data, pdfBuffer)
+    }
+
+    // Create calendar event if enabled
+    if (isCalendarUpdateEnabled) {
+      await CalendarService.createCalendarEvent(data)
+    }
 
     console.log('Form submission process completed successfully')
 
@@ -38,7 +55,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         data: submissionData,
-        message: 'Form submitted successfully. Confirmation email has been sent.'
+        message: 'Form submitted successfully.'
       }),
       {
         headers: {

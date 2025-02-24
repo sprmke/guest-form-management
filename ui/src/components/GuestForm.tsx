@@ -12,6 +12,7 @@ import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSche
 import { defaultFormValues } from "@/constants/guestFormData"
 import { addFileToFormData, handleNameInputChange } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
+import { useSearchParams } from 'react-router-dom'
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -21,7 +22,8 @@ export function GuestForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const validIdInputRef = useRef<HTMLInputElement>(null);
+  const validIdInputRef = useRef<HTMLInputElement>(null)
+  const [searchParams] = useSearchParams()
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
@@ -58,10 +60,8 @@ export function GuestForm() {
     setSubmitSuccess(false)
     
     try {
-      // Transform values to format fields before submission
-      const transformedValues = transformFieldValues(values);
-      
-      const formData = new FormData();
+      const transformedValues = transformFieldValues(values)
+      const formData = new FormData()
       
       // Add all form values to FormData, excluding paymentReceipt and validId
       Object.entries(transformedValues).forEach(([key, value]) => {
@@ -80,10 +80,20 @@ export function GuestForm() {
       addFileToFormData(formData, 'paymentReceipt');
       addFileToFormData(formData, 'validId');
 
-      const response = await fetch(`${apiUrl}/submit-form`, {
+      // Build URL with query parameters
+      const queryParams = new URLSearchParams();
+      ['generatePdf', 'sendEmail', 'updateGoogleCalendar'].forEach(param => {
+        if (searchParams.get(param) === 'true') {
+          queryParams.append(param, 'true');
+        }
+      });
+
+      const apiUrlWithParams = `${apiUrl}/submit-form${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+
+      const response = await fetch(apiUrlWithParams, {
         method: 'POST',
         body: formData
-      });
+      })
 
       if (!response.ok) {
         const errorData = await response.json();
