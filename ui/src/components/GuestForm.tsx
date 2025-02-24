@@ -512,7 +512,7 @@ export function GuestForm() {
             <FormItem>
               <FormLabel>Special requests / Notes to owner</FormLabel>
               <FormControl>
-                <Textarea placeholder="Ex. Late check-in, extra towels, cash payment for balance payment, etc." {...field} />
+                <Textarea placeholder="Ex. Late check-in, cash only for balance payment, etc." {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
