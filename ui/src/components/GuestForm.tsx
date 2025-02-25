@@ -13,7 +13,6 @@ import { defaultFormValues } from "@/constants/guestFormData"
 import { addFileToFormData, handleNameInputChange } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
-import { HelpCircle } from 'lucide-react'
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -84,9 +83,7 @@ export function GuestForm() {
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
       ['generatePdf', 'sendEmail', 'updateGoogleCalendar'].forEach(param => {
-        if (searchParams.get(param) === 'true') {
-          queryParams.append(param, 'true');
-        }
+        queryParams.append(param, searchParams.get(param) === 'false' ? 'false' : 'true');
       });
 
       const apiUrlWithParams = `${apiUrl}/submit-form${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
@@ -447,14 +444,11 @@ export function GuestForm() {
 
         {totalGuests >= 4 && (
           <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
-            <div className="flex gap-3 items-start">
-              <HelpCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <span className="text-sm">
-                Please note that Azure North only allows a maximum of 4 pax on the guest form.
-                However, our unit can accommodate up to 4 adults and 2 children.
-                But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.
-              </span>
-            </div>
+            <p className="text-sm">
+              Please note that Azure North only allows a maximum of 4 pax on the guest form.
+              However, our unit can accommodate up to 4 adults and 2 children.
+              But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.
+            </p>
           </div>
         )}
 
