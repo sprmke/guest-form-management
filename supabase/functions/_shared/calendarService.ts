@@ -63,12 +63,11 @@ export class CalendarService {
     const eventSummary = `Guest Stay: ${formData.primaryGuestName}`;
     const eventDescription = `
       Guest Details:
-      - Name: ${formData.primaryGuestName}
+      - Primary Guest: ${formData.primaryGuestName}
       - Email: ${formData.guestEmail}
-      - Phone: ${formData.guestPhoneNumber}
+      - Phone Number: ${formData.guestPhoneNumber}
       - Number of Adults: ${formData.numberOfAdults}
       - Number of Children: ${formData.numberOfChildren}
-      ${formData.guestSpecialRequests ? `\nSpecial Requests:\n${formData.guestSpecialRequests}` : ''}
     `.trim();
 
     const checkInDateTime = this.formatDateTime(formData.checkInDate, formData.checkInTime);
