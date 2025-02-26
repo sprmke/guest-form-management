@@ -87,14 +87,14 @@ export class DatabaseService {
       );
       const submissionData = await this.saveGuestSubmission(dbData);
 
-      return { data, submissionData };
+      return { data, submissionData, validIdUrl, paymentReceiptUrl };
     } catch (error) {
       console.error('Error processing form data:', error);
       throw new Error('Failed to process form data: ' + error.message);
     }
   }
 
-  private static async saveGuestSubmission(formData: any) {
+  private static async saveGuestSubmission(formData: FormData) {
     console.log('Saving submission to database...');
     
     const { data, error } = await this.supabase

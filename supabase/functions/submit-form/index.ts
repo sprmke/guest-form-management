@@ -27,10 +27,9 @@ serve(async (req) => {
 
     // Get and process form data
     const formData = await req.formData()
-    console.log('Received form data:', Object.fromEntries(formData.entries()))
     
     // Process form data and save to database
-    const { data, submissionData } = await DatabaseService.processFormData(formData)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl } = await DatabaseService.processFormData(formData)
 
     let pdfBuffer = null
     // Generate PDF if enabled
@@ -45,7 +44,7 @@ serve(async (req) => {
 
     // Create calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createCalendarEvent(data)
+      await CalendarService.createCalendarEvent(data, validIdUrl, paymentReceiptUrl)
     }
 
     console.log('Form submission process completed successfully')
