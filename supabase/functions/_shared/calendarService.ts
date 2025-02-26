@@ -62,17 +62,50 @@ export class CalendarService {
   private static createEventData(formData: GuestFormData) {
     const eventSummary = `Guest Stay: ${formData.primaryGuestName}`;
     const eventDescription = `
-      Guest Details:
-      - Primary Guest: ${formData.primaryGuestName}
-      - Email: ${formData.guestEmail}
-      - Phone Number: ${formData.guestPhoneNumber}
-      - Number of Adults: ${formData.numberOfAdults}
-      - Number of Children: ${formData.numberOfChildren}
-      ${formData.carPlateNumber ? `- Car Plate Number: ${formData.carPlateNumber}` : ''}
-      ${formData.carBrand ? `- Car Brand: ${formData.carBrand}` : ''}
-      ${formData.carModel ? `- Car Model: ${formData.carModel}` : ''}
-      ${formData.carColor ? `- Car Color: ${formData.carColor}` : ''}
-      ${formData.parkingSlotNumber ? `- Parking Slot Number: ${formData.parkingSlotNumber}` : ''}
+      Guest Information
+      ----------------
+      Facebook Name: ${formData.guestFacebookName}
+      Primary Guest: ${formData.primaryGuestName}
+      Email: ${formData.guestEmail}
+      Phone Number: ${formData.guestPhoneNumber}
+      Address: ${formData.guestAddress}
+      Nationality: ${formData.nationality}
+
+      ${formData.guest2Name || formData.guest3Name || formData.guest4Name || formData.guest5Name ? `Additional Guests\n---------------\n` : ''}
+      ${formData.guest2Name ? `- Guest 2: ${formData.guest2Name}\n` : ''}${formData.guest3Name ? `- Guest 3: ${formData.guest3Name}\n` : ''}${formData.guest4Name ? `- Guest 4: ${formData.guest4Name}\n` : ''}${formData.guest5Name ? `- Guest 5: ${formData.guest5Name}\n` : ''}
+      
+      Stay Details
+      -----------
+      Check-in Date: ${formData.checkInDate} ${formData.checkInTime}
+      Check-out Date: ${formData.checkOutDate} ${formData.checkOutTime}
+      Number of Nights: ${formData.numberOfNights || 'N/A'}
+      Number of Adults: ${formData.numberOfAdults}
+      Number of Children: ${formData.numberOfChildren}
+
+      Parking Information
+      -----------------
+      ${formData.needParking ? `Parking Required: Yes
+      Car Plate: ${formData.carPlateNumber || 'N/A'}
+      Car Brand/Model: ${formData.carBrandModel || 'N/A'}
+      Car Color: ${formData.carColor || 'N/A'}` : 'Parking Required: No'}
+
+      Pet Information
+      -------------
+      ${formData.hasPets ? `Has Pets: Yes
+      Pet Name: ${formData.petName || 'N/A'}
+      Pet Breed: ${formData.petBreed || 'N/A'}
+      Pet Age: ${formData.petAge || 'N/A'}
+      Vaccination Date: ${formData.petVaccinationDate || 'N/A'}` : 'Has Pets: No'}
+
+      Additional Information
+      -------------------
+      How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formData.findUsDetails}` : ''}
+      Special Requests: ${formData.guestSpecialRequests || 'None'}
+
+      Documents
+      --------
+      Payment Receipt: ${formData.paymentReceiptUrl}
+      Valid ID: ${formData.validIdUrl}
     `.trim();
 
     const checkInDateTime = this.formatDateTime(formData.checkInDate, formData.checkInTime);
