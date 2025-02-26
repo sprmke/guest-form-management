@@ -112,10 +112,7 @@ export function GuestForm() {
       }
 
       // Reset form and show success message
-      if (!isProduction) {
-        const newData = await generateRandomData();
-        form.reset(newData);
-      } else {
+      if (isProduction) {
         form.reset(defaultFormValues);
       }
       if (fileInputRef.current) {

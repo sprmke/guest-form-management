@@ -72,10 +72,15 @@ Primary Guest: ${formData.primaryGuestName}
 Email: ${formData.guestEmail}
 Phone Number: ${formData.guestPhoneNumber}
 Address: ${formData.guestAddress}
-Nationality: ${formData.nationality}\n${formData.guest2Name || formData.guest3Name || formData.guest4Name || formData.guest5Name ? `<strong>Additional Guests</strong>\n` : ''}${formData.guest2Name ? `Guest 2: ${formData.guest2Name}\n` : ''}${formData.guest3Name ? `Guest 3: ${formData.guest3Name}\n` : ''}${formData.guest4Name ? `Guest 4: ${formData.guest4Name}\n` : ''}${formData.guest5Name ? `Guest 5: ${formData.guest5Name}\n` : ''}
+Nationality: ${formData.nationality}
+
+<strong>Additional Guests</strong>
+${!formData.guest2Name && !formData.guest3Name && !formData.guest4Name && !formData.guest5Name ? 'No additional guest\n' : `${formData.guest2Name ? `Guest 2: ${formData.guest2Name}\n` : ''}${formData.guest3Name ? `Guest 3: ${formData.guest3Name}\n` : ''}${formData.guest4Name ? `Guest 4: ${formData.guest4Name}\n` : ''}${formData.guest5Name ? `Guest 5: ${formData.guest5Name}\n` : ''}`}
 <strong>Stay Details</strong>
-Check-in Date: ${formData.checkInDate} ${formData.checkInTime}
-Check-out Date: ${formData.checkOutDate} ${formData.checkOutTime}
+Check-in Date: ${formData.checkInDate}
+Check-out Date: ${formData.checkOutDate}
+Check-in Time: ${formData.checkInTime}
+Check-out Time: ${formData.checkOutTime}
 Number of Nights: ${formData.numberOfNights || 'N/A'}
 Number of Adults: ${formData.numberOfAdults}
 Number of Children: ${formData.numberOfChildren}
