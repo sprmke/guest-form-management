@@ -68,6 +68,11 @@ export class CalendarService {
       - Phone Number: ${formData.guestPhoneNumber}
       - Number of Adults: ${formData.numberOfAdults}
       - Number of Children: ${formData.numberOfChildren}
+      ${formData.carPlateNumber ? `- Car Plate Number: ${formData.carPlateNumber}` : ''}
+      ${formData.carBrand ? `- Car Brand: ${formData.carBrand}` : ''}
+      ${formData.carModel ? `- Car Model: ${formData.carModel}` : ''}
+      ${formData.carColor ? `- Car Color: ${formData.carColor}` : ''}
+      ${formData.parkingSlotNumber ? `- Parking Slot Number: ${formData.parkingSlotNumber}` : ''}
     `.trim();
 
     const checkInDateTime = this.formatDateTime(formData.checkInDate, formData.checkInTime);
