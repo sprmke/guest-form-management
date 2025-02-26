@@ -7,8 +7,6 @@ export class CalendarService {
       
       const credentials = await this.getCredentials();
       const eventData = this.createEventData(formData, validIdUrl, paymentReceiptUrl);
-      
-      console.log('Calendar event data:', eventData);
 
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
