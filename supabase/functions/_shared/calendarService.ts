@@ -58,6 +58,12 @@ export class CalendarService {
    * Creates the event data object for Google Calendar
    */
   private static createEventData(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
+    // Format URLs to ensure they are publicly accessible
+    const formatPublicUrl = (url: string) => {
+      // If URL contains kong:8000, replace it with the correct public URL
+      return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
+    };
+
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.primaryGuestName}`;
     const eventDescription = `
 <strong>Guest Information</strong>
@@ -93,8 +99,8 @@ How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formDat
 Special Requests: ${formData.guestSpecialRequests || 'None'}
 
 <strong>Documents</strong>
-Payment Receipt: ${paymentReceiptUrl}
-Valid ID: ${validIdUrl}
+Payment Receipt: ${formatPublicUrl(paymentReceiptUrl)}
+Valid ID: ${formatPublicUrl(validIdUrl)}
     `.trim();
 
     const checkInDateTime = this.formatDateTime(formData.checkInDate, formData.checkInTime);
