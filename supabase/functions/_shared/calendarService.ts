@@ -1,36 +1,95 @@
+import { formatPublicUrl } from './utils';
 import { GuestFormData } from './types.ts';
 
 export class CalendarService {
-  static async createCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
+  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, bookingId?: string) {
     try {
-      console.log('Creating calendar event...');
+      console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
       const eventData = this.createEventData(formData, validIdUrl, paymentReceiptUrl);
 
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(eventData),
-        }
-      );
+      // If bookingId exists, try to find existing calendar event
+      let existingEventId = null;
+      if (bookingId) {
+        existingEventId = await this.findExistingEvent(credentials, bookingId);
+      }
+
+      let response;
+      if (existingEventId) {
+        // Update existing event
+        response = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${existingEventId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(eventData),
+          }
+        );
+      } else {
+        // Create new event
+        response = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...eventData,
+              extendedProperties: {
+                private: {
+                  bookingId: bookingId || ''
+                }
+              }
+            }),
+          }
+        );
+      }
 
       if (!response.ok) {
         const error = await response.json();
         console.error('Calendar API Response:', { status: response.status, error });
-        throw new Error(`Failed to create calendar event: ${JSON.stringify(error)}`);
+        throw new Error(`Failed to ${existingEventId ? 'update' : 'create'} calendar event: ${JSON.stringify(error)}`);
       }
 
-      console.log('Calendar event created successfully');
+      console.log(`Calendar event ${existingEventId ? 'updated' : 'created'} successfully`);
       return await response.json();
     } catch (error) {
-      console.error('Error creating calendar event:', error);
-      throw new Error('Failed to create calendar event');
+      console.error('Error with calendar event:', error);
+      throw new Error(`Failed to ${bookingId ? 'update' : 'create'} calendar event`);
+    }
+  }
+
+  private static async findExistingEvent(credentials: any, bookingId: string): Promise<string | null> {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events?privateExtendedProperty=bookingId=${bookingId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to search for existing event');
+      }
+
+      const data = await response.json();
+      if (data.items && data.items.length > 0) {
+        return data.items[0].id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error finding existing event:', error);
+      return null;
     }
   }
 
@@ -58,12 +117,6 @@ export class CalendarService {
    * Creates the event data object for Google Calendar
    */
   private static createEventData(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
-    // Format URLs to ensure they are publicly accessible
-    const formatPublicUrl = (url: string) => {
-      // If URL contains kong:8000, replace it with the correct public URL
-      return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
-    };
-
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.primaryGuestName}`;
     const eventDescription = `
 <strong>Guest Information</strong>
