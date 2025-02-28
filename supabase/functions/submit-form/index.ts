@@ -8,7 +8,7 @@ import { CalendarService } from '../_shared/calendarService.ts'
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { headers: corsHeaders(req) })
   }
 
   try {
@@ -24,12 +24,13 @@ serve(async (req) => {
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
     const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
+    const bookingId = url.searchParams.get('bookingId')
 
     // Get and process form data
     const formData = await req.formData()
     
     // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl } = await DatabaseService.processFormData(formData)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl } = await DatabaseService.processFormData(formData, bookingId)
 
     let pdfBuffer = null
     // Generate PDF if enabled
@@ -42,9 +43,9 @@ serve(async (req) => {
       await sendEmail(data, pdfBuffer)
     }
 
-    // Create calendar event if enabled
+    // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createCalendarEvent(data, validIdUrl, paymentReceiptUrl)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, bookingId)
     }
 
     console.log('Form submission process completed successfully')
@@ -54,11 +55,11 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         data: submissionData,
-        message: 'Form submitted successfully.'
+        message: bookingId ? 'Form updated successfully.' : 'Form submitted successfully.'
       }),
       {
         headers: {
-          ...corsHeaders,
+          ...corsHeaders(req),
           'Content-Type': 'application/json',
         },
         status: 200,
@@ -75,7 +76,7 @@ serve(async (req) => {
       }),
       {
         headers: {
-          ...corsHeaders,
+          ...corsHeaders(req),
           'Content-Type': 'application/json',
         },
         status: 400,
