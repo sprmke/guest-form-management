@@ -54,6 +54,21 @@ export const DEFAULT_CHECK_IN_TIME = '14:00';
  */
 export const DEFAULT_CHECK_OUT_TIME = '11:00'; 
 
+/**
+ * Extracts a route parameter from a URL path
+ * @param pathname - The URL pathname
+ * @param routePattern - The route pattern to match (e.g., '/submit-form/')
+ * @returns The extracted parameter or null if not found
+ */
+export const extractRouteParam = (pathname: string, routePattern: string): string | null => {
+  // Escape special regex characters in the route pattern
+  const escapedPattern = routePattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Create a regex pattern that matches the route followed by a parameter
+  const regex = new RegExp(`${escapedPattern}([^\\/\\?]+)`);
+  const match = pathname.match(regex);
+  return match && match[1] ? match[1] : null;
+};
+
 // Format URLs to ensure they are publicly accessible
 export const formatPublicUrl = (url: string) => {
   // If URL contains kong:8000, replace it with the correct public URL
