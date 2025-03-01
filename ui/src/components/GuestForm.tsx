@@ -10,7 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { addFileToFormData, handleNameInputChange, validateImageFile } from "@/utils/helpers"
+import { addFileToFormData, handleNameInputChange, validateImageFile, fetchImageAsFile } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
 import { Upload, Loader2 } from 'lucide-react'
@@ -62,17 +62,29 @@ export function GuestForm() {
         }
 
         if (result.success && result.data) {
-          // Reset form with fetched data
-          form.reset(result.data);
-
+          const formData = { ...result.data };
+          
           // Set file input URLs if they exist
           if (result.data.paymentReceiptUrl) {
-            setPaymentReceiptPreview(result.data.paymentReceiptUrl);
+            // Fetch the image and convert it to a File object
+            const paymentReceiptFile = await fetchImageAsFile(result.data.paymentReceiptUrl);
+            if (paymentReceiptFile) {
+              formData.paymentReceipt = paymentReceiptFile;
+              setPaymentReceiptPreview(result.data.paymentReceiptUrl);
+            }
           }
 
           if (result.data.validIdUrl) {
-            setValidIdPreview(result.data.validIdUrl);
+            // Fetch the image and convert it to a File object
+            const validIdFile = await fetchImageAsFile(result.data.validIdUrl);
+            if (validIdFile) {
+              formData.validId = validIdFile;
+              setValidIdPreview(result.data.validIdUrl);
+            }
           }
+          
+          // Reset form with the modified data
+          form.reset(formData);
         } else {
           throw new Error('Invalid response format');
         }

@@ -70,3 +70,27 @@ export const validateImageFile = (file: File | null | undefined): { valid: boole
   
   return { valid: true };
 };
+
+// Fetches an image from a URL and converts it to a File object
+export const fetchImageAsFile = async (
+  imageUrl: string
+): Promise<File | null> => {
+  try {
+    const imageResponse = await fetch(imageUrl);
+    
+    if (!imageResponse.ok) {
+      console.error(`Failed to fetch image: ${imageResponse.status} ${imageResponse.statusText}`);
+      return null;
+    }
+    
+    const blob = await imageResponse.blob();
+    
+    // Extract the filename from the URL
+    const fileName = imageUrl.split('/').pop() || '';
+    
+    return new File([blob], fileName, { type: blob.type });
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return null;
+  }
+};
