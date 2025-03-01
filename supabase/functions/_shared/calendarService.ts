@@ -131,6 +131,9 @@ export class CalendarService {
   private static createEventData(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.primaryGuestName}`;
     const eventDescription = `
+<strong>Booking Id</strong>
+${bookingId}
+
 <strong>Guest Information</strong>
 Facebook Name: ${formData.guestFacebookName}
 Primary Guest: ${formData.primaryGuestName}
