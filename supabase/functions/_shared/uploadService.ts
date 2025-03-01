@@ -21,16 +21,21 @@ export class UploadService {
     originalFileName: string
   ): string {
     const formattedName = this.formatName(fullName);
-    return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}${this.getFileExtension(originalFileName)}`;
+    return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${originalFileName}`;
   }
 
   static async uploadPaymentReceipt(
-    file: File, 
+    file: File | null, 
     fullName: string, 
     checkInDate: string,
     checkOutDate: string
-  ): Promise<{ url: string; fileName: string }> {
+  ): Promise<string> {
     try {
+      if (!file) {
+        console.log('No payment receipt file provided, skipping upload');
+        return '';
+      }
+      
       const fileName = this.generateFileName(
         'payment_receipt',
         fullName,
@@ -38,7 +43,8 @@ export class UploadService {
         checkOutDate,
         file.name
       );
-      return await this.uploadFile(file, fileName, 'payment-receipts');
+      const { url } = await this.uploadFile(file, fileName, 'payment-receipts');
+      return url;
     } catch (error) {
       console.error('Error uploading payment receipt:', error);
       throw new Error('Failed to upload payment receipt');
@@ -46,12 +52,17 @@ export class UploadService {
   }
 
   static async uploadValidId(
-    file: File, 
+    file: File | null, 
     fullName: string, 
     checkInDate: string,
     checkOutDate: string
-  ): Promise<{ url: string; fileName: string }> {
+  ): Promise<string> {
     try {
+      if (!file) {
+        console.log('No valid ID file provided, skipping upload');
+        return '';
+      }
+      
       const fileName = this.generateFileName(
         'valid_id',
         fullName,
@@ -59,7 +70,8 @@ export class UploadService {
         checkOutDate,
         file.name
       );
-      return await this.uploadFile(file, fileName, 'valid-ids');
+      const { url } = await this.uploadFile(file, fileName, 'valid-ids');
+      return url;
     } catch (error) {
       console.error('Error uploading valid ID:', error);
       throw new Error('Failed to upload valid ID');
@@ -69,6 +81,26 @@ export class UploadService {
   static async uploadFile(file: File, fileName: string, bucket: string): Promise<{ url: string }> {
     console.log(`Processing ${bucket} upload...`);
     
+    // First check if the file already exists
+    const { data: existingFile } = await this.supabase
+      .storage
+      .from(bucket)
+      .list('', {
+        search: fileName
+      });
+    
+    // If file already exists, just return its public URL
+    if (existingFile && existingFile.length > 0) {
+      console.log(`File ${fileName} already exists in ${bucket}, skipping upload`);
+      const { data: { publicUrl } } = this.supabase
+        .storage
+        .from(bucket)
+        .getPublicUrl(fileName);
+      
+      return { url: publicUrl };
+    }
+    
+    // Otherwise, upload the new file
     const { error: uploadError } = await this.supabase
       .storage
       .from(bucket)
@@ -85,7 +117,7 @@ export class UploadService {
       .getPublicUrl(fileName);
 
     console.log(`${bucket} uploaded successfully`);
-    return publicUrl;
+    return { url: publicUrl };
   }
 
   // Add helper method to get file extension
