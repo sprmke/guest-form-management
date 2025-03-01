@@ -5,14 +5,9 @@ const ALLOWED_ORIGINS = [
   'https://guest-form-management-ui.vercel.app'  // Production
 ];
 
-export const corsHeaders = (req: Request) => {
-  const origin = req.headers.get('origin') || '';
-  const isAllowedOrigin = ALLOWED_ORIGINS.includes(origin);
-
-  return {
-    'Access-Control-Allow-Origin': isAllowedOrigin ? origin : ALLOWED_ORIGINS[0],
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'apikey, content-type',
-    'Access-Control-Max-Age': '7200',  // 2 hours
-  };
-};
+export const corsHeaders = (req: Request) => ({
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Max-Age': '86400',
+});
