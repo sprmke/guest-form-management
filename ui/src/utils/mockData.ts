@@ -108,8 +108,8 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   const hasPets = Math.random() > 0.5;
 
   // Generate dummy files
-  const paymentReceipt = await generateDummyFile('Receipt');
-  const validId = await generateDummyFile('ValidID');
+  const paymentReceipt = await generateDummyFile('payment_receipt');
+  const validId = await generateDummyFile('valid_id');
 
   // Calculate number of nights using dayjs
   const numberOfNights = dayjs(checkOut).diff(dayjs(checkIn), 'day');

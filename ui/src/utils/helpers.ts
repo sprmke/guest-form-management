@@ -73,7 +73,8 @@ export const validateImageFile = (file: File | null | undefined): { valid: boole
 
 // Fetches an image from a URL and converts it to a File object
 export const fetchImageAsFile = async (
-  imageUrl: string
+  imageUrl: string,
+  primaryGuestName: string
 ): Promise<File | null> => {
   try {
     const imageResponse = await fetch(imageUrl);
@@ -86,11 +87,56 @@ export const fetchImageAsFile = async (
     const blob = await imageResponse.blob();
     
     // Extract the filename from the URL
-    const fileName = imageUrl.split('/').pop() || '';
+    const urlFileName = imageUrl.split('/').pop() || '';
+    console.log('urlFileName::', urlFileName);
     
-    return new File([blob], fileName, { type: blob.type });
+    // Get guest name index
+    const formattedGuestName = formatName(primaryGuestName);
+    const guestNameIndex = urlFileName.indexOf(formattedGuestName);
+    
+    // Get the start index (after guest name and underscore)
+    const startIndex = guestNameIndex + formattedGuestName.length + 1;
+    // Get the end index (before file extension)
+    const extensionIndex = urlFileName.lastIndexOf('.');
+
+    if (extensionIndex > startIndex) {
+      const fileName = urlFileName.substring(startIndex, extensionIndex);
+      const fileExtension = urlFileName.substring(extensionIndex);
+      const newFileName = fileName + fileExtension;
+      return new File([blob], newFileName, { type: blob.type });
+    }
+    
+    return new File([blob], urlFileName, { type: blob.type });
   } catch (error) {
     console.error('Error fetching image:', error);
     return null;
   }
+};
+
+// Format a full name for file naming (convert to lowercase with underscores)
+export const formatName = (fullName: string): string => {
+  return fullName
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '_');
+};
+
+// Get file extension from filename
+export const getFileExtension = (filename: string): string => {
+  return filename.substring(filename.lastIndexOf('.'));
+};
+
+// Generate a standardized filename for uploads
+export const generateFileName = (
+  prefix: string,
+  fullName: string,
+  checkInDate: string,
+  checkOutDate: string,
+  originalFileName: string
+): string => {
+  const formattedName = formatName(fullName);
+  
+  // Create a deterministic filename without including the original filename
+  // This ensures the same file name is generated for the same guest and dates
+  return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${originalFileName}`;
 };

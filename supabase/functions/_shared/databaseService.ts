@@ -113,13 +113,8 @@ export class DatabaseService {
       // Get the payment receipt file
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
-        // If a new file is uploaded, process it
-        paymentReceiptUrl = await UploadService.uploadPaymentReceipt(
-          paymentReceipt,
-          fullName,
-          formattedCheckIn,
-          formattedCheckOut
-        );
+        const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
+        paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, paymentReceiptFileName);
       } else if (bookingId) {
         // If updating and no new file, get the existing URL
         const existingData = await this.getFormData(bookingId);
@@ -131,13 +126,8 @@ export class DatabaseService {
       // Get the valid ID file
       const validId = formData.get('validId') as File;
       if (validId) {
-        // If a new file is uploaded, process it
-        validIdUrl = await UploadService.uploadValidId(
-          validId,
-          fullName,
-          formattedCheckIn,
-          formattedCheckOut
-        );
+        const validIdFileName = formData.get('validIdFileName') as string;
+        validIdUrl = await UploadService.uploadValidId(validId, validIdFileName);
       } else if (bookingId) {
         // If updating and no new file, get the existing URL
         const existingData = await this.getFormData(bookingId);

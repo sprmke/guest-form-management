@@ -6,29 +6,9 @@ export class UploadService {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
-  private static formatName(fullName: string): string {
-    return fullName
-      .toLowerCase()
-      .trim()
-      .replace(/\s+/g, '_');
-  }
-
-  private static generateFileName(
-    prefix: string,
-    fullName: string,
-    checkInDate: string,
-    checkOutDate: string,
-    originalFileName: string
-  ): string {
-    const formattedName = this.formatName(fullName);
-    return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${originalFileName}`;
-  }
-
   static async uploadPaymentReceipt(
     file: File | null, 
-    fullName: string, 
-    checkInDate: string,
-    checkOutDate: string
+    fileName: string
   ): Promise<string> {
     try {
       if (!file) {
@@ -36,13 +16,6 @@ export class UploadService {
         return '';
       }
       
-      const fileName = this.generateFileName(
-        'payment_receipt',
-        fullName,
-        checkInDate,
-        checkOutDate,
-        file.name
-      );
       const { url } = await this.uploadFile(file, fileName, 'payment-receipts');
       return url;
     } catch (error) {
@@ -53,9 +26,7 @@ export class UploadService {
 
   static async uploadValidId(
     file: File | null, 
-    fullName: string, 
-    checkInDate: string,
-    checkOutDate: string
+    fileName: string
   ): Promise<string> {
     try {
       if (!file) {
@@ -63,13 +34,6 @@ export class UploadService {
         return '';
       }
       
-      const fileName = this.generateFileName(
-        'valid_id',
-        fullName,
-        checkInDate,
-        checkOutDate,
-        file.name
-      );
       const { url } = await this.uploadFile(file, fileName, 'valid-ids');
       return url;
     } catch (error) {
@@ -118,10 +82,5 @@ export class UploadService {
 
     console.log(`${bucket} uploaded successfully`);
     return { url: publicUrl };
-  }
-
-  // Add helper method to get file extension
-  private static getFileExtension(filename: string): string {
-    return filename.substring(filename.lastIndexOf('.'));
   }
 }

@@ -10,7 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { addFileToFormData, handleNameInputChange, validateImageFile, fetchImageAsFile } from "@/utils/helpers"
+import { addFileToFormData, handleNameInputChange, validateImageFile, fetchImageAsFile, generateFileName } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
 import { Upload, Loader2 } from 'lucide-react'
@@ -65,21 +65,21 @@ export function GuestForm() {
           const formData = { ...result.data };
           
           // Set file input URLs if they exist
-          if (result.data.paymentReceiptUrl) {
+          if (formData.paymentReceiptUrl) {
             // Fetch the image and convert it to a File object
-            const paymentReceiptFile = await fetchImageAsFile(result.data.paymentReceiptUrl);
+            const paymentReceiptFile = await fetchImageAsFile(formData.paymentReceiptUrl, formData.primaryGuestName);
             if (paymentReceiptFile) {
               formData.paymentReceipt = paymentReceiptFile;
-              setPaymentReceiptPreview(result.data.paymentReceiptUrl);
+              setPaymentReceiptPreview(formData.paymentReceiptUrl);
             }
           }
 
-          if (result.data.validIdUrl) {
+          if (formData.validIdUrl) {
             // Fetch the image and convert it to a File object
-            const validIdFile = await fetchImageAsFile(result.data.validIdUrl);
+            const validIdFile = await fetchImageAsFile(formData.validIdUrl, formData.primaryGuestName);
             if (validIdFile) {
               formData.validId = validIdFile;
-              setValidIdPreview(result.data.validIdUrl);
+              setValidIdPreview(formData.validIdUrl);
             }
           }
           
@@ -143,6 +143,29 @@ export function GuestForm() {
       formData.append('towerAndUnitNumber', 'Monaco 2604');
       formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
       formData.append('ownerContactNumber', '0962 541 2941');
+
+      // Generate filenames for uploads
+      if (values.paymentReceipt) {
+        const paymentReceiptFileName = generateFileName(
+          'payment_receipt',
+          values.primaryGuestName,
+          values.checkInDate,
+          values.checkOutDate,
+          values.paymentReceipt.name
+        );
+        formData.append('paymentReceiptFileName', paymentReceiptFileName);
+      }
+      
+      if (values.validId) {
+        const validIdFileName = generateFileName(
+          'valid_id',
+          values.primaryGuestName,
+          values.checkInDate,
+          values.checkOutDate,
+          values.validId.name
+        );
+        formData.append('validIdFileName', validIdFileName);
+      }
 
       // Add files to form data with validation
       addFileToFormData(formData, 'paymentReceipt', values.paymentReceipt);
