@@ -133,8 +133,8 @@ export function GuestForm() {
       formData.append('ownerContactNumber', '0962 541 2941');
 
       // Add files to form data with validation
-      addFileToFormData(formData, 'paymentReceipt');
-      addFileToFormData(formData, 'validId');
+      addFileToFormData(formData, 'paymentReceipt', values.paymentReceipt);
+      addFileToFormData(formData, 'validId', values.validId);
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();

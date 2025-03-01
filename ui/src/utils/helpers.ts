@@ -1,9 +1,15 @@
 // Add files to form data with validation
-export const addFileToFormData = (formData: FormData, fieldName: string, maxSizeMB = 5) => {
-  const fileInput = document.querySelector<HTMLInputElement>(`input[name="${fieldName}"]`);
-  const [file] = fileInput?.files ?? [];
+export const addFileToFormData = (
+  formData: FormData, 
+  fieldName: string, 
+  file: File | null | undefined,
+  maxSizeMB = 5
+) => {
+  if (!file) {
+    throw new Error(`${fieldName} file is required`);
+  }
 
-  if (!file || file?.size > maxSizeMB * 1024 * 1024) {
+  if (file.size > maxSizeMB * 1024 * 1024) {
     throw new Error(`${fieldName} file size must be less than ${maxSizeMB}MB`);
   }
 
