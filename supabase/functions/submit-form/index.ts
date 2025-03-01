@@ -4,6 +4,7 @@ import { DatabaseService } from '../_shared/databaseService.ts'
 import { generatePDF } from '../_shared/pdfService.ts'
 import { sendEmail } from '../_shared/emailService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
+import { extractRouteParam } from '../_shared/utils.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -24,7 +25,9 @@ serve(async (req) => {
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
     const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
-    const bookingId = url.searchParams.get('bookingId')
+    
+    // Get bookingId from URL path if it exists
+    const bookingId = extractRouteParam(url.pathname, '/submit-form/');
 
     // Get and process form data
     const formData = await req.formData()

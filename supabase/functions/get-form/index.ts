@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
+import { extractRouteParam } from '../_shared/utils.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -16,9 +17,7 @@ serve(async (req) => {
 
     // Get bookingId from URL path
     const url = new URL(req.url)
-    const pathParts = url.pathname.split('/')
-    // The path will be like /functions/v1/get-form/{bookingId}
-    const bookingId = pathParts[pathParts.length - 1]
+    const bookingId = extractRouteParam(url.pathname, '/get-form/');
 
     if (!bookingId) {
       throw new Error('bookingId is required')
