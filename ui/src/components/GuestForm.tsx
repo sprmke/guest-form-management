@@ -141,8 +141,9 @@ export function GuestForm() {
       ['generatePdf', 'sendEmail', 'updateGoogleCalendar'].forEach(param => {
         queryParams.append(param, searchParams.get(param) === 'false' ? 'false' : 'true');
       });
-
-      const apiUrlWithParams = `${apiUrl}/submit-form${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+      
+      const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+      const apiUrlWithParams = `${apiUrl}/submit-form/${bookingId ?? ''}${queryParamsString}`;
 
       const response = await fetch(apiUrlWithParams, {
         method: 'POST',
