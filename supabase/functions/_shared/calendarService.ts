@@ -7,7 +7,7 @@ export class CalendarService {
       console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
-      const eventData = this.createEventData(formData, validIdUrl, paymentReceiptUrl);
+      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl);
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
@@ -128,10 +128,10 @@ export class CalendarService {
   /**
    * Creates the event data object for Google Calendar
    */
-  private static createEventData(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
+  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.primaryGuestName}`;
     const eventDescription = `
-<strong>Booking Id</strong>
+<strong>Booking ID</strong>
 ${bookingId}
 
 <strong>Guest Information</strong>
