@@ -6,11 +6,11 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect, useRef } from "react"
-import { toCapitalCase, transformFieldValues, validateImageFile } from "@/utils/formatters"
+import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { addFileToFormData, handleNameInputChange } from "@/utils/helpers"
+import { addFileToFormData, handleNameInputChange, validateImageFile } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
 import { Upload, Loader2 } from 'lucide-react'
