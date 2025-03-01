@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useState, useEffect, useRef } from "react"
-import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
+import { toCapitalCase, transformFieldValues, validateImageFile } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
@@ -823,12 +823,17 @@ export function GuestForm() {
                                 Replace Image
                                 <input
                                   type="file"
-                                  accept="image/*"
+                                  accept="image/jpeg,image/jpg,image/png,image/heic"
                                   className="hidden"
                                   {...field}
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
+                                      const validation = validateImageFile(file);
+                                      if (!validation.valid) {
+                                        alert(validation.message);
+                                        return;
+                                      }
                                       onChange(file);
                                       setValidIdPreview(URL.createObjectURL(file));
                                     }
@@ -844,12 +849,17 @@ export function GuestForm() {
                               Upload Image
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
                                 className="hidden"
                                 {...field}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
                                     onChange(file);
                                     setValidIdPreview(URL.createObjectURL(file));
                                   }
@@ -886,12 +896,17 @@ export function GuestForm() {
                                 Replace Image
                                 <input
                                   type="file"
-                                  accept="image/*"
+                                  accept="image/jpeg,image/jpg,image/png,image/heic"
                                   className="hidden"
                                   {...field}
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
+                                      const validation = validateImageFile(file);
+                                      if (!validation.valid) {
+                                        alert(validation.message);
+                                        return;
+                                      }
                                       onChange(file);
                                       setPaymentReceiptPreview(URL.createObjectURL(file));
                                     }
@@ -907,12 +922,17 @@ export function GuestForm() {
                               Upload Image
                               <input
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
                                 className="hidden"
                                 {...field}
                                 onChange={(e) => {
                                   const file = e.target.files?.[0];
                                   if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
                                     onChange(file);
                                     setPaymentReceiptPreview(URL.createObjectURL(file));
                                   }
