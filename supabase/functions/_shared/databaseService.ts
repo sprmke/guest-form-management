@@ -6,7 +6,7 @@ dayjs.extend(customParseFormat)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, transformFormToSubmission } from './types.ts'
 import { UploadService } from './uploadService.ts'
-import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './timeUtils.ts'
+import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
 
 export class DatabaseService {
   private static supabase = createClient(

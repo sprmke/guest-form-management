@@ -1,4 +1,4 @@
-import { formatPublicUrl } from './utils';
+import { formatPublicUrl } from './utils.ts';
 import { GuestFormData } from './types.ts';
 
 export class CalendarService {
