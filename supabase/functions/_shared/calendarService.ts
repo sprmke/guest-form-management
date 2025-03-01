@@ -9,59 +9,45 @@ export class CalendarService {
       const credentials = await this.getCredentials();
       const eventData = this.createEventData(formData, validIdUrl, paymentReceiptUrl);
 
-      // If bookingId exists, try to find existing calendar event
-      let existingEventId = null;
+      // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
-        existingEventId = await this.findExistingEvent(credentials, bookingId);
+        const existingEventId = await this.findExistingEvent(credentials, bookingId);
+        if (existingEventId) {
+          await this.deleteCalendarEvent(credentials, existingEventId);
+        }
       }
 
-      let response;
-      if (existingEventId) {
-        // Update existing event
-        response = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${existingEventId}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(eventData),
-          }
-        );
-      } else {
-        // Create new event
-        response = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              ...eventData,
-              extendedProperties: {
-                private: {
-                  bookingId: bookingId || ''
-                }
+      // Create new event
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...eventData,
+            extendedProperties: {
+              private: {
+                bookingId: bookingId || ''
               }
-            }),
-          }
-        );
-      }
+            }
+          }),
+        }
+      );
 
       if (!response.ok) {
         const error = await response.json();
         console.error('Calendar API Response:', { status: response.status, error });
-        throw new Error(`Failed to ${existingEventId ? 'update' : 'create'} calendar event: ${JSON.stringify(error)}`);
+        throw new Error(`Failed to create calendar event: ${JSON.stringify(error)}`);
       }
 
-      console.log(`Calendar event ${existingEventId ? 'updated' : 'created'} successfully`);
+      console.log('Calendar event created successfully');
       return await response.json();
     } catch (error) {
       console.error('Error with calendar event:', error);
-      throw new Error(`Failed to ${bookingId ? 'update' : 'create'} calendar event`);
+      throw new Error('Failed to create calendar event');
     }
   }
 
@@ -90,6 +76,32 @@ export class CalendarService {
     } catch (error) {
       console.error('Error finding existing event:', error);
       return null;
+    }
+  }
+
+  private static async deleteCalendarEvent(credentials: any, eventId: string): Promise<boolean> {
+    try {
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${eventId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
+          },
+        }
+      );
+
+      if (!response.ok && response.status !== 404) {
+        const error = await response.text();
+        console.error('Delete Calendar Event Error:', { status: response.status, error });
+        throw new Error(`Failed to delete calendar event: ${error}`);
+      }
+
+      console.log('Calendar event deleted successfully');
+      return true;
+    } catch (error) {
+      console.error('Error deleting calendar event:', error);
+      return false;
     }
   }
 
