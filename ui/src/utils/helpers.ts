@@ -88,7 +88,6 @@ export const fetchImageAsFile = async (
     
     // Extract the filename from the URL
     const urlFileName = imageUrl.split('/').pop() || '';
-    console.log('urlFileName::', urlFileName);
     
     // Get guest name index
     const formattedGuestName = formatName(primaryGuestName);
