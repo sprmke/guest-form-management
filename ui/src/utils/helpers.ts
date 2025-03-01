@@ -45,3 +45,22 @@ export const validateName = (name: string = '') => {
   const middleWords = words.slice(1, -1);
   return middleWords.every(word => word.length >= 1);
 };
+
+// Validate image file type
+export const validateImageFile = (file: File | null | undefined): { valid: boolean; message?: string } => {
+  if (!file) {
+    return { valid: false, message: 'No file selected' };
+  }
+  
+  // List of valid image MIME types
+  const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/heic'];
+  
+  if (!validTypes.includes(file.type)) {
+    return { 
+      valid: false, 
+      message: 'Please upload only JPG, JPEG, PNG or HEIC image formats' 
+    };
+  }
+  
+  return { valid: true };
+};
