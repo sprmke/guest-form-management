@@ -3,6 +3,26 @@ import customParseFormat from 'https://esm.sh/dayjs@1.11.10/plugin/customParseFo
 
 dayjs.extend(customParseFormat)
 
+  /**
+   * Formats a date and time string to ISO 8601 format
+   */
+  export const formatDateTime = (date: string, time: string): string => {
+    const [month, day, year] = date.split('-');
+    const formattedDate = `${year}-${month}-${day}`;
+    
+    let [hours, minutes] = time.split(':');
+    const period = minutes.split(' ')[1];
+    minutes = minutes.split(' ')[0];
+    
+    if (period === 'PM' && hours !== '12') {
+      hours = String(Number(hours) + 12);
+    } else if (period === 'AM' && hours === '12') {
+      hours = '00';
+    }
+    
+    return `${formattedDate}T${hours}:${minutes}:00`;
+  }
+
 /**
  * Formats a date string to YYYY-MM-DD format
  * @param dateStr - The date string to format
