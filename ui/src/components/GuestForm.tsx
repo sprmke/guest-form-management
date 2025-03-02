@@ -25,6 +25,7 @@ export function GuestForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null)
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<string | null>(null)
+  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null)
   const [searchParams] = useSearchParams()
@@ -37,6 +38,16 @@ export function GuestForm() {
   })
 
   const today = getTodayDate();
+
+  // Generate a new booking ID for new submissions
+  useEffect(() => {
+    if (!bookingId) {
+      const newBookingId = crypto.randomUUID();
+      setCurrentBookingId(newBookingId);
+    } else {
+      setCurrentBookingId(bookingId);
+    }
+  }, [bookingId]);
 
   // Fetch form data if bookingId is present
   useEffect(() => {
@@ -105,7 +116,7 @@ export function GuestForm() {
     if (!isProduction && !bookingId && !isLoading) {
       handleGenerateNewData();
     }
-  }, [isLoading]);
+  }, [isLoading, bookingId]);
 
   // Update file input when generating new data
   const handleGenerateNewData = async () => {
@@ -131,6 +142,9 @@ export function GuestForm() {
     try {
       const transformedValues = transformFieldValues(values)
       const formData = new FormData()
+      
+      // Add the booking ID to form data
+      formData.append('bookingId', currentBookingId || '');
       
       // Add all form values to FormData, excluding paymentReceipt and validId
       Object.entries(transformedValues).forEach(([key, value]) => {
@@ -174,12 +188,12 @@ export function GuestForm() {
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
-      ['generatePdf', 'sendEmail', 'updateGoogleCalendar'].forEach(param => {
+      ['generatePdf', 'sendEmail', 'updateGoogleCalendar', 'updateGoogleSheets'].forEach(param => {
         queryParams.append(param, searchParams.get(param) === 'false' ? 'false' : 'true');
       });
       
       const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-      const apiUrlWithParams = `${apiUrl}/submit-form/${bookingId ?? ''}${queryParamsString}`;
+      const apiUrlWithParams = `${apiUrl}/submit-form${queryParamsString}`;
 
       const response = await fetch(apiUrlWithParams, {
         method: 'POST',
