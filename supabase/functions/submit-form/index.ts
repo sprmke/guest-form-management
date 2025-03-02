@@ -4,6 +4,7 @@ import { DatabaseService } from '../_shared/databaseService.ts'
 import { generatePDF } from '../_shared/pdfService.ts'
 import { sendEmail } from '../_shared/emailService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
+import { SheetsService } from '../_shared/sheetsService.ts'
 import { extractRouteParam } from '../_shared/utils.ts'
 
 serve(async (req) => {
@@ -25,15 +26,13 @@ serve(async (req) => {
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
     const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
+    const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
     
-    // Get bookingId from URL path if it exists
-    const bookingId = extractRouteParam(url.pathname, '/submit-form/');
-
     // Get and process form data
     const formData = await req.formData()
     
     // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl } = await DatabaseService.processFormData(formData, bookingId)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl } = await DatabaseService.processFormData(formData)
 
     let pdfBuffer = null
     // Generate PDF if enabled
@@ -48,41 +47,42 @@ serve(async (req) => {
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, bookingId)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, submissionData.id)
+    }
+
+    // Append to Google Sheet if enabled
+    if (isSheetsUpdateEnabled) {
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, submissionData.id)
     }
 
     console.log('Form submission process completed successfully')
 
-    // Return the response with CORS headers
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: submissionData,
-        message: bookingId ? 'Form updated successfully.' : 'Form submitted successfully.'
+      JSON.stringify({
+        success: true,
+        data: submissionData
       }),
       {
         headers: {
           ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 200,
+          'Content-Type': 'application/json'
+        }
       }
     )
-
   } catch (error) {
-    console.error('Error in form submission:', error)
+    console.error('Error processing form submission:', error)
+    
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        message: 'Failed to process form submission'
+      JSON.stringify({
+        success: false,
+        error: error.message
       }),
       {
+        status: 400,
         headers: {
           ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 400,
+          'Content-Type': 'application/json'
+        }
       }
     )
   }
