@@ -1,4 +1,4 @@
-import { formatPublicUrl } from './utils.ts';
+import { formatPublicUrl, formatDateTime } from './utils.ts';
 import { GuestFormData } from './types.ts';
 
 export class CalendarService {
@@ -106,26 +106,6 @@ export class CalendarService {
   }
 
   /**
-   * Formats a date and time string to ISO 8601 format
-   */
-  private static formatDateTime(date: string, time: string): string {
-    const [month, day, year] = date.split('-');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    let [hours, minutes] = time.split(':');
-    const period = minutes.split(' ')[1];
-    minutes = minutes.split(' ')[0];
-    
-    if (period === 'PM' && hours !== '12') {
-      hours = String(Number(hours) + 12);
-    } else if (period === 'AM' && hours === '12') {
-      hours = '00';
-    }
-    
-    return `${formattedDate}T${hours}:${minutes}:00`;
-  }
-
-  /**
    * Creates the event data object for Google Calendar
    */
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
@@ -171,12 +151,12 @@ How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formDat
 Special Requests: ${formData.guestSpecialRequests || 'None'}
 
 <strong>Documents</strong>
-Payment Receipt: ${formatPublicUrl(paymentReceiptUrl)}
-Valid ID: ${formatPublicUrl(validIdUrl)}
+Payment Receipt: ${paymentReceiptUrl}
+Valid ID: ${validIdUrl}
     `.trim();
 
-    const checkInDateTime = this.formatDateTime(formData.checkInDate, formData.checkInTime);
-    const checkOutDateTime = this.formatDateTime(formData.checkOutDate, formData.checkOutTime);
+    const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
+    const checkOutDateTime = formatDateTime(formData.checkOutDate, formData.checkOutTime);
 
     return {
       summary: eventSummary,
