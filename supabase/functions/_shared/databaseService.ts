@@ -1,8 +1,4 @@
-import dayjs from 'https://esm.sh/dayjs@1.11.10'
-import customParseFormat from 'https://esm.sh/dayjs@1.11.10/plugin/customParseFormat'
-
-dayjs.extend(customParseFormat)
-
+import { formatPublicUrl } from './timeUtils';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, transformFormToSubmission } from './types.ts'
 import { UploadService } from './uploadService.ts'
@@ -81,7 +77,7 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData, bookingId?: string): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string }> {
+  static async processFormData(formData: FormData): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string }> {
     try {
       console.log('Processing form data...');
 
@@ -89,6 +85,8 @@ export class DatabaseService {
       const fullName = formData.get('primaryGuestName') as string;
       const checkInDate = formData.get('checkInDate') as string;
       const checkOutDate = formData.get('checkOutDate') as string;
+      const guestEmail = formData.get('guestEmail') as string;
+      const bookingId = formData.get('bookingId') as string;
 
       if (!fullName) {
         throw new Error('Full Name is required');
@@ -98,12 +96,32 @@ export class DatabaseService {
         throw new Error('Check-in and check-out dates are required');
       }
 
+      if (!guestEmail) {
+        throw new Error('Email is required');
+      }
+
+      if (!bookingId) {
+        throw new Error('Booking ID is required');
+      }
+
       // Format dates
       const formattedCheckIn = formatDate(checkInDate);
       const formattedCheckOut = formatDate(checkOutDate);
 
       if (!formattedCheckIn || !formattedCheckOut) {
         throw new Error('Invalid check-in or check-out date format');
+      }
+
+      // Check if booking already exists using the booking ID
+      const { data: existingBooking, error: fetchError } = await this.supabase
+        .from('guest_submissions')
+        .select('*')
+        .eq('id', bookingId)
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
+        console.error('Error fetching existing booking:', fetchError);
+        throw new Error('Failed to check for existing booking');
       }
 
       // Handle file uploads
@@ -115,10 +133,8 @@ export class DatabaseService {
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
         paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, paymentReceiptFileName);
-      } else if (bookingId) {
-        // If updating and no new file, get the existing URL
-        const existingData = await this.getFormData(bookingId);
-        paymentReceiptUrl = existingData?.paymentReceiptUrl || '';
+      } else if (existingBooking) {
+        paymentReceiptUrl = existingBooking.payment_receipt_url;
       } else {
         throw new Error('Payment receipt is required');
       }
@@ -128,10 +144,8 @@ export class DatabaseService {
       if (validId) {
         const validIdFileName = formData.get('validIdFileName') as string;
         validIdUrl = await UploadService.uploadValidId(validId, validIdFileName);
-      } else if (bookingId) {
-        // If updating and no new file, get the existing URL
-        const existingData = await this.getFormData(bookingId);
-        validIdUrl = existingData?.validIdUrl || '';
+      } else if (existingBooking) {
+        validIdUrl = existingBooking.valid_id_url;
       } else {
         throw new Error('Valid ID is required');
       }
@@ -139,7 +153,7 @@ export class DatabaseService {
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       formData.forEach((value, key) => {
-        if (key !== 'paymentReceipt' && key !== 'validId') { // Skip the file fields
+        if (key !== 'paymentReceipt' && key !== 'validId') {
           formDataObj[key] = value;
         }
       });
@@ -166,15 +180,20 @@ export class DatabaseService {
         validIdUrl
       );
 
-      // Save or update in database
+      // Save or update in database using the booking ID
       let submissionData;
-      if (bookingId) {
+      if (existingBooking) {
         submissionData = await this.updateGuestSubmission(bookingId, dbData);
       } else {
-        submissionData = await this.saveGuestSubmission(dbData);
+        submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
       }
 
-      return { data, submissionData, validIdUrl, paymentReceiptUrl };
+      return {
+        data,
+        submissionData
+        validIdUrl: formatPublicUrl(validIdUrl),
+        paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl)
+      };
     } catch (error) {
       console.error('Error processing form data:', error);
       throw new Error('Failed to process form data: ' + error.message);
@@ -187,7 +206,8 @@ export class DatabaseService {
     const { data, error } = await this.supabase
       .from('guest_submissions')
       .insert([formData])
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error('Database error:', error);
@@ -205,7 +225,8 @@ export class DatabaseService {
       .from('guest_submissions')
       .update(formData)
       .eq('id', bookingId)
-      .select();
+      .select()
+      .single();
 
     if (error) {
       console.error('Database error:', error);
