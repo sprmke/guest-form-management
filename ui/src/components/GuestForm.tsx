@@ -718,7 +718,7 @@ export function GuestForm() {
                     name="carPlateNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Plate Number</FormLabel>
+                        <FormLabel>Car Plate Number {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. ABC123" {...field} />
                         </FormControl>
@@ -732,7 +732,7 @@ export function GuestForm() {
                     name="carBrandModel"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Brand & Model</FormLabel>
+                        <FormLabel>Car Brand & Model {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Ex. Honda Civic" 
@@ -750,7 +750,7 @@ export function GuestForm() {
                     name="carColor"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Color</FormLabel>
+                        <FormLabel>Car Color {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Ex. Red" 
