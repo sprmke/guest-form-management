@@ -790,7 +790,7 @@ export function GuestForm() {
                     name="petName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Name</FormLabel>
+                        <FormLabel>Pet Name {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Ex. Max" 
@@ -808,7 +808,7 @@ export function GuestForm() {
                     name="petBreed"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Breed</FormLabel>
+                        <FormLabel>Pet Breed {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Ex. Labrador" 
@@ -826,7 +826,7 @@ export function GuestForm() {
                     name="petAge"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Age</FormLabel>
+                        <FormLabel>Pet Age {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. 2 years old" {...field} />
                         </FormControl>
@@ -840,7 +840,7 @@ export function GuestForm() {
                     name="petVaccinationDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Vaccination Date</FormLabel>
+                        <FormLabel>Last Vaccination Date {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
