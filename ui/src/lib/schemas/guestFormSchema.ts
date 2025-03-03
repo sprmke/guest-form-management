@@ -138,6 +138,38 @@ export const guestFormSchema = z.object({
     }
   }
 
+  // Validate pet fields when bringing pets
+  if (data.hasPets) {
+    if (!data.petName) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet name is required when bringing pets",
+        path: ["petName"]
+      });
+    }
+    if (!data.petBreed) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet breed is required when bringing pets",
+        path: ["petBreed"]
+      });
+    }
+    if (!data.petAge) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet age is required when bringing pets",
+        path: ["petAge"]
+      });
+    }
+    if (!data.petVaccinationDate) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet vaccination date is required when bringing pets",
+        path: ["petVaccinationDate"]
+      });
+    }
+  }
+
   // Validate check-in and check-out times when dates are the same
   if (data.checkInDate === data.checkOutDate) {
     const checkInTime = data.checkInTime ? new Date(`1970-01-01T${data.checkInTime}`) : null;
