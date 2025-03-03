@@ -113,6 +113,31 @@ export const guestFormSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the fourth guest", path: ["guest4Name"] });
   }
 
+  // Validate parking fields when parking is needed
+  if (data.needParking) {
+    if (!data.carPlateNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Car plate number is required when parking is needed",
+        path: ["carPlateNumber"]
+      });
+    }
+    if (!data.carBrandModel) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Car brand and model is required when parking is needed",
+        path: ["carBrandModel"]
+      });
+    }
+    if (!data.carColor) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Car color is required when parking is needed",
+        path: ["carColor"]
+      });
+    }
+  }
+
   // Validate check-in and check-out times when dates are the same
   if (data.checkInDate === data.checkOutDate) {
     const checkInTime = data.checkInTime ? new Date(`1970-01-01T${data.checkInTime}`) : null;
