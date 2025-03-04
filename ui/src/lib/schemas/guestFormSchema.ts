@@ -113,6 +113,15 @@ export const guestFormSchema = z.object({
     ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the fourth guest", path: ["guest4Name"] });
   }
 
+  // Validate findUsDetails when findUs is Friend or Others
+  if ((data.findUs === "Friend" || data.findUs === "Others") && !data.findUsDetails) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: data.findUs === "Friend" ? "Please enter your friend's name" : "Please specify how you found us",
+      path: ["findUsDetails"]
+    });
+  }
+
   // Validate parking fields when parking is needed
   if (data.needParking) {
     if (!data.carPlateNumber) {
