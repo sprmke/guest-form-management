@@ -665,6 +665,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>
                       {form.watch("findUs") === "Friend" ? "Friend's Name" : "Please specify where you found us"}
+                      <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input 
