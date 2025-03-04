@@ -46,7 +46,7 @@ export const guestFormSchema = z.object({
   checkOutTime: z.string().min(1, "Please select your preferred check-out time").default("11:00"),
   nationality: z.string().min(1, "Please select your nationality").default("Filipino"),
   numberOfAdults: z.number().min(1, "At least 1 adult guest is required").max(4, "Maximum of 4 adult guests only"),
-  numberOfChildren: z.number().min(0).max(4, "Maximum of 4 children only"),
+  numberOfChildren: z.number().min(0).max(5, "Maximum of 5 children only"),
   
   // Optional fields
   guest2Name: z.string()
