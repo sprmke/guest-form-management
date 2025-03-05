@@ -89,7 +89,7 @@ export const guestFormSchema = z.object({
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
-  petVaccination: z.instanceof(File, { message: "Please upload a copy of your pet's vaccination record" }).optional(),
+  petVaccination: z.instanceof(File).optional(),
   
   // File upload fields
   paymentReceipt: z.instanceof(File, { message: "Please upload a copy of your payment receipt" }),
