@@ -91,6 +91,8 @@ export const extractRouteParam = (pathname: string, routePattern: string): strin
 
 // Format URLs to ensure they are publicly accessible
 export const formatPublicUrl = (url: string) => {
+  if (!url) return '';
+
   // If URL contains kong:8000, replace it with the correct public URL
   return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
 };
