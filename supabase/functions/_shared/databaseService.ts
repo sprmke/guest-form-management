@@ -1,4 +1,3 @@
-import { formatPublicUrl } from './timeUtils';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, transformFormToSubmission } from './types.ts'
 import { UploadService } from './uploadService.ts'
@@ -65,6 +64,7 @@ export class DatabaseService {
         petBreed: data.pet_breed || '',
         petAge: data.pet_age || '',
         petVaccinationDate: formatDate(data.pet_vaccination_date),
+        petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || '',
         paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || '',
         validIdUrl: formatPublicUrl(data.valid_id_url) || '',
       };
@@ -125,8 +125,24 @@ export class DatabaseService {
       }
 
       // Handle file uploads
+      let petVaccinationUrl: string | undefined;
       let paymentReceiptUrl: string;
       let validIdUrl: string;
+
+      // Get the pet vaccination file
+      const petVaccination = formData.get('petVaccination') as File;
+      const hasPets = formData.get('hasPets') === 'true';
+      
+      if (hasPets) {
+        if (petVaccination) {
+          const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
+          petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, petVaccinationFileName);
+        } else if (existingBooking) {
+          petVaccinationUrl = existingBooking.pet_vaccination_url;
+        } else {
+          throw new Error('Pet vaccination record is required when bringing pets');
+        }
+      }
 
       // Get the payment receipt file
       const paymentReceipt = formData.get('paymentReceipt') as File;
@@ -153,7 +169,7 @@ export class DatabaseService {
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       formData.forEach((value, key) => {
-        if (key !== 'paymentReceipt' && key !== 'validId') {
+        if (key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination') {
           formDataObj[key] = value;
         }
       });
@@ -177,7 +193,8 @@ export class DatabaseService {
       const dbData = transformFormToSubmission(
         data, 
         paymentReceiptUrl,
-        validIdUrl
+        validIdUrl,
+        petVaccinationUrl
       );
 
       // Save or update in database using the booking ID
@@ -190,7 +207,8 @@ export class DatabaseService {
 
       return {
         data,
-        submissionData
+        submissionData,
+        petVaccinationUrl: formatPublicUrl(petVaccinationUrl),
         validIdUrl: formatPublicUrl(validIdUrl),
         paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl)
       };

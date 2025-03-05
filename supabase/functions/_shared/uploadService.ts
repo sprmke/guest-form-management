@@ -42,6 +42,24 @@ export class UploadService {
     }
   }
 
+  static async uploadPetVaccination(
+    file: File | null,
+    fileName: string
+  ): Promise<string> {
+    try {
+      if (!file) {
+        console.log('No pet vaccination file provided, skipping upload');
+        return '';
+      }
+      
+      const { url } = await this.uploadFile(file, fileName, 'pet-vaccinations');
+      return url;
+    } catch (error) {
+      console.error('Error uploading pet vaccination:', error);
+      throw new Error('Failed to upload pet vaccination record');
+    }
+  }
+
   static async uploadFile(file: File, fileName: string, bucket: string): Promise<{ url: string }> {
     console.log(`Processing ${bucket} upload...`);
     

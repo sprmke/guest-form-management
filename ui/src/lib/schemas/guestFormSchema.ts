@@ -89,6 +89,7 @@ export const guestFormSchema = z.object({
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
+  petVaccination: z.instanceof(File, { message: "Please upload a copy of your pet's vaccination record" }).optional(),
   
   // File upload fields
   paymentReceipt: z.instanceof(File, { message: "Please upload a copy of your payment receipt" }),
@@ -175,6 +176,13 @@ export const guestFormSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Pet vaccination date is required when bringing pets",
         path: ["petVaccinationDate"]
+      });
+    }
+    if (!data.petVaccination) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet vaccination record image is required when bringing pets",
+        path: ["petVaccination"]
       });
     }
   }

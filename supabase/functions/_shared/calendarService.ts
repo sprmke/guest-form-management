@@ -2,12 +2,12 @@ import { formatPublicUrl, formatDateTime } from './utils.ts';
 import { GuestFormData } from './types.ts';
 
 export class CalendarService {
-  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, bookingId?: string) {
+  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId?: string) {
     try {
       console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
-      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl);
+      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl);
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
@@ -108,7 +108,7 @@ export class CalendarService {
   /**
    * Creates the event data object for Google Calendar
    */
-  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string) {
+  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string) {
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.primaryGuestName}`;
     const eventDescription = `
 <strong>Booking ID</strong>
@@ -153,6 +153,7 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 <strong>Documents</strong>
 Payment Receipt: ${paymentReceiptUrl}
 Valid ID: ${validIdUrl}
+Pet Vaccination: ${petVaccinationUrl}
     `.trim();
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);

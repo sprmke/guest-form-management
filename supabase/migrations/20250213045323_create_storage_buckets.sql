@@ -1,9 +1,9 @@
 -- Create storage buckets
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
-  ('payment-receipts', 'payment-receipts', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/gif']),
+  ('payment-receipts', 'payment-receipts', true, 5242880, ARRAY['image/png', 'image/jpeg']),
   ('templates', 'templates', false, 10485760, ARRAY['application/pdf']),
-  ('valid-ids', 'valid-ids', true, 5242880, ARRAY['image/png', 'image/jpeg', 'image/gif'])
+  ('valid-ids', 'valid-ids', true, 5242880, ARRAY['image/png', 'image/jpeg'])
 ON CONFLICT (id) DO UPDATE SET
   public = EXCLUDED.public,
   file_size_limit = EXCLUDED.file_size_limit,

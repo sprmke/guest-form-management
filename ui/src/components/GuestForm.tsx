@@ -25,9 +25,11 @@ export function GuestForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null)
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<string | null>(null)
+  const [petVaccinationPreview, setPetVaccinationPreview] = useState<string | null>(null)
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null)
+  const petVaccinationInputRef = useRef<HTMLInputElement>(null)
   const [searchParams] = useSearchParams()
   const bookingId = searchParams.get('bookingId')
 
@@ -94,6 +96,15 @@ export function GuestForm() {
               setValidIdPreview(formData.validIdUrl);
             }
           }
+
+          if (formData.petVaccinationUrl) {
+            // Fetch the image and convert it to a File object
+            const petVaccinationFile = await fetchImageAsFile(formData.petVaccinationUrl, formData.primaryGuestName);
+            if (petVaccinationFile) {
+              formData.petVaccination = petVaccinationFile;
+              setPetVaccinationPreview(formData.petVaccinationUrl);
+            }
+          }
           
           // Reset form with the modified data
           form.reset(formData);
@@ -132,6 +143,9 @@ export function GuestForm() {
     if (randomData.validId) {
       setDummyFile(validIdInputRef, randomData.validId);
     }
+    if (randomData.petVaccination) {
+      setDummyFile(petVaccinationInputRef, randomData.petVaccination);
+    }
   };
 
   async function onSubmit(values: GuestFormData) {
@@ -146,9 +160,9 @@ export function GuestForm() {
       // Add the booking ID to form data
       formData.append('bookingId', currentBookingId || '');
       
-      // Add all form values to FormData, excluding paymentReceipt and validId
+      // Add all form values to FormData, excluding paymentReceipt, validId, and petVaccination
       Object.entries(transformedValues).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId') {
+        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination') {
           formData.append(key, value.toString());
         }
       });
@@ -182,9 +196,21 @@ export function GuestForm() {
         formData.append('validIdFileName', validIdFileName);
       }
 
+      if (values.petVaccination) {
+        const petVaccinationFileName = generateFileName(
+          'pet_vaccination',
+          values.primaryGuestName,
+          values.checkInDate,
+          values.checkOutDate,
+          values.petVaccination.name
+        );
+        formData.append('petVaccinationFileName', petVaccinationFileName);
+      }
+
       // Add files to form data with validation
       addFileToFormData(formData, 'paymentReceipt', values.paymentReceipt);
       addFileToFormData(formData, 'validId', values.validId);
+      addFileToFormData(formData, 'petVaccination', values.petVaccination);
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
@@ -844,6 +870,79 @@ export function GuestForm() {
                         <FormLabel>Last Vaccination Date {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="petVaccination"
+                    render={({ field: { onChange, value, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>Pet Vaccination Record {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormControl>
+                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                            {(petVaccinationPreview || value) ? (
+                              <>
+                                <img 
+                                  src={petVaccinationPreview || (value && URL.createObjectURL(value))}
+                                  alt="Pet Vaccination Record Preview"
+                                  className="object-cover w-full h-full"
+                                />
+                                <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
+                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                                    <Upload className="w-4 h-4" />
+                                    Replace Image
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/jpg,image/png,image/heic"
+                                      className="hidden"
+                                      {...field}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const validation = validateImageFile(file);
+                                          if (!validation.valid) {
+                                            alert(validation.message);
+                                            return;
+                                          }
+                                          onChange(file);
+                                          setPetVaccinationPreview(URL.createObjectURL(file));
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex absolute inset-0 justify-center items-center">
+                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <Upload className="w-4 h-4" />
+                                  Upload Image
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/heic"
+                                    className="hidden"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const validation = validateImageFile(file);
+                                        if (!validation.valid) {
+                                          alert(validation.message);
+                                          return;
+                                        }
+                                        onChange(file);
+                                        setPetVaccinationPreview(URL.createObjectURL(file));
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

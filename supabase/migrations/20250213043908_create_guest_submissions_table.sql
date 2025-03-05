@@ -67,6 +67,10 @@ CREATE TABLE IF NOT EXISTS guest_submissions (
         pet_vaccination_date IS NULL OR 
         (has_pets = TRUE AND length(pet_vaccination_date) > 0)
     ),
+    pet_vaccination_url TEXT CHECK (
+        pet_vaccination_url IS NULL OR 
+        (has_pets = TRUE AND length(pet_vaccination_url) > 0)
+    ),
     
     -- Payment receipt
     payment_receipt_url TEXT NOT NULL,

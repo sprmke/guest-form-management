@@ -108,6 +108,7 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   const hasPets = Math.random() > 0.5;
 
   // Generate dummy files
+  const petVaccination = hasPets ? await generateDummyFile('pet_vaccination') : undefined;
   const paymentReceipt = await generateDummyFile('payment_receipt');
   const validId = await generateDummyFile('valid_id');
 
@@ -146,10 +147,11 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
     carBrandModel: needParking ? randomElement(carBrands) : undefined,
     carColor: needParking ? randomElement(carColors) : undefined,
     hasPets,
-    petName: hasPets ? randomElement(petNames) : undefined,
-    petBreed: hasPets ? randomElement(petBreeds) : undefined,
-    petAge: hasPets ? `${randomNumber(1, 15)} years` : undefined,
+    petName: hasPets ? randomElement(['Max', 'Luna', 'Charlie', 'Bella', 'Rocky']) : undefined,
+    petBreed: hasPets ? randomElement(['Labrador', 'Shih Tzu', 'Pomeranian', 'Aspin', 'Persian Cat']) : undefined,
+    petAge: hasPets ? `${randomNumber(1, 10)} years old` : undefined,
     petVaccinationDate: hasPets ? lastVaccination : undefined,
+    petVaccination: petVaccination,
     checkInTime: "14:00",
     checkOutTime: "11:00",
     nationality: "Filipino",
