@@ -52,7 +52,7 @@ serve(async (req) => {
 
     // Append to Google Sheet if enabled
     if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, submissionData.id)
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, submissionData.id)
     }
 
     console.log('Form submission process completed successfully')
