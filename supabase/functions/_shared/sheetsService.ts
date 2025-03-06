@@ -2,7 +2,7 @@ import dayjs from 'https://esm.sh/dayjs@1.11.10'
 import { GuestFormData } from './types.ts';
 
 export class SheetsService {
-  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, bookingId: string) {
+  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId: string) {
     try {
       console.log('Processing Google Sheet operation...');
       
@@ -145,6 +145,7 @@ export class SheetsService {
       formData.petBreed || '',            // Pet Breed
       formData.petAge || '',              // Pet Age
       formData.petVaccinationDate || '',  // Pet Vaccination Date
+      formData.petVaccinationUrl || '',   // Pet Vaccination URL
       formData.findUs,                    // How Found Us
       formData.findUsDetails || '',       // Find Us Details
       formData.guestSpecialRequests || '', // Special Requests
