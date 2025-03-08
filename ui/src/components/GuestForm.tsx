@@ -650,7 +650,7 @@ export function GuestForm() {
                 <FormItem>
                   <FormLabel>Special requests / Notes to owner</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Ex. Late check-in, cash only for balance payment, etc." {...field} />
+                    <Textarea placeholder="Ex. Late check-in, cash only for balance payment, celebrating special occasion, etc." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
