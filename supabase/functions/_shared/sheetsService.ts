@@ -11,7 +11,7 @@ export class SheetsService {
       }
 
       const credentials = await this.getCredentials();
-      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, bookingId);
+      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, bookingId);
 
       // Try to find existing row with this bookingId
       const existingRow = await this.findRowByBookingId(credentials, bookingId);
@@ -114,7 +114,7 @@ export class SheetsService {
     return await response.json();
   }
 
-  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, bookingId: string): string[] {
+  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
     
     return [
@@ -151,6 +151,7 @@ export class SheetsService {
       formData.guestSpecialRequests || '', // Special Requests
       validIdUrl,                          // Valid ID URL
       paymentReceiptUrl,                   // Payment Receipt URL
+      petVaccinationUrl,                   // Pet Vaccination URL
       currentTimestamp,                    // Created At (for new entries)
       currentTimestamp,                    // Updated At
     ];
