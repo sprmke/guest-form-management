@@ -196,7 +196,7 @@ export function GuestForm() {
         formData.append('validIdFileName', validIdFileName);
       }
 
-      if (values.petVaccination) {
+      if (values.petVaccination && values.hasPets) {
         const petVaccinationFileName = generateFileName(
           'pet_vaccination',
           values.primaryGuestName,
@@ -210,7 +210,7 @@ export function GuestForm() {
       // Add files to form data with validation
       addFileToFormData(formData, 'paymentReceipt', values.paymentReceipt);
       addFileToFormData(formData, 'validId', values.validId);
-      if (values.petVaccination) addFileToFormData(formData, 'petVaccination', values.petVaccination);
+      if (values.petVaccination && values.hasPets) addFileToFormData(formData, 'petVaccination', values.petVaccination);
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
