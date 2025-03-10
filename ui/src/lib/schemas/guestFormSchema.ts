@@ -7,11 +7,7 @@ const { today, tomorrow } = getDefaultDates();
 export const guestFormSchema = z.object({
   // Required fields
   guestFacebookName: z.string()
-    .min(1, "Your Facebook name is required")
-    .refine(
-      (val) => validateName(val),
-      "Please enter the exact name of your Facebook account"
-    ),
+    .min(1, "Your Facebook name is required"),
   primaryGuestName: z.string()
     .min(1, "Primary guest name is required")
     .refine(
