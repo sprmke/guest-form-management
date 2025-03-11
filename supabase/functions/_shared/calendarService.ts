@@ -109,6 +109,7 @@ export class CalendarService {
    * Creates the event data object for Google Calendar
    */
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string) {
+    console.log('formData::', formData)
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren ?? 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
     const eventDescription = `
 <strong>Booking ID</strong>
@@ -134,13 +135,13 @@ Number of Adults: ${formData.numberOfAdults}
 Number of Children: ${formData.numberOfChildren}
 
 <strong>Parking Information</strong>
-${formData.needParking ? `Parking Required: Yes
+${formData.needParking === 'true' ? `Parking Required: Yes
 Car Plate: ${formData.carPlateNumber ?? 'N/A'}
 Car Brand/Model: ${formData.carBrandModel ?? 'N/A'}
 Car Color: ${formData.carColor ?? 'N/A'}` : 'Parking Required: No'}
 
 <strong>Pet Information</strong>
-${formData.hasPets ? `Has Pets: Yes
+${formData.hasPets === 'true' ? `Has Pets: Yes
 Pet Name: ${formData.petName ?? 'N/A'}
 Pet Breed: ${formData.petBreed ?? 'N/A'}
 Pet Age: ${formData.petAge ?? 'N/A'}
