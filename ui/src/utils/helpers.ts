@@ -139,3 +139,38 @@ export const generateFileName = (
   // This ensures the same file name is generated for the same guest and dates
   return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${originalFileName}`;
 };
+
+// Handle file upload with standardized naming and form data appending
+export const handleFileUpload = (
+  formData: FormData,
+  file: File | null | undefined,
+  prefix: string,
+  primaryGuestName: string,
+  checkInDate: string,
+  checkOutDate: string,
+  isRequired: boolean = true,
+  maxSizeMB: number = 5
+): void => {
+  // If file is not provided and it's required, throw error
+  if (!file && isRequired) {
+    throw new Error(`${prefix} file is required`);
+  }
+
+  // If no file and not required, return early
+  if (!file) {
+    return;
+  }
+
+  // Generate standardized filename
+  const fileName = generateFileName(
+    prefix,
+    primaryGuestName,
+    checkInDate,
+    checkOutDate,
+    file.name
+  );
+
+  // Add file and filename to form data
+  addFileToFormData(formData, prefix, file, maxSizeMB);
+  formData.append(`${prefix}FileName`, fileName);
+};
