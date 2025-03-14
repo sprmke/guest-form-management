@@ -10,7 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { =handleNameInputChange, validateImageFile, fetchImageAsFile, handleFileUpload } from "@/utils/helpers"
+import { handleNameInputChange, validateImageFile, fetchImageAsFile, handleFileUpload } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
 import { Upload, Loader2 } from 'lucide-react'
