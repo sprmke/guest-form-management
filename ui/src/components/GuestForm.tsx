@@ -10,7 +10,7 @@ import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
 import { generateRandomData, setDummyFile } from "@/utils/mockData"
 import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
 import { defaultFormValues } from "@/constants/guestFormData"
-import { addFileToFormData, handleNameInputChange, validateImageFile, fetchImageAsFile, generateFileName } from "@/utils/helpers"
+import { addFileToFormData, handleNameInputChange, validateImageFile, fetchImageAsFile, generateFileName, handleFileUpload } from "@/utils/helpers"
 import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
 import { useSearchParams } from 'react-router-dom'
 import { Upload, Loader2 } from 'lucide-react'
@@ -173,44 +173,18 @@ export function GuestForm() {
       formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
       formData.append('ownerContactNumber', '0962 541 2941');
 
-      // Generate filenames for uploads
-      if (values.paymentReceipt) {
-        const paymentReceiptFileName = generateFileName(
-          'payment_receipt',
+      // Handle file uploads with standardized naming
+      ['paymentReceipt', 'validId', 'petVaccination'].forEach(prefix => {
+        handleFileUpload(
+          formData,
+          values[prefix as keyof GuestFormData] as File | null | undefined,
+          prefix,
           values.primaryGuestName,
           values.checkInDate,
           values.checkOutDate,
-          values.paymentReceipt.name
+          prefix === 'petVaccination' ? values.hasPets : true
         );
-        formData.append('paymentReceiptFileName', paymentReceiptFileName);
-      }
-      
-      if (values.validId) {
-        const validIdFileName = generateFileName(
-          'valid_id',
-          values.primaryGuestName,
-          values.checkInDate,
-          values.checkOutDate,
-          values.validId.name
-        );
-        formData.append('validIdFileName', validIdFileName);
-      }
-
-      if (values.petVaccination && values.hasPets) {
-        const petVaccinationFileName = generateFileName(
-          'pet_vaccination',
-          values.primaryGuestName,
-          values.checkInDate,
-          values.checkOutDate,
-          values.petVaccination.name
-        );
-        formData.append('petVaccinationFileName', petVaccinationFileName);
-      }
-
-      // Add files to form data with validation
-      addFileToFormData(formData, 'paymentReceipt', values.paymentReceipt);
-      addFileToFormData(formData, 'validId', values.validId);
-      if (values.petVaccination && values.hasPets) addFileToFormData(formData, 'petVaccination', values.petVaccination);
+      });
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
