@@ -272,7 +272,7 @@ export function GuestForm() {
                   <FormLabel>Guest Facebook Name <span className="text-red-500">*</span></FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Your username/full name in Facebook" 
+                      placeholder="Your exact full name in Facebook" 
                       {...field} 
                       onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
                     />
