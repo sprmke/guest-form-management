@@ -60,6 +60,24 @@ export class UploadService {
     }
   }
 
+  static async uploadPetImage(
+    file: File | null,
+    fileName: string
+  ): Promise<string> {
+    try {
+      if (!file) {
+        console.log('No pet image file provided, skipping upload');
+        return '';
+      }
+      
+      const { url } = await this.uploadFile(file, fileName, 'pet-images');
+      return url;
+    } catch (error) {
+      console.error('Error uploading pet image:', error);
+      throw new Error('Failed to upload pet image');
+    }
+  }
+
   static async uploadFile(file: File, fileName: string, bucket: string): Promise<{ url: string }> {
     console.log(`Processing ${bucket} upload...`);
     
