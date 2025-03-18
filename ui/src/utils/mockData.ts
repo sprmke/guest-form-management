@@ -11,6 +11,7 @@ const carBrands = ['Toyota Vios', 'Honda Civic', 'Ford Ranger', 'Mitsubishi Xpan
 const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray'];
 const petNames = ['Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky'];
 const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon'];
+const petAges = ['1 year old', '2 years old', '3 years old', '4 years old', '5 years old', '6 months old', '8 months old'];
 const requests = [
   'Early check-in if possible',
   'Late check-out needed',
@@ -80,7 +81,7 @@ export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, fi
   fileInputRef.current.files = dataTransfer.files;
 };
 
-export async function generateRandomData(): Promise<z.infer<typeof guestFormSchema>> {
+export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
   const fullName = generateRandomName();
   
   // Generate a date between today and next 30 days for check-in
@@ -108,9 +109,10 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
   const hasPets = Math.random() > 0.5;
 
   // Generate dummy files
-  const petVaccination = hasPets ? await generateDummyFile('pet_vaccination') : undefined;
-  const paymentReceipt = await generateDummyFile('payment_receipt');
-  const validId = await generateDummyFile('valid_id');
+  const paymentReceipt = await generateDummyFile('PaymentReceipt');
+  const validId = await generateDummyFile('ValidId');
+  const petVaccination = hasPets ? await generateDummyFile('PetVaccination') : undefined;
+  const petImage = hasPets ? await generateDummyFile('PetImage') : undefined;
 
   // Calculate number of nights using dayjs
   const numberOfNights = dayjs(checkOut).diff(dayjs(checkIn), 'day');
@@ -149,9 +151,10 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
     hasPets,
     petName: hasPets ? randomElement(petNames) : undefined,
     petBreed: hasPets ? randomElement(petBreeds) : undefined,
-    petAge: hasPets ? `${randomNumber(1, 10)} years old` : undefined,
+    petAge: hasPets ? randomElement(petAges) : undefined,
     petVaccinationDate: hasPets ? lastVaccination : undefined,
-    petVaccination: petVaccination,
+    petVaccination,
+    petImage,
     checkInTime: "14:00",
     checkOutTime: "11:00",
     nationality: "Filipino",
@@ -165,4 +168,4 @@ export async function generateRandomData(): Promise<z.infer<typeof guestFormSche
     ownerOnsiteContactPerson: "Arianna Perez",
     ownerContactNumber: "0962 541 2941"
   };
-}
+};
