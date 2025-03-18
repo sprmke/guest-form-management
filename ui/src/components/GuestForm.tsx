@@ -26,10 +26,12 @@ export function GuestForm() {
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null)
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<string | null>(null)
   const [petVaccinationPreview, setPetVaccinationPreview] = useState<string | null>(null)
+  const [petImagePreview, setPetImagePreview] = useState<string | null>(null)
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null)
   const petVaccinationInputRef = useRef<HTMLInputElement>(null)
+  const petImageInputRef = useRef<HTMLInputElement>(null)
   const [searchParams] = useSearchParams()
   const bookingId = searchParams.get('bookingId')
 
@@ -105,6 +107,14 @@ export function GuestForm() {
               setPetVaccinationPreview(formData.petVaccinationUrl);
             }
           }
+
+          if (formData.petImageUrl) {
+            const petImageFile = await fetchImageAsFile(formData.petImageUrl, formData.primaryGuestName);
+            if (petImageFile) {
+              formData.petImage = petImageFile;
+              setPetImagePreview(formData.petImageUrl);
+            }
+          }
           
           // Reset form with the modified data
           form.reset(formData);
@@ -146,6 +156,9 @@ export function GuestForm() {
     if (randomData.petVaccination) {
       setDummyFile(petVaccinationInputRef, randomData.petVaccination);
     }
+    if (randomData.petImage) {
+      setDummyFile(petImageInputRef, randomData.petImage);
+    }
   };
 
   async function onSubmit(values: GuestFormData) {
@@ -160,9 +173,9 @@ export function GuestForm() {
       // Add the booking ID to form data
       formData.append('bookingId', currentBookingId || '');
       
-      // Add all form values to FormData, excluding paymentReceipt, validId, and petVaccination
+      // Add all form values to FormData, excluding paymentReceipt, validId, petVaccination and petImage
       Object.entries(transformedValues).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination') {
+        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination' && key !== 'petImage') {
           formData.append(key, value.toString());
         }
       });
@@ -174,7 +187,7 @@ export function GuestForm() {
       formData.append('ownerContactNumber', '0962 541 2941');
 
       // Handle file uploads with standardized naming
-      ['paymentReceipt', 'validId', 'petVaccination'].forEach(prefix => {
+      ['paymentReceipt', 'validId', 'petVaccination', 'petImage'].forEach(prefix => {
         handleFileUpload(
           formData,
           values[prefix as keyof GuestFormData] as File | null | undefined,
@@ -182,7 +195,7 @@ export function GuestForm() {
           values.primaryGuestName,
           values.checkInDate,
           values.checkOutDate,
-          prefix === 'petVaccination' ? values.hasPets : true
+          prefix === 'petVaccination' || prefix === 'petImage' ? values.hasPets : true
         );
       });
 
@@ -916,6 +929,79 @@ export function GuestForm() {
                                 </label>
                               </div>
                             )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="petImage"
+                    render={({ field: { onChange, value, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>Pet Image {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormControl>
+                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                            {(petImagePreview || value) ? (
+                              <>
+                                <img 
+                                  src={petImagePreview || (value && URL.createObjectURL(value))}
+                                  alt="Pet Image Preview"
+                                  className="object-cover w-full h-full"
+                                />
+                                <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
+                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                                    <Upload className="w-4 h-4" />
+                                    Replace Image
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/jpg,image/png,image/heic"
+                                      className="hidden"
+                                      {...field}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const validation = validateImageFile(file);
+                                          if (!validation.valid) {
+                                            alert(validation.message);
+                                            return;
+                                          }
+                                          onChange(file);
+                                          setPetImagePreview(URL.createObjectURL(file));
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </>
+                            ) :
+                              <div className="flex absolute inset-0 justify-center items-center">
+                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <Upload className="w-4 h-4" />
+                                  Upload Image
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/heic"
+                                    className="hidden"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const validation = validateImageFile(file);
+                                        if (!validation.valid) {
+                                          alert(validation.message);
+                                          return;
+                                        }
+                                        onChange(file);
+                                        setPetImagePreview(URL.createObjectURL(file));
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            }
                           </div>
                         </FormControl>
                         <FormMessage />
