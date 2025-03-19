@@ -2,7 +2,7 @@ import dayjs from 'https://esm.sh/dayjs@1.11.10'
 import { GuestFormData } from './types.ts';
 
 export class SheetsService {
-  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId: string) {
+  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string) {
     try {
       console.log('Processing Google Sheet operation...');
       
@@ -11,7 +11,7 @@ export class SheetsService {
       }
 
       const credentials = await this.getCredentials();
-      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, bookingId);
+      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId);
 
       // Try to find existing row with this bookingId
       const existingRow = await this.findRowByBookingId(credentials, bookingId);
@@ -114,7 +114,7 @@ export class SheetsService {
     return await response.json();
   }
 
-  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId: string): string[] {
+  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
     
     return [
@@ -145,13 +145,13 @@ export class SheetsService {
       formData.petBreed || '',            // Pet Breed
       formData.petAge || '',              // Pet Age
       formData.petVaccinationDate || '',  // Pet Vaccination Date
-      formData.petVaccinationUrl || '',   // Pet Vaccination URL
       formData.findUs,                    // How Found Us
       formData.findUsDetails || '',       // Find Us Details
       formData.guestSpecialRequests || '', // Special Requests
       validIdUrl,                          // Valid ID URL
       paymentReceiptUrl,                   // Payment Receipt URL
       petVaccinationUrl,                   // Pet Vaccination URL
+      petImageUrl,                  // Pet Image URL
       currentTimestamp,                    // Created At (for new entries)
       currentTimestamp,                    // Updated At
     ];
