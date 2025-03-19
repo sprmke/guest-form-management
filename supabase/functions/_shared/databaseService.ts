@@ -77,7 +77,7 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string }> {
+  static async processFormData(formData: FormData): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
       console.log('Processing form data...');
 
@@ -126,14 +126,17 @@ export class DatabaseService {
 
       // Handle file uploads
       let petVaccinationUrl: string | undefined;
+      let petImageUrl: string | undefined;
       let paymentReceiptUrl: string;
       let validIdUrl: string;
 
-      // Get the pet vaccination file
+      // Get the pet vaccination file and pet image file
       const petVaccination = formData.get('petVaccination') as File;
+      const petImage = formData.get('petImage') as File;
       const hasPets = formData.get('hasPets') === 'true';
       
       if (hasPets) {
+        // Handle pet vaccination upload
         if (petVaccination) {
           const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
           petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, petVaccinationFileName);
@@ -141,6 +144,16 @@ export class DatabaseService {
           petVaccinationUrl = existingBooking.pet_vaccination_url;
         } else {
           throw new Error('Pet vaccination record is required when bringing pets');
+        }
+
+        // Handle pet image upload
+        if (petImage) {
+          const petImageFileName = formData.get('petImageFileName') as string;
+          petImageUrl = await UploadService.uploadPetImage(petImage, petImageFileName);
+        } else if (existingBooking) {
+          petImageUrl = existingBooking.pet_image_url;
+        } else {
+          throw new Error('Pet image is required when bringing pets');
         }
       }
 
@@ -169,7 +182,7 @@ export class DatabaseService {
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       formData.forEach((value, key) => {
-        if (key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination') {
+        if (key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination' && key !== 'petImage') {
           formDataObj[key] = value;
         }
       });
@@ -194,7 +207,8 @@ export class DatabaseService {
         data, 
         paymentReceiptUrl,
         validIdUrl,
-        petVaccinationUrl
+        petVaccinationUrl,
+        petImageUrl
       );
 
       // Save or update in database using the booking ID
@@ -209,6 +223,7 @@ export class DatabaseService {
         data,
         submissionData,
         petVaccinationUrl: formatPublicUrl(petVaccinationUrl),
+        petImageUrl: formatPublicUrl(petImageUrl),
         validIdUrl: formatPublicUrl(validIdUrl),
         paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl)
       };
