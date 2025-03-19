@@ -2,12 +2,12 @@ import { formatPublicUrl, formatDateTime } from './utils.ts';
 import { GuestFormData } from './types.ts';
 
 export class CalendarService {
-  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, bookingId?: string) {
+  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string) {
     try {
       console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
-      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl);
+      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl);
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
@@ -108,7 +108,7 @@ export class CalendarService {
   /**
    * Creates the event data object for Google Calendar
    */
-  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string) {
+  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string) {
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
     const eventDescription = `
 <strong>Booking ID</strong>
@@ -144,7 +144,9 @@ ${formData.hasPets === 'true' ? `Has Pets: Yes
 Pet Name: ${formData.petName || 'N/A'}
 Pet Breed: ${formData.petBreed || 'N/A'}
 Pet Age: ${formData.petAge || 'N/A'}
-Vaccination Date: ${formData.petVaccinationDate || 'N/A'}` : 'Has Pets: No'}
+Vaccination Date: ${formData.petVaccinationDate || 'N/A'}
+Pet Image: ${petImageUrl || 'N/A'}` : 'Has Pets: No'}
+Vaccination Record: ${petVaccinationUrl || 'N/A'}
 
 <strong>Additional Information</strong>
 How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formData.findUsDetails}` : ''}
@@ -153,7 +155,6 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 <strong>Documents</strong>
 Payment Receipt: ${paymentReceiptUrl}
 Valid ID: ${validIdUrl}
-Pet Vaccination: ${petVaccinationUrl || 'N/A'}
     `.trim();
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
