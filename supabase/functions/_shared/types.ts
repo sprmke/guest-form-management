@@ -43,6 +43,9 @@ export interface GuestFormData {
   petVaccination?: File;
   petVaccinationUrl?: string;
   petVaccinationFileName?: string;
+  petImage?: File;
+  petImageUrl?: string;
+  petImageFileName?: string;
   
   // Payment receipt fields
   paymentReceipt?: File;
@@ -96,6 +99,7 @@ export interface GuestSubmission {
   pet_age?: string;
   pet_vaccination_date?: string;
   pet_vaccination_url?: string;
+  pet_image_url?: string;
   payment_receipt_url: string;
   valid_id_url: string;
   unit_owner: string;
@@ -135,7 +139,7 @@ const validateGuestName = (name: string | undefined): string | undefined => {
 };
 
 // Transform function to convert form data to database schema
-export const transformFormToSubmission = (formData: GuestFormData, paymentReceiptUrl: string, validIdUrl: string, petVaccinationUrl?: string): GuestSubmission => {
+export const transformFormToSubmission = (formData: GuestFormData, paymentReceiptUrl: string, validIdUrl: string, petVaccinationUrl?: string, petImageUrl?: string): GuestSubmission => {
   return {
     guest_facebook_name: formData.guestFacebookName,
     primary_guest_name: formData.primaryGuestName,
@@ -167,6 +171,7 @@ export const transformFormToSubmission = (formData: GuestFormData, paymentReceip
     pet_age: formData.petAge,
     pet_vaccination_date: formData.petVaccinationDate ? formatDate(formData.petVaccinationDate) : undefined,
     pet_vaccination_url: petVaccinationUrl,
+    pet_image_url: petImageUrl,
     payment_receipt_url: paymentReceiptUrl,
     valid_id_url: validIdUrl,
     unit_owner: formData.unitOwner || 'Arianna Perez',
