@@ -32,7 +32,7 @@ serve(async (req) => {
     const formData = await req.formData()
     
     // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl } = await DatabaseService.processFormData(formData)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData)
 
     let pdfBuffer = null
     // Generate PDF if enabled
@@ -47,12 +47,12 @@ serve(async (req) => {
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, submissionData.id)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     // Append to Google Sheet if enabled
     if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, submissionData.id)
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     console.log('Form submission process completed successfully')
