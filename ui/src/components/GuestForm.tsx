@@ -723,7 +723,7 @@ export function GuestForm() {
                       <p className="font-bold">🚙 Azure North Parking Reminder</p>
                       <p>Please note that vehicles without a designated parking slot are allowed to enter for <span className="font-semibold">drop-off only</span> in front of the Tower entrance.</p>
                       <p><span className="font-semibold">FREE parking is available outside Azure North</span> in front of the gate entrance and Home Depot, just 3-5 minutes walk to Azure North Monaco Tower.</p>
-                      <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">P400 per night</span>. To ensure hassle-free entry to our unit, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
+                      <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">₱400 per night</span>. To ensure hassle-free entry to our unit, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
                     </div>
                   </div>
 
@@ -799,6 +799,16 @@ export function GuestForm() {
 
               {form.watch("hasPets") && (
                 <div className="pl-6 space-y-4">
+                  <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+                    <div className="flex flex-col gap-y-4 text-sm">
+                      <p className="font-bold">🐶 Azure North Pet Policy Reminder</p>
+                      <p>Azure North requires the following pet information for approval by the PMO.</p>
+                      <p><span className="font-semibold">Only one (1) toy/small dog is allowed</span> in the unit and a <span className="font-semibold text-red-600">₱300 pet fee</span> is required.</p>
+                      <p>Pets must be transported using the service elevator only and must be secured in a zipped-up, hand-carried case/bag and on a leash each time they are brought out of the unit.</p>
+                      <p><span className="font-semibold">No pets allowed in the following areas:</span> Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck</p>
+                    </div>
+                  </div>
+                  
                   <FormField
                     control={form.control}
                     name="petName"
