@@ -723,7 +723,8 @@ export function GuestForm() {
                       <p className="font-bold">🚙 Azure North Parking Reminder</p>
                       <p>Please note that vehicles without a designated parking slot are allowed to enter for <span className="font-semibold">drop-off only</span> in front of the Tower entrance.</p>
                       <p><span className="font-semibold">FREE parking is available outside Azure North</span> in front of the gate entrance and Home Depot, just 3-5 minutes walk to Azure North Monaco Tower.</p>
-                      <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">₱400 per night</span>. To ensure hassle-free entry to our unit, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
+                      <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">₱400 per night</span>. We understand it’s a bit pricey, but we secure parking spaces from other owners and do not profit from it.</p>
+                      <p>To ensure hassle-free entry to your staycation, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
                     </div>
                   </div>
 
