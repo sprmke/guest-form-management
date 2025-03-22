@@ -16,6 +16,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     <p>Attached is the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated ${formData.checkInDate}, for your approval.</p>
     <p>Let me know if you need any further information.</p>
     <p>Thank you.</p>
+    <br>
     <p>Best regards,</p>
     <p>Arianna Perez</p>
     <p>Unit Owner, Monaco 2604</p>
