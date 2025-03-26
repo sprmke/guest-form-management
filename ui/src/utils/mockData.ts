@@ -126,7 +126,16 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
         'Walk-in inquiry',
         'Property agent referral',
         'Local community group',
-        'Travel blog recommendation'
+        'Travel blog recommendation',
+        'Instagram ad',
+        'Facebook Marketplace',
+        'TikTok video',
+        'YouTube vlog',
+        'Real estate website',
+        'Airbnb listing',
+        'Travel agency',
+        'Corporate booking',
+        'Previous guest'
       ])
     : undefined;
 
