@@ -20,7 +20,13 @@ const requests = [
   'Quiet room requested',
   'Need extra pillows',
   'Prefer higher floor',
-  ''
+  'No pets allowed',
+  'No smoking allowed',
+  'No parties allowed',
+  'No loud music allowed',
+  'No late check-out',
+  'No early check-in',
+  'No pets allowed',
 ];
 
 const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
