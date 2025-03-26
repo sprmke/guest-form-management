@@ -36,7 +36,7 @@ const generateRandomName = () => {
 
 // Generate a valid plate number format
 const generateRandomPlate = () => {
-  const letters = randomElement(['ABC', 'XYZ', 'DEF', 'GHI', 'JKL']);
+  const letters = randomElement(['ABC', 'XYZ', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', 'YZA']);
   const numbers = randomNumber(100, 999);
   return `${letters} ${numbers}`;
 };
