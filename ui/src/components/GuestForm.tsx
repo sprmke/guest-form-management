@@ -1174,7 +1174,7 @@ export function GuestForm() {
             {submitSuccess && (
               <div className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200" role="alert">
                 <strong className="font-bold">Success! </strong>
-                <span className="block sm:inline">Your form has been submitted successfully.</span>
+                <span className="block sm:inline">Your guest form has been submitted successfully! Please return to our Facebook page and let us know that you’ve completed the form.</span>
               </div>
             )}
 
