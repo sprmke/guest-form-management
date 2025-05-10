@@ -1,45 +1,70 @@
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Button } from "@/components/ui/button"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useEffect, useRef } from "react"
-import { toCapitalCase, transformFieldValues } from "@/utils/formatters"
-import { generateRandomData, setDummyFile } from "@/utils/mockData"
-import { guestFormSchema, type GuestFormData } from "@/lib/schemas/guestFormSchema"
-import { defaultFormValues } from "@/constants/guestFormData"
-import { handleNameInputChange, validateImageFile, fetchImageAsFile, handleFileUpload } from "@/utils/helpers"
-import { getTodayDate, handleCheckInDateChange } from "@/utils/dates"
-import { useSearchParams } from 'react-router-dom'
-import { Upload, Loader2 } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useState, useEffect, useRef } from 'react';
+import { toCapitalCase, transformFieldValues } from '@/utils/formatters';
+import { generateRandomData, setDummyFile } from '@/utils/mockData';
+import {
+  guestFormSchema,
+  type GuestFormData,
+} from '@/lib/schemas/guestFormSchema';
+import { defaultFormValues } from '@/constants/guestFormData';
+import {
+  handleNameInputChange,
+  validateImageFile,
+  fetchImageAsFile,
+  handleFileUpload,
+} from '@/utils/helpers';
+import { getTodayDate, handleCheckInDateChange } from '@/utils/dates';
+import { useSearchParams } from 'react-router-dom';
+import { Upload, Loader2 } from 'lucide-react';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
 
 export function GuestForm() {
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [validIdPreview, setValidIdPreview] = useState<string | null>(null)
-  const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<string | null>(null)
-  const [petVaccinationPreview, setPetVaccinationPreview] = useState<string | null>(null)
-  const [petImagePreview, setPetImagePreview] = useState<string | null>(null)
-  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
+  const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
+    string | null
+  >(null);
+  const [petVaccinationPreview, setPetVaccinationPreview] = useState<
+    string | null
+  >(null);
+  const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
+  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const validIdInputRef = useRef<HTMLInputElement>(null)
-  const petVaccinationInputRef = useRef<HTMLInputElement>(null)
-  const petImageInputRef = useRef<HTMLInputElement>(null)
-  const [searchParams] = useSearchParams()
-  const bookingId = searchParams.get('bookingId')
+  const validIdInputRef = useRef<HTMLInputElement>(null);
+  const petVaccinationInputRef = useRef<HTMLInputElement>(null);
+  const petImageInputRef = useRef<HTMLInputElement>(null);
+  const [searchParams] = useSearchParams();
+  const bookingId = searchParams.get('bookingId');
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
     defaultValues: defaultFormValues,
-    mode: "all"
-  })
+    mode: 'all',
+  });
 
   const today = getTodayDate();
 
@@ -57,33 +82,36 @@ export function GuestForm() {
   useEffect(() => {
     const fetchFormData = async () => {
       if (!bookingId) return;
-      
+
       setIsLoading(true);
       setSubmitError(null);
-      
+
       try {
         const response = await fetch(`${apiUrl}/get-form/${bookingId}`, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
         });
-        
+
         const result = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(result.message || 'Failed to fetch form data');
         }
 
         if (result.success && result.data) {
           const formData = { ...result.data };
-          
+
           // Set file input URLs if they exist
           if (formData.paymentReceiptUrl) {
             // Fetch the image and convert it to a File object
-            const paymentReceiptFile = await fetchImageAsFile(formData.paymentReceiptUrl, formData.primaryGuestName);
+            const paymentReceiptFile = await fetchImageAsFile(
+              formData.paymentReceiptUrl,
+              formData.primaryGuestName
+            );
             if (paymentReceiptFile) {
               formData.paymentReceipt = paymentReceiptFile;
               setPaymentReceiptPreview(formData.paymentReceiptUrl);
@@ -92,7 +120,10 @@ export function GuestForm() {
 
           if (formData.validIdUrl) {
             // Fetch the image and convert it to a File object
-            const validIdFile = await fetchImageAsFile(formData.validIdUrl, formData.primaryGuestName);
+            const validIdFile = await fetchImageAsFile(
+              formData.validIdUrl,
+              formData.primaryGuestName
+            );
             if (validIdFile) {
               formData.validId = validIdFile;
               setValidIdPreview(formData.validIdUrl);
@@ -101,7 +132,10 @@ export function GuestForm() {
 
           if (formData.petVaccinationUrl) {
             // Fetch the image and convert it to a File object
-            const petVaccinationFile = await fetchImageAsFile(formData.petVaccinationUrl, formData.primaryGuestName);
+            const petVaccinationFile = await fetchImageAsFile(
+              formData.petVaccinationUrl,
+              formData.primaryGuestName
+            );
             if (petVaccinationFile) {
               formData.petVaccination = petVaccinationFile;
               setPetVaccinationPreview(formData.petVaccinationUrl);
@@ -109,13 +143,16 @@ export function GuestForm() {
           }
 
           if (formData.petImageUrl) {
-            const petImageFile = await fetchImageAsFile(formData.petImageUrl, formData.primaryGuestName);
+            const petImageFile = await fetchImageAsFile(
+              formData.petImageUrl,
+              formData.primaryGuestName
+            );
             if (petImageFile) {
               formData.petImage = petImageFile;
               setPetImagePreview(formData.petImageUrl);
             }
           }
-          
+
           // Reset form with the modified data
           form.reset(formData);
         } else {
@@ -123,7 +160,9 @@ export function GuestForm() {
         }
       } catch (error) {
         console.error('Error fetching form data:', error);
-        setSubmitError(error instanceof Error ? error.message : 'Failed to fetch form data');
+        setSubmitError(
+          error instanceof Error ? error.message : 'Failed to fetch form data'
+        );
       } finally {
         setIsLoading(false);
       }
@@ -145,7 +184,7 @@ export function GuestForm() {
 
     const randomData = await generateRandomData();
     form.reset(randomData);
-    
+
     // Set the dummy files in the file inputs
     if (randomData.paymentReceipt) {
       setDummyFile(fileInputRef, randomData.paymentReceipt);
@@ -162,20 +201,27 @@ export function GuestForm() {
   };
 
   async function onSubmit(values: GuestFormData) {
-    setIsSubmitting(true)
-    setSubmitError(null)
-    setSubmitSuccess(false)
-    
+    setIsSubmitting(true);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
     try {
-      const transformedValues = transformFieldValues(values)
-      const formData = new FormData()
-      
+      const transformedValues = transformFieldValues(values);
+      const formData = new FormData();
+
       // Add the booking ID to form data
       formData.append('bookingId', currentBookingId || '');
-      
+
       // Add all form values to FormData, excluding paymentReceipt, validId, petVaccination and petImage
       Object.entries(transformedValues).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination' && key !== 'petImage') {
+        if (
+          value !== undefined &&
+          value !== null &&
+          key !== 'paymentReceipt' &&
+          key !== 'validId' &&
+          key !== 'petVaccination' &&
+          key !== 'petImage'
+        ) {
           formData.append(key, value.toString());
         }
       });
@@ -187,46 +233,61 @@ export function GuestForm() {
       formData.append('ownerContactNumber', '0962 541 2941');
 
       // Handle file uploads with standardized naming
-      ['paymentReceipt', 'validId', 'petVaccination', 'petImage'].forEach(prefix => {
-        handleFileUpload(
-          formData,
-          values[prefix as keyof GuestFormData] as File | null | undefined,
-          prefix,
-          values.primaryGuestName,
-          values.checkInDate,
-          values.checkOutDate,
-          prefix === 'petVaccination' || prefix === 'petImage' ? values.hasPets : true
-        );
-      });
+      ['paymentReceipt', 'validId', 'petVaccination', 'petImage'].forEach(
+        (prefix) => {
+          handleFileUpload(
+            formData,
+            values[prefix as keyof GuestFormData] as File | null | undefined,
+            prefix,
+            values.primaryGuestName,
+            values.checkInDate,
+            values.checkOutDate,
+            prefix === 'petVaccination' || prefix === 'petImage'
+              ? values.hasPets
+              : true
+          );
+        }
+      );
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
-      ['generatePdf', 'sendEmail', 'updateGoogleCalendar', 'updateGoogleSheets'].forEach(param => {
-        queryParams.append(param, searchParams.get(param) === 'false' ? 'false' : 'true');
+      [
+        'generatePdf',
+        'sendEmail',
+        'updateGoogleCalendar',
+        'updateGoogleSheets',
+      ].forEach((param) => {
+        queryParams.append(
+          param,
+          searchParams.get(param) === 'false' ? 'false' : 'true'
+        );
       });
-      
-      const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
+
+      const queryParamsString = queryParams.toString()
+        ? `?${queryParams.toString()}`
+        : '';
       const apiUrlWithParams = `${apiUrl}/submit-form${queryParamsString}`;
 
       const response = await fetch(apiUrlWithParams, {
         method: 'POST',
-        body: formData
-      })
+        body: formData,
+      });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(
-          errorData.error || 
-          errorData.message || 
-          `HTTP error! status: ${response.status} - ${JSON.stringify(errorData)}`
+          errorData.error ||
+            errorData.message ||
+            `HTTP error! status: ${response.status} - ${JSON.stringify(
+              errorData
+            )}`
         );
       }
 
       const result = await response.json();
       if (!result.success) {
-        const errorMessage = result.error || 
-          (result.details?.message) || 
-          'Failed to submit form';
+        const errorMessage =
+          result.error || result.details?.message || 'Failed to submit form';
         console.error('Form submission failed:', result);
         throw new Error(errorMessage);
       }
@@ -244,11 +305,12 @@ export function GuestForm() {
       console.error('Error submitting form:', {
         error,
         message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      const errorMessage = error instanceof Error 
-        ? `Error: ${error.message}` 
-        : 'An unexpected error occurred. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? `Error: ${error.message}`
+          : 'An unexpected error occurred. Please try again.';
       setSubmitError(errorMessage);
       setSubmitSuccess(false);
     } finally {
@@ -257,8 +319,9 @@ export function GuestForm() {
   }
 
   // Calculate total number of additional guests needed, capped at 6
-  const totalGuests = (form.watch("numberOfAdults") || 1) + (form.watch("numberOfChildren") || 0)
-  const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)) // Cap at 3 additional guests
+  const totalGuests =
+    (form.watch('numberOfAdults') || 1) + (form.watch('numberOfChildren') || 0);
+  const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)); // Cap at 3 additional guests
 
   return (
     <Form {...form}>
@@ -271,7 +334,11 @@ export function GuestForm() {
           <>
             {!isProduction && !bookingId && (
               <div className="flex justify-end mb-4">
-                <Button type="button" variant="outline" onClick={handleGenerateNewData}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGenerateNewData}
+                >
                   Generate New Data
                 </Button>
               </div>
@@ -282,12 +349,16 @@ export function GuestForm() {
               name="guestFacebookName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Guest Facebook Name <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Guest Facebook Name <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="Your exact full name in Facebook" 
-                      {...field} 
-                      onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
+                    <Input
+                      placeholder="Your exact full name in Facebook"
+                      {...field}
+                      onChange={(e) =>
+                        handleNameInputChange(e, field.onChange, toCapitalCase)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -300,9 +371,15 @@ export function GuestForm() {
               name="guestEmail"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Guest Email <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Guest Email <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input type="email" placeholder="Ex. juandelacruz@gmail.com" {...field} />
+                    <Input
+                      type="email"
+                      placeholder="Ex. juandelacruz@gmail.com"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -314,9 +391,11 @@ export function GuestForm() {
               name="guestPhoneNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Guest Phone Number <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Guest Phone Number <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       type="tel"
                       inputMode="numeric"
                       placeholder="Ex. 09876543210"
@@ -328,9 +407,9 @@ export function GuestForm() {
                         // Limit to 11 digits
                         const trimmed = value.slice(0, 11);
                         field.onChange(trimmed);
-                        
+
                         // Trigger validation on change
-                        form.trigger("guestPhoneNumber");
+                        form.trigger('guestPhoneNumber');
                       }}
                     />
                   </FormControl>
@@ -344,12 +423,16 @@ export function GuestForm() {
               name="guestAddress"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Guest Address <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    Guest Address <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input 
-                      placeholder="City, Province" 
-                      {...field} 
-                      onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                    <Input
+                      placeholder="City, Province"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(toCapitalCase(e.target.value))
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -363,10 +446,12 @@ export function GuestForm() {
                 name="checkInDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Check-in Date <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Check-in Date <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="date" 
+                      <Input
+                        type="date"
                         min={today}
                         {...field}
                         onChange={(e) => handleCheckInDateChange(e, form)}
@@ -384,11 +469,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Check-in Time</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        placeholder="02:00 pm"
-                        {...field}
-                      />
+                      <Input type="time" placeholder="02:00 pm" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -402,15 +483,21 @@ export function GuestForm() {
                 name="checkOutDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Check-out Date <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Check-out Date <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="date" 
-                        min={form.watch('checkInDate') ? form.watch('checkInDate') : today}
+                      <Input
+                        type="date"
+                        min={
+                          form.watch('checkInDate')
+                            ? form.watch('checkInDate')
+                            : today
+                        }
                         {...field}
                         onChange={(e) => {
                           field.onChange(e.target.value);
-                          form.trigger("checkOutTime");
+                          form.trigger('checkOutTime');
                         }}
                       />
                     </FormControl>
@@ -426,11 +513,7 @@ export function GuestForm() {
                   <FormItem>
                     <FormLabel>Check-out Time</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="time" 
-                        placeholder="11:00 am"
-                        {...field}
-                      />
+                      <Input type="time" placeholder="11:00 am" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -445,10 +528,12 @@ export function GuestForm() {
                 <FormItem>
                   <FormLabel>Nationality</FormLabel>
                   <FormControl>
-                    <Input 
-                      {...field} 
-                      placeholder="Ex. Filipino" 
-                      onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                    <Input
+                      {...field}
+                      placeholder="Ex. Filipino"
+                      onChange={(e) =>
+                        field.onChange(toCapitalCase(e.target.value))
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -477,7 +562,7 @@ export function GuestForm() {
                         -
                       </Button>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="number"
                           inputMode="numeric"
                           pattern="[0-9]*"
@@ -495,7 +580,8 @@ export function GuestForm() {
                         className="px-3 rounded-l-none"
                         disabled={field.value >= 4 || totalGuests >= 6} // Max 4 adults or total 6 guests
                         onClick={() => {
-                          const currentChildren = form.getValues("numberOfChildren") || 0;
+                          const currentChildren =
+                            form.getValues('numberOfChildren') || 0;
                           const newValue = Math.min(4, (field.value || 1) + 1);
                           if (newValue + currentChildren <= 6) {
                             field.onChange(newValue);
@@ -530,7 +616,7 @@ export function GuestForm() {
                         -
                       </Button>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="number"
                           inputMode="numeric"
                           pattern="[0-9]*"
@@ -549,7 +635,8 @@ export function GuestForm() {
                         className="px-3 rounded-l-none"
                         disabled={totalGuests >= 6 || field.value >= 5} // Max total 6 guests or 5 children
                         onClick={() => {
-                          const currentAdults = form.getValues("numberOfAdults") || 1;
+                          const currentAdults =
+                            form.getValues('numberOfAdults') || 1;
                           const newValue = (field.value || 0) + 1;
                           if (newValue + currentAdults <= 6) {
                             field.onChange(newValue);
@@ -566,11 +653,16 @@ export function GuestForm() {
             </div>
 
             {totalGuests >= 4 && (
-              <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+              <div
+                className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                role="alert"
+              >
                 <p className="text-sm">
-                  Please note that Azure North only allows a maximum of 4 pax on the guest form.
-                  However, our unit can accommodate up to 4 adults and 2 children.
-                  But if you're more than 4 adults, please inform us directly on our Facebook page so that we can accommodate you.
+                  Please note that Azure North only allows a maximum of 4 pax on
+                  the guest form. However, our unit can accommodate up to 4
+                  adults and 2 children. But if you're more than 4 adults,
+                  please inform us directly on our Facebook page so that we can
+                  accommodate you.
                 </p>
               </div>
             )}
@@ -580,12 +672,17 @@ export function GuestForm() {
               name="primaryGuestName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>1. Primary Guest - Name <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel>
+                    1. Primary Guest - Name{' '}
+                    <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input 
+                    <Input
                       placeholder="Complete name of Primary Guest"
-                      {...field} 
-                      onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
+                      {...field}
+                      onChange={(e) =>
+                        handleNameInputChange(e, field.onChange, toCapitalCase)
+                      }
                     />
                   </FormControl>
                   <FormMessage />
@@ -596,37 +693,49 @@ export function GuestForm() {
             {/* Dynamic Additional Guests Fields */}
             {additionalGuestsNeeded > 0 && (
               <div className="space-y-4">
-                {Array.from({ length: additionalGuestsNeeded }).map((_, index) => (
-                  <FormField
-                    key={index}
-                    control={form.control}
-                    name={`guest${index + 2}Name` as keyof GuestFormData}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                         {index + 2}. {
-                           index + 2 === 2 ? "Second" :
-                           index + 2 === 3 ? "Third" :
-                           "Fourth"
-                         } Guest - Name <span className="text-red-500">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder={`Complete name of ${
-                              index + 2 === 2 ? "Second Guest" :
-                              index + 2 === 3 ? "Third Guest" :
-                              "Fourth Guest"
-                            }`}
-                            {...field}
-                            value={field.value?.toString() ?? ''}
-                            onChange={(e) => handleNameInputChange(e, field.onChange, toCapitalCase)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
+                {Array.from({ length: additionalGuestsNeeded }).map(
+                  (_, index) => (
+                    <FormField
+                      key={index}
+                      control={form.control}
+                      name={`guest${index + 2}Name` as keyof GuestFormData}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {index + 2}.{' '}
+                            {index + 2 === 2
+                              ? 'Second'
+                              : index + 2 === 3
+                              ? 'Third'
+                              : 'Fourth'}{' '}
+                            Guest - Name <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder={`Complete name of ${
+                                index + 2 === 2
+                                  ? 'Second Guest'
+                                  : index + 2 === 3
+                                  ? 'Third Guest'
+                                  : 'Fourth Guest'
+                              }`}
+                              {...field}
+                              value={field.value?.toString() ?? ''}
+                              onChange={(e) =>
+                                handleNameInputChange(
+                                  e,
+                                  field.onChange,
+                                  toCapitalCase
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )
+                )}
               </div>
             )}
 
@@ -637,7 +746,10 @@ export function GuestForm() {
                 <FormItem>
                   <FormLabel>Special requests / Notes to owner</FormLabel>
                   <FormControl>
-                    <Textarea placeholder="Ex. Late check-in, cash only for balance payment, celebrating special occasion, etc." {...field} />
+                    <Textarea
+                      placeholder="Ex. Late check-in, cash only for balance payment, celebrating special occasion, etc."
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -650,7 +762,10 @@ export function GuestForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>How did you find us?</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value || "Facebook"}>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value || 'Facebook'}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select how you found us" />
@@ -670,25 +785,30 @@ export function GuestForm() {
               )}
             />
 
-            {(form.watch("findUs") === "Friend" || form.watch("findUs") === "Others") && (
+            {(form.watch('findUs') === 'Friend' ||
+              form.watch('findUs') === 'Others') && (
               <FormField
                 control={form.control}
                 name="findUsDetails"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch("findUs") === "Friend" ? "Friend's Name" : "Please specify where you found us"}
+                      {form.watch('findUs') === 'Friend'
+                        ? "Friend's Name"
+                        : 'Please specify where you found us'}
                       <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input 
+                      <Input
                         placeholder={
-                          form.watch("findUs") === "Friend" 
-                            ? "Enter your friend's name" 
-                            : "Please specify how you found us"
-                        } 
-                        {...field} 
-                        onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                          form.watch('findUs') === 'Friend'
+                            ? "Enter your friend's name"
+                            : 'Please specify how you found us'
+                        }
+                        {...field}
+                        onChange={(e) =>
+                          field.onChange(toCapitalCase(e.target.value))
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -716,15 +836,43 @@ export function GuestForm() {
                 )}
               />
 
-              {form.watch("needParking") && (
+              {form.watch('needParking') && (
                 <div className="pl-6 space-y-4">
-                  <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+                  <div
+                    className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                    role="alert"
+                  >
                     <div className="flex flex-col gap-y-4 text-sm">
-                      <p className="font-bold">🚙 Azure North Parking Reminder</p>
-                      <p>Please note that vehicles without a designated parking slot are allowed to enter for <span className="font-semibold">drop-off only</span> in front of the Tower entrance.</p>
-                      <p><span className="font-semibold">FREE parking is available outside Azure North</span> in front of the gate entrance and Home Depot, just 3-5 minutes walk to Azure North Monaco Tower.</p>
-                      <p>If you want to reserve a parking slot inside Azure North, please fill up your car details below and pay <span className="font-semibold text-red-600">₱400 per night</span>. We understand it’s a bit pricey, but we secure parking spaces from other owners and do not profit from it.</p>
-                      <p>To ensure hassle-free entry to your staycation, we highly recommend booking in advance since parking slots are limited particularly during weekends.</p>
+                      <p className="font-bold">
+                        🚙 Azure North Parking Reminder
+                      </p>
+                      <p>
+                        Please note that vehicles without a designated parking
+                        slot are allowed to enter for{' '}
+                        <span className="font-semibold">drop-off only</span> in
+                        front of the Tower entrance.
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          FREE parking is available outside Azure North
+                        </span>{' '}
+                        in front of the gate entrance and Home Depot, just 3-5
+                        minutes walk to Azure North Monaco Tower.
+                      </p>
+                      <p>
+                        If you want to reserve a parking slot inside Azure
+                        North, please fill up your car details below and pay{' '}
+                        <span className="font-semibold text-red-600">
+                          ₱400 per night
+                        </span>
+                        . We understand it’s a bit pricey, but we secure parking
+                        spaces from other owners and do not profit from it.
+                      </p>
+                      <p>
+                        To ensure hassle-free entry to your staycation, we
+                        highly recommend booking in advance since parking slots
+                        are limited particularly during weekends.
+                      </p>
                     </div>
                   </div>
 
@@ -733,7 +881,12 @@ export function GuestForm() {
                     name="carPlateNumber"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Plate Number {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Car Plate Number{' '}
+                          {form.watch('needParking') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. ABC123" {...field} />
                         </FormControl>
@@ -747,12 +900,19 @@ export function GuestForm() {
                     name="carBrandModel"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Brand & Model {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Car Brand & Model{' '}
+                          {form.watch('needParking') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Ex. Honda Civic" 
-                            {...field} 
-                            onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                          <Input
+                            placeholder="Ex. Honda Civic"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(toCapitalCase(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -765,12 +925,19 @@ export function GuestForm() {
                     name="carColor"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Car Color {form.watch("needParking") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Car Color{' '}
+                          {form.watch('needParking') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Ex. Red" 
-                            {...field} 
-                            onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                          <Input
+                            placeholder="Ex. Red"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(toCapitalCase(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -798,29 +965,64 @@ export function GuestForm() {
                 )}
               />
 
-              {form.watch("hasPets") && (
+              {form.watch('hasPets') && (
                 <div className="pl-6 space-y-4">
-                  <div className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200" role="alert">
+                  <div
+                    className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                    role="alert"
+                  >
                     <div className="flex flex-col gap-y-4 text-sm">
-                      <p className="font-bold">🐶 Azure North Pet Policy Reminder</p>
-                      <p>Azure North requires the following pet information for approval by the PMO.</p>
-                      <p><span className="font-semibold">Only one (1) toy/small dog is allowed</span> in the unit and a <span className="font-semibold text-red-600">₱300 pet fee</span> is required.</p>
-                      <p>Pets must be transported using the service elevator only and must be secured in a zipped-up, hand-carried case/bag and on a leash each time they are brought out of the unit.</p>
-                      <p><span className="font-semibold">No pets allowed in the following areas:</span> Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck</p>
+                      <p className="font-bold">
+                        🐶 Azure North Pet Policy Reminder
+                      </p>
+                      <p>
+                        Azure North requires the following pet information for
+                        approval by the PMO.
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          Only one (1) toy/small dog is allowed
+                        </span>{' '}
+                        in the unit and a{' '}
+                        <span className="font-semibold text-red-600">
+                          ₱300 pet fee
+                        </span>{' '}
+                        is required.
+                      </p>
+                      <p>
+                        Pets must be transported using the service elevator only
+                        and must be secured in a zipped-up, hand-carried
+                        case/bag and on a leash each time they are brought out
+                        of the unit.
+                      </p>
+                      <p>
+                        <span className="font-semibold">
+                          No pets allowed in the following areas:
+                        </span>{' '}
+                        Main Lobby, Viewing Deck, Common/Amenity Areas, Roof
+                        Deck
+                      </p>
                     </div>
                   </div>
-                  
+
                   <FormField
                     control={form.control}
                     name="petName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Name {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Pet Name{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Ex. Max" 
-                            {...field} 
-                            onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                          <Input
+                            placeholder="Ex. Max"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(toCapitalCase(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -833,12 +1035,19 @@ export function GuestForm() {
                     name="petBreed"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Breed {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Pet Breed{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
-                          <Input 
-                            placeholder="Ex. Labrador" 
-                            {...field} 
-                            onChange={(e) => field.onChange(toCapitalCase(e.target.value))}
+                          <Input
+                            placeholder="Ex. Labrador"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(toCapitalCase(e.target.value))
+                            }
                           />
                         </FormControl>
                         <FormMessage />
@@ -851,7 +1060,12 @@ export function GuestForm() {
                     name="petAge"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Pet Age {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Pet Age{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. 2 years old" {...field} />
                         </FormControl>
@@ -865,7 +1079,12 @@ export function GuestForm() {
                     name="petVaccinationDate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Last Vaccination Date {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Last Vaccination Date{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
@@ -879,13 +1098,21 @@ export function GuestForm() {
                     name="petImage"
                     render={({ field: { onChange, value, ...field } }) => (
                       <FormItem>
-                        <FormLabel>Pet Image {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
+                        <FormLabel>
+                          Pet Image{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
                         <FormControl>
                           <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                            {(petImagePreview || value) ? (
+                            {petImagePreview || value ? (
                               <>
-                                <img 
-                                  src={petImagePreview || (value && URL.createObjectURL(value))}
+                                <img
+                                  src={
+                                    petImagePreview ||
+                                    (value && URL.createObjectURL(value))
+                                  }
                                   alt="Pet Image Preview"
                                   className="object-cover w-full h-full"
                                 />
@@ -901,86 +1128,16 @@ export function GuestForm() {
                                       onChange={(e) => {
                                         const file = e.target.files?.[0];
                                         if (file) {
-                                          const validation = validateImageFile(file);
+                                          const validation =
+                                            validateImageFile(file);
                                           if (!validation.valid) {
                                             alert(validation.message);
                                             return;
                                           }
                                           onChange(file);
-                                          setPetImagePreview(URL.createObjectURL(file));
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                </div>
-                              </>
-                            ) :
-                              <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
-                                  <Upload className="w-4 h-4" />
-                                  Upload Image
-                                  <input
-                                    type="file"
-                                    accept="image/jpeg,image/jpg,image/png,image/heic"
-                                    className="hidden"
-                                    {...field}
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                        const validation = validateImageFile(file);
-                                        if (!validation.valid) {
-                                          alert(validation.message);
-                                          return;
-                                        }
-                                        onChange(file);
-                                        setPetImagePreview(URL.createObjectURL(file));
-                                      }
-                                    }}
-                                  />
-                                </label>
-                              </div>
-                            }
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={form.control}
-                    name="petVaccination"
-                    render={({ field: { onChange, value, ...field } }) => (
-                      <FormItem>
-                        <FormLabel>Pet Vaccination Record {form.watch("hasPets") && <span className="text-red-500">*</span>}</FormLabel>
-                        <FormControl>
-                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                            {(petVaccinationPreview || value) ? (
-                              <>
-                                <img 
-                                  src={petVaccinationPreview || (value && URL.createObjectURL(value))}
-                                  alt="Pet Vaccination Record Preview"
-                                  className="object-cover w-full h-full"
-                                />
-                                <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
-                                    <Upload className="w-4 h-4" />
-                                    Replace Image
-                                    <input
-                                      type="file"
-                                      accept="image/jpeg,image/jpg,image/png,image/heic"
-                                      className="hidden"
-                                      {...field}
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          const validation = validateImageFile(file);
-                                          if (!validation.valid) {
-                                            alert(validation.message);
-                                            return;
-                                          }
-                                          onChange(file);
-                                          setPetVaccinationPreview(URL.createObjectURL(file));
+                                          setPetImagePreview(
+                                            URL.createObjectURL(file)
+                                          );
                                         }
                                       }}
                                     />
@@ -1000,13 +1157,103 @@ export function GuestForm() {
                                     onChange={(e) => {
                                       const file = e.target.files?.[0];
                                       if (file) {
-                                        const validation = validateImageFile(file);
+                                        const validation =
+                                          validateImageFile(file);
                                         if (!validation.valid) {
                                           alert(validation.message);
                                           return;
                                         }
                                         onChange(file);
-                                        setPetVaccinationPreview(URL.createObjectURL(file));
+                                        setPetImagePreview(
+                                          URL.createObjectURL(file)
+                                        );
+                                      }
+                                    }}
+                                  />
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="petVaccination"
+                    render={({ field: { onChange, value, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Pet Vaccination Record{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-red-500">*</span>
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                            {petVaccinationPreview || value ? (
+                              <>
+                                <img
+                                  src={
+                                    petVaccinationPreview ||
+                                    (value && URL.createObjectURL(value))
+                                  }
+                                  alt="Pet Vaccination Record Preview"
+                                  className="object-cover w-full h-full"
+                                />
+                                <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
+                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                                    <Upload className="w-4 h-4" />
+                                    Replace Image
+                                    <input
+                                      type="file"
+                                      accept="image/jpeg,image/jpg,image/png,image/heic"
+                                      className="hidden"
+                                      {...field}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          const validation =
+                                            validateImageFile(file);
+                                          if (!validation.valid) {
+                                            alert(validation.message);
+                                            return;
+                                          }
+                                          onChange(file);
+                                          setPetVaccinationPreview(
+                                            URL.createObjectURL(file)
+                                          );
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="flex absolute inset-0 justify-center items-center">
+                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <Upload className="w-4 h-4" />
+                                  Upload Image
+                                  <input
+                                    type="file"
+                                    accept="image/jpeg,image/jpg,image/png,image/heic"
+                                    className="hidden"
+                                    {...field}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        const validation =
+                                          validateImageFile(file);
+                                        if (!validation.valid) {
+                                          alert(validation.message);
+                                          return;
+                                        }
+                                        onChange(file);
+                                        setPetVaccinationPreview(
+                                          URL.createObjectURL(file)
+                                        );
                                       }
                                     }}
                                   />
@@ -1029,13 +1276,18 @@ export function GuestForm() {
                 name="validId"
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Valid ID <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Valid ID <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                        {(validIdPreview || value) ? (
+                        {validIdPreview || value ? (
                           <>
-                            <img 
-                              src={validIdPreview || (value && URL.createObjectURL(value))}
+                            <img
+                              src={
+                                validIdPreview ||
+                                (value && URL.createObjectURL(value))
+                              }
                               alt="Valid ID Preview"
                               className="object-cover w-full h-full"
                             />
@@ -1051,13 +1303,16 @@ export function GuestForm() {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      const validation = validateImageFile(file);
+                                      const validation =
+                                        validateImageFile(file);
                                       if (!validation.valid) {
                                         alert(validation.message);
                                         return;
                                       }
                                       onChange(file);
-                                      setValidIdPreview(URL.createObjectURL(file));
+                                      setValidIdPreview(
+                                        URL.createObjectURL(file)
+                                      );
                                     }
                                   }}
                                 />
@@ -1083,7 +1338,9 @@ export function GuestForm() {
                                       return;
                                     }
                                     onChange(file);
-                                    setValidIdPreview(URL.createObjectURL(file));
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file)
+                                    );
                                   }
                                 }}
                               />
@@ -1102,13 +1359,18 @@ export function GuestForm() {
                 name="paymentReceipt"
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
-                    <FormLabel>Payment Receipt <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel>
+                      Payment Receipt <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                        {(paymentReceiptPreview || value) ? (
+                        {paymentReceiptPreview || value ? (
                           <>
-                            <img 
-                              src={paymentReceiptPreview || (value && URL.createObjectURL(value))}
+                            <img
+                              src={
+                                paymentReceiptPreview ||
+                                (value && URL.createObjectURL(value))
+                              }
                               alt="Payment Receipt Preview"
                               className="object-cover w-full h-full"
                             />
@@ -1124,13 +1386,16 @@ export function GuestForm() {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      const validation = validateImageFile(file);
+                                      const validation =
+                                        validateImageFile(file);
                                       if (!validation.valid) {
                                         alert(validation.message);
                                         return;
                                       }
                                       onChange(file);
-                                      setPaymentReceiptPreview(URL.createObjectURL(file));
+                                      setPaymentReceiptPreview(
+                                        URL.createObjectURL(file)
+                                      );
                                     }
                                   }}
                                 />
@@ -1156,7 +1421,9 @@ export function GuestForm() {
                                       return;
                                     }
                                     onChange(file);
-                                    setPaymentReceiptPreview(URL.createObjectURL(file));
+                                    setPaymentReceiptPreview(
+                                      URL.createObjectURL(file)
+                                    );
                                   }
                                 }}
                               />
@@ -1170,22 +1437,36 @@ export function GuestForm() {
                 )}
               />
             </div>
-            
+
             {submitSuccess && (
-              <div className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200" role="alert">
+              <div
+                className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200"
+                role="alert"
+              >
                 <strong className="font-bold">Success! </strong>
-                <span className="block sm:inline">Your guest form has been submitted successfully! Please return to our Facebook page and let us know that you’ve completed the form.</span>
+                <span className="block sm:inline">
+                  Your guest form has been submitted successfully! Please return
+                  to our Facebook page and let us know that you’ve completed the
+                  form.
+                </span>
               </div>
             )}
 
             {submitError && (
-              <div className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200" role="alert">
+              <div
+                className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200"
+                role="alert"
+              >
                 <strong className="font-bold">Error: </strong>
                 <span className="block sm:inline">{submitError}</span>
               </div>
             )}
 
-            <Button type="submit" disabled={isSubmitting} className={isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className={isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+            >
               {isSubmitting ? (
                 <span className="flex items-center">
                   <Loader2 className="mr-3 -ml-1 w-5 h-5 text-white animate-spin" />
@@ -1199,5 +1480,5 @@ export function GuestForm() {
         )}
       </form>
     </Form>
-  )
+  );
 }
