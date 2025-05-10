@@ -477,6 +477,21 @@ export function GuestForm() {
               />
             </div>
 
+            {form.watch('checkInTime') &&
+              form.watch('checkInTime') < '14:00' && (
+                <div
+                  className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                  role="alert"
+                >
+                  <p className="text-sm">
+                    Our standard check-in time is 2:00 PM. Early check-in
+                    requests are subject to approval and may incur additional
+                    fees. Please contact us on Facebook to arrange early
+                    check-in.
+                  </p>
+                </div>
+              )}
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -520,6 +535,21 @@ export function GuestForm() {
                 )}
               />
             </div>
+
+            {form.watch('checkOutTime') &&
+              form.watch('checkOutTime') > '11:00' && (
+                <div
+                  className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                  role="alert"
+                >
+                  <p className="text-sm">
+                    Our standard check-out time is 11:00 AM. Late check-out
+                    requests are subject to approval and may incur additional
+                    fees. Please contact us on Facebook to arrange late
+                    check-out.
+                  </p>
+                </div>
+              )}
 
             <FormField
               control={form.control}
@@ -865,7 +895,7 @@ export function GuestForm() {
                         <span className="font-semibold text-red-600">
                           ₱400 per night
                         </span>
-                        . We understand it’s a bit pricey, but we secure parking
+                        . We understand it's a bit pricey, but we secure parking
                         spaces from other owners and do not profit from it.
                       </p>
                       <p>
@@ -1446,7 +1476,7 @@ export function GuestForm() {
                 <strong className="font-bold">Success! </strong>
                 <span className="block sm:inline">
                   Your guest form has been submitted successfully! Please return
-                  to our Facebook page and let us know that you’ve completed the
+                  to our Facebook page and let us know that you've completed the
                   form.
                 </span>
               </div>
