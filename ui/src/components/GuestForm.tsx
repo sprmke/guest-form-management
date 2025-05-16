@@ -1503,7 +1503,7 @@ export function GuestForm() {
                   Submitting...
                 </span>
               ) : (
-                'Submit'
+                'Submit Guest Form'
               )}
             </Button>
           </>
