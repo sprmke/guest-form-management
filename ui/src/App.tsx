@@ -4,7 +4,7 @@ function App() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <div className="relative h-[200px] w-full">
+      <div className="relative h-[150px] md:h-[200px] w-full">
         <div
           className="absolute inset-0 bg-center bg-no-repeat bg-cover"
           style={{
@@ -14,10 +14,10 @@ function App() {
         >
           <div className="absolute inset-0 bg-black/50" /> {/* Overlay */}
           <div className="flex relative flex-col justify-center items-center h-full">
-            <h1 className="px-4 text-3xl font-bold text-center text-white md:text-5xl">
+            <h1 className="px-4 text-2xl font-bold text-center text-white md:text-5xl">
               Kame Home - Azure North
             </h1>
-            <p className="text-xl text-white md:text-2xl">Guest Advise Form</p>
+            <p className="text-lg text-white md:text-2xl">Guest Advise Form</p>
           </div>
         </div>
       </div>
