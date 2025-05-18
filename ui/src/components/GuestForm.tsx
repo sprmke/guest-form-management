@@ -325,7 +325,7 @@ export function GuestForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {isLoading ? (
           <div className="flex justify-center items-center py-8">
             <div className="w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
