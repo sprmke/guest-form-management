@@ -22,7 +22,7 @@ function App() {
       </div>
 
       {/* Form Section */}
-      <div className="px-8 pt-12 pb-24">
+      <div className="px-8 pt-8 pb-20 md:pt-12">
         <div className="mx-auto max-w-2xl">
           <GuestForm />
         </div>
