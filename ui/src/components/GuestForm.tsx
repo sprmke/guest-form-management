@@ -1495,7 +1495,9 @@ export function GuestForm() {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className={isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+              className={`bg-green-500 ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
