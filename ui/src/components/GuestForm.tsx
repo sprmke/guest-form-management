@@ -1135,7 +1135,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
                             {petImagePreview || value ? (
                               <>
                                 <img
@@ -1222,7 +1222,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
                             {petVaccinationPreview || value ? (
                               <>
                                 <img
@@ -1310,7 +1310,7 @@ export function GuestForm() {
                       Valid ID <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
                         {validIdPreview || value ? (
                           <>
                             <img
@@ -1393,7 +1393,7 @@ export function GuestForm() {
                       Payment Receipt <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <div className="relative aspect-[3/2] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
                         {paymentReceiptPreview || value ? (
                           <>
                             <img
