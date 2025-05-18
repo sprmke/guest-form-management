@@ -13,7 +13,7 @@ function App() {
         >
           <div className="absolute inset-0 bg-black/50" /> {/* Overlay */}
           <div className="flex relative flex-col justify-center items-center h-full">
-            <h1 className="px-4 text-2xl font-bold text-center text-white md:text-5xl">
+            <h1 className="px-4 text-2xl font-bold leading-none text-center text-white md:text-5xl">
               Kame Home - Azure North
             </h1>
             <p className="text-lg text-white md:text-2xl">Guest Advise Form</p>
