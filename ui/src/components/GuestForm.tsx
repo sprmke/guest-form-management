@@ -1147,7 +1147,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1176,7 +1176,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -1234,7 +1234,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1263,7 +1263,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -1322,7 +1322,7 @@ export function GuestForm() {
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
                                 <Upload className="w-4 h-4" />
                                 Replace Image
                                 <input
@@ -1351,7 +1351,7 @@ export function GuestForm() {
                           </>
                         ) : (
                           <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
                               <Upload className="w-4 h-4" />
                               Upload Image
                               <input
@@ -1405,7 +1405,7 @@ export function GuestForm() {
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-blue-500 rounded transition-colors cursor-pointer hover:bg-blue-600">
+                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
                                 <Upload className="w-4 h-4" />
                                 Replace Image
                                 <input
@@ -1434,7 +1434,7 @@ export function GuestForm() {
                           </>
                         ) : (
                           <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
                               <Upload className="w-4 h-4" />
                               Upload Image
                               <input
