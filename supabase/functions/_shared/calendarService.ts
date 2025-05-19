@@ -111,8 +111,7 @@ export class CalendarService {
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string) {
     const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
     const eventDescription = `
-<strong>Booking ID</strong>
-${bookingId}
+<a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}">View/Update Guest Form</a>
 
 <strong>Guest Information</strong>
 Facebook Name: ${formData.guestFacebookName}
