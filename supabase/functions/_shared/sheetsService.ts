@@ -59,7 +59,7 @@ export class SheetsService {
     try {
       // Get all values from the sheet
       const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A:AI`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A:AJ`,
         {
           method: 'GET',
           headers: {
@@ -94,7 +94,7 @@ export class SheetsService {
 
   private static async updateRow(credentials: any, rowIndex: number, values: string[]) {
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A${rowIndex}:AI${rowIndex}?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A${rowIndex}:AJ${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
