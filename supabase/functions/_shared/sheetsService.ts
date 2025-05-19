@@ -11,14 +11,13 @@ export class SheetsService {
       }
 
       const credentials = await this.getCredentials();
-      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId);
-
+      
       // Try to find existing row with this bookingId
       const existingRow = await this.findRowByBookingId(credentials, bookingId);
       
       if (existingRow) {
         // For updates, preserve the original created_at timestamp
-        values[32] = existingRow.createdAt; // Keep original created_at
+        const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, existingRow.createdAt);
         // Update existing row
         await this.updateRow(credentials, existingRow.rowIndex, values);
         console.log('Updated existing row in Google Sheet');
@@ -26,6 +25,8 @@ export class SheetsService {
       }
 
       // If row not found, append new row
+      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId);
+
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
         {
@@ -114,7 +115,7 @@ export class SheetsService {
     return await response.json();
   }
 
-  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string): string[] {
+  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, createdAt?: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
     
     return [
@@ -152,8 +153,8 @@ export class SheetsService {
       paymentReceiptUrl,                   // Payment Receipt URL
       petVaccinationUrl,                   // Pet Vaccination URL
       petImageUrl,                         // Pet Image URL
-      currentTimestamp,                    // Created At (for new entries)
-      currentTimestamp,                    // Updated At
+      createdAt || currentTimestamp,       // Created At (use provided value or current timestamp)
+      currentTimestamp,                    // Updated At (always current timestamp)
     ];
   }
 
