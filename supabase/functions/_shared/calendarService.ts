@@ -152,8 +152,8 @@ How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formDat
 Special Requests: ${formData.guestSpecialRequests || 'None'}
 
 <strong>Documents</strong>
-Payment Receipt: ${paymentReceiptUrl}
-Valid ID: ${validIdUrl}
+<a href="${paymentReceiptUrl}">Payment Receipt</a>
+<a href="${validIdUrl}">Valid ID</a>
     `.trim();
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
