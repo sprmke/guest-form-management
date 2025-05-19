@@ -144,8 +144,8 @@ Pet Name: ${formData.petName || 'N/A'}
 Pet Breed: ${formData.petBreed || 'N/A'}
 Pet Age: ${formData.petAge || 'N/A'}
 Vaccination Date: ${formData.petVaccinationDate || 'N/A'}
-Pet Image: ${petImageUrl || 'N/A'}` : 'Has Pets: No'}
-Vaccination Record: ${petVaccinationUrl || 'N/A'}
+Pet Image: ${petImageUrl || 'N/A'}
+Vaccination Record: ${petVaccinationUrl || 'N/A'}` : 'Has Pets: No'}
 
 <strong>Additional Information</strong>
 How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formData.findUsDetails}` : ''}
