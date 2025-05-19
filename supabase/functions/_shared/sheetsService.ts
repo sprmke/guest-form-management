@@ -137,11 +137,11 @@ export class SheetsService {
       formData.guest3Name || '',          // Guest 3 Name
       formData.guest4Name || '',          // Guest 4 Name
       formData.guest5Name || '',          // Guest 5 Name
-      formData.needParking ? 'Yes' : 'No', // Need Parking
+      formData.needParking === 'true' ? 'Yes' : 'No', // Need Parking
       formData.carPlateNumber || '',      // Car Plate Number
       formData.carBrandModel || '',       // Car Brand/Model
       formData.carColor || '',            // Car Color
-      formData.hasPets ? 'Yes' : 'No',    // Has Pets
+      formData.hasPets === 'true' ? 'Yes' : 'No',    // Has Pets
       formData.petName || '',             // Pet Name
       formData.petBreed || '',            // Pet Breed
       formData.petAge || '',              // Pet Age
