@@ -157,14 +157,14 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
     `.trim();
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
-    const checkOutDateTime = formatDateTime(formData.checkOutDate, formData.checkOutTime);
     
-    // Parse the check-out time to determine if it's after midnight
-    const checkOutTime = new Date(checkOutDateTime);
-    const isAfterMidnight = checkOutTime.getHours() === 0 && checkOutTime.getMinutes() === 0;
+    // Calculate the last day that should be marked as booked
+    const checkInDate = new Date(formData.checkInDate);
+    const lastBookedDate = new Date(checkInDate);
+    lastBookedDate.setDate(checkInDate.getDate() + formData.numberOfNights - 1);
     
-    // If check-out is before noon the next day and not after midnight, only mark the check-in day
-    const endDateTime = isAfterMidnight ? checkOutDateTime : formatDateTime(formData.checkInDate, '23:59');
+    // Set end time to 23:59 of the last booked day
+    const endDateTime = formatDateTime(lastBookedDate.toISOString().split('T')[0], '23:59');
 
     return {
       summary: eventSummary,
