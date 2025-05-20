@@ -1,5 +1,6 @@
 import { formatPublicUrl, formatDateTime } from './utils.ts';
 import { GuestFormData } from './types.ts';
+import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
   static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string) {
@@ -158,13 +159,10 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
     
-    // Calculate the last day that should be marked as booked
-    const checkInDate = new Date(formData.checkInDate);
-    const lastBookedDate = new Date(checkInDate);
-    lastBookedDate.setDate(checkInDate.getDate() + formData.numberOfNights - 1);
-    
-    // Set end time to 23:59 of the last booked day
-    const endDateTime = `${lastBookedDate.toISOString().split('T')[0]}T23:59:00`;
+    // Calculate the end date based on number of nights
+    const checkInDate = dayjs(formData.checkInDate);
+    const endDate = checkInDate.add(formData.numberOfNights - 1, 'day');
+    const endDateTime = formatDateTime(endDate.format('MM-DD-YYYY'), '23:59');
 
     return {
       summary: eventSummary,
