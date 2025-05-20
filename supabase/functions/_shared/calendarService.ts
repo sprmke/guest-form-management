@@ -164,7 +164,7 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
     lastBookedDate.setDate(checkInDate.getDate() + formData.numberOfNights - 1);
     
     // Set end time to 23:59 of the last booked day
-    const endDateTime = formatDateTime(lastBookedDate.toISOString().split('T')[0], '23:59');
+    const endDateTime = `${lastBookedDate.toISOString().split('T')[0]}T23:59:00`;
 
     return {
       summary: eventSummary,
