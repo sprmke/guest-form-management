@@ -158,6 +158,13 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 
     const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
     const checkOutDateTime = formatDateTime(formData.checkOutDate, formData.checkOutTime);
+    
+    // Parse the check-out time to determine if it's after midnight
+    const checkOutTime = new Date(checkOutDateTime);
+    const isAfterMidnight = checkOutTime.getHours() === 0 && checkOutTime.getMinutes() === 0;
+    
+    // If check-out is before noon the next day and not after midnight, only mark the check-in day
+    const endDateTime = isAfterMidnight ? checkOutDateTime : formatDateTime(formData.checkInDate, '23:59');
 
     return {
       summary: eventSummary,
@@ -167,7 +174,7 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
         timeZone: 'Asia/Manila',
       },
       end: {
-        dateTime: checkOutDateTime,
+        dateTime: endDateTime,
         timeZone: 'Asia/Manila',
       },
       colorId: '2',
