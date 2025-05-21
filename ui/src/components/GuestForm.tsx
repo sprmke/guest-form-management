@@ -33,7 +33,7 @@ import {
   handleFileUpload,
 } from '@/utils/helpers';
 import { getTodayDate, handleCheckInDateChange } from '@/utils/dates';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Upload, Loader2 } from 'lucide-react';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
@@ -42,6 +42,7 @@ const apiUrl = import.meta.env.VITE_API_URL;
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
@@ -58,7 +59,6 @@ export function GuestForm() {
   const petImageInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('bookingId');
-  const navigate = useNavigate();
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
@@ -203,6 +203,7 @@ export function GuestForm() {
   async function onSubmit(values: GuestFormData) {
     setIsSubmitting(true);
     setSubmitError(null);
+    setSubmitSuccess(false);
 
     try {
       const transformedValues = transformFieldValues(values);
@@ -291,7 +292,7 @@ export function GuestForm() {
         throw new Error(errorMessage);
       }
 
-      // Reset form and redirect to success page
+      // Reset form and show success message
       if (isProduction) {
         form.reset(defaultFormValues);
       }
@@ -299,9 +300,7 @@ export function GuestForm() {
         fileInputRef.current.value = '';
       }
       setSubmitError(null);
-
-      // Redirect to success page with bookingId
-      navigate(`/success?bookingId=${currentBookingId}`);
+      setSubmitSuccess(true);
     } catch (error: unknown) {
       console.error('Error submitting form:', {
         error,
@@ -313,6 +312,7 @@ export function GuestForm() {
           ? `Error: ${error.message}`
           : 'An unexpected error occurred. Please try again.';
       setSubmitError(errorMessage);
+      setSubmitSuccess(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -1467,6 +1467,20 @@ export function GuestForm() {
                 )}
               />
             </div>
+
+            {submitSuccess && (
+              <div
+                className="relative px-4 py-3 mb-4 text-green-700 bg-green-50 rounded border border-green-200"
+                role="alert"
+              >
+                <strong className="font-bold">Success! </strong>
+                <span className="block sm:inline">
+                  Your guest form has been submitted successfully! Please return
+                  to our Facebook page and let us know that you've completed the
+                  form.
+                </span>
+              </div>
+            )}
 
             {submitError && (
               <div
