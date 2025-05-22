@@ -102,6 +102,7 @@ export function GuestForm() {
           throw new Error(result.message || 'Failed to fetch form data');
         }
 
+        // If the form data is successfully fetched, set the form data
         if (result.success && result.data) {
           const formData = { ...result.data };
 
