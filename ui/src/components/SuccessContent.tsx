@@ -24,17 +24,12 @@ export function SuccessContent() {
           Form Submitted Successfully!
         </h1>
 
-        <p className="text-gray-600">
-          Thank you for submitting your guest form. We have received your
-          information and will process it shortly.
+        <p className="text-gray-500">
+          Please return to our Facebook page and let us know that you've
+          completed the form.
         </p>
 
         <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            Please return to our Facebook page and let us know that you've
-            completed the form.
-          </p>
-
           {bookingId && (
             <Button
               onClick={handleViewForm}
