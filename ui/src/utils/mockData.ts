@@ -2,7 +2,7 @@ import { z } from "zod";
 import dayjs from "dayjs";
 import { guestFormSchema } from "@/lib/schemas/guestFormSchema";
 
-const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa'];
+const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa', 'Juan', 'Maria', 'Pedro', 'Ana', 'Luis', 'Elena', 'Miguel', 'Laura', 'Diego', 'Sofia', 'Gabriel', 'Camila', 'Daniel', 'Valeria', 'Alejandro', 'Isabella', 'Juan', 'Maria', 'Pedro', 'Ana', 'Luis', 'Elena', 'Miguel', 'Laura', 'Diego', 'Sofia', 'Gabriel', 'Camila', 'Daniel', 'Valeria', 'Alejandro', 'Isabella'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
 const cities = ['San Fernando', 'Angeles', 'Mabalacat', 'Manila', 'Quezon', 'Makati', 'Pasig', 'Taguig'];
 const provinces = ['Pampanga', 'Metro Manila', 'Bulacan', 'Bataan', 'Zambales', 'Cavite', 'Laguna', 'Batangas'];
