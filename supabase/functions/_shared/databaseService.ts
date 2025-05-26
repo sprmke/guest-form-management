@@ -65,6 +65,7 @@ export class DatabaseService {
         petAge: data.pet_age || '',
         petVaccinationDate: formatDate(data.pet_vaccination_date),
         petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || '',
+        petImageUrl: formatPublicUrl(data.pet_image_url) || '',
         paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || '',
         validIdUrl: formatPublicUrl(data.valid_id_url) || '',
       };
