@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
-import { GuestFormData } from "@/lib/schemas/guestFormSchema";
+import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import { UseFormReturn } from "react-hook-form";
 
 // Initialize dayjs plugins

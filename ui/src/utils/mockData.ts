@@ -1,6 +1,6 @@
 import { z } from "zod";
 import dayjs from "dayjs";
-import { guestFormSchema } from "@/lib/schemas/guestFormSchema";
+import { guestFormSchema } from "@/features/guest-form/schemas/guestFormSchema";
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa', 'Juan'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',];

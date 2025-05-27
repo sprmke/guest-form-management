@@ -1,12 +1,6 @@
-import { Routes, Route } from 'react-router-dom';
-import { GuestFormPage } from '@/pages/GuestFormPage';
-import { SuccessPage } from '@/pages/SuccessPage';
+import { Routes } from 'react-router-dom';
+import { guestFormRoutes } from '@/features/guest-form/routes';
 
 export function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<GuestFormPage />} />
-      <Route path="/success" element={<SuccessPage />} />
-    </Routes>
-  );
+  return <Routes>{guestFormRoutes}</Routes>;
 }

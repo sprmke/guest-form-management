@@ -1,4 +1,4 @@
-import { GuestFormData } from "@/lib/schemas/guestFormSchema";
+import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import { formatDateToMMDDYYYY, formatTimeToAMPM } from "./dates";
 import dayjs from "dayjs";
 
