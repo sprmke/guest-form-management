@@ -21,7 +21,7 @@ export function GuestFormSuccess() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900">
-          Guest Form Submitted Successfully!
+          Guest Form submitted successfully!
         </h1>
 
         <p className="text-gray-500">
