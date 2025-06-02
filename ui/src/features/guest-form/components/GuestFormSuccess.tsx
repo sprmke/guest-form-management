@@ -1,5 +1,4 @@
 import { Button } from '@/components/ui/button';
-import { CheckCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export function GuestFormSuccess() {
