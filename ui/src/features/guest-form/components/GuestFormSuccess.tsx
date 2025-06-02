@@ -21,7 +21,7 @@ export function GuestFormSuccess() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900">
-          Guest Form submitted successfully!
+          Thanks for booking with us Ka-Homies!
         </h1>
 
         <p className="text-gray-500">
