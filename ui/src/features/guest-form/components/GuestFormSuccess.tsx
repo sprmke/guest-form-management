@@ -17,7 +17,11 @@ export function GuestFormSuccess() {
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 py-8 text-center">
       <div className="space-y-6 w-full max-w-md">
         <div className="flex justify-center">
-          <CheckCircle className="w-16 h-16 text-green-500" />
+          <img
+            src="/images/logo.png"
+            alt="Kame Home - Logo"
+            className="w-24 h-24"
+          />
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900">
