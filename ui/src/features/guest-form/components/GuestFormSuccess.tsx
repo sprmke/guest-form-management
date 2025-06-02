@@ -33,7 +33,7 @@ export function GuestFormSuccess() {
             onClick={handleViewForm}
             className="w-full bg-green-500 hover:bg-green-600"
           >
-            View/Update Form
+            View or Update Form
           </Button>
         </div>
       </div>
