@@ -328,8 +328,9 @@ export function GuestForm() {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
+          <div className="flex flex-col justify-center items-center py-20 space-y-2">
+            <Loader2 className="w-10 h-10 text-green-500 animate-spin sm:w-12 sm:h-12" />
+            <p className="text-base text-gray-400">Loading form data...</p>
           </div>
         ) : (
           <>
