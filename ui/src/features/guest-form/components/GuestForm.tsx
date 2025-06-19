@@ -43,6 +43,7 @@ export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
     string | null
@@ -85,6 +86,7 @@ export function GuestForm() {
 
       setIsLoading(true);
       setSubmitError(null);
+      setInvalidBookingId(false);
 
       try {
         const response = await fetch(`${apiUrl}/get-form/${bookingId}`, {
@@ -157,13 +159,11 @@ export function GuestForm() {
           // Reset form with the modified data
           form.reset(formData);
         } else {
-          throw new Error('Invalid response format');
+          setInvalidBookingId(true);
         }
       } catch (error) {
         console.error('Error fetching form data:', error);
-        setSubmitError(
-          error instanceof Error ? error.message : 'Failed to fetch form data'
-        );
+        setInvalidBookingId(true);
       } finally {
         setIsLoading(false);
       }
@@ -331,6 +331,30 @@ export function GuestForm() {
           <div className="flex flex-col justify-center items-center py-20 space-y-2">
             <Loader2 className="w-10 h-10 text-green-500 animate-spin sm:w-12 sm:h-12" />
             <p className="text-base text-gray-400">Loading form data...</p>
+          </div>
+        ) : invalidBookingId ? (
+          <div className="flex flex-col justify-center items-center py-20 space-y-4">
+            <div className="text-center">
+              <h2 className="mb-2 text-2xl font-bold text-red-600">
+                Booking Not Found
+              </h2>
+              <p className="max-w-md text-gray-600">
+                The booking ID you provided is invalid or no guest form data
+                exists for this booking. Please check your booking ID and try
+                again, or contact us if you need assistance.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setInvalidBookingId(false);
+                navigate('/', { replace: true });
+              }}
+              className="mt-4"
+            >
+              Return to Guest Form
+            </Button>
           </div>
         ) : (
           <>
