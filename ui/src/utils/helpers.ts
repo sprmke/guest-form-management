@@ -101,35 +101,11 @@ export const fetchImageAsFile = async (
     if (extensionIndex > startIndex) {
       const fileName = urlFileName.substring(startIndex, extensionIndex);
       const fileExtension = urlFileName.substring(extensionIndex);
-      
-      // Sanitize the extracted filename to remove spaces and special characters
-      const sanitizedFileName = fileName
-        .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace any non-alphanumeric characters (except dots and hyphens) with underscores
-        .replace(/_{2,}/g, '_') // Replace multiple consecutive underscores with single underscore
-        .replace(/^_|_$/g, ''); // Remove leading and trailing underscores
-      
-      const newFileName = sanitizedFileName + fileExtension;
-      
-      // Ensure the filename doesn't exceed Supabase storage limits (1024 characters)
-      const finalFileName = newFileName.length > 1024 
-        ? newFileName.substring(0, 1024) 
-        : newFileName;
-      
-      return new File([blob], finalFileName, { type: blob.type });
+      const newFileName = fileName + fileExtension;
+      return new File([blob], newFileName, { type: blob.type });
     }
     
-    // If we can't extract a proper filename, sanitize the entire URL filename
-    const sanitizedUrlFileName = urlFileName
-      .replace(/[^a-zA-Z0-9.-]/g, '_')
-      .replace(/_{2,}/g, '_')
-      .replace(/^_|_$/g, '');
-    
-    // Ensure the filename doesn't exceed Supabase storage limits (1024 characters)
-    const finalUrlFileName = sanitizedUrlFileName.length > 1024 
-      ? sanitizedUrlFileName.substring(0, 1024) 
-      : sanitizedUrlFileName;
-    
-    return new File([blob], finalUrlFileName, { type: blob.type });
+    return new File([blob], urlFileName, { type: blob.type });
   } catch (error) {
     console.error('Error fetching image:', error);
     return null;
@@ -159,24 +135,9 @@ export const generateFileName = (
 ): string => {
   const formattedName = formatName(fullName);
   
-  // Sanitize the original filename to remove spaces and special characters
-  const sanitizedOriginalName = originalFileName
-    .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace any non-alphanumeric characters (except dots and hyphens) with underscores
-    .replace(/_{2,}/g, '_') // Replace multiple consecutive underscores with single underscore
-    .replace(/^_|_$/g, ''); // Remove leading and trailing underscores
-  
-  // Create a deterministic filename with sanitized original filename
-  const fullFileName = `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${sanitizedOriginalName}`;
-  
-  // Ensure the filename doesn't exceed Supabase storage limits (1024 characters)
-  if (fullFileName.length > 1024) {
-    // Truncate the sanitized original name if the full filename is too long
-    const maxOriginalNameLength = 1024 - (fullFileName.length - sanitizedOriginalName.length);
-    const truncatedOriginalName = sanitizedOriginalName.substring(0, Math.max(0, maxOriginalNameLength));
-    return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${truncatedOriginalName}`;
-  }
-  
-  return fullFileName;
+  // Create a deterministic filename without including the original filename
+  // This ensures the same file name is generated for the same guest and dates
+  return `${prefix}_${checkInDate}_${checkOutDate}_${formattedName}_${originalFileName}`;
 };
 
 // Handle file upload with standardized naming and form data appending
