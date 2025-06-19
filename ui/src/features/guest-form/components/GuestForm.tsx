@@ -79,96 +79,96 @@ export function GuestForm() {
     }
   }, [bookingId]);
 
+  const fetchFormData = async () => {
+    if (!bookingId) return;
+
+    setIsLoading(true);
+    setSubmitError(null);
+    setInvalidBookingId(false);
+
+    try {
+      const response = await fetch(`${apiUrl}/get-form/${bookingId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to fetch form data');
+      }
+
+      // If the form data is successfully fetched, set the form data
+      if (result.success && result.data) {
+        const formData = { ...result.data };
+
+        // Set file input URLs if they exist
+        if (formData.paymentReceiptUrl) {
+          // Fetch the image and convert it to a File object
+          const paymentReceiptFile = await fetchImageAsFile(
+            formData.paymentReceiptUrl,
+            formData.primaryGuestName
+          );
+          if (paymentReceiptFile) {
+            formData.paymentReceipt = paymentReceiptFile;
+            setPaymentReceiptPreview(formData.paymentReceiptUrl);
+          }
+        }
+
+        if (formData.validIdUrl) {
+          // Fetch the image and convert it to a File object
+          const validIdFile = await fetchImageAsFile(
+            formData.validIdUrl,
+            formData.primaryGuestName
+          );
+          if (validIdFile) {
+            formData.validId = validIdFile;
+            setValidIdPreview(formData.validIdUrl);
+          }
+        }
+
+        if (formData.petVaccinationUrl) {
+          // Fetch the image and convert it to a File object
+          const petVaccinationFile = await fetchImageAsFile(
+            formData.petVaccinationUrl,
+            formData.primaryGuestName
+          );
+          if (petVaccinationFile) {
+            formData.petVaccination = petVaccinationFile;
+            setPetVaccinationPreview(formData.petVaccinationUrl);
+          }
+        }
+
+        if (formData.petImageUrl) {
+          const petImageFile = await fetchImageAsFile(
+            formData.petImageUrl,
+            formData.primaryGuestName
+          );
+          if (petImageFile) {
+            formData.petImage = petImageFile;
+            setPetImagePreview(formData.petImageUrl);
+          }
+        }
+
+        // Reset form with the modified data
+        form.reset(formData);
+      } else {
+        setInvalidBookingId(true);
+      }
+    } catch (error) {
+      console.error('Error fetching form data:', error);
+      setInvalidBookingId(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Fetch form data if bookingId is present
   useEffect(() => {
-    const fetchFormData = async () => {
-      if (!bookingId) return;
-
-      setIsLoading(true);
-      setSubmitError(null);
-      setInvalidBookingId(false);
-
-      try {
-        const response = await fetch(`${apiUrl}/get-form/${bookingId}`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (!response.ok) {
-          throw new Error(result.message || 'Failed to fetch form data');
-        }
-
-        // If the form data is successfully fetched, set the form data
-        if (result.success && result.data) {
-          const formData = { ...result.data };
-
-          // Set file input URLs if they exist
-          if (formData.paymentReceiptUrl) {
-            // Fetch the image and convert it to a File object
-            const paymentReceiptFile = await fetchImageAsFile(
-              formData.paymentReceiptUrl,
-              formData.primaryGuestName
-            );
-            if (paymentReceiptFile) {
-              formData.paymentReceipt = paymentReceiptFile;
-              setPaymentReceiptPreview(formData.paymentReceiptUrl);
-            }
-          }
-
-          if (formData.validIdUrl) {
-            // Fetch the image and convert it to a File object
-            const validIdFile = await fetchImageAsFile(
-              formData.validIdUrl,
-              formData.primaryGuestName
-            );
-            if (validIdFile) {
-              formData.validId = validIdFile;
-              setValidIdPreview(formData.validIdUrl);
-            }
-          }
-
-          if (formData.petVaccinationUrl) {
-            // Fetch the image and convert it to a File object
-            const petVaccinationFile = await fetchImageAsFile(
-              formData.petVaccinationUrl,
-              formData.primaryGuestName
-            );
-            if (petVaccinationFile) {
-              formData.petVaccination = petVaccinationFile;
-              setPetVaccinationPreview(formData.petVaccinationUrl);
-            }
-          }
-
-          if (formData.petImageUrl) {
-            const petImageFile = await fetchImageAsFile(
-              formData.petImageUrl,
-              formData.primaryGuestName
-            );
-            if (petImageFile) {
-              formData.petImage = petImageFile;
-              setPetImagePreview(formData.petImageUrl);
-            }
-          }
-
-          // Reset form with the modified data
-          form.reset(formData);
-        } else {
-          setInvalidBookingId(true);
-        }
-      } catch (error) {
-        console.error('Error fetching form data:', error);
-        setInvalidBookingId(true);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchFormData();
   }, [bookingId]);
 
@@ -344,17 +344,29 @@ export function GuestForm() {
                 again, or contact us if you need assistance.
               </p>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                setInvalidBookingId(false);
-                navigate('/', { replace: true });
-              }}
-              className="mt-4"
-            >
-              Return to Guest Form
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setInvalidBookingId(false);
+                  navigate('/', { replace: true });
+                }}
+                className="mt-4"
+              >
+                Return to Guest Form
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  setInvalidBookingId(false);
+                  fetchFormData();
+                }}
+                className="mt-4"
+              >
+                Try again
+              </Button>
+            </div>
           </div>
         ) : (
           <>
