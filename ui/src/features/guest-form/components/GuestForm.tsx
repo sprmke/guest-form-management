@@ -257,10 +257,23 @@ export function GuestForm() {
         'updateGoogleCalendar',
         'updateGoogleSheets',
       ].forEach((param) => {
-        queryParams.append(
-          param,
-          searchParams.get(param) === 'false' ? 'false' : 'true'
-        );
+        let value = 'true'; // default value
+        if (param === 'updateGoogleSheets') {
+          // For updateGoogleSheets, check if it's explicitly set to true
+          const explicitValue = searchParams.get(param);
+          // In development, default to false unless explicitly set to true
+          // In production, default to true (existing behavior)
+          value = !isProduction
+            ? 'false'
+            : explicitValue === 'false'
+            ? 'false'
+            : 'true';
+        } else {
+          // For other parameters, use existing logic
+          value = searchParams.get(param) === 'false' ? 'false' : 'true';
+        }
+
+        queryParams.append(param, value);
       });
 
       const queryParamsString = queryParams.toString()
