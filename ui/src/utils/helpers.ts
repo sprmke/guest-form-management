@@ -112,12 +112,18 @@ export const fetchImageAsFile = async (
   }
 };
 
-// Format a full name for file naming (convert to lowercase with underscores)
+// Format a full name for file naming (convert to lowercase with underscores and remove special characters)
 export const formatName = (fullName: string): string => {
   return fullName
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '_');
+    // Normalize to decompose accented characters and remove diacritical marks
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    // Replace spaces with underscores
+    .replace(/\s+/g, '_')
+    // Remove any characters that are not alphanumeric, underscore, dash, or period
+    .replace(/[^a-z0-9_.-]/g, '');
 };
 
 // Get file extension from filename
