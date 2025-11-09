@@ -31,6 +31,36 @@ serve(async (req) => {
     // Get and process form data
     const formData = await req.formData()
     
+    // Extract check-in and check-out dates and booking ID to check for overlaps
+    const checkInDate = formData.get('checkInDate') as string;
+    const checkOutDate = formData.get('checkOutDate') as string;
+    const bookingId = formData.get('bookingId') as string;
+
+    console.log('📅 Received dates for overlap check:');
+    console.log('  Check-in:', checkInDate);
+    console.log('  Check-out:', checkOutDate);
+    console.log('  Booking ID:', bookingId);
+
+    if (!checkInDate || !checkOutDate) {
+      throw new Error('Check-in and check-out dates are required');
+    }
+
+    // Check for overlapping bookings
+    console.log('🔍 Starting overlap check...');
+    const { hasOverlap, overlappingBookings } = await DatabaseService.checkOverlappingBookings(
+      checkInDate, 
+      checkOutDate, 
+      bookingId
+    );
+
+    if (hasOverlap) {
+      console.error('❌ BOOKING OVERLAP DETECTED!');
+      console.error('Overlapping bookings:', overlappingBookings);
+      throw new Error('BOOKING_OVERLAP: The selected dates are already booked. Please screenshot this message and contact your host to further assist you.');
+    }
+    
+    console.log('✅ No overlaps found, proceeding with submission...');
+    
     // Process form data and save to database
     const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData)
 
