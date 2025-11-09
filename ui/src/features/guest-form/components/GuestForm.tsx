@@ -35,13 +35,13 @@ import {
 import { getTodayDate, handleCheckInDateChange } from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Upload, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
 
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
@@ -83,7 +83,6 @@ export function GuestForm() {
     if (!bookingId) return;
 
     setIsLoading(true);
-    setSubmitError(null);
     setInvalidBookingId(false);
 
     try {
@@ -203,7 +202,6 @@ export function GuestForm() {
 
   async function onSubmit(values: GuestFormData) {
     setIsSubmitting(true);
-    setSubmitError(null);
 
     try {
       const transformedValues = transformFieldValues(values);
@@ -283,6 +281,10 @@ export function GuestForm() {
 
       const response = await fetch(apiUrlWithParams, {
         method: 'POST',
+        headers: {
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
         body: formData,
       });
 
@@ -312,7 +314,6 @@ export function GuestForm() {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      setSubmitError(null);
 
       // Redirect to success page with bookingId
       navigate(`/success?bookingId=${currentBookingId}`);
@@ -324,9 +325,29 @@ export function GuestForm() {
       });
       const errorMessage =
         error instanceof Error
-          ? `Error: ${error.message}`
+          ? error.message
           : 'An unexpected error occurred. Please try again.';
-      setSubmitError(errorMessage);
+
+      // Check if it's a booking overlap error
+      if (
+        errorMessage.includes('BOOKING_OVERLAP') ||
+        errorMessage.includes('already booked')
+      ) {
+        // Show prominent warning toast for booking overlap
+        toast.error('Dates Already Booked', {
+          description:
+            'The selected dates are already reserved. Please contact your host via Facebook for assistance.',
+          duration: Infinity, // Never auto-hide
+        });
+      } else {
+        // Show regular error toast for other errors
+        toast.error('Submission Failed', {
+          description: errorMessage
+            .replace('Error: ', '')
+            .replace('BOOKING_OVERLAP: ', ''),
+          duration: Infinity, // Never auto-hide
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -1519,22 +1540,11 @@ export function GuestForm() {
               />
             </div>
 
-            {submitError && (
-              <div
-                className="relative px-4 py-3 mb-4 text-red-700 bg-red-50 rounded border border-red-200"
-                role="alert"
-              >
-                <strong className="font-bold">Error: </strong>
-                <span className="block sm:inline">{submitError}</span>
-              </div>
-            )}
-
             <Button
               type="submit"
               disabled={isSubmitting}
               className={`bg-green-500 ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               {isSubmitting ? (
                 <span className="flex items-center">
