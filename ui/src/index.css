@@ -74,3 +74,15 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sonner Toast Customization */
+[data-sonner-toast] {
+  position: relative !important;
+}
+
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  left: auto !important;
+}
