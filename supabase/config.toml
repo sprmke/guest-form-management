@@ -38,4 +38,13 @@ allowed_mime_types = ["image/png", "image/jpeg"]
 [edge_runtime]
 enabled = true
 policy = "oneshot"
-inspector_port = 8083 
+inspector_port = 8083
+
+[functions.submit-form]
+verify_jwt = false
+
+[functions.get-booked-dates]
+verify_jwt = false
+
+[functions.get-form]
+verify_jwt = false 
