@@ -270,4 +270,98 @@ export class DatabaseService {
     console.log('Database update successful');
     return data;
   }
+
+  static async checkOverlappingBookings(checkInDate: string, checkOutDate: string, bookingId?: string) {
+    console.log('Checking for overlapping bookings...');
+    console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);
+
+    try {
+      // Normalize dates to YYYY-MM-DD format for comparison
+      const normalizeDate = (dateStr: string): string => {
+        console.log(`  Normalizing date: "${dateStr}"`);
+        
+        // Check if date is in YYYY-MM-DD format (already normalized)
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          console.log(`  → Already in YYYY-MM-DD format: ${dateStr}`);
+          return dateStr;
+        }
+        // Check if date is in MM-DD-YYYY format
+        if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+          const [month, day, year] = dateStr.split('-');
+          const normalized = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          console.log(`  → Converted from MM-DD-YYYY to: ${normalized}`);
+          return normalized;
+        }
+        // Return as-is if format is unknown
+        console.warn('  ⚠️ Unknown date format:', dateStr);
+        return dateStr;
+      };
+
+      const newCheckIn = normalizeDate(checkInDate);
+      const newCheckOut = normalizeDate(checkOutDate);
+
+      console.log('Normalized dates - Check-in:', newCheckIn, 'Check-out:', newCheckOut);
+
+      // Query for overlapping bookings
+      // Two date ranges overlap if:
+      // (StartA <= EndB) AND (EndA >= StartB)
+      // 
+      // For our case:
+      // (new check-in <= existing check-out) AND (new check-out >= existing check-in)
+      
+      let query = this.supabase
+        .from('guest_submissions')
+        .select('id, check_in_date, check_out_date, primary_guest_name');
+
+      // Exclude the current booking if updating
+      if (bookingId) {
+        query = query.neq('id', bookingId);
+      }
+
+      const { data: allBookings, error } = await query;
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Failed to check for overlapping bookings');
+      }
+
+      console.log(`Found ${allBookings?.length || 0} existing bookings to check`);
+
+      // Filter overlapping bookings in memory
+      const overlappingBookings = allBookings?.filter(booking => {
+        const existingCheckIn = normalizeDate(booking.check_in_date);
+        const existingCheckOut = normalizeDate(booking.check_out_date);
+
+        console.log(`Comparing with existing booking ${booking.id}:`);
+        console.log(`  Existing: ${existingCheckIn} to ${existingCheckOut}`);
+        console.log(`  New: ${newCheckIn} to ${newCheckOut}`);
+
+        // Check if dates overlap
+        // New booking overlaps if:
+        // - New check-in is before existing check-out AND
+        // - New check-out is after existing check-in
+        const overlaps = (newCheckIn < existingCheckOut) && (newCheckOut > existingCheckIn);
+
+        console.log(`  Overlap detected: ${overlaps}`);
+        console.log(`    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`);
+        console.log(`    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`);
+
+        if (overlaps) {
+          console.warn('⚠️ OVERLAP DETECTED with booking:', booking.id, '- Guest:', booking.primary_guest_name);
+        }
+
+        return overlaps;
+      }) || [];
+
+      console.log(`✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`);
+
+      return {
+        hasOverlap: overlappingBookings.length > 0,
+        overlappingBookings
+      };
+    } catch (error) {
+      console.error('Error checking overlapping bookings:', error);
+      throw error;
+    }
+  }
 } 
