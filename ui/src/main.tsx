@@ -25,7 +25,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           },
           className: 'border shadow-lg',
           descriptionClassName: 'text-[14px] leading-relaxed opacity-90',
-          closeButtonClassName: 'absolute top-4 right-4',
         }}
       />
     </BrowserRouter>
