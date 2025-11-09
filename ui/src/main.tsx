@@ -1,13 +1,33 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App'
-import './index.css'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { Toaster } from 'sonner';
+import App from './App';
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
       <App />
+      <Toaster
+        position="top-center"
+        expand={false}
+        richColors
+        closeButton
+        duration={Infinity}
+        toastOptions={{
+          style: {
+            minWidth: '400px',
+            maxWidth: '500px',
+            padding: '16px 48px 16px 20px',
+            fontSize: '15px',
+            borderRadius: '12px',
+          },
+          className: 'border shadow-lg',
+          descriptionClassName: 'text-[14px] leading-relaxed opacity-90',
+          closeButtonClassName: 'absolute top-4 right-4',
+        }}
+      />
     </BrowserRouter>
-  </React.StrictMode>,
-)
+  </React.StrictMode>
+);
