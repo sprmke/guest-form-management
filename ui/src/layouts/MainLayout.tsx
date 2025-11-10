@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { Calendar, MapPin } from 'lucide-react';
 
 interface MainLayoutProps {
   children: ReactNode;
