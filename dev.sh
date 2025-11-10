@@ -9,7 +9,7 @@ sleep 10
 
 # Start Edge Functions in the background
 echo "Starting Edge Functions..."
-supabase functions serve submit-form --env-file ./supabase/.env.local &
+supabase functions serve --env-file ./supabase/.env.local &
 
 # Start the UI
 echo "Starting UI development server..."
