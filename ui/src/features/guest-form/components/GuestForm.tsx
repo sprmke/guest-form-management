@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import 'react-day-picker/dist/style.css';
 import {
   Form,
   FormControl,
@@ -32,10 +33,26 @@ import {
   fetchImageAsFile,
   handleFileUpload,
 } from '@/utils/helpers';
-import { getTodayDate, handleCheckInDateChange } from '@/utils/dates';
+import {
+  getNextDay,
+  createDisabledDateMatcher,
+  stringToDate,
+  dateToString,
+  type BookedDateRange,
+} from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { Upload, Loader2 } from 'lucide-react';
+import {
+  Upload,
+  Loader2,
+  User,
+  CalendarDays,
+  Users,
+  PawPrint,
+  FileText,
+  Car,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { DatePicker } from '@/components/ui/date-picker';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -53,6 +70,7 @@ export function GuestForm() {
   >(null);
   const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
+  const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null);
   const petVaccinationInputRef = useRef<HTMLInputElement>(null);
@@ -67,8 +85,6 @@ export function GuestForm() {
     mode: 'all',
   });
 
-  const today = getTodayDate();
-
   // Generate a new booking ID for new submissions
   useEffect(() => {
     if (!bookingId) {
@@ -78,6 +94,40 @@ export function GuestForm() {
       setCurrentBookingId(bookingId);
     }
   }, [bookingId]);
+
+  // Fetch booked dates on component mount
+  useEffect(() => {
+    const fetchBookedDates = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/get-booked-dates`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success && result.data) {
+          setBookedDates(result.data);
+          console.log(
+            '✅ Loaded booked dates:',
+            result.data.length,
+            'bookings'
+          );
+          console.log('📅 Booked date ranges:', result.data);
+        } else {
+          console.error('❌ Failed to fetch booked dates:', result);
+        }
+      } catch (error) {
+        console.error('❌ Error fetching booked dates:', error);
+      }
+    };
+
+    fetchBookedDates();
+  }, []);
 
   const fetchFormData = async () => {
     if (!bookingId) return;
@@ -360,19 +410,24 @@ export function GuestForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="relative p-4 space-y-8 md:p-6"
+      >
         {isLoading ? (
           <div className="flex flex-col justify-center items-center py-20 space-y-2">
-            <Loader2 className="w-10 h-10 text-green-500 animate-spin sm:w-12 sm:h-12" />
-            <p className="text-base text-gray-400">Loading form data...</p>
+            <Loader2 className="w-10 h-10 animate-spin text-primary sm:w-12 sm:h-12" />
+            <p className="text-base text-muted-foreground">
+              Loading form data...
+            </p>
           </div>
         ) : invalidBookingId ? (
           <div className="flex flex-col justify-center items-center py-20 space-y-4">
             <div className="text-center">
-              <h2 className="mb-2 text-2xl font-bold text-red-600">
+              <h2 className="mb-2 text-2xl font-bold text-destructive">
                 Booking Not Found
               </h2>
-              <p className="max-w-md text-gray-600">
+              <p className="max-w-md text-muted-foreground">
                 The booking ID you provided is invalid or no guest form data
                 exists for this booking. Please check your booking ID and try
                 again, or contact us if you need assistance.
@@ -403,130 +458,42 @@ export function GuestForm() {
             </div>
           </div>
         ) : (
-          <>
-            {!isProduction && !bookingId && (
-              <div className="flex justify-end mb-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGenerateNewData}
-                >
-                  Generate New Data
-                </Button>
+          <div className="pt-10 space-y-6 md:pt-14">
+            {/* logo here */}
+            <img
+              src="/images/logo.png"
+              alt="Kame Home"
+              className="absolute top-[-3.5rem] md:top-[-4.5rem] right-0 left-0 mx-auto w-[120px] md:w-[160px] border-4 border-white rounded-full"
+            />
+            <h2 className="text-2xl font-bold text-center md:text-3xl text-primary">
+              Guest Advise Form
+            </h2>
+            {/* Guest Information Section */}
+            <div className="form-section">
+              <div className="form-section-header">
+                <User className="form-section-icon" />
+                <h2 className="form-section-title">Primary Guest Info</h2>
               </div>
-            )}
 
-            <FormField
-              control={form.control}
-              name="guestFacebookName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Guest Facebook Name <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Your exact full name in Facebook"
-                      {...field}
-                      onChange={(e) =>
-                        handleNameInputChange(e, field.onChange, toCapitalCase)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="guestEmail"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Guest Email <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="Ex. juandelacruz@gmail.com"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="guestPhoneNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Guest Phone Number <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="tel"
-                      inputMode="numeric"
-                      placeholder="Ex. 09876543210"
-                      {...field}
-                      value={field.value || ''}
-                      onChange={(e) => {
-                        // Only allow numbers
-                        const value = e.target.value.replace(/[^\d]/g, '');
-                        // Limit to 11 digits
-                        const trimmed = value.slice(0, 11);
-                        field.onChange(trimmed);
-
-                        // Trigger validation on change
-                        form.trigger('guestPhoneNumber');
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="guestAddress"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Guest Address <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="City, Province"
-                      {...field}
-                      onChange={(e) =>
-                        field.onChange(toCapitalCase(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="checkInDate"
+                name="guestFacebookName"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Check-in Date <span className="text-red-500">*</span>
+                      Facebook Name <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="date"
-                        min={today}
+                        placeholder="Your exact full name in Facebook"
                         {...field}
-                        onChange={(e) => handleCheckInDateChange(e, form)}
+                        onChange={(e) =>
+                          handleNameInputChange(
+                            e,
+                            field.onChange,
+                            toCapitalCase
+                          )
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -536,55 +503,48 @@ export function GuestForm() {
 
               <FormField
                 control={form.control}
-                name="checkInTime"
+                name="guestEmail"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Check-in Time</FormLabel>
+                    <FormLabel>
+                      Email Address <span className="text-destructive">*</span>
+                    </FormLabel>
                     <FormControl>
-                      <Input type="time" placeholder="02:00 pm" {...field} />
+                      <Input
+                        type="email"
+                        placeholder="Ex. juandelacruz@gmail.com"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            {form.watch('checkInTime') &&
-              form.watch('checkInTime') < '14:00' && (
-                <div
-                  className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
-                  role="alert"
-                >
-                  <p className="text-sm">
-                    Our standard check-in time is 2:00 PM. Early check-in
-                    requests are subject to approval and may incur additional
-                    fees. Please contact us on Facebook to arrange early
-                    check-in.
-                  </p>
-                </div>
-              )}
-
-            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="checkOutDate"
+                name="guestPhoneNumber"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Check-out Date <span className="text-red-500">*</span>
+                      Phone Number <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        type="date"
-                        min={
-                          form.watch('checkInDate')
-                            ? form.watch('checkInDate')
-                            : today
-                        }
+                        type="tel"
+                        inputMode="numeric"
+                        placeholder="Ex. 09876543210"
                         {...field}
+                        value={field.value || ''}
                         onChange={(e) => {
-                          field.onChange(e.target.value);
-                          form.trigger('checkOutTime');
+                          // Only allow numbers
+                          const value = e.target.value.replace(/[^\d]/g, '');
+                          // Limit to 11 digits
+                          const trimmed = value.slice(0, 11);
+                          field.onChange(trimmed);
+
+                          // Trigger validation on change
+                          form.trigger('guestPhoneNumber');
                         }}
                       />
                     </FormControl>
@@ -595,318 +555,15 @@ export function GuestForm() {
 
               <FormField
                 control={form.control}
-                name="checkOutTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Check-out Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" placeholder="11:00 am" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {form.watch('checkOutTime') &&
-              form.watch('checkOutTime') > '11:00' && (
-                <div
-                  className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
-                  role="alert"
-                >
-                  <p className="text-sm">
-                    Our standard check-out time is 11:00 AM. Late check-out
-                    requests are subject to approval and may incur additional
-                    fees. Please contact us on Facebook to arrange late
-                    check-out.
-                  </p>
-                </div>
-              )}
-
-            <FormField
-              control={form.control}
-              name="nationality"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nationality</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      placeholder="Ex. Filipino"
-                      onChange={(e) =>
-                        field.onChange(toCapitalCase(e.target.value))
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="numberOfAdults"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Adults</FormLabel>
-                    <div className="flex items-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="px-3 rounded-r-none"
-                        disabled={field.value <= 1} // Always require at least 1 adult
-                        onClick={() => {
-                          const newValue = Math.max(1, (field.value || 1) - 1);
-                          field.onChange(newValue);
-                        }}
-                      >
-                        -
-                      </Button>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min="1"
-                          max="4"
-                          readOnly
-                          tabIndex={-1}
-                          className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="px-3 rounded-l-none"
-                        disabled={field.value >= 4 || totalGuests >= 6} // Max 4 adults or total 6 guests
-                        onClick={() => {
-                          const currentChildren =
-                            form.getValues('numberOfChildren') || 0;
-                          const newValue = Math.min(4, (field.value || 1) + 1);
-                          if (newValue + currentChildren <= 6) {
-                            field.onChange(newValue);
-                          }
-                        }}
-                      >
-                        +
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="numberOfChildren"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Children</FormLabel>
-                    <div className="flex items-center">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="px-3 rounded-r-none"
-                        disabled={field.value <= 0}
-                        onClick={() => {
-                          const newValue = Math.max(0, (field.value || 0) - 1);
-                          field.onChange(newValue);
-                        }}
-                      >
-                        -
-                      </Button>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          min="0"
-                          max="5"
-                          readOnly
-                          tabIndex={-1}
-                          className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
-                          {...field}
-                        />
-                      </FormControl>
-                      <Button
-                        type="button"
-                        color="green"
-                        variant="outline"
-                        className="px-3 rounded-l-none"
-                        disabled={totalGuests >= 6 || field.value >= 5} // Max total 6 guests or 5 children
-                        onClick={() => {
-                          const currentAdults =
-                            form.getValues('numberOfAdults') || 1;
-                          const newValue = (field.value || 0) + 1;
-                          if (newValue + currentAdults <= 6) {
-                            field.onChange(newValue);
-                          }
-                        }}
-                      >
-                        +
-                      </Button>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {totalGuests >= 4 && (
-              <div
-                className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
-                role="alert"
-              >
-                <p className="text-sm">
-                  Please note that Azure North only allows a maximum of 4 pax on
-                  the guest form. However, our unit can accommodate up to 4
-                  adults and 2 children. But if you're more than 4 adults,
-                  please inform us directly on our Facebook page so that we can
-                  accommodate you.
-                </p>
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
-              name="primaryGuestName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    1. Primary Guest - Name{' '}
-                    <span className="text-red-500">*</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Complete name of Primary Guest"
-                      {...field}
-                      onChange={(e) =>
-                        handleNameInputChange(e, field.onChange, toCapitalCase)
-                      }
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Dynamic Additional Guests Fields */}
-            {additionalGuestsNeeded > 0 && (
-              <div className="space-y-4">
-                {Array.from({ length: additionalGuestsNeeded }).map(
-                  (_, index) => (
-                    <FormField
-                      key={index}
-                      control={form.control}
-                      name={`guest${index + 2}Name` as keyof GuestFormData}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {index + 2}.{' '}
-                            {index + 2 === 2
-                              ? 'Second'
-                              : index + 2 === 3
-                              ? 'Third'
-                              : 'Fourth'}{' '}
-                            Guest - Name <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Input
-                              placeholder={`Complete name of ${
-                                index + 2 === 2
-                                  ? 'Second Guest'
-                                  : index + 2 === 3
-                                  ? 'Third Guest'
-                                  : 'Fourth Guest'
-                              }`}
-                              {...field}
-                              value={field.value?.toString() ?? ''}
-                              onChange={(e) =>
-                                handleNameInputChange(
-                                  e,
-                                  field.onChange,
-                                  toCapitalCase
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )
-                )}
-              </div>
-            )}
-
-            <FormField
-              control={form.control}
-              name="guestSpecialRequests"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Special requests / Notes to owner</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Ex. Late check-in, cash only for balance payment, celebrating special occasion, etc."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="findUs"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How did you find us?</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value || 'Facebook'}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select how you found us" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="Facebook">Facebook</SelectItem>
-                      <SelectItem value="Airbnb">Airbnb</SelectItem>
-                      <SelectItem value="Tiktok">Tiktok</SelectItem>
-                      <SelectItem value="Instagram">Instagram</SelectItem>
-                      <SelectItem value="Friend">Friend</SelectItem>
-                      <SelectItem value="Others">Others</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {(form.watch('findUs') === 'Friend' ||
-              form.watch('findUs') === 'Others') && (
-              <FormField
-                control={form.control}
-                name="findUsDetails"
+                name="guestAddress"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {form.watch('findUs') === 'Friend'
-                        ? "Friend's Name"
-                        : 'Please specify where you found us'}
-                      <span className="text-red-500">*</span>
+                      Address <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder={
-                          form.watch('findUs') === 'Friend'
-                            ? "Enter your friend's name"
-                            : 'Please specify how you found us'
-                        }
+                        placeholder="City, Province"
                         {...field}
                         onChange={(e) =>
                           field.onChange(toCapitalCase(e.target.value))
@@ -917,9 +574,505 @@ export function GuestForm() {
                   </FormItem>
                 )}
               />
-            )}
+            </div>
 
-            <div className="space-y-4">
+            {/* Booking Details Section */}
+            <div className="form-section">
+              <div className="form-section-header">
+                <CalendarDays className="form-section-icon" />
+                <h2 className="form-section-title">Booking Details</h2>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="checkInDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Check-in Date{' '}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <DatePicker
+                          date={
+                            field.value ? stringToDate(field.value) : undefined
+                          }
+                          rangeEnd={
+                            form.watch('checkOutDate')
+                              ? stringToDate(form.watch('checkOutDate'))
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              const dateStr = dateToString(date);
+                              field.onChange(dateStr);
+                              // Always auto-set checkout to next day when check-in changes
+                              form.setValue(
+                                'checkOutDate',
+                                getNextDay(dateStr)
+                              );
+                            }
+                          }}
+                          disabled={(date) => {
+                            // Disable past dates
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            if (date < today) {
+                              return true;
+                            }
+
+                            // Disable booked dates
+                            return createDisabledDateMatcher(
+                              bookedDates,
+                              currentBookingId
+                            )(date);
+                          }}
+                          minDate={new Date()}
+                          placeholder="Select check-in date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="checkInTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check-in Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" placeholder="02:00 pm" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {form.watch('checkInTime') &&
+                form.watch('checkInTime') < '14:00' && (
+                  <div
+                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    role="alert"
+                  >
+                    <p className="text-sm font-medium">
+                      Our standard check-in time is 2:00 PM. Early check-in
+                      requests are subject to approval and may incur additional
+                      fees. Please contact us on Facebook to arrange early
+                      check-in.
+                    </p>
+                  </div>
+                )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="checkOutDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Check-out Date{' '}
+                        <span className="text-destructive">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <DatePicker
+                          date={
+                            field.value ? stringToDate(field.value) : undefined
+                          }
+                          rangeEnd={
+                            form.watch('checkInDate')
+                              ? stringToDate(form.watch('checkInDate'))
+                              : undefined
+                          }
+                          onSelect={(date) => {
+                            if (date) {
+                              const dateStr = dateToString(date);
+                              field.onChange(dateStr);
+                              form.trigger('checkOutTime');
+                            }
+                          }}
+                          disabled={(date) => {
+                            // Disable dates that are booked
+                            const isBooked = createDisabledDateMatcher(
+                              bookedDates,
+                              currentBookingId
+                            )(date);
+
+                            // Disable dates before or equal to check-in date
+                            const checkInDate = form.watch('checkInDate');
+                            if (checkInDate) {
+                              const checkIn = stringToDate(checkInDate);
+                              if (date <= checkIn) {
+                                return true;
+                              }
+                            }
+
+                            return isBooked;
+                          }}
+                          minDate={
+                            form.watch('checkInDate')
+                              ? stringToDate(
+                                  getNextDay(form.watch('checkInDate'))
+                                )
+                              : new Date()
+                          }
+                          placeholder="Select check-out date"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="checkOutTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Check-out Time</FormLabel>
+                      <FormControl>
+                        <Input type="time" placeholder="11:00 am" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {form.watch('checkOutTime') &&
+                form.watch('checkOutTime') > '11:00' && (
+                  <div
+                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    role="alert"
+                  >
+                    <p className="text-sm font-medium">
+                      Our standard check-out time is 11:00 AM. Late check-out
+                      requests are subject to approval and may incur additional
+                      fees. Please contact us on Facebook to arrange late
+                      check-out.
+                    </p>
+                  </div>
+                )}
+
+              <FormField
+                control={form.control}
+                name="nationality"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nationality</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Ex. Filipino"
+                        onChange={(e) =>
+                          field.onChange(toCapitalCase(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="numberOfAdults"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Adults</FormLabel>
+                      <div className="flex items-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="px-3 rounded-r-none"
+                          disabled={field.value <= 1} // Always require at least 1 adult
+                          onClick={() => {
+                            const newValue = Math.max(
+                              1,
+                              (field.value || 1) - 1
+                            );
+                            field.onChange(newValue);
+                          }}
+                        >
+                          -
+                        </Button>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            min="1"
+                            max="4"
+                            readOnly
+                            tabIndex={-1}
+                            className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="px-3 rounded-l-none"
+                          disabled={field.value >= 4 || totalGuests >= 6} // Max 4 adults or total 6 guests
+                          onClick={() => {
+                            const currentChildren =
+                              form.getValues('numberOfChildren') || 0;
+                            const newValue = Math.min(
+                              4,
+                              (field.value || 1) + 1
+                            );
+                            if (newValue + currentChildren <= 6) {
+                              field.onChange(newValue);
+                            }
+                          }}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="numberOfChildren"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Children</FormLabel>
+                      <div className="flex items-center">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="px-3 rounded-r-none"
+                          disabled={field.value <= 0}
+                          onClick={() => {
+                            const newValue = Math.max(
+                              0,
+                              (field.value || 0) - 1
+                            );
+                            field.onChange(newValue);
+                          }}
+                        >
+                          -
+                        </Button>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            min="0"
+                            max="5"
+                            readOnly
+                            tabIndex={-1}
+                            className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
+                            {...field}
+                          />
+                        </FormControl>
+                        <Button
+                          type="button"
+                          color="green"
+                          variant="outline"
+                          className="px-3 rounded-l-none"
+                          disabled={totalGuests >= 6 || field.value >= 5} // Max total 6 guests or 5 children
+                          onClick={() => {
+                            const currentAdults =
+                              form.getValues('numberOfAdults') || 1;
+                            const newValue = (field.value || 0) + 1;
+                            if (newValue + currentAdults <= 6) {
+                              field.onChange(newValue);
+                            }
+                          }}
+                        >
+                          +
+                        </Button>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {totalGuests >= 4 && (
+                <div
+                  className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                  role="alert"
+                >
+                  <p className="text-sm font-medium">
+                    Please note that Azure North only allows a maximum of 4 pax
+                    on the guest form. However, our unit can accommodate up to 4
+                    adults and 2 children. But if you're more than 4 adults,
+                    please inform us directly on our Facebook page so that we
+                    can accommodate you.
+                  </p>
+                </div>
+              )}
+              <FormField
+                control={form.control}
+                name="primaryGuestName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      1. Primary Guest - Name{' '}
+                      <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Complete name of Primary Guest"
+                        {...field}
+                        onChange={(e) =>
+                          handleNameInputChange(
+                            e,
+                            field.onChange,
+                            toCapitalCase
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Dynamic Additional Guests Fields */}
+              {additionalGuestsNeeded > 0 && (
+                <div className="space-y-4">
+                  {Array.from({ length: additionalGuestsNeeded }).map(
+                    (_, index) => (
+                      <FormField
+                        key={index}
+                        control={form.control}
+                        name={`guest${index + 2}Name` as keyof GuestFormData}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {index + 2}.{' '}
+                              {index + 2 === 2
+                                ? 'Second'
+                                : index + 2 === 3
+                                ? 'Third'
+                                : 'Fourth'}{' '}
+                              Guest - Name{' '}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder={`Complete name of ${
+                                  index + 2 === 2
+                                    ? 'Second Guest'
+                                    : index + 2 === 3
+                                    ? 'Third Guest'
+                                    : 'Fourth Guest'
+                                }`}
+                                {...field}
+                                value={field.value?.toString() ?? ''}
+                                onChange={(e) =>
+                                  handleNameInputChange(
+                                    e,
+                                    field.onChange,
+                                    toCapitalCase
+                                  )
+                                }
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )
+                  )}
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="guestSpecialRequests"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Special requests / Notes to owner</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Ex. Late check-in, cash only for balance payment, celebrating special occasion, etc."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="findUs"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>How did you find us?</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value || 'Facebook'}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select how you found us" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Facebook">Facebook</SelectItem>
+                        <SelectItem value="Airbnb">Airbnb</SelectItem>
+                        <SelectItem value="Tiktok">Tiktok</SelectItem>
+                        <SelectItem value="Instagram">Instagram</SelectItem>
+                        <SelectItem value="Friend">Friend</SelectItem>
+                        <SelectItem value="Others">Others</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {(form.watch('findUs') === 'Friend' ||
+                form.watch('findUs') === 'Others') && (
+                <FormField
+                  control={form.control}
+                  name="findUsDetails"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {form.watch('findUs') === 'Friend'
+                          ? "Friend's Name"
+                          : 'Please specify where you found us'}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            form.watch('findUs') === 'Friend'
+                              ? "Enter your friend's name"
+                              : 'Please specify how you found us'
+                          }
+                          {...field}
+                          onChange={(e) =>
+                            field.onChange(toCapitalCase(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Parking Information Section */}
+            <div className="form-section">
+              <div className="form-section-header">
+                <Car className="form-section-icon" />
+                <h2 className="form-section-title">Parking Information</h2>
+              </div>
               <FormField
                 control={form.control}
                 name="needParking"
@@ -939,9 +1092,9 @@ export function GuestForm() {
               />
 
               {form.watch('needParking') && (
-                <div className="pl-6 space-y-4">
+                <div className="space-y-4">
                   <div
-                    className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
                     role="alert"
                   >
                     <div className="flex flex-col gap-y-4 text-sm">
@@ -963,7 +1116,7 @@ export function GuestForm() {
                       </p>
                       <p>
                         If you want to reserve a parking slot inside Azure
-                        North, please fill up your car details below and pay{' '}
+                        North, please fill out your car details below and pay{' '}
                         <span className="font-semibold text-red-600">
                           ₱400 per night
                         </span>
@@ -1048,6 +1201,14 @@ export function GuestForm() {
                   />
                 </div>
               )}
+            </div>
+
+            {/* Pet Information Section */}
+            <div className="form-section">
+              <div className="form-section-header">
+                <PawPrint className="form-section-icon" />
+                <h2 className="form-section-title">Pet Information</h2>
+              </div>
 
               <FormField
                 control={form.control}
@@ -1059,18 +1220,20 @@ export function GuestForm() {
                         type="checkbox"
                         checked={field.value}
                         onChange={(e) => field.onChange(e.target.checked)}
-                        className="w-4 h-4"
+                        className="w-5 h-5 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
                       />
                     </FormControl>
-                    <FormLabel className="!mt-0">Bringing Pets?</FormLabel>
+                    <FormLabel className="!mt-0 cursor-pointer">
+                      Bringing Pets?
+                    </FormLabel>
                   </FormItem>
                 )}
               />
 
               {form.watch('hasPets') && (
-                <div className="pl-6 space-y-4">
+                <div className="mt-4 space-y-5">
                   <div
-                    className="px-4 py-3 text-blue-700 bg-blue-50 rounded border border-blue-200"
+                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
                     role="alert"
                   >
                     <div className="flex flex-col gap-y-4 text-sm">
@@ -1115,7 +1278,7 @@ export function GuestForm() {
                         <FormLabel>
                           Pet Name{' '}
                           {form.watch('hasPets') && (
-                            <span className="text-red-500">*</span>
+                            <span className="text-destructive">*</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -1140,7 +1303,7 @@ export function GuestForm() {
                         <FormLabel>
                           Pet Breed{' '}
                           {form.watch('hasPets') && (
-                            <span className="text-red-500">*</span>
+                            <span className="text-destructive">*</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -1165,7 +1328,7 @@ export function GuestForm() {
                         <FormLabel>
                           Pet Age{' '}
                           {form.watch('hasPets') && (
-                            <span className="text-red-500">*</span>
+                            <span className="text-destructive">*</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -1184,7 +1347,7 @@ export function GuestForm() {
                         <FormLabel>
                           Last Vaccination Date{' '}
                           {form.watch('hasPets') && (
-                            <span className="text-red-500">*</span>
+                            <span className="text-destructive">*</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -1203,7 +1366,7 @@ export function GuestForm() {
                         <FormLabel>
                           Pet Image{' '}
                           {form.watch('hasPets') && (
-                            <span className="text-red-500">*</span>
+                            <span className="text-destructive">*</span>
                           )}
                         </FormLabel>
                         <FormControl>
@@ -1372,14 +1535,20 @@ export function GuestForm() {
               )}
             </div>
 
-            <div className="space-y-4">
+            {/* Required Documents Section */}
+            <div className="form-section">
+              <div className="form-section-header">
+                <FileText className="form-section-icon" />
+                <h2 className="form-section-title">Required Documents</h2>
+              </div>
+
               <FormField
                 control={form.control}
                 name="validId"
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>
-                      Valid ID <span className="text-red-500">*</span>
+                      Valid ID <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
@@ -1462,7 +1631,8 @@ export function GuestForm() {
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>
-                      Payment Receipt <span className="text-red-500">*</span>
+                      Payment Receipt{' '}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
@@ -1539,24 +1709,36 @@ export function GuestForm() {
                 )}
               />
             </div>
-
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className={`bg-green-500 ${
-                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              {isSubmitting ? (
-                <span className="flex items-center">
-                  <Loader2 className="mr-3 -ml-1 w-5 h-5 text-white animate-spin" />
-                  Submitting...
-                </span>
-              ) : (
-                'Submit Guest Form'
-              )}
-            </Button>
-          </>
+          </div>
         )}
+
+        <div className="flex flex-col space-y-2">
+          {!isProduction && !bookingId && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleGenerateNewData}
+              className="w-full"
+            >
+              Generate New Data
+            </Button>
+          )}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            variant="success"
+            className="w-full"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                Submitting Form...
+              </>
+            ) : (
+              'Submit Guest Form'
+            )}
+          </Button>
+        </div>
       </form>
     </Form>
   );
