@@ -1,83 +1,117 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
+/* Professional Booking Management Color Scheme */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Sophisticated gradient background */
+    --background: 210 20% 98%;
+    --foreground: 215 25% 20%;
 
+    /* Clean card design */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
- 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
- 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
- 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
- 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
- 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
- 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --card-foreground: 215 25% 20%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
- 
-    --radius: 0.5rem;
+    /* Popover styling */
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 20%;
+
+    /* Professional green primary color for booking/hospitality */
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Subtle secondary for accents */
+    --secondary: 142 20% 92%;
+    --secondary-foreground: 142 76% 28%;
+
+    /* Muted backgrounds */
+    --muted: 210 20% 95%;
+    --muted-foreground: 215 15% 50%;
+
+    /* Accent color - warm complementary */
+    --accent: 25 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive/error states */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders and inputs */
+    --border: 215 20% 88%;
+    --input: 215 20% 88%;
+    --ring: 142 76% 36%;
+
+    /* Success color for confirmed bookings */
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+
+    /* Warning color */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --radius: 0.75rem;
   }
- 
+
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
- 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
- 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
- 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
- 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
- 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
- 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
- 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
- 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --background: 215 25% 12%;
+    --foreground: 210 20% 98%;
+
+    --card: 215 25% 15%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 215 25% 15%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 142 76% 40%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 215 25% 20%;
+    --secondary-foreground: 142 76% 60%;
+
+    --muted: 215 25% 18%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 25 90% 55%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 25%;
+    --input: 215 25% 25%;
+    --ring: 142 76% 40%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Enhanced typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold tracking-tight;
   }
 }
 
-/* Sonner Toast Customization */
+/* Professional Sonner Toast Customization */
 [data-sonner-toast] {
   position: relative !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
 [data-sonner-toast] [data-close-button] {
@@ -85,4 +119,140 @@
   top: 16px !important;
   right: 16px !important;
   left: auto !important;
+}
+
+[data-sonner-toast][data-type='success'] {
+  background: hsl(142 76% 36%) !important;
+  color: white !important;
+}
+
+[data-sonner-toast][data-type='error'] {
+  background: hsl(0 72% 51%) !important;
+  color: white !important;
+}
+
+/* Professional Calendar Styling */
+.rdp-root {
+  --rdp-accent-color: hsl(142 76% 36%) !important;
+  padding: 1.25rem;
+  background: hsl(0 0% 100%);
+  border-radius: 0.75rem;
+}
+
+.rdp-root .rdp-nav {
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.rdp-root .rdp-nav button {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease;
+}
+
+.rdp-root .rdp-nav button:hover {
+  background-color: hsl(142 20% 92%);
+  transform: scale(1.05);
+}
+
+.rdp-root .rdp-month_caption {
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  color: hsl(215 25% 20%);
+  margin-bottom: 0.75rem;
+}
+
+.rdp-root td {
+  font-size: 0.925rem !important;
+}
+
+.rdp-root td .rdp-day_button {
+  border-radius: 0.625rem !important;
+  transition: all 0.15s ease;
+  font-weight: 500;
+}
+
+.rdp-root td .rdp-day_button:hover {
+  background-color: hsl(142 20% 92%) !important;
+  transform: scale(1.05);
+}
+
+.rdp-root td[aria-selected] .rdp-day_button {
+  color: hsl(142 76% 36%) !important;
+  font-weight: 600;
+}
+
+/* Professional range highlighting for multi-night bookings */
+.rdp-day_range_middle .rdp-day_button {
+  background: linear-gradient(
+    135deg,
+    hsl(142 76% 85%) 0%,
+    hsl(142 76% 90%) 100%
+  ) !important;
+  color: hsl(142 76% 30%) !important;
+  font-weight: 500;
+}
+
+.rdp-root td.rdp-day_range_start .rdp-day_button {
+  background: linear-gradient(
+    135deg,
+    hsl(142 76% 36%) 0%,
+    hsl(142 76% 42%) 100%
+  ) !important;
+  color: white !important;
+  font-weight: 600;
+  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+}
+
+.rdp-root td.rdp-day_range_end .rdp-day_button {
+  background: linear-gradient(
+    135deg,
+    hsl(142 76% 36%) 0%,
+    hsl(142 76% 42%) 100%
+  ) !important;
+  color: white !important;
+  font-weight: 600;
+  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+}
+
+.rdp-day_range_start.rdp-day_range_end .rdp-day_button {
+  border-radius: 0.625rem !important;
+}
+
+/* Disabled dates styling */
+.rdp-root td.rdp-day_disabled .rdp-day_button {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Professional Form Sections */
+.form-section {
+  @apply space-y-5 px-4 py-6 rounded-xl bg-gradient-to-br from-white to-secondary/5 border-2 border-border/20 shadow-soft;
+}
+
+.form-section-header {
+  @apply flex items-center gap-3 pb-4 mb-6 border-b-2 border-primary/10;
+}
+
+.form-section-title {
+  @apply text-lg font-semibold text-foreground tracking-tight;
+}
+
+.form-section-icon {
+  @apply w-5 h-5 text-primary;
+}
+
+.form-section-description {
+  @apply text-sm text-muted-foreground mb-4;
+}
+
+/* Upload Preview Container */
+.upload-preview-container {
+  @apply relative w-full h-48 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/30 hover:border-primary/50 transition-all duration-200;
+}
+
+/* File Upload Button */
+.file-upload-button {
+  @apply relative w-full h-48 border-2 border-dashed border-input rounded-lg flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/40 hover:border-primary/50 transition-all duration-200 cursor-pointer;
 }
