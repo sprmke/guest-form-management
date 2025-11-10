@@ -3,6 +3,7 @@ import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import { UseFormReturn } from "react-hook-form";
+import { parse, isWithinInterval, startOfDay } from 'date-fns';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -70,4 +71,119 @@ export const handleCheckInDateChange = (
   const checkInDate = e.target.value;
   form.setValue('checkInDate', checkInDate);
   form.setValue('checkOutDate', getNextDay(checkInDate));
+};
+
+// Type for booked date range
+export interface BookedDateRange {
+  id: string;
+  checkInDate: string;
+  checkOutDate: string;
+}
+
+// Check if two date ranges overlap
+export const datesOverlap = (
+  checkIn1: string,
+  checkOut1: string,
+  checkIn2: string,
+  checkOut2: string
+): boolean => {
+  // Convert to Date objects for comparison
+  const start1 = dayjs(checkIn1);
+  const end1 = dayjs(checkOut1);
+  const start2 = dayjs(checkIn2);
+  const end2 = dayjs(checkOut2);
+
+  // Two date ranges overlap if:
+  // (StartA < EndB) AND (EndA > StartB)
+  return start1.isBefore(end2) && end1.isAfter(start2);
+};
+
+// Check if selected dates overlap with any booked dates
+export const checkDateOverlap = (
+  checkInDate: string,
+  checkOutDate: string,
+  bookedDates: BookedDateRange[],
+  currentBookingId?: string | null
+): { hasOverlap: boolean; overlappingBooking?: BookedDateRange } => {
+  if (!checkInDate || !checkOutDate || !bookedDates.length) {
+    return { hasOverlap: false };
+  }
+
+  const overlappingBooking = bookedDates.find(booking => {
+    // Skip checking against the current booking if we're editing
+    if (currentBookingId && booking.id === currentBookingId) {
+      return false;
+    }
+    return datesOverlap(checkInDate, checkOutDate, booking.checkInDate, booking.checkOutDate);
+  });
+
+  return {
+    hasOverlap: !!overlappingBooking,
+    overlappingBooking
+  };
+};
+
+// Get all dates between two dates (inclusive)
+export const getDatesBetween = (startDate: string, endDate: string): string[] => {
+  const dates: string[] = [];
+  let currentDate = dayjs(startDate);
+  const end = dayjs(endDate);
+
+  while (currentDate.isBefore(end) || currentDate.isSame(end)) {
+    dates.push(currentDate.format('YYYY-MM-DD'));
+    currentDate = currentDate.add(1, 'day');
+  }
+
+  return dates;
+};
+
+// Get all disabled dates from booked date ranges
+export const getDisabledDates = (bookedDates: BookedDateRange[]): string[] => {
+  const disabledDates: string[] = [];
+  
+  bookedDates.forEach(booking => {
+    const dates = getDatesBetween(booking.checkInDate, booking.checkOutDate);
+    disabledDates.push(...dates);
+  });
+
+  return [...new Set(disabledDates)]; // Remove duplicates
+};
+
+// Convert YYYY-MM-DD string to Date object
+export const stringToDate = (dateString: string): Date => {
+  return parse(dateString, 'yyyy-MM-dd', new Date());
+};
+
+// Convert Date object to YYYY-MM-DD string
+export const dateToString = (date: Date): string => {
+  return dayjs(date).format('YYYY-MM-DD');
+};
+
+// Create a disabled date matcher for react-day-picker
+export const createDisabledDateMatcher = (
+  bookedDates: BookedDateRange[],
+  currentBookingId?: string | null
+) => {
+  return (date: Date) => {
+    // Check if this date falls within any booked range
+    return bookedDates.some(booking => {
+      // Skip checking against the current booking if we're editing
+      if (currentBookingId && booking.id === currentBookingId) {
+        return false;
+      }
+      
+      try {
+        const checkIn = stringToDate(booking.checkInDate);
+        const checkOut = stringToDate(booking.checkOutDate);
+        
+        // Check if date is within the booked range (inclusive)
+        return isWithinInterval(startOfDay(date), {
+          start: startOfDay(checkIn),
+          end: startOfDay(checkOut),
+        });
+      } catch (e) {
+        return false;
+      }
+    });
+  };
 };
