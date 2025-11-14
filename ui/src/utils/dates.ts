@@ -28,6 +28,19 @@ export const formatDateToMMDDYYYY = (dateString: string): string => {
   }
 };
 
+export const formatDateToLongFormat = (dateString: string): string => {
+  try {
+    if (!dateString) return '';
+    const date = dayjs(dateString);
+    if (!date.isValid()) return '';
+    
+    return date.format('MMM D, YYYY');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return '';
+  }
+};
+
 export const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
   try {
     // Handle empty or invalid input
