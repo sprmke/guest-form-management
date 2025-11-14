@@ -1,15 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { formatDateToLongFormat, formatTimeToAMPM } from '@/utils/dates';
-import {
-  CalendarDays,
-  Users,
-  User,
-  PawPrint,
-  Mail,
-  Phone,
-  CheckCircle2,
-} from 'lucide-react';
+import { Users, User, PawPrint, Mail, Phone } from 'lucide-react';
 import dayjs from 'dayjs';
 
 interface BookingData {
