@@ -4,10 +4,22 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   console.log('Sending confirmation email...');
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+  const EMAIL_TO = Deno.env.get('RESEND_EMAIL_TO')
+  const EMAIL_REPLY_TO = Deno.env.get('RESEND_EMAIL_REPLY_TO')
   
   if (!RESEND_API_KEY) {
     console.error(' Missing RESEND_API_KEY environment variable');
     throw new Error('Missing RESEND_API_KEY environment variable')
+  }
+
+  if (!EMAIL_TO) {
+    console.error(' Missing EMAIL_TO environment variable');
+    throw new Error('Missing EMAIL_TO environment variable')
+  }
+
+  if (!EMAIL_REPLY_TO) {
+    console.error(' Missing EMAIL_REPLY_TO environment variable');
+    throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
   const emailContent = `
@@ -45,8 +57,10 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Monaco 2604 - GAF Request - <onboarding@resend.dev>',
-      to: ['kamehome.azurenorth@gmail.com'],
+      from: 'Monaco 2604 - GAF Request <mail@kamehomes.space>',
+      to: [EMAIL_TO],
+      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      reply_to: EMAIL_REPLY_TO,
       subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
       ...(base64PDF ? {
