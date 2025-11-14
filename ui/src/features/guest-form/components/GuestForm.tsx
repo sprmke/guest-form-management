@@ -364,8 +364,30 @@ export function GuestForm() {
         fileInputRef.current.value = '';
       }
 
-      // Redirect to success page with bookingId
-      navigate(`/success?bookingId=${currentBookingId}`);
+      // Prepare booking summary data to pass to success page
+      const bookingData = {
+        checkInDate: values.checkInDate,
+        checkOutDate: values.checkOutDate,
+        checkInTime: values.checkInTime,
+        checkOutTime: values.checkOutTime,
+        numberOfAdults: values.numberOfAdults,
+        numberOfChildren: values.numberOfChildren,
+        primaryGuestName: values.primaryGuestName,
+        guest2Name: values.guest2Name,
+        guest3Name: values.guest3Name,
+        guest4Name: values.guest4Name,
+        guest5Name: values.guest5Name,
+        hasPets: values.hasPets,
+        petName: values.petName,
+        needParking: values.needParking,
+        guestEmail: values.guestEmail,
+        guestPhoneNumber: values.guestPhoneNumber,
+      };
+
+      // Redirect to success page with bookingId and booking data
+      navigate(`/success?bookingId=${currentBookingId}`, {
+        state: { bookingData },
+      });
     } catch (error: unknown) {
       console.error('Error submitting form:', {
         error,
