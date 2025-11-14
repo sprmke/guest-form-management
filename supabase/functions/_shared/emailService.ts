@@ -4,8 +4,8 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   console.log('Sending confirmation email...');
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
-  const EMAIL_TO = Deno.env.get('RESEND_EMAIL_TO')
-  const EMAIL_REPLY_TO = Deno.env.get('RESEND_EMAIL_REPLY_TO')
+  const EMAIL_TO = Deno.env.get('EMAIL_TO')
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO')
   
   if (!RESEND_API_KEY) {
     console.error(' Missing RESEND_API_KEY environment variable');
