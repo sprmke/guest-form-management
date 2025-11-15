@@ -96,3 +96,12 @@ export const formatPublicUrl = (url: string) => {
   // If URL contains kong:8000, replace it with the correct public URL
   return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
 };
+
+/**
+ * Checks if the application is running in development mode
+ * @returns true if in development mode, false otherwise
+ */
+export const isDevelopment = (): boolean => {
+  const env = Deno.env.get('ENVIRONMENT') || Deno.env.get('DENO_ENV') || 'development';
+  return env !== 'production';
+};
