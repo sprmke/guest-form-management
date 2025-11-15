@@ -17,7 +17,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         duration={Infinity}
         toastOptions={{
           style: {
-            minWidth: '400px',
             maxWidth: '500px',
             padding: '16px 48px 16px 20px',
             fontSize: '15px',
