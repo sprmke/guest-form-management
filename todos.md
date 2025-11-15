@@ -1,10 +1,6 @@
 TODOS:
 
-- Push mock data improvements
-- Push guest form improvements
-
-- In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
-- If no booking id on success page, just redirect to root route
+- ✅ In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
 - Create separate email for parking information and pet information
   - pet information - automatic email to azure pmo
   - parking information
