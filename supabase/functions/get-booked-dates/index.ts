@@ -20,10 +20,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get all bookings with check-in and check-out dates
+    // Get today's date in YYYY-MM-DD format (normalized)
+    const today = new Date().toISOString().split('T')[0];
+
+    // Get bookings with check-out dates from today onwards
+    // We filter by check_out_date >= today to exclude past bookings
     const { data: bookings, error } = await supabase
       .from('guest_submissions')
       .select('id, check_in_date, check_out_date')
+      .gte('check_out_date', today)
       .order('check_in_date', { ascending: true });
 
     if (error) {
@@ -58,7 +63,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         data: bookedDateRanges,
-        message: 'Booked dates retrieved successfully.'
+        message: 'Future booked dates retrieved successfully.'
       }),
       {
         headers: {
