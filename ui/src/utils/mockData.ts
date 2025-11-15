@@ -57,21 +57,45 @@ const generateRandomAddress = () => {
   return `${randomElement(cities)}, ${randomElement(provinces)}`;
 };
 
-const generateDummyImage = (prefix: string) => {
-  const formattedDateTime = dayjs().format('YYYY-MM-DD_HH-mm-ss');
-  
+const generateDummyImage = (prefix: string): string => {
+  const canvas = document.createElement('canvas');
   const width = 800;
   const height = 600;
-  const backgroundColor = '808080';
-  const textColor = 'FFFFFF';
-  return `https://dummyimage.com/${width}x${height}/${backgroundColor}/${textColor}&text=${prefix}_${formattedDateTime}`;
+  canvas.width = width;
+  canvas.height = height;
+  
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
+  
+  // Generate a random color based on the prefix
+  const hue = prefix.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
+  ctx.fillStyle = `hsl(${hue}, 50%, 70%)`;
+  ctx.fillRect(0, 0, width, height);
+  
+  // Add text
+  ctx.fillStyle = '#333333';
+  ctx.font = 'bold 32px Arial';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  
+  const text = prefix.replace(/([A-Z])/g, ' $1').trim();
+  const formattedDateTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
+  
+  ctx.fillText(text, width / 2, height / 2 - 30);
+  ctx.font = '20px Arial';
+  ctx.fillText(formattedDateTime, width / 2, height / 2 + 30);
+  
+  return canvas.toDataURL('image/jpeg', 0.8);
 };
 
 const generateDummyFile = async (prefix: string): Promise<File> => {
-  const url = generateDummyImage(prefix);
+  const dataUrl = generateDummyImage(prefix);
   const filename = `${prefix.toLowerCase()}_${dayjs().valueOf()}.jpg`;
-  const response = await fetch(url);
+  
+  // Convert data URL to blob
+  const response = await fetch(dataUrl);
   const blob = await response.blob();
+  
   return new File([blob], filename, { type: 'image/jpeg' });
 };
 
