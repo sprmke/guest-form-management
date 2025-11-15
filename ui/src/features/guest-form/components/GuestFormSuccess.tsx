@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { formatDateToLongFormat, formatTimeToAMPM } from '@/utils/dates';
 import { Users, User, PawPrint, Mail, Phone } from 'lucide-react';
 import dayjs from 'dayjs';
+import { useEffect } from 'react';
 
 interface BookingData {
   checkInDate: string;
@@ -29,6 +30,13 @@ export function GuestFormSuccess() {
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('bookingId');
   const bookingData = location.state?.bookingData as BookingData | undefined;
+
+  // Redirect to root if no booking ID
+  useEffect(() => {
+    if (!bookingId) {
+      navigate('/', { replace: true });
+    }
+  }, [bookingId, navigate]);
 
   const handleViewForm = () => {
     if (bookingId) {
