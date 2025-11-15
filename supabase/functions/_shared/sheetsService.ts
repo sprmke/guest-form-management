@@ -1,5 +1,6 @@
 import dayjs from 'https://esm.sh/dayjs@1.11.10'
 import { GuestFormData } from './types.ts';
+import { isDevelopment } from './utils.ts';
 
 export class SheetsService {
   static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string) {
@@ -117,10 +118,11 @@ export class SheetsService {
 
   private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, createdAt?: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
+    const testPrefix = isDevelopment() ? '[TEST] ' : '';
     
     return [
       bookingId,                          // Booking ID
-      formData.guestFacebookName,         // Facebook Name
+      `${testPrefix}${formData.guestFacebookName}`,         // Facebook Name
       formData.primaryGuestName,          // Primary Guest Name
       formData.guestEmail,                // Email
       formData.guestPhoneNumber,          // Phone Number
