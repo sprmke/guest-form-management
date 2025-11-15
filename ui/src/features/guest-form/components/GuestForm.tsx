@@ -231,21 +231,28 @@ export function GuestForm() {
   const handleGenerateNewData = async () => {
     if (isProduction) return;
 
-    const randomData = await generateRandomData();
-    form.reset(randomData);
+    try {
+      const randomData = await generateRandomData();
+      form.reset(randomData);
 
-    // Set the dummy files in the file inputs
-    if (randomData.paymentReceipt) {
-      setDummyFile(fileInputRef, randomData.paymentReceipt);
-    }
-    if (randomData.validId) {
-      setDummyFile(validIdInputRef, randomData.validId);
-    }
-    if (randomData.petVaccination) {
-      setDummyFile(petVaccinationInputRef, randomData.petVaccination);
-    }
-    if (randomData.petImage) {
-      setDummyFile(petImageInputRef, randomData.petImage);
+      // Set the dummy files in the file inputs
+      if (randomData.paymentReceipt) {
+        setDummyFile(fileInputRef, randomData.paymentReceipt);
+      }
+      if (randomData.validId) {
+        setDummyFile(validIdInputRef, randomData.validId);
+      }
+      if (randomData.petVaccination) {
+        setDummyFile(petVaccinationInputRef, randomData.petVaccination);
+      }
+      if (randomData.petImage) {
+        setDummyFile(petImageInputRef, randomData.petImage);
+      }
+    } catch (error) {
+      toast.error('Failed to generate test data', {
+        description:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      });
     }
   };
 
@@ -305,8 +312,8 @@ export function GuestForm() {
         'updateGoogleSheets',
       ].forEach((param) => {
         let value = 'true'; // default value
-        if (param === 'updateGoogleSheets') {
-          // For updateGoogleSheets, check if it's explicitly set to true
+        if (['updateGoogleCalendar', 'updateGoogleSheets'].includes(param)) {
+          // For updateGoogleCalendar and updateGoogleSheets, check if it's explicitly set to true
           const explicitValue = searchParams.get(param);
           // In development, default to false unless explicitly set to true
           // In production, default to true (existing behavior)
@@ -450,8 +457,8 @@ export function GuestForm() {
               </h2>
               <p className="max-w-md text-muted-foreground">
                 The booking ID you provided is invalid or no guest form data
-                exists for this booking. Please check your booking ID and try
-                again, or contact us if you need assistance.
+                exists for this booking. Please screenshot this error message
+                and contact us on Facebook for further assistance.
               </p>
             </div>
             <div className="flex gap-2">
@@ -1730,36 +1737,36 @@ export function GuestForm() {
                 )}
               />
             </div>
+
+            <div className="flex flex-col space-y-2">
+              {!isProduction && !bookingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleGenerateNewData}
+                  className="w-full"
+                >
+                  Generate New Data
+                </Button>
+              )}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                variant="success"
+                className="w-full"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 w-5 h-5 animate-spin" />
+                    Submitting Form...
+                  </>
+                ) : (
+                  'Submit Guest Form'
+                )}
+              </Button>
+            </div>
           </div>
         )}
-
-        <div className="flex flex-col space-y-2">
-          {!isProduction && !bookingId && (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGenerateNewData}
-              className="w-full"
-            >
-              Generate New Data
-            </Button>
-          )}
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            variant="success"
-            className="w-full"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 w-5 h-5 animate-spin" />
-                Submitting Form...
-              </>
-            ) : (
-              'Submit Guest Form'
-            )}
-          </Button>
-        </div>
       </form>
     </Form>
   );
