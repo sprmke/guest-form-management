@@ -1,4 +1,4 @@
-import { formatPublicUrl, formatDateTime } from './utils.ts';
+import { formatPublicUrl, formatDateTime, isDevelopment } from './utils.ts';
 import { GuestFormData } from './types.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
@@ -110,7 +110,8 @@ export class CalendarService {
    * Creates the event data object for Google Calendar
    */
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string) {
-    const eventSummary = `${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
+    const testPrefix = isDevelopment() ? '[TEST] ' : '';
+    const eventSummary = `${testPrefix}${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
     const eventDescription = `
 <a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}">View/Update Guest Form</a>
 
