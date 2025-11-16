@@ -9,6 +9,32 @@ export class DatabaseService {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
+  static async getRawData(bookingId: string) {
+    console.log('Fetching raw data for booking:', bookingId);
+    
+    try {
+      const { data, error } = await this.supabase
+        .from('guest_submissions')
+        .select('*')
+        .eq('id', bookingId)
+        .single();
+
+      if (error) {
+        console.error('Database error:', error);
+        throw new Error('Failed to fetch guest submission');
+      }
+
+      if (!data) {
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Error fetching raw data:', error);
+      throw error;
+    }
+  }
+
   static async getFormData(bookingId: string) {
     console.log('Fetching form data for booking:', bookingId);
     
