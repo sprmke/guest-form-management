@@ -3,7 +3,7 @@ import timezone from 'dayjs/plugin/timezone';
 import utc from 'dayjs/plugin/utc';
 import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import { UseFormReturn } from "react-hook-form";
-import { parse, isWithinInterval, startOfDay } from 'date-fns';
+import { parse, startOfDay } from 'date-fns';
 
 // Initialize dayjs plugins
 dayjs.extend(utc);
@@ -108,7 +108,11 @@ export const datesOverlap = (
 
   // Two date ranges overlap if:
   // (StartA < EndB) AND (EndA > StartB)
-  return start1.isBefore(end2) && end1.isAfter(start2);
+  // However, we allow check-in on checkout dates, so:
+  // (StartA < EndB) AND (EndA > StartB) AND NOT (EndA === StartB OR EndB === StartA)
+  // Simplified: Check-in is allowed on checkout date
+  return start1.isBefore(end2) && end1.isAfter(start2) && 
+         !(end1.isSame(start2) || end2.isSame(start1));
 };
 
 // Check if selected dates overlap with any booked dates
@@ -136,13 +140,14 @@ export const checkDateOverlap = (
   };
 };
 
-// Get all dates between two dates (inclusive)
+// Get all dates between two dates (check-in inclusive, check-out exclusive)
 export const getDatesBetween = (startDate: string, endDate: string): string[] => {
   const dates: string[] = [];
   let currentDate = dayjs(startDate);
   const end = dayjs(endDate);
 
-  while (currentDate.isBefore(end) || currentDate.isSame(end)) {
+  // Include check-in date, but exclude check-out date
+  while (currentDate.isBefore(end)) {
     dates.push(currentDate.format('YYYY-MM-DD'));
     currentDate = currentDate.add(1, 'day');
   }
@@ -188,12 +193,11 @@ export const createDisabledDateMatcher = (
       try {
         const checkIn = stringToDate(booking.checkInDate);
         const checkOut = stringToDate(booking.checkOutDate);
+        const dateToCheck = startOfDay(date);
         
-        // Check if date is within the booked range (inclusive)
-        return isWithinInterval(startOfDay(date), {
-          start: startOfDay(checkIn),
-          end: startOfDay(checkOut),
-        });
+        // Check if date is within the booked range (check-in inclusive, check-out exclusive)
+        // This allows guests to check in on checkout dates
+        return dateToCheck >= startOfDay(checkIn) && dateToCheck < startOfDay(checkOut);
       } catch (e) {
         return false;
       }
