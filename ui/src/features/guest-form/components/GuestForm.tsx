@@ -369,14 +369,8 @@ export function GuestForm() {
 
       // Check if submission was skipped due to no changes
       if (result.skipped) {
-        console.log('ℹ️ No changes detected, redirecting to success page');
-        toast.info('No Changes Detected', {
-          description:
-            'Your form data has not changed. Redirecting to success page...',
-          duration: 3000,
-        });
-
         // Redirect to success page
+        console.log('ℹ️ No changes detected, redirecting to success page');
         navigate(`/success?bookingId=${currentBookingId}`);
         return;
       }
