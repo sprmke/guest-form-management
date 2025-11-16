@@ -20,21 +20,31 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // Get today's date in YYYY-MM-DD format (normalized)
-    const today = new Date().toISOString().split('T')[0];
+    // Get today's date
+    const today = new Date();
+    const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // Get bookings with check-out dates from today onwards
-    // We filter by check_out_date >= today to exclude past bookings
+    // Get all bookings from database
+    // Note: Dates are stored as TEXT in MM-DD-YYYY format
+    // We'll filter in JavaScript since PostgREST doesn't support TO_DATE in simple filters
     const { data: bookings, error } = await supabase
       .from('guest_submissions')
-      .select('id, check_in_date, check_out_date')
-      .gte('check_out_date', today)
-      .order('check_in_date', { ascending: true });
+      .select('id, check_in_date, check_out_date');
 
     if (error) {
       console.error('Database error:', error);
       throw new Error('Failed to fetch bookings');
     }
+
+    // Helper to parse MM-DD-YYYY date string to Date object
+    const parseMMDDYYYY = (dateStr: string): Date | null => {
+      try {
+        const [month, day, year] = dateStr.split('-');
+        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      } catch {
+        return null;
+      }
+    };
 
     // Normalize dates to YYYY-MM-DD format
     const normalizeDate = (dateStr: string): string => {
@@ -51,12 +61,26 @@ serve(async (req) => {
       return dateStr;
     };
 
-    // Transform bookings to normalized date ranges
-    const bookedDateRanges = bookings?.map(booking => ({
-      id: booking.id,
-      checkInDate: normalizeDate(booking.check_in_date),
-      checkOutDate: normalizeDate(booking.check_out_date)
-    })) || [];
+    // Set today to start of day for fair comparison (00:00:00)
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // Filter out past bookings (where check_out_date < today)
+    // Then transform bookings to normalized date ranges
+    const bookedDateRanges = bookings
+      ?.filter(booking => {
+        const checkOutDate = parseMMDDYYYY(booking.check_out_date);
+        if (!checkOutDate) {
+          console.warn(`Invalid date format for booking ${booking.id}: ${booking.check_out_date}`);
+          return false; // Exclude bookings with invalid dates
+        }
+        // Keep only bookings where check-out date is today or in the future
+        return checkOutDate >= todayStart;
+      })
+      .map(booking => ({
+        id: booking.id,
+        checkInDate: normalizeDate(booking.check_in_date),
+        checkOutDate: normalizeDate(booking.check_out_date)
+      })) || [];
 
     // Return the response with CORS headers
     return new Response(
