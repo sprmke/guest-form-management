@@ -12,3 +12,4 @@ TODOS:
 - Handle and send different email when guest updated the form details. Ex. Please disregard..
 - On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
 - In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck
+- In prod, let's add test query parameter to determine that this is a TEST booking submission
