@@ -5,7 +5,7 @@ import { generatePDF } from '../_shared/pdfService.ts'
 import { sendEmail } from '../_shared/emailService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
-import { extractRouteParam } from '../_shared/utils.ts'
+import { extractRouteParam, compareFormData } from '../_shared/utils.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -34,7 +34,13 @@ serve(async (req) => {
     // Extract check-in and check-out dates and booking ID to check for overlaps
     const checkInDate = formData.get('checkInDate') as string;
     const checkOutDate = formData.get('checkOutDate') as string;
-    const bookingId = formData.get('bookingId') as string;
+    let bookingId = formData.get('bookingId') as string;
+    
+    // Sanitize bookingId to remove any query parameters or extra characters
+    // This prevents UUID validation errors if the bookingId was contaminated
+    if (bookingId) {
+      bookingId = bookingId.split('?')[0].split('&')[0].trim();
+    }
 
     console.log('📅 Received dates for overlap check:');
     console.log('  Check-in:', checkInDate);
@@ -60,6 +66,46 @@ serve(async (req) => {
     }
     
     console.log('✅ No overlaps found, proceeding with submission...');
+    
+    // Check if this is an update and compare data for changes
+    let hasDataChanges = true;
+    let existingData = null;
+    
+    if (bookingId) {
+      console.log('🔍 Checking for data changes...');
+      
+      // Fetch existing booking raw data (in database format)
+      existingData = await DatabaseService.getRawData(bookingId);
+      
+      if (existingData) {
+        // Compare new form data with existing data
+        const comparison = compareFormData(formData, existingData);
+        hasDataChanges = comparison.hasChanges;
+        
+        if (!hasDataChanges) {
+          console.log('ℹ️ No changes detected, skipping processing and redirecting to success page');
+          
+          // Return success without processing
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'No changes detected',
+              data: { id: bookingId },
+              skipped: true
+            }),
+            {
+              headers: {
+                ...corsHeaders(req),
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+        }
+        
+        console.log(`✅ Changes detected (${comparison.changedFields.length} fields), proceeding with update...`);
+        console.log('Changed fields:', comparison.changedFields);
+      }
+    }
     
     // Process form data and save to database
     const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData)
