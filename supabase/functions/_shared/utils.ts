@@ -105,3 +105,164 @@ export const isDevelopment = (): boolean => {
   const env = Deno.env.get('ENVIRONMENT') || Deno.env.get('DENO_ENV') || 'development';
   return env !== 'production';
 };
+
+/**
+ * Normalizes a value for comparison
+ * - Converts empty strings to undefined
+ * - Trims strings
+ * - Converts boolean-like strings to booleans
+ */
+const normalizeValue = (value: any): any => {
+  if (value === null || value === undefined) return undefined;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed === '') return undefined;
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+    return trimmed;
+  }
+  if (typeof value === 'number' && value === 0) return undefined;
+  return value;
+};
+
+/**
+ * Compares new form data with existing database data to detect changes
+ * @param newFormData - The new form data from the submission
+ * @param existingData - The existing data from the database
+ * @returns Object with hasChanges boolean and list of changed fields
+ */
+export const compareFormData = (newFormData: FormData, existingData: any): { hasChanges: boolean; changedFields: string[] } => {
+  const changedFields: string[] = [];
+  
+  // Define fields to compare (excluding files as they're handled separately)
+  const fieldsToCompare = [
+    { form: 'guestFacebookName', db: 'guest_facebook_name' },
+    { form: 'primaryGuestName', db: 'primary_guest_name' },
+    { form: 'guestEmail', db: 'guest_email' },
+    { form: 'guestPhoneNumber', db: 'guest_phone_number' },
+    { form: 'guestAddress', db: 'guest_address' },
+    { form: 'checkInDate', db: 'check_in_date', isDate: true },
+    { form: 'checkOutDate', db: 'check_out_date', isDate: true },
+    { form: 'checkInTime', db: 'check_in_time', isTime: true },
+    { form: 'checkOutTime', db: 'check_out_time', isTime: true },
+    { form: 'nationality', db: 'nationality' },
+    { form: 'numberOfAdults', db: 'number_of_adults', isNumber: true },
+    { form: 'numberOfChildren', db: 'number_of_children', isNumber: true },
+    { form: 'guest2Name', db: 'guest2_name' },
+    { form: 'guest3Name', db: 'guest3_name' },
+    { form: 'guest4Name', db: 'guest4_name' },
+    { form: 'guest5Name', db: 'guest5_name' },
+    { form: 'guestSpecialRequests', db: 'guest_special_requests' },
+    { form: 'findUs', db: 'find_us' },
+    { form: 'findUsDetails', db: 'find_us_details' },
+    { form: 'needParking', db: 'need_parking', isBoolean: true },
+    { form: 'carPlateNumber', db: 'car_plate_number' },
+    { form: 'carBrandModel', db: 'car_brand_model' },
+    { form: 'carColor', db: 'car_color' },
+    { form: 'hasPets', db: 'has_pets', isBoolean: true },
+    { form: 'petName', db: 'pet_name' },
+    { form: 'petBreed', db: 'pet_breed' },
+    { form: 'petAge', db: 'pet_age' },
+    { form: 'petVaccinationDate', db: 'pet_vaccination_date', isDate: true },
+  ];
+
+  // Check each field for changes
+  for (const field of fieldsToCompare) {
+    let newValue: any = newFormData.get(field.form);
+    let existingValue: any = existingData[field.db];
+
+    // Handle date formatting for comparison
+    if (field.isDate && newValue) {
+      // Format both dates to YYYY-MM-DD for comparison
+      newValue = formatDate(newValue);
+      existingValue = formatDate(existingValue);
+    }
+
+    // Handle time formatting for comparison
+    if (field.isTime && newValue) {
+      newValue = formatTime(newValue) || (field.db === 'check_in_time' ? DEFAULT_CHECK_IN_TIME : DEFAULT_CHECK_OUT_TIME);
+      existingValue = formatTime(existingValue) || (field.db === 'check_in_time' ? DEFAULT_CHECK_IN_TIME : DEFAULT_CHECK_OUT_TIME);
+    }
+
+    // Handle number conversion
+    if (field.isNumber && newValue) {
+      newValue = Number(newValue);
+    }
+
+    // Handle boolean conversion
+    if (field.isBoolean) {
+      newValue = newValue === 'true' || newValue === true;
+      existingValue = existingValue === true;
+    }
+
+    // Normalize both values for comparison
+    const normalizedNew = normalizeValue(newValue);
+    const normalizedExisting = normalizeValue(existingValue);
+
+    // Compare values
+    if (normalizedNew !== normalizedExisting) {
+      changedFields.push(field.form);
+      console.log(`  📝 Field changed - ${field.form}:`, {
+        new: normalizedNew,
+        existing: normalizedExisting
+      });
+    }
+  }
+
+  // Check if files have changed (if new files are uploaded)
+  // We need to compare file names to see if they're different from existing ones
+  const fileFieldMappings = [
+    { form: 'paymentReceipt', formName: 'paymentReceiptFileName', db: 'payment_receipt_url' },
+    { form: 'validId', formName: 'validIdFileName', db: 'valid_id_url' },
+    { form: 'petVaccination', formName: 'petVaccinationFileName', db: 'pet_vaccination_url' },
+    { form: 'petImage', formName: 'petImageFileName', db: 'pet_image_url' },
+  ];
+  
+  for (const fileField of fileFieldMappings) {
+    const file = newFormData.get(fileField.form);
+    const fileName = newFormData.get(fileField.formName) as string;
+    const existingUrl = existingData[fileField.db];
+    
+    console.log(`  🔍 Checking ${fileField.form}:`, {
+      hasFile: !!file,
+      fileSize: file instanceof File ? file.size : 0,
+      fileName,
+      existingUrl
+    });
+    
+    // Only mark as changed if:
+    // 1. A file exists in the form data AND
+    // 2. Either there's no existing URL OR the filename is different
+    if (file && file instanceof File && file.size > 0 && fileName) {
+      // Extract the filename from the existing URL (if it exists)
+      let existingFileName = '';
+      if (existingUrl && typeof existingUrl === 'string') {
+        // URL format is typically: bucket/path/filename or full URL
+        // Handle both storage path and full URL
+        const urlStr = existingUrl.includes('http') ? existingUrl : existingUrl;
+        const urlParts = urlStr.split('/');
+        existingFileName = urlParts[urlParts.length - 1];
+        
+        // Decode URL-encoded characters
+        existingFileName = decodeURIComponent(existingFileName);
+      }
+      
+      console.log(`    Comparing: new="${fileName}" vs existing="${existingFileName}"`);
+      
+      // Compare filenames - if they're different or no existing file, mark as changed
+      if (!existingUrl || !existingFileName || fileName !== existingFileName) {
+        changedFields.push(fileField.form);
+        console.log(`    📎 File changed - ${fileField.form}: "${existingFileName}" → "${fileName}"`);
+      } else {
+        console.log(`    ⏭️ File unchanged - ${fileField.form}: "${fileName}"`);
+      }
+    } else if (!file || !(file instanceof File) || file.size === 0) {
+      console.log(`    ⏭️ No file data - ${fileField.form}`);
+    }
+  }
+
+  const hasChanges = changedFields.length > 0;
+  console.log(`\n${hasChanges ? '✅' : '❌'} Data comparison complete: ${hasChanges ? changedFields.length + ' changes detected' : 'No changes detected'}`);
+  
+  return { hasChanges, changedFields };
+};
