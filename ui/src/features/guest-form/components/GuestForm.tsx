@@ -91,7 +91,10 @@ export function GuestForm() {
       const newBookingId = crypto.randomUUID();
       setCurrentBookingId(newBookingId);
     } else {
-      setCurrentBookingId(bookingId);
+      // Sanitize bookingId to remove any query parameters or extra characters
+      // Extract only the UUID part (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+      const cleanBookingId = bookingId.split('?')[0].split('&')[0].trim();
+      setCurrentBookingId(cleanBookingId);
     }
   }, [bookingId]);
 
@@ -362,6 +365,20 @@ export function GuestForm() {
           result.error || result.details?.message || 'Failed to submit form';
         console.error('Form submission failed:', result);
         throw new Error(errorMessage);
+      }
+
+      // Check if submission was skipped due to no changes
+      if (result.skipped) {
+        console.log('ℹ️ No changes detected, redirecting to success page');
+        toast.info('No Changes Detected', {
+          description:
+            'Your form data has not changed. Redirecting to success page...',
+          duration: 3000,
+        });
+
+        // Redirect to success page
+        navigate(`/success?bookingId=${currentBookingId}`);
+        return;
       }
 
       // Reset form and redirect to success page
