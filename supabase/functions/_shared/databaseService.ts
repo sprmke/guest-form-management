@@ -304,10 +304,11 @@ export class DatabaseService {
 
       // Query for overlapping bookings
       // Two date ranges overlap if:
-      // (StartA <= EndB) AND (EndA >= StartB)
+      // (StartA < EndB) AND (EndA > StartB)
       // 
-      // For our case:
-      // (new check-in <= existing check-out) AND (new check-out >= existing check-in)
+      // However, we allow check-in on checkout dates (same day turnover), so we exclude:
+      // - New check-in === existing check-out
+      // - New check-out === existing check-in
       
       let query = this.supabase
         .from('guest_submissions')
@@ -340,11 +341,14 @@ export class DatabaseService {
         // New booking overlaps if:
         // - New check-in is before existing check-out AND
         // - New check-out is after existing check-in
-        const overlaps = (newCheckIn < existingCheckOut) && (newCheckOut > existingCheckIn);
+        // However, we allow check-in on checkout dates (same day turnover)
+        const overlaps = (newCheckIn < existingCheckOut) && (newCheckOut > existingCheckIn) &&
+                        !(newCheckIn === existingCheckOut || newCheckOut === existingCheckIn);
 
         console.log(`  Overlap detected: ${overlaps}`);
         console.log(`    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`);
         console.log(`    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`);
+        console.log(`    - Allowing check-in on checkout date: ${newCheckIn === existingCheckOut ? 'YES (no overlap)' : 'N/A'}`);
 
         if (overlaps) {
           console.warn('⚠️ OVERLAP DETECTED with booking:', booking.id, '- Guest:', booking.primary_guest_name);
