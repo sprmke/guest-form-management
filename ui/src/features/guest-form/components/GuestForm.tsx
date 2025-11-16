@@ -70,6 +70,7 @@ export function GuestForm() {
   const [petImagePreview, setPetImagePreview] = useState<string | null>(null);
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
+  const [sameAsFacebookName, setSameAsFacebookName] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null);
   const petVaccinationInputRef = useRef<HTMLInputElement>(null);
@@ -435,6 +436,14 @@ export function GuestForm() {
   const totalGuests =
     (form.watch('numberOfAdults') || 1) + (form.watch('numberOfChildren') || 0);
   const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)); // Cap at 3 additional guests
+
+  // Handle "Same as Facebook Name" checkbox
+  useEffect(() => {
+    if (sameAsFacebookName) {
+      const facebookName = form.getValues('guestFacebookName');
+      form.setValue('primaryGuestName', sameAsFacebookName ? facebookName : '');
+    }
+  }, [sameAsFacebookName, form.watch('guestFacebookName')]);
 
   return (
     <Form {...form}>
@@ -944,14 +953,42 @@ export function GuestForm() {
                 name="primaryGuestName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      1. Primary Guest - Name{' '}
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
+                    <div className="flex flex-col mb-2 space-y-2">
+                      <FormLabel>
+                        1. Primary Guest - Name{' '}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="sameAsFacebookName"
+                          checked={sameAsFacebookName}
+                          onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setSameAsFacebookName(isChecked);
+                            if (isChecked) {
+                              const facebookName =
+                                form.getValues('guestFacebookName');
+                              if (facebookName) {
+                                form.setValue('primaryGuestName', facebookName);
+                              }
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                        />
+                        <label
+                          htmlFor="sameAsFacebookName"
+                          className="text-sm cursor-pointer text-muted-foreground"
+                        >
+                          Same as Facebook Name
+                        </label>
+                      </div>
+                    </div>
                     <FormControl>
                       <Input
                         placeholder="Complete name of Primary Guest"
                         {...field}
+                        disabled={sameAsFacebookName}
                         onChange={(e) =>
                           handleNameInputChange(
                             e,
