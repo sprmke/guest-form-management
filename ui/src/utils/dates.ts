@@ -177,7 +177,7 @@ export const dateToString = (date: Date): string => {
   return dayjs(date).format('YYYY-MM-DD');
 };
 
-// Create a disabled date matcher for react-day-picker
+// Create a disabled date matcher for react-day-picker (for check-in dates)
 export const createDisabledDateMatcher = (
   bookedDates: BookedDateRange[],
   currentBookingId?: string | null
@@ -198,6 +198,36 @@ export const createDisabledDateMatcher = (
         // Check if date is within the booked range (check-in inclusive, check-out exclusive)
         // This allows guests to check in on checkout dates
         return dateToCheck >= startOfDay(checkIn) && dateToCheck < startOfDay(checkOut);
+      } catch (e) {
+        return false;
+      }
+    });
+  };
+};
+
+// Create a disabled date matcher for checkout dates
+// This allows selecting checkout dates that are check-in dates of other bookings
+export const createDisabledCheckoutDateMatcher = (
+  bookedDates: BookedDateRange[],
+  currentBookingId?: string | null
+) => {
+  return (date: Date) => {
+    // Check if this date falls within any booked range
+    return bookedDates.some(booking => {
+      // Skip checking against the current booking if we're editing
+      if (currentBookingId && booking.id === currentBookingId) {
+        return false;
+      }
+      
+      try {
+        const checkIn = stringToDate(booking.checkInDate);
+        const checkOut = stringToDate(booking.checkOutDate);
+        const dateToCheck = startOfDay(date);
+        
+        // For checkout dates: Only disable dates that are AFTER check-in and BEFORE check-out
+        // This allows selecting a checkout date that matches another booking's check-in date
+        // (Guest A checks out on Dec 15, Guest B checks in on Dec 15)
+        return dateToCheck > startOfDay(checkIn) && dateToCheck < startOfDay(checkOut);
       } catch (e) {
         return false;
       }

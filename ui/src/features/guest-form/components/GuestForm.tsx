@@ -36,6 +36,7 @@ import {
 import {
   getNextDay,
   createDisabledDateMatcher,
+  createDisabledCheckoutDateMatcher,
   stringToDate,
   dateToString,
   type BookedDateRange,
@@ -766,8 +767,8 @@ export function GuestForm() {
                             }
                           }}
                           disabled={(date) => {
-                            // Disable dates that are booked
-                            const isBooked = createDisabledDateMatcher(
+                            // Use checkout-specific matcher that allows checkout on check-in dates
+                            const isBooked = createDisabledCheckoutDateMatcher(
                               bookedDates,
                               currentBookingId
                             )(date);
