@@ -50,6 +50,7 @@ import {
   PawPrint,
   FileText,
   Car,
+  Settings,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -79,6 +80,22 @@ export function GuestForm() {
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
+
+  // Check if testing mode is enabled (via query parameter)
+  const isTestingMode = searchParams.get('testing') === 'true';
+  
+  // Show dev controls in dev environment OR when testing=true in production
+  const showDevControls = !isProduction || isTestingMode;
+
+  // Dev/Testing API action controls (all unchecked by default in dev/testing mode)
+  const [devApiControls, setDevApiControls] = useState({
+    saveToDatabase: false,
+    saveImagesToStorage: false,
+    generatePdf: false,
+    sendEmail: false,
+    updateCalendar: false,
+    updateGoogleSheets: false,
+  });
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
@@ -225,16 +242,16 @@ export function GuestForm() {
     fetchFormData();
   }, [bookingId]);
 
-  // Generate new random data on page load only in non-production and when no bookingId
+  // Generate new random data on page load only when dev controls are shown and no bookingId
   useEffect(() => {
-    if (!isProduction && !bookingId && !isLoading) {
+    if (showDevControls && !bookingId && !isLoading) {
       handleGenerateNewData();
     }
-  }, [isLoading, bookingId]);
+  }, [isLoading, bookingId, showDevControls]);
 
   // Update file input when generating new data
   const handleGenerateNewData = async () => {
-    if (isProduction) return;
+    if (!showDevControls) return;
 
     try {
       const randomData = await generateRandomData();
@@ -310,30 +327,24 @@ export function GuestForm() {
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
-      [
-        'generatePdf',
-        'sendEmail',
-        'updateGoogleCalendar',
-        'updateGoogleSheets',
-      ].forEach((param) => {
-        let value = 'true'; // default value
-        if (['updateGoogleCalendar', 'updateGoogleSheets'].includes(param)) {
-          // For updateGoogleCalendar and updateGoogleSheets, check if it's explicitly set to true
-          const explicitValue = searchParams.get(param);
-          // In development, default to false unless explicitly set to true
-          // In production, default to true (existing behavior)
-          value = !isProduction
-            ? 'false'
-            : explicitValue === 'false'
-            ? 'false'
-            : 'true';
-        } else {
-          // For other parameters, use existing logic
-          value = searchParams.get(param) === 'false' ? 'false' : 'true';
-        }
-
-        queryParams.append(param, value);
-      });
+      
+      if (showDevControls) {
+        // In dev/testing mode, use the control checkboxes
+        queryParams.append('saveToDatabase', devApiControls.saveToDatabase ? 'true' : 'false');
+        queryParams.append('saveImagesToStorage', devApiControls.saveImagesToStorage ? 'true' : 'false');
+        queryParams.append('generatePdf', devApiControls.generatePdf ? 'true' : 'false');
+        queryParams.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
+        queryParams.append('updateGoogleCalendar', devApiControls.updateCalendar ? 'true' : 'false');
+        queryParams.append('updateGoogleSheets', devApiControls.updateGoogleSheets ? 'true' : 'false');
+      } else {
+        // In normal production mode, all actions are enabled by default
+        queryParams.append('saveToDatabase', 'true');
+        queryParams.append('saveImagesToStorage', 'true');
+        queryParams.append('generatePdf', 'true');
+        queryParams.append('sendEmail', 'true');
+        queryParams.append('updateGoogleCalendar', 'true');
+        queryParams.append('updateGoogleSheets', 'true');
+      }
 
       const queryParamsString = queryParams.toString()
         ? `?${queryParams.toString()}`
@@ -400,11 +411,12 @@ export function GuestForm() {
       }
 
       // Reset form and redirect to success page
-      if (isProduction) {
+      // Only reset form in normal production mode (not dev or testing mode)
+      if (!showDevControls) {
         form.reset(defaultFormValues);
-      }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       }
 
       // Prepare booking summary data to pass to success page
@@ -1810,8 +1822,155 @@ export function GuestForm() {
               />
             </div>
 
+            {/* Dev/Testing API Controls Card */}
+            {showDevControls && (
+              <div className="form-section">
+                <div className="form-section-header">
+                  <Settings className="form-section-icon" />
+                  <h2 className="form-section-title">
+                    {isTestingMode ? 'Testing Controls (Testing Mode)' : 'Developer Controls (Dev Mode)'}
+                  </h2>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Control which API actions are performed when submitting the form. 
+                    All actions are <span className="font-semibold">disabled by default</span> in {isTestingMode ? 'testing' : 'development'} mode.
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="saveToDatabase"
+                        checked={devApiControls.saveToDatabase}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            saveToDatabase: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="saveToDatabase"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Save data to database
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="saveImagesToStorage"
+                        checked={devApiControls.saveImagesToStorage}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            saveImagesToStorage: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="saveImagesToStorage"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Save image assets to Supabase Storage
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="generatePdf"
+                        checked={devApiControls.generatePdf}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            generatePdf: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="generatePdf"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Generate PDF
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="sendEmail"
+                        checked={devApiControls.sendEmail}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            sendEmail: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="sendEmail"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Send email notification
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="updateCalendar"
+                        checked={devApiControls.updateCalendar}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            updateCalendar: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="updateCalendar"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Update Google Calendar
+                      </label>
+                    </div>
+
+                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <input
+                        type="checkbox"
+                        id="updateGoogleSheets"
+                        checked={devApiControls.updateGoogleSheets}
+                        onChange={(e) =>
+                          setDevApiControls({
+                            ...devApiControls,
+                            updateGoogleSheets: e.target.checked,
+                          })
+                        }
+                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                      <label
+                        htmlFor="updateGoogleSheets"
+                        className="flex-1 text-sm font-medium cursor-pointer"
+                      >
+                        Update Google Sheets
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col space-y-2">
-              {!isProduction && !bookingId && (
+              {showDevControls && !bookingId && (
                 <Button
                   type="button"
                   variant="outline"
