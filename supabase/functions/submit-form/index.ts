@@ -23,10 +23,22 @@ serve(async (req) => {
 
     // Get URL parameters
     const url = new URL(req.url)
+    const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false' // Default to true for backward compatibility
+    const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
     const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
+    
+    // Log enabled features for debugging
+    console.log('🎛️ API Action Flags:');
+    console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
+    console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
+    console.log(`  Generate PDF: ${isPDFGenerationEnabled ? '✅' : '❌'}`);
+    console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}`);
+    console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
+    console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
+    console.log('---');
     
     // Get and process form data
     const formData = await req.formData()
@@ -51,27 +63,31 @@ serve(async (req) => {
       throw new Error('Check-in and check-out dates are required');
     }
 
-    // Check for overlapping bookings
-    console.log('🔍 Starting overlap check...');
-    const { hasOverlap, overlappingBookings } = await DatabaseService.checkOverlappingBookings(
-      checkInDate, 
-      checkOutDate, 
-      bookingId
-    );
+    // Check for overlapping bookings (only if saving to database)
+    if (isSaveToDatabaseEnabled) {
+      console.log('🔍 Starting overlap check...');
+      const { hasOverlap, overlappingBookings } = await DatabaseService.checkOverlappingBookings(
+        checkInDate, 
+        checkOutDate, 
+        bookingId
+      );
 
-    if (hasOverlap) {
-      console.error('❌ BOOKING OVERLAP DETECTED!');
-      console.error('Overlapping bookings:', overlappingBookings);
-      throw new Error('BOOKING_OVERLAP: The selected dates are already booked. Please screenshot this message and contact your host to further assist you.');
+      if (hasOverlap) {
+        console.error('❌ BOOKING OVERLAP DETECTED!');
+        console.error('Overlapping bookings:', overlappingBookings);
+        throw new Error('BOOKING_OVERLAP: The selected dates are already booked. Please screenshot this message and contact your host to further assist you.');
+      }
+      
+      console.log('✅ No overlaps found, proceeding with submission...');
+    } else {
+      console.log('⚠️ Skipping overlap check (saveToDatabase=false)');
     }
     
-    console.log('✅ No overlaps found, proceeding with submission...');
-    
-    // Check if this is an update and compare data for changes
+    // Check if this is an update and compare data for changes (only if saving to database)
     let hasDataChanges = true;
     let existingData = null;
     
-    if (bookingId) {
+    if (isSaveToDatabaseEnabled && bookingId) {
       console.log('🔍 Checking for data changes...');
       
       // Fetch existing booking raw data (in database format)
@@ -105,10 +121,12 @@ serve(async (req) => {
         console.log(`✅ Changes detected (${comparison.changedFields.length} fields), proceeding with update...`);
         console.log('Changed fields:', comparison.changedFields);
       }
+    } else if (!isSaveToDatabaseEnabled) {
+      console.log('⚠️ Skipping change detection check (saveToDatabase=false)');
     }
     
     // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData, isSaveToDatabaseEnabled, isSaveImagesToStorageEnabled)
 
     let pdfBuffer = null
     // Generate PDF if enabled
