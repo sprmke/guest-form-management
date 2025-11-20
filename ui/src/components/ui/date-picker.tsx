@@ -66,15 +66,20 @@ export function DatePicker({
           modifiers={{
             range_middle: (day) => {
               if (!date || !rangeEnd) return false
-              return day > date && day < rangeEnd
+              // Support bidirectional ranges by determining start and end
+              const start = date < rangeEnd ? date : rangeEnd
+              const end = date < rangeEnd ? rangeEnd : date
+              return day > start && day < end
             },
             range_start: (day) => {
-              if (!date) return false
-              return day.getTime() === date.getTime()
+              if (!date || !rangeEnd) return false
+              const start = date < rangeEnd ? date : rangeEnd
+              return day.getTime() === start.getTime()
             },
             range_end: (day) => {
-              if (!rangeEnd) return false
-              return day.getTime() === rangeEnd.getTime()
+              if (!date || !rangeEnd) return false
+              const end = date < rangeEnd ? rangeEnd : date
+              return day.getTime() === end.getTime()
             }
           }}
           modifiersClassNames={{
