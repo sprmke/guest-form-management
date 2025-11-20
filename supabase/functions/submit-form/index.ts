@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
-import { generatePDF } from '../_shared/pdfService.ts'
-import { sendEmail } from '../_shared/emailService.ts'
+import { generatePDF, generatePetPDF } from '../_shared/pdfService.ts'
+import { sendEmail, sendPetEmail } from '../_shared/emailService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
 import { extractRouteParam, compareFormData } from '../_shared/utils.ts'
@@ -137,6 +137,38 @@ serve(async (req) => {
     // Send email if enabled
     if (isSendEmailEnabled) {
       await sendEmail(data, pdfBuffer)
+    }
+
+    // Generate Pet PDF and send Pet email if guest has pets
+    const hasPets = data.hasPets === true || data.hasPets === 'true'
+    if (hasPets && data.petName && data.petType && data.petBreed && data.petAge && data.petVaccinationDate) {
+      console.log('🐾 Guest has pets, generating Pet PDF and sending Pet email...')
+      
+      let petPdfBuffer = null
+      
+      // Generate Pet PDF if enabled
+      if (isPDFGenerationEnabled) {
+        try {
+          petPdfBuffer = await generatePetPDF(data)
+          console.log('Pet PDF generated successfully')
+        } catch (error) {
+          console.error('Error generating Pet PDF:', error)
+          // Don't throw error, continue with email
+        }
+      }
+
+      // Send Pet email if enabled
+      if (isSendEmailEnabled) {
+        try {
+          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl)
+          console.log('Pet email sent successfully')
+        } catch (error) {
+          console.error('Error sending Pet email:', error)
+          // Don't throw error, continue with processing
+        }
+      }
+    } else if (hasPets) {
+      console.log('⚠️ Guest has pets but some pet information is missing, skipping Pet PDF and email')
     }
 
     // Create or update calendar event if enabled
