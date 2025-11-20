@@ -14,3 +14,4 @@ TODOS:
 - In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck
 - Optimize and reduce size of image before uploading to supabase storage
 - In prod, let's add test query parameter to determine that this is a TEST booking submission
+- When booking is more than 1 night, we should update the title of the email title to <CheckIn Date> - <CheckOut Date>
