@@ -104,7 +104,7 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
+  static async processFormData(formData: FormData, saveToDatabase = true, saveImagesToStorage = true): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
       console.log('Processing form data...');
 
@@ -139,16 +139,23 @@ export class DatabaseService {
         throw new Error('Invalid check-in or check-out date format');
       }
 
-      // Check if booking already exists using the booking ID
-      const { data: existingBooking, error: fetchError } = await this.supabase
-        .from('guest_submissions')
-        .select('*')
-        .eq('id', bookingId)
-        .single();
+      // Check if booking already exists using the booking ID (only if saving to database or storage)
+      let existingBooking = null;
+      if (saveToDatabase || saveImagesToStorage) {
+        const { data, error: fetchError } = await this.supabase
+          .from('guest_submissions')
+          .select('*')
+          .eq('id', bookingId)
+          .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
-        console.error('Error fetching existing booking:', fetchError);
-        throw new Error('Failed to check for existing booking');
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
+          console.error('Error fetching existing booking:', fetchError);
+          throw new Error('Failed to check for existing booking');
+        }
+        
+        existingBooking = data;
+      } else {
+        console.log('⚠️ Skipping existing booking check (both saveToDatabase and saveImagesToStorage are false)');
       }
 
       // Handle file uploads
@@ -166,9 +173,16 @@ export class DatabaseService {
         // Handle pet vaccination upload
         if (petVaccination) {
           const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
-          petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, petVaccinationFileName);
+          if (saveImagesToStorage) {
+            petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, petVaccinationFileName);
+          } else {
+            console.log('⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)');
+            petVaccinationUrl = 'dev-mode-skipped';
+          }
         } else if (existingBooking) {
           petVaccinationUrl = existingBooking.pet_vaccination_url;
+        } else if (!saveImagesToStorage) {
+          petVaccinationUrl = 'dev-mode-skipped';
         } else {
           throw new Error('Pet vaccination record is required when bringing pets');
         }
@@ -176,9 +190,16 @@ export class DatabaseService {
         // Handle pet image upload
         if (petImage) {
           const petImageFileName = formData.get('petImageFileName') as string;
-          petImageUrl = await UploadService.uploadPetImage(petImage, petImageFileName);
+          if (saveImagesToStorage) {
+            petImageUrl = await UploadService.uploadPetImage(petImage, petImageFileName);
+          } else {
+            console.log('⚠️ Skipping pet image upload (saveImagesToStorage=false)');
+            petImageUrl = 'dev-mode-skipped';
+          }
         } else if (existingBooking) {
           petImageUrl = existingBooking.pet_image_url;
+        } else if (!saveImagesToStorage) {
+          petImageUrl = 'dev-mode-skipped';
         } else {
           throw new Error('Pet image is required when bringing pets');
         }
@@ -188,9 +209,16 @@ export class DatabaseService {
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
-        paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, paymentReceiptFileName);
+        if (saveImagesToStorage) {
+          paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, paymentReceiptFileName);
+        } else {
+          console.log('⚠️ Skipping payment receipt upload (saveImagesToStorage=false)');
+          paymentReceiptUrl = 'dev-mode-skipped';
+        }
       } else if (existingBooking) {
         paymentReceiptUrl = existingBooking.payment_receipt_url;
+      } else if (!saveImagesToStorage) {
+        paymentReceiptUrl = 'dev-mode-skipped';
       } else {
         throw new Error('Payment receipt is required');
       }
@@ -199,9 +227,16 @@ export class DatabaseService {
       const validId = formData.get('validId') as File;
       if (validId) {
         const validIdFileName = formData.get('validIdFileName') as string;
-        validIdUrl = await UploadService.uploadValidId(validId, validIdFileName);
+        if (saveImagesToStorage) {
+          validIdUrl = await UploadService.uploadValidId(validId, validIdFileName);
+        } else {
+          console.log('⚠️ Skipping valid ID upload (saveImagesToStorage=false)');
+          validIdUrl = 'dev-mode-skipped';
+        }
       } else if (existingBooking) {
         validIdUrl = existingBooking.valid_id_url;
+      } else if (!saveImagesToStorage) {
+        validIdUrl = 'dev-mode-skipped';
       } else {
         throw new Error('Valid ID is required');
       }
@@ -240,10 +275,16 @@ export class DatabaseService {
 
       // Save or update in database using the booking ID
       let submissionData;
-      if (existingBooking) {
-        submissionData = await this.updateGuestSubmission(bookingId, dbData);
+      if (saveToDatabase) {
+        if (existingBooking) {
+          submissionData = await this.updateGuestSubmission(bookingId, dbData);
+        } else {
+          submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
+        }
       } else {
-        submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
+        console.log('⚠️ Skipping database save (saveToDatabase=false)');
+        // Return mock data for development
+        submissionData = { id: bookingId, ...dbData, created_at: new Date().toISOString() };
       }
 
       return {
