@@ -20,6 +20,12 @@ export class DatabaseService {
         .single();
 
       if (error) {
+        // PGRST116 means "not found" - this is expected for new submissions
+        if (error.code === 'PGRST116') {
+          console.log('Booking not found in database (new submission)');
+          return null;
+        }
+        
         console.error('Database error:', error);
         throw new Error('Failed to fetch guest submission');
       }
@@ -87,6 +93,7 @@ export class DatabaseService {
         carColor: data.car_color || '',
         hasPets: data.has_pets || false,
         petName: data.pet_name || '',
+        petType: data.pet_type || '',
         petBreed: data.pet_breed || '',
         petAge: data.pet_age || '',
         petVaccinationDate: formatDate(data.pet_vaccination_date),
