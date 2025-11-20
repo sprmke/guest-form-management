@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { formatDateToLongFormat, formatTimeToAMPM } from '@/utils/dates';
-import { Users, User, PawPrint, Mail, Phone } from 'lucide-react';
+import { Users, User, PawPrint, Mail, Phone, Info } from 'lucide-react';
 import dayjs from 'dayjs';
 import { useEffect } from 'react';
 
@@ -257,6 +257,39 @@ export function GuestFormSuccess() {
             </div>
           </div>
         )}
+
+        {/* Next Steps Info Box */}
+        <div className="overflow-hidden bg-blue-50 rounded-xl border border-blue-200 shadow-sm dark:border-blue-900 dark:bg-blue-950/20">
+          <div className="flex-1 p-5 space-y-2 text-left">
+            <div className="flex items-center space-x-2">
+              <div className="flex-shrink-0 p-1 bg-blue-100 rounded-lg dark:bg-blue-900/40">
+                <Info className="w-4 h-4 text-blue-700 dark:text-blue-500" />
+              </div>
+              <h3 className="text-base font-semibold text-blue-900 dark:text-blue-400">
+                Next Steps
+              </h3>
+            </div>
+            <div className="space-y-2 text-sm leading-relaxed text-blue-800 dark:text-blue-300">
+              <p>
+                We have successfully submitted your Guest Advice Form (GAF) to
+                Azure for processing. You will receive your approved GAF via
+                email within a few hours or 1-2 days.
+              </p>
+              <p>
+                <span className="font-semibold">
+                  Please return to our conversation on Facebook Messenger /
+                  Airbnb
+                </span>{' '}
+                for your check-in instructions and important next steps
+                regarding your stay.
+              </p>
+              <p className="pt-1 font-medium">
+                Thank you for choosing{' '}
+                <span className="font-semibold">Kame Home</span>! 🐢
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3 w-full max-w-xl">
