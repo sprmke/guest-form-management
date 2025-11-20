@@ -82,6 +82,7 @@ export const guestFormSchema = z.object({
   // Pet related fields
   hasPets: z.boolean().default(false),
   petName: z.string().optional(),
+  petType: z.string().optional(),
   petBreed: z.string().optional(),
   petAge: z.string().optional(),
   petVaccinationDate: z.string().optional(),
@@ -152,6 +153,13 @@ export const guestFormSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Pet name is required when bringing pets",
         path: ["petName"]
+      });
+    }
+    if (!data.petType) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Pet type is required when bringing pets",
+        path: ["petType"]
       });
     }
     if (!data.petBreed) {
