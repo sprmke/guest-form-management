@@ -83,7 +83,7 @@ export function GuestForm() {
 
   // Check if testing mode is enabled (via query parameter)
   const isTestingMode = searchParams.get('testing') === 'true';
-  
+
   // Show dev controls in dev environment OR when testing=true in production
   const showDevControls = !isProduction || isTestingMode;
 
@@ -327,15 +327,33 @@ export function GuestForm() {
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
-      
+
       if (showDevControls) {
         // In dev/testing mode, use the control checkboxes
-        queryParams.append('saveToDatabase', devApiControls.saveToDatabase ? 'true' : 'false');
-        queryParams.append('saveImagesToStorage', devApiControls.saveImagesToStorage ? 'true' : 'false');
-        queryParams.append('generatePdf', devApiControls.generatePdf ? 'true' : 'false');
-        queryParams.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
-        queryParams.append('updateGoogleCalendar', devApiControls.updateCalendar ? 'true' : 'false');
-        queryParams.append('updateGoogleSheets', devApiControls.updateGoogleSheets ? 'true' : 'false');
+        queryParams.append(
+          'saveToDatabase',
+          devApiControls.saveToDatabase ? 'true' : 'false'
+        );
+        queryParams.append(
+          'saveImagesToStorage',
+          devApiControls.saveImagesToStorage ? 'true' : 'false'
+        );
+        queryParams.append(
+          'generatePdf',
+          devApiControls.generatePdf ? 'true' : 'false'
+        );
+        queryParams.append(
+          'sendEmail',
+          devApiControls.sendEmail ? 'true' : 'false'
+        );
+        queryParams.append(
+          'updateGoogleCalendar',
+          devApiControls.updateCalendar ? 'true' : 'false'
+        );
+        queryParams.append(
+          'updateGoogleSheets',
+          devApiControls.updateGoogleSheets ? 'true' : 'false'
+        );
       } else {
         // In normal production mode, all actions are enabled by default
         queryParams.append('saveToDatabase', 'true');
@@ -1409,6 +1427,31 @@ export function GuestForm() {
 
                   <FormField
                     control={form.control}
+                    name="petType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Pet Type{' '}
+                          {form.watch('hasPets') && (
+                            <span className="text-destructive">*</span>
+                          )}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Ex. Dog, Cat"
+                            {...field}
+                            onChange={(e) =>
+                              field.onChange(toCapitalCase(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
                     name="petBreed"
                     render={({ field }) => (
                       <FormItem>
@@ -1828,18 +1871,22 @@ export function GuestForm() {
                 <div className="form-section-header">
                   <Settings className="form-section-icon" />
                   <h2 className="form-section-title">
-                    {isTestingMode ? 'Testing Controls (Testing Mode)' : 'Developer Controls (Dev Mode)'}
+                    {isTestingMode
+                      ? 'Testing Controls (Testing Mode)'
+                      : 'Developer Controls (Dev Mode)'}
                   </h2>
                 </div>
 
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Control which API actions are performed when submitting the form. 
-                    All actions are <span className="font-semibold">disabled by default</span> in {isTestingMode ? 'testing' : 'development'} mode.
+                    Control which API actions are performed when submitting the
+                    form. All actions are{' '}
+                    <span className="font-semibold">disabled by default</span>{' '}
+                    in {isTestingMode ? 'testing' : 'development'} mode.
                   </p>
 
                   <div className="space-y-3">
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="saveToDatabase"
@@ -1860,7 +1907,7 @@ export function GuestForm() {
                       </label>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="saveImagesToStorage"
@@ -1881,7 +1928,7 @@ export function GuestForm() {
                       </label>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="generatePdf"
@@ -1902,7 +1949,7 @@ export function GuestForm() {
                       </label>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="sendEmail"
@@ -1923,7 +1970,7 @@ export function GuestForm() {
                       </label>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="updateCalendar"
@@ -1944,7 +1991,7 @@ export function GuestForm() {
                       </label>
                     </div>
 
-                    <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
                         id="updateGoogleSheets"
