@@ -12,6 +12,7 @@ const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray'];
 const petNames = ['Buddy', 'Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky', 'Buddy'];
 const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon'];
 const petAges = ['1 year old', '2 years old', '3 years old', '4 years old', '5 years old', '6 months old', '8 months old'];
+const petTypes = ['Dog', 'Cat'];
 const requests = [
   'Early check-in if possible',
   'Late check-out needed',
@@ -191,6 +192,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     petName: hasPets ? randomElement(petNames) : undefined,
     petBreed: hasPets ? randomElement(petBreeds) : undefined,
     petAge: hasPets ? randomElement(petAges) : undefined,
+    petType: hasPets ? randomElement(petTypes) : undefined,
     petVaccinationDate: hasPets ? lastVaccination : undefined,
     petVaccination,
     petImage,
