@@ -37,6 +37,7 @@ export interface GuestFormData {
   // Pet related fields
   hasPets: boolean;
   petName?: string;
+  petType?: string;
   petBreed?: string;
   petAge?: string;
   petVaccinationDate?: string;
@@ -95,6 +96,7 @@ export interface GuestSubmission {
   car_color?: string;
   has_pets?: boolean;
   pet_name?: string;
+  pet_type?: string;
   pet_breed?: string;
   pet_age?: string;
   pet_vaccination_date?: string;
@@ -167,6 +169,7 @@ export const transformFormToSubmission = (formData: GuestFormData, paymentReceip
     car_color: formData.carColor,
     has_pets: toBoolean(formData.hasPets),
     pet_name: formData.petName,
+    pet_type: formData.petType,
     pet_breed: formData.petBreed,
     pet_age: formData.petAge,
     pet_vaccination_date: formData.petVaccinationDate ? formatDate(formData.petVaccinationDate) : undefined,
