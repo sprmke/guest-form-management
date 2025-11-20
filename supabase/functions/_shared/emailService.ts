@@ -1,4 +1,5 @@
 import { GuestFormData } from './types.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null) {
   console.log('Sending confirmation email...');
@@ -80,5 +81,234 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   }
 
   console.log('Email sent successfully');
+  return await res.json()
+}
+
+export async function sendPetEmail(
+  formData: GuestFormData, 
+  pdfBuffer: Uint8Array | null,
+  petImageUrl?: string,
+  petVaccinationUrl?: string
+) {
+  console.log('Sending pet request email...');
+  console.log('Pet Image URL:', petImageUrl);
+  console.log('Pet Vaccination URL:', petVaccinationUrl);
+  
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
+  const EMAIL_TO = Deno.env.get('EMAIL_TO')
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO')
+  
+  if (!RESEND_API_KEY) {
+    console.error('Missing RESEND_API_KEY environment variable');
+    throw new Error('Missing RESEND_API_KEY environment variable')
+  }
+
+  if (!EMAIL_TO) {
+    console.error('Missing EMAIL_TO environment variable');
+    throw new Error('Missing EMAIL_TO environment variable')
+  }
+
+  if (!EMAIL_REPLY_TO) {
+    console.error('Missing EMAIL_REPLY_TO environment variable');
+    throw new Error('Missing EMAIL_REPLY_TO environment variable')
+  }
+
+  const emailContent = `
+    <h3>Monaco 2604 - Pet Request (${formData.checkInDate})</h3>
+    <br>
+    <p>Good day,</p>
+    <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
+    <br>
+    <p><strong>Pet Details:</strong></p>
+    <ul>
+      <li><strong>Pet Name:</strong> ${formData.petName || 'N/A'}</li>
+      <li><strong>Pet Type:</strong> ${formData.petType || 'N/A'}</li>
+      <li><strong>Pet Breed:</strong> ${formData.petBreed || 'N/A'}</li>
+      <li><strong>Pet Age:</strong> ${formData.petAge || 'N/A'}</li>
+      <li><strong>Vaccination Date:</strong> ${formData.petVaccinationDate || 'N/A'}</li>
+    </ul>
+    <br>
+    <p>Attached to this email are:</p>
+    <ul>
+      <li>Completed Pet Form with all required information</li>
+      <li>Pet vaccination records</li>
+      <li>Pet photograph</li>
+    </ul>
+    <br>
+    <br>
+    <p>Please let us know if you need any additional information or documentation.</p>
+    <br>
+    <p>Thank you for your consideration.</p>
+    <br>
+    <p>Best regards,</p>
+    <p>Arianna Perez</p>
+    <p>Unit Owner, Monaco 2604</p>
+  `
+
+  // Prepare attachments array
+  const attachments: any[] = []
+
+  // Add Pet PDF if available
+  if (pdfBuffer) {
+    const chunks: string[] = [];
+    const chunkSize = 32768;
+    
+    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
+      const chunk = pdfBuffer.slice(i, i + chunkSize);
+      chunks.push(String.fromCharCode.apply(null, chunk));
+    }
+    
+    const base64PDF = btoa(chunks.join(''));
+    attachments.push({
+      filename: `MONACO_2604_PET_FORM-${formData.checkInDate}.pdf`,
+      content: base64PDF,
+      encoding: 'base64'
+    })
+  }
+
+  // Initialize Supabase client for downloading files
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  )
+
+  // Helper function to extract bucket and path from Supabase URL
+  const parseSupabaseUrl = (url: string): { bucket: string; path: string } | null => {
+    try {
+      // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/');
+      const publicIndex = pathParts.indexOf('public');
+      if (publicIndex !== -1 && publicIndex < pathParts.length - 2) {
+        const bucket = pathParts[publicIndex + 1];
+        const path = pathParts.slice(publicIndex + 2).join('/');
+        return { bucket, path };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error parsing URL:', error);
+      return null;
+    }
+  }
+
+  // Download and attach pet image if URL is provided
+  if (petImageUrl) {
+    try {
+      console.log('Downloading pet image from:', petImageUrl);
+      const urlInfo = parseSupabaseUrl(petImageUrl);
+      
+      if (urlInfo) {
+        const { data: fileData, error: downloadError } = await supabase
+          .storage
+          .from(urlInfo.bucket)
+          .download(urlInfo.path);
+
+        if (downloadError) {
+          console.error('Error downloading pet image from storage:', downloadError);
+        } else if (fileData) {
+          const imageArray = new Uint8Array(await fileData.arrayBuffer());
+          
+          const chunks: string[] = [];
+          const chunkSize = 32768;
+          
+          for (let i = 0; i < imageArray.length; i += chunkSize) {
+            const chunk = imageArray.slice(i, i + chunkSize);
+            chunks.push(String.fromCharCode.apply(null, chunk));
+          }
+          
+          const base64Image = btoa(chunks.join(''));
+          
+          // Extract filename from path
+          const filename = urlInfo.path.split('/').pop() || `pet-image-${formData.checkInDate}.jpg`;
+          
+          attachments.push({
+            filename: filename,
+            content: base64Image,
+            encoding: 'base64'
+          })
+          console.log('Pet image attached successfully:', filename);
+        }
+      } else {
+        console.warn('Could not parse pet image URL');
+      }
+    } catch (error) {
+      console.error('Error downloading pet image:', error);
+    }
+  }
+
+  // Download and attach pet vaccination if URL is provided
+  if (petVaccinationUrl) {
+    try {
+      console.log('Downloading pet vaccination record from:', petVaccinationUrl);
+      const urlInfo = parseSupabaseUrl(petVaccinationUrl);
+      
+      if (urlInfo) {
+        const { data: fileData, error: downloadError } = await supabase
+          .storage
+          .from(urlInfo.bucket)
+          .download(urlInfo.path);
+
+        if (downloadError) {
+          console.error('Error downloading pet vaccination from storage:', downloadError);
+        } else if (fileData) {
+          const vaccinationArray = new Uint8Array(await fileData.arrayBuffer());
+          
+          const chunks: string[] = [];
+          const chunkSize = 32768;
+          
+          for (let i = 0; i < vaccinationArray.length; i += chunkSize) {
+            const chunk = vaccinationArray.slice(i, i + chunkSize);
+            chunks.push(String.fromCharCode.apply(null, chunk));
+          }
+          
+          const base64Vaccination = btoa(chunks.join(''));
+          
+          // Extract filename from path
+          const filename = urlInfo.path.split('/').pop() || `pet-vaccination-${formData.checkInDate}.jpg`;
+          
+          attachments.push({
+            filename: filename,
+            content: base64Vaccination,
+            encoding: 'base64'
+          })
+          console.log('Pet vaccination record attached successfully:', filename);
+        }
+      } else {
+        console.warn('Could not parse pet vaccination URL');
+      }
+    } catch (error) {
+      console.error('Error downloading pet vaccination record:', error);
+    }
+  }
+
+  console.log(`Sending pet email with ${attachments.length} attachment(s)...`);
+  attachments.forEach((att, index) => {
+    console.log(`  Attachment ${index + 1}: ${att.filename} (${att.content.length} chars base64)`);
+  });
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Pet Request <mail@kamehomes.space>',
+      to: [EMAIL_TO],
+      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      reply_to: EMAIL_REPLY_TO,
+      subject: `Monaco 2604 - Pet Request (${formData.checkInDate})`,
+      html: emailContent,
+      attachments: attachments
+    })
+  })
+
+  if (!res.ok) {
+    const error = await res.json()
+    console.error('Failed to send pet email:', error);
+    throw new Error(`Failed to send pet email: ${JSON.stringify(error)}`)
+  }
+
+  console.log('Pet email sent successfully');
   return await res.json()
 } 
