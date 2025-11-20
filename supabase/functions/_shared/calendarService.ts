@@ -143,6 +143,7 @@ Car Color: ${formData.carColor || 'N/A'}` : 'Parking Required: No'}
 <strong>Pet Information</strong>
 ${formData.hasPets === 'true' ? `Has Pets: Yes
 Pet Name: ${formData.petName || 'N/A'}
+Pet Type: ${formData.petType || 'N/A'}
 Pet Breed: ${formData.petBreed || 'N/A'}
 Pet Age: ${formData.petAge || 'N/A'}
 Vaccination Date: ${formData.petVaccinationDate || 'N/A'}
