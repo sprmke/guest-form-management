@@ -10,8 +10,18 @@ TODOS:
 - ✅ Add a "Same as Facebook Name" checkbox beside Primary Guest - Name, and when they check it, we should get and pre-populate the same value of facebook name field to primary guest name and then we should disable the field
 - ✅ When user try to submit or update the form. We should do a form data difference checking. And only proceed on updating the db, sending email, updating calendar, etc ONLY if we detect that there's a data changed from the form. If there's no difference, just redirect to success page
 - Handle and send different email when guest updated the form details. Ex. Please disregard..
-- On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
-- In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck
+- ✅ On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
+- ✅ In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck on DEV env
 - Optimize and reduce size of image before uploading to supabase storage
 - In prod, let's add test query parameter to determine that this is a TEST booking submission
 - When booking is more than 1 night, we should update the title of the email title to <CheckIn Date> - <CheckOut Date>
+- On checkout date calendar, we don't have the highlight for multiple nights
+- When we only have 1 night, we should only select 1 date on the check-in and check-out calendar
+- Update guest form to a stepper? And add preview for final booking screen.
+
+Projects
+
+- Complete Booking Management
+  - Finance Management
+  - Manage Calendar
+  - Parking
