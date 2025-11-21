@@ -415,6 +415,7 @@ export function GuestForm() {
           'updateGoogleSheets',
           devApiControls.updateGoogleSheets ? 'true' : 'false'
         );
+        queryParams.append('testing', 'true');
       } else {
         // In normal production mode, all actions are enabled by default
         queryParams.append('saveToDatabase', 'true');
