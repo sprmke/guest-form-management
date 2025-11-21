@@ -29,6 +29,7 @@ serve(async (req) => {
     const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
+    const isTestingMode = url.searchParams.get('testing') === 'true'
     
     // Log enabled features for debugging
     console.log('🎛️ API Action Flags:');
@@ -38,6 +39,7 @@ serve(async (req) => {
     console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}`);
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
+    console.log(`  Testing Mode: ${isTestingMode ? '🧪 ENABLED' : '❌'}`);
     console.log('---');
     
     // Get and process form data
@@ -126,17 +128,17 @@ serve(async (req) => {
     }
     
     // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData, isSaveToDatabaseEnabled, isSaveImagesToStorageEnabled)
+    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData, isSaveToDatabaseEnabled, isSaveImagesToStorageEnabled, isTestingMode)
 
     let pdfBuffer = null
     // Generate PDF if enabled
     if (isPDFGenerationEnabled) {
-      pdfBuffer = await generatePDF(data)
+      pdfBuffer = await generatePDF(data, isTestingMode)
     }
 
     // Send email if enabled
     if (isSendEmailEnabled) {
-      await sendEmail(data, pdfBuffer)
+      await sendEmail(data, pdfBuffer, isTestingMode)
     }
 
     // Generate Pet PDF and send Pet email if guest has pets
@@ -173,12 +175,12 @@ serve(async (req) => {
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
     }
 
     // Append to Google Sheet if enabled
     if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
     }
 
     console.log('Form submission process completed successfully')
