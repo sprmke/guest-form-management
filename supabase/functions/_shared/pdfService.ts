@@ -42,7 +42,7 @@ function extractTowerAndUnit(towerAndUnitNumber: string): { tower: string; unitN
   }
 }
 
-export async function generatePDF(formData: GuestFormData, isTestingMode = false): Promise<Uint8Array> {romise<Uint8Array> {
+export async function generatePDF(formData: GuestFormData, isTestingMode = false): Promise<Uint8Array> {
   try {
     console.log('Generating PDF...');
     const templateBytes = await getTemplateBytes()
