@@ -3,12 +3,12 @@ import { GuestFormData } from './types.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
-  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string) {
+  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string, isTestingMode = false) {
     try {
       console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
-      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl);
+      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, isTestingMode);
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
@@ -109,8 +109,8 @@ export class CalendarService {
   /**
    * Creates the event data object for Google Calendar
    */
-  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string) {
-    const testPrefix = isDevelopment() ? '[TEST] ' : '';
+  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, isTestingMode = false) {
+    const testPrefix = isTestingMode ? '[TEST] ' : '';
     const eventSummary = `${testPrefix}${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
     const eventDescription = `
 <a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}">View/Update Guest Form</a>
