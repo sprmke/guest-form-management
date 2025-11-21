@@ -3,7 +3,7 @@ import { GuestFormData } from './types.ts';
 import { isDevelopment } from './utils.ts';
 
 export class SheetsService {
-  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string) {
+  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, isTestingMode = false) {
     try {
       console.log('Processing Google Sheet operation...');
       
@@ -18,7 +18,7 @@ export class SheetsService {
       
       if (existingRow) {
         // For updates, preserve the original created_at timestamp
-        const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, existingRow.createdAt);
+        const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, isTestingMode, existingRow.createdAt);
         // Update existing row
         await this.updateRow(credentials, existingRow.rowIndex, values);
         console.log('Updated existing row in Google Sheet');
@@ -26,7 +26,7 @@ export class SheetsService {
       }
 
       // If row not found, append new row
-      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId);
+      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, isTestingMode);
 
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
@@ -116,14 +116,14 @@ export class SheetsService {
     return await response.json();
   }
 
-  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, createdAt?: string): string[] {
+  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, isTestingMode = false, createdAt?: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    const testPrefix = isDevelopment() ? '[TEST] ' : '';
+    const testPrefix = isTestingMode ? '[TEST] ' : '';
     
     return [
       bookingId,                          // Booking ID
       `${testPrefix}${formData.guestFacebookName}`,         // Facebook Name
-      formData.primaryGuestName,          // Primary Guest Name
+      `${testPrefix}${formData.primaryGuestName}`,          // Primary Guest Name
       formData.guestEmail,                // Email
       formData.guestPhoneNumber,          // Phone Number
       formData.guestAddress,              // Address
