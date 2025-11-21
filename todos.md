@@ -1,8 +1,8 @@
-TODOS:
+Todos
 
 - ✅ In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
 - Create separate email for parking information and pet information
-  - pet information - automatic email to azure pmo
+  ✅ - pet information - automatic email to azure pmo
   - parking information
     - add a admin fields & button to trigger email sending of parking information
     - we should have dropdown of email so we can easily send the parking information to parking owner & azure
@@ -18,13 +18,43 @@ TODOS:
 - ✅ On checkout date calendar, we don't have the highlight for multiple nights
 - Update guest form to a stepper? And add preview for final booking screen.
 - When we are on dev mode and testing=true is enabled, let's modify our content
-  - Save to db: guest_facebook_name. Prefix '[TEST]' ex. '[TEST] Rene Anne Tolentino'
+  - Save to db: primary_guest_name. Prefix '[TEST]' ex. '[TEST] Rene Anne Tolentino'
   - Save images to supabase storage. Prefix '[TEST]' to our images
   - Generate PDF: Prefix '[TEST]' to primary guest name
   - Send email notification: Prefix '[TEST]' to email subject title. ex. '[TEST] Monaco 2604 - GAF Request (11-28-2025)'.
     - Let's also modify the email content to add: "This is just a test email, please ignore.' Please improve our message content
   - Update google calendar: Prefix '[TEST]' to calendar event title. ex. '[TEST] 2pax 2nights - Kyle Soriano'
+  - Update google sheets: Prefix '[TEST]' to sheet 'Primary Guest Name' column. ex. '[TEST] Rene Anne Tolentino'
 - When we book multiple nights, let's update the email title to <CheckIn Date> to <CheckOut Date>
+- Let's use sprmkedev for google sheet and google calendar updates on dev env
+- When we visit an existing booking and we are on dev/test mode, let's add a new button to cancel a booking which will cleanup and remove our data to different services
+  - Delete entry from database
+  - Remove saved images on storage
+  - Remove google calendar event/s
+  - Remove entry from google sheet
+- Add URGENT label and icon on email for same day booking
+- Let's improve our booking process flow
+  - Now, when user fill up the form, we should automatically genreate the PDF
+  - BUT not auomatically send an email, create calendar event and add entry to google sheet
+  - Instead, the unit owner now needs to review the guest form details and will proceed to different steps/status.
+    - That's why our booking has status now:
+      - PENDING REVIEW - Guest completed filling up the form. The unit owner or admin needs to review the guest form details
+      - PENDING GAF - Guest form is reviewed and we already sent a GAF request and just waiting for approved GAF
+      - PENDING PARKING DETAILS - Parking is enabled and just waiting for approved parking details
+      - PENDING PET REQUEST - Has pets, pet form request email sent and just waiting for approval
+      - READY FOR CHECK-IN - Everything is good to go for guest for checkin
+      - PENDING FOR SD REFUND - Guest checkout already. On this step, let's provide new field for new expenses or profits. And make sure no damages and all payment are settled.
+      - COMPLETED - Booking is completed
+      - CANCELLED - Booking is canceled (Let's cleaning all data from different services)
+      - (Let's improve the different status names?)
+    - The unit owner can review the booking when visiting the guest form with bookingId as route parameter and admin=true as query parameter
+    - When admin mode is enabled, the unit owner can review and update booking information (as it is now)
+    - Then, the unit owner/admin should enter the payment details before they can proceed to next step. We will need to create a new section for the payment details
+      - For payment details, we can enter the base rate, parking rate (if enabled), pet fee (if enabled).
+      - We should also provide new input with 2 types: profit or expense
+      - Then we should also provide or display a payment details summary or breakdown
+      - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
+  -
 
 Projects
 
