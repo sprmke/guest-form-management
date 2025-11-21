@@ -1,7 +1,7 @@
 import { GuestFormData } from './types.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null) {
+export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false) {
   console.log('Sending confirmation email...');
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -23,7 +23,15 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
+  const testPrefix = isTestingMode ? '[TEST] ' : '';
+  const testWarning = isTestingMode ? `
+    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
+    </div>
+  ` : '';
+
   const emailContent = `
+    ${testWarning}
     <h3>Monaco 2604 - GAF Request (${formData.checkInDate})</h3>
     <br>
     <p>Good day,</p>
@@ -62,7 +70,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `Monaco 2604 - GAF Request (${formData.checkInDate})`,
+      subject: `${testPrefix}Monaco 2604 - GAF Request (${formData.checkInDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
