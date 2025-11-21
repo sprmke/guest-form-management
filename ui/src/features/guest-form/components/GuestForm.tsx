@@ -51,6 +51,7 @@ import {
   FileText,
   Car,
   Settings,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -61,6 +62,7 @@ const apiUrl = import.meta.env.VITE_API_URL;
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
@@ -116,37 +118,34 @@ export function GuestForm() {
     }
   }, [bookingId]);
 
+  // Fetch booked dates function (extracted so it can be reused)
+  const fetchBookedDates = async () => {
+    try {
+      const response = await fetch(`${apiUrl}/get-booked-dates`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success && result.data) {
+        setBookedDates(result.data);
+        console.log('✅ Loaded booked dates:', result.data.length, 'bookings');
+        console.log('📅 Booked date ranges:', result.data);
+      } else {
+        console.error('❌ Failed to fetch booked dates:', result);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching booked dates:', error);
+    }
+  };
+
   // Fetch booked dates on component mount
   useEffect(() => {
-    const fetchBookedDates = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/get-booked-dates`, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success && result.data) {
-          setBookedDates(result.data);
-          console.log(
-            '✅ Loaded booked dates:',
-            result.data.length,
-            'bookings'
-          );
-          console.log('📅 Booked date ranges:', result.data);
-        } else {
-          console.error('❌ Failed to fetch booked dates:', result);
-        }
-      } catch (error) {
-        console.error('❌ Error fetching booked dates:', error);
-      }
-    };
-
     fetchBookedDates();
   }, []);
 
@@ -278,6 +277,68 @@ export function GuestForm() {
     }
   };
 
+  const handleCleanupTestData = async () => {
+    if (!showDevControls) return;
+
+    // Confirmation dialog
+    if (
+      !window.confirm(
+        '⚠️ Are you sure you want to delete ALL test data?\n\n' +
+          'This will delete:\n' +
+          '• Database records with TEST_ files\n' +
+          '• Storage files starting with TEST_\n' +
+          '• Calendar events starting with [TEST]\n' +
+          '• Google Sheets rows starting with [TEST]\n\n' +
+          'This action cannot be undone!'
+      )
+    ) {
+      return;
+    }
+
+    setIsCleaningUp(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/cleanup-test-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ confirm: true }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to cleanup test data');
+      }
+
+      const summary = result.summary?.totalDeleted || {};
+      const grandTotal = result.summary?.grandTotal || 0;
+
+      toast.success('✅ Test data cleanup completed!', {
+        description: `Deleted: ${grandTotal} items (DB: ${
+          summary.database || 0
+        }, Storage: ${summary.storage || 0}, Calendar: ${
+          summary.calendar || 0
+        }, Sheets: ${summary.sheets || 0})`,
+        duration: 5000,
+      });
+
+      // Refresh booked dates after cleanup
+      await fetchBookedDates();
+    } catch (error) {
+      console.error('Cleanup error:', error);
+      toast.error('Failed to cleanup test data', {
+        description:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
   async function onSubmit(values: GuestFormData) {
     setIsSubmitting(true);
 
@@ -362,6 +423,7 @@ export function GuestForm() {
         queryParams.append('sendEmail', 'true');
         queryParams.append('updateGoogleCalendar', 'true');
         queryParams.append('updateGoogleSheets', 'true');
+        queryParams.append('testing', isTestingMode ? 'true' : 'false');
       }
 
       const queryParamsString = queryParams.toString()
@@ -2011,6 +2073,33 @@ export function GuestForm() {
                         Update Google Sheets
                       </label>
                     </div>
+                  </div>
+
+                  {/* Cleanup Test Data Button */}
+                  <div className="pt-4 border-t">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleCleanupTestData}
+                      disabled={isCleaningUp}
+                      className="w-full"
+                    >
+                      {isCleaningUp ? (
+                        <>
+                          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                          Cleaning up test data...
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="mr-2 w-4 h-4" />
+                          Clean Up All Test Data
+                        </>
+                      )}
+                    </Button>
+                    <p className="mt-2 text-xs text-center text-muted-foreground">
+                      Removes all test data from database, storage, calendar,
+                      and sheets
+                    </p>
                   </div>
                 </div>
               </div>
