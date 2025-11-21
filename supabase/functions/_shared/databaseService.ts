@@ -19,6 +19,12 @@ export class DatabaseService {
         .eq('id', bookingId)
         .single();
 
+      // PGRST116 means no rows found - this is expected for new bookings
+      if (error && error.code === 'PGRST116') {
+        console.log('No existing booking found (this is normal for new bookings)');
+        return null;
+      }
+
       if (error) {
         // PGRST116 means "not found" - this is expected for new submissions
         if (error.code === 'PGRST116') {
@@ -50,6 +56,12 @@ export class DatabaseService {
         .select('*')
         .eq('id', bookingId)
         .single();
+
+      // PGRST116 means no rows found - return null for non-existent bookings
+      if (error && error.code === 'PGRST116') {
+        console.log('No existing booking found');
+        return null;
+      }
 
       if (error) {
         console.error('Database error:', error);
@@ -111,7 +123,7 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData, saveToDatabase = true, saveImagesToStorage = true): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
+  static async processFormData(formData: FormData, saveToDatabase = true, saveImagesToStorage = true, isTestingMode = false): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
       console.log('Processing form data...');
 
@@ -176,12 +188,16 @@ export class DatabaseService {
       const petImage = formData.get('petImage') as File;
       const hasPets = formData.get('hasPets') === 'true';
       
+      // Add TEST prefix to filenames if in testing mode (without brackets to avoid invalid storage keys)
+      const testPrefix = isTestingMode ? 'TEST_' : '';
+      
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
           const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
+          const prefixedFileName = `${testPrefix}${petVaccinationFileName}`;
           if (saveImagesToStorage) {
-            petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, petVaccinationFileName);
+            petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, prefixedFileName);
           } else {
             console.log('⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)');
             petVaccinationUrl = 'dev-mode-skipped';
@@ -197,8 +213,9 @@ export class DatabaseService {
         // Handle pet image upload
         if (petImage) {
           const petImageFileName = formData.get('petImageFileName') as string;
+          const prefixedFileName = `${testPrefix}${petImageFileName}`;
           if (saveImagesToStorage) {
-            petImageUrl = await UploadService.uploadPetImage(petImage, petImageFileName);
+            petImageUrl = await UploadService.uploadPetImage(petImage, prefixedFileName);
           } else {
             console.log('⚠️ Skipping pet image upload (saveImagesToStorage=false)');
             petImageUrl = 'dev-mode-skipped';
@@ -216,8 +233,9 @@ export class DatabaseService {
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
+        const prefixedFileName = `${testPrefix}${paymentReceiptFileName}`;
         if (saveImagesToStorage) {
-          paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, paymentReceiptFileName);
+          paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, prefixedFileName);
         } else {
           console.log('⚠️ Skipping payment receipt upload (saveImagesToStorage=false)');
           paymentReceiptUrl = 'dev-mode-skipped';
@@ -234,8 +252,9 @@ export class DatabaseService {
       const validId = formData.get('validId') as File;
       if (validId) {
         const validIdFileName = formData.get('validIdFileName') as string;
+        const prefixedFileName = `${testPrefix}${validIdFileName}`;
         if (saveImagesToStorage) {
-          validIdUrl = await UploadService.uploadValidId(validId, validIdFileName);
+          validIdUrl = await UploadService.uploadValidId(validId, prefixedFileName);
         } else {
           console.log('⚠️ Skipping valid ID upload (saveImagesToStorage=false)');
           validIdUrl = 'dev-mode-skipped';
@@ -277,7 +296,8 @@ export class DatabaseService {
         paymentReceiptUrl,
         validIdUrl,
         petVaccinationUrl,
-        petImageUrl
+        petImageUrl,
+        isTestingMode
       );
 
       // Save or update in database using the booking ID
