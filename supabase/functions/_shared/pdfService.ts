@@ -42,12 +42,14 @@ function extractTowerAndUnit(towerAndUnitNumber: string): { tower: string; unitN
   }
 }
 
-export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> {
+export async function generatePDF(formData: GuestFormData, isTestingMode = false): Promise<Uint8Array> {romise<Uint8Array> {
   try {
     console.log('Generating PDF...');
     const templateBytes = await getTemplateBytes()
     const pdfDoc = await PDFDocument.load(templateBytes)
     const form = pdfDoc.getForm()
+
+    const testPrefix = isTestingMode ? '[TEST] ' : '';
 
     const fieldMappings: Record<string, string | undefined> = {
       // Unit and Owner Information
@@ -57,7 +59,7 @@ export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> 
       'ownerContactNumber': formData.ownerContactNumber,
       
       // Primary Guest Information
-      'primaryGuestName': formData.primaryGuestName,
+      'primaryGuestName': `${testPrefix}${formData.primaryGuestName}`,
       'guestEmail': formData.guestEmail,
       'guestPhoneNumber': formData.guestPhoneNumber,
       'guestAddress': formData.guestAddress,
