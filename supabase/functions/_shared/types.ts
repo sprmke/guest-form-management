@@ -141,10 +141,12 @@ const validateGuestName = (name: string | undefined): string | undefined => {
 };
 
 // Transform function to convert form data to database schema
-export const transformFormToSubmission = (formData: GuestFormData, paymentReceiptUrl: string, validIdUrl: string, petVaccinationUrl?: string, petImageUrl?: string): GuestSubmission => {
+export const transformFormToSubmission = (formData: GuestFormData, paymentReceiptUrl: string, validIdUrl: string, petVaccinationUrl?: string, petImageUrl?: string, isTestingMode = false): GuestSubmission => {
+  const testPrefix = isTestingMode ? '[TEST] ' : '';
+  
   return {
     guest_facebook_name: formData.guestFacebookName,
-    primary_guest_name: formData.primaryGuestName,
+    primary_guest_name: `${testPrefix}${formData.primaryGuestName}`,
     guest_email: formData.guestEmail,
     guest_phone_number: formData.guestPhoneNumber,
     guest_address: formData.guestAddress,
