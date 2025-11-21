@@ -5,3 +5,4 @@ ADD COLUMN pet_type TEXT;
 -- Add comment to explain the column
 COMMENT ON COLUMN guest_submissions.pet_type IS 'Type of pet (e.g., Dog, Cat)';
 
+
