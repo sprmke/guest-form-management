@@ -46,7 +46,7 @@ Todos
       - PENDING FOR SD REFUND - Guest checkout already. On this step, let's provide new field for new expenses or profits. And make sure no damages and all payment are settled.
       - COMPLETED - Booking is completed
       - CANCELLED - Booking is canceled (Let's cleaning all data from different services)
-      - (Let's improve the different status names?)
+      - (Let's improve the different status names?. Upon thinking carefully, let's not delete this)
     - The unit owner can review the booking when visiting the guest form with bookingId as route parameter and admin=true as query parameter
     - When admin mode is enabled, the unit owner can review and update booking information (as it is now)
     - Then, the unit owner/admin should enter the payment details before they can proceed to next step. We will need to create a new section for the payment details
@@ -54,7 +54,8 @@ Todos
       - We should also provide new input with 2 types: profit or expense
       - Then we should also provide or display a payment details summary or breakdown
       - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
-  -
+  - Implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger
+  - Disable Send email notification on production even when testing=true is enabled
 
 Projects
 
