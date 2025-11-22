@@ -23,8 +23,8 @@ function isUrgentBooking(checkInDate: string): boolean {
     // Get today's date in Philippine timezone (UTC+8)
     const philippineTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
     const todayStr = philippineTime.getFullYear() + '-' + 
-                     String(philippineTime.getMonth() + 1).padStart(2, '0') + '-' + 
-                     String(philippineTime.getDate()).padStart(2, '0');
+      String(philippineTime.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(philippineTime.getDate()).padStart(2, '0');
     
     console.log('  Today\'s date (Philippine time):', todayStr);
     console.log('  Check-in date (normalized):', checkInDateStr);
@@ -61,15 +61,10 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
-  const urgentBanner = isUrgent ? `
-    <div style="background-color: #dc3545; color: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border-left: 6px solid #a71d2a; text-align: center; font-weight: bold; font-size: 18px;">
-      🚨 URGENT: SAME-DAY CHECK-IN - IMMEDIATE ATTENTION REQUIRED
-    </div>
-  ` : '';
+  const urgentPrefix = isUrgent ? '⚠️ URGENT - ' : '';
 
   if (isUrgent) {
-    console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
+    console.log('⚠️ URGENT BOOKING DETECTED - Same-day check-in!');
   }
 
   const testPrefix = isTestingMode ? '[TEST] ' : '';
@@ -80,13 +75,12 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   ` : '';
 
   const emailContent = `
-    ${urgentBanner}
     ${testWarning}
     <h3>Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})</h3>
+    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
     <p>Kindly review the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated from ${formData.checkInDate} to ${formData.checkOutDate}, for your approval.</p>
-    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <p>Let me know if you need any further information.</p>
     <p>Thank you.</p>
     <br>
@@ -174,24 +168,18 @@ export async function sendPetEmail(
 
   // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
-  const urgentBanner = isUrgent ? `
-    <div style="background-color: #dc3545; color: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border-left: 6px solid #a71d2a; text-align: center; font-weight: bold; font-size: 18px;">
-      🚨 URGENT: SAME-DAY CHECK-IN - IMMEDIATE ATTENTION REQUIRED
-    </div>
-  ` : '';
+  const urgentPrefix = isUrgent ? '⚠️ URGENT - ' : '';
 
   if (isUrgent) {
-    console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
+    console.log('⚠️ URGENT PET BOOKING DETECTED - Same-day check-in!');
   }
 
   const emailContent = `
-    ${urgentBanner}
     <h3>Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
+    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
     <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
-    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p><strong>Pet Details:</strong></p>
     <ul>
