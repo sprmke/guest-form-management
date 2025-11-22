@@ -32,10 +32,10 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   const emailContent = `
     ${testWarning}
-    <h3>Monaco 2604 - GAF Request (${formData.checkInDate})</h3>
+    <h3>Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})</h3>
     <br>
     <p>Good day,</p>
-    <p>Attached is the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated ${formData.checkInDate}, for your approval.</p>
+    <p>Kindly review the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated from ${formData.checkInDate} to ${formData.checkOutDate}, for your approval.</p>
     <p>Let me know if you need any further information.</p>
     <p>Thank you.</p>
     <br>
@@ -70,7 +70,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - GAF Request (${formData.checkInDate})`,
+      subject: `${testPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -122,7 +122,7 @@ export async function sendPetEmail(
   }
 
   const emailContent = `
-    <h3>Monaco 2604 - Pet Request (${formData.checkInDate})</h3>
+    <h3>Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
     <br>
     <p>Good day,</p>
     <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
@@ -305,7 +305,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `Monaco 2604 - Pet Request (${formData.checkInDate})`,
+      subject: `Monaco 2604 - Pet Request (${formData.checkInDate} - ${formData.checkOutDate})`,
       html: emailContent,
       attachments: attachments
     })
