@@ -142,7 +142,8 @@ export async function sendPetEmail(
   formData: GuestFormData, 
   pdfBuffer: Uint8Array | null,
   petImageUrl?: string,
-  petVaccinationUrl?: string
+  petVaccinationUrl?: string,
+  isTestingMode = false
 ) {
   console.log('Sending pet request email...');
   console.log('Pet Image URL:', petImageUrl);

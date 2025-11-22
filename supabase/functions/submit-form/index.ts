@@ -162,7 +162,7 @@ serve(async (req) => {
       // Send Pet email if enabled
       if (isSendEmailEnabled) {
         try {
-          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl)
+          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl, isTestingMode)
           console.log('Pet email sent successfully')
         } catch (error) {
           console.error('Error sending Pet email:', error)
