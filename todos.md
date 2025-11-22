@@ -56,6 +56,7 @@ Todos
       - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
   - Implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger
   - Disable Send email notification on production even when testing=true is enabled
+  - Move generate new data to dev controls section above clean up button
 
 Projects
 
