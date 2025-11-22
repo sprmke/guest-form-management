@@ -17,7 +17,7 @@ Todos
 - When booking is more than 1 night, we should update the title of the email title to <CheckIn Date> - <CheckOut Date>
 - ✅ On checkout date calendar, we don't have the highlight for multiple nights
 - Update guest form to a stepper? And add preview for final booking screen.
-- When we are on dev mode and testing=true is enabled, let's modify our content
+- ✅ When we are on dev mode and testing=true is enabled, let's modify our content
   - Save to db: primary_guest_name. Prefix '[TEST]' ex. '[TEST] Rene Anne Tolentino'
   - Save images to supabase storage. Prefix '[TEST]' to our images
   - Generate PDF: Prefix '[TEST]' to primary guest name
@@ -25,7 +25,7 @@ Todos
     - Let's also modify the email content to add: "This is just a test email, please ignore.' Please improve our message content
   - Update google calendar: Prefix '[TEST]' to calendar event title. ex. '[TEST] 2pax 2nights - Kyle Soriano'
   - Update google sheets: Prefix '[TEST]' to sheet 'Primary Guest Name' column. ex. '[TEST] Rene Anne Tolentino'
-- When we book multiple nights, let's update the email title to <CheckIn Date> to <CheckOut Date>
+- Let's update the email title and content to use book range like <CheckIn Date> to <CheckOut Date> instead of just CheckInDate
 - Let's use sprmkedev for google sheet and google calendar updates on dev env
 - When we visit an existing booking and we are on dev/test mode, let's add a new button to cancel a booking which will cleanup and remove our data to different services
   - Delete entry from database
