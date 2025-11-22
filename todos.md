@@ -32,7 +32,7 @@ Todos
   - Remove saved images on storage
   - Remove google calendar event/s
   - Remove entry from google sheet
-- Add URGENT label and icon on email for same day booking
+- ✅ Add URGENT label and icon on email for same day booking
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
   - BUT not auomatically send an email, create calendar event and add entry to google sheet
