@@ -61,13 +61,13 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '⚠️ URGENT - ' : '';
+  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
 
   if (isUrgent) {
-    console.log('⚠️ URGENT BOOKING DETECTED - Same-day check-in!');
+    console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
   }
 
-  const testPrefix = isTestingMode ? '[TEST] ' : '';
+  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? `
     <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
       <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
@@ -76,8 +76,9 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   const emailContent = `
     ${testWarning}
-    <h3>Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})</h3>
-    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
+    <h3>Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
+    <br>
+    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
     <p>Kindly review the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated from ${formData.checkInDate} to ${formData.checkOutDate}, for your approval.</p>
@@ -115,7 +116,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -166,17 +167,27 @@ export async function sendPetEmail(
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
+  // Test mode email warning
+  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
+  const testWarning = isTestingMode ? `
+    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
+      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
+    </div>
+  ` : '';
+
   // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '⚠️ URGENT - ' : '';
+  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
 
   if (isUrgent) {
-    console.log('⚠️ URGENT PET BOOKING DETECTED - Same-day check-in!');
+    console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
   }
 
   const emailContent = `
+    ${testWarning}
     <h3>Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
-    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
+    <br>
+    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
     <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
@@ -365,7 +376,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${urgentPrefix}Monaco 2604 - Pet Request (${formData.checkInDate} - ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
       attachments: attachments
     })
