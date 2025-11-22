@@ -25,7 +25,7 @@ Todos
     - Let's also modify the email content to add: "This is just a test email, please ignore.' Please improve our message content
   - Update google calendar: Prefix '[TEST]' to calendar event title. ex. '[TEST] 2pax 2nights - Kyle Soriano'
   - Update google sheets: Prefix '[TEST]' to sheet 'Primary Guest Name' column. ex. '[TEST] Rene Anne Tolentino'
-- Let's update the email title and content to use book range like <CheckIn Date> to <CheckOut Date> instead of just CheckInDate
+- ✅ Let's update the email title and content to use book range like <CheckIn Date> to <CheckOut Date> instead of just CheckInDate
 - Let's use sprmkedev for google sheet and google calendar updates on dev env
 - When we visit an existing booking and we are on dev/test mode, let's add a new button to cancel a booking which will cleanup and remove our data to different services
   - Delete entry from database

@@ -1,6 +1,42 @@
 import { GuestFormData } from './types.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
+/**
+ * Checks if a booking is urgent (same-day check-in)
+ * @param checkInDate - Check-in date in MM-DD-YYYY or YYYY-MM-DD format
+ * @returns true if check-in is today (in Philippine timezone UTC+8)
+ */
+function isUrgentBooking(checkInDate: string): boolean {
+  try {
+    console.log('🔍 Checking if booking is urgent...');
+    
+    // Parse the check-in date (supports both MM-DD-YYYY and YYYY-MM-DD formats)
+    let checkInDateStr = checkInDate;
+    
+    // If date is in MM-DD-YYYY format, convert to YYYY-MM-DD
+    if (checkInDate.match(/^\d{2}-\d{2}-\d{4}$/)) {
+      const [month, day, year] = checkInDate.split('-');
+      checkInDateStr = `${year}-${month}-${day}`;
+      console.log('  Converted to YYYY-MM-DD:', checkInDateStr);
+    }
+    
+    // Get today's date in Philippine timezone (UTC+8)
+    const philippineTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+    const todayStr = philippineTime.getFullYear() + '-' + 
+                     String(philippineTime.getMonth() + 1).padStart(2, '0') + '-' + 
+                     String(philippineTime.getDate()).padStart(2, '0');
+    
+    console.log('  Today\'s date (Philippine time):', todayStr);
+    console.log('  Check-in date (normalized):', checkInDateStr);
+    console.log('  Is urgent:', checkInDateStr === todayStr);
+    
+    return checkInDateStr === todayStr;
+  } catch (error) {
+    console.error('❌ Error checking if booking is urgent:', error);
+    return false;
+  }
+}
+
 export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false) {
   console.log('Sending confirmation email...');
   
@@ -23,6 +59,19 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
+  // Check if booking is urgent (same-day check-in)
+  const isUrgent = isUrgentBooking(formData.checkInDate);
+  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentBanner = isUrgent ? `
+    <div style="background-color: #dc3545; color: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border-left: 6px solid #a71d2a; text-align: center; font-weight: bold; font-size: 18px;">
+      🚨 URGENT: SAME-DAY CHECK-IN - IMMEDIATE ATTENTION REQUIRED
+    </div>
+  ` : '';
+
+  if (isUrgent) {
+    console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
+  }
+
   const testPrefix = isTestingMode ? '[TEST] ' : '';
   const testWarning = isTestingMode ? `
     <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
@@ -31,11 +80,13 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   ` : '';
 
   const emailContent = `
+    ${urgentBanner}
     ${testWarning}
     <h3>Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})</h3>
     <br>
     <p>Good day,</p>
     <p>Kindly review the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated from ${formData.checkInDate} to ${formData.checkOutDate}, for your approval.</p>
+    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <p>Let me know if you need any further information.</p>
     <p>Thank you.</p>
     <br>
@@ -70,7 +121,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} - ${formData.checkOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -121,11 +172,26 @@ export async function sendPetEmail(
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
+  // Check if booking is urgent (same-day check-in)
+  const isUrgent = isUrgentBooking(formData.checkInDate);
+  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentBanner = isUrgent ? `
+    <div style="background-color: #dc3545; color: white; padding: 20px; margin-bottom: 20px; border-radius: 5px; border-left: 6px solid #a71d2a; text-align: center; font-weight: bold; font-size: 18px;">
+      🚨 URGENT: SAME-DAY CHECK-IN - IMMEDIATE ATTENTION REQUIRED
+    </div>
+  ` : '';
+
+  if (isUrgent) {
+    console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
+  }
+
   const emailContent = `
+    ${urgentBanner}
     <h3>Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
     <br>
     <p>Good day,</p>
     <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
+    ${isUrgent ? '<p><strong style="color: #dc3545;">⚠️ This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p><strong>Pet Details:</strong></p>
     <ul>
@@ -183,6 +249,12 @@ export async function sendPetEmail(
   // Helper function to extract bucket and path from Supabase URL
   const parseSupabaseUrl = (url: string): { bucket: string; path: string } | null => {
     try {
+      // Skip placeholder values from dev/testing mode
+      if (url === 'dev-mode-skipped' || url === 'test-mode-skipped' || !url.startsWith('http')) {
+        console.log('  Skipping placeholder URL:', url);
+        return null;
+      }
+      
       // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
       const urlObj = new URL(url);
       const pathParts = urlObj.pathname.split('/');
@@ -200,7 +272,7 @@ export async function sendPetEmail(
   }
 
   // Download and attach pet image if URL is provided
-  if (petImageUrl) {
+  if (petImageUrl && petImageUrl !== 'dev-mode-skipped' && petImageUrl !== 'test-mode-skipped') {
     try {
       console.log('Downloading pet image from:', petImageUrl);
       const urlInfo = parseSupabaseUrl(petImageUrl);
@@ -245,7 +317,7 @@ export async function sendPetEmail(
   }
 
   // Download and attach pet vaccination if URL is provided
-  if (petVaccinationUrl) {
+  if (petVaccinationUrl && petVaccinationUrl !== 'dev-mode-skipped' && petVaccinationUrl !== 'test-mode-skipped') {
     try {
       console.log('Downloading pet vaccination record from:', petVaccinationUrl);
       const urlInfo = parseSupabaseUrl(petVaccinationUrl);
@@ -305,7 +377,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `Monaco 2604 - Pet Request (${formData.checkInDate} - ${formData.checkOutDate})`,
+      subject: `${urgentPrefix}Monaco 2604 - Pet Request (${formData.checkInDate} - ${formData.checkOutDate})`,
       html: emailContent,
       attachments: attachments
     })
