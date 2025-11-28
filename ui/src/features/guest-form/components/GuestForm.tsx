@@ -362,7 +362,7 @@ export function GuestForm() {
       const summary = result.summary?.totalDeleted || {};
       const grandTotal = result.summary?.grandTotal || 0;
 
-      toast.success('✅ Test data cleanup completed!', {
+      toast.success('Test data cleanup completed!', {
         description: `Deleted: ${grandTotal} items (DB: ${
           summary.database || 0
         }, Storage: ${summary.storage || 0}, Calendar: ${
@@ -580,6 +580,9 @@ export function GuestForm() {
           ? error.message
           : 'An unexpected error occurred. Please try again.';
 
+      // Dismiss any existing error toasts first to prevent stacking
+      toast.dismiss();
+
       // Helper function to copy booking info to clipboard
       const handleCopyBookingInfo = async () => {
         try {
@@ -589,6 +592,10 @@ export function GuestForm() {
             currentBookingId
           );
           await navigator.clipboard.writeText(bookingInfo);
+
+          // Dismiss all existing toasts (including the error toast) before showing success
+          toast.dismiss();
+
           toast.success('Booking Info Copied!', {
             description:
               'You can now paste this information in our Facebook Messenger for assistance.',
@@ -596,6 +603,10 @@ export function GuestForm() {
           });
         } catch (clipboardError) {
           console.error('Failed to copy to clipboard:', clipboardError);
+
+          // Dismiss all existing toasts before showing the new error
+          toast.dismiss();
+
           toast.error('Failed to Copy', {
             description:
               'Could not copy to clipboard. Please try again or screenshot the form.',
@@ -611,6 +622,7 @@ export function GuestForm() {
       ) {
         // Show prominent warning toast for booking overlap
         toast.error('Dates Already Booked', {
+          id: 'booking-error',
           description:
             'The selected dates are already reserved. Please select different dates or contact your host via Facebook for assistance.',
           duration: Infinity, // Never auto-hide
@@ -622,6 +634,7 @@ export function GuestForm() {
           .replace('BOOKING_OVERLAP: ', '');
 
         toast.error('Submission Failed', {
+          id: 'submission-error',
           description: (
             <div className="space-y-3">
               <p className="text-sm font-semibold leading-relaxed">
