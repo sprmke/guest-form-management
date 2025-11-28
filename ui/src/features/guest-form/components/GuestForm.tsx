@@ -2076,6 +2076,23 @@ export function GuestForm() {
                     </div>
                   </div>
 
+                  {/* Generate New Data Button */}
+                  {!bookingId && (
+                    <div className="pt-4 border-t">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleGenerateNewData}
+                        className="w-full"
+                      >
+                        Generate New Data
+                      </Button>
+                      <p className="mt-2 text-xs text-center text-muted-foreground">
+                        Populate form with random test data
+                      </p>
+                    </div>
+                  )}
+
                   {/* Cleanup Test Data Button */}
                   <div className="pt-4 border-t">
                     <Button
@@ -2107,16 +2124,6 @@ export function GuestForm() {
             )}
 
             <div className="flex flex-col space-y-2">
-              {showDevControls && !bookingId && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleGenerateNewData}
-                  className="w-full"
-                >
-                  Generate New Data
-                </Button>
-              )}
               <Button
                 type="submit"
                 disabled={isSubmitting}
