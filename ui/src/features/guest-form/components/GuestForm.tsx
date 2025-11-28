@@ -681,6 +681,13 @@ export function GuestForm() {
                         {...field}
                       />
                     </FormControl>
+                    {!!field.value && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Please ensure you have access to this email. The guest
+                        advice form (GAF) will be sent there, which is required
+                        for Azure entry and check-in.
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
