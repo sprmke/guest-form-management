@@ -52,9 +52,14 @@ import {
   Car,
   Settings,
   Trash2,
+  ClipboardPaste,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
+import {
+  formatBookingInfoForClipboard,
+  parseBookingInfoFromClipboard,
+} from '@/utils/bookingFormatter';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -247,6 +252,46 @@ export function GuestForm() {
       handleGenerateNewData();
     }
   }, [isLoading, bookingId, showDevControls]);
+
+  // Paste booking info from clipboard
+  const handlePasteFromClipboard = async () => {
+    if (!showDevControls) return;
+
+    try {
+      const clipboardText = await navigator.clipboard.readText();
+      const parsedData = parseBookingInfoFromClipboard(clipboardText);
+
+      if (!parsedData) {
+        toast.error('Invalid Format', {
+          description:
+            'The clipboard does not contain valid booking information. Please copy the booking info from an error message first.',
+          duration: 5000,
+        });
+        return;
+      }
+
+      // Populate the form with parsed data
+      Object.entries(parsedData).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          // @ts-ignore - Dynamic form field setting
+          form.setValue(key as keyof GuestFormData, value);
+        }
+      });
+
+      toast.success('Booking Info Loaded!', {
+        description:
+          'Form has been populated with the booking information from clipboard. Please review and update file attachments.',
+        duration: 5000,
+      });
+    } catch (error) {
+      console.error('Failed to paste from clipboard:', error);
+      toast.error('Paste Failed', {
+        description:
+          'Could not read from clipboard. Please ensure you have copied the booking information first.',
+        duration: 5000,
+      });
+    }
+  };
 
   // Update file input when generating new data
   const handleGenerateNewData = async () => {
@@ -535,6 +580,30 @@ export function GuestForm() {
           ? error.message
           : 'An unexpected error occurred. Please try again.';
 
+      // Helper function to copy booking info to clipboard
+      const handleCopyBookingInfo = async () => {
+        try {
+          const formValues = form.getValues();
+          const bookingInfo = formatBookingInfoForClipboard(
+            formValues,
+            currentBookingId
+          );
+          await navigator.clipboard.writeText(bookingInfo);
+          toast.success('Booking Info Copied!', {
+            description:
+              'You can now paste this information in our Facebook Messenger for assistance.',
+            duration: 5000,
+          });
+        } catch (clipboardError) {
+          console.error('Failed to copy to clipboard:', clipboardError);
+          toast.error('Failed to Copy', {
+            description:
+              'Could not copy to clipboard. Please try again or screenshot the form.',
+            duration: 5000,
+          });
+        }
+      };
+
       // Check if it's a booking overlap error
       if (
         errorMessage.includes('BOOKING_OVERLAP') ||
@@ -543,15 +612,34 @@ export function GuestForm() {
         // Show prominent warning toast for booking overlap
         toast.error('Dates Already Booked', {
           description:
-            'The selected dates are already reserved. Please contact your host via Facebook for assistance.',
+            'The selected dates are already reserved. Please select different dates or contact your host via Facebook for assistance.',
           duration: Infinity, // Never auto-hide
         });
       } else {
         // Show regular error toast for other errors
+        const cleanedMessage = errorMessage
+          .replace('Error: ', '')
+          .replace('BOOKING_OVERLAP: ', '');
+
         toast.error('Submission Failed', {
-          description: errorMessage
-            .replace('Error: ', '')
-            .replace('BOOKING_OVERLAP: ', ''),
+          description: (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold leading-relaxed">
+                {cleanedMessage}
+              </p>
+              <p className="text-sm leading-relaxed opacity-90">
+                Click the button below to copy your form data and paste it on
+                our Facebook Messenger so we don't need to manually fill up all
+                information again. We really apologize for the inconvenience.
+              </p>
+              <button
+                onClick={handleCopyBookingInfo}
+                className="w-full px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
+              >
+                Copy Booking Information
+              </button>
+            </div>
+          ),
           duration: Infinity, // Never auto-hide
         });
       }
@@ -682,7 +770,7 @@ export function GuestForm() {
                       />
                     </FormControl>
                     <FormMessage />
-                    {!!field.value && (
+                    {field.value && !form.formState.errors.guestEmail && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         Please ensure you have access to this email. The guest
                         advice form (GAF) will be sent there, which is required
@@ -2082,6 +2170,24 @@ export function GuestForm() {
                       </label>
                     </div>
                   </div>
+
+                  {/* Paste Booking Info from Clipboard Button */}
+                  {!bookingId && (
+                    <div className="pt-4 border-t">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={handlePasteFromClipboard}
+                        className="w-full"
+                      >
+                        <ClipboardPaste className="mr-2 w-4 h-4" />
+                        Paste Booking Info from Clipboard
+                      </Button>
+                      <p className="mt-2 text-xs text-center text-muted-foreground">
+                        Load booking information copied from an error message
+                      </p>
+                    </div>
+                  )}
 
                   {/* Generate New Data Button */}
                   {!bookingId && (
