@@ -26,17 +26,27 @@ serve(async (req) => {
     const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false' // Default to true for backward compatibility
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
-    const isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
+    let isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
     const isTestingMode = url.searchParams.get('testing') === 'true'
     
+    // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
+    const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined
+    
+    // Force disable email sending in production when testing mode is enabled
+    if (isProduction && isTestingMode && isSendEmailEnabled) {
+      console.log('🚫 Email sending disabled: Cannot send emails in production with testing mode enabled');
+      isSendEmailEnabled = false
+    }
+    
     // Log enabled features for debugging
     console.log('🎛️ API Action Flags:');
+    console.log(`  Environment: ${isProduction ? '🌐 PRODUCTION' : '💻 DEVELOPMENT'}`);
     console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
     console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
     console.log(`  Generate PDF: ${isPDFGenerationEnabled ? '✅' : '❌'}`);
-    console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}`);
+    console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}${isProduction && isTestingMode ? ' (forced off in prod testing)' : ''}`);
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Testing Mode: ${isTestingMode ? '🧪 ENABLED' : '❌'}`);
