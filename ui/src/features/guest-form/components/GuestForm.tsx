@@ -500,8 +500,10 @@ export function GuestForm() {
       const result = await response.json();
       if (!result.success) {
         const errorMessage =
-          result.error || result.details?.message || 'Failed to submit form';
-        console.error('Form submission failed:', result);
+          result.error ||
+          result.details?.message ||
+          'Failed to submit the guest form';
+        console.error('Failed to submit the guest form:', result);
         throw new Error(errorMessage);
       }
 
@@ -633,7 +635,7 @@ export function GuestForm() {
           .replace('Error: ', '')
           .replace('BOOKING_OVERLAP: ', '');
 
-        toast.error('Submission Failed', {
+        toast.error('Failed to submit the guest form', {
           id: 'submission-error',
           description: (
             <div className="space-y-3">
