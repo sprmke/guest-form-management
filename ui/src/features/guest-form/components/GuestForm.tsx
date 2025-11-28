@@ -681,6 +681,7 @@ export function GuestForm() {
                         {...field}
                       />
                     </FormControl>
+                    <FormMessage />
                     {!!field.value && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         Please ensure you have access to this email. The guest
@@ -688,7 +689,6 @@ export function GuestForm() {
                         for Azure entry and check-in.
                       </p>
                     )}
-                    <FormMessage />
                   </FormItem>
                 )}
               />
