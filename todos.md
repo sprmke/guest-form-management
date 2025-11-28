@@ -33,6 +33,11 @@ Todos
   - Remove google calendar event/s
   - Remove entry from google sheet
 - ✅ Add URGENT label and icon on email for same day booking
+- Implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger
+- ✅ Disable Send email notification on production even when testing=true is enabled
+- ✅ Move generate new data to dev controls section above clean up button
+- ✅ Add please check your email message under email address input
+- Use kamehome.spaces on calendar summary link
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
   - BUT not auomatically send an email, create calendar event and add entry to google sheet
@@ -54,12 +59,6 @@ Todos
       - We should also provide new input with 2 types: profit or expense
       - Then we should also provide or display a payment details summary or breakdown
       - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
-  - Implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger
-  - Disable Send email notification on production even when testing=true is enabled
-  - Move generate new data to dev controls section above clean up button
-  - Add please check your email
-- Add not under email input that we will send the GAF on the email
-- Use kamehome.spaces on calendar summary link
 
 Projects
 
