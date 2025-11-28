@@ -88,11 +88,12 @@ export function GuestForm() {
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
 
-  // Check if testing mode is enabled (via query parameter)
+  // Check if testing & dev modes are enabled (via query parameter)
   const isTestingMode = searchParams.get('testing') === 'true';
+  const isDevMode = searchParams.get('dev') === 'true';
 
   // Show dev controls in dev environment OR when testing=true in production
-  const showDevControls = !isProduction || isTestingMode;
+  const showDevControls = !isProduction || isTestingMode || isDevMode;
 
   // Dev/Testing API action controls (all unchecked by default in dev/testing mode)
   const [devApiControls, setDevApiControls] = useState({
