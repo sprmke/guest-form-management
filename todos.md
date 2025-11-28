@@ -57,6 +57,9 @@ Todos
   - Implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger
   - Disable Send email notification on production even when testing=true is enabled
   - Move generate new data to dev controls section above clean up button
+  - Add please check your email
+- Add not under email input that we will send the GAF on the email
+- Use kamehome.spaces on calendar summary link
 
 Projects
 
