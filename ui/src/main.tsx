@@ -17,6 +17,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         richColors
         closeButton
         duration={Infinity}
+        visibleToasts={1}
         icons={{
           success: null,
           error: null,
