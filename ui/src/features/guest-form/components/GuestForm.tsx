@@ -97,12 +97,12 @@ export function GuestForm() {
 
   // Dev/Testing API action controls (all unchecked by default in dev/testing mode)
   const [devApiControls, setDevApiControls] = useState({
-    saveToDatabase: false,
-    saveImagesToStorage: false,
-    generatePdf: false,
-    sendEmail: false,
-    updateCalendar: false,
-    updateGoogleSheets: false,
+    saveToDatabase: isProduction && isDevMode,
+    saveImagesToStorage: isProduction && isDevMode,
+    generatePdf: isProduction && isDevMode,
+    sendEmail: isProduction && isDevMode,
+    updateCalendar: isProduction && isDevMode,
+    updateGoogleSheets: isProduction && isDevMode,
   });
 
   const form = useForm<GuestFormData>({
