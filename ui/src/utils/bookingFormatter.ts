@@ -95,7 +95,9 @@ export function formatBookingInfoForClipboard(
   lines.push('');
   lines.push('=== END BOOKING INFORMATION ===');
   lines.push('');
-  lines.push('Note: File attachments (payment receipt, valid ID, pet documents) cannot be copied. Please keep them ready for resubmission.');
+  lines.push('Notes:');
+  lines.push('- File attachments (payment receipt, valid ID, pet documents) cannot be copied. Please keep them ready for resubmission.');
+  lines.push('- Please do not modify or edit any information to prevent any errors.');
 
   return lines.join('\n');
 }
