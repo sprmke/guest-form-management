@@ -33,9 +33,9 @@ Todos
   - Remove google calendar event/s
   - Remove entry from google sheet
 - ✅ Add URGENT label and icon on email for same day booking
-- When guest encounter an error and the guest form failed to submit. It's very hassle if user will fill up the form again. I want us to implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger.
-  - Then, on our dev controls, there should be a button there called "Paste booking information from clipboard", and when we click it, it will autopopulate our form based on the booking information the guest copy pasted. And with this, we can easily resubmit the guest form without typing all information again.
-  - Please think or plan or generate the best booking information structure that is user friendly but still be able to easily imported from our system
+- ✅ When guest encounter an error and the guest form failed to submit. It's very hassle if user will fill up the form again. I want us to implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger.
+  - ✅ Then, on our dev controls, there should be a button there called "Paste booking information from clipboard", and when we click it, it will autopopulate our form based on the booking information the guest copy pasted. And with this, we can easily resubmit the guest form without typing all information again.
+  - ✅ Please think or plan or generate the best booking information structure that is user friendly but still be able to easily imported from our system
 - ✅ Disable Send email notification on production even when testing=true is enabled
 - ✅ Move generate new data to dev controls section above clean up button
 - ✅ Add please check your email message under email address input
