@@ -112,8 +112,12 @@ export class CalendarService {
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, isTestingMode = false) {
     const testPrefix = isTestingMode ? '[TEST] ' : '';
     const eventSummary = `${testPrefix}${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
+    
+    // Add testing parameter to the form URL if in testing mode
+    const formUrlParams = isTestingMode ? `&testing=true` : '&dev=true';
+    
     const eventDescription = `
-<a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}">View/Update Guest Form</a>
+<a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}${formUrlParams}">View/Update Guest Form</a>
 
 <strong>Guest Information</strong>
 Facebook Name: ${formData.guestFacebookName}
