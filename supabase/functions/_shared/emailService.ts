@@ -37,8 +37,8 @@ function isUrgentBooking(checkInDate: string): boolean {
   }
 }
 
-export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false) {
-  console.log('Sending confirmation email...');
+export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false, isUpdate = false) {
+  console.log(`Sending ${isUpdate ? 'update' : 'confirmation'} email...`);
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
   const EMAIL_TO = Deno.env.get('EMAIL_TO')
@@ -76,14 +76,19 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   const emailContent = `
     ${testWarning}
-    <h3>Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
+    <h3>Monaco 2604 - GAF Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
     <br>
     ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
-    <p>Kindly review the Guest Advice Form Request for ${formData.towerAndUnitNumber}, dated from ${formData.checkInDate} to ${formData.checkOutDate}, for your approval.</p>
-    <p>Let me know if you need any further information.</p>
-    <p>Thank you.</p>
+    ${isUpdate ? `
+    <p>The Guest Authorization Form details for <strong>${formData.towerAndUnitNumber}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong> for your approval.</p>
+    <p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>
+    ` : `
+    <p>Kindly review the Guest Authorization Form request for <strong>${formData.towerAndUnitNumber}</strong>, dated from <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong>, for your approval.</p>
+    `}
+    <p>Please let me know if you need any additional information.</p>
+    <p>Thank you for your assistance.</p>
     <br>
     <p>Best regards,</p>
     <p>Arianna Perez</p>
@@ -105,6 +110,8 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     base64PDF = btoa(chunks.join(''));
   }
 
+  const updatePrefix = isUpdate ? '📝 UPDATED - ' : '';
+  
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -116,7 +123,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -143,9 +150,10 @@ export async function sendPetEmail(
   pdfBuffer: Uint8Array | null,
   petImageUrl?: string,
   petVaccinationUrl?: string,
-  isTestingMode = false
+  isTestingMode = false,
+  isUpdate = false
 ) {
-  console.log('Sending pet request email...');
+  console.log(`Sending pet ${isUpdate ? 'update' : 'request'} email...`);
   console.log('Pet Image URL:', petImageUrl);
   console.log('Pet Vaccination URL:', petVaccinationUrl);
   
@@ -186,12 +194,17 @@ export async function sendPetEmail(
 
   const emailContent = `
     ${testWarning}
-    <h3>Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})</h3>
+    <h3>Monaco 2604 - Pet Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
     <br>
     ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
     <br>
     <p>Good day,</p>
+    ${isUpdate ? `
+    <p>The pet information for our guest at <strong>${formData.towerAndUnitNumber}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
+    <p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>
+    ` : `
     <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
+    `}
     <br>
     <p><strong>Pet Details:</strong></p>
     <ul>
@@ -366,6 +379,8 @@ export async function sendPetEmail(
     console.log(`  Attachment ${index + 1}: ${att.filename} (${att.content.length} chars base64)`);
   });
 
+  const updatePrefix = isUpdate ? '📝 UPDATED - ' : '';
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
@@ -377,7 +392,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       cc: [formData.guestEmail, EMAIL_REPLY_TO],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
       attachments: attachments
     })
