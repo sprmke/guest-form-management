@@ -110,7 +110,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     base64PDF = btoa(chunks.join(''));
   }
 
-  const updatePrefix = isUpdate ? '📝 UPDATED - ' : '';
+  const updatePrefix = isUpdate ? 'UPDATED - ' : '';
   
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -379,7 +379,7 @@ export async function sendPetEmail(
     console.log(`  Attachment ${index + 1}: ${att.filename} (${att.content.length} chars base64)`);
   });
 
-  const updatePrefix = isUpdate ? '📝 UPDATED - ' : '';
+  const updatePrefix = isUpdate ? 'UPDATED - ' : '';
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
