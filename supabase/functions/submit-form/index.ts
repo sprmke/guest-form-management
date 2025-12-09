@@ -98,6 +98,7 @@ serve(async (req) => {
     // Check if this is an update and compare data for changes (only if saving to database)
     let hasDataChanges = true;
     let existingData = null;
+    let isUpdate = false;
     
     if (isSaveToDatabaseEnabled && bookingId) {
       console.log('🔍 Checking for data changes...');
@@ -106,6 +107,9 @@ serve(async (req) => {
       existingData = await DatabaseService.getRawData(bookingId);
       
       if (existingData) {
+        // This is an update since booking exists
+        isUpdate = true;
+        
         // Compare new form data with existing data
         const comparison = compareFormData(formData, existingData);
         hasDataChanges = comparison.hasChanges;
@@ -148,7 +152,7 @@ serve(async (req) => {
 
     // Send email if enabled
     if (isSendEmailEnabled) {
-      await sendEmail(data, pdfBuffer, isTestingMode)
+      await sendEmail(data, pdfBuffer, isTestingMode, isUpdate)
     }
 
     // Generate Pet PDF and send Pet email if guest has pets
@@ -172,7 +176,7 @@ serve(async (req) => {
       // Send Pet email if enabled
       if (isSendEmailEnabled) {
         try {
-          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl, isTestingMode)
+          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl, isTestingMode, isUpdate)
           console.log('Pet email sent successfully')
         } catch (error) {
           console.error('Error sending Pet email:', error)
