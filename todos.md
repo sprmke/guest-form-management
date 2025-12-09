@@ -9,7 +9,7 @@ Todos
 - ✅ I noticed that on prod, we have a lot of booked dates, we should filter it to not include past dates from today because all past dates are automatically disabled from the calendar. We should only get future book dates from today. It's better if we implement this filter from the API & DB call for faster performance instead of UI filtering
 - ✅ Add a "Same as Facebook Name" checkbox beside Primary Guest - Name, and when they check it, we should get and pre-populate the same value of facebook name field to primary guest name and then we should disable the field
 - ✅ When user try to submit or update the form. We should do a form data difference checking. And only proceed on updating the db, sending email, updating calendar, etc ONLY if we detect that there's a data changed from the form. If there's no difference, just redirect to success page
-- Handle and send different email when guest updated the form details. The email content would be something like this: "The GAF details has been updated. Please disregard the previous GAF Request email for the same dates for our unit". Please improve our text message
+- Handle and send different email when we updated the form details. The email content would be something like this: "The GAF details has been updated. Please disregard the previous GAF Request email for the same dates for our unit". Please improve our text message
 - ✅ On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
 - ✅ In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck on DEV env
 - Optimize and reduce size of image before uploading to supabase storage
@@ -39,7 +39,7 @@ Todos
 - ✅ Disable Send email notification on production even when testing=true is enabled
 - ✅ Move generate new data to dev controls section above clean up button
 - ✅ Add please check your email message under email address input
-- Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
+- ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
 - Use kamehome.spaces on calendar summary link
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
