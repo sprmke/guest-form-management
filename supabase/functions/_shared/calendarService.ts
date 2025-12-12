@@ -117,7 +117,7 @@ export class CalendarService {
     const formUrlParams = isTestingMode ? `&testing=true` : '&dev=true';
     
     const eventDescription = `
-<a href="https://guest-form-management-ui.vercel.app?bookingId=${bookingId}${formUrlParams}">View/Update Guest Form</a>
+<a href="https://kamehomes.space?bookingId=${bookingId}${formUrlParams}">View/Update Guest Form</a>
 
 <strong>Guest Information</strong>
 Facebook Name: ${formData.guestFacebookName}
