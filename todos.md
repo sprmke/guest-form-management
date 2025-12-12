@@ -41,6 +41,7 @@ Todos
 - ✅ Add please check your email message under email address input
 - ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
 - Use kamehome.spaces on calendar summary link
+- Pesist dev or testing query parameters on booking summary and booking info pages
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
   - BUT not auomatically send an email, create calendar event and add entry to google sheet
