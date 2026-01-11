@@ -41,6 +41,7 @@ Todos
 - ✅ Add please check your email message under email address input
 - ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
 - ✅ Use kamehome.spaces on calendar summary link
+- ✅ Add "Cancel Booking" action on dev tools. When user clicks this, we should remove all information from database, assets from supabase storage, google calendars & sheets. Basically, cleanup all booking data that's related to it.
 - Use AI to analyze and validate guest uploaded assets
   - Analyze if receipt is valid receipt, id is id, etc
 - Persist dev or test query parameters on booking summary and booking detail pages on route change
