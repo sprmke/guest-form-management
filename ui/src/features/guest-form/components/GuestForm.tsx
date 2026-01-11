@@ -53,6 +53,7 @@ import {
   Settings,
   Trash2,
   ClipboardPaste,
+  XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -68,6 +69,7 @@ export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [isCancellingBooking, setIsCancellingBooking] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
@@ -382,6 +384,68 @@ export function GuestForm() {
       });
     } finally {
       setIsCleaningUp(false);
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    if (!showDevControls || !bookingId) return;
+
+    // Confirmation dialog
+    if (
+      !window.confirm(
+        '⚠️ Are you sure you want to CANCEL this booking?\n\n' +
+          'This will permanently delete:\n' +
+          '• Database record for this booking\n' +
+          '• All uploaded files (receipt, ID, pet docs)\n' +
+          '• Google Calendar event\n' +
+          '• Google Sheets row\n\n' +
+          'This action cannot be undone!'
+      )
+    ) {
+      return;
+    }
+
+    setIsCancellingBooking(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/cancel-booking`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ bookingId, confirm: true }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to cancel booking');
+      }
+
+      const summary = result.summary?.totalDeleted || {};
+      const grandTotal = result.summary?.grandTotal || 0;
+
+      toast.success('Booking cancelled successfully!', {
+        description: `Deleted: ${grandTotal} items (DB: ${
+          summary.database || 0
+        }, Storage: ${summary.storage || 0}, Calendar: ${
+          summary.calendar || 0
+        }, Sheets: ${summary.sheets || 0})`,
+        duration: 5000,
+      });
+
+      // Navigate back to the form without bookingId
+      navigate('/');
+    } catch (error) {
+      console.error('Cancel booking error:', error);
+      toast.error('Failed to cancel booking', {
+        description:
+          error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    } finally {
+      setIsCancellingBooking(false);
     }
   };
 
@@ -2226,7 +2290,7 @@ export function GuestForm() {
                   <div className="pt-4 border-t">
                     <Button
                       type="button"
-                      variant="destructive"
+                      variant="outline"
                       onClick={handleCleanupTestData}
                       disabled={isCleaningUp}
                       className="w-full"
@@ -2248,6 +2312,35 @@ export function GuestForm() {
                       and sheets
                     </p>
                   </div>
+
+                  {/* Cancel Booking Button - Only show when viewing an existing booking */}
+                  {bookingId && (
+                    <div className="pt-4 border-t">
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        onClick={handleCancelBooking}
+                        disabled={isCancellingBooking}
+                        className="w-full"
+                      >
+                        {isCancellingBooking ? (
+                          <>
+                            <Loader2 className="mr-2 w-4 h-4 animate-spin" />
+                            Cancelling booking...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="mr-2 w-4 h-4" />
+                            Cancel This Booking
+                          </>
+                        )}
+                      </Button>
+                      <p className="mt-2 text-xs text-center text-muted-foreground">
+                        Permanently deletes this booking from database, storage,
+                        calendar, and sheets
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
