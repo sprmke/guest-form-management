@@ -40,7 +40,7 @@ Todos
 - ✅ Move generate new data to dev controls section above clean up button
 - ✅ Add please check your email message under email address input
 - ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
-- Use kamehome.spaces on calendar summary link
+- ✅ Use kamehome.spaces on calendar summary link
 - Use AI to analyze and validate guest uploaded assets
   - Analyze if receipt is valid receipt, id is id, etc
 - Pesist dev or testing query parameters on booking summary and booking info pages
