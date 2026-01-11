@@ -43,7 +43,7 @@ Todos
 - ✅ Use kamehome.spaces on calendar summary link
 - Use AI to analyze and validate guest uploaded assets
   - Analyze if receipt is valid receipt, id is id, etc
-- Pesist dev or testing query parameters on booking summary and booking info pages
+- Persist dev or test query parameters on booking summary and booking detail pages on route change
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
   - BUT not auomatically send an email, create calendar event and add entry to google sheet
