@@ -39,6 +39,7 @@ import {
   createDisabledCheckoutDateMatcher,
   stringToDate,
   dateToString,
+  normalizeDateString,
   type BookedDateRange,
 } from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -141,9 +142,19 @@ export function GuestForm() {
       const result = await response.json();
 
       if (response.ok && result.success && result.data) {
-        setBookedDates(result.data);
-        console.log('✅ Loaded booked dates:', result.data.length, 'bookings');
-        console.log('📅 Booked date ranges:', result.data);
+        // Normalize all date strings to YYYY-MM-DD format
+        const normalizedDates = result.data.map((booking: BookedDateRange) => ({
+          ...booking,
+          checkInDate: normalizeDateString(booking.checkInDate),
+          checkOutDate: normalizeDateString(booking.checkOutDate),
+        }));
+        setBookedDates(normalizedDates);
+        console.log(
+          '✅ Loaded booked dates:',
+          normalizedDates.length,
+          'bookings'
+        );
+        console.log('📅 Booked date ranges:', normalizedDates);
       } else {
         console.error('❌ Failed to fetch booked dates:', result);
       }
