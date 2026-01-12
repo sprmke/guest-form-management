@@ -167,9 +167,35 @@ export const getDisabledDates = (bookedDates: BookedDateRange[]): string[] => {
   return [...new Set(disabledDates)]; // Remove duplicates
 };
 
-// Convert YYYY-MM-DD string to Date object
+// Normalize any date string to YYYY-MM-DD format
+export const normalizeDateString = (dateString: string): string => {
+  if (!dateString) return '';
+  
+  // Already in YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+    return dateString;
+  }
+  
+  // Handle M-DD-YYYY or MM-DD-YYYY format (e.g., "1-15-2026" or "01-15-2026")
+  const mdyMatch = dateString.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdyMatch) {
+    const [, month, day, year] = mdyMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  // Fallback: try to parse with dayjs and format
+  const parsed = dayjs(dateString);
+  if (parsed.isValid()) {
+    return parsed.format('YYYY-MM-DD');
+  }
+  
+  return dateString;
+};
+
+// Convert date string (any format) to Date object
 export const stringToDate = (dateString: string): Date => {
-  return parse(dateString, 'yyyy-MM-dd', new Date());
+  const normalized = normalizeDateString(dateString);
+  return parse(normalized, 'yyyy-MM-dd', new Date());
 };
 
 // Convert Date object to YYYY-MM-DD string
