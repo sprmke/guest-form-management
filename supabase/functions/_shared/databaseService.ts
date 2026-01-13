@@ -406,7 +406,7 @@ export class DatabaseService {
       
       let query = this.supabase
         .from('guest_submissions')
-        .select('id, check_in_date, check_out_date, primary_guest_name');
+        .select('*'); // Select all to include status column if it exists
 
       // Exclude the current booking if updating
       if (bookingId) {
@@ -420,10 +420,13 @@ export class DatabaseService {
         throw new Error('Failed to check for overlapping bookings');
       }
 
-      console.log(`Found ${allBookings?.length || 0} existing bookings to check`);
+      // Filter out canceled bookings first (status column may not exist yet)
+      const activeBookings = allBookings?.filter(booking => booking.status !== 'canceled') || [];
+
+      console.log(`Found ${allBookings?.length || 0} total bookings, ${activeBookings.length} active (non-canceled) bookings to check`);
 
       // Filter overlapping bookings in memory
-      const overlappingBookings = allBookings?.filter(booking => {
+      const overlappingBookings = activeBookings?.filter(booking => {
         const existingCheckIn = normalizeDate(booking.check_in_date);
         const existingCheckOut = normalizeDate(booking.check_out_date);
 
