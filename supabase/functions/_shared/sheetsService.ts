@@ -58,9 +58,9 @@ export class SheetsService {
 
   private static async findRowByBookingId(credentials: any, bookingId: string): Promise<{ rowIndex: number; createdAt: string } | null> {
     try {
-      // Get all values from the sheet
+      // Get all values from the sheet (extended to AK for status column)
       const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A:AJ`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A:AK`,
         {
           method: 'GET',
           headers: {
@@ -95,7 +95,7 @@ export class SheetsService {
 
   private static async updateRow(credentials: any, rowIndex: number, values: string[]) {
     const response = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A${rowIndex}:AJ${rowIndex}?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A${rowIndex}:AK${rowIndex}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -121,42 +121,43 @@ export class SheetsService {
     const testPrefix = isTestingMode ? '[TEST] ' : '';
     
     return [
-      bookingId,                          // Booking ID
-      `${testPrefix}${formData.guestFacebookName}`,         // Facebook Name
-      `${testPrefix}${formData.primaryGuestName}`,          // Primary Guest Name
-      formData.guestEmail,                // Email
-      formData.guestPhoneNumber,          // Phone Number
-      formData.guestAddress,              // Address
-      formData.nationality,               // Nationality
-      formData.checkInDate,               // Check-in Date
-      formData.checkInTime,               // Check-in Time
-      formData.checkOutDate,              // Check-out Date
-      formData.checkOutTime,              // Check-out Time
-      formData.numberOfNights?.toString() || '', // Number of Nights
-      formData.numberOfAdults.toString(), // Number of Adults
-      formData.numberOfChildren.toString(), // Number of Children
-      formData.guest2Name || '',          // Guest 2 Name
-      formData.guest3Name || '',          // Guest 3 Name
-      formData.guest4Name || '',          // Guest 4 Name
-      formData.guest5Name || '',          // Guest 5 Name
-      formData.needParking === 'true' ? 'Yes' : 'No', // Need Parking
-      formData.carPlateNumber || '',      // Car Plate Number
-      formData.carBrandModel || '',       // Car Brand/Model
-      formData.carColor || '',            // Car Color
-      formData.hasPets === 'true' ? 'Yes' : 'No',    // Has Pets
-      formData.petName || '',             // Pet Name
-      formData.petBreed || '',            // Pet Breed
-      formData.petAge || '',              // Pet Age
-      formData.petVaccinationDate || '',  // Pet Vaccination Date
-      formData.findUs,                    // How Found Us
-      formData.findUsDetails || '',       // Find Us Details
-      formData.guestSpecialRequests || '', // Special Requests
-      validIdUrl,                          // Valid ID URL
-      paymentReceiptUrl,                   // Payment Receipt URL
-      petVaccinationUrl,                   // Pet Vaccination URL
-      petImageUrl,                         // Pet Image URL
-      createdAt || currentTimestamp,       // Created At (use provided value or current timestamp)
-      currentTimestamp,                    // Updated At (always current timestamp)
+      bookingId,                          // A: Booking ID
+      `${testPrefix}${formData.guestFacebookName}`,         // B: Facebook Name
+      `${testPrefix}${formData.primaryGuestName}`,          // C: Primary Guest Name
+      formData.guestEmail,                // D: Email
+      formData.guestPhoneNumber,          // E: Phone Number
+      formData.guestAddress,              // F: Address
+      formData.nationality,               // G: Nationality
+      formData.checkInDate,               // H: Check-in Date
+      formData.checkInTime,               // I: Check-in Time
+      formData.checkOutDate,              // J: Check-out Date
+      formData.checkOutTime,              // K: Check-out Time
+      formData.numberOfNights?.toString() || '', // L: Number of Nights
+      formData.numberOfAdults.toString(), // M: Number of Adults
+      formData.numberOfChildren.toString(), // N: Number of Children
+      formData.guest2Name || '',          // O: Guest 2 Name
+      formData.guest3Name || '',          // P: Guest 3 Name
+      formData.guest4Name || '',          // Q: Guest 4 Name
+      formData.guest5Name || '',          // R: Guest 5 Name
+      formData.needParking === 'true' ? 'Yes' : 'No', // S: Need Parking
+      formData.carPlateNumber || '',      // T: Car Plate Number
+      formData.carBrandModel || '',       // U: Car Brand/Model
+      formData.carColor || '',            // V: Car Color
+      formData.hasPets === 'true' ? 'Yes' : 'No',    // W: Has Pets
+      formData.petName || '',             // X: Pet Name
+      formData.petBreed || '',            // Y: Pet Breed
+      formData.petAge || '',              // Z: Pet Age
+      formData.petVaccinationDate || '',  // AA: Pet Vaccination Date
+      formData.findUs,                    // AB: How Found Us
+      formData.findUsDetails || '',       // AC: Find Us Details
+      formData.guestSpecialRequests || '', // AD: Special Requests
+      validIdUrl,                          // AE: Valid ID URL
+      paymentReceiptUrl,                   // AF: Payment Receipt URL
+      petVaccinationUrl,                   // AG: Pet Vaccination URL
+      petImageUrl,                         // AH: Pet Image URL
+      createdAt || currentTimestamp,       // AI: Created At (use provided value or current timestamp)
+      currentTimestamp,                    // AJ: Updated At (always current timestamp)
+      'Booked',                            // AK: Status (Booked or Canceled)
     ];
   }
 
