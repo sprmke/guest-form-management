@@ -25,11 +25,32 @@ dayjs.extend(customParseFormat)
 
 /**
  * Formats a date string to YYYY-MM-DD format
+ * Handles multiple input formats including MM-DD-YYYY, YYYY-MM-DD, and ISO strings
  * @param dateStr - The date string to format
  * @returns Formatted date string or empty string if invalid
  */
 export const formatDate = (dateStr: string | null | undefined): string => {
   if (!dateStr) return '';
+  
+  // Try to parse with common date formats using strict parsing
+  const formats = [
+    'YYYY-MM-DD',     // ISO format
+    'MM-DD-YYYY',     // US format with leading zeros
+    'M-DD-YYYY',      // US format without leading zero in month
+    'MM-D-YYYY',      // US format without leading zero in day
+    'M-D-YYYY',       // US format without leading zeros
+    'YYYY/MM/DD',     // ISO with slashes
+    'MM/DD/YYYY',     // US format with slashes
+  ];
+  
+  for (const format of formats) {
+    const parsed = dayjs(dateStr, format, true); // strict parsing
+    if (parsed.isValid()) {
+      return parsed.format('YYYY-MM-DD');
+    }
+  }
+  
+  // Fallback to default dayjs parsing (handles ISO strings, timestamps, etc.)
   const parsed = dayjs(dateStr);
   return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
 };

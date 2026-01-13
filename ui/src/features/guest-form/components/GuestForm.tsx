@@ -449,7 +449,7 @@ export function GuestForm() {
 
       // Refresh booked dates after cancellation
       await fetchBookedDates();
-      
+
       // Navigate back to the form without bookingId
       navigate('/');
     } catch (error) {
@@ -539,7 +539,8 @@ export function GuestForm() {
           'updateGoogleSheets',
           devApiControls.updateGoogleSheets ? 'true' : 'false'
         );
-        queryParams.append('testing', 'true');
+        // Only add [TEST] prefix when ?testing=true is explicitly set
+        queryParams.append('testing', isTestingMode ? 'true' : 'false');
       } else {
         // In normal production mode, all actions are enabled by default
         queryParams.append('saveToDatabase', 'true');
