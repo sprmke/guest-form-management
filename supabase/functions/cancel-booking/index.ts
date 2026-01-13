@@ -2,18 +2,18 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 
-// Service to delete a Google Calendar event by booking ID
+// Service to update Google Calendar event to show as canceled
 class CalendarCancellationService {
-  static async deleteEventByBookingId(bookingId: string) {
+  static async markEventAsCanceled(bookingId: string, originalSummary: string) {
     try {
-      console.log('🗓️ Deleting Google Calendar event for booking:', bookingId);
+      console.log('🗓️ Marking Google Calendar event as canceled for booking:', bookingId);
       
       const serviceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
       const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
       
       if (!serviceAccount || !calendarId) {
-        console.log('⚠️ Google Calendar credentials not found, skipping calendar deletion');
-        return { success: true, deleted: 0, skipped: true };
+        console.log('⚠️ Google Calendar credentials not found, skipping calendar update');
+        return { success: true, updated: 0, skipped: true };
       }
 
       const credentials = {
@@ -45,45 +45,56 @@ class CalendarCancellationService {
       
       if (events.length === 0) {
         console.log('✅ No calendar event found for booking:', bookingId);
-        return { success: true, deleted: 0, message: 'No calendar event found' };
+        return { success: true, updated: 0, message: 'No calendar event found' };
       }
 
-      let deletedCount = 0;
+      let updatedCount = 0;
       for (const event of events) {
         try {
-          await this.deleteEvent(credentials, accessToken, event.id);
-          deletedCount++;
-          console.log(`✓ Deleted calendar event: "${event.summary}" (ID: ${event.id})`);
+          // Update the event with [CANCELED] prefix and red color
+          const currentSummary = event.summary || '';
+          // Remove any existing [CANCELED] prefix to avoid duplicates
+          const cleanSummary = currentSummary.replace(/^\[CANCELED\]\s*/i, '');
+          const newSummary = `[CANCELED] ${cleanSummary}`;
+          
+          await this.updateEvent(credentials, accessToken, event.id, {
+            summary: newSummary,
+            colorId: '11', // Tomato (Red) color
+          });
+          updatedCount++;
+          console.log(`✓ Updated calendar event: "${event.summary}" → "${newSummary}" (Red color)`);
         } catch (error) {
-          console.error(`✗ Failed to delete calendar event "${event.summary}":`, error.message);
+          console.error(`✗ Failed to update calendar event "${event.summary}":`, error.message);
         }
       }
 
-      console.log(`✅ Calendar deletion complete: ${deletedCount} event(s) deleted`);
-      return { success: true, deleted: deletedCount };
+      console.log(`✅ Calendar update complete: ${updatedCount} event(s) marked as canceled`);
+      return { success: true, updated: updatedCount };
     } catch (error) {
-      console.error('Error deleting calendar event:', error);
-      return { success: false, error: error.message, deleted: 0 };
+      console.error('Error updating calendar event:', error);
+      return { success: false, error: error.message, updated: 0 };
     }
   }
 
-  private static async deleteEvent(credentials: any, accessToken: string, eventId: string) {
+  private static async updateEvent(credentials: any, accessToken: string, eventId: string, updates: { summary: string; colorId: string }) {
     const response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${eventId}`,
       {
-        method: 'DELETE',
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify(updates),
       }
     );
 
-    if (!response.ok && response.status !== 404 && response.status !== 410) {
+    if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to delete event (${response.status}): ${errorText}`);
+      throw new Error(`Failed to update event (${response.status}): ${errorText}`);
     }
     
-    return true;
+    return await response.json();
   }
 
   private static async getAccessToken(credentials: any) {
@@ -138,18 +149,22 @@ class CalendarCancellationService {
   }
 }
 
-// Service to delete a Google Sheets row by booking ID
+// Service to update Google Sheets row status to "Canceled"
 class SheetsCancellationService {
-  static async deleteRowByBookingId(bookingId: string) {
+  // Status column is AK (column 37, index 36 in 0-based)
+  private static STATUS_COLUMN = 'AK';
+  private static STATUS_COLUMN_INDEX = 36;
+
+  static async markRowAsCanceled(bookingId: string) {
     try {
-      console.log('📊 Deleting Google Sheets row for booking:', bookingId);
+      console.log('📊 Marking Google Sheets row as canceled for booking:', bookingId);
       
       const serviceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
       const spreadsheetId = Deno.env.get('GOOGLE_SPREADSHEET_ID');
       
       if (!serviceAccount || !spreadsheetId) {
-        console.log('⚠️ Google Sheets credentials not found, skipping sheets deletion');
-        return { success: true, deleted: 0, skipped: true };
+        console.log('⚠️ Google Sheets credentials not found, skipping sheets update');
+        return { success: true, updated: 0, skipped: true };
       }
 
       const credentials = {
@@ -159,9 +174,9 @@ class SheetsCancellationService {
 
       const accessToken = await this.getAccessToken(credentials.serviceAccount);
       
-      // Get all data from the sheet
+      // Get all data from the sheet to find the row
       const response = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A:AJ`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A:AK`,
         {
           method: 'GET',
           headers: {
@@ -188,43 +203,34 @@ class SheetsCancellationService {
 
       if (rowIndex === -1) {
         console.log('✅ No sheet row found for booking:', bookingId);
-        return { success: true, deleted: 0, message: 'No sheet row found' };
+        return { success: true, updated: 0, message: 'No sheet row found' };
       }
 
-      // Delete the row
-      const deleteResponse = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}:batchUpdate`,
+      // Update the status column (AK) to "Canceled"
+      const updateResponse = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/${this.STATUS_COLUMN}${rowIndex}?valueInputOption=USER_ENTERED`,
         {
-          method: 'POST',
+          method: 'PUT',
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            requests: [{
-              deleteDimension: {
-                range: {
-                  sheetId: 0, // Assuming first sheet
-                  dimension: 'ROWS',
-                  startIndex: rowIndex - 1, // API uses 0-based index
-                  endIndex: rowIndex
-                }
-              }
-            }]
+            values: [['Canceled']]
           }),
         }
       );
 
-      if (!deleteResponse.ok) {
-        const error = await deleteResponse.json();
-        throw new Error(`Failed to delete row: ${JSON.stringify(error)}`);
+      if (!updateResponse.ok) {
+        const error = await updateResponse.json();
+        throw new Error(`Failed to update row status: ${JSON.stringify(error)}`);
       }
 
-      console.log(`✅ Deleted sheet row ${rowIndex} for booking:`, bookingId);
-      return { success: true, deleted: 1 };
+      console.log(`✅ Updated sheet row ${rowIndex} status to "Canceled" for booking:`, bookingId);
+      return { success: true, updated: 1 };
     } catch (error) {
-      console.error('Error deleting sheet row:', error);
-      return { success: false, error: error.message, deleted: 0 };
+      console.error('Error updating sheet row:', error);
+      return { success: false, error: error.message, updated: 0 };
     }
   }
 
@@ -280,75 +286,7 @@ class SheetsCancellationService {
   }
 }
 
-// Service to delete storage files for a booking
-class StorageCancellationService {
-  private static supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  );
-
-  static async deleteBookingFiles(booking: any) {
-    const results: Record<string, any> = {};
-    
-    // Extract file names from URLs
-    const urlsToDelete = [
-      { bucket: 'payment-receipts', url: booking.payment_receipt_url },
-      { bucket: 'valid-ids', url: booking.valid_id_url },
-      { bucket: 'pet-vaccinations', url: booking.pet_vaccination_url },
-      { bucket: 'pet-images', url: booking.pet_image_url },
-    ];
-
-    for (const { bucket, url } of urlsToDelete) {
-      if (!url || url === 'dev-mode-skipped') {
-        results[bucket] = { success: true, deleted: 0, skipped: true };
-        continue;
-      }
-
-      try {
-        // Extract file name from URL
-        const fileName = this.extractFileName(url);
-        if (!fileName) {
-          console.log(`⚠️ Could not extract file name from URL for ${bucket}:`, url);
-          results[bucket] = { success: true, deleted: 0, message: 'No file name found' };
-          continue;
-        }
-
-        console.log(`🗑️ Deleting ${bucket}/${fileName}...`);
-
-        const { error: deleteError } = await this.supabase
-          .storage
-          .from(bucket)
-          .remove([fileName]);
-
-        if (deleteError) {
-          console.error(`✗ Failed to delete ${bucket}/${fileName}:`, deleteError);
-          results[bucket] = { success: false, error: deleteError.message, deleted: 0 };
-        } else {
-          console.log(`✓ Deleted ${bucket}/${fileName}`);
-          results[bucket] = { success: true, deleted: 1 };
-        }
-      } catch (error) {
-        console.error(`Error deleting from ${bucket}:`, error);
-        results[bucket] = { success: false, error: error.message, deleted: 0 };
-      }
-    }
-
-    return results;
-  }
-
-  private static extractFileName(url: string): string | null {
-    try {
-      // URL format: https://xxx.supabase.co/storage/v1/object/public/bucket-name/filename
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      return pathParts[pathParts.length - 1];
-    } catch {
-      return null;
-    }
-  }
-}
-
-// Service to delete database record
+// Service to update database record status
 class DatabaseCancellationService {
   private static supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -372,25 +310,27 @@ class DatabaseCancellationService {
     return data;
   }
 
-  static async deleteBooking(bookingId: string) {
+  static async markBookingAsCanceled(bookingId: string) {
     try {
-      console.log('🗑️ Deleting database record for booking:', bookingId);
+      console.log('🗑️ Marking booking as canceled in database:', bookingId);
       
-      const { error } = await this.supabase
+      const { data, error } = await this.supabase
         .from('guest_submissions')
-        .delete()
-        .eq('id', bookingId);
+        .update({ status: 'canceled' })
+        .eq('id', bookingId)
+        .select()
+        .single();
 
       if (error) {
-        console.error('✗ Failed to delete database record:', error);
-        return { success: false, error: error.message, deleted: 0 };
+        console.error('✗ Failed to update database record:', error);
+        return { success: false, error: error.message, updated: 0 };
       }
 
-      console.log('✅ Database record deleted for booking:', bookingId);
-      return { success: true, deleted: 1 };
+      console.log('✅ Database record marked as canceled for booking:', bookingId);
+      return { success: true, updated: 1, data };
     } catch (error) {
-      console.error('Error deleting database record:', error);
-      return { success: false, error: error.message, deleted: 0 };
+      console.error('Error updating database record:', error);
+      return { success: false, error: error.message, updated: 0 };
     }
   }
 }
@@ -434,7 +374,7 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: 'Cancellation requires confirmation. Send { "confirm": true } in request body.',
-          message: 'This operation will delete all data associated with this booking.'
+          message: 'This operation will mark the booking as canceled and free up the dates.'
         }),
         {
           status: 400,
@@ -466,37 +406,53 @@ serve(async (req) => {
       );
     }
 
+    // Check if already canceled
+    if (booking.status === 'canceled') {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Booking is already canceled',
+          bookingId
+        }),
+        {
+          status: 400,
+          headers: {
+            ...corsHeaders(req),
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
     console.log('📋 Found booking:', booking.primary_guest_name, '- Proceeding with cancellation...');
 
-    // Perform deletion operations
+    // Perform cancellation operations (update instead of delete)
     const results = {
-      storage: await StorageCancellationService.deleteBookingFiles(booking),
-      calendar: await CalendarCancellationService.deleteEventByBookingId(bookingId),
-      sheets: await SheetsCancellationService.deleteRowByBookingId(bookingId),
-      database: await DatabaseCancellationService.deleteBooking(bookingId),
+      database: await DatabaseCancellationService.markBookingAsCanceled(bookingId),
+      calendar: await CalendarCancellationService.markEventAsCanceled(bookingId, booking.primary_guest_name),
+      sheets: await SheetsCancellationService.markRowAsCanceled(bookingId),
     };
 
     // Calculate totals
-    const totalDeleted = {
-      storage: Object.values(results.storage).reduce((sum: number, r: any) => sum + (r.deleted || 0), 0),
-      calendar: results.calendar.deleted || 0,
-      sheets: results.sheets.deleted || 0,
-      database: results.database.deleted || 0,
+    const totalUpdated = {
+      database: results.database.updated || 0,
+      calendar: results.calendar.updated || 0,
+      sheets: results.sheets.updated || 0,
     };
 
     console.log('✅ Booking cancellation completed');
-    console.log('Summary:', totalDeleted);
+    console.log('Summary:', totalUpdated);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Booking cancelled successfully',
+        message: 'Booking canceled successfully. All data preserved, dates are now available for new bookings.',
         bookingId,
         guestName: booking.primary_guest_name,
         results,
         summary: {
-          totalDeleted,
-          grandTotal: Object.values(totalDeleted).reduce((a, b) => a + b, 0)
+          totalUpdated,
+          grandTotal: Object.values(totalUpdated).reduce((a, b) => a + b, 0)
         }
       }),
       {
@@ -524,4 +480,3 @@ serve(async (req) => {
     );
   }
 });
-
