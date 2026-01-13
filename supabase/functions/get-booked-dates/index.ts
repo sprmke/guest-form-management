@@ -24,12 +24,13 @@ serve(async (req) => {
     const today = new Date();
     const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // Get all bookings from database
+    // Get all active bookings from database (exclude canceled ones)
     // Note: Dates are stored as TEXT in MM-DD-YYYY format
     // We'll filter in JavaScript since PostgREST doesn't support TO_DATE in simple filters
     const { data: bookings, error } = await supabase
       .from('guest_submissions')
-      .select('id, check_in_date, check_out_date');
+      .select('id, check_in_date, check_out_date, status')
+      .or('status.is.null,status.eq.booked'); // Include bookings without status (legacy) or with status 'booked'
 
     if (error) {
       console.error('Database error:', error);
