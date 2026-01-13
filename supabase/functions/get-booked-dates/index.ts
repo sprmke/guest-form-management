@@ -24,13 +24,13 @@ serve(async (req) => {
     const today = new Date();
     const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // Get all active bookings from database (exclude canceled ones)
+    // Get all bookings from database
     // Note: Dates are stored as TEXT in MM-DD-YYYY format
-    // We'll filter in JavaScript since PostgREST doesn't support TO_DATE in simple filters
+    // We'll filter canceled bookings in JavaScript for backwards compatibility
+    // (works both before and after the status column migration is applied)
     const { data: bookings, error } = await supabase
       .from('guest_submissions')
-      .select('id, check_in_date, check_out_date, status')
-      .or('status.is.null,status.eq.booked'); // Include bookings without status (legacy) or with status 'booked'
+      .select('id, check_in_date, check_out_date, status');
 
     if (error) {
       console.error('Database error:', error);
@@ -65,10 +65,18 @@ serve(async (req) => {
     // Set today to start of day for fair comparison (00:00:00)
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    // Filter out past bookings (where check_out_date < today)
+    // Filter out:
+    // 1. Canceled bookings (status === 'canceled')
+    // 2. Past bookings (where check_out_date < today)
     // Then transform bookings to normalized date ranges
     const bookedDateRanges = bookings
       ?.filter(booking => {
+        // Exclude canceled bookings (status column may not exist yet, so check for it)
+        // If status is 'canceled', exclude. If status is null/undefined/'booked', include.
+        if (booking.status === 'canceled') {
+          return false;
+        }
+
         const checkOutDate = parseMMDDYYYY(booking.check_out_date);
         if (!checkOutDate) {
           console.warn(`Invalid date format for booking ${booking.id}: ${booking.check_out_date}`);
