@@ -405,12 +405,12 @@ export function GuestForm() {
     if (
       !window.confirm(
         '⚠️ Are you sure you want to CANCEL this booking?\n\n' +
-          'This will permanently delete:\n' +
-          '• Database record for this booking\n' +
-          '• All uploaded files (receipt, ID, pet docs)\n' +
-          '• Google Calendar event\n' +
-          '• Google Sheets row\n\n' +
-          'This action cannot be undone!'
+          'This will:\n' +
+          '• Mark booking status as "Canceled" in database\n' +
+          '• Update Google Calendar event with [CANCELED] label (red color)\n' +
+          '• Update Google Sheets status to "Canceled"\n' +
+          '• Free up the booked dates for new bookings\n\n' +
+          'All booking data will be preserved for records.'
       )
     ) {
       return;
@@ -435,18 +435,21 @@ export function GuestForm() {
         throw new Error(result.error || 'Failed to cancel booking');
       }
 
-      const summary = result.summary?.totalDeleted || {};
+      const summary = result.summary?.totalUpdated || {};
       const grandTotal = result.summary?.grandTotal || 0;
 
       toast.success('Booking cancelled successfully!', {
-        description: `Deleted: ${grandTotal} items (DB: ${
+        description: `Updated: ${grandTotal} items (DB: ${
           summary.database || 0
-        }, Storage: ${summary.storage || 0}, Calendar: ${
-          summary.calendar || 0
-        }, Sheets: ${summary.sheets || 0})`,
+        }, Calendar: ${summary.calendar || 0}, Sheets: ${
+          summary.sheets || 0
+        }). Dates are now available for new bookings.`,
         duration: 5000,
       });
 
+      // Refresh booked dates after cancellation
+      await fetchBookedDates();
+      
       // Navigate back to the form without bookingId
       navigate('/');
     } catch (error) {
@@ -2347,8 +2350,8 @@ export function GuestForm() {
                         )}
                       </Button>
                       <p className="mt-2 text-xs text-center text-muted-foreground">
-                        Permanently deletes this booking from database, storage,
-                        calendar, and sheets
+                        Marks booking as canceled and frees up dates. All data
+                        is preserved for records.
                       </p>
                     </div>
                   )}
