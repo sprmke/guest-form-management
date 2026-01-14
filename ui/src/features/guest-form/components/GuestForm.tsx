@@ -95,6 +95,10 @@ export function GuestForm() {
   const isTestingMode = searchParams.get('testing') === 'true';
   const isDevMode = searchParams.get('dev') === 'true';
 
+  // Get pre-selected dates from URL params (from calendar page)
+  const urlCheckInDate = searchParams.get('checkInDate');
+  const urlCheckOutDate = searchParams.get('checkOutDate');
+
   // Show dev controls in dev environment OR when testing=true in production
   const showDevControls = !isProduction || isTestingMode || isDevMode;
 
@@ -167,6 +171,20 @@ export function GuestForm() {
   useEffect(() => {
     fetchBookedDates();
   }, []);
+
+  // Set dates from URL params (from calendar page)
+  useEffect(() => {
+    if (urlCheckInDate && urlCheckOutDate && !bookingId) {
+      // Normalize and set the dates from URL
+      const normalizedCheckIn = normalizeDateString(urlCheckInDate);
+      const normalizedCheckOut = normalizeDateString(urlCheckOutDate);
+
+      if (normalizedCheckIn && normalizedCheckOut) {
+        form.setValue('checkInDate', normalizedCheckIn);
+        form.setValue('checkOutDate', normalizedCheckOut);
+      }
+    }
+  }, [urlCheckInDate, urlCheckOutDate, bookingId, form]);
 
   const fetchFormData = async () => {
     if (!bookingId) return;
