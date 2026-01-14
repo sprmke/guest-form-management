@@ -7,7 +7,6 @@ import {
   dateToString,
   stringToDate,
   createDisabledDateMatcher,
-  createDisabledCheckoutDateMatcher,
   normalizeDateString,
   type BookedDateRange,
 } from '@/utils/dates';
@@ -121,6 +120,24 @@ export function CalendarPage() {
     return firstBlocking;
   };
 
+  // Check if a date is within a booked range (for checkout: allows check-in dates)
+  const isDateBookedForCheckout = (date: Date) => {
+    return bookedDates.some(booking => {
+      try {
+        const bookingCheckIn = stringToDate(booking.checkInDate);
+        const bookingCheckOut = stringToDate(booking.checkOutDate);
+        const dateToCheck = new Date(date);
+        dateToCheck.setHours(0, 0, 0, 0);
+        
+        // For checkout: only disable dates AFTER check-in and BEFORE check-out
+        // This allows selecting check-in dates as checkout (same-day turnover)
+        return dateToCheck > bookingCheckIn && dateToCheck < bookingCheckOut;
+      } catch {
+        return false;
+      }
+    });
+  };
+
   // Disabled date matcher for the calendar
   // Uses different logic based on whether we're selecting check-in or check-out
   const isDateDisabled = (date: Date) => {
@@ -132,20 +149,22 @@ export function CalendarPage() {
       return true;
     }
 
-    // If check-in is already selected, use checkout logic
+    // If check-in is already selected (selecting checkout)
     if (checkInDate && !checkOutDate) {
-      // First, apply the checkout matcher (allows selecting check-in dates as checkout)
-      if (createDisabledCheckoutDateMatcher(bookedDates, null)(date)) {
+      // Disable dates on or before the check-in date
+      if (date <= checkInDate) {
+        return true;
+      }
+      
+      // For potential checkout dates: use lenient check that allows check-in dates
+      if (isDateBookedForCheckout(date)) {
         return true;
       }
       
       // Also disable dates that would span across a booked period
-      // Find first booking that starts after check-in date
       const firstBlocking = getFirstBlockingDate(checkInDate);
       if (firstBlocking) {
-        // If the potential checkout date is after a booking's check-in,
-        // the range would overlap, so disable it
-        // (but allow selecting the blocking check-in date itself as checkout)
+        // Disable dates after a booking's check-in (but allow the check-in date itself)
         if (date > firstBlocking) {
           return true;
         }
@@ -154,7 +173,7 @@ export function CalendarPage() {
       return false;
     }
 
-    // Default: use regular check-in date matcher
+    // Default (selecting check-in): use strict matcher that disables all booked dates
     return createDisabledDateMatcher(bookedDates, null)(date);
   };
 
