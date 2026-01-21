@@ -167,6 +167,10 @@
   font-size: 0.925rem !important;
 }
 
+.rdp-root td.rdp-disabled:not(.rdp-selected) {
+  opacity: 0.35;
+}
+
 .rdp-root td .rdp-day_button {
   border-radius: 0.625rem !important;
   transition: all 0.15s ease;
@@ -338,14 +342,22 @@
 /* Selected range styling for availability calendar */
 .availability-calendar .rdp-day_range_start .rdp-day_button,
 .availability-calendar .rdp-day_range_end .rdp-day_button {
-  background: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 76% 30%) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    hsl(142 76% 36%) 0%,
+    hsl(142 76% 30%) 100%
+  ) !important;
   color: white !important;
   font-weight: 700;
   box-shadow: 0 4px 12px -2px rgba(34, 197, 94, 0.4);
 }
 
 .availability-calendar .rdp-day_range_middle .rdp-day_button {
-  background: linear-gradient(135deg, hsl(142 76% 88%) 0%, hsl(142 76% 92%) 100%) !important;
+  background: linear-gradient(
+    135deg,
+    hsl(142 76% 88%) 0%,
+    hsl(142 76% 92%) 100%
+  ) !important;
   color: hsl(142 76% 25%) !important;
   font-weight: 600;
   border-radius: 0 !important;
