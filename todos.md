@@ -42,10 +42,17 @@ Todos
 - ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
 - ✅ Use kamehome.spaces on calendar summary link
 - ✅ Add "Cancel Booking" action on dev tools. When user clicks this, we should remove all information from database, assets from supabase storage, google calendars & sheets. Basically, cleanup all booking data that's related to it.
+- ✅ We have this weird issue where if I select Jan 20 as check-in date, the Jan14, 15 and 17 which are already booked enabled which is very incorrect!
+- Remove dev=true query parameter on google calendar event to prevent any issues
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
+- Lets update the / root route to render the calendar page and create a new route called "/form" to render the guest form page. So that when user visit our sites, they are required to select dates first
+- Display carousel on the top background that auto slides to show different unit pictures/amenities 
 - Use AI to analyze and validate guest uploaded assets
   - Analyze if receipt is valid receipt, id is id, etc
 - Persist dev or test query parameters on booking summary and booking detail pages on route change
+
+
+
 - Let's improve our booking process flow
   - Now, when user fill up the form, we should automatically genreate the PDF
   - BUT not auomatically send an email, create calendar event and add entry to google sheet
