@@ -73,6 +73,7 @@ export function GuestForm() {
   const [isCancellingBooking, setIsCancellingBooking] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
+  const [validIdImageLoadError, setValidIdImageLoadError] = useState(false);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
     string | null
   >(null);
@@ -156,7 +157,7 @@ export function GuestForm() {
         console.log(
           '✅ Loaded booked dates:',
           normalizedDates.length,
-          'bookings'
+          'bookings',
         );
         console.log('📅 Booked date ranges:', normalizedDates);
       } else {
@@ -217,7 +218,7 @@ export function GuestForm() {
           // Fetch the image and convert it to a File object
           const paymentReceiptFile = await fetchImageAsFile(
             formData.paymentReceiptUrl,
-            formData.primaryGuestName
+            formData.primaryGuestName,
           );
           if (paymentReceiptFile) {
             formData.paymentReceipt = paymentReceiptFile;
@@ -226,22 +227,23 @@ export function GuestForm() {
         }
 
         if (formData.validIdUrl) {
-          // Fetch the image and convert it to a File object
+          setValidIdImageLoadError(false);
           const validIdFile = await fetchImageAsFile(
             formData.validIdUrl,
-            formData.primaryGuestName
+            formData.primaryGuestName,
           );
           if (validIdFile) {
             formData.validId = validIdFile;
-            setValidIdPreview(formData.validIdUrl);
           }
+          // Always set preview from URL so img can load from storage (e.g. after re-submit with sanitized filename)
+          setValidIdPreview(formData.validIdUrl);
         }
 
         if (formData.petVaccinationUrl) {
           // Fetch the image and convert it to a File object
           const petVaccinationFile = await fetchImageAsFile(
             formData.petVaccinationUrl,
-            formData.primaryGuestName
+            formData.primaryGuestName,
           );
           if (petVaccinationFile) {
             formData.petVaccination = petVaccinationFile;
@@ -252,7 +254,7 @@ export function GuestForm() {
         if (formData.petImageUrl) {
           const petImageFile = await fetchImageAsFile(
             formData.petImageUrl,
-            formData.primaryGuestName
+            formData.primaryGuestName,
           );
           if (petImageFile) {
             formData.petImage = petImageFile;
@@ -366,7 +368,7 @@ export function GuestForm() {
           '• Storage files starting with TEST_\n' +
           '• Calendar events starting with [TEST]\n' +
           '• Google Sheets rows starting with [TEST]\n\n' +
-          'This action cannot be undone!'
+          'This action cannot be undone!',
       )
     ) {
       return;
@@ -428,7 +430,7 @@ export function GuestForm() {
           '• Update Google Calendar event with [CANCELED] label (red color)\n' +
           '• Update Google Sheets status to "Canceled"\n' +
           '• Free up the booked dates for new bookings\n\n' +
-          'All booking data will be preserved for records.'
+          'All booking data will be preserved for records.',
       )
     ) {
       return;
@@ -523,9 +525,9 @@ export function GuestForm() {
             values.checkOutDate,
             prefix === 'petVaccination' || prefix === 'petImage'
               ? values.hasPets
-              : true
+              : true,
           );
-        }
+        },
       );
 
       // Build URL with query parameters
@@ -535,27 +537,27 @@ export function GuestForm() {
         // In dev/testing mode, use the control checkboxes
         queryParams.append(
           'saveToDatabase',
-          devApiControls.saveToDatabase ? 'true' : 'false'
+          devApiControls.saveToDatabase ? 'true' : 'false',
         );
         queryParams.append(
           'saveImagesToStorage',
-          devApiControls.saveImagesToStorage ? 'true' : 'false'
+          devApiControls.saveImagesToStorage ? 'true' : 'false',
         );
         queryParams.append(
           'generatePdf',
-          devApiControls.generatePdf ? 'true' : 'false'
+          devApiControls.generatePdf ? 'true' : 'false',
         );
         queryParams.append(
           'sendEmail',
-          devApiControls.sendEmail ? 'true' : 'false'
+          devApiControls.sendEmail ? 'true' : 'false',
         );
         queryParams.append(
           'updateGoogleCalendar',
-          devApiControls.updateCalendar ? 'true' : 'false'
+          devApiControls.updateCalendar ? 'true' : 'false',
         );
         queryParams.append(
           'updateGoogleSheets',
-          devApiControls.updateGoogleSheets ? 'true' : 'false'
+          devApiControls.updateGoogleSheets ? 'true' : 'false',
         );
         // Only add [TEST] prefix when ?testing=true is explicitly set
         queryParams.append('testing', isTestingMode ? 'true' : 'false');
@@ -590,8 +592,8 @@ export function GuestForm() {
           errorData.error ||
             errorData.message ||
             `HTTP error! status: ${response.status} - ${JSON.stringify(
-              errorData
-            )}`
+              errorData,
+            )}`,
         );
       }
 
@@ -689,7 +691,7 @@ export function GuestForm() {
           const formValues = form.getValues();
           const bookingInfo = formatBookingInfoForClipboard(
             formValues,
-            currentBookingId
+            currentBookingId,
           );
           await navigator.clipboard.writeText(bookingInfo);
 
@@ -857,7 +859,7 @@ export function GuestForm() {
                           handleNameInputChange(
                             e,
                             field.onChange,
-                            toCapitalCase
+                            toCapitalCase,
                           )
                         }
                       />
@@ -983,7 +985,7 @@ export function GuestForm() {
                               // Always auto-set checkout to next day when check-in changes
                               form.setValue(
                                 'checkOutDate',
-                                getNextDay(dateStr)
+                                getNextDay(dateStr),
                               );
                             }
                           }}
@@ -998,7 +1000,7 @@ export function GuestForm() {
                             // Disable booked dates
                             return createDisabledDateMatcher(
                               bookedDates,
-                              currentBookingId
+                              currentBookingId,
                             )(date);
                           }}
                           minDate={new Date()}
@@ -1071,7 +1073,7 @@ export function GuestForm() {
                             // Use checkout-specific matcher that allows checkout on check-in dates
                             const isBooked = createDisabledCheckoutDateMatcher(
                               bookedDates,
-                              currentBookingId
+                              currentBookingId,
                             )(date);
 
                             // Disable dates before or equal to check-in date
@@ -1088,7 +1090,7 @@ export function GuestForm() {
                           minDate={
                             form.watch('checkInDate')
                               ? stringToDate(
-                                  getNextDay(form.watch('checkInDate'))
+                                  getNextDay(form.watch('checkInDate')),
                                 )
                               : new Date()
                           }
@@ -1166,7 +1168,7 @@ export function GuestForm() {
                           onClick={() => {
                             const newValue = Math.max(
                               1,
-                              (field.value || 1) - 1
+                              (field.value || 1) - 1,
                             );
                             field.onChange(newValue);
                           }}
@@ -1196,7 +1198,7 @@ export function GuestForm() {
                               form.getValues('numberOfChildren') || 0;
                             const newValue = Math.min(
                               4,
-                              (field.value || 1) + 1
+                              (field.value || 1) + 1,
                             );
                             if (newValue + currentChildren <= 6) {
                               field.onChange(newValue);
@@ -1226,7 +1228,7 @@ export function GuestForm() {
                           onClick={() => {
                             const newValue = Math.max(
                               0,
-                              (field.value || 0) - 1
+                              (field.value || 0) - 1,
                             );
                             field.onChange(newValue);
                           }}
@@ -1329,7 +1331,7 @@ export function GuestForm() {
                           handleNameInputChange(
                             e,
                             field.onChange,
-                            toCapitalCase
+                            toCapitalCase,
                           )
                         }
                       />
@@ -1355,8 +1357,8 @@ export function GuestForm() {
                               {index + 2 === 2
                                 ? 'Second'
                                 : index + 2 === 3
-                                ? 'Third'
-                                : 'Fourth'}{' '}
+                                  ? 'Third'
+                                  : 'Fourth'}{' '}
                               Guest - Name{' '}
                               <span className="text-red-500">*</span>
                             </FormLabel>
@@ -1366,8 +1368,8 @@ export function GuestForm() {
                                   index + 2 === 2
                                     ? 'Second Guest'
                                     : index + 2 === 3
-                                    ? 'Third Guest'
-                                    : 'Fourth Guest'
+                                      ? 'Third Guest'
+                                      : 'Fourth Guest'
                                 }`}
                                 {...field}
                                 value={field.value?.toString() ?? ''}
@@ -1375,7 +1377,7 @@ export function GuestForm() {
                                   handleNameInputChange(
                                     e,
                                     field.onChange,
-                                    toCapitalCase
+                                    toCapitalCase,
                                   )
                                 }
                               />
@@ -1384,7 +1386,7 @@ export function GuestForm() {
                           </FormItem>
                         )}
                       />
-                    )
+                    ),
                   )}
                 </div>
               )}
@@ -1827,7 +1829,7 @@ export function GuestForm() {
                                           }
                                           onChange(file);
                                           setPetImagePreview(
-                                            URL.createObjectURL(file)
+                                            URL.createObjectURL(file),
                                           );
                                         }
                                       }}
@@ -1856,7 +1858,7 @@ export function GuestForm() {
                                         }
                                         onChange(file);
                                         setPetImagePreview(
-                                          URL.createObjectURL(file)
+                                          URL.createObjectURL(file),
                                         );
                                       }
                                     }}
@@ -1914,7 +1916,7 @@ export function GuestForm() {
                                           }
                                           onChange(file);
                                           setPetVaccinationPreview(
-                                            URL.createObjectURL(file)
+                                            URL.createObjectURL(file),
                                           );
                                         }
                                       }}
@@ -1943,7 +1945,7 @@ export function GuestForm() {
                                         }
                                         onChange(file);
                                         setPetVaccinationPreview(
-                                          URL.createObjectURL(file)
+                                          URL.createObjectURL(file),
                                         );
                                       }
                                     }}
@@ -1978,7 +1980,39 @@ export function GuestForm() {
                     </FormLabel>
                     <FormControl>
                       <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                        {validIdPreview || value ? (
+                        {validIdImageLoadError ? (
+                          <div className="flex flex-col gap-2 justify-center items-center w-full h-full p-4 text-center text-sm text-amber-700 bg-amber-50">
+                            <p>
+                              Image could not be loaded (link may be outdated).
+                            </p>
+                            <p>Please re-upload your Valid ID below.</p>
+                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 cursor-pointer hover:text-green-600 hover:border-green-600">
+                              <Upload className="w-4 h-4" />
+                              Re-upload Image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
+                                className="hidden"
+                                {...field}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
+                                    onChange(file);
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file),
+                                    );
+                                    setValidIdImageLoadError(false);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        ) : validIdPreview || value ? (
                           <>
                             <img
                               src={
@@ -1987,6 +2021,10 @@ export function GuestForm() {
                               }
                               alt="Valid ID Preview"
                               className="object-cover w-full h-full"
+                              onError={() => {
+                                setValidIdImageLoadError(true);
+                                setValidIdPreview(null);
+                              }}
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
                               <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
@@ -2008,7 +2046,7 @@ export function GuestForm() {
                                       }
                                       onChange(file);
                                       setValidIdPreview(
-                                        URL.createObjectURL(file)
+                                        URL.createObjectURL(file),
                                       );
                                     }
                                   }}
@@ -2036,7 +2074,7 @@ export function GuestForm() {
                                     }
                                     onChange(file);
                                     setValidIdPreview(
-                                      URL.createObjectURL(file)
+                                      URL.createObjectURL(file),
                                     );
                                   }
                                 }}
@@ -2092,7 +2130,7 @@ export function GuestForm() {
                                       }
                                       onChange(file);
                                       setPaymentReceiptPreview(
-                                        URL.createObjectURL(file)
+                                        URL.createObjectURL(file),
                                       );
                                     }
                                   }}
@@ -2120,7 +2158,7 @@ export function GuestForm() {
                                     }
                                     onChange(file);
                                     setPaymentReceiptPreview(
-                                      URL.createObjectURL(file)
+                                      URL.createObjectURL(file),
                                     );
                                   }
                                 }}

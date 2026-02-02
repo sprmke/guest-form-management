@@ -107,16 +107,19 @@ export class UploadService {
     }
     console.log(`Processing ${bucket} upload...`);
 
-    // First check if the file already exists (use sanitized key)
-    const { data: existingFile } = await this.supabase
+    // Only skip upload if we have an exact filename match (search can return partial matches)
+    const { data: listedFiles } = await this.supabase
       .storage
       .from(bucket)
       .list('', {
         search: storageKey
       });
 
-    // If file already exists, just return its public URL
-    if (existingFile && existingFile.length > 0) {
+    const exactMatch = Array.isArray(listedFiles) && listedFiles.some(
+      (item: { name?: string }) => item.name === storageKey
+    );
+
+    if (exactMatch) {
       console.log(`File ${storageKey} already exists in ${bucket}, skipping upload`);
       const { data: { publicUrl } } = this.supabase
         .storage
