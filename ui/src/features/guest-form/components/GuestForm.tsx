@@ -959,12 +959,12 @@ export function GuestForm() {
                 <h2 className="form-section-title">Booking Details</h2>
               </div>
 
-              <div className="grid min-w-0 grid-cols-2 gap-4 [&>*]:min-w-0">
+              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="checkInDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0">
                       <FormLabel>
                         Check-in Date{' '}
                         <span className="text-destructive">*</span>
@@ -1017,13 +1017,13 @@ export function GuestForm() {
                   control={form.control}
                   name="checkInTime"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0">
                       <FormLabel>Check-in Time</FormLabel>
                       <FormControl>
                         <Input
                           type="time"
                           placeholder="02:00 pm"
-                          className="min-w-0"
+                          className="box-border min-w-0 max-w-full"
                           {...field}
                         />
                       </FormControl>
@@ -1048,12 +1048,12 @@ export function GuestForm() {
                   </div>
                 )}
 
-              <div className="grid min-w-0 grid-cols-2 gap-4 [&>*]:min-w-0">
+              <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="checkOutDate"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0">
                       <FormLabel>
                         Check-out Date{' '}
                         <span className="text-destructive">*</span>
@@ -1112,13 +1112,13 @@ export function GuestForm() {
                   control={form.control}
                   name="checkOutTime"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="min-w-0">
                       <FormLabel>Check-out Time</FormLabel>
                       <FormControl>
                         <Input
                           type="time"
                           placeholder="11:00 am"
-                          className="min-w-0"
+                          className="box-border min-w-0 max-w-full"
                           {...field}
                         />
                       </FormControl>
