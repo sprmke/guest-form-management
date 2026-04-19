@@ -120,7 +120,7 @@ export class CalendarService {
 <a href="https://kamehomes.space/form?bookingId=${bookingId}${formUrlParams}">View/Update Guest Form</a>
 
 <strong>Guest Information</strong>
-Facebook Name: ${formData.guestFacebookName}
+Facebook/Airbnb Name: ${formData.guestFacebookName}
 Primary Guest: ${formData.primaryGuestName}
 Email: ${formData.guestEmail}
 Phone Number: ${formData.guestPhoneNumber}

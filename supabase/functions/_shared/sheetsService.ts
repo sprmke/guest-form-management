@@ -122,7 +122,7 @@ export class SheetsService {
     
     return [
       bookingId,                          // A: Booking ID
-      `${testPrefix}${formData.guestFacebookName}`,         // B: Facebook Name
+      `${testPrefix}${formData.guestFacebookName}`,         // B: Facebook/Airbnb Name
       `${testPrefix}${formData.primaryGuestName}`,          // C: Primary Guest Name
       formData.guestEmail,                // D: Email
       formData.guestPhoneNumber,          // E: Phone Number

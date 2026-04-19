@@ -20,7 +20,7 @@ export function formatBookingInfoForClipboard(
 
   // Guest Information
   lines.push('--- Guest Information ---');
-  lines.push(`Facebook Name: ${formData.guestFacebookName || ''}`);
+  lines.push(`Facebook/Airbnb Name: ${formData.guestFacebookName || ''}`);
   lines.push(`Primary Guest: ${formData.primaryGuestName || ''}`);
   lines.push(`Email: ${formData.guestEmail || ''}`);
   lines.push(`Phone: ${formData.guestPhoneNumber || ''}`);
@@ -136,7 +136,7 @@ export function parseBookingInfoFromClipboard(
       }
 
       // Parse each field
-      if (trimmedLine.startsWith('Facebook Name:')) {
+      if (trimmedLine.startsWith('Facebook/Airbnb Name:')) {
         formData.guestFacebookName = extractValue(trimmedLine);
       } else if (trimmedLine.startsWith('Primary Guest:')) {
         formData.primaryGuestName = extractValue(trimmedLine);

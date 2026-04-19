@@ -204,7 +204,7 @@ class SheetsCleanupService {
       const data = await response.json();
       const values = data.values || [];
       
-      // Find rows with [TEST] prefix in Facebook Name column (column B, index 1)
+      // Find rows with [TEST] prefix in Facebook/Airbnb Name column (column B, index 1)
       const rowsToDelete: number[] = [];
       for (let i = 1; i < values.length; i++) { // Skip header row
         const row = values[i];

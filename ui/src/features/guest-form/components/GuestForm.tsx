@@ -768,7 +768,7 @@ export function GuestForm() {
     (form.watch('numberOfAdults') || 1) + (form.watch('numberOfChildren') || 0);
   const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)); // Cap at 3 additional guests
 
-  // Handle "Same as Facebook Name" checkbox
+  // Handle "Same as Facebook/Airbnb Name" checkbox
   useEffect(() => {
     if (sameAsFacebookName) {
       const facebookName = form.getValues('guestFacebookName');
@@ -849,7 +849,8 @@ export function GuestForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Facebook Name <span className="text-destructive">*</span>
+                      Facebook/Airbnb Name{' '}
+                      <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
@@ -1318,7 +1319,7 @@ export function GuestForm() {
                           htmlFor="sameAsFacebookName"
                           className="text-sm cursor-pointer text-muted-foreground"
                         >
-                          Same as Facebook Name
+                          Same as Facebook/Airbnb Name
                         </label>
                       </div>
                     </div>
