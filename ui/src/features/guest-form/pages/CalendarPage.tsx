@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { MainLayout } from '@/layouts/MainLayout';
@@ -17,10 +17,19 @@ const apiUrl = import.meta.env.VITE_API_URL;
 
 export function CalendarPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [checkInDate, setCheckInDate] = useState<Date | undefined>();
   const [checkOutDate, setCheckOutDate] = useState<Date | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+
+  // Legacy and shared links may use `/?bookingId=`; guest form lives at `/form`.
+  useEffect(() => {
+    const bookingId = searchParams.get('bookingId')?.trim();
+    if (!bookingId) return;
+    const next = new URLSearchParams(searchParams);
+    navigate(`/form?${next.toString()}`, { replace: true });
+  }, [navigate, searchParams]);
 
   // Fetch booked dates on mount
   useEffect(() => {
@@ -100,7 +109,7 @@ export function CalendarPage() {
     if (checkInDate && checkOutDate) {
       const checkIn = dateToString(checkInDate);
       const checkOut = dateToString(checkOutDate);
-      navigate(`/?checkInDate=${checkIn}&checkOutDate=${checkOut}`);
+      navigate(`/form?checkInDate=${checkIn}&checkOutDate=${checkOut}`);
     }
   };
 

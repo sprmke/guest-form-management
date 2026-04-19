@@ -4,7 +4,8 @@ import { GuestFormSuccessPage } from '@/features/guest-form/pages/GuestFormSucce
 import { CalendarPage } from '@/features/guest-form/pages/CalendarPage';
 
 export const guestFormRoutes = [
-  <Route key="guest-form" path="/" element={<GuestFormPage />} />,
+  <Route key="calendar-root" path="/" element={<CalendarPage />} />,
+  <Route key="guest-form" path="/form" element={<GuestFormPage />} />,
   <Route
     key="guest-form-success"
     path="/success"

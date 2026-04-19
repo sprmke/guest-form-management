@@ -811,7 +811,7 @@ export function GuestForm() {
                 }}
                 className="mt-4"
               >
-                Return to Guest Form
+                Return to calendar
               </Button>
               <Button
                 type="button"

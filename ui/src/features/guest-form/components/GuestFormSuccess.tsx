@@ -40,7 +40,7 @@ export function GuestFormSuccess() {
 
   const handleViewForm = () => {
     if (bookingId) {
-      navigate(`/?bookingId=${bookingId}`);
+      navigate(`/form?bookingId=${bookingId}`);
     }
   };
 
