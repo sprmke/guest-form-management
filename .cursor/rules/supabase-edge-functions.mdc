@@ -1,0 +1,16 @@
+---
+description: Supabase Edge Functions (Deno) — conventions for this repo
+globs: supabase/functions/**/*.ts
+alwaysApply: false
+---
+
+# Edge functions
+
+- **Runtime**: Deno; remote URLs for imports (e.g. `https://deno.land/std@0.168.0/http/server.ts`, `esm.sh` for npm packages).
+- **Shared code**: `supabase/functions/_shared/` — import with relative paths (`../_shared/...`).
+- **CORS**: use `corsHeaders(req)` from `_shared/cors.ts` on every response including errors and OPTIONS.
+- **Supabase admin**: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` in services; never expose service role to the browser.
+- **Production detection**: `Deno.env.get('DENO_DEPLOYMENT_ID')` is used in `submit-form` to alter behavior (e.g. disable email when `testing=true`).
+- **JWT**: `verify_jwt` is disabled for some functions in `supabase/config.toml`; UI still sends anon key as `apikey` + `Authorization` bearer.
+
+When adding a new function: add handler under `supabase/functions/<name>/index.ts`, document env vars, update `docs/PROJECT.md` API table, and set `[functions.<name>]` in `config.toml` if JWT policy differs from default.
