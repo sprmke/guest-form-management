@@ -1,0 +1,52 @@
+---
+description: Guest Form Management monorepo — stack, flows, and where to change code
+alwaysApply: true
+---
+
+# Guest Form Management — agent context
+
+Read **`docs/PROJECT.md`** for full architecture, API tables, env vars, and roadmap vs implementation.
+
+## What this is
+
+Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functions** (Deno) under `supabase/functions/`. Data lives in Postgres table **`guest_submissions`**; files in **Supabase Storage**. Optional **Resend**, **Google Calendar**, and **Google Sheets** run from the same submit pipeline.
+
+## Monorepo gotcha
+
+Root `package.json` workspaces list `api`, but **there is no `api/` package**—backend logic is only Edge Functions. Prefer `npm run dev` / `dev.sh` and `cd ui && npm run dev`.
+
+## Routes (current)
+
+- `/` — guest form (`GuestFormPage`)
+- `/calendar` — date picker; proceeds to `/?checkInDate=&checkOutDate=`
+- `/success` — needs `bookingId` query param; summary from `navigate` state
+
+Planned route change (calendar at root, `/form`) is in `TODOS.md`, not implemented.
+
+## When editing the form
+
+- Schema: `ui/src/features/guest-form/schemas/guestFormSchema.ts`
+- Large UI: `ui/src/features/guest-form/components/GuestForm.tsx` (dev controls, submit `FormData`, clipboard recovery)
+- Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports
+
+## When editing submit behavior
+
+- Entry: `supabase/functions/submit-form/index.ts`
+- DB + overlap + uploads: `supabase/functions/_shared/databaseService.ts`
+- No-op updates: `compareFormData` in `supabase/functions/_shared/utils.ts` (must stay aligned with DB columns / form field names)
+- Query flags: `saveToDatabase`, `saveImagesToStorage`, `generatePdf`, `sendEmail`, `updateGoogleCalendar`, `updateGoogleSheets`, `testing` — defaults differ prod vs dev panel (see `docs/PROJECT.md`)
+
+## Booking lifecycle
+
+- **Active** rows use `status` not equal to `canceled` (default `booked`)
+- **Cancel** (`cancel-booking`): soft cancel — keeps DB and files; marks calendar/sheet canceled; frees dates for overlap + `get-booked-dates`
+- **Canceled** excluded from overlap checks and booked-date API
+
+## Conventions
+
+- Dates in DB submission path are **MM-DD-YYYY** text; UI often uses **YYYY-MM-DD** — reuse `formatDate` / normalizers in `_shared/utils.ts` and `ui/src/utils/dates.ts`
+- Do not commit secrets; local secrets live in `supabase/.env.local` (not in repo)
+
+## Product backlog
+
+`TODOS.md` tracks shipped and planned features (admin workflow, stepper, image compression, etc.)—check it before assuming a feature exists in code.
