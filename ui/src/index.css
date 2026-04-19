@@ -251,6 +251,51 @@
   @apply text-sm text-muted-foreground mb-4;
 }
 
+/*
+ * WebKit (iOS Safari, Chrome): native <input type="time"> uses a tall centered control
+ * and ignores normal box sizing until appearance is reset (see Input `ui-native-time`).
+ */
+input.ui-native-time[type='time'] {
+  -webkit-appearance: none;
+  appearance: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  height: 2.75rem;
+  min-height: 2.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 1rem;
+  padding-right: 0.5rem;
+  color-scheme: light;
+}
+
+input.ui-native-time[type='time']::-webkit-datetime-edit {
+  margin: 0;
+  padding: 0;
+}
+
+input.ui-native-time[type='time']::-webkit-datetime-edit-fields-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 2.75rem;
+  width: 100%;
+  padding: 0;
+}
+
+input.ui-native-time[type='time']::-webkit-date-and-time-value {
+  text-align: left;
+}
+
+input.ui-native-time[type='time']::-webkit-calendar-picker-indicator {
+  flex-shrink: 0;
+  margin-inline-start: 0.25rem;
+  cursor: pointer;
+  opacity: 1;
+}
+
 /* Upload Preview Container */
 .upload-preview-container {
   @apply relative w-full h-48 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/30 hover:border-primary/50 transition-all duration-200;

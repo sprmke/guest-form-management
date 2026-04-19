@@ -1023,7 +1023,6 @@ export function GuestForm() {
                         <Input
                           type="time"
                           placeholder="02:00 pm"
-                          className="box-border min-w-0 max-w-full"
                           {...field}
                         />
                       </FormControl>
@@ -1118,7 +1117,6 @@ export function GuestForm() {
                         <Input
                           type="time"
                           placeholder="11:00 am"
-                          className="box-border min-w-0 max-w-full"
                           {...field}
                         />
                       </FormControl>
