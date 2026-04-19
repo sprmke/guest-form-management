@@ -1,0 +1,71 @@
+Todos
+
+- ✅ In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
+- ✅ I noticed that on prod, we have a lot of booked dates, we should filter it to not include past dates from today because all past dates are automatically disabled from the calendar. We should only get future book dates from today. It's better if we implement this filter from the API & DB call for faster performance instead of UI filtering
+- ✅ Add a "Same as Facebook Name" checkbox beside Primary Guest - Name, and when they check it, we should get and pre-populate the same value of facebook name field to primary guest name and then we should disable the field
+- ✅ When user try to submit or update the form. We should do a form data difference checking. And only proceed on updating the db, sending email, updating calendar, etc ONLY if we detect that there's a data changed from the form. If there's no difference, just redirect to success page
+- ✅ Handle and send different email when we updated the form details. The email content would be something like this: "The GAF details has been updated. Please disregard the previous GAF Request email for the same dates for our unit". Please improve our text message
+- ✅ On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
+- ✅ In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck on DEV env
+- Optimize and reduce size of image before uploading to supabase storage
+- ✅ In prod, let's add 'testing=true' query parameter to determine that this is a TEST booking submission
+- ✅ When booking is more than 1 night, we should update the title of the email title to <CheckIn Date> - <CheckOut Date>
+- ✅ On checkout date calendar, we don't have the highlight for multiple nights
+- Update guest form to a stepper? And add preview for final booking screen.
+- ✅ When we are on dev mode and testing=true is enabled, let's modify our content
+  - Save to db: primary_guest_name. Prefix '[TEST]' ex. '[TEST] Rene Anne Tolentino'
+  - Save images to supabase storage. Prefix '[TEST]' to our images
+  - Generate PDF: Prefix '[TEST]' to primary guest name
+  - Send email notification: Prefix '[TEST]' to email subject title. ex. '[TEST] Monaco 2604 - GAF Request (11-28-2025)'.
+    - Let's also modify the email content to add: "This is just a test email, please ignore.' Please improve our message content
+  - Update google calendar: Prefix '[TEST]' to calendar event title. ex. '[TEST] 2pax 2nights - Kyle Soriano'
+  - Update google sheets: Prefix '[TEST]' to sheet 'Primary Guest Name' column. ex. '[TEST] Rene Anne Tolentino'
+- ✅ Let's update the email title and content to use book range like <CheckIn Date> to <CheckOut Date> instead of just CheckInDate
+- ✅ Let's use sprmkedev for google sheet and google calendar updates on dev env
+- ✅ When we visit an existing booking and we are on dev/test mode, let's add a new button to cancel a booking which will cleanup and remove our data to different services
+  - Update db status to 'canceled'
+  - Update the google calendar event as canceled
+  - Update google sheet entry to canceled
+- ✅ Add URGENT label and icon on email for same day booking
+- ✅ When guest encounter an error and the guest form failed to submit. It's very hassle if user will fill up the form again. I want us to implement a copy button on toast message when we encounter an error and display the toast message. When we click this button, the guest can copy all information so that they can paste it on our Facebook messenger.
+  - ✅ Then, on our dev controls, there should be a button there called "Paste booking information from clipboard", and when we click it, it will autopopulate our form based on the booking information the guest copy pasted. And with this, we can easily resubmit the guest form without typing all information again.
+  - ✅ Please think or plan or generate the best booking information structure that is user friendly but still be able to easily imported from our system
+- ✅ Disable Send email notification on production even when testing=true is enabled
+- ✅ Move generate new data to dev controls section above clean up button
+- ✅ Add please check your email message under email address input
+- ✅ Add &admin=true or &testing=true on View/Update Guest Form on Google calendar
+- ✅ Use kamehome.spaces on calendar summary link
+- ✅ Add "Cancel Booking" action on dev tools. When user clicks this, we should remove all information from database, assets from supabase storage, google calendars & sheets. Basically, cleanup all booking data that's related to it.
+- ✅ We have this weird issue where if I select Jan 20 as check-in date, the Jan14, 15 and 17 which are already booked enabled which is very incorrect!
+- Remove dev=true query parameter on google calendar event to prevent any issues
+- ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
+- ✅ Create separate email for pet information
+- Create separate email for parking information
+  - add a admin fields & button to trigger email sending of parking information
+  - we should have dropdown of email so we can easily send the parking information to parking owner & azure
+- Lets update the / root route to render the calendar page and create a new route called "/form" to render the guest form page. So that when user visit our sites, they are required to select dates first
+- Display carousel on the top background that auto slides to show different unit pictures/amenities
+- Use AI to analyze and validate guest uploaded assets
+  - Analyze if receipt is valid receipt, id is id, etc
+- Persist dev or test query parameters on booking summary and booking detail pages on route change
+
+- Let's improve our booking process flow
+  - Now, when user fill up the form, we should automatically genreate the PDF
+  - BUT not auomatically send an email, create calendar event and add entry to google sheet
+  - Instead, the unit owner now needs to review the guest form details and will proceed to different steps/status. That's why our booking has status now:
+    - PENDING REVIEW - Guest completed filling up the form. The unit owner or admin needs to review the guest form details
+    - PENDING GAF - Guest form is reviewed and we already sent a GAF request and just waiting for approved GAF
+    - PENDING PARKING DETAILS - Parking is enabled and just waiting for approved parking details
+    - PENDING PET REQUEST - Has pets, pet form request email sent and just waiting for approval
+    - READY FOR CHECK-IN - Everything is good to go for guest for checkin
+    - PENDING FOR SD REFUND - Guest checkout already. On this step, let's provide new field for new expenses or profits. And make sure no damages and all payment are settled.
+    - COMPLETED - Booking is completed
+    - CANCELLED - Booking is canceled (Let's cleaning all data from different services)
+    - (Let's improve the different status names?. Upon thinking carefully, let's not delete this)
+  - The unit owner can review the booking when visiting the guest form with bookingId as route parameter and admin=true as query parameter
+  - When admin mode is enabled, the unit owner can review and update booking information (as it is now)
+  - Then, the unit owner/admin should enter the payment details before they can proceed to next step. We will need to create a new section for the payment details
+    - For payment details, we can enter the base rate, parking rate (if enabled), pet fee (if enabled).
+    - We should also provide new input with 2 types: profit or expense
+    - Then we should also provide or display a payment details summary or breakdown
+    - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
