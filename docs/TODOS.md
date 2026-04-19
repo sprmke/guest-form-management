@@ -40,6 +40,7 @@ Todos
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
 - ✅ Create separate email for pet information
+- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field
 - Create separate email for parking information
   - add a admin fields & button to trigger email sending of parking information
   - we should have dropdown of email so we can easily send the parking information to parking owner & azure

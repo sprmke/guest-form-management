@@ -854,7 +854,7 @@ export function GuestForm() {
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Your exact full name in Facebook"
+                        placeholder="Your exact full name in Facebook/Airbnb"
                         {...field}
                         onChange={(e) =>
                           handleNameInputChange(
@@ -959,7 +959,7 @@ export function GuestForm() {
                 <h2 className="form-section-title">Booking Details</h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid min-w-0 grid-cols-2 gap-4 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="checkInDate"
@@ -1020,7 +1020,12 @@ export function GuestForm() {
                     <FormItem>
                       <FormLabel>Check-in Time</FormLabel>
                       <FormControl>
-                        <Input type="time" placeholder="02:00 pm" {...field} />
+                        <Input
+                          type="time"
+                          placeholder="02:00 pm"
+                          className="min-w-0"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1037,13 +1042,13 @@ export function GuestForm() {
                     <p className="text-sm font-medium">
                       Our standard check-in time is 2:00 PM. Early check-in
                       requests are subject to approval and may incur additional
-                      fees. Please contact us on Facebook to arrange early
+                      fees. Please message us on Facebook to arrange early
                       check-in.
                     </p>
                   </div>
                 )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid min-w-0 grid-cols-2 gap-4 [&>*]:min-w-0">
                 <FormField
                   control={form.control}
                   name="checkOutDate"
@@ -1110,7 +1115,12 @@ export function GuestForm() {
                     <FormItem>
                       <FormLabel>Check-out Time</FormLabel>
                       <FormControl>
-                        <Input type="time" placeholder="11:00 am" {...field} />
+                        <Input
+                          type="time"
+                          placeholder="11:00 am"
+                          className="min-w-0"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1292,7 +1302,7 @@ export function GuestForm() {
                 name="primaryGuestName"
                 render={({ field }) => (
                   <FormItem>
-                    <div className="flex flex-col mb-2 space-y-2">
+                    <div className="flex flex-col pt-4 mb-2 space-y-2">
                       <FormLabel>
                         1. Primary Guest - Name{' '}
                         <span className="text-red-500">*</span>
