@@ -1278,11 +1278,11 @@ export function GuestForm() {
                   role="alert"
                 >
                   <p className="text-sm font-medium">
-                    Please note that Azure North only allows a maximum of 4 pax
-                    on the guest form. However, our unit can accommodate up to 4
-                    adults and 2 children. But if you're more than 4 adults,
-                    please inform us directly on our Facebook page so that we
-                    can accommodate you.
+                    Azure North&apos;s official guest form is limited to 4
+                    registered guests but our unit can host up to 4 adults and 2
+                    children (total of 6 guests). Guests with more than 4 adults
+                    should message us on Facebook so we can coordinate
+                    arrangements with you.
                   </p>
                 </div>
               )}
@@ -1981,7 +1981,7 @@ export function GuestForm() {
                     <FormControl>
                       <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
                         {validIdImageLoadError ? (
-                          <div className="flex flex-col gap-2 justify-center items-center w-full h-full p-4 text-center text-sm text-amber-700 bg-amber-50">
+                          <div className="flex flex-col gap-2 justify-center items-center p-4 w-full h-full text-sm text-center text-amber-700 bg-amber-50">
                             <p>
                               Image could not be loaded (link may be outdated).
                             </p>
