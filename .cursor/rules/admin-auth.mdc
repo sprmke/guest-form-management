@@ -1,0 +1,98 @@
+---
+description: Admin authentication (Supabase Google OAuth + allow list) and dev-mode rules for the new /bookings dashboard
+alwaysApply: true
+---
+
+# Admin auth — agent reference
+
+Applies whenever a change touches the `/bookings` routes, the new admin-only edge functions, or anything that used to be gated by `?dev=true` / `?testing=true`.
+
+## 1. Auth model
+
+- Provider: **Supabase Auth** with **Google OAuth**.
+- Client: `@supabase/supabase-js` (add to `ui/package.json` when implementing).
+- Single shared Supabase client: `ui/src/lib/supabaseClient.ts`.
+- Entry point: a new `/sign-in` route that calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: <origin>/bookings } })`.
+
+## 2. Allow list
+
+- Only these emails may access admin routes and admin edge functions:
+  - **Config**: `ADMIN_ALLOWED_EMAILS` — comma-separated env var in `supabase/.env.local` and Supabase dashboard.
+  - **Default value**: `kamehome.azurenorth@gmail.com`.
+- The allow list is enforced **server-side** on every admin edge function via `_shared/auth.ts#verifyAdminJwt(req)`. Never trust the client.
+- Client also reads `ADMIN_ALLOWED_EMAILS` (via `VITE_ADMIN_ALLOWED_EMAILS`) for an immediate UX reject, but never as the only gate.
+
+## 3. Route guards (UI)
+
+- New component: `ui/src/features/admin/components/RequireAdmin.tsx`.
+  - Shows a loader while the session hydrates.
+  - Redirects to `/sign-in` if unauthenticated.
+  - Shows "Not authorized" if the email is not in the allow list (signs the user out).
+- Applied to: `/bookings`, `/bookings/:bookingId`, and any other admin route added later.
+- The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
+
+## 4. Dev mode & testing mode — new rules
+
+The old query-parameter controls go away:
+
+- ❌ `?dev=true` — removed. An admin session automatically enables dev controls on guest-form views.
+- ❌ `?testing=true` — removed from the public form. Replaced by a dedicated **Test Submit** button available only when the admin session is active (or when the environment is non-production).
+- ✅ **Admin session implies dev mode.** When `useAdminSession()` reports an authenticated admin, the guest form shows the dev controls panel and the Test Submit button.
+- ✅ **Non-production envs** (`import.meta.env.VITE_NODE_ENV !== 'production'`) still show dev controls without requiring admin login for local development.
+
+### Submit button semantics
+
+| Button            | Behavior                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| **Submit**        | Real booking. Server sets `status = PENDING_REVIEW`, `is_test_booking = false`.       |
+| **Test Submit**   | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`.    |
+
+Test bookings:
+
+- Prefix `[TEST] ` on primary guest name, storage objects, calendar/sheet titles (human readability).
+- Are filtered out of `/bookings` by default (toggleable filter).
+- **Never send email in production**, regardless of other toggles (`DENO_DEPLOYMENT_ID` + `is_test_booking` ⇒ force `sendEmail = false`).
+- Are subject to `cleanup-test-data` wipe.
+
+## 5. Dev controls panel (admin detail page)
+
+Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
+
+| Checkbox                          | Shown when                  | Replaces the old            |
+| --------------------------------- | --------------------------- | --------------------------- |
+| Save to database                  | always                      | `saveToDatabase`            |
+| Save images to storage            | always                      | `saveImagesToStorage`       |
+| Generate PDF                      | always                      | `generatePdf`               |
+| **Send GAF request email**        | always                      | renamed from `Send email notification` |
+| **Send Parking broadcast email**  | only when `need_parking`    | new                         |
+| **Send Pet request email**        | only when `has_pets`        | new                         |
+| Update Google Calendar            | always                      | `updateGoogleCalendar`      |
+| Update Google Sheets              | always                      | `updateGoogleSheets`        |
+
+All checkboxes start **unchecked**. In production they are authoritative — flipping them off means "really don't do it".
+
+## 6. Server contract
+
+- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`) set `verify_jwt = true` in `supabase/config.toml` and must call `verifyAdminJwt(req)` as the first line of the handler.
+- The public functions (`submit-form`, `get-form`, `get-booked-dates`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
+
+## 7. Env vars summary (new)
+
+| Var                               | Scope | Purpose                                          |
+| --------------------------------- | ----- | ------------------------------------------------ |
+| `ADMIN_ALLOWED_EMAILS`            | edge  | Comma-separated allow list (server-enforced).    |
+| `VITE_ADMIN_ALLOWED_EMAILS`       | UI    | UX reject only; never the only gate.             |
+| `PARKING_OWNER_EMAILS`            | edge  | Comma-separated BCC list for parking broadcast.  |
+| `GMAIL_OAUTH_CLIENT_ID`           | edge  | Gmail listener OAuth.                            |
+| `GMAIL_OAUTH_CLIENT_SECRET`       | edge  | Gmail listener OAuth.                            |
+| `GMAIL_OAUTH_REFRESH_TOKEN`       | edge  | Gmail listener OAuth (for `kamehome.azurenorth`).|
+| `SD_REFUND_CRON_GRACE_MINUTES`    | edge  | Default `15`; post-checkout grace period.        |
+
+Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
+
+## 8. Don'ts
+
+- Don't pass JWTs or admin emails through URL query strings.
+- Don't add a second Supabase client — share `ui/src/lib/supabaseClient.ts`.
+- Don't hardcode `kamehome.azurenorth@gmail.com` in code; read from env.
+- Don't build admin features that work without `verifyAdminJwt` server-side — the allow list is the one real gate.

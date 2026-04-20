@@ -1,0 +1,135 @@
+---
+description: Booking status state machine, transition side effects, and the "which file do I edit?" map for the new booking flow
+alwaysApply: true
+---
+
+# Booking workflow — agent reference
+
+This rule is the single source of truth for the **new booking lifecycle** described in `docs/NEW_FLOW_PLAN.md` (plan) and `docs/NEW FLOW.md` (original spec).
+
+Whenever a task touches **booking state, emails, calendar events, sheet rows, PDF persistence, or the admin dashboard**, start here.
+
+## 1. Status enum (canonical)
+
+Use the string literals below in DB, code, and UI. Keep a single source (`supabase/functions/_shared/statusMachine.ts` on the server, `ui/src/features/admin/lib/workflow.ts` on the client — keep in sync).
+
+```
+PENDING_REVIEW
+PENDING_GAF
+PENDING_PARKING_REQUEST
+PENDING_PET_REQUEST
+READY_FOR_CHECKIN
+PENDING_SD_REFUND
+COMPLETED
+CANCELLED
+```
+
+> Legacy DB rows have `status = 'booked'` (or `'canceled'`). The migration in `supabase/migrations/2026…_add_booking_status_enum.sql` is responsible for mapping them (see `docs/NEW_FLOW_PLAN.md` Q1.1 for the final decision).
+
+## 2. Allowed transitions
+
+```
+PENDING_REVIEW          → PENDING_GAF | CANCELLED
+PENDING_GAF             → PENDING_PARKING_REQUEST | PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
+PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
+PENDING_PET_REQUEST     → READY_FOR_CHECKIN | CANCELLED
+READY_FOR_CHECKIN       → PENDING_SD_REFUND | CANCELLED
+PENDING_SD_REFUND       → COMPLETED | CANCELLED
+COMPLETED               → (terminal)
+CANCELLED               → (terminal)
+```
+
+Any transition not in this list is a bug. The server **must** validate before writing.
+
+## 3. Side-effect matrix
+
+Each transition fans out a known set of side effects. Implement them inside `_shared/workflowOrchestrator.ts` and call it from the `transition-booking` edge function.
+
+| From → To                                    | DB | Storage             | Calendar            | Sheet | Email(s)                                                                              |
+| -------------------------------------------- | -- | ------------------- | ------------------- | ----- | ------------------------------------------------------------------------------------- |
+| (guest submit) → PENDING_REVIEW              | ✅ | ✅ (uploads + PDF)  | ❌                  | ❌    | ❌                                                                                    |
+| PENDING_REVIEW → PENDING_GAF                 | ✅ | —                   | ✅ yellow, retitle  | ✅   | GAF request (Azure), booking acknowledgement (guest), pet request if pets, parking broadcast if parking |
+| PENDING_GAF → PENDING_PARKING_REQUEST        | ✅ | ✅ save approved GAF | ✅ yellow, retitle | ✅   | ❌                                                                                    |
+| PENDING_GAF → PENDING_PET_REQUEST            | ✅ | ✅ save approved GAF | ✅ yellow, retitle | ✅   | ❌                                                                                    |
+| PENDING_GAF → READY_FOR_CHECKIN              | ✅ | ✅ save approved GAF | ✅ green, retitle  | ✅   | Ready-for-check-in (guest)                                                            |
+| PENDING_PARKING_REQUEST → PENDING_PET_REQUEST| ✅ | ✅ parking endorsement | ✅ yellow, retitle | ✅ | ❌                                                                                    |
+| PENDING_PARKING_REQUEST → READY_FOR_CHECKIN  | ✅ | ✅ parking endorsement | ✅ green, retitle  | ✅ | Ready-for-check-in (guest)                                                            |
+| PENDING_PET_REQUEST → READY_FOR_CHECKIN      | ✅ | ✅ save approved pet PDF | ✅ green, retitle | ✅ | Ready-for-check-in (guest)                                                            |
+| READY_FOR_CHECKIN → PENDING_SD_REFUND (cron) | ✅ | —                   | ✅ orange, retitle | ✅   | ❌                                                                                    |
+| PENDING_SD_REFUND → COMPLETED                | ✅ | —                   | ✅ blue, retitle   | ✅   | ❌ (or send refund receipt if product wants — confirm)                                |
+| any → CANCELLED                              | ✅ | —                   | ✅ purple, retitle | ✅   | ❌ (keep existing cancel behavior)                                                    |
+
+Rules:
+
+- **Never CC the guest** on the GAF-request and pet-request emails to Azure.
+- **The guest acknowledgement email** (to guest) is separate and only goes out on `PENDING_REVIEW → PENDING_GAF`.
+- The **parking broadcast email** uses BCC to all addresses in `PARKING_OWNER_EMAILS`.
+
+## 4. Calendar color + title map
+
+Implement once in `_shared/calendarService.ts`; the orchestrator passes the target status.
+
+| Status                    | `colorId` | Title prefix                |
+| ------------------------- | --------- | --------------------------- |
+| PENDING_REVIEW            | `11`      | `[PENDING REVIEW]`          |
+| PENDING_GAF               | `5`       | `[PENDING GAF]`             |
+| PENDING_PARKING_REQUEST   | `5`       | `[PENDING PARKING REQUEST]` |
+| PENDING_PET_REQUEST       | `5`       | `[PENDING PET REQUEST]`     |
+| READY_FOR_CHECKIN         | `10`      | `[READY FOR CHECK-IN]`      |
+| PENDING_SD_REFUND         | `6`       | `[PENDING SD REFUND]`       |
+| COMPLETED                 | `9`       | `[COMPLETED]`               |
+| CANCELLED                 | `3`       | `[CANCELED]`                |
+
+Full title format: `{prefix} {pax}pax {nights}night(s) - {guestFacebookName}`.
+Test bookings still prepend `[TEST] ` before the status prefix.
+
+## 5. "Where do I edit this?" map
+
+When the task is…
+
+| Concern                                       | File / folder                                                                                        |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Status enum, transition graph, color/title map | `supabase/functions/_shared/statusMachine.ts` (create) + mirror in `ui/src/features/admin/lib/workflow.ts` |
+| Apply side effects for a transition           | `supabase/functions/_shared/workflowOrchestrator.ts` (create)                                        |
+| Transition endpoint                           | `supabase/functions/transition-booking/index.ts` (create)                                            |
+| Admin booking list endpoint                   | `supabase/functions/list-bookings/index.ts` (create)                                                 |
+| Gmail approval listener                       | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create)                     |
+| SD refund cron                                | `supabase/functions/sd-refund-cron/index.ts` (create)                                                |
+| Parking broadcast email                       | `supabase/functions/parking-broadcast-email/index.ts` (create)                                       |
+| Drop side effects from submit                 | `supabase/functions/submit-form/index.ts` (edit)                                                     |
+| Calendar color/title                          | `supabase/functions/_shared/calendarService.ts` (edit — replace `colorId: 2` literal with map)       |
+| Sheet columns (add new ones)                  | `supabase/functions/_shared/sheetsService.ts` (edit — widen beyond AK)                               |
+| New email templates                           | `supabase/functions/_shared/emailService.ts` + `_shared/templates/` (edit / add)                     |
+| DB columns                                    | `supabase/migrations/2026…*.sql` (add new migrations — never edit shipped ones)                      |
+| Overlap check (non-CANCELLED blocks)          | `supabase/functions/_shared/databaseService.ts` → `checkOverlappingBookings`                         |
+| Admin UI (auth + list + detail)               | `ui/src/features/admin/**` (create)                                                                  |
+| Remove `?dev=true` / `?testing=true`          | `ui/src/features/guest-form/components/GuestForm.tsx` + `CalendarPage.tsx` + calendar URL builder    |
+| Test Submit button                            | `ui/src/features/guest-form/components/GuestForm.tsx`                                                |
+
+## 6. Invariants (tests should cover these)
+
+- `submit-form` never calls `sendEmail`, `CalendarService`, or `SheetsService`.
+- Only `workflowOrchestrator.transition()` mutates `status` and `status_updated_at`.
+- `get-booked-dates` returns everything where `status <> 'CANCELLED'` (not just `'booked'`).
+- Test bookings (`is_test_booking = true`) never send email in production, even when the dev checkbox is on.
+- Calendar event summary always matches `status → colorId` map; drift means orchestration is broken.
+- Gmail listener processes every `message.id` **at most once** (idempotency via `processed_emails` table).
+
+## 7. Don'ts
+
+- Don't re-introduce `?dev=true` / `?testing=true` query params in UI code.
+- Don't compare against the legacy string `'booked'` — use the enum.
+- Don't put calendar/sheet/email calls inside `DatabaseService`; keep services single-responsibility.
+- Don't add side effects inline to transition endpoints — go through the orchestrator so every caller (UI, Gmail listener, cron) behaves identically.
+- Don't forget to update `docs/PROJECT.md` and `docs/TODOS.md` per `documentation-maintenance.mdc`.
+
+## 8. Related docs & rules
+
+- `docs/NEW_FLOW_PLAN.md` — full plan, open questions, phased rollout.
+- `docs/NEW FLOW.md` — original product spec.
+- `docs/PROJECT.md` — current architecture (pre-redesign).
+- `.cursor/rules/admin-auth.mdc` — admin auth specifics.
+- `.cursor/rules/supabase-edge-functions.mdc` — edge function conventions.
+- `.cursor/skills/booking-workflow/SKILL.md` — operational walkthrough.
+- `.cursor/skills/gmail-listener/SKILL.md` — Gmail OAuth + idempotency.
+- `.cursor/skills/admin-dashboard/SKILL.md` — list + detail page patterns.

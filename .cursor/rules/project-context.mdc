@@ -1,52 +1,98 @@
 ---
-description: Guest Form Management monorepo — stack, flows, and where to change code
+description: Guest Form Management — stack, flows, and where to change code. Always start here.
 alwaysApply: true
 ---
 
 # Guest Form Management — agent context
 
-Read **`docs/PROJECT.md`** for full architecture, API tables, env vars, and roadmap vs implementation.
+**Start every task by reading:**
+
+1. `docs/PROJECT.md` — current architecture, API tables, env vars, routes.
+2. `docs/TODOS.md` — shipped/planned backlog (do not assume a feature exists).
+3. `docs/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
+4. `docs/NEW FLOW.md` — original product spec for the redesign.
 
 ## What this is
 
-Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functions** (Deno) under `supabase/functions/`. Data lives in Postgres table **`guest_submissions`**; files in **Supabase Storage**. Optional **Resend**, **Google Calendar**, and **Google Sheets** run from the same submit pipeline.
+Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functions** (Deno) under `supabase/functions/`. Data lives in Postgres table **`guest_submissions`**; files in **Supabase Storage**. Emails via **Resend**, calendar via **Google Calendar API**, spreadsheet via **Google Sheets API**, all from inside edge functions.
+
+### Tech stack (authoritative)
+
+- **Frontend**: Vite + React 18 + React Router 6 + Tailwind + shadcn-style primitives + React Hook Form + Zod + Sonner + Lucide icons.
+- **Backend**: Supabase Edge Functions (Deno), remote URL imports. **No Node API, no tRPC, no Drizzle.**
+- **DB**: Supabase Postgres, plain SQL migrations in `supabase/migrations/`. (No ORM — direct `@supabase/supabase-js` from edge functions.)
+- **Auth**: None today on public flows. New admin flow adds **Supabase Auth + Google OAuth** for `/bookings` (see `admin-auth.mdc`).
+- **Storage**: Supabase Storage (not AWS S3).
+
+If a rule, skill, or doc references Next.js, React 19 RSC, tRPC, Drizzle, Neon, Bun, `packages/emails`, `apps/web`, or multi-tenancy → **that content is stale/wrong for this repo** and should be flagged or deleted.
 
 ## Monorepo gotcha
 
-Root `package.json` workspaces list `api`, but **there is no `api/` package**—backend logic is only Edge Functions. Prefer `npm run dev` / `dev.sh` and `cd ui && npm run dev`.
+Root `package.json` workspaces list `api`, but **there is no `api/` package**. Use `npm run dev` / `dev.sh` at the root and `cd ui && npm run dev` for the SPA.
 
-## Routes (current)
+## Routes
 
-- `/` — guest form (`GuestFormPage`)
-- `/calendar` — date picker; proceeds to `/?checkInDate=&checkOutDate=`
-- `/success` — needs `bookingId` query param; summary from `navigate` state
+### Current (public)
 
-Planned route change (calendar at root, `/form`) is in `TODOS.md`, not implemented.
+- `/` — calendar (`CalendarPage`); **Proceed** → `/form?checkInDate=&checkOutDate=`. Legacy `/?bookingId=` links redirect to `/form`.
+- `/calendar` — same calendar component as `/`.
+- `/form` — guest form (`GuestFormPage`); requires dates **or** `bookingId`, else redirect to `/`.
+- `/success` — needs `bookingId` query param; summary from `navigate` state.
 
-## When editing the form
+### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
+
+- `/sign-in` — Google OAuth for admin.
+- `/bookings` — admin dashboard (list with search / filter / sort / pagination).
+- `/bookings/:bookingId` — detail page; renders the guest form with dev controls + workflow panel.
+
+## When editing the guest form
 
 - Schema: `ui/src/features/guest-form/schemas/guestFormSchema.ts`
 - Large UI: `ui/src/features/guest-form/components/GuestForm.tsx` (dev controls, submit `FormData`, clipboard recovery)
-- Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports
+- Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports.
 
 ## When editing submit behavior
 
 - Entry: `supabase/functions/submit-form/index.ts`
-- DB + overlap + uploads: `supabase/functions/_shared/databaseService.ts`
-- No-op updates: `compareFormData` in `supabase/functions/_shared/utils.ts` (must stay aligned with DB columns / form field names)
-- Query flags: `saveToDatabase`, `saveImagesToStorage`, `generatePdf`, `sendEmail`, `updateGoogleCalendar`, `updateGoogleSheets`, `testing` — defaults differ prod vs dev panel (see `docs/PROJECT.md`)
+- Shared services: `supabase/functions/_shared/{databaseService,calendarService,sheetsService,emailService,pdfService,uploadService}.ts`
+- Field-level diff for no-op updates: `compareFormData` in `_shared/utils.ts` — **must** stay in sync with DB columns and form field names.
+- Under the **new flow**, `submit-form` only saves DB + storage + PDF. Email/calendar/sheet side effects move to `transition-booking`. See `booking-workflow.mdc`.
 
-## Booking lifecycle
+## When touching booking status, admin UI, emails, calendar, sheets
 
-- **Active** rows use `status` not equal to `canceled` (default `booked`)
-- **Cancel** (`cancel-booking`): soft cancel — keeps DB and files; marks calendar/sheet canceled; frees dates for overlap + `get-booked-dates`
-- **Canceled** excluded from overlap checks and booked-date API
+Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
+
+- Status enum (8 values)
+- Allowed transition graph
+- Side-effect matrix per transition
+- Calendar `colorId` + title prefix map
+- "Where do I edit this?" file map
+- Invariants (don't break these)
 
 ## Conventions
 
-- Dates in DB submission path are **MM-DD-YYYY** text; UI often uses **YYYY-MM-DD** — reuse `formatDate` / normalizers in `_shared/utils.ts` and `ui/src/utils/dates.ts`
-- Do not commit secrets; local secrets live in `supabase/.env.local` (not in repo)
+- **Dates**: DB submission path uses **MM-DD-YYYY** text; UI often uses **YYYY-MM-DD**. Reuse `formatDate` / normalizers in `_shared/utils.ts` and `ui/src/utils/dates.ts`.
+- **Timezone**: `Asia/Manila` for everything user-visible (urgency checks, SD refund cron, check-in reminders).
+- **Secrets**: Local edge secrets live in `supabase/.env.local` (gitignored). Never commit credentials. Never log service-role keys, OAuth tokens, or guest PII beyond what's necessary for debugging.
+- **Imports**: UI uses `@/` alias (`ui/tsconfig.json`). Edge functions use relative imports (`../_shared/...`) and ESM URLs (`esm.sh`, `deno.land`).
+- **Testing**: No automated tests today. If you add any, use Vitest + React Testing Library for UI and Deno test for edge functions — do not introduce Bun test.
 
-## Product backlog
+## Docs workflow
 
-`TODOS.md` tracks shipped and planned features (admin workflow, stepper, image compression, etc.)—check it before assuming a feature exists in code.
+Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, `docs/TODOS.md`, and — for redesign work — `docs/NEW_FLOW_PLAN.md` in the same change set as code. Don't leave code and docs out of sync.
+
+## Related rules
+
+- `.cursor/rules/booking-workflow.mdc` — **read before any booking-state task**.
+- `.cursor/rules/admin-auth.mdc` — **read before any /bookings or auth task**.
+- `.cursor/rules/supabase-edge-functions.mdc` — conventions for new edge functions.
+- `.cursor/rules/documentation-maintenance.mdc` — when and what docs to update.
+
+## Related skills (in `.cursor/skills/`)
+
+- `booking-workflow` — operational guide for implementing the new flow.
+- `admin-dashboard` — patterns for the `/bookings` list + detail pages.
+- `gmail-listener` — Gmail OAuth + idempotency for Azure approval emails.
+- `bookings-table` — table UI patterns for the admin list.
+- `frontend-design` — project-aware design guidance.
+- `accessibility` — WCAG 2.1 AA rules for UI work.

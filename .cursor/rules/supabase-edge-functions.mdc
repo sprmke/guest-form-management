@@ -6,11 +6,105 @@ alwaysApply: false
 
 # Edge functions
 
-- **Runtime**: Deno; remote URLs for imports (e.g. `https://deno.land/std@0.168.0/http/server.ts`, `esm.sh` for npm packages).
-- **Shared code**: `supabase/functions/_shared/` — import with relative paths (`../_shared/...`).
-- **CORS**: use `corsHeaders(req)` from `_shared/cors.ts` on every response including errors and OPTIONS.
-- **Supabase admin**: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` in services; never expose service role to the browser.
-- **Production detection**: `Deno.env.get('DENO_DEPLOYMENT_ID')` is used in `submit-form` to alter behavior (e.g. disable email when `testing=true`).
-- **JWT**: `verify_jwt` is disabled for some functions in `supabase/config.toml`; UI still sends anon key as `apikey` + `Authorization` bearer.
+## Basics
 
-When adding a new function: add handler under `supabase/functions/<name>/index.ts`, document env vars, update `docs/PROJECT.md` API table, and set `[functions.<name>]` in `config.toml` if JWT policy differs from default.
+- **Runtime**: Deno; remote URLs for imports (e.g. `https://deno.land/std@0.168.0/http/server.ts`, `esm.sh` for npm packages). Pin versions.
+- **Shared code**: `supabase/functions/_shared/` — import with relative paths (`../_shared/...`).
+- **CORS**: use `corsHeaders(req)` from `_shared/cors.ts` on every response including errors and OPTIONS preflight.
+- **Supabase admin**: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` inside services; never expose the service role key to the browser.
+- **Production detection**: `Deno.env.get('DENO_DEPLOYMENT_ID')` is used in `submit-form` and (in the new flow) in the orchestrator to force off email for test bookings in prod.
+
+## Function categories & JWT policy
+
+This repo has three categories. Set JWT policy in `supabase/config.toml` accordingly.
+
+| Category        | Functions                                                      | `verify_jwt` | Notes                                                              |
+| --------------- | -------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
+| Public (guest)  | `submit-form`, `get-form`, `get-booked-dates`                  | `false`      | UI passes anon key. Never trust request body blindly.              |
+| Admin           | `list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data` | `true`       | First line of handler must call `verifyAdminJwt(req)`.             |
+| Scheduled / internal | `gmail-listener`, `sd-refund-cron`                          | `true`       | Triggered by Supabase cron; auth via service-role token or scheduled-function signature. |
+
+## Handler skeleton (copy this)
+
+```ts
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { corsHeaders } from '../_shared/cors.ts';
+// For admin functions only:
+// import { verifyAdminJwt } from '../_shared/auth.ts';
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders(req) });
+  }
+
+  try {
+    // Admin-only: await verifyAdminJwt(req);
+
+    // ...handler body...
+
+    return new Response(JSON.stringify({ success: true, data }), {
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
+  } catch (error) {
+    console.error('Error in <function-name>:', error);
+    const status = error instanceof Response ? error.status : 400;
+    return new Response(
+      JSON.stringify({ success: false, error: (error as Error).message }),
+      { status, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+    );
+  }
+});
+```
+
+## Admin JWT verification
+
+Implement once in `_shared/auth.ts#verifyAdminJwt(req)`:
+
+1. Read `Authorization: Bearer <jwt>` from request headers.
+2. Use `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).auth.getUser(jwt)` to validate.
+3. Check `user.email` is in `ADMIN_ALLOWED_EMAILS` (comma-split).
+4. Throw a `Response` with status 401/403 on failure — the handler’s `catch` will serialize it.
+
+See `.cursor/rules/admin-auth.mdc` for the full admin contract.
+
+## Scheduled functions (new in the redesign)
+
+- Declared in `supabase/config.toml` with a cron schedule:
+
+  ```toml
+  [functions.gmail-listener]
+  verify_jwt = true
+  schedule = "*/5 * * * *"
+
+  [functions.sd-refund-cron]
+  verify_jwt = true
+  schedule = "*/5 * * * *"
+  ```
+
+- Idempotency: if a scheduled job could fire twice for the same booking/message (it can), **store a processed marker in DB** (`processed_emails` for Gmail; `status_updated_at` + state comparison for SD cron).
+- Logging: always log run summary (how many messages scanned, how many bookings advanced) so you can read Supabase logs and understand it at a glance.
+
+## Orchestrating side effects
+
+Per `booking-workflow.mdc`, **never put fan-out logic inside handler functions**. All transitions (from `transition-booking`, `gmail-listener`, `sd-refund-cron`, `cancel-booking`) call the shared `_shared/workflowOrchestrator.ts#transition(bookingId, toStatus, payload)` so:
+
+- Validation is in one place.
+- Calendar + sheet + email behavior is consistent regardless of caller.
+- New transitions require one patch, not four.
+
+## Adding a new function — checklist
+
+1. Create `supabase/functions/<name>/index.ts` using the skeleton above.
+2. Decide JWT category; set `[functions.<name>]` block in `supabase/config.toml`.
+3. If scheduled, add a `schedule = "..."` value.
+4. Document env vars in `docs/PROJECT.md` §11.
+5. Update the API table in `docs/PROJECT.md` §8.
+6. If the function participates in the booking workflow, make it go through `workflowOrchestrator`.
+7. Add a `README` comment at the top of `index.ts` with: purpose, trigger, idempotency strategy.
+
+## Don'ts
+
+- Don’t import from `ui/` into edge functions (different runtime).
+- Don’t hand-roll JWT verification — use `supabase.auth.getUser`.
+- Don’t log guest PII beyond what’s strictly needed for debugging; never log tokens.
+- Don’t create or touch buckets inline — declare them in a migration under `supabase/migrations/`.
