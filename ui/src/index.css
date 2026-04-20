@@ -252,10 +252,12 @@
 }
 
 /*
- * WebKit (iOS Safari, Chrome): native <input type="time"> uses a tall centered control
- * and ignores normal box sizing until appearance is reset (see Input `ui-native-time`).
+ * WebKit (iOS Safari, Chrome): native date/time inputs use tall centered controls and
+ * ignore normal box sizing until appearance is reset (see Input `ui-native-datetime`).
  */
-input.ui-native-time[type='time'] {
+input.ui-native-datetime[type='time'],
+input.ui-native-datetime[type='date'],
+input.ui-native-datetime[type='datetime-local'] {
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
@@ -271,12 +273,16 @@ input.ui-native-time[type='time'] {
   color-scheme: light;
 }
 
-input.ui-native-time[type='time']::-webkit-datetime-edit {
+input.ui-native-datetime[type='time']::-webkit-datetime-edit,
+input.ui-native-datetime[type='date']::-webkit-datetime-edit,
+input.ui-native-datetime[type='datetime-local']::-webkit-datetime-edit {
   margin: 0;
   padding: 0;
 }
 
-input.ui-native-time[type='time']::-webkit-datetime-edit-fields-wrapper {
+input.ui-native-datetime[type='time']::-webkit-datetime-edit-fields-wrapper,
+input.ui-native-datetime[type='date']::-webkit-datetime-edit-fields-wrapper,
+input.ui-native-datetime[type='datetime-local']::-webkit-datetime-edit-fields-wrapper {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -285,11 +291,15 @@ input.ui-native-time[type='time']::-webkit-datetime-edit-fields-wrapper {
   padding: 0;
 }
 
-input.ui-native-time[type='time']::-webkit-date-and-time-value {
+input.ui-native-datetime[type='time']::-webkit-date-and-time-value,
+input.ui-native-datetime[type='date']::-webkit-date-and-time-value,
+input.ui-native-datetime[type='datetime-local']::-webkit-date-and-time-value {
   text-align: left;
 }
 
-input.ui-native-time[type='time']::-webkit-calendar-picker-indicator {
+input.ui-native-datetime[type='time']::-webkit-calendar-picker-indicator,
+input.ui-native-datetime[type='date']::-webkit-calendar-picker-indicator,
+input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   margin-inline-start: 0.25rem;
   cursor: pointer;
