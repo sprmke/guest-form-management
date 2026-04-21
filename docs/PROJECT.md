@@ -65,14 +65,16 @@ flowchart LR
 
 ## 4. Routing and pages (current behavior)
 
-Defined in `ui/src/features/guest-form/routes/index.tsx`:
+Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/features/admin/routes/index.tsx` (admin). Both are merged in `ui/src/routes/index.tsx`.
 
-| Route       | Component              | Notes                                                                                                                                 |
-| ----------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`         | `CalendarPage`         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                     |
-| `/form`     | `GuestFormPage`        | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/` |
-| `/calendar` | `CalendarPage`         | Same as `/`                                                                                                                           |
-| `/success`  | `GuestFormSuccessPage` | Post-submit summary; requires `?bookingId=`                                                                                           |
+| Route        | Component               | Guard          | Notes                                                                                                                                 |
+| ------------ | ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`          | `CalendarPage`          | public         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                     |
+| `/form`      | `GuestFormPage`         | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/` |
+| `/calendar`  | `CalendarPage`          | public         | Same as `/`                                                                                                                           |
+| `/success`   | `GuestFormSuccessPage`  | public         | Post-submit summary; requires `?bookingId=`                                                                                           |
+| `/sign-in`   | `SignInPage`            | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                               |
+| `/bookings`  | `BookingsListPage`      | `RequireAdmin` | Phase 1 — read-only list (search, status chips, flags, 25/50/100 pagination). URL search params are the source of truth for filters.  |
 
 **Legacy links:** URLs like `/?bookingId=<uuid>` (e.g. older Google Calendar descriptions) are handled on `CalendarPage`: the app **`replace`** navigates to **`/form?bookingId=...`** (other query params are preserved).
 
@@ -110,7 +112,7 @@ Defined in `ui/src/features/guest-form/routes/index.tsx`:
 - **`?testing=true`**: prefixes `[TEST]` on primary guest name in DB, `TEST_` on storage object names, test banners/prefixes in email subjects, `[TEST]` on calendar titles and sheet name columns, etc.
 - **Production + `testing=true` + send email**: server **forces** `sendEmail` off when `DENO_DEPLOYMENT_ID` is set (deployed edge).
 - **Cleanup**: `POST /cleanup-test-data` with `{ confirm: true }` removes test-tagged data across DB/storage/calendar/sheets (see function implementation).
-- **Cancel booking (dev tools)**: `POST /cancel-booking` with `{ bookingId, confirm: true }` sets DB `status` to `canceled`, prefixes calendar summary with `[CANCELED]` and sets red color, sets sheet column **AK** to `Canceled`—**does not delete** assets or DB row.
+- **Cancel booking (dev tools)**: `POST /cancel-booking` with `{ bookingId, confirm: true }` sets DB `status` to `canceled`, prefixes calendar summary with **`[CANCELED]`** (legacy bracketed prefix) and sets red color, sets sheet column **AK** to `Canceled`—**does not delete** assets or DB row. **New booking flow** (see `docs/NEW_FLOW_PLAN.md` §1.4) switches canceled calendar titles to **`CANCELED - …` with no brackets** (except optional `[TEST] ` for test bookings).
 
 ### 5.5 Error recovery (guest-friendly)
 
@@ -128,12 +130,15 @@ Created in migrations; key points:
 - **`status`**: Added in `20250113000000_add_booking_status.sql` — values used in code: **`booked`** (active), **`canceled`**. Comments mention “booked \| canceled”; sheet uses **Booked** / **Canceled** labels.
 - **Pets**: `pet_type` added in later migration; URLs for vaccination and pet image in storage.
 - **Constraints**: Check constraints on email pattern, guest counts, parking conditional fields, pet conditional fields, date ordering, time regex (see migration).
+- **New-flow columns (Phase 0, additive — not yet consumed by Edge Functions).** Migrations `20260501000002`–`20260501000005` + `20260501000009` add nullable columns for pricing (`booking_rate`, `down_payment`, `balance`, `security_deposit`), parking (`parking_rate_guest`, `parking_rate_paid`, `parking_endorsement_url`, `parking_owner_email`), pets (`pet_fee`), SD refund stage (`sd_additional_expenses NUMERIC[]`, `sd_additional_profits NUMERIC[]`, `sd_refund_amount`, `sd_refund_receipt_url`), approval PDFs (`approved_gaf_pdf_url`, `approved_pet_pdf_url`), audit (`status_updated_at`, `settled_at`), and `is_test_booking`. New tables: `processed_emails`, `gmail_listener_state`. Backup snapshot: `guest_submissions_backup_20260501`. See `docs/NEW_FLOW_PLAN.md` §2 and `docs/MIGRATION_RUNBOOK.md`.
 
 ---
 
 ## 7. Storage
 
 Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-receipts`, `pet-vaccinations`); additional buckets appear in SQL migrations (`pet-images`, etc.). `UploadService` maps files to buckets and public URLs.
+
+**New-flow buckets (Phase 0, provisioned but not yet written):** `parking-endorsements` (public), `approved-gafs` (private), `approved-pet-forms` (private), `sd-refund-receipts` (private). Defined in `20260501000006`–`20260501000008`. See `docs/NEW_FLOW_PLAN.md` §2.
 
 ---
 
@@ -166,7 +171,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - Service account JWT → access token.
 - Events store **`bookingId`** in `extendedProperties.private` for idempotent find/update/delete.
 - Description includes link to **`https://kamehomes.space/form?bookingId=...`** with `&testing=true` or `&dev=true` for non-testing mode (see `createEventData` in `_shared/calendarService.ts`).
-- **Cancel**: search by `privateExtendedProperty`, patch summary `[CANCELED] …`, `colorId: 11`.
+- **Cancel**: search by `privateExtendedProperty`, patch summary **`[CANCELED] …`** today (`colorId: 11`); new flow uses **`CANCELED - …`** summaries + purple `colorId` per `docs/NEW_FLOW_PLAN.md` §1.4.
 
 ### 9.3 Google Sheets
 
@@ -198,8 +203,11 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 ### UI (`ui/.env` / Vite)
 
 - `VITE_API_URL` — Supabase functions base URL (local: `http://127.0.0.1:54321/functions/v1` pattern; production: project functions URL).
-- `VITE_SUPABASE_ANON_KEY` — public anon key (sent with function requests).
+- `VITE_SUPABASE_URL` — same functions base URL used by the Supabase JS client; project URL is derived by stripping `/functions/v1`.
+- `VITE_SUPABASE_ANON_KEY` — public anon key (sent with function requests and used by the Supabase JS client).
 - `VITE_NODE_ENV` — `production` toggles production-only behavior in the form.
+- `VITE_ADMIN_ALLOWED_EMAILS` *(Phase 1)* — comma-separated Google emails allowed to open `/bookings`. **UX gate only** — the server-side allow list (Phase 3) is authoritative. If unset, the UI denies every account.
+- `VITE_SUPABASE_PROJECT_URL` *(optional, Phase 1)* — override for the Supabase project URL when the auto-derivation from `VITE_SUPABASE_URL` is unwanted.
 
 ### Edge (`supabase/.env.local` / hosted secrets)
 

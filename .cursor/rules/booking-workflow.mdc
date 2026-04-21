@@ -11,7 +11,7 @@ Whenever a task touches **booking state, emails, calendar events, sheet rows, PD
 
 ## 1. Status enum (canonical)
 
-Use the string literals below in DB, code, and UI. Keep a single source (`supabase/functions/_shared/statusMachine.ts` on the server, `ui/src/features/admin/lib/workflow.ts` on the client — keep in sync).
+Use the string literals below in DB, code, and UI. **Postgres storage:** `TEXT` + `CHECK (status IN (...))` — see `docs/NEW_FLOW_PLAN.md` §6.1 **Q1.3** (avoid Postgres `ENUM` churn). Keep a single source (`supabase/functions/_shared/statusMachine.ts` on the server, `ui/src/features/admin/lib/workflow.ts` on the client — keep in sync).
 
 ```
 PENDING_REVIEW
@@ -24,9 +24,11 @@ COMPLETED
 CANCELLED
 ```
 
-> Legacy DB rows have `status = 'booked'` (or `'canceled'`). The migration in `supabase/migrations/2026…_add_booking_status_enum.sql` is responsible for mapping them (see `docs/NEW_FLOW_PLAN.md` Q1.1 for the final decision).
+> Legacy DB rows have `status = 'booked'` (or `'canceled'`). The migration maps them per **`docs/NEW_FLOW_PLAN.md` §6.1 Q1.1**: check-in **before today (Asia/Manila)** → `COMPLETED`; check-in **today or future** → `PENDING_REVIEW`; canceled rows → `CANCELLED`.
 
 ## 2. Allowed transitions
+
+### 2.1 Primary workflow (happy path + cancel)
 
 ```
 PENDING_REVIEW          → PENDING_GAF | CANCELLED
@@ -39,7 +41,30 @@ COMPLETED               → (terminal)
 CANCELLED               → (terminal)
 ```
 
-Any transition not in this list is a bug. The server **must** validate before writing.
+### 2.2 Admin-only exceptional transitions
+
+These exist so humans can recover when automation lags or guest data changes late:
+
+```
+READY_FOR_CHECKIN       → PENDING_REVIEW   # guest fields edited in admin after ready (see §2.3)
+```
+
+**Manual "force advance"** (workflow panel): admins must be able to trigger transitions that would normally be fired by **cron** or the **Gmail listener** when those automations are late or skipped.
+
+Implementation rule: keep **two layers** in `statusMachine.ts`:
+
+1. `canTransition(from, to)` — strict graph for automation + normal admin clicks.
+2. `canManualForceTransition(from, to, ctx)` — **small explicit allow-list** of extra edges (e.g. `READY_FOR_CHECKIN → PENDING_SD_REFUND` even before cron, `PENDING_GAF → READY_FOR_CHECKIN` when the approved PDF was uploaded manually, etc.). **Never** accept arbitrary `{ toStatus }` from the client without this second check.
+
+`transition-booking` always calls the orchestrator with `{ manual: true | false }` so the server can tell which validator ran.
+
+The server **must** validate every transition before writing. **Manual advances** and **cron/listener** calls must all go through `workflowOrchestrator.transition()` — never duplicate side-effect logic in callers.
+
+### 2.3 Guest-field edit → revert to review
+
+When `status === READY_FOR_CHECKIN` and an admin saves **material changes** to guest-facing booking fields (dates, guest counts, names, contact, parking/pet flags, uploads, etc.), **set `status` back to `PENDING_REVIEW`** (and update `status_updated_at`). Fan-out (calendar color/title, sheet status column) follows the **new** status.
+
+**Dev-control checkboxes** (save DB, storage, PDF, each email toggle, calendar, sheet) still apply to **every** submit/save — reverting status never bypasses them.
 
 ## 3. Side-effect matrix
 
@@ -63,25 +88,33 @@ Rules:
 
 - **Never CC the guest** on the GAF-request and pet-request emails to Azure.
 - **The guest acknowledgement email** (to guest) is separate and only goes out on `PENDING_REVIEW → PENDING_GAF`.
-- The **parking broadcast email** uses BCC to all addresses in `PARKING_OWNER_EMAILS`.
+- The **parking broadcast email** uses BCC to all addresses in `PARKING_OWNER_EMAILS` (comma-separated env var; initial seed list documented in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1).
+- **Parking owner replies** are **manual** in v1 — no Gmail listener for parking threads.
 
 ## 4. Calendar color + title map
 
 Implement once in `_shared/calendarService.ts`; the orchestrator passes the target status.
 
-| Status                    | `colorId` | Title prefix                |
-| ------------------------- | --------- | --------------------------- |
-| PENDING_REVIEW            | `11`      | `[PENDING REVIEW]`          |
-| PENDING_GAF               | `5`       | `[PENDING GAF]`             |
-| PENDING_PARKING_REQUEST   | `5`       | `[PENDING PARKING REQUEST]` |
-| PENDING_PET_REQUEST       | `5`       | `[PENDING PET REQUEST]`     |
-| READY_FOR_CHECKIN         | `10`      | `[READY FOR CHECK-IN]`      |
-| PENDING_SD_REFUND         | `6`       | `[PENDING SD REFUND]`       |
-| COMPLETED                 | `9`       | `[COMPLETED]`               |
-| CANCELLED                 | `3`       | `[CANCELED]`                |
+**No square brackets around status labels in production.** Full Google Calendar `summary`:
 
-Full title format: `{prefix} {pax}pax {nights}night(s) - {guestFacebookName}`.
-Test bookings still prepend `[TEST] ` before the status prefix.
+`{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
+
+Example: `PENDING REVIEW - 2pax 2nights - Kyle Soriano`
+
+For **test bookings only**, prepend **`[TEST] `** before the status label: `[TEST] PENDING REVIEW - 2pax 2nights - Kyle Soriano`.
+
+| Status                    | `colorId` | `STATUS LABEL` (first segment of `summary`) |
+| ------------------------- | --------- | ------------------------------------------- |
+| PENDING_REVIEW            | `11`      | `PENDING REVIEW`                            |
+| PENDING_GAF               | `5`       | `PENDING GAF`                               |
+| PENDING_PARKING_REQUEST   | `5`       | `PENDING PARKING REQUEST`                   |
+| PENDING_PET_REQUEST       | `5`       | `PENDING PET REQUEST`                       |
+| READY_FOR_CHECKIN         | `10`      | `READY FOR CHECK-IN`                        |
+| PENDING_SD_REFUND         | `6`       | `PENDING SD REFUND`                         |
+| COMPLETED                 | `9`       | `COMPLETED`                                 |
+| CANCELLED                 | `3`       | `CANCELED`                                  |
+
+Canceled spelling **`CANCELED`** matches today’s cancel-booking UX copy; the **DB `status` literal** remains **`CANCELLED`** (calendar `summary` uses `CANCELED`).
 
 ## 5. "Where do I edit this?" map
 
@@ -93,7 +126,7 @@ When the task is…
 | Apply side effects for a transition           | `supabase/functions/_shared/workflowOrchestrator.ts` (create)                                        |
 | Transition endpoint                           | `supabase/functions/transition-booking/index.ts` (create)                                            |
 | Admin booking list endpoint                   | `supabase/functions/list-bookings/index.ts` (create)                                                 |
-| Gmail approval listener                       | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create)                     |
+| Gmail approval listener                       | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create) — port **OAuth + `users.history.list` incremental polling + `messages.get(full)` attachment download** from `automated-tasks/pay-credit-cards` (`src/gmail-*.ts`), persisting `historyId` in **`gmail_listener_state`** (not a local JSON file) |
 | SD refund cron                                | `supabase/functions/sd-refund-cron/index.ts` (create)                                                |
 | Parking broadcast email                       | `supabase/functions/parking-broadcast-email/index.ts` (create)                                       |
 | Drop side effects from submit                 | `supabase/functions/submit-form/index.ts` (edit)                                                     |
@@ -109,27 +142,27 @@ When the task is…
 ## 6. Invariants (tests should cover these)
 
 - `submit-form` never calls `sendEmail`, `CalendarService`, or `SheetsService`.
-- Only `workflowOrchestrator.transition()` mutates `status` and `status_updated_at`.
+- Only `workflowOrchestrator.transition()` mutates `status` and `status_updated_at` (including manual admin overrides and the `READY_FOR_CHECKIN → PENDING_REVIEW` revert on guest-field edits).
 - `get-booked-dates` returns everything where `status <> 'CANCELLED'` (not just `'booked'`).
-- Test bookings (`is_test_booking = true`) never send email in production, even when the dev checkbox is on.
+- Test bookings (`is_test_booking = true`) in **production** never send outbound email, never write Calendar, and never write Sheet — even if an admin checkbox is on (**`NEW_FLOW_PLAN.md` §6.1 Q3.4**).
 - Calendar event summary always matches `status → colorId` map; drift means orchestration is broken.
 - Gmail listener processes every `message.id` **at most once** (idempotency via `processed_emails` table).
 
 ## 7. Don'ts
 
 - Don't re-introduce `?dev=true` / `?testing=true` query params in UI code.
-- Don't compare against the legacy string `'booked'` — use the enum.
+- After the migration ships, **application code** should treat `status` as the **new canonical literals only**. The migration itself may still read legacy `'booked'` / `'canceled'` — that's OK, but delete dead branches once backfill is done.
 - Don't put calendar/sheet/email calls inside `DatabaseService`; keep services single-responsibility.
 - Don't add side effects inline to transition endpoints — go through the orchestrator so every caller (UI, Gmail listener, cron) behaves identically.
 - Don't forget to update `docs/PROJECT.md` and `docs/TODOS.md` per `documentation-maintenance.mdc`.
 
 ## 8. Related docs & rules
 
-- `docs/NEW_FLOW_PLAN.md` — full plan, open questions, phased rollout.
+- `docs/NEW_FLOW_PLAN.md` — full plan, **§6.1 decisions**, **§6.2** minor refinements, phased rollout.
 - `docs/NEW FLOW.md` — original product spec.
 - `docs/PROJECT.md` — current architecture (pre-redesign).
 - `.cursor/rules/admin-auth.mdc` — admin auth specifics.
 - `.cursor/rules/supabase-edge-functions.mdc` — edge function conventions.
 - `.cursor/skills/booking-workflow/SKILL.md` — operational walkthrough.
-- `.cursor/skills/gmail-listener/SKILL.md` — Gmail OAuth + idempotency.
+- `.cursor/skills/gmail-listener/SKILL.md` — Gmail OAuth + history polling + idempotency.
 - `.cursor/skills/admin-dashboard/SKILL.md` — list + detail page patterns.

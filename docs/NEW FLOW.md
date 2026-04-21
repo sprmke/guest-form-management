@@ -1,13 +1,13 @@
 - Let's improve our booking process flow
 
   **After the guest submits the form**
-  - Automatically: generate the PDF.
+  - Automatically: generate the PDF (unchanged post-redesign; admin/update flows still respect a **Generate PDF** toggle in **admin-only** dev controls — see `docs/NEW_FLOW_PLAN.md` §6.1 **Q3.1** / **Q3.2**).
   - Do **not** run automatically: email Azure, create or update the Google Calendar event, save assets to Supabase storage, add or update the Google Sheet row.
   - The unit owner reviews the guest form and moves the booking through the steps below.
 
   **Booking statuses**
   - **PENDING REVIEW** — Guest finished the form; unit owner or admin must review.
-    - Google Calendar: **red** [PENDING REVIEW - 2pax 2nights - Guest Name]
+    - Google Calendar: **red** `PENDING REVIEW - 2pax 2nights - Guest Name` (event `summary` — **no `[]` brackets** around the status; test bookings may still prefix `[TEST] ` per env)
     - On this step, add new section from the guest form where we can enter the exact booking rate, down payment, balance (read-only, auto-compute), parking rate (if enabled), pet fee (if enabled).
     - After clicking (Proceed to 'PENDING GAF'), send the GAF request email to Azure for approval (Do **not** CC the guest on this step).
     - Then, update the database, Google Calendar, and Google Sheet with new fields info and new status
@@ -21,23 +21,22 @@
     - Please generate an email content that basically says that we are looking for parking for this booking date. Please reply if your parking is available and the lowest price you can give.
 
   - **PENDING GAF** — GAF request sent; waiting for Azure approval.
-    - Google Calendar: **yellow** [PENDING GAF - 2pax 2nights - Guest Name]
+    - Google Calendar: **yellow** `PENDING GAF - 2pax 2nights - Guest Name`
     - Email listener/watcher: detect Azure’s GAF approval email; parse the date range to get the booking id / context.
       - Once we receive the approved GAF pdf, let's automatically execute the storage service so that we should save the PDF on Supabase storage which will be sent on 'Ready for check-in' stage
-      - Please refer on pay-credit-card project on how we listen from gmail emails and execute actions. I'll provide this repo.
+      - Reference Gmail automation: `/Users/michaelmanlulu/Projects/personal-projects/automated-tasks/pay-credit-cards/` — read `docs/SETUP.md` + `src/gmail-auth.ts`, `src/gmail.ts`, `src/gmail-history.ts`, `src/gmail-poll-new-soa.ts` (OAuth + `historyId` incremental poll + attachment download pattern).
     - Then, we should automatically update the status to 'PENDING PARKING REQUEST' (if enabled) or 'PENDING PET REQUEST' (if enabled) otherwise update the status to 'READY FOR CHECK-IN' status on database, Google Calendar and Google Sheet.
 
   - **PENDING PARKING REQUEST** — Parking is enabled; waiting on parking details.
-    - Google Calendar: **yellow** [PENDING PARKING REQUEST - 2pax 2nights - Guest Name]
+    - Google Calendar: **yellow** `PENDING PARKING REQUEST - 2pax 2nights - Guest Name`
     - On this step, we will just check the replies from parking owners and choose which is available and has lowest parking rate
-    - Reply to the selected parking owner and pay them.
-    - Then, let's wait for confirmed parking details, if we can automatically screenshot the email reply as image then save it to Supabase which will be send to our guest on 'ready for check-in' stage. If that's not possible, let's display a new image upload field for parking endorsement image.
-    - On that new section, let's also display a new input field to enter how much is the parking rate we paid to parking owners
-    - We should have 2 parking rate fields: Parking Rate - paid by guest to us. Parking Rate Paid - paid by us to parking owners. Please improve name/label for this
+    - Reply to the selected parking owner and pay them (**manual** — no auto “winning owner” email in v1; see §6.1 **Q4.2** / **Q4.3** in `docs/NEW_FLOW_PLAN.md`).
+    - **Parking endorsement (v1):** manual screenshot + **manual upload** in admin (no auto-screenshot of email — see `docs/NEW_FLOW_PLAN.md` §6.1 **Q4.4**). Image is sent to the guest at **Ready for check-in** when provided.
+    - Two parking amount fields (DB: `parking_rate_guest`, `parking_rate_paid`); **labels:** **Guest Parking Rate** (charged to guest) and **Paid Parking Rate** (paid out to the selected parking owner) — `docs/NEW_FLOW_PLAN.md` §6.1 **Q4.5**.
     - After clicking (Proceed to 'PENDING PET REQUEST' (if enabled) or Proceed to 'READY FOR CHECK-IN'), sync database, calendar, and Google Sheet with parking fields
 
   - **PENDING PET REQUEST** — Guest has pets; pet-form request email sent; waiting on approval.
-    - Google Calendar: **yellow** [PENDING PET REQUEST - 2pax 2nights - Guest Name]
+    - Google Calendar: **yellow** `PENDING PET REQUEST - 2pax 2nights - Guest Name`
     - Email listener: detect Azure pet-request approval email.
       - Email title format: Monaco 2604 - Pet Request (04-14-2026 to 04-15-2026)
       - Check emails with this format, then check the attached PDF title if it's 'APPROVED GAF.pdf', it means that it's approved
@@ -45,23 +44,23 @@
       - After that, let's automatically update the booking status to the database, calendar, and Google Sheet
 
   - **READY FOR CHECK-IN** — Cleared for guest to check-in.
-    - Google Calendar: **green** [READY FOR CHECK-IN - 2pax 2nights - Guest Name]
+    - Google Calendar: **green** `READY FOR CHECK-IN - 2pax 2nights - Guest Name`
     - Upon transitioning on this stage, we should automatically send one email to guest email that covers:
       - Booking confirmation with attachments: approved GAF, approved pet form (if enabled), parking details (if enabled)
-      - Payment breakdown (Down payment, Balance, SD, pet fee, parking rate)
+      - Payment breakdown (Down payment, Balance, SD, pet fee, Guest Parking Rate when applicable)
       - Check-in instructions, reminders, house rules, etc (we will provide the content later, let's generate good looking email template for this)
 
   - **PENDING SD REFUND** — Guest has checked out; security deposit refund pending.
-    - Google Calendar: **orange** [PENDING SD REFUND - 2pax 2nights - Guest Name]
+    - Google Calendar: **orange** `PENDING SD REFUND - 2pax 2nights - Guest Name`
     - Cron: automatically update the status to 'PENDING SD REFUND' in the database, calendar, and sheet on the checkout date and 15 minutes after checkout time.
-    - Display new multiple fields: new expenses (+) or additional profits (+), confirm no damages, and settle payments and SD refund.
+    - Display new multiple fields: **additional expenses (+)** and **additional profits (+)** as **lists of amounts** (stored as Postgres `NUMERIC[]`), **SD refund receipt** upload (`sd_refund_receipt_url`), and settle **SD refund amount** + payments.
     - After clicking (Proceed to 'BOOKING COMPLETED'), update the booking status to database, calendar, and Google Sheet with parking fields
 
   - **COMPLETED** — Booking closed.
-    - Google Calendar: **blue** [COMPLETED - 2pax 2nights - Guest Name]
+    - Google Calendar: **blue** `COMPLETED - 2pax 2nights - Guest Name`
 
   - **CANCELLED** — Booking canceled.
-    - Google Calendar: **purple** [CANCELED - 2pax 2nights - Guest Name]
+    - Google Calendar: **purple** `CANCELED - 2pax 2nights - Guest Name`
     - Keep existing logic
 
 With this, let's create new routes and dashboard to manage all of this instead of relying to query parameters.
@@ -91,9 +90,11 @@ Update dev controls to add new checkboxes:
 - Update 'Send email notification' to 'Send GAF request email'
 - Add 'Send Parking broadcast email' (only if parking is enabled)
 - Add 'Send Pet request email' (only if has pets is enabled)
+- **Dev controls are admin-only** after cleanup — not on public `/form` (`NEW_FLOW_PLAN.md` §6.1 **Q3.2**).
 
 For new fields and info, add new column on database and google sheet
 
 Other todos:
 
-- Update parking info text that this is non-refundable and cannot be rescheduled
+- **Parking non-refundable + no-reschedule** copy on **both** guest form and relevant emails (`NEW_FLOW_PLAN.md` §6.1 **Q7.5**).
+- **Surprise setup / decorations** acknowledgment checkbox: **above** “Special Requests”, with an **info label** (“discuss with owner first”). Field semantics still **refined** — `NEW_FLOW_PLAN.md` §6.2 **Q7.4** + §6.1 **Q7.4 (partial)**.

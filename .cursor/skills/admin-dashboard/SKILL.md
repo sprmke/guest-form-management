@@ -57,7 +57,7 @@ ui/src/features/admin/
 
 - Page header: title "Bookings", right-aligned primary action "New booking" (navigates to `/form`).
 - Filter bar (sticky): search input, status multi-select, check-in date range picker, `has pets`, `has parking`, `is test`.
-- Table: virtual/paged, 25 rows per page default.
+- Table: virtual/paged, **25 rows default**; footer offers **25 | 50 | 100** page sizes (`NEW_FLOW_PLAN.md` §6.1 **Q5.2**).
 - Footer: pagination controls, result count.
 
 ### Columns (initial proposal — tune per feedback)
@@ -75,10 +75,15 @@ ui/src/features/admin/
 
 See `.cursor/skills/bookings-table/SKILL.md` for column-def helpers.
 
-### Default filter
+### Bulk actions (list)
 
-- Hide `COMPLETED` and `CANCELLED` by default (toggleable).
-- Sort: upcoming check-in ascending.
+- Per **Q5.3**: enable **bulk** only for **low-risk** operations first (e.g. **export CSV** of selected rows). **Do not** ship unconstrained “bulk change status” without row-by-row confirmation UX.
+
+### Default filter + sort
+
+- **Sort:** `check_in_date` **ascending** (next stay on top; user can change) — **Q5.1**.
+- **Default filter (“Active pipeline”):** hide **`COMPLETED`** stays that are **stale** — e.g. **`COMPLETED`** with **`check_in_date` strictly before today** (`Asia/Manila`) so finished past trips do not clutter the list. **Still show** past check-in rows that are **not** done (e.g. **`PENDING_SD_REFUND`**). Expose toggles like **Show completed** / date-range filters for audits.
+- **`CANCELLED`:** do **not** assume default hide (not locked in plan); offer a **status** filter so the owner can include/exclude cancelled rows.
 
 ## Detail page — `/bookings/:bookingId`
 
@@ -86,19 +91,21 @@ See `.cursor/skills/bookings-table/SKILL.md` for column-def helpers.
 
 Two-column on ≥lg, single column on mobile:
 
-- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible, all fields editable per Q5.5 pending answer).
+- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible). **Guest fields stay editable even after `READY_FOR_CHECKIN`** — but saving material changes from that status **must revert `status → PENDING_REVIEW`** (per `docs/NEW_FLOW_PLAN.md` §6.1 Q5.5). Dev-control checkboxes still gate every side effect on save.
 - **Right (1/3, sticky)**: `WorkflowPanel`
   - Status badge + `status_updated_at`
   - Stage-specific sub-form:
-    - PENDING_REVIEW → `ReviewPricingForm` (booking rate, down payment, parking rate to guest, pet fee, balance auto-computed)
-    - PENDING_PARKING_REQUEST → `ParkingRequestForm` (parking rate paid, parking owner email selected, endorsement image upload)
-    - PENDING_SD_REFUND → `SdRefundForm` (additional expenses +, additional profits +, no-damages checkbox, refund amount)
+    - PENDING_REVIEW → `ReviewPricingForm` (booking rate, down payment, **Guest Parking Rate** (`parking_rate_guest`) when parking, pet fee, **balance = rate − down payment**, SD tracked separately)
+    - PENDING_PARKING_REQUEST → `ParkingRequestForm` (**Paid Parking Rate** (`parking_rate_paid`), parking owner email selected, endorsement image upload — labels per §6.1 **Q4.5**)
+    - PENDING_SD_REFUND → `SdRefundForm` (**`sd_additional_expenses` / `sd_additional_profits`** as repeatable “+” rows → `NUMERIC[]` in DB, **`sd_refund_receipt_url`** file upload, **`sd_refund_amount`**)
   - List of **available transitions** (buttons) per the state machine.
-  - History/activity log (if Q1.6 is answered yes to audit table).
+  - **No v1 activity timeline** on the detail page (`NEW_FLOW_PLAN.md` §6.1 **Q5.4** / **Q1.6** — full history table deferred).
 
 ### WorkflowPanel rules
 
-- Only show transitions returned by `canTransition(currentStatus, *)`.
+- Primary buttons: transitions from `canTransition(currentStatus, *)`.
+- **Recovery / force buttons**: additional transitions from `canManualForceTransition(currentStatus, *, ctx)` — used when cron or Gmail listener should have advanced the booking but didn't. Same `transition-booking` mutation, `{ manual: true }` flag.
+- **Manual automation hooks (`Q6.6`):** add secondary actions (toolbar or panel footer) such as **“Run Gmail poll now”** and **“Run SD refund cron now”** that invoke the same scheduled Edge functions with the **admin JWT** — schedules run on Supabase regardless of a sleeping laptop; these buttons cover stuck runs and dev debugging.
 - Each button: label (`Proceed to PENDING GAF`), confirmation dialog with a summary of side effects.
 - Destructive action `Cancel booking` is always visible when status ≠ CANCELLED, styled as danger.
 - After success, invalidate queries and scroll to top of panel.
@@ -123,5 +130,5 @@ Two-column on ≥lg, single column on mobile:
 
 - Don't duplicate status or transition logic between `ui/src/features/admin/lib/workflow.ts` and `_shared/statusMachine.ts` — keep them aligned; a mismatch is a bug.
 - Don't fetch all bookings client-side for filtering. Server does filter/sort/pagination.
-- Don't show editing affordances for fields that should be frozen post-review (pending Q5.5 decision) — add a "locked" indicator and disable.
+- Don't hide guest-field editing after `READY_FOR_CHECKIN` — instead show a **warning banner** that saving changes will revert workflow to `PENDING_REVIEW` (per Q5.5).
 - Don't bypass `RequireAdmin` via a route-level `<Outlet />` without the guard.

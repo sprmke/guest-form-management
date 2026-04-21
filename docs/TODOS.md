@@ -1,3 +1,15 @@
+New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
+
+- ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `is_test_booking`, `processed_emails`, `gmail_listener_state`, 4 new storage buckets. No behavior change. Runbook: `docs/MIGRATION_RUNBOOK.md`.
+- ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, test-bookings toggle, 25/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
+- ⏳ Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.
+- ⏳ Phase 3 — `transition-booking` endpoint + admin transition UI + new guest emails.
+- ⏳ Phase 4 — Gmail listener + SD refund cron.
+- ⏳ Phase 5 — `submit-form` side-effect cleanup + retire `?dev=true` / `?testing=true`.
+- ⏳ Phase 6 — Calendar + Sheet backfill sync.
+
+---
+
 Todos
 
 - ✅ In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
@@ -40,7 +52,7 @@ Todos
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
 - ✅ Create separate email for pet information
-- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field
+- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in `docs/NEW_FLOW_PLAN.md` §6.2 **Q7.4** (placement/copy partial lock in §6.1).
 - Create separate email for parking information
   - add a admin fields & button to trigger email sending of parking information
   - we should have dropdown of email so we can easily send the parking information to parking owner & azure

@@ -45,11 +45,11 @@ The old query-parameter controls go away:
 | Button            | Behavior                                                                              |
 | ----------------- | ------------------------------------------------------------------------------------- |
 | **Submit**        | Real booking. Server sets `status = PENDING_REVIEW`, `is_test_booking = false`.       |
-| **Test Submit**   | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`.    |
+| **Test Submit**   | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`, and runs the **exact same test pipeline as today’s `testing=true`** (prefixes, PDF copy, email subject prefixes, calendar/sheet markers, prod email hard-off rules — unchanged). |
 
 Test bookings:
 
-- Prefix `[TEST] ` on primary guest name, storage objects, calendar/sheet titles (human readability).
+- Prefix `[TEST] ` on primary guest name, storage objects, calendar/sheet titles, **email subjects**, PDF title tweaks — same as current `isTestingMode` behavior in `submit-form` + `_shared/*`.
 - Are filtered out of `/bookings` by default (toggleable filter).
 - **Never send email in production**, regardless of other toggles (`DENO_DEPLOYMENT_ID` + `is_test_booking` ⇒ force `sendEmail = false`).
 - Are subject to `cleanup-test-data` wipe.
@@ -82,7 +82,7 @@ All checkboxes start **unchecked**. In production they are authoritative — fli
 | --------------------------------- | ----- | ------------------------------------------------ |
 | `ADMIN_ALLOWED_EMAILS`            | edge  | Comma-separated allow list (server-enforced).    |
 | `VITE_ADMIN_ALLOWED_EMAILS`       | UI    | UX reject only; never the only gate.             |
-| `PARKING_OWNER_EMAILS`            | edge  | Comma-separated BCC list for parking broadcast.  |
+| `PARKING_OWNER_EMAILS`            | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only. |
 | `GMAIL_OAUTH_CLIENT_ID`           | edge  | Gmail listener OAuth.                            |
 | `GMAIL_OAUTH_CLIENT_SECRET`       | edge  | Gmail listener OAuth.                            |
 | `GMAIL_OAUTH_REFRESH_TOKEN`       | edge  | Gmail listener OAuth (for `kamehome.azurenorth`).|

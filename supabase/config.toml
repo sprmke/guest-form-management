@@ -35,6 +35,28 @@ public = true
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/png", "image/jpeg"]
 
+# --- New-flow buckets (Phase 0, see docs/NEW_FLOW_PLAN.md §2) ---
+
+[storage.buckets.parking-endorsements]
+public = true
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+
+[storage.buckets.approved-gafs]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["application/pdf"]
+
+[storage.buckets.approved-pet-forms]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["application/pdf"]
+
+[storage.buckets.sd-refund-receipts]
+public = false
+file_size_limit = "5MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+
 [edge_runtime]
 enabled = true
 policy = "oneshot"

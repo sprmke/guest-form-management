@@ -1,104 +1,111 @@
 ---
 name: gmail-listener
-description: Gmail OAuth + idempotent email polling skill for detecting Azure GAF and pet approval emails and auto-transitioning bookings. Use when implementing the gmail-listener edge function, Gmail auth, attachment download, or the processed_emails table.
+description: Gmail OAuth + incremental history polling for Azure approval emails (GAF + pet), attachment download, idempotency, and booking auto-transitions. Use when implementing `gmail-listener`, Gmail secrets, `processed_emails`, or `gmail_listener_state`.
 ---
 
 # Gmail listener skill
 
-Implements the "Azure approval detected → booking auto-advances" capability described in `docs/NEW FLOW.md` and `docs/NEW_FLOW_PLAN.md §3.4`.
+This skill translates the **proven Gmail automation** from `pay-credit-cards` into the **`gmail-listener` Supabase Edge Function** for `guest-form-management`.
 
-## Required context
+## Canonical reference repo (read before coding)
 
-- `docs/NEW_FLOW_PLAN.md` §3.4 — design overview and open questions (Q6.1–Q6.6).
-- `.cursor/rules/booking-workflow.mdc` — what status to transition to.
-- **Reference repo** (to be shared by user per Q6.1): `pay-credit-card`. Do not start full implementation until that repo is available — the OAuth token management pattern should mirror it.
+**Path:** `/Users/michaelmanlulu/Projects/personal-projects/automated-tasks/pay-credit-cards/`
 
-## Goals
+**Docs:** `pay-credit-cards/docs/SETUP.md` (OAuth + poller setup)
 
-1. Poll Gmail every 5 minutes for **new** messages in INBOX matching Azure's GAF and pet approval patterns.
-2. For each match, identify the booking (by date range + unit).
-3. Download the approved PDF attachment, store it in Supabase Storage, set the URL on the booking.
-4. Call `workflowOrchestrator.transition()` with the right target status.
-5. Mark the Gmail `message.id` as processed so it never runs twice.
+**Code map (what to copy conceptually, not line-for-line):**
 
-## OAuth model (plan)
+| File | What it proves |
+| ---- | -------------- |
+| `src/gmail-auth.ts` | Desktop OAuth client (`configs/credentials.json`), `access_type=offline`, `prompt=consent`, writes **`configs/token.json`** containing a **refresh token**. |
+| `src/gmail.ts#getGmailClient` | Loads creds + token, calls `oauth2Client.getAccessToken()`, maps `invalid_grant` to a human-readable “re-run gmail-auth” error. |
+| `src/gmail-history.ts` | `users.getProfile` → `historyId`; `users.history.list` with `historyTypes: ['messageAdded']` → **incremental** new message ids since last `startHistoryId`. Handles **404 history expired** via `historyExpired` flag. |
+| `src/gmail-poll-new-soa.ts` | Persists **watch state** (`historyId` + ring buffer of processed ids), `--init` behavior (no backlog), fetches each message with `users.messages.get({ format: 'full' })` before inspecting attachments. |
 
-- Account: the unit owner inbox (likely `kamehome.azurenorth@gmail.com`, confirm Q6.2).
-- Use **OAuth refresh token** stored as a Supabase edge function secret:
-  - `GMAIL_OAUTH_CLIENT_ID`
-  - `GMAIL_OAUTH_CLIENT_SECRET`
-  - `GMAIL_OAUTH_REFRESH_TOKEN`
-- Scope: `https://www.googleapis.com/auth/gmail.readonly` (read + attachments). Do **not** request `gmail.modify`; we don't need to star or label.
-- On every run, exchange refresh token → access token (~1h lifetime). Reuse the calendar service's JWT helper pattern for the HTTP calls.
+> pay-credit-cards also adds Calendar scopes in `gmail-auth.ts`. **Do not copy that part** for guest-form-management — the listener should be **Gmail read-only**; calendar writes stay in `workflowOrchestrator`.
 
-One-time setup (document in `docs/MIGRATION_RUNBOOK.md`):
+## What we are building in guest-form-management
 
-1. Create OAuth 2.0 Web Client in GCP console.
-2. Authorize the unit owner account via a one-shot script that prints `refresh_token`.
-3. Paste into Supabase dashboard env secrets.
+**Function:** `supabase/functions/gmail-listener/index.ts` (scheduled every ~5 minutes)
 
-## Email matching
+**Goal:** detect Azure’s approval emails for:
 
-Patterns (confirm exact values via Q6.3 / Q6.4):
+1. **GAF approval** while booking is `PENDING_GAF`
+2. **Pet approval** while booking is `PENDING_PET_REQUEST`
 
-| Kind         | Target status transition                     | Subject pattern                                          | Attachment filename match |
-| ------------ | -------------------------------------------- | -------------------------------------------------------- | ------------------------- |
-| GAF approval | `PENDING_GAF → next (PARKING / PET / READY)` | `Monaco 2604 - GAF Request (MM-DD-YYYY to MM-DD-YYYY)` … | `APPROVED GAF.pdf`        |
-| Pet approval | `PENDING_PET_REQUEST → READY_FOR_CHECKIN`    | `Monaco 2604 - Pet Request (MM-DD-YYYY to MM-DD-YYYY)`   | `APPROVED GAF.pdf`        |
+…then download `APPROVED GAF.pdf`, upload to Supabase Storage, set `approved_*_pdf_url`, and call `transition-booking` → `workflowOrchestrator`.
 
-Match rules:
+**Matching rules** are already locked in `docs/NEW_FLOW_PLAN.md` §6.1 **Q6.3/Q6.4** (subjects mirror `supabase/functions/_shared/emailService.ts`).
 
-- Sender must include Azure's domain (confirm via Q6.3).
-- Parse the date range from subject into `(checkInDate, checkOutDate)` in `MM-DD-YYYY`.
-- Find matching booking: exact date match **and** current status is the one expected for that kind (e.g. pet-approval emails only advance `PENDING_PET_REQUEST`, not `READY_FOR_CHECKIN`).
-- If multiple bookings match the date range (shouldn't happen with single-unit), log and fall back to rule in Q6.5.
+## Deno / Edge differences vs pay-credit-cards (Node)
 
-## Idempotency
+pay-credit-cards uses **`googleapis` on Node + local JSON files**.
 
-Required migration:
+`gmail-listener` runs on **Deno** with **Supabase secrets** — same OAuth *flow*, different storage:
 
-```sql
-CREATE TABLE IF NOT EXISTS processed_emails (
-  message_id TEXT PRIMARY KEY,
-  processed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  booking_id UUID REFERENCES guest_submissions(id),
-  kind TEXT NOT NULL,  -- 'gaf' | 'pet'
-  status TEXT NOT NULL -- 'applied' | 'skipped' | 'failed'
-);
-```
+- Store `credentials.json` contents as **`GMAIL_OAUTH_CLIENT_JSON`** (string secret).
+- Store `token.json` contents as **`GMAIL_OAUTH_TOKEN_JSON`** (string secret) after one-time auth.
+- Persist `historyId` in Postgres (`gmail_listener_state`) instead of `data/soa-gmail-watch-state.json`.
 
-Pseudocode:
+You may either:
 
-```
-for message in gmail.listNewSince(lastCursor):
-  if processed_emails has message.id: continue
-  if !matchesAzurePattern(message): mark processed 'skipped'; continue
-  booking = findBookingForRange(subject)
-  if !booking: mark 'skipped' with reason; log; continue
-  attachment = gmail.getAttachment(message, 'APPROVED GAF.pdf')
-  url = storage.upload(bucket, attachment, path)
-  db.update(booking, { approved_gaf_pdf_url: url })
-  orchestrator.transition(booking.id, nextStatus(booking))
-  mark processed 'applied'
-```
+- **A (recommended):** vendor `googleapis` for Deno (`npm:googleapis@…`) and keep code close to `src/gmail.ts`, or
+- **B:** call Gmail REST directly with `fetch` + OAuth access token (more boilerplate).
 
-## Failure modes
+Pick one approach in the first PR and stick to it.
 
-- **Transient**: Gmail API 5xx, Supabase 5xx → throw, let Supabase cron retry next tick. Do **not** write to `processed_emails` yet.
-- **Permanent**: attachment filename mismatch, booking not found, date parse fails → write `processed_emails` row with `status='skipped'` and a short `reason`; surface in an admin UI table later.
-- **After N retries**: per Q6.6, either alert via an admin-visible "needs attention" flag on the booking or a Slack hook — confirm with user.
+## Database tables
+
+### `gmail_listener_state`
+
+Single-row table (or keyed by inbox email if you ever add more):
+
+- `inbox_email TEXT PRIMARY KEY` (default `'me'` semantics — usually store the actual Gmail address as metadata only)
+- `history_id TEXT NOT NULL`
+- `updated_at TIMESTAMPTZ NOT NULL`
+
+Initialize like pay-credit `--init`: set `historyId` to **current profile `historyId`** so the first deploy processes **no backlog**.
+
+### `processed_emails`
+
+Already planned in `docs/NEW_FLOW_PLAN.md` — keep it:
+
+- `message_id TEXT PRIMARY KEY`
+- `kind TEXT` (`gaf` | `pet`)
+- `status TEXT` (`applied` | `skipped` | `failed`)
+- `reason TEXT NULL`
+- `booking_id UUID NULL`
+
+Use this as the **durable** dedupe layer across function deploys. The in-memory ring buffer from pay-credit-cards is **not enough** on Supabase.
+
+## Algorithm (happy path)
+
+1. Load OAuth creds from secrets → get access token.
+2. Load `gmail_listener_state.history_id` → `startHistoryId`.
+3. Call `users.history.list` (`messageAdded`) → `addedMessageIds[]` + `newHistoryId`.
+4. For each id:
+   - If exists in `processed_emails` → skip.
+   - `users.messages.get({ format: 'full' })` → read `Subject`, detect approval kind, parse date range.
+   - Find booking row matching dates + expected `status`.
+   - Walk MIME parts → find attachment named **`APPROVED GAF.pdf`** → `attachments.get` → decode base64url → upload bytes to Storage → update URLs.
+   - `workflowOrchestrator.transition(…)`.
+   - Insert `processed_emails` `applied`.
+5. Persist `gmail_listener_state.history_id = newHistoryId` **even on no-op polls** (same as pay-credit-cards).
+
+## Failure modes (copy pay-credit-cards behavior)
+
+- **`invalid_grant`:** stop the world — log + surface “re-auth needed” (admin banner / ops runbook). Same as `formatGmailAuthError` in `src/gmail.ts`.
+- **History 404 / expired cursor:** reset `historyId` to current profile id (pay-credit resets on `historyExpired`). Log loudly; optionally enqueue a “missed approvals” admin task.
+- **Transient 5xx:** throw so Supabase retries next schedule tick **without** writing `processed_emails`.
+- **Permanent parse/skip:** write `processed_emails` with `skipped` + reason so we never spin on the same bad message forever.
 
 ## Don'ts
 
-- Don't use `gmail.modify` or move/label messages. Read-only is enough and safer.
-- Don't hardcode the inbox email; put in env.
-- Don't use an app password — use OAuth.
-- Don't skip the `processed_emails` table — dupes will email Azure, charge parking owners twice, corrupt sheet rows.
+- Don’t request `gmail.modify` scope — read-only is enough.
+- Don’t run attachment logic on `users.messages.get({ format: 'metadata' })` — pay-credit-cards comment explains **`full` is required** to see `payload.parts`.
+- Don’t bypass `workflowOrchestrator` from the listener.
+- Don’t rely only on `historyId` without `processed_emails` — you need both: history can rewind/replay during edge cases.
 
-## Open questions to resolve before coding
+## Resolved listener decisions
 
-See `docs/NEW_FLOW_PLAN.md §6` Group 6. Specifically:
-
-- **Q6.1** share `pay-credit-card` reference repo.
-- **Q6.3 / Q6.4** confirm exact subject + sender patterns.
-- **Q6.2** confirm which Gmail account to monitor.
+**Q6.2** (inbox), **Q6.5** (multi-match), and **Q6.6** (retries + admin manual triggers) are **locked in `docs/NEW_FLOW_PLAN.md` §6.1**. Only **§6.2** refinement (**Q7.4** surprise field) is unrelated to Gmail unless we add new product rules.

@@ -15,7 +15,9 @@ This skill is the **playbook** for the redesign. The **rules of engagement** liv
 4. `.cursor/rules/admin-auth.mdc` — who can transition and how.
 5. `.cursor/rules/supabase-edge-functions.mdc` — function conventions.
 
-If any of the open questions in `NEW_FLOW_PLAN.md §6` are **unanswered** and the task depends on them, **stop and ask the user** before writing code. Guessing on pricing formula (Q2.1), migration mapping (Q1.1), or Gmail subject patterns (Q6.3) will cause real damage.
+If the task touches the **surprise-setup** checkbox semantics, check **`NEW_FLOW_PLAN.md` §6.2** (**Q7.4**) — if copy/behavior is still ambiguous, **ask the user** before shipping. **Parking field labels** are locked: **Guest Parking Rate** / **Paid Parking Rate** (§6.1 **Q4.5**).
+
+**Already decided** — full table in `NEW_FLOW_PLAN.md` §6.1 (includes **Q1.3** `TEXT`+`CHECK` for status, **Q1.4/Q1.6** money + audit shape, **Q2.3/Q2.4** amount surfaces + currency format, **Q3.x** PDF + dev-controls scope + test blast radius, **Q4.2/Q4.4/Q4.5** parking comms + manual endorsement + **Guest Parking Rate** / **Paid Parking Rate** labels, **Q5.x** `/bookings` UX, **Q6.x** Gmail inbox + multi-match + failure/manual triggers, **Q7.x** calendar blocking, legacy links, observability, ship-first tests — do not re-litigate).
 
 ## Phased implementation
 
@@ -24,7 +26,7 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ### Phase 0 — Backup + additive migration
 
 - Migration: `supabase/migrations/2026…_backup_guest_submissions.sql` → `CREATE TABLE guest_submissions_backup_<ts> AS SELECT * FROM guest_submissions`.
-- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD fields, `is_test_booking`, `status_updated_at`).
+- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD expense/profit **`NUMERIC[]`**, SD refund receipt URL, SD refund amount, `is_test_booking`, `status_updated_at`).
 - Do **not** change behavior yet. Deploy, verify, only then move to Phase 1.
 
 ### Phase 1 — Admin auth + empty `/bookings`
@@ -37,8 +39,8 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 
 ### Phase 2 — State machine (read path)
 
-- Migration: widen `status` enum + backfill (`booked` → answer to Q1.1).
-- Create `_shared/statusMachine.ts` with the enum + `canTransition(from, to)`.
+- Migration: implement **`status` as `TEXT` + `CHECK`** (allowed literals per `.cursor/rules/booking-workflow.mdc`) — **§6.1 Q1.3**. Backfill legacy `booked` rows per **§6.1 Q1.1** — check-in **before today (Asia/Manila)** → `COMPLETED`; **today or future** → `PENDING_REVIEW`; `canceled` → `CANCELLED`.
+- Create `_shared/statusMachine.ts` with the enum + `canTransition(from, to)` **and** `canManualForceTransition(from, to, ctx)` (small explicit allow-list for admin recovery — see `.cursor/rules/booking-workflow.mdc` §2.2).
 - Update `get-booked-dates` to block on `status != 'CANCELLED'`.
 - Render `StatusBadge` in the list.
 
@@ -60,8 +62,8 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ### Phase 5 — Submit-form cleanup
 
 - Remove email, calendar, sheet side effects from `submit-form/index.ts`. Always DB + storage + PDF.
-- Default `status = PENDING_REVIEW` and `is_test_booking = (testSubmit || fallback)`.
-- Delete `?dev=true` / `?testing=true` handling in UI.
+- Default `status = 'PENDING_REVIEW'`. **Testing behavior stays the same as today** — the only UX change is: use **Test Submit** instead of `?testing=true`, and persist `is_test_booking = true` on the row for easier querying. Server may still accept legacy `?testing=true` briefly while old links exist; `is_test_booking` should mirror that flag.
+- Delete `?dev=true` / `?testing=true` **from the public UI URL bar** (no more query-param driven test mode), but keep the underlying `isTestingMode` plumbing in edge functions until fully migrated.
 - Add a separate **Test Submit** button in `GuestForm.tsx`.
 
 ### Phase 6 — Prod backfill
@@ -74,7 +76,7 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 - **Single source of truth for status/color/prefix** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/admin/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
 - **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / `sendEmail` directly from a handler.
 - **Never CC the guest** on GAF or pet request emails.
-- **Pricing math** lives in one helper (`_shared/pricing.ts`). UI imports the same literal formula (or calls a `compute-balance` endpoint). No duplicated math.
+- **Pricing math** lives in one helper (`_shared/pricing.ts`): **`balance = booking_rate - down_payment`**. SD (`security_deposit`, default ₱1500) and parking/pet line items are **not** in balance — they are separate fields shown in breakdown UIs/emails. UI must import the same helper (or call a tiny `compute-pricing` edge function) — no duplicated math.
 - **Test bookings in production**: orchestrator must force `sendEmail = false` when `is_test_booking && DENO_DEPLOYMENT_ID`.
 - **Update the docs** in the same change (`PROJECT.md`, `TODOS.md`, and flip the relevant question/phase in `NEW_FLOW_PLAN.md`).
 
