@@ -1,39 +1,35 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabaseClient';
-import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
+import { GoogleSignInButton } from "@/features/admin/components/GoogleSignInButton";
+import { supabase } from "@/lib/supabaseClient";
+import { useAdminSession } from "@/features/admin/hooks/useAdminSession";
 
 function safeRedirect(raw: string | null): string {
-  if (!raw) return '/bookings';
-  // Only allow relative paths so we never bounce to an external host.
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/bookings';
+  if (!raw) return "/bookings";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/bookings";
   return raw;
 }
 
 export function SignInPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const redirect = safeRedirect(params.get('redirect'));
-  const { status, email, allowedEmails, signOut } = useAdminSession();
+  const redirect = safeRedirect(params.get("redirect"));
+  const { status } = useAdminSession();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Once the user becomes an admin (either via page load with existing session or
-  // after OAuth round-trip), push them to the intended destination.
   useEffect(() => {
-    if (status === 'admin') {
-      navigate(redirect, { replace: true });
-    }
+    if (status === "admin") navigate(redirect, { replace: true });
   }, [status, redirect, navigate]);
 
   const handleGoogle = async () => {
     setIsSigningIn(true);
     setError(null);
     try {
+      if (status === "not-admin") await supabase.auth.signOut();
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
+        provider: "google",
         options: {
           redirectTo: `${window.location.origin}/sign-in?redirect=${encodeURIComponent(redirect)}`,
         },
@@ -42,97 +38,142 @@ export function SignInPage() {
         setError(error.message);
         setIsSigningIn(false);
       }
-      // On success the browser navigates away to Google; don't reset state.
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Sign-in failed.');
+      setError(err instanceof Error ? err.message : "Sign-in failed.");
       setIsSigningIn(false);
     }
   };
 
   return (
-    <main className="grid place-items-center px-4 py-16 min-h-screen bg-gradient-to-br from-background to-secondary/30">
-      <div className="p-8 w-full max-w-md rounded-2xl border shadow-hard bg-card border-border/60">
-        <div className="grid place-items-center mx-auto w-14 h-14 rounded-2xl shadow-soft bg-primary/10 text-primary">
-          <ShieldCheck className="w-7 h-7" aria-hidden />
-        </div>
-        <h1 className="mt-5 text-2xl font-semibold tracking-tight text-center text-foreground">
-          Admin sign in
-        </h1>
-        <p className="mt-1 text-sm text-center text-muted-foreground">
-          Kame Home · Monaco 2604
-        </p>
+    <div className="flex min-h-screen">
+      {/* ─── Left brand panel ─────────────────────────── */}
+      <div
+        className="hidden lg:flex lg:w-[46%] xl:w-[44%] flex-col justify-between p-10 relative overflow-hidden"
+        style={{ backgroundColor: "hsl(168 65% 40%)" }}
+        aria-hidden="true"
+      >
+        {/* Subtle noise texture */}
+        <div
+          className="absolute inset-0 opacity-[0.04]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        />
 
-        {status === 'not-admin' ? (
-          <div className="p-3 mt-6 text-xs rounded-lg border bg-destructive/5 border-destructive/20 text-destructive">
-            <strong className="font-semibold">{email}</strong> is not on the admin allow list.
-            <div className="mt-1 text-[11px] text-destructive/80">
-              Authorized: {allowedEmails.join(', ') || '—'}
-            </div>
+        {/* Decorative orbs */}
+        <div
+          className="absolute -bottom-32 -left-32 w-[480px] h-[480px] rounded-full opacity-[0.15]"
+          style={{
+            background: "radial-gradient(circle, #ffffff 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="absolute -top-20 -right-20 w-[320px] h-[320px] rounded-full opacity-[0.08]"
+          style={{
+            background: "radial-gradient(circle, #ffffff 0%, transparent 70%)",
+          }}
+        />
+
+        {/* Brand mark */}
+        <div className="relative z-10">
+          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10">
+            <span className="size-1.5 rounded-full bg-white" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+              Admin
+            </span>
           </div>
-        ) : null}
-
-        {error ? (
-          <p className="mt-4 text-xs text-center text-destructive">{error}</p>
-        ) : null}
-
-        <div className="flex flex-col gap-2 mt-6">
-          <Button
-            size="lg"
-            onClick={handleGoogle}
-            disabled={isSigningIn || status === 'loading'}
-            className="w-full"
-          >
-            {isSigningIn ? (
-              <>
-                <Loader2 className="mr-2 w-4 h-4 animate-spin" aria-hidden />
-                Redirecting to Google…
-              </>
-            ) : (
-              <>
-                <GoogleG className="mr-2 w-4 h-4" aria-hidden />
-                Continue with Google
-              </>
-            )}
-          </Button>
-
-          {status === 'not-admin' ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={async () => {
-                await signOut();
-              }}
-            >
-              Use a different Google account
-            </Button>
-          ) : null}
         </div>
 
-        <p className="mt-6 text-[11px] leading-relaxed text-center text-muted-foreground">
-          Only the configured owner email can access the bookings dashboard. Public guests should
-          continue using the booking form at <code className="font-mono">/form</code>.
-        </p>
-      </div>
-    </main>
-  );
-}
+        {/* Main brand */}
+        <div className="relative z-10 space-y-6">
+          <div>
+            <h1 className="text-[48px] font-extrabold tracking-tight text-white leading-none">
+              Kame Home
+            </h1>
+            <p className="mt-2 text-[15px] font-medium text-white/60 tracking-wide">
+              Monaco 2604 · Azure North, Pampanga
+            </p>
+          </div>
 
-function GoogleG({ className }: { className?: string }) {
-  // Monochromatic glyph so the button stays on-brand. The official multicolor "G"
-  // is a trademark used with permission in client apps; keep a neutral mark here
-  // to avoid embedding brand assets, matching the rest of this codebase's icon style.
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden
-      className={className}
-    >
-      <path
-        d="M21.35 11.1H12v2.98h5.34c-.23 1.52-1.72 4.46-5.34 4.46-3.22 0-5.84-2.67-5.84-5.96s2.62-5.96 5.84-5.96c1.83 0 3.06.78 3.76 1.45l2.56-2.47C16.7 4.18 14.57 3.2 12 3.2 6.95 3.2 2.86 7.28 2.86 12.33 2.86 17.38 6.95 21.46 12 21.46c6.93 0 9.51-4.86 9.51-9.36 0-.63-.06-1.11-.16-1.7Z"
-        fill="currentColor"
-      />
-    </svg>
+          <div className="w-12 h-px bg-white/30" />
+
+          <blockquote className="text-[15px] text-white/60 leading-relaxed font-light italic max-w-[300px]">
+            "Your property, perfectly managed."
+          </blockquote>
+        </div>
+
+        {/* Footer */}
+        <div className="relative z-10">
+          <p className="text-[11px] text-white/30">
+            © {new Date().getFullYear()} Kame Home. All rights reserved.
+          </p>
+        </div>
+      </div>
+
+      {/* ─── Right form panel ──────────────────────────── */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-white">
+        {/* Mobile brand mark */}
+        <div className="lg:hidden mb-8 text-center">
+          <p className="text-2xl font-extrabold tracking-tight text-foreground">
+            Kame Home
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Monaco 2604 · Admin
+          </p>
+        </div>
+
+        <div className="w-full max-w-[360px] space-y-7">
+          {/* Heading */}
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+              Welcome back
+            </h2>
+            <p className="mt-1.5 text-[14px] text-slate-500 leading-relaxed">
+              Sign in with your authorized Google account to access the admin
+              dashboard.
+            </p>
+          </div>
+
+          {/* Access-restricted notice */}
+          {status === "not-admin" && (
+            <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700">
+              <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
+              <p className="text-[13px] leading-snug">
+                We could not open the admin area with your current Google
+                account. Please try another account.
+              </p>
+            </div>
+          )}
+
+          {/* OAuth error */}
+          {error && (
+            <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700">
+              <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
+              <p className="text-[13px] leading-snug">{error}</p>
+            </div>
+          )}
+
+          {/* Google button */}
+          <GoogleSignInButton
+            onClick={handleGoogle}
+            loading={isSigningIn}
+            disabled={status === "loading"}
+          />
+
+          {/* Footer note */}
+          <p className="text-[12px] text-slate-400 text-center leading-relaxed">
+            Only authorized property administrators can sign in. Public guests
+            should use the{" "}
+            <a
+              href="/form"
+              className="text-sidebar-primary underline underline-offset-2 hover:text-sidebar-accent-foreground"
+            >
+              booking form
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
