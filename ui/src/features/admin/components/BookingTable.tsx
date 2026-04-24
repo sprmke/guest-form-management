@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Car, Dog, ExternalLink, Eye } from 'lucide-react';
+import { ArrowUpRight, Car, Dog } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   formatBookingDate,
@@ -18,27 +17,66 @@ type Props = {
   isRefreshing?: boolean;
 };
 
+// Deterministic avatar color from guest name initial
+const AVATAR_PALETTES = [
+  { bg: '#dbeafe', text: '#1d4ed8' }, // blue
+  { bg: '#ede9fe', text: '#6d28d9' }, // violet
+  { bg: '#d1fae5', text: '#065f46' }, // emerald
+  { bg: '#fef3c7', text: '#92400e' }, // amber
+  { bg: '#fce7f3', text: '#9d174d' }, // pink
+  { bg: '#e0f2fe', text: '#0369a1' }, // sky
+  { bg: '#ffedd5', text: '#9a3412' }, // orange
+  { bg: '#f3e8ff', text: '#6b21a8' }, // purple
+];
+
+function getAvatar(name: string) {
+  const initial = (name[0] ?? '?').toUpperCase();
+  const palette =
+    AVATAR_PALETTES[initial.charCodeAt(0) % AVATAR_PALETTES.length];
+  return { initial, ...palette };
+}
+
 export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
   if (error) {
     return (
-      <div className="p-8 rounded-2xl border bg-card border-border/60">
-        <p className="text-sm font-medium text-destructive">Failed to load bookings.</p>
-        <p className="mt-1 text-xs text-muted-foreground">{error}</p>
+      <div
+        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
+        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+      >
+        <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
+          <span className="text-base font-black leading-none text-red-500">
+            !
+          </span>
+        </div>
+        <div>
+          <p className="text-[14px] font-bold text-slate-800">
+            Could not load bookings
+          </p>
+          <p className="mt-1 text-[12px] text-slate-400 max-w-xs">{error}</p>
+        </div>
       </div>
     );
   }
 
-  if (isLoading) {
-    return <TableSkeleton />;
-  }
+  if (isLoading) return <TableSkeleton />;
 
   if (rows.length === 0) {
     return (
-      <div className="p-12 text-center rounded-2xl border bg-card border-border/60">
-        <p className="text-sm font-medium text-foreground">No bookings match these filters.</p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Try clearing the search, expanding the status chips, or enabling test bookings.
-        </p>
+      <div
+        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
+        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+      >
+        <div className="flex justify-center items-center rounded-full size-9 bg-slate-100">
+          <span className="text-lg leading-none text-slate-400">∅</span>
+        </div>
+        <div>
+          <p className="text-[14px] font-bold text-slate-700">
+            No bookings found
+          </p>
+          <p className="mt-1 text-[12px] text-slate-400">
+            Adjust your filters or clear the search.
+          </p>
+        </div>
       </div>
     );
   }
@@ -46,29 +84,48 @@ export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-2xl border shadow-soft bg-card border-border/60',
-        isRefreshing && 'opacity-80 transition-opacity',
+        'bg-white rounded-xl overflow-hidden transition-opacity duration-300',
+        isRefreshing && 'opacity-60',
       )}
+      style={{
+        border: '1px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+      }}
     >
+      {/* overflow-x-auto + min-w ensures the table scrolls horizontally on narrow screens
+          rather than collapsing into unreadable columns */}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="border-b text-muted-foreground bg-muted/40 border-border/60">
-            <tr>
-              <th scope="col" className="py-3 pr-3 pl-4 font-medium text-left">Status</th>
-              <th scope="col" className="py-3 px-3 font-medium text-left">Guest</th>
-              <th scope="col" className="py-3 px-3 font-medium text-left">Stay</th>
-              <th scope="col" className="hidden py-3 px-3 font-medium text-right md:table-cell">Pax</th>
-              <th scope="col" className="hidden py-3 px-3 font-medium text-center sm:table-cell">Flags</th>
-              <th scope="col" className="hidden py-3 px-3 font-medium text-right lg:table-cell">Amount</th>
-              <th scope="col" className="hidden py-3 px-3 font-medium text-right md:table-cell">Created</th>
-              <th scope="col" className="py-3 pr-4 pl-3 font-medium text-right">
-                <span className="sr-only">Actions</span>
-              </th>
+        <table className="w-full min-w-[560px] border-collapse">
+          <thead>
+            <tr
+              style={{
+                borderBottom: '1px solid #f1f5f9',
+                background: '#fafafa',
+              }}
+            >
+              <Th className="pr-3 pl-4 sm:pl-5">Status</Th>
+              <Th className="px-3 sm:px-4">Guest</Th>
+              <Th className="px-3 sm:px-4">Stay</Th>
+              <Th className="hidden px-3 text-right sm:px-4 md:table-cell">
+                Pax
+              </Th>
+              <Th className="hidden px-3 text-center sm:px-4 sm:table-cell">
+                Flags
+              </Th>
+              <Th className="hidden px-3 text-right sm:px-4 lg:table-cell">
+                Amount
+              </Th>
+              <Th className="hidden px-3 text-right sm:px-4 md:table-cell">
+                Added
+              </Th>
+              <Th className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+                <span className="sr-only">View</span>
+              </Th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/50">
-            {rows.map((row) => (
-              <BookingRowView key={row.id} row={row} />
+          <tbody>
+            {rows.map((row, i) => (
+              <BookingRow key={row.id} row={row} index={i} />
             ))}
           </tbody>
         </table>
@@ -77,104 +134,153 @@ export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
   );
 }
 
-function BookingRowView({ row }: { row: BookingRow }) {
+function Th({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={cn(
+        'py-[11px] text-left text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400',
+        className,
+      )}
+    >
+      {children}
+    </th>
+  );
+}
+
+function BookingRow({ row, index }: { row: BookingRow; index: number }) {
+  const name =
+    row.primary_guest_name ||
+    row.guest_facebook_name ||
+    row.guest_email ||
+    'Guest';
+  const { initial, bg, text } = getAvatar(name);
   const pax = (row.number_of_adults ?? 0) + (row.number_of_children ?? 0);
-  const guestName = row.primary_guest_name || row.guest_facebook_name || row.guest_email;
 
   return (
-    <tr className="transition-colors hover:bg-muted/30">
-      <td className="py-3 pr-3 pl-4 align-middle">
-        <StatusBadge status={row.status} />
-        {row.is_test_booking && (
-          <span className="mt-1 inline-block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            Test
-          </span>
-        )}
-      </td>
-
-      <td className="py-3 px-3 align-middle">
-        <div className="font-medium leading-tight text-foreground">{guestName}</div>
-        <div className="text-xs text-muted-foreground line-clamp-1">{row.guest_email}</div>
-      </td>
-
-      <td className="py-3 px-3 align-middle whitespace-nowrap">
-        <div className="font-medium text-foreground">
-          <span>{formatBookingDateShort(row.check_in_date)}</span>
-          <span className="mx-1.5 text-muted-foreground">→</span>
-          <span>{formatBookingDate(row.check_out_date)}</span>
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {row.number_of_nights} {row.number_of_nights === 1 ? 'night' : 'nights'}
+    <tr
+      className="transition-colors duration-100 group hover:bg-sidebar-accent/20"
+      style={{ borderTop: index === 0 ? undefined : '1px solid #f8fafc' }}
+    >
+      {/* Status */}
+      <td className="pl-4 sm:pl-5 pr-3 py-3 sm:py-3.5 align-middle">
+        <div className="inline-flex flex-col gap-1">
+          <StatusBadge status={row.status} />
+          {row.is_test_booking && (
+            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">
+              TEST
+            </span>
+          )}
         </div>
       </td>
 
-      <td className="hidden py-3 px-3 text-right align-middle tabular-nums md:table-cell">
-        {pax}
+      {/* Guest — with avatar */}
+      <td className="px-3 sm:px-4 py-3 sm:py-3.5 align-middle">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-[140px] sm:min-w-[160px]">
+          <div
+            className="size-7 sm:size-8 rounded-full flex items-center justify-center text-[11px] sm:text-[12px] font-black shrink-0"
+            style={{ backgroundColor: bg, color: text }}
+            aria-hidden
+          >
+            {initial}
+          </div>
+          <div className="min-w-0">
+            <p className="text-[13px] font-bold text-slate-800 leading-tight truncate">
+              {name}
+            </p>
+            <p className="mt-[2px] text-[11px] text-slate-400 leading-tight truncate">
+              {row.guest_email}
+            </p>
+          </div>
+        </div>
       </td>
 
-      <td className="hidden py-3 px-3 text-center align-middle sm:table-cell">
-        <div className="inline-flex gap-2 items-center">
-          {row.need_parking ? (
+      {/* Stay */}
+      <td className="px-3 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
+        <p className="text-[13px] font-semibold text-slate-700">
+          {formatBookingDateShort(row.check_in_date)}
+          <span className="mx-1.5 text-slate-300 font-light">→</span>
+          {formatBookingDate(row.check_out_date)}
+        </p>
+        <p className="mt-[2px] text-[11px] text-slate-400">
+          {row.number_of_nights}{' '}
+          {row.number_of_nights === 1 ? 'night' : 'nights'}
+        </p>
+      </td>
+
+      {/* Pax */}
+      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle tabular-nums md:table-cell">
+        <span className="text-[13px] font-semibold text-slate-600">{pax}</span>
+      </td>
+
+      {/* Flags */}
+      <td className="hidden px-3 sm:px-4 py-3.5 text-center align-middle sm:table-cell">
+        <div className="inline-flex gap-1 justify-center items-center">
+          {row.need_parking && (
             <span
               title="Needs parking"
-              className="inline-flex gap-1 items-center text-xs rounded-md bg-sky-50 px-1.5 py-0.5 text-sky-900 ring-1 ring-inset ring-sky-200"
+              className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/60"
             >
               <Car className="size-3" aria-hidden />
-              <span className="sr-only">Needs parking</span>
             </span>
-          ) : null}
-          {row.has_pets ? (
+          )}
+          {row.has_pets && (
             <span
               title="Has pets"
-              className="inline-flex gap-1 items-center text-xs rounded-md bg-amber-50 px-1.5 py-0.5 text-amber-900 ring-1 ring-inset ring-amber-200"
+              className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/60"
             >
               <Dog className="size-3" aria-hidden />
-              <span className="sr-only">Has pets</span>
             </span>
-          ) : null}
-          {!row.need_parking && !row.has_pets ? (
-            <span className="text-xs text-muted-foreground">—</span>
-          ) : null}
+          )}
+          {!row.need_parking && !row.has_pets && (
+            <span className="text-slate-200 text-[14px] leading-none">—</span>
+          )}
         </div>
       </td>
 
-      <td className="hidden py-3 px-3 text-right align-middle lg:table-cell tabular-nums">
-        <span className={row.booking_rate == null ? 'text-muted-foreground' : 'text-foreground'}>
+      {/* Amount */}
+      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle lg:table-cell tabular-nums">
+        <span
+          className={cn(
+            'text-[13px] font-semibold',
+            row.booking_rate == null ? 'text-slate-300' : 'text-slate-700',
+          )}
+        >
           {formatMoney(row.booking_rate)}
         </span>
       </td>
 
-      <td className="hidden py-3 px-3 text-right align-middle md:table-cell whitespace-nowrap text-muted-foreground">
-        {formatRelative(row.created_at)}
+      {/* Created */}
+      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle md:table-cell whitespace-nowrap">
+        <span className="text-[12px] text-slate-400">
+          {formatRelative(row.created_at)}
+        </span>
       </td>
 
-      <td className="py-3 pr-4 pl-3 text-right align-middle">
-        <div className="inline-flex gap-1 items-center">
-          <Button
-            asChild
-            size="sm"
-            variant="ghost"
-            aria-label={`View booking for ${guestName}`}
-            className="px-2 h-8"
-          >
-            <Link to={`/form?bookingId=${row.id}`}>
-              <Eye className="size-3.5" aria-hidden />
-              <span className="ml-1 hidden md:inline">View</span>
-            </Link>
-          </Button>
-          <Button
-            asChild
-            size="sm"
-            variant="ghost"
-            aria-label={`Open guest form for ${guestName} in a new tab`}
-            className="hidden px-2 h-8 lg:inline-flex"
-            title="Open in new tab"
-          >
-            <a href={`/form?bookingId=${row.id}`} target="_blank" rel="noreferrer">
-              <ExternalLink className="size-3.5" aria-hidden />
-            </a>
-          </Button>
-        </div>
+      {/* Action — 44px touch target; always visible on mobile (no hover on touch) */}
+      <td className="py-2 pr-3 pl-2 text-right align-middle sm:pr-4">
+        <Link
+          to={`/form?bookingId=${row.id}`}
+          aria-label={`View booking for ${name}`}
+          className={cn(
+            'inline-flex items-center justify-center rounded-lg',
+            'min-w-[44px] min-h-[44px] text-slate-500',
+            // Mobile: always visible; desktop: reveal on row hover
+            'sm:opacity-0 sm:group-hover:opacity-100',
+            'transition-all duration-150',
+            'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            'active:bg-sidebar-accent',
+          )}
+        >
+          <ArrowUpRight className="size-4" aria-hidden />
+          <span className="sr-only">Open booking</span>
+        </Link>
       </td>
     </tr>
   );
@@ -182,22 +288,49 @@ function BookingRowView({ row }: { row: BookingRow }) {
 
 function TableSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl border shadow-soft bg-card border-border/60">
-      <div className="px-4 py-3 border-b bg-muted/40 border-border/60">
-        <div className="h-4 rounded animate-pulse w-36 bg-muted" />
-      </div>
-      <ul className="divide-y divide-border/50" aria-hidden>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <li key={i} className="flex gap-4 items-center px-4 py-4">
-            <div className="w-24 h-5 rounded-full animate-pulse bg-muted" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 rounded animate-pulse bg-muted w-36" />
-              <div className="w-48 h-3 rounded animate-pulse bg-muted/70" />
-            </div>
-            <div className="w-32 h-3 rounded animate-pulse bg-muted" />
-          </li>
+    <div
+      className="overflow-hidden bg-white rounded-xl"
+      style={{ border: '1px solid rgba(0,0,0,0.08)' }}
+    >
+      {/* Header */}
+      <div
+        className="flex gap-6 items-center px-5 py-[11px]"
+        style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
+      >
+        {[72, 120, 150, 48, 60, 72].map((w, i) => (
+          <div
+            key={i}
+            className="h-2.5 rounded-full bg-slate-200 animate-pulse shrink-0"
+            style={{ width: w, opacity: 0.6 }}
+          />
         ))}
-      </ul>
+      </div>
+      {/* Rows */}
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div
+          key={i}
+          className="flex gap-4 items-center px-5 py-4"
+          style={{
+            borderTop: i === 0 ? undefined : '1px solid #f8fafc',
+            opacity: 1 - i * 0.1,
+          }}
+        >
+          {/* Status placeholder */}
+          <div className="w-24 h-5 rounded-md animate-pulse bg-slate-100" />
+          {/* Avatar + name */}
+          <div className="flex flex-1 gap-3 items-center">
+            <div className="rounded-full animate-pulse size-8 bg-slate-100 shrink-0" />
+            <div className="space-y-1.5 flex-1">
+              <div className="w-32 h-3 rounded-full animate-pulse bg-slate-100" />
+              <div className="h-2.5 rounded-full bg-slate-100/70 animate-pulse w-40" />
+            </div>
+          </div>
+          {/* Dates */}
+          <div className="hidden w-36 h-3 rounded-full animate-pulse md:block bg-slate-100" />
+          {/* Action */}
+          <div className="ml-auto w-14 h-7 rounded-lg animate-pulse bg-slate-100" />
+        </div>
+      ))}
     </div>
   );
 }
