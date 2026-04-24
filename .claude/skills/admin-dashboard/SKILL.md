@@ -114,11 +114,11 @@ Two-column on ≥lg, single column on mobile:
 
 - `SignInPage`:
   - Single "Sign in with Google" button.
-  - After sign-in, check allow list client-side; if rejected, sign out and show "This email is not authorized to access the admin dashboard." with a "Try another account" button.
+  - After sign-in, check allow list client-side; if rejected, show generic copy (do not list allowed emails or mention "allow list") and offer sign-out / try another account.
 - `RequireAdmin`:
   - Shows a minimal centered spinner while `useAdminSession()` is loading.
   - Redirects to `/sign-in?redirect=<current>` when unauthenticated.
-  - Renders `<Unauthorized />` + sign-out CTA when authenticated but not allow-listed.
+  - Renders generic unauthorized UI + sign-out CTA when authenticated but not allow-listed (no allow-list disclosure).
 
 ## Error handling
 

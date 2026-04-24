@@ -27,7 +27,7 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
 - New component: `ui/src/features/admin/components/RequireAdmin.tsx`.
   - Shows a loader while the session hydrates.
   - Redirects to `/sign-in` if unauthenticated.
-  - Shows "Not authorized" if the email is not in the allow list (signs the user out).
+  - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
 - Applied to: `/bookings`, `/bookings/:bookingId`, and any other admin route added later.
 - The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
 
