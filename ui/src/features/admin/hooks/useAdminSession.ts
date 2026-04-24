@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
-import { ADMIN_ALLOWED_EMAILS, isAdminEmail } from '@/features/admin/lib/adminConfig';
+import { isAdminEmail } from '@/features/admin/lib/adminConfig';
 
 export type AdminSessionState = {
   status: 'loading' | 'signed-out' | 'not-admin' | 'admin';
@@ -9,10 +9,8 @@ export type AdminSessionState = {
   email: string | null;
   /** True while we're resolving the initial session from storage. */
   isLoading: boolean;
-  /** Signs the current user out (used when an email is not in the allow list). */
+  /** Signs the current user out (e.g. when the signed-in account fails the client allow-list check). */
   signOut: () => Promise<void>;
-  /** Raw allow list exposed for UX copy (e.g. "authorized emails: …" in error states). */
-  allowedEmails: ReadonlyArray<string>;
 };
 
 /**
@@ -67,7 +65,6 @@ export function useAdminSession(): AdminSessionState {
     session,
     email,
     isLoading,
-    allowedEmails: ADMIN_ALLOWED_EMAILS,
     signOut: async () => {
       await supabase.auth.signOut();
     },

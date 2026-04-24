@@ -13,6 +13,11 @@ import type { BookingRow, BookingsQuery } from '@/features/admin/lib/types';
  * direct DB sort by that column is lexicographic (wrong for year boundaries). We
  * therefore sort by `created_at` only at this layer and expose an optional client-side
  * re-sort on the current page in the list page when the admin asks for "upcoming first".
+ *
+ * **Test rows:** `is_test_booking` is never referenced in the PostgREST filter (so the
+ * list works before Phase 0 migrations). With `includeTests === false`, test rows are
+ * removed after fetch when the column is present. `total` still reflects the server
+ * count for the unfiltered query (pagination is approximate until Phase 3).
  */
 export const BOOKINGS_QUERY_KEY = ['bookings'] as const;
 
@@ -22,6 +27,10 @@ type BookingsResult = {
 };
 
 const SELECT_COLUMNS = '*';
+
+/** User-facing copy only — details go to `console.error`. */
+const GENERIC_BOOKINGS_ERROR =
+  'We could not load bookings. Please try again in a moment.';
 
 export function useBookings(query: BookingsQuery) {
   return useQuery<BookingsResult>({
@@ -58,12 +67,10 @@ export function useBookings(query: BookingsQuery) {
       if (query.needParking === true) request = request.eq('need_parking', true);
       if (query.needParking === false) request = request.eq('need_parking', false);
 
-      // `is_test_booking` lands in Phase 0 migration. Defensive: if the column doesn't
-      // exist yet on the target DB, Supabase returns 400 — we catch at the caller layer.
-      if (!query.includeTests) {
-        // Avoid `is.false` for nullability: treat both NULL and FALSE as non-test.
-        request = request.or('is_test_booking.is.null,is_test_booking.eq.false');
-      }
+      // Do NOT filter `is_test_booking` in SQL: Phase 0 migration may not be applied on
+      // the linked DB yet — PostgREST returns 400 ("column … does not exist"). When the
+      // column exists, we drop test rows client-side below (Phase 3 `list-bookings` will
+      // move this back server-side with accurate pagination).
 
       // --- Sort ---
       const [sortColumn, sortDirection] = query.sort.split(':') as [
@@ -77,11 +84,17 @@ export function useBookings(query: BookingsQuery) {
 
       const { data, error, count } = await request;
       if (error) {
-        throw new Error(error.message);
+        console.error('[useBookings] Supabase error', error);
+        throw new Error(GENERIC_BOOKINGS_ERROR);
+      }
+
+      let rows = (data ?? []) as BookingRow[];
+      if (!query.includeTests) {
+        rows = rows.filter((r) => r.is_test_booking !== true);
       }
 
       return {
-        rows: (data ?? []) as BookingRow[],
+        rows,
         total: count ?? 0,
       };
     },
