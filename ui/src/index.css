@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -51,6 +53,17 @@
     --warning-foreground: 0 0% 100%;
 
     --radius: 0.75rem;
+
+    /* ── Admin Dashboard Sidebar Tokens (matches property-management design system) ── */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 71% 4%;
+    --sidebar-primary: 168 65% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 168 65% 96%;
+    --sidebar-accent-foreground: 168 65% 28%;
+    --sidebar-border: 220 13% 93%;
+    --sidebar-ring: 168 65% 40%;
+    --sidebar-muted: 220 9% 46%;
   }
 
   .dark {
@@ -81,6 +94,17 @@
     --border: 215 25% 25%;
     --input: 215 25% 25%;
     --ring: 142 76% 40%;
+
+    /* Sidebar dark tokens */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 168 65% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 168 50% 12%;
+    --sidebar-accent-foreground: 168 65% 55%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 168 65% 45%;
+    --sidebar-muted: 0 0% 55%;
   }
 }
 
@@ -90,6 +114,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings: 'rlig' 1, 'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
