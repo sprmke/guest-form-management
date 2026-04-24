@@ -67,14 +67,14 @@ flowchart LR
 
 Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/features/admin/routes/index.tsx` (admin). Both are merged in `ui/src/routes/index.tsx`.
 
-| Route        | Component               | Guard          | Notes                                                                                                                                 |
-| ------------ | ----------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`          | `CalendarPage`          | public         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                     |
-| `/form`      | `GuestFormPage`         | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/` |
-| `/calendar`  | `CalendarPage`          | public         | Same as `/`                                                                                                                           |
-| `/success`   | `GuestFormSuccessPage`  | public         | Post-submit summary; requires `?bookingId=`                                                                                           |
-| `/sign-in`   | `SignInPage`            | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                               |
-| `/bookings`  | `BookingsListPage`      | `RequireAdmin` | Phase 1 — read-only list (search, status chips, flags, 25/50/100 pagination). URL search params are the source of truth for filters.  |
+| Route       | Component              | Guard          | Notes                                                                                                                                 |
+| ----------- | ---------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`         | `CalendarPage`         | public         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                     |
+| `/form`     | `GuestFormPage`        | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/` |
+| `/calendar` | `CalendarPage`         | public         | Same as `/`                                                                                                                           |
+| `/success`  | `GuestFormSuccessPage` | public         | Post-submit summary; requires `?bookingId=`                                                                                           |
+| `/sign-in`  | `SignInPage`           | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                               |
+| `/bookings` | `BookingsListPage`     | `RequireAdmin` | Phase 1 — read-only list (search, status chips, flags, 25/50/100 pagination). URL search params are the source of truth for filters.  |
 
 **`/bookings` data:** `useBookings` queries `guest_submissions` via the Supabase JS client (PostgREST). The query does **not** filter on `is_test_booking` in SQL so the list still works if Phase 0 migrations are not applied yet; when `includeTests` is off, test rows are dropped **after** fetch if that column exists. Fetch failures surface a generic message; details are logged with `console.error`. Phase 3 replaces this with the `list-bookings` edge function.
 
@@ -208,8 +208,8 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - `VITE_SUPABASE_URL` — same functions base URL used by the Supabase JS client; project URL is derived by stripping `/functions/v1`.
 - `VITE_SUPABASE_ANON_KEY` — public anon key (sent with function requests and used by the Supabase JS client).
 - `VITE_NODE_ENV` — `production` toggles production-only behavior in the form.
-- `VITE_ADMIN_ALLOWED_EMAILS` *(Phase 1)* — comma-separated Google emails allowed to open `/bookings`. **UX gate only** — the server-side allow list (Phase 3) is authoritative. If unset, the UI denies every account.
-- `VITE_SUPABASE_PROJECT_URL` *(optional, Phase 1)* — override for the Supabase project URL when the auto-derivation from `VITE_SUPABASE_URL` is unwanted.
+- `VITE_ADMIN_ALLOWED_EMAILS` _(Phase 1)_ — comma-separated Google emails allowed to open `/bookings`. **UX gate only** — the server-side allow list (Phase 3) is authoritative. If unset, the UI denies every account.
+- `VITE_SUPABASE_PROJECT_URL` _(optional, Phase 1)_ — override for the Supabase project URL when the auto-derivation from `VITE_SUPABASE_URL` is unwanted.
 
 ### Edge (`supabase/.env.local` / hosted secrets)
 
