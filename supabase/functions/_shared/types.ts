@@ -1,6 +1,23 @@
 import dayjs from 'https://esm.sh/dayjs@1.11.10'
 
-// UI Form Data Interface (camelCase)
+// ─── Booking status enum ──────────────────────────────────────────────────────
+// Canonical values must match the CHECK constraint in Phase 2 migration and
+// statusMachine.ts. Mirror kept in ui/src/features/admin/lib/workflow.ts.
+
+export const BOOKING_STATUSES = [
+  'PENDING_REVIEW',
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+  'PENDING_SD_REFUND',
+  'COMPLETED',
+  'CANCELLED',
+] as const;
+
+export type BookingStatus = (typeof BOOKING_STATUSES)[number];
+
+// ─── UI Form Data Interface (camelCase) ──────────────────────────────────────
 export interface GuestFormData {
   // Required fields
   guestFacebookName: string;
@@ -65,11 +82,12 @@ export interface GuestFormData {
   ownerContactNumber: string;
 }
 
-// Database Schema Interface (snake_case)
+// ─── Database Schema Interface (snake_case) ───────────────────────────────────
 export interface GuestSubmission {
   id?: string;
   created_at?: string;
   updated_at?: string;
+
   guest_facebook_name: string;
   primary_guest_name: string;
   guest_email: string;
@@ -108,6 +126,37 @@ export interface GuestSubmission {
   tower_and_unit_number: string;
   owner_onsite_contact_person: string;
   owner_contact_number: string;
+
+  // ── Workflow status (Phase 2) ─────────────────────────────────────────────
+  status?: BookingStatus | string;         // TEXT + CHECK — canonical enum after Phase 2 migration
+  status_updated_at?: string | null;       // Timestamp of last transition (orchestrator-only write)
+  is_test_booking?: boolean | null;        // Phase 0 additive flag
+
+  // ── Pricing fields (Phase 0 additive, entered at PENDING_REVIEW) ──────────
+  booking_rate?: number | null;            // NUMERIC(12,2)
+  down_payment?: number | null;
+  balance?: number | null;                 // Auto-computed: booking_rate - down_payment
+  security_deposit?: number | null;        // Separate from balance; default ₱1500
+
+  // ── Parking fields (shown at PENDING_PARKING_REQUEST) ────────────────────
+  parking_rate_guest?: number | null;      // UI label: "Guest Parking Rate"
+  parking_rate_paid?: number | null;       // UI label: "Paid Parking Rate"
+  parking_endorsement_url?: string | null;
+  parking_owner_email?: string | null;
+
+  // ── Pet fee ───────────────────────────────────────────────────────────────
+  pet_fee?: number | null;
+
+  // ── Approved PDF URLs (written by Gmail listener) ─────────────────────────
+  approved_gaf_pdf_url?: string | null;
+  approved_pet_pdf_url?: string | null;
+
+  // ── SD refund stage fields (PENDING_SD_REFUND) ────────────────────────────
+  sd_additional_expenses?: number[] | null;  // NUMERIC(12,2)[]
+  sd_additional_profits?: number[] | null;
+  sd_refund_amount?: number | null;
+  sd_refund_receipt_url?: string | null;
+  settled_at?: string | null;              // Timestamp when moved to COMPLETED
 }
 
 // Helper function to convert string to boolean

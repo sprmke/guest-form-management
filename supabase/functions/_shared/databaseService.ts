@@ -404,9 +404,13 @@ export class DatabaseService {
       // - New check-in === existing check-out
       // - New check-out === existing check-in
       
+      // Phase 2+: only CANCELLED bookings free dates — every other status blocks.
+      // We push the CANCELLED filter to the DB query for efficiency.
+      // Belt-and-suspenders: legacy 'canceled' is also excluded in JS below.
       let query = this.supabase
         .from('guest_submissions')
-        .select('*'); // Select all to include status column if it exists
+        .select('id, check_in_date, check_out_date, status, primary_guest_name')
+        .neq('status', 'CANCELLED');
 
       // Exclude the current booking if updating
       if (bookingId) {
@@ -420,10 +424,13 @@ export class DatabaseService {
         throw new Error('Failed to check for overlapping bookings');
       }
 
-      // Filter out canceled bookings first (status column may not exist yet)
-      const activeBookings = allBookings?.filter(booking => booking.status !== 'canceled') || [];
+      // Belt-and-suspenders: also filter legacy 'canceled' rows in case the
+      // Phase 2 migration hasn't been applied on a fresh local clone.
+      const activeBookings = allBookings?.filter(
+        booking => booking.status !== 'canceled' && booking.status !== 'CANCELLED'
+      ) || [];
 
-      console.log(`Found ${allBookings?.length || 0} total bookings, ${activeBookings.length} active (non-canceled) bookings to check`);
+      console.log(`Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`);
 
       // Filter overlapping bookings in memory
       const overlappingBookings = activeBookings?.filter(booking => {

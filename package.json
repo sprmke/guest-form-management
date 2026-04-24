@@ -10,8 +10,11 @@
     "dev": "./dev.sh",
     "dev:ui": "cd ui && npm run dev",
     "dev:api": "supabase functions serve submit-form --env-file ./supabase/.env.local",
-    "start:supabase": "supabase start",
-    "stop:supabase": "supabase stop",
+    "start:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest start",
+    "status:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest status",
+    "stop:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest stop",
+    "stop:supabase:clean": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest stop --no-backup --yes",
+    "db:reset": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest db reset",
     "build:ui": "cd ui && npm run build",
     "build:api": "cd api && npm run build",
     "build": "npm run build:ui && npm run build:api"

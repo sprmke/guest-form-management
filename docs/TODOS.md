@@ -2,7 +2,9 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 
 - ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `is_test_booking`, `processed_emails`, `gmail_listener_state`, 4 new storage buckets. No behavior change. Runbook: `docs/MIGRATION_RUNBOOK.md`.
 - ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, test-bookings toggle, 25/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
-- ⏳ Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.
+- ✅ **Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.** Migration `20260502000000_widen_status_enum.sql` backfills `booked/canceled` rows to new enum, adds CHECK constraint + `DEFAULT 'PENDING_REVIEW'`. Created `_shared/statusMachine.ts` (server) + `ui/src/features/admin/lib/workflow.ts` (client mirror) with full transition graph, calendar meta, and sub-form requirements. Updated `get-booked-dates` and `databaseService.checkOverlappingBookings` to filter on `CANCELLED` only.
+  - **Deferred (Q5.1):** `/bookings` default **sort by check-in** and default **hide stale past `COMPLETED`** — list still uses `created_at` sort + no completed-age filter; ship with Phase 3 list endpoint or a small Phase-3-adjacent UI pass.
+  - **Not in Phase 1–2:** `/bookings/:bookingId` detail + workflow panel — Phase 3.
 - ⏳ Phase 3 — `transition-booking` endpoint + admin transition UI + new guest emails.
 - ⏳ Phase 4 — Gmail listener + SD refund cron.
 - ⏳ Phase 5 — `submit-form` side-effect cleanup + retire `?dev=true` / `?testing=true`.

@@ -44,7 +44,9 @@ flowchart LR
 
 - **UI**: React 18, Vite, React Router, React Hook Form + Zod, Tailwind, Radix/shadcn-style components, Sonner toasts.
 - **Backend**: No separate Node API in-repo; `package.json` lists an `api` workspace but **no `api/` directory exists**—the real backend is **Supabase Edge Functions** under `supabase/functions/`.
-- **Local dev**: `dev.sh` runs `supabase start`, `supabase functions serve` with `supabase/.env.local`, then `cd ui && npm run dev`.
+- **Local dev**: `dev.sh` runs `supabase start` (includes edge functions in Docker), then `cd ui && npm run dev`. Do not also run `supabase functions serve` in parallel (Docker edge-runtime name conflict). For `npm run dev:api` / `functions serve`, set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `supabase/.env.local`.
+- **CLI env**: `config.toml` references `GOOGLE_CLIENT_*` from the process environment. Prefer **`npm run status:supabase`**, **`npm run stop:supabase`**, **`npm run db:reset`**, **`npm run start:supabase`**: they run **`npx supabase@latest`** via `scripts/run-with-ui-dev-env.sh`, which also loads `ui/.env.development`. A **global** `supabase` on PATH (e.g. v2.40.x) is easy to leave outdated and break Postgres 17 migrations (`storage.buckets` missing).
+- **Nuclear local reset**: **`npm run stop:supabase:clean`** stops the stack and **deletes Docker data volumes** (fixes sticky Storage `migrations_name_key` issues when the CLI keeps **restoring from backup**). Then `npm run start:supabase`. All local DB data is lost until you `db reset` / migrations / optional prod sync.
 
 ---
 
@@ -102,9 +104,9 @@ Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/fe
 
 ### 5.3 Calendar and availability
 
-- **`get-booked-dates`** returns `{ id, checkInDate, checkOutDate }` for rows where `status !== 'canceled'` and **check-out date ≥ start of today** (server-side filter). Dates are normalized to `YYYY-MM-DD` in the JSON payload.
-- **Overlap rule** (submit + DB check): ranges overlap unless **same-day turnover** is allowed: overlap is false if new check-in equals existing check-out or new check-out equals existing check-in (see `DatabaseService.checkOverlappingBookings`).
-- **Canceled** bookings (`status === 'canceled'`) do not block dates and do not appear in booked-date lists.
+- **`get-booked-dates`** returns `{ id, checkInDate, checkOutDate }` for rows where **`status` is not `CANCELLED`** (and not legacy `'canceled'` in JS), and **check-out date ≥ start of today** (past stays are omitted for picker performance — see `docs/TODOS.md`). Dates are normalized to `YYYY-MM-DD` in the JSON payload.
+- **Overlap rule** (submit + DB check): **`DatabaseService.checkOverlappingBookings`** treats only **`CANCELLED`** / legacy **`canceled`** as non-blocking; all other statuses (including **`COMPLETED`**) block overlaps. Same-day turnover: overlap is false if new check-in equals existing check-out or new check-out equals existing check-in.
+- **`NEW_FLOW_PLAN.md` §6.1 Q7.2:** only **`CANCELLED`** frees dates for overlap; **`COMPLETED`** still blocks when the row is in scope of the query (future check-out in `get-booked-dates`; overlap check uses full non-cancelled set).
 
 ### 5.4 Dev / testing UX
 
@@ -210,6 +212,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - `VITE_NODE_ENV` — `production` toggles production-only behavior in the form.
 - `VITE_ADMIN_ALLOWED_EMAILS` _(Phase 1)_ — comma-separated Google emails allowed to open `/bookings`. **UX gate only** — the server-side allow list (Phase 3) is authoritative. If unset, the UI denies every account.
 - `VITE_SUPABASE_PROJECT_URL` _(optional, Phase 1)_ — override for the Supabase project URL when the auto-derivation from `VITE_SUPABASE_URL` is unwanted.
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` _(local Supabase Auth only)_ — **not** `VITE_*`; not exposed to the browser. Used when `supabase/config.toml` enables `[auth.external.google]`: `dev.sh` and `npm run start:supabase` load `ui/.env.development` before starting the stack so the CLI can substitute `env(...)`. Do **not** use the `SUPABASE_` prefix (CLI may ignore those names). In Google Cloud, add redirect URIs `http://127.0.0.1:54321/auth/v1/callback` and `http://localhost:54321/auth/v1/callback`.
 
 ### Edge (`supabase/.env.local` / hosted secrets)
 

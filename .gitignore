@@ -54,6 +54,7 @@ api/build/
 # Temporary files
 **/tmp/
 **/temp/
+supabase/.temp/
 
 # Local development
 **/.local

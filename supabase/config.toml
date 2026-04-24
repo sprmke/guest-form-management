@@ -15,11 +15,33 @@ enabled = false
 [db]
 port = 54322
 shadow_port = 54320
+# Postgres 17 local stack needs a current Supabase CLI (≈2.80+) so `storage.*` exists
+# before user migrations run. If `storage.buckets` / `storage.objects` errors appear on
+# `db reset`, run: `npm run db:reset` or `npx supabase@latest db reset`.
 major_version = 17
 
 [db.seed]
 enabled = true
 sql_paths = ["./seed.sql"]
+
+# Admin sign-in (Google OAuth). Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in
+# ui/.env.development (same file as Vite dev vars). dev.sh / npm run start:supabase
+# load that file into the environment before `supabase start`. Google Cloud → OAuth
+# Web client → Authorized redirect URIs: http://127.0.0.1:54321/auth/v1/callback and
+# http://localhost:54321/auth/v1/callback
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:5173"
+additional_redirect_urls = [
+  "http://127.0.0.1:5173/**",
+  "http://localhost:5173/**",
+]
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_CLIENT_ID)"
+secret = "env(GOOGLE_CLIENT_SECRET)"
+skip_nonce_check = false
 
 [storage]
 enabled = true

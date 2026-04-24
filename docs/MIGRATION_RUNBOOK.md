@@ -80,6 +80,91 @@ SELECT * FROM gmail_listener_state;
 
 ---
 
+## 3.5 Develop against **local** Supabase (env + optional prod data)
+
+Use this when you want the UI and edge functions to hit **Docker Postgres on port 54322**, not the hosted project. `docs/MIGRATION_RUNBOOK.md` §7.4 historically assumed `.env.development` pointed at prod — switch the vars below when testing migrations and copied prod rows locally.
+
+### 3.5.1 Start the stack and read keys
+
+```bash
+# From repo root
+supabase start
+supabase status
+```
+
+Note:
+
+- **API (REST + Auth):** `http://127.0.0.1:54321` (no trailing slash).
+- **Edge Functions base URL:** `http://127.0.0.1:54321/functions/v1`.
+- **anon key** and **service_role key** — copy from `supabase status` output.
+
+Keep edge secrets in **`supabase/.env.local`** (see `supabase/.env.example`). `./dev.sh` runs **`supabase start`** only (functions run in that stack). If you use **`supabase functions serve`** separately, add `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` (see example file). Never commit real secrets.
+
+### 3.5.2 `ui/.env.development` — point Vite at local
+
+Set or replace these (see template in [`ui/.env.example`](../ui/.env.example)):
+
+| Variable                    | Local value                                                     |
+| --------------------------- | --------------------------------------------------------------- |
+| `VITE_NODE_ENV`             | `development`                                                   |
+| `VITE_SUPABASE_URL`         | `http://127.0.0.1:54321/functions/v1`                           |
+| `VITE_API_URL`              | Same as `VITE_SUPABASE_URL`                                     |
+| `VITE_SUPABASE_ANON_KEY`    | **anon** `eyJ…` from `supabase status`                          |
+| `VITE_SUPABASE_PROJECT_URL` | Optional but clear: `http://127.0.0.1:54321`                    |
+| `VITE_ADMIN_ALLOWED_EMAILS` | Same comma-separated emails you use for `/sign-in`              |
+| `GOOGLE_CLIENT_ID`          | OAuth **Web** client ID (not `VITE_*`; not sent to the browser) |
+| `GOOGLE_CLIENT_SECRET`      | Same client’s secret — used by local GoTrue only                |
+
+**Admin Google sign-in (local):** `supabase/config.toml` enables `[auth.external.google]`. Put `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` in this same file; `dev.sh` and `npm run start:supabase` run [`scripts/run-with-ui-dev-env.sh`](../scripts/run-with-ui-dev-env.sh) so those vars are in the environment when the CLI starts Docker. In Google Cloud, add redirect URIs `http://127.0.0.1:54321/auth/v1/callback` and `http://localhost:54321/auth/v1/callback` (hosted projects still use the dashboard + `https://<ref>.supabase.co/auth/v1/callback`).
+
+Restart after changing env files (`supabase stop` / `start` if you changed `GOOGLE_*`).
+
+### 3.5.3 Copy **production Postgres data** into local (public schema)
+
+Script: [`scripts/sync-prod-public-data-to-local.sh`](../scripts/sync-prod-public-data-to-local.sh).
+
+1. In the Supabase dashboard: **Connect** → copy a URI that works from your machine. Direct `db.<ref>.supabase.co` is often **IPv6-only**; on IPv4 networks use the **Session pooler** string (host like `…pooler.supabase.com`). URL-encode special characters in the password.
+2. Local DB must already reflect your branch migrations (`supabase start` or `supabase db reset`).
+3. Run:
+
+   ```bash
+   export PROD_DB_URL='postgresql://postgres.<ref>:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres'
+   ./scripts/sync-prod-public-data-to-local.sh
+   ```
+
+This dumps **`public` data only** into `supabase/.temp/` (gitignored). It does **not** copy Storage objects — file URLs in rows may still point at production buckets.
+
+The script **drops `guest_submissions` CHECK constraints** that prod data may violate (`guest_submissions_status_check`, `valid_dates`, `valid_times`), loads the dump, then runs [`scripts/sql/after-prod-data-restore.sql`](../scripts/sql/after-prod-data-restore.sql): legacy `booked`/`canceled` → new status enum, then re-adds the status CHECK. `valid_dates` / `valid_times` are re-added **`NOT VALID`** so historical bad rows (e.g. check-out before check-in) still load; new/updated rows must pass.
+
+Treat the dump as **PII**; delete it when finished.
+
+### 3.5.4 End-to-end local dev (typical order)
+
+1. **`npm run start:supabase`** or **`./dev.sh`** (loads `ui/.env.development` for `GOOGLE_*` and runs **`npx supabase@latest start`**). Avoid a global `supabase start` if your installed CLI is old (see `storage.buckets` row). For a clean DB only: `npm run db:reset`.
+2. Update `ui/.env.development` and `supabase/.env.local` as above.
+3. Optional: `./scripts/sync-prod-public-data-to-local.sh` with `PROD_DB_URL`.
+4. From repo root: `./dev.sh` **or** `./scripts/run-with-ui-dev-env.sh supabase start` then `cd ui && npm run dev`. Avoid running **`supabase functions serve`** at the same time as `supabase start` (duplicate edge-runtime container / name conflict). If you use `functions serve` alone for hot reload, add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to `supabase/.env.local` (see `supabase/.env.example`).
+
+### 3.5.5 Troubleshooting `supabase start` (local Postgres unhealthy)
+
+| Symptom                                                                                                          | What to try                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `could not open configuration directory "/etc/postgresql-custom/conf.d"` + `postgresql.conf contains errors`     | Stale Docker volumes vs newer images. From repo root: `supabase stop`, then `docker rm -f supabase_db_guest-form-management` (if present), then `docker volume rm supabase_db_guest-form-management supabase_config_guest-form-management`, then `supabase start` again. **This wipes local DB data.**                                                                                                                                         |
+| `failed to resolve reference "…/storage-api:buckets-objects-grants-postgres"`                                    | `supabase/.temp/storage-version` has an invalid tag (sometimes after `supabase link`). Replace with a real image tag (see CLI warning when you run `supabase start`, e.g. `v1.54.0`) or delete the file and re-link.                                                                                                                                                                                                                           |
+| `must be owner of table objects` on `ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY`                      | RLS is already enabled on `storage.objects`; remove that `ALTER` from any migration (see [supabase/cli#4114](https://github.com/supabase/cli/issues/4114)). This repo’s storage migrations follow that rule.                                                                                                                                                                                                                                   |
+| `relation "guest_submissions" does not exist` mid-migrate                                                        | Migration filename order: status DDL must run **after** `create_guest_submissions_table`. This repo uses `20250213043909_add_booking_status.sql` for the real `ALTER`; `20250113000000_add_booking_status.sql` is a no-op for legacy history.                                                                                                                                                                                                  |
+| `relation "storage.objects" does not exist` on `20240213_storage_policies.sql`                                   | User migrations can run before Storage creates `storage.objects`. That migration is a no-op; policies are in `20250213045323_create_storage_buckets.sql`.                                                                                                                                                                                                                                                                                      |
+| `relation "storage.buckets" does not exist` on `20250213045323_*` or later bucket migrations                     | **Old global Supabase CLI** (e.g. v2.40.x) with **Postgres 17** runs user migrations before the platform creates `storage.buckets`. Use **`npm run start:supabase`** / **`./dev.sh`** (`npx supabase@latest`) or `brew upgrade supabase`. Avoid raw `supabase start` if `supabase -v` is far below **~2.80**.                                                                                                                                  |
+| `pg_dump` / sync script: `Connection refused` or DNS `Errno 8` for `db.*.supabase.co`                            | Direct DB host is often **IPv6-only**; macOS/Python DNS may differ from `dig`. The sync script resolves via **socket then `dig` fallback**, then adds `hostaddr` (IPv4 or IPv6). **Best:** use the **Session pooler** URI from Connect (IPv4-friendly). Single-line `PROD_DB_URL`; URL-encode special characters in the password.                                                                                                              |
+| `supabase_storage_*` unhealthy; logs show `duplicate key value violates unique constraint "migrations_name_key"` | Storage’s **internal** migration ledger in Postgres is corrupt. If `supabase start` logs **`Starting database from backup...`**, a normal stop/start keeps restoring that state — run **`npm run stop:supabase:clean`** (`supabase stop --no-backup --yes`, deletes local data volumes), then **`npm run start:supabase`**. Alternative: `npm run db:reset` from a clean stop. **Wipes local Postgres** — re-run prod data sync if you use it. |
+| Edge logs: `Database error: { message: "name resolution failed" }` on `get-booked-dates`                         | Usually `supabase functions serve` with an `--env-file` that omits `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`, so `createClient` gets an empty host. Add both from `supabase status`, or use `./dev.sh` (functions run inside `supabase start` with auto-injected vars).                                                                                                                                                                     |
+| `failed to create docker container` … `supabase_edge_runtime_…` already in use                                   | Don’t run `supabase start` and `supabase functions serve` together. `docker rm -f supabase_edge_runtime_<project-id>` then `supabase start` again; prefer `./dev.sh` which only starts the stack once.                                                                                                                                                                                                                                         |
+| `failed to create docker container` … `supabase_storage_…` already in use                                        | Stale Storage container (crash or partial stop). `npm run stop:supabase`, then `docker rm -f supabase_storage_guest-form-management` (replace suffix with your `project_id` from `supabase/config.toml`), then `npm run start:supabase`. Repeat for any other orphaned `supabase_*_guest-form-management` name the error mentions.                                                                                                             |
+
+**CLI drift:** Root **`package.json`** uses **`npx supabase@latest`** for `start` / `stop` / `status` / `db:reset` so Postgres 17 + Storage ordering stays correct even when `supabase -v` on your PATH is outdated. Upgrade the global CLI with Homebrew when you want `supabase` in the shell to match.
+
+---
+
 ## 4. Staging (if available)
 
 This project doesn't have a dedicated staging Supabase project today. If you spin one up:
@@ -203,7 +288,7 @@ npm run dev
 
 1. Visit `http://localhost:5173/bookings` → should redirect to `/sign-in?redirect=%2Fbookings`.
 2. Click **Continue with Google** → OAuth round-trip.
-3. Signed in with an allow-listed email → lands on `/bookings`; sees existing prod rows (the local UI reads from prod Supabase because `.env.development` points there).
+3. Signed in with an allow-listed email → lands on `/bookings`; sees rows from whichever project `VITE_SUPABASE_*` points at (prod by default, or local if you followed §3.5).
 4. Signed in with a non-allowed email → generic "access restricted" message with a sign-out CTA (no disclosure of allow-listed addresses).
 5. Hard-refresh `/bookings` while signed in → should load the table without bouncing to `/sign-in`.
 
