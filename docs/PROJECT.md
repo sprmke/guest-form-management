@@ -76,6 +76,8 @@ Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/fe
 | `/sign-in`   | `SignInPage`            | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                               |
 | `/bookings`  | `BookingsListPage`      | `RequireAdmin` | Phase 1 — read-only list (search, status chips, flags, 25/50/100 pagination). URL search params are the source of truth for filters.  |
 
+**`/bookings` data:** `useBookings` queries `guest_submissions` via the Supabase JS client (PostgREST). The query does **not** filter on `is_test_booking` in SQL so the list still works if Phase 0 migrations are not applied yet; when `includeTests` is off, test rows are dropped **after** fetch if that column exists. Fetch failures surface a generic message; details are logged with `console.error`. Phase 3 replaces this with the `list-bookings` edge function.
+
 **Legacy links:** URLs like `/?bookingId=<uuid>` (e.g. older Google Calendar descriptions) are handled on `CalendarPage`: the app **`replace`** navigates to **`/form?bookingId=...`** (other query params are preserved).
 
 ---

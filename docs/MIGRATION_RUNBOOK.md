@@ -185,6 +185,8 @@ Added to **`ui/.env.development` only** (safe — the prod file was intentionall
 
 **For production,** add `VITE_ADMIN_ALLOWED_EMAILS` in the Vercel project env (or wherever the prod UI is built) when you're ready to roll out Phase 1 to production. If the var is missing, the UI allow list is empty and every email is rejected — failing closed is the right default.
 
+**Reference:** a fully documented, placeholder-only template of every UI env var lives at [`ui/.env.example`](../ui/.env.example). The equivalent for edge functions — including variables that land in later phases — is at [`supabase/.env.example`](../supabase/.env.example). Both files are committed; never put real secrets in them.
+
 ### 7.3 Allow-list philosophy (important)
 
 The UI check is **UX-only**. It prevents an unauthorized user from seeing the dashboard shell, but it does not secure data — any authenticated Supabase user can read `guest_submissions` today (existing RLS policy). The real gate is the server-side allow list that lands in **Phase 3** with the admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email` — each calls `verifyAdminJwt` from `_shared/auth.ts`).
@@ -202,7 +204,7 @@ npm run dev
 1. Visit `http://localhost:5173/bookings` → should redirect to `/sign-in?redirect=%2Fbookings`.
 2. Click **Continue with Google** → OAuth round-trip.
 3. Signed in with an allow-listed email → lands on `/bookings`; sees existing prod rows (the local UI reads from prod Supabase because `.env.development` points there).
-4. Signed in with a non-allowed email → "Not authorized" card with a sign-out CTA.
+4. Signed in with a non-allowed email → generic "access restricted" message with a sign-out CTA (no disclosure of allow-listed addresses).
 5. Hard-refresh `/bookings` while signed in → should load the table without bouncing to `/sign-in`.
 
 ### 7.5 Rollback
