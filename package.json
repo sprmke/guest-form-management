@@ -8,7 +8,9 @@
   ],
   "scripts": {
     "gmail-auth": "node scripts/gmail-auth.mjs",
-    "preview:emails": "cd supabase/functions/_shared/email-templates && python3 -m http.server 3334",
+    "preview:emails:db": "node scripts/preview-emails-from-db.mjs",
+    "preview:emails:serve": "cd supabase/functions/_shared/email-templates && python3 -m http.server 3334",
+    "preview:emails": "npm run preview:emails:db && npm run preview:emails:serve",
     "dev": "./dev.sh",
     "dev:ui": "cd ui && npm run dev",
     "dev:api": "supabase functions serve submit-form --env-file ./supabase/.env.local",
@@ -22,6 +24,7 @@
     "build": "npm run build:ui && npm run build:api"
   },
   "devDependencies": {
+    "@supabase/supabase-js": "^2.49.1",
     "concurrently": "^8.2.2"
   },
   "dependencies": {

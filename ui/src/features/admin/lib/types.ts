@@ -76,8 +76,19 @@ export type BookingRow = {
   pet_fee?: number | string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
+  sd_additional_expenses?: number[] | null;
+  sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | string | null;
   sd_refund_receipt_url?: string | null;
+  sd_refund_guest_feedback?: string | null;
+  sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
+  sd_refund_phone_confirmed?: boolean | null;
+  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_account_name?: string | null;
+  sd_refund_account_number?: string | null;
+  sd_refund_cash_pickup_note?: string | null;
+  sd_refund_form_submitted_at?: string | null;
+  sd_refund_form_emailed_at?: string | null;
   settled_at?: string | null;
 };
 

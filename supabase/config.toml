@@ -94,6 +94,12 @@ verify_jwt = false
 [functions.get-form]
 verify_jwt = false
 
+[functions.get-sd-form]
+verify_jwt = false
+
+[functions.submit-sd-form]
+verify_jwt = false
+
 # ── Admin functions — Kong JWT gate disabled; verifyAdminJwt() in handler is the gate ──
 # verify_jwt = true uses Kong's HS256 secret which rejects newer ES256 auth tokens
 # (Supabase local dev ≥ 1.x issues ES256 JWTs). Our verifyAdminJwt() calls
@@ -115,6 +121,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.parking-broadcast-email]
+verify_jwt = false
+
+[functions.send-sd-refund-form-email]
 verify_jwt = false
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────

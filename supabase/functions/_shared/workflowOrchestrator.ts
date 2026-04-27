@@ -18,6 +18,7 @@ import {
   sendBookingAcknowledgement,
   sendReadyForCheckin,
   sendParkingBroadcast,
+  sendSdRefundFormRequest,
 } from './emailService.ts';
 import {
   BookingStatus,
@@ -49,6 +50,15 @@ export type TransitionPayload = {
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
 
+  // Guest SD form (PENDING_SD_REFUND_DETAILS → PENDING_SD_REFUND)
+  sd_refund_guest_feedback?: string | null;
+  sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
+  sd_refund_phone_confirmed?: boolean | null;
+  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_account_name?: string | null;
+  sd_refund_account_number?: string | null;
+  sd_refund_cash_pickup_note?: string | null;
+
   // Approved PDFs (set by Gmail listener in Phase 4; admin can also set manually)
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
@@ -67,6 +77,8 @@ export type DevControlFlags = {
   sendPetRequestEmail?: boolean;
   sendBookingAcknowledgementEmail?: boolean;
   sendReadyForCheckinEmail?: boolean;
+  /** Email guest the /sd-form link when moving READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron + manual). */
+  sendSdRefundFormEmail?: boolean;
 };
 
 export type TransitionResult = {
@@ -177,6 +189,22 @@ export class WorkflowOrchestrator {
 
     if (toStatus === 'READY_FOR_CHECKIN' && fromStatus === 'PENDING_PET_REQUEST') {
       if (payload.approved_pet_pdf_url) workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
+    }
+
+    // Guest /sd-form submit includes sd_refund_method; admin "skip details" advance omits it.
+    if (
+      fromStatus === 'PENDING_SD_REFUND_DETAILS' &&
+      toStatus === 'PENDING_SD_REFUND' &&
+      payload.sd_refund_method != null
+    ) {
+      workflowFields.sd_refund_guest_feedback = payload.sd_refund_guest_feedback ?? null;
+      workflowFields.sd_refund_method = payload.sd_refund_method;
+      workflowFields.sd_refund_phone_confirmed = payload.sd_refund_phone_confirmed ?? null;
+      workflowFields.sd_refund_bank = payload.sd_refund_bank ?? null;
+      workflowFields.sd_refund_account_name = payload.sd_refund_account_name ?? null;
+      workflowFields.sd_refund_account_number = payload.sd_refund_account_number ?? null;
+      workflowFields.sd_refund_cash_pickup_note = payload.sd_refund_cash_pickup_note ?? null;
+      workflowFields.sd_refund_form_submitted_at = new Date().toISOString();
     }
 
     if (toStatus === 'COMPLETED') {
@@ -322,6 +350,26 @@ export class WorkflowOrchestrator {
           emailsSent.push('ready_for_checkin');
         } catch (err) {
           console.error('[orchestrator] Ready-for-check-in email failed:', err);
+        }
+      }
+
+      // READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS: SD refund form link (cron).
+      // Gated on fromStatus so PENDING_SD_REFUND_DETAILS → READY_FOR_CHECKIN never re-sends.
+      if (
+        fromStatus === 'READY_FOR_CHECKIN' &&
+        toStatus === 'PENDING_SD_REFUND_DETAILS' &&
+        flag(devControls, 'sendSdRefundFormEmail')
+      ) {
+        try {
+          await sendSdRefundFormRequest(updatedBooking, isTestBooking);
+          emailsSent.push('sd_refund_form_request');
+          if (flag(devControls, 'saveToDatabase')) {
+            await DatabaseService.setWorkflowFields(bookingId, {
+              sd_refund_form_emailed_at: new Date().toISOString(),
+            });
+          }
+        } catch (err) {
+          console.error('[orchestrator] SD refund form request email failed:', err);
         }
       }
     } else {

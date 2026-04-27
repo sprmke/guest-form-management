@@ -3,7 +3,7 @@
  *
  * Purpose:  Scan for bookings in `READY_FOR_CHECKIN` status where the guest's
  *           check-out datetime has passed by at least 15 minutes (Asia/Manila),
- *           and auto-transition them to `PENDING_SD_REFUND`.
+ *           and auto-transition them to `PENDING_SD_REFUND_DETAILS` (guest SD form + email).
  *
  * Trigger:  Supabase cron — every 5 minutes.
  *
@@ -176,29 +176,29 @@ serve(async (req) => {
 
       console.log(
         `[sd-refund-cron] Transitioning booking ${bookingId} (${booking.guest_facebook_name}) ` +
-        `checkout ${checkOutDate} ${checkOutTime} → PENDING_SD_REFUND`,
+        `checkout ${checkOutDate} ${checkOutTime} → PENDING_SD_REFUND_DETAILS`,
       );
 
       try {
         await WorkflowOrchestrator.transition(
           bookingId,
-          'PENDING_SD_REFUND',
+          'PENDING_SD_REFUND_DETAILS',
           {},
           {
             saveToDatabase: true,
             updateGoogleCalendar: true,
             updateGoogleSheets: true,
-            // No emails on this auto-transition per side-effect matrix
             sendGafRequestEmail: false,
             sendParkingBroadcastEmail: false,
             sendPetRequestEmail: false,
             sendBookingAcknowledgementEmail: false,
             sendReadyForCheckinEmail: false,
+            sendSdRefundFormEmail: true,
           },
           false, // manual=false — cron-driven transition
         );
 
-        console.log(`[sd-refund-cron] Transitioned booking ${bookingId} → PENDING_SD_REFUND`);
+        console.log(`[sd-refund-cron] Transitioned booking ${bookingId} → PENDING_SD_REFUND_DETAILS`);
         results.push({ bookingId, action: 'transitioned' });
         transitioned++;
       } catch (e: any) {

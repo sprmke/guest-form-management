@@ -240,20 +240,40 @@ async function main() {
     ? fs.readFileSync(ENV_PATH, 'utf8')
     : '';
 
-  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_CLIENT_ID',     client_id);
-  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_CLIENT_SECRET', client_secret);
-  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_REFRESH_TOKEN', refreshToken);
+  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_CLIENT_ID', client_id);
+  envContent = upsertEnvVar(
+    envContent,
+    'GMAIL_OAUTH_CLIENT_SECRET',
+    client_secret,
+  );
+  envContent = upsertEnvVar(
+    envContent,
+    'GMAIL_OAUTH_REFRESH_TOKEN',
+    refreshToken,
+  );
   // Full JSON blobs kept for auditability / re-extraction
-  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_CLIENT_JSON', JSON.stringify(raw));
-  envContent = upsertEnvVar(envContent, 'GMAIL_OAUTH_TOKEN_JSON',  JSON.stringify(tokenBody));
+  envContent = upsertEnvVar(
+    envContent,
+    'GMAIL_OAUTH_CLIENT_JSON',
+    JSON.stringify(raw),
+  );
+  envContent = upsertEnvVar(
+    envContent,
+    'GMAIL_OAUTH_TOKEN_JSON',
+    JSON.stringify(tokenBody),
+  );
 
   fs.writeFileSync(ENV_PATH, envContent, 'utf8');
 
   ok('GMAIL_OAUTH_CLIENT_ID      → supabase/.env.local');
   ok('GMAIL_OAUTH_CLIENT_SECRET  → supabase/.env.local');
   ok('GMAIL_OAUTH_REFRESH_TOKEN  → supabase/.env.local');
-  ok('GMAIL_OAUTH_CLIENT_JSON    → supabase/.env.local (full blob for reference)');
-  ok('GMAIL_OAUTH_TOKEN_JSON     → supabase/.env.local (full blob for reference)');
+  ok(
+    'GMAIL_OAUTH_CLIENT_JSON    → supabase/.env.local (full blob for reference)',
+  );
+  ok(
+    'GMAIL_OAUTH_TOKEN_JSON     → supabase/.env.local (full blob for reference)',
+  );
 
   log('\n╔══════════════════════════════════════════════════╗');
   log('║  ✅ Setup complete!                               ║');

@@ -3,6 +3,9 @@
  * in template files under ./email-templates/*.html
  */
 
+/** Public absolute URL for `<img src>` (same asset as `ui/public/images/logo.png` on the live site). */
+export const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
+
 const templateCache = new Map<string, string>();
 
 /** Escape text for HTML body contexts (attributes should use stricter encoding if added). */

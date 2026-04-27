@@ -16,6 +16,13 @@ export type TransitionPayload = {
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
+  sd_refund_guest_feedback?: string | null;
+  sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
+  sd_refund_phone_confirmed?: boolean | null;
+  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_account_name?: string | null;
+  sd_refund_account_number?: string | null;
+  sd_refund_cash_pickup_note?: string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
 };
@@ -29,6 +36,7 @@ export type DevControlFlags = {
   sendPetRequestEmail?: boolean;
   sendBookingAcknowledgementEmail?: boolean;
   sendReadyForCheckinEmail?: boolean;
+  sendSdRefundFormEmail?: boolean;
 };
 
 type TransitionInput = {
@@ -201,6 +209,45 @@ export function useRunSdRefundCron(bookingId?: string) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
       return json as RunAutomationResult;
+    },
+    onSuccess: () => {
+      if (bookingId) {
+        qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+        qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+      }
+    },
+  });
+}
+
+/**
+ * Re-send the guest SD refund form email (PENDING_SD_REFUND_DETAILS only).
+ */
+export function useResendSdRefundFormEmail(bookingId?: string) {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (): Promise<{
+      success: boolean;
+      skipped?: boolean;
+      reason?: string;
+    }> => {
+      if (!bookingId) throw new Error('bookingId is required');
+      const jwt = await getAdminJwt();
+
+      const res = await fetch(`${FUNCTIONS_URL}/send-sd-refund-form-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify({ bookingId }),
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      return json;
     },
     onSuccess: () => {
       if (bookingId) {

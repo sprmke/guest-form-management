@@ -8,6 +8,7 @@ export const BOOKING_STATUSES = [
   'PENDING_PARKING_REQUEST',
   'PENDING_PET_REQUEST',
   'READY_FOR_CHECKIN',
+  'PENDING_SD_REFUND_DETAILS',
   'PENDING_SD_REFUND',
   'COMPLETED',
   'CANCELLED',
@@ -31,6 +32,7 @@ export const STATUS_LABELS: Record<AnyBookingStatus, string> = {
   PENDING_PARKING_REQUEST: 'Pending Parking Request',
   PENDING_PET_REQUEST: 'Pending Pet Request',
   READY_FOR_CHECKIN: 'Ready for Check-in',
+  PENDING_SD_REFUND_DETAILS: 'Pending SD Refund Details',
   PENDING_SD_REFUND: 'Pending SD Refund',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
@@ -43,7 +45,15 @@ export const STATUS_LABELS: Record<AnyBookingStatus, string> = {
  * Google Calendar colorId intent (red/yellow/green/orange/blue/purple). Concrete HSL
  * values resolve to the project's design tokens — no hardcoded hexes.
  */
-export type StatusTone = 'red' | 'yellow' | 'green' | 'orange' | 'blue' | 'purple' | 'neutral';
+export type StatusTone =
+  | 'red'
+  | 'yellow'
+  | 'green'
+  | 'amber'
+  | 'orange'
+  | 'blue'
+  | 'purple'
+  | 'neutral';
 
 export const STATUS_TONE: Record<AnyBookingStatus, StatusTone> = {
   PENDING_REVIEW: 'red',
@@ -51,6 +61,7 @@ export const STATUS_TONE: Record<AnyBookingStatus, StatusTone> = {
   PENDING_PARKING_REQUEST: 'yellow',
   PENDING_PET_REQUEST: 'yellow',
   READY_FOR_CHECKIN: 'green',
+  PENDING_SD_REFUND_DETAILS: 'amber',
   PENDING_SD_REFUND: 'orange',
   COMPLETED: 'blue',
   CANCELLED: 'purple',

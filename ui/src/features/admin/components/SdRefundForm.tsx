@@ -13,6 +13,31 @@ import { Plus, Trash2 } from 'lucide-react';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 
+function parseNumberArray(raw: unknown): number[] {
+  if (Array.isArray(raw)) {
+    return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.map((v) => Number(v)).filter((n) => !Number.isNaN(n))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function methodLabel(
+  method: NonNullable<BookingRow['sd_refund_method']>,
+): string {
+  if (method === 'same_phone') return 'GCash (same number as phone on file)';
+  if (method === 'cash') return 'Cash pickup';
+  return 'Bank / e-wallet transfer';
+}
+
 export type SdRefundValues = {
   sd_additional_expenses: number[];
   sd_additional_profits: number[];
@@ -40,14 +65,21 @@ function useNumberList(initial: number[] = []) {
 const SD_DEFAULT = 1500;
 
 export function SdRefundForm({ booking, onChange }: Props) {
-  const expenses = useNumberList((booking as any).sd_additional_expenses ?? []);
-  const profits = useNumberList((booking as any).sd_additional_profits ?? []);
+  const expenses = useNumberList(
+    parseNumberArray(booking.sd_additional_expenses),
+  );
+  const profits = useNumberList(
+    parseNumberArray(booking.sd_additional_profits),
+  );
+  const sdAmt = booking.sd_refund_amount;
   const [refundAmount, setRefundAmount] = useState<number>(
-    (booking as any).sd_refund_amount ?? SD_DEFAULT,
+    sdAmt != null && sdAmt !== '' ? Number(sdAmt) : SD_DEFAULT,
   );
   const [receiptUrl, setReceiptUrl] = useState<string>(
-    (booking as any).sd_refund_receipt_url ?? '',
+    booking.sd_refund_receipt_url ?? '',
   );
+
+  const guestMethod = booking.sd_refund_method;
 
   const totalExpenses = expenses.items.reduce((s, v) => s + (v || 0), 0);
   const totalProfits = profits.items.reduce((s, v) => s + (v || 0), 0);
@@ -76,6 +108,68 @@ export function SdRefundForm({ booking, onChange }: Props) {
 
   return (
     <div className="space-y-4">
+      {guestMethod && (
+        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Guest refund method
+          </p>
+          <dl className="space-y-1.5 text-sm text-slate-700">
+            <div className="flex justify-between gap-3">
+              <dt className="shrink-0 text-slate-500">Method</dt>
+              <dd className="text-right font-medium">
+                {methodLabel(guestMethod)}
+              </dd>
+            </div>
+            {guestMethod === 'same_phone' && (
+              <div className="flex justify-between gap-3">
+                <dt className="shrink-0 text-slate-500">Phone on file</dt>
+                <dd className="text-right break-all">
+                  {booking.guest_phone_number}
+                </dd>
+              </div>
+            )}
+            {guestMethod === 'other_bank' && (
+              <>
+                <div className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-slate-500">Bank</dt>
+                  <dd className="text-right font-medium">
+                    {booking.sd_refund_bank ?? '—'}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-slate-500">Account name</dt>
+                  <dd className="text-right break-all">
+                    {booking.sd_refund_account_name ?? '—'}
+                  </dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="shrink-0 text-slate-500">Account number</dt>
+                  <dd className="text-right break-all font-mono text-xs">
+                    {booking.sd_refund_account_number ?? '—'}
+                  </dd>
+                </div>
+              </>
+            )}
+            {guestMethod === 'cash' && booking.sd_refund_cash_pickup_note && (
+              <div className="space-y-0.5">
+                <dt className="text-slate-500">Guest note</dt>
+                <dd className="text-[13px] leading-snug whitespace-pre-wrap">
+                  {booking.sd_refund_cash_pickup_note}
+                </dd>
+              </div>
+            )}
+            {booking.sd_refund_guest_feedback && (
+              <div className="space-y-0.5 border-t border-slate-200 pt-2 mt-1">
+                <dt className="text-slate-500">Guest feedback</dt>
+                <dd className="text-[13px] leading-snug whitespace-pre-wrap text-slate-600">
+                  {booking.sd_refund_guest_feedback}
+                </dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      )}
+
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
         Security Deposit Settlement
       </p>

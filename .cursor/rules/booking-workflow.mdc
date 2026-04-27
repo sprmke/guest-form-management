@@ -19,6 +19,7 @@ PENDING_GAF
 PENDING_PARKING_REQUEST
 PENDING_PET_REQUEST
 READY_FOR_CHECKIN
+PENDING_SD_REFUND_DETAILS
 PENDING_SD_REFUND
 COMPLETED
 CANCELLED
@@ -31,14 +32,15 @@ CANCELLED
 ### 2.1 Primary workflow (happy path + cancel)
 
 ```
-PENDING_REVIEW          → PENDING_GAF | CANCELLED
-PENDING_GAF             → PENDING_PARKING_REQUEST | PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
-PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
-PENDING_PET_REQUEST     → READY_FOR_CHECKIN | CANCELLED
-READY_FOR_CHECKIN       → PENDING_SD_REFUND | CANCELLED
-PENDING_SD_REFUND       → COMPLETED | CANCELLED
-COMPLETED               → (terminal)
-CANCELLED               → (terminal)
+PENDING_REVIEW              → PENDING_GAF | CANCELLED
+PENDING_GAF                 → PENDING_PARKING_REQUEST | PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
+PENDING_PARKING_REQUEST     → PENDING_PET_REQUEST | READY_FOR_CHECKIN | CANCELLED
+PENDING_PET_REQUEST         → READY_FOR_CHECKIN | CANCELLED
+READY_FOR_CHECKIN           → PENDING_SD_REFUND_DETAILS | CANCELLED
+PENDING_SD_REFUND_DETAILS   → PENDING_SD_REFUND | CANCELLED
+PENDING_SD_REFUND           → COMPLETED | CANCELLED
+COMPLETED                   → (terminal)
+CANCELLED                   → (terminal)
 ```
 
 ### 2.2 Admin-only exceptional transitions
@@ -49,21 +51,23 @@ These exist so humans can recover when automation lags, guest data changes late,
 
 ```
 PENDING_GAF             → READY_FOR_CHECKIN   # approved GAF uploaded manually, no parking/pet sub-stages
+READY_FOR_CHECKIN       → PENDING_SD_REFUND   # skip guest SD form stage (manual); no SD form email on this edge
 ```
 
 **Backward overrides** (one-step-back recovery — the WorkflowPanel surfaces these as a "Back to …" button):
 
 ```
-PENDING_GAF             → PENDING_REVIEW
-PENDING_PARKING_REQUEST → PENDING_GAF
-PENDING_PET_REQUEST     → PENDING_PARKING_REQUEST | PENDING_GAF
-READY_FOR_CHECKIN       → PENDING_PET_REQUEST | PENDING_PARKING_REQUEST | PENDING_GAF | PENDING_REVIEW
-PENDING_SD_REFUND       → READY_FOR_CHECKIN
+PENDING_GAF                 → PENDING_REVIEW
+PENDING_PARKING_REQUEST     → PENDING_GAF
+PENDING_PET_REQUEST         → PENDING_PARKING_REQUEST | PENDING_GAF
+READY_FOR_CHECKIN           → PENDING_PET_REQUEST | PENDING_PARKING_REQUEST | PENDING_GAF | PENDING_REVIEW
+PENDING_SD_REFUND_DETAILS   → READY_FOR_CHECKIN
+PENDING_SD_REFUND           → PENDING_SD_REFUND_DETAILS
 ```
 
 The override **graph** is permissive — it lists every back-step that is structurally valid. The **UI** narrows it down via `bookingPipeline()` to a single "Back to …" button that always points at the booking's _immediately previous_ applicable step (e.g. parking is skipped when `need_parking = false`).
 
-**Email safety:** backward transitions never fire outbound email. The orchestrator gates the ready-for-check-in email on `fromStatus ∈ {PENDING_GAF, PENDING_PARKING_REQUEST, PENDING_PET_REQUEST}`, and the `Send Ready-for-Check-in Email` dev control is only surfaced when the _current_ status is one of those three. An admin reverting `PENDING_SD_REFUND → READY_FOR_CHECKIN` therefore cannot accidentally re-email the guest.
+**Email safety:** backward transitions never fire outbound email. The orchestrator gates the ready-for-check-in email on `fromStatus ∈ {PENDING_GAF, PENDING_PARKING_REQUEST, PENDING_PET_REQUEST}`, and the `Send Ready-for-Check-in Email` dev control is only surfaced when the _current_ status is one of those three. An admin reverting toward `READY_FOR_CHECKIN` therefore cannot accidentally re-fire the ready email. The **SD refund form request** email is gated on `fromStatus === READY_FOR_CHECKIN && toStatus === PENDING_SD_REFUND_DETAILS` (and the `sendSdRefundFormEmail` dev control), so stepping back from `PENDING_SD_REFUND_DETAILS` to `READY_FOR_CHECKIN` does not re-send; admins can re-send from **Automation Triggers** while the booking stays on `PENDING_SD_REFUND_DETAILS`.
 
 **Manual "force advance"** (workflow panel): admins must be able to trigger transitions that would normally be fired by **cron** or the **Gmail listener** when those automations are late or skipped.
 
@@ -86,19 +90,20 @@ When `status === READY_FOR_CHECKIN` and an admin saves **material changes** to g
 
 Each transition fans out a known set of side effects. Implement them inside `_shared/workflowOrchestrator.ts` and call it from the `transition-booking` edge function.
 
-| From → To                                     | DB  | Storage                  | Calendar           | Sheet | Email(s)                                                                                                |
-| --------------------------------------------- | --- | ------------------------ | ------------------ | ----- | ------------------------------------------------------------------------------------------------------- |
-| (guest submit) → PENDING_REVIEW               | ✅  | ✅ (uploads + PDF)       | ❌                 | ❌    | ❌                                                                                                      |
-| PENDING_REVIEW → PENDING_GAF                  | ✅  | —                        | ✅ yellow, retitle | ✅    | GAF request (Azure), booking acknowledgement (guest), pet request if pets, parking broadcast if parking |
-| PENDING_GAF → PENDING_PARKING_REQUEST         | ✅  | ✅ save approved GAF     | ✅ yellow, retitle | ✅    | ❌                                                                                                      |
-| PENDING_GAF → PENDING_PET_REQUEST             | ✅  | ✅ save approved GAF     | ✅ yellow, retitle | ✅    | ❌                                                                                                      |
-| PENDING_GAF → READY_FOR_CHECKIN               | ✅  | ✅ save approved GAF     | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                              |
-| PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | ✅  | ✅ parking endorsement   | ✅ yellow, retitle | ✅    | ❌                                                                                                      |
-| PENDING_PARKING_REQUEST → READY_FOR_CHECKIN   | ✅  | ✅ parking endorsement   | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                              |
-| PENDING_PET_REQUEST → READY_FOR_CHECKIN       | ✅  | ✅ save approved pet PDF | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                              |
-| READY_FOR_CHECKIN → PENDING_SD_REFUND (cron)  | ✅  | —                        | ✅ orange, retitle | ✅    | ❌                                                                                                      |
-| PENDING_SD_REFUND → COMPLETED                 | ✅  | —                        | ✅ blue, retitle   | ✅    | ❌ (or send refund receipt if product wants — confirm)                                                  |
-| any → CANCELLED                               | ✅  | —                        | ✅ purple, retitle | ✅    | ❌ (keep existing cancel behavior)                                                                      |
+| From → To                                                                 | DB  | Storage                  | Calendar           | Sheet | Email(s)                                                                                                               |
+| ------------------------------------------------------------------------- | --- | ------------------------ | ------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------- |
+| (guest submit) → PENDING_REVIEW                                           | ✅  | ✅ (uploads + PDF)       | ❌                 | ❌    | ❌                                                                                                                     |
+| PENDING_REVIEW → PENDING_GAF                                              | ✅  | —                        | ✅ yellow, retitle | ✅    | GAF request (Azure), booking acknowledgement (guest), pet request if pets, parking broadcast if parking                |
+| PENDING_GAF → PENDING_PARKING_REQUEST                                     | ✅  | ✅ save approved GAF     | ✅ yellow, retitle | ✅    | ❌                                                                                                                     |
+| PENDING_GAF → PENDING_PET_REQUEST                                         | ✅  | ✅ save approved GAF     | ✅ yellow, retitle | ✅    | ❌                                                                                                                     |
+| PENDING_GAF → READY_FOR_CHECKIN                                           | ✅  | ✅ save approved GAF     | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                                             |
+| PENDING_PARKING_REQUEST → PENDING_PET_REQUEST                             | ✅  | ✅ parking endorsement   | ✅ yellow, retitle | ✅    | ❌                                                                                                                     |
+| PENDING_PARKING_REQUEST → READY_FOR_CHECKIN                               | ✅  | ✅ parking endorsement   | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                                             |
+| PENDING_PET_REQUEST → READY_FOR_CHECKIN                                   | ✅  | ✅ save approved pet PDF | ✅ green, retitle  | ✅    | Ready-for-check-in (guest)                                                                                             |
+| READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron / manual)             | ✅  | —                        | ✅ orange, retitle | ✅    | SD refund form request email to guest (`/sd-form` link) when `sendSdRefundFormEmail` is on                             |
+| PENDING_SD_REFUND_DETAILS → PENDING_SD_REFUND (guest `/sd-form` or admin) | ✅  | —                        | ✅ orange, retitle | ✅    | ❌ — persists guest refund fields when payload includes `sd_refund_method`; admin skip (no method) omits those columns |
+| PENDING_SD_REFUND → COMPLETED                                             | ✅  | —                        | ✅ blue, retitle   | ✅    | ❌ (or send refund receipt if product wants — confirm)                                                                 |
+| any → CANCELLED                                                           | ✅  | —                        | ✅ purple, retitle | ✅    | ❌ (keep existing cancel behavior)                                                                                     |
 
 Rules:
 
@@ -119,16 +124,17 @@ Example: `PENDING REVIEW - 2pax 2nights - Kyle Soriano`
 
 For **test bookings only**, prepend **`[TEST] `** before the status label: `[TEST] PENDING REVIEW - 2pax 2nights - Kyle Soriano`.
 
-| Status                  | `colorId` | `STATUS LABEL` (first segment of `summary`) |
-| ----------------------- | --------- | ------------------------------------------- |
-| PENDING_REVIEW          | `11`      | `PENDING REVIEW`                            |
-| PENDING_GAF             | `5`       | `PENDING GAF`                               |
-| PENDING_PARKING_REQUEST | `5`       | `PENDING PARKING REQUEST`                   |
-| PENDING_PET_REQUEST     | `5`       | `PENDING PET REQUEST`                       |
-| READY_FOR_CHECKIN       | `10`      | `READY FOR CHECK-IN`                        |
-| PENDING_SD_REFUND       | `6`       | `PENDING SD REFUND`                         |
-| COMPLETED               | `9`       | `COMPLETED`                                 |
-| CANCELLED               | `3`       | `CANCELED`                                  |
+| Status                    | `colorId` | `STATUS LABEL` (first segment of `summary`) |
+| ------------------------- | --------- | ------------------------------------------- |
+| PENDING_REVIEW            | `11`      | `PENDING REVIEW`                            |
+| PENDING_GAF               | `5`       | `PENDING GAF`                               |
+| PENDING_PARKING_REQUEST   | `5`       | `PENDING PARKING REQUEST`                   |
+| PENDING_PET_REQUEST       | `5`       | `PENDING PET REQUEST`                       |
+| READY_FOR_CHECKIN         | `10`      | `READY FOR CHECK-IN`                        |
+| PENDING_SD_REFUND_DETAILS | `6`       | `PENDING SD REFUND DETAILS`                 |
+| PENDING_SD_REFUND         | `6`       | `PENDING SD REFUND`                         |
+| COMPLETED                 | `9`       | `COMPLETED`                                 |
+| CANCELLED                 | `3`       | `CANCELED`                                  |
 
 Canceled spelling **`CANCELED`** matches today’s cancel-booking UX copy; the **DB `status` literal** remains **`CANCELLED`** (calendar `summary` uses `CANCELED`).
 
@@ -144,6 +150,8 @@ When the task is…
 | Admin booking list endpoint                    | `supabase/functions/list-bookings/index.ts` (create)                                                                                                                                                                                                                                                                             |
 | Gmail approval listener                        | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create) — port **OAuth + `users.history.list` incremental polling + `messages.get(full)` attachment download** from `automated-tasks/pay-credit-cards` (`src/gmail-*.ts`), persisting `historyId` in **`gmail_listener_state`** (not a local JSON file) |
 | SD refund cron                                 | `supabase/functions/sd-refund-cron/index.ts` (create)                                                                                                                                                                                                                                                                            |
+| Guest SD refund form (public)                  | `supabase/functions/get-sd-form`, `submit-sd-form`; UI `ui/src/features/sd-form/**`, route `/sd-form?bookingId=`                                                                                                                                                                                                                 |
+| Re-send SD form email (admin)                  | `supabase/functions/send-sd-refund-form-email/index.ts`                                                                                                                                                                                                                                                                          |
 | Parking broadcast email                        | `supabase/functions/parking-broadcast-email/index.ts` (create)                                                                                                                                                                                                                                                                   |
 | Drop side effects from submit                  | `supabase/functions/submit-form/index.ts` (edit)                                                                                                                                                                                                                                                                                 |
 | Calendar color/title                           | `supabase/functions/_shared/calendarService.ts` (edit — replace `colorId: 2` literal with map)                                                                                                                                                                                                                                   |
@@ -163,6 +171,7 @@ When the task is…
 - Test bookings (`is_test_booking = true`) in **production** never send outbound email, never write Calendar, and never write Sheet — even if an admin checkbox is on (**`NEW_FLOW_PLAN.md` §6.1 Q3.4**).
 - Calendar event summary always matches `status → colorId` map; drift means orchestration is broken.
 - Gmail listener processes every `message.id` **at most once** (idempotency via `processed_emails` table).
+- Guest SD refund submissions use **`submit-sd-form`** → `WorkflowOrchestrator.transition()` (same invariants as admin transitions); **`get-sd-form`** is read-only and returns **404** unless status is `PENDING_SD_REFUND_DETAILS`.
 
 ## 7. Don'ts
 

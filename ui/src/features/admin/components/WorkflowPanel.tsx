@@ -60,6 +60,7 @@ import {
   useCancelBooking,
   useRunGmailPoll,
   useRunSdRefundCron,
+  useResendSdRefundFormEmail,
   type DevControlFlags,
   type TransitionPayload,
 } from '@/features/admin/hooks/useTransitionBooking';
@@ -140,6 +141,13 @@ const DEV_CONTROLS: DevControlDef[] = [
       status === 'PENDING_PARKING_REQUEST' ||
       status === 'PENDING_PET_REQUEST',
   },
+  {
+    key: 'sendSdRefundFormEmail',
+    label: 'Send SD Refund Form Email',
+    description: 'Email guest the link to submit refund details (/sd-form)',
+    // READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron uses the same flag).
+    isRelevant: (status) => status === 'READY_FOR_CHECKIN',
+  },
 ];
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
@@ -192,11 +200,13 @@ export function WorkflowPanel({ booking }: Props) {
   const cancelMut = useCancelBooking();
   const gmailPollMut = useRunGmailPoll(booking.id);
   const sdCronMut = useRunSdRefundCron(booking.id);
+  const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
   // Which automation triggers are relevant for this status (Q6.6)
   const showGmailPoll =
     status === 'PENDING_GAF' || status === 'PENDING_PET_REQUEST';
   const showSdCron = status === 'READY_FOR_CHECKIN';
+  const showSdFormResend = status === 'PENDING_SD_REFUND_DETAILS';
 
   async function handleGmailPoll() {
     try {
@@ -219,11 +229,24 @@ export function WorkflowPanel({ booking }: Props) {
       const transitioned = result.transitioned ?? 0;
       toast.success(
         transitioned > 0
-          ? `SD refund cron: ${transitioned} booking(s) transitioned → Pending SD Refund`
+          ? `SD refund cron: ${transitioned} booking(s) transitioned → Pending SD Refund Details`
           : `SD refund cron: no bookings due yet (${result.scanned ?? 0} scanned)`,
       );
     } catch (err: any) {
       toast.error(err?.message ?? 'SD refund cron failed');
+    }
+  }
+
+  async function handleResendSdFormEmail() {
+    try {
+      const result = await resendSdFormMut.mutateAsync();
+      if (result.skipped) {
+        toast.message('Skipped (test booking in production)');
+      } else {
+        toast.success('SD refund form email sent');
+      }
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to send email');
     }
   }
 
@@ -501,7 +524,7 @@ export function WorkflowPanel({ booking }: Props) {
       )}
 
       {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
-      {(showGmailPoll || showSdCron) && (
+      {(showGmailPoll || showSdCron || showSdFormResend) && (
         <div className="border-t border-slate-100 px-4 py-3.5">
           <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
             Automation Triggers
@@ -516,7 +539,7 @@ export function WorkflowPanel({ booking }: Props) {
                 type="button"
                 disabled={gmailPollMut.isPending}
                 onClick={handleGmailPoll}
-                className="flex gap-2 items-center px-3 py-2 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
               >
                 {gmailPollMut.isPending ? (
                   <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -531,7 +554,7 @@ export function WorkflowPanel({ booking }: Props) {
                 type="button"
                 disabled={sdCronMut.isPending}
                 onClick={handleSdCron}
-                className="flex gap-2 items-center px-3 py-2 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
               >
                 {sdCronMut.isPending ? (
                   <Loader2 className="size-3.5 animate-spin shrink-0" />
@@ -539,6 +562,21 @@ export function WorkflowPanel({ booking }: Props) {
                   <RefreshCw className="size-3.5 shrink-0" />
                 )}
                 Run SD refund cron now
+              </button>
+            )}
+            {showSdFormResend && (
+              <button
+                type="button"
+                disabled={resendSdFormMut.isPending}
+                onClick={handleResendSdFormEmail}
+                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+              >
+                {resendSdFormMut.isPending ? (
+                  <Loader2 className="size-3.5 animate-spin shrink-0" />
+                ) : (
+                  <Mail className="size-3.5 shrink-0" />
+                )}
+                Send SD refund form email now
               </button>
             )}
           </div>

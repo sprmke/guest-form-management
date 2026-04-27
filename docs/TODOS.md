@@ -29,7 +29,11 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
   - **Email re-fire safety**: the workflow orchestrator's ready-for-check-in branch now requires `fromStatus ∈ {PENDING_GAF, PENDING_PARKING_REQUEST, PENDING_PET_REQUEST}`, and the matching dev-control's `isRelevant` was tightened to those same three statuses. Reverting `PENDING_SD_REFUND → READY_FOR_CHECKIN` therefore can never re-email the guest.
 - ✅ **Phase 4 — Gmail listener + SD refund cron.**
   - Created `gmail-listener` edge function — Gmail OAuth via `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON` (set by `npm run gmail-auth`), incremental `users.history.list` polling, `APPROVED GAF.pdf` attachment download + Storage upload, booking correlation by date range + status, ambiguous multi-match recorded as `skipped` (Q6.5), idempotency via `processed_emails` table + `gmail_listener_state` history cursor, transitions through `workflowOrchestrator`.
-  - Created `sd-refund-cron` edge function — scans `READY_FOR_CHECKIN` bookings, computes `check_out_date + check_out_time + 15min` in Asia/Manila (Q7.1), auto-transitions through orchestrator to `PENDING_SD_REFUND`.
+  - Created `sd-refund-cron` edge function — scans `READY_FOR_CHECKIN` bookings, computes `check_out_date + check_out_time + 15min` in Asia/Manila (Q7.1), auto-transitions through orchestrator to **`PENDING_SD_REFUND_DETAILS`** (guest SD form + email), not directly to `PENDING_SD_REFUND`.
+- ✅ **Phase 4b — Guest SD refund form (`PENDING_SD_REFUND_DETAILS`).**
+  - Status `PENDING_SD_REFUND_DETAILS` + DB columns (`sd_refund_*`, form timestamps); cron + manual `READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS` with **`sendSdRefundFormEmail`** dev control and `sendSdRefundFormRequest` template.
+  - Public edge functions **`get-sd-form`** / **`submit-sd-form`**; admin **`send-sd-refund-form-email`** resend; UI **`/sd-form`** stepper (`ui/src/features/sd-form/**`) and admin **`WorkflowPanel`** resend + dev checkbox.
+  - After guest submit (or admin skip without `sd_refund_method`), booking moves to **`PENDING_SD_REFUND`** for settlement (`SdRefundForm` shows read-only guest refund block when present).
   - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
   - Gmail OAuth credentials already obtained via `npm run gmail-auth` and written to `supabase/.env.local` as `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`.
 - ⏳ Phase 5 — `submit-form` side-effect cleanup + retire `?dev=true` / `?testing=true`.
@@ -90,22 +94,6 @@ Todos
 - Persist dev or test query parameters on booking summary and booking detail pages on route change
 - Combine GAF request and pet request in one email when sending to Azure
 - Cleanup all [TEST] or test related UI and logic across our app. Since we have separate local env now, we don't need to support any test related actions/logic. Please cleanup all our UI, filters, test data, logic to different service that's related to test submit action
-- Improve the overall UI of our email templates which the same and consistent theme and colors. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI. (provide email template sample?)
-- Create a new route for guest SD form which we will send after checkout. This new page should display a stepper. 3 steps:
-  - 1st step (required): Ask for guest review or feedback
-  - 2nd step (optional): List down all honesty store purchase (LETS SKIP AND DO NOT IMPLEMENT THIS FOR NOW)
-  - 2nd step is for SD details
-  -
-  - Link to FB Page Reviews and ask for reviews/feedback to get P300 voucher on next booking. Then, upon click next, go to SD Form page/view.
-  - On SD form view, provide 3 options
-    - Same with guest phone number or down payment receipt
-    - Display guest contact number / down payment receipt and add a checkbox to confirm if the same.
-  - Other Gcash/bank:
-    - Choose bank dropdown (Gcash, Maribank, BDO, BPI)
-    - Name
-    - Account Number / QR?
-  - Cash refund - This is subject to availability and not available for early check-out since our staff is only available 11am onwards
-    åImportant notes: - Make sure that we update the entire application to support this new requirement from UI to our different services and cron job/db triggers (if needed).
-  - With this new requirement, we should add another status called PENDING_SD_REFUND_DETAILS after READY FOR CHECK-IN and before PENDING_SD_REFUND
-  - We will also need to update our cron job where after 15 mins of check-out time, we should update the booking status to new status (PENDING_SD_REFUND_DETAILS) instead of PENDING_SD_REFUND
-  - Then, after guest submitted this new form, we will need to update the booking status to PENDING_SD_REFUND (please carefully check if we need DB triggers for this?)
+- ✅ Improve the overall UI of our email templates which the same and consistent theme, font, shadows, spacing and colors. Make a research on popular and modern/stunning email templates to use as reference. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI.
+- ✅ Guest SD refund route **`/sd-form`** (feedback step + refund method: GCash same as phone with confirm checkbox, other bank dropdown + name + account number, cash + optional note). Honesty-store purchase step skipped by design. **`PENDING_SD_REFUND_DETAILS`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
+- Improve email template house rules

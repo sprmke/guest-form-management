@@ -38,6 +38,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - `/calendar` — same calendar component as `/`.
 - `/form` — guest form (`GuestFormPage`); requires dates **or** `bookingId`, else redirect to `/`.
 - `/success` — needs `bookingId` query param; summary from `navigate` state.
+- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); requires `?bookingId=`; only valid while status is `PENDING_SD_REFUND_DETAILS` (link emailed from workflow).
 
 ### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
 
@@ -62,7 +63,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 
 Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
 
-- Status enum (8 values)
+- Status enum (**9** literals — includes `PENDING_SD_REFUND_DETAILS`; see `booking-workflow.mdc`)
 - Allowed transition graph
 - Side-effect matrix per transition
 - Calendar `colorId` + title prefix map

@@ -6,7 +6,7 @@ This document describes the **guest-form-management** codebase as implemented in
 
 ## 1. Purpose and product context
 
-The application supports **short-term rental guest onboarding** for a specific unit (**Monaco 2604**, **Kame Home** branding). Guests complete a **Guest Advice / Authorization Form (GAF)**-style submission that includes:
+The application supports **short-term rental guest onboarding** for a specific unit (**Monaco 2604**, **Kame Home** branding). Guests complete a **Guest Advice / Advise Form (GAF)**-style submission that includes:
 
 - Identity and contact details
 - Stay dates and guest counts
@@ -61,13 +61,13 @@ flowchart LR
 | `dev.sh`               | Convenience script for local stack                  |
 | `docs/TODOS.md`        | Product backlog and completed tasks                 |
 
-**UI entry**: `ui/src/main.tsx` → `App.tsx` → `routes/index.tsx` → `features/guest-form/routes/index.tsx`.
+**UI entry**: `ui/src/main.tsx` → `App.tsx` → `routes/index.tsx` → merges `features/guest-form/routes`, `features/sd-form/routes`, and `features/admin/routes`.
 
 ---
 
 ## 4. Routing and pages (current behavior)
 
-Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/features/admin/routes/index.tsx` (admin). Both are merged in `ui/src/routes/index.tsx`.
+Defined in `ui/src/features/guest-form/routes/index.tsx` and `ui/src/features/sd-form/routes/index.tsx` (public), plus `ui/src/features/admin/routes/index.tsx` (admin). All are merged in `ui/src/routes/index.tsx`.
 
 | Route                  | Component              | Guard          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ---------------------- | ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -75,6 +75,7 @@ Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/fe
 | `/form`                | `GuestFormPage`        | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/`                                                                                                                                                                                                                                                                                        |
 | `/calendar`            | `CalendarPage`         | public         | Same as `/`                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `/success`             | `GuestFormSuccessPage` | public         | Post-submit summary; requires `?bookingId=`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/sd-form`             | `SdFormPage`           | public         | Two-step guest flow (feedback → refund method) after checkout; requires `?bookingId=`. `get-sd-form` returns **404** unless status is `PENDING_SD_REFUND_DETAILS`.                                                                                                                                                                                                                                                           |
 | `/sign-in`             | `SignInPage`           | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                                                                                                                                                                                                                                                                                                                      |
 | `/bookings`            | `BookingsListPage`     | `RequireAdmin` | Phase 3 — admin dashboard with **table / card / calendar** views (`?view=table\|card\|calendar`), search, status/sort/pet/parking + **date-range** filters (`?from`/`?to`, presets `week\|month\|year\|custom`), and 25/50/100 pagination. URL search params are the source of truth for all filters. Free-text search spans guest names (primary + additional), email, phone, plate, pet info, special requests, and notes. |
 | `/bookings/:bookingId` | `BookingDetailPage`    | `RequireAdmin` | Phase 3 — booking detail with `WorkflowPanel`. The panel renders a vertical **pipeline stepper** that hides parking/pet stages when those flags are off, plus a single guest-aware "Proceed to {next}" CTA, a "← Back to {previous}" recovery button, and "Cancel Booking". Sub-forms (pricing/parking/SD refund) and dev-control checkboxes (DB/Storage/PDF/each email/Calendar/Sheet) gate every transition.               |
@@ -155,7 +156,7 @@ Created in migrations; key points:
 - **`status`**: Added in `20250113000000_add_booking_status.sql` — values used in code: **`booked`** (active), **`canceled`**. Comments mention “booked \| canceled”; sheet uses **Booked** / **Canceled** labels.
 - **Pets**: `pet_type` added in later migration; URLs for vaccination and pet image in storage.
 - **Constraints**: Check constraints on email pattern, guest counts, parking conditional fields, pet conditional fields, date ordering, time regex (see migration).
-- **New-flow columns (Phase 0, additive — not yet consumed by Edge Functions).** Migrations `20260501000002`–`20260501000005` + `20260501000009` add nullable columns for pricing (`booking_rate`, `down_payment`, `balance`, `security_deposit`), parking (`parking_rate_guest`, `parking_rate_paid`, `parking_endorsement_url`, `parking_owner_email`), pets (`pet_fee`), SD refund stage (`sd_additional_expenses NUMERIC[]`, `sd_additional_profits NUMERIC[]`, `sd_refund_amount`, `sd_refund_receipt_url`), approval PDFs (`approved_gaf_pdf_url`, `approved_pet_pdf_url`), audit (`status_updated_at`, `settled_at`), and `is_test_booking`. New tables: `processed_emails`, `gmail_listener_state`. Backup snapshot: `guest_submissions_backup_20260501`. See `docs/NEW_FLOW_PLAN.md` §2 and `docs/MIGRATION_RUNBOOK.md`.
+- **New-flow columns (Phase 0+, additive).** Migrations `20260501000002`–`20260501000005` + `20260501000009` add nullable columns for pricing (`booking_rate`, `down_payment`, `balance`, `security_deposit`), parking (`parking_rate_guest`, `parking_rate_paid`, `parking_endorsement_url`, `parking_owner_email`), pets (`pet_fee`), SD settlement (`sd_additional_expenses NUMERIC[]`, `sd_additional_profits NUMERIC[]`, `sd_refund_amount`, `sd_refund_receipt_url`), approval PDFs (`approved_gaf_pdf_url`, `approved_pet_pdf_url`), audit (`status_updated_at`, `settled_at`), and `is_test_booking`. Migration **`20260503000000_add_sd_refund_details_status.sql`** widens `status` for **`PENDING_SD_REFUND_DETAILS`** and adds guest SD form columns (`sd_refund_guest_feedback`, `sd_refund_method`, `sd_refund_phone_confirmed`, `sd_refund_bank`, `sd_refund_account_name`, `sd_refund_account_number`, `sd_refund_cash_pickup_note`, `sd_refund_form_submitted_at`, `sd_refund_form_emailed_at`). New tables: `processed_emails`, `gmail_listener_state`. Backup snapshot: `guest_submissions_backup_20260501`. See `docs/NEW_FLOW_PLAN.md` §2 and `docs/MIGRATION_RUNBOOK.md`.
 
 ---
 
@@ -169,22 +170,25 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 ## 8. Edge functions (API surface)
 
-| Function                       | Method | Auth          | Purpose                                                                                                           |
-| ------------------------------ | ------ | ------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `submit-form`                  | POST   | anon (public) | Multipart form processing, overlap check, change detection, DB/storage/PDF/email/calendar/sheets                  |
-| `get-form`                     | GET    | anon (public) | Path: `/get-form/{bookingId}` — returns JSON form payload                                                         |
-| `get-booked-dates`             | GET    | anon (public) | Future, non-`CANCELLED` booking ranges                                                                            |
-| `cancel-booking`               | POST   | admin JWT     | Soft-cancel via `WorkflowOrchestrator`; updates Calendar (purple, `CANCELED - …`) + Sheet + DB                    |
-| `cleanup-test-data`            | POST   | admin JWT     | JSON `{ confirm: true }`; scrub test artifacts from DB/storage/calendar/sheets                                    |
-| `list-bookings` _(new)_        | GET    | admin JWT     | Paginated admin list; server-side check-in sort; search/status/date/pet/parking/test filters; Q5.1 defaults       |
-| `transition-booking` _(new)_   | POST   | admin JWT     | `{ bookingId, toStatus, payload, devControls, manual }` → validates via status machine → `WorkflowOrchestrator`   |
-| `upload-booking-asset` _(new)_ | POST   | admin JWT     | Multipart upload; `assetType` routes to correct Storage bucket and DB column                                      |
-| `gmail-listener` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; Gmail history poll → `APPROVED GAF.pdf` download → Storage upload → `WorkflowOrchestrator` |
-| `sd-refund-cron` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; transitions `READY_FOR_CHECKIN → PENDING_SD_REFUND` 15 min after checkout (Manila TZ)      |
+| Function                       | Method | Auth          | Purpose                                                                                                                                           |
+| ------------------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `submit-form`                  | POST   | anon (public) | Multipart form processing, overlap check, change detection, DB/storage/PDF/email/calendar/sheets                                                  |
+| `get-form`                     | GET    | anon (public) | Path: `/get-form/{bookingId}` — returns JSON form payload                                                                                         |
+| `get-booked-dates`             | GET    | anon (public) | Future, non-`CANCELLED` booking ranges                                                                                                            |
+| `cancel-booking`               | POST   | admin JWT     | Soft-cancel via `WorkflowOrchestrator`; updates Calendar (purple, `CANCELED - …`) + Sheet + DB                                                    |
+| `cleanup-test-data`            | POST   | admin JWT     | JSON `{ confirm: true }`; scrub test artifacts from DB/storage/calendar/sheets                                                                    |
+| `list-bookings` _(new)_        | GET    | admin JWT     | Paginated admin list; server-side check-in sort; search/status/date/pet/parking/test filters; Q5.1 defaults                                       |
+| `transition-booking` _(new)_   | POST   | admin JWT     | `{ bookingId, toStatus, payload, devControls, manual }` → validates via status machine → `WorkflowOrchestrator`                                   |
+| `upload-booking-asset` _(new)_ | POST   | admin JWT     | Multipart upload; `assetType` routes to correct Storage bucket and DB column                                                                      |
+| `gmail-listener` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; Gmail history poll → `APPROVED GAF.pdf` download → Storage upload → `WorkflowOrchestrator`                                 |
+| `sd-refund-cron` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; transitions `READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS` ≥15 min after checkout (Manila TZ), with SD form email enabled |
+| `get-sd-form`                  | GET    | anon (public) | Query `?bookingId=` — minimal payload for `/sd-form` when status is `PENDING_SD_REFUND_DETAILS`                                                   |
+| `submit-sd-form`               | POST   | anon (public) | Guest submits feedback + refund preference → `PENDING_SD_REFUND` via orchestrator                                                                 |
+| `send-sd-refund-form-email`    | POST   | admin JWT     | Re-send SD form link; status must be `PENDING_SD_REFUND_DETAILS`; updates `sd_refund_form_emailed_at`                                             |
 
 **Scheduled jobs (deep dive + testing):** see **`docs/SCHEDULED_JOBS_AND_TESTING.md`** — how `pg_cron` + `pg_net` invoke these URLs on Supabase Cloud, why `schedule` is not in `config.toml` locally, env vars, curl/admin UI test steps, and idempotency.
 
-**Auth**: `verify_jwt = false` for `submit-form`, `get-booked-dates`, `get-form`. All admin functions have `verify_jwt = false` in `config.toml` (Kong's HS256 gate rejects ES256 tokens) and call `verifyAdminJwt(req)` from `_shared/auth.ts` as the sole security boundary. Scheduled functions (`gmail-listener`, `sd-refund-cron`) also use `verify_jwt = false`; hosted recurrence is configured with **`pg_cron` + `net.http_post`** (often with secrets in Vault) per [Supabase scheduling guide](https://supabase.com/docs/guides/functions/schedule-functions). Admin “Run … now” buttons call the same HTTP endpoints with a session JWT (see scheduling doc above for operational detail).
+**Auth**: `verify_jwt = false` for `submit-form`, `get-booked-dates`, `get-form`, `get-sd-form`, `submit-sd-form`. Admin functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `cancel-booking`, `cleanup-test-data`, etc.) have `verify_jwt = false` in `config.toml` (Kong's HS256 gate rejects ES256 tokens) and call `verifyAdminJwt(req)` from `_shared/auth.ts` as the sole security boundary. Scheduled functions (`gmail-listener`, `sd-refund-cron`) also use `verify_jwt = false`; hosted recurrence is configured with **`pg_cron` + `net.http_post`** (often with secrets in Vault) per [Supabase scheduling guide](https://supabase.com/docs/guides/functions/schedule-functions). Admin “Run … now” buttons call the same HTTP endpoints with a session JWT (see scheduling doc above for operational detail).
 
 **CORS**: `_shared/cors.ts` builds headers per request origin.
 
@@ -197,7 +201,9 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`.
 - **Pet** mail: separate flow when pet fields complete; attachments/links for pet PDF and images.
 - From address uses **kamehomes.space** domain (see `emailService.ts`).
-- **HTML bodies** live under `supabase/functions/_shared/email-templates/` as `.html` files with `{{placeholder}}` tokens. `renderEmailHtml.ts` loads them (`Deno.readTextFile`, cached) and `replacePlaceholders` merges in values — use `escapeHtml()` in `emailService.ts` for guest-supplied text. **Local preview** (layout only; `{{placeholders}}` stay literal until send): `npm run preview:emails` then open `http://localhost:3334/gaf-request.html` (or another template path).
+- **HTML bodies** live under `supabase/functions/_shared/email-templates/` as full-document `.html` files with `{{placeholder}}` tokens. Layout follows transactional-email conventions (~600px wide, nested `role="presentation"` tables). Shared visual theme (warm outer `#f2e3c6`, sage surfaces `#b9d99f`, teal accents `#5a9a9a` / `#88b6b6`, rounded cards) and most typography live in a single `<style>` block duplicated from **`fragments/email-theme-styles.html`** into each full template — edit that fragment, then copy its `<style>…</style>` into every `*.html` that embeds it (or run the same sync step the team uses) so styles stay in sync. Prefer **classes** over inline `style=`; `prefers-color-scheme: dark` overrides are in that stylesheet. MSO conditional lives in `<head>` where needed. `renderEmailHtml.ts` loads them (`Deno.readTextFile`, cached) and `replacePlaceholders` merges in values — use `escapeHtml()` in `emailService.ts` for guest-supplied text. **Header logo:** each full template includes `{{emailHeaderLogo}}` (built from `fragments/email-header-logo.html`); the image `src` is **`EMAIL_LOGO_URL`** or defaults to **`https://kamehomes.space/images/logo.png`** (same file as `ui/public/images/logo.png` after UI deploy). **Local preview**
+- **Placeholder HTML** (layout only; `{{placeholders}}` stay literal): `npm run preview:emails:serve` then open **`http://localhost:3334/`** or e.g. **`http://localhost:3334/gaf-request.html`**. The **`.html`** suffix is required (`…/gaf-request` without it returns **404**). The server root is `email-templates/`, so paths like `/email-templates/…` also **404**.
+- **Filled HTML** (real copy + one `guest_submissions` row): `npm run preview:emails:db` reads `SUPABASE_URL` and **`SUPABASE_SERVICE_ROLE_KEY`** from `supabase/.env.local` (or the environment), prefers a **non-test, non-cancelled** row with **`has_pets` and `need_parking`**, then writes `email-templates/_preview/*.html` plus `_preview/preview-meta.json` (source row id + query label). If the DB is empty or credentials are wrong, a **built-in demo** row is used. **`npm run preview:emails`** runs the DB step then starts the static server; use **`preview:emails:serve`** to serve only without regenerating.
 
 ### 9.2 Google Calendar
 
@@ -247,12 +253,15 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`, `EMAIL_TO`, `EMAIL_REPLY_TO`
+- `EMAIL_LOGO_URL` _(optional)_ — absolute HTTPS URL for the Kame Home logo in outbound HTML emails; default `https://kamehomes.space/images/logo.png` (see `renderEmailHtml.ts` `DEFAULT_EMAIL_LOGO_URL` and `emailService.ts`)
 - `GOOGLE_SERVICE_ACCOUNT` (JSON string), `GOOGLE_CALENDAR_ID`, `GOOGLE_SPREADSHEET_ID`
 - `ADMIN_ALLOWED_EMAILS` — comma-separated allow list, server-enforced (e.g. `kamehome.azurenorth@gmail.com`)
 - `PARKING_OWNER_EMAILS` — comma-separated BCC list for parking broadcast emails
 - `GMAIL_OAUTH_CLIENT_JSON` — Full OAuth client credentials JSON (for `gmail-listener`); set by `npm run gmail-auth` from `scripts/gmail-credentials.json`
 - `GMAIL_OAUTH_TOKEN_JSON` — Token JSON containing `refresh_token` (for `gmail-listener`); set by `npm run gmail-auth` after browser sign-in
-- `SD_REFUND_CRON_GRACE_MINUTES` — Grace period in minutes before auto-PENDING_SD_REFUND (default: `15`)
+- `SD_REFUND_CRON_GRACE_MINUTES` — Grace period in minutes before auto-`PENDING_SD_REFUND_DETAILS` after checkout (default: `15`)
+- `PUBLIC_GUEST_APP_ORIGIN` _(optional)_ — absolute origin for guest links in emails (e.g. `https://kamehomes.space`); SD form URL defaults here — see `emailService.ts` `guestAppOrigin()`
+- `FACEBOOK_REVIEWS_URL` _(optional)_ — URL returned by `get-sd-form` for the “review us on Facebook” step (default `https://www.facebook.com`)
 - Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
 
 ---

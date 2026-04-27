@@ -11,6 +11,7 @@ const TONE_BG: Record<StatusTone, string> = {
   red: 'bg-red-50 text-red-700 ring-red-200/80',
   yellow: 'bg-amber-50 text-amber-800 ring-amber-200/80',
   green: 'bg-emerald-50 text-emerald-800 ring-emerald-200/80',
+  amber: 'bg-amber-50 text-amber-900 ring-amber-300/70',
   orange: 'bg-orange-50 text-orange-800 ring-orange-200/80',
   blue: 'bg-sky-50 text-sky-800 ring-sky-200/80',
   purple: 'bg-violet-50 text-violet-800 ring-violet-200/80',
@@ -21,6 +22,7 @@ const DOT_COLOR: Record<StatusTone, string> = {
   red: 'bg-red-500',
   yellow: 'bg-amber-500',
   green: 'bg-emerald-500',
+  amber: 'bg-amber-600',
   orange: 'bg-orange-500',
   blue: 'bg-sky-500',
   purple: 'bg-violet-500',
@@ -32,6 +34,7 @@ const DOT_COLOR: Record<StatusTone, string> = {
 const PULSE_TONES: ReadonlySet<StatusTone> = new Set([
   'red',
   'yellow',
+  'amber',
   'orange',
 ]);
 

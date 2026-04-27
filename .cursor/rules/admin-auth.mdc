@@ -58,25 +58,28 @@ Test bookings:
 
 Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
 
-| Checkbox                         | Shown when               | Replaces the old                       |
-| -------------------------------- | ------------------------ | -------------------------------------- |
-| Save to database                 | always                   | `saveToDatabase`                       |
-| Save images to storage           | always                   | `saveImagesToStorage`                  |
-| Generate PDF                     | always                   | `generatePdf`                          |
-| **Send GAF request email**       | always                   | renamed from `Send email notification` |
-| **Send Parking broadcast email** | only when `need_parking` | new                                    |
-| **Send Pet request email**       | only when `has_pets`     | new                                    |
-| Update Google Calendar           | always                   | `updateGoogleCalendar`                 |
-| Update Google Sheets             | always                   | `updateGoogleSheets`                   |
+| Checkbox                          | Shown when                              | Replaces the old                                                         |
+| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
+| Save to database                  | always                                  | `saveToDatabase`                                                         |
+| Save images to storage            | always                                  | `saveImagesToStorage`                                                    |
+| Generate PDF                      | always                                  | `generatePdf`                                                            |
+| **Send GAF request email**        | always                                  | renamed from `Send email notification`                                   |
+| **Send Parking broadcast email**  | only when `need_parking`                | new                                                                      |
+| **Send Pet request email**        | only when `has_pets`                    | new                                                                      |
+| **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                              |
+| **Send Ready-for-check-in email** | only from GAF / parking / pet stages    | gates server + UI                                                        |
+| **Send SD refund form email**     | only when status is `READY_FOR_CHECKIN` | email guest `/sd-form` link on transition to `PENDING_SD_REFUND_DETAILS` |
+| Update Google Calendar            | always                                  | `updateGoogleCalendar`                                                   |
+| Update Google Sheets              | always                                  | `updateGoogleSheets`                                                     |
 
 All checkboxes start **checked** so the next action runs the full happy path (DB + Calendar + Sheet + the emails that apply to that transition). Admins **uncheck** the specific side effects they want to skip for that run. In production they are authoritative — flipping a checkbox off means "really don't do it". The server's `flag()` helper in `_shared/workflowOrchestrator.ts` treats `undefined` as `true`, so this UI default mirrors the server default.
 
 ## 6. Server contract
 
-- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data`) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
   - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
   - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
-- The public functions (`submit-form`, `get-form`, `get-booked-dates`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
+- The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
 
 ## 7. Env vars summary (new)
 
