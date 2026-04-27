@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Email templates — local preview</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+        background: #f0f4f8;
+        color: #334155;
+        line-height: 1.5;
+        padding: 32px 20px 48px;
+      }
+      .wrap {
+        max-width: 560px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+      }
+      .sub {
+        margin: 0 0 28px;
+        font-size: 0.9rem;
+        color: #64748b;
+      }
+      .bar {
+        height: 4px;
+        background: #0f766e;
+        border-radius: 4px;
+        margin-bottom: 24px;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.06);
+        overflow: hidden;
+      }
+      li {
+        border-bottom: 1px solid #e2e8f0;
+      }
+      li:last-child {
+        border-bottom: none;
+      }
+      a {
+        display: block;
+        padding: 14px 18px;
+        color: #0f766e;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+      }
+      a:hover {
+        background: #f8fafc;
+        color: #115e59;
+      }
+      .path {
+        font-weight: 400;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-left: 8px;
+      }
+      .note {
+        margin-top: 24px;
+        padding: 14px 16px;
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        color: #78350f;
+      }
+      h2 {
+        margin: 36px 0 8px;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .section-hint {
+        margin: 0 0 14px;
+        font-size: 0.85rem;
+        color: #64748b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="bar"></div>
+      <h1>Email template previews</h1>
+      <p class="sub">
+        <strong>Source templates</strong> — <code>{{placeholders}}</code> stay
+        literal (layout check only).
+      </p>
+      <ul>
+        <li>
+          <a href="gaf-request.html"
+            >GAF request (Azure)<span class="path">gaf-request.html</span></a
+          >
+        </li>
+        <li>
+          <a href="pet-request.html"
+            >Pet request (Azure)<span class="path">pet-request.html</span></a
+          >
+        </li>
+        <li>
+          <a href="booking-acknowledgement.html"
+            >Booking acknowledgement (guest)<span class="path"
+              >booking-acknowledgement.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="ready-for-checkin.html"
+            >Ready for check-in (guest)<span class="path"
+              >ready-for-checkin.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="parking-broadcast.html"
+            >Parking broadcast<span class="path"
+              >parking-broadcast.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="ready-for-checkin-house-rules.html"
+            >Important reminders source fragment (no layout/CSS; embedded in RFI
+            email)<span class="path"
+              >ready-for-checkin-house-rules.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="fragments/test-warning-azure.html"
+            >Test banner (Azure)<span class="path">fragments/…</span></a
+          >
+        </li>
+        <li>
+          <a href="fragments/test-warning-guest.html"
+            >Test banner (guest)<span class="path">fragments/…</span></a
+          >
+        </li>
+        <li>
+          <a href="fragments/test-warning-parking.html"
+            >Test banner (parking)<span class="path">fragments/…</span></a
+          >
+        </li>
+      </ul>
+
+      <h2>Filled from database</h2>
+      <p class="section-hint">
+        Run <code>npm run preview:emails:db</code> from the repo root (uses
+        <code>supabase/.env.local</code>), then refresh. Picks a real
+        <code>guest_submissions</code> row with pets + parking when possible;
+        otherwise falls back to demo data. See
+        <code>_preview/preview-meta.json</code> for which row was used.
+      </p>
+      <ul>
+        <li>
+          <a href="_preview/gaf-request.html"
+            >GAF request (filled)<span class="path"
+              >_preview/gaf-request.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="_preview/pet-request.html"
+            >Pet request (filled)<span class="path"
+              >_preview/pet-request.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="_preview/booking-acknowledgement.html"
+            >Booking acknowledgement (filled)<span class="path"
+              >_preview/booking-acknowledgement.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="_preview/ready-for-checkin.html"
+            >Ready for check-in (filled)<span class="path"
+              >_preview/ready-for-checkin.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="_preview/parking-broadcast.html"
+            >Parking broadcast (filled)<span class="path"
+              >_preview/parking-broadcast.html</span
+            ></a
+          >
+        </li>
+        <li>
+          <a href="_preview/ready-for-checkin-house-rules.html"
+            >Important reminders (filled, styled preview with logo)<span
+              class="path"
+              >_preview/ready-for-checkin-house-rules.html</span
+            ></a
+          >
+        </li>
+      </ul>
+
+      <p class="note">
+        <strong>404 “File not found”?</strong> Include the file extension:
+        <code>gaf-request.html</code>, not <code>gaf-request</code>. Open
+        <code>http://localhost:3334/</code> (this page) or a full filename. Do
+        not use <code>/email-templates/…</code> in the path — the server root is
+        already this folder.
+      </p>
+    </div>
+  </body>
+</html>

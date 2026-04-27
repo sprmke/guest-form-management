@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="x-apple-disable-message-reformatting" />
-    <title>Ready for check-in</title>
+    <title>Security deposit refund</title>
     <!--[if mso]>
       <noscript>
         <xml>
@@ -288,6 +288,7 @@
       .signature-lead {
         margin: 0 0 4px 0;
         font-size: 15px;
+        color: #affd93;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
@@ -362,17 +363,11 @@
       .data-table tr:last-child td:last-child {
         border-bottom-right-radius: 16px;
       }
+
       .data-table tr:last-child > td {
         border-bottom: none;
       }
 
-      /* Payment breakdown: narrower labels, wider notes (see colgroup). */
-      .data-table-payment {
-        table-layout: fixed;
-      }
-      .data-table-payment .tbl-label {
-        background-color: #ffffff;
-      }
       .tbl-label {
         padding: 12px 16px;
         background-color: #f8fafc;
@@ -406,26 +401,21 @@
         line-height: 1.45;
         vertical-align: top;
       }
-      .data-table-payment .tbl-note {
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
       tr.tbl-row-emphasis .tbl-label,
       tr.tbl-row-emphasis .tbl-num,
       tr.tbl-row-emphasis .tbl-note {
-        background-color: #fffbeb !important;
+        background-color: #fef9e8 !important;
         font-weight: 600;
-        color: #78350f;
+        color: #6b5a2a;
       }
       tr.tbl-row-emphasis .tbl-num {
         text-align: right;
         font-weight: 700;
-        color: #b45309;
       }
       tr.tbl-row-emphasis .tbl-note {
         font-weight: 400;
         font-size: 12px;
-        color: #92400e;
+        color: #555555;
         line-height: 1.45;
       }
 
@@ -434,15 +424,15 @@
       }
       .status-pill {
         display: inline-block;
-        background-color: #e8f5e9;
-        color: #5f954c;
+        background-color: #f1f5f9;
+        color: #111827;
         font-size: 11px;
         font-weight: 700;
         letter-spacing: 0.1em;
         text-transform: uppercase;
         padding: 8px 16px;
         border-radius: 999px;
-        border: 1px solid #b8dcb0;
+        border: 1px solid #e2e8f0;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
@@ -475,19 +465,43 @@
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
       }
-      .attach-lead {
-        margin: 0 0 18px 0;
+      .attach-note {
+        margin: 26px 0 0 0;
         font-size: 15px;
         line-height: 1.65;
-        color: #475569;
+        color: #333333;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
       }
-      .contact-us-copy {
-        margin: 0 0 22px 0;
+      .attach-note-tight {
+        margin: 16px 0 0 0;
         font-size: 15px;
         line-height: 1.65;
+        color: #333333;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      .contact-line {
+        margin: 0 0 8px 0;
+        font-size: 16px;
+        line-height: 1.55;
+        color: #333333;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      .contact-sep {
+        color: #888888;
+      }
+
+      .hr-lead {
+        margin: 8px 0 8px 0;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
         color: #333333;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -517,9 +531,6 @@
         overflow: hidden;
         border-radius: 0 16px 16px 0;
       }
-      .callout-outer.callout-doc {
-        border-radius: 16px;
-      }
       .callout-urgent td {
         background-color: #fde8e8;
         border: 1px solid #e8a0a0;
@@ -544,6 +555,7 @@
         font-weight: 700;
       }
 
+      .callout-parking td,
       .callout-warn td {
         background-color: #fff4e0;
         border: 1px solid #d4a574;
@@ -558,6 +570,7 @@
         line-height: 1.55;
         color: #5c4428;
       }
+      .callout-parking .callout-title,
       .callout-warn .callout-title {
         display: block;
         margin-bottom: 6px;
@@ -567,34 +580,32 @@
         color: #7a5a32;
         font-weight: 700;
       }
+      .callout-parking .callout-strong {
+        color: #5c4428;
+        font-weight: 700;
+      }
 
-      /* GAF / parking / pet — same card layout, accent varies */
-      .callout-doc td {
-        background-color: #f8fafc;
+      .callout-pet td {
+        background-color: #f1f5f9;
         border: 1px solid #e2e8f0;
         border-left-width: 4px;
         border-left-color: #5f954c;
-        border-radius: 16px;
-        overflow: hidden;
+        border-radius: 0 16px 16px 0;
         padding: 18px 20px;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
           'Helvetica Neue', Arial, sans-serif;
         font-size: 14px;
         line-height: 1.55;
-        color: #334155;
+        color: #111827;
       }
-      .callout-doc .callout-title {
+      .callout-pet .callout-title {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
         font-size: 12px;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: #5f954c;
-        font-weight: 700;
-      }
-      .callout-doc .callout-strong {
-        color: #1e293b;
         font-weight: 700;
       }
 
@@ -603,8 +614,7 @@
         border: 1px solid #cbd5e1;
         border-left-width: 4px;
         border-left-color: #5f954c;
-        border-radius: 16px;
-        overflow: hidden;
+        border-radius: 0 16px 16px 0;
         padding: 18px 20px;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -817,7 +827,7 @@
 
       @media (prefers-color-scheme: dark) {
         .attach-list-cell {
-          background: #1e293b !important;
+          background: #29374d !important;
           border-color: #475569 !important;
           border-left-color: #affd93 !important;
         }
@@ -839,6 +849,7 @@
         .section-heading,
         .signature-body,
         .signature-lead,
+        .hr-lead,
         .attach-list-cell,
         .closing-line,
         .closing-line-tight {
@@ -848,7 +859,8 @@
         .tagline,
         .tagline-looser,
         .date-line,
-        .hr-subtitle {
+        .hr-subtitle,
+        .contact-sep {
           color: #94a3b8 !important;
         }
         .signature-role,
@@ -857,14 +869,15 @@
         }
         .intro-dear,
         .intro-copy,
-        .attach-lead,
-        .contact-us-copy {
+        .attach-note,
+        .attach-note-tight,
+        .contact-line {
           color: #f1f5f9 !important;
         }
         .status-pill {
-          background-color: #1a3328 !important;
-          border-color: #5f954c !important;
-          color: #affd93 !important;
+          background-color: #334155 !important;
+          border-color: #475569 !important;
+          color: #e2e8f0 !important;
         }
         td.callout-test {
           background-color: #422006 !important;
@@ -899,18 +912,6 @@
           border-bottom-color: #334155 !important;
           color: #e2e8f0 !important;
         }
-        tr.tbl-row-emphasis .tbl-label,
-        tr.tbl-row-emphasis .tbl-num,
-        tr.tbl-row-emphasis .tbl-note {
-          background-color: #422006 !important;
-          color: #fef3c7 !important;
-        }
-        tr.tbl-row-emphasis .tbl-num {
-          color: #fde68a !important;
-        }
-        tr.tbl-row-emphasis .tbl-note {
-          color: #fcd34d !important;
-        }
         .text-strong {
           color: #f8fafc !important;
         }
@@ -929,17 +930,14 @@
         .accent-bar {
           background-color: #affd93 !important;
         }
-        .callout-doc td {
+        .callout-pet td {
           background-color: #334155 !important;
           border-color: #475569 !important;
           border-left-color: #affd93 !important;
           color: #e2e8f0 !important;
         }
-        .callout-doc .callout-title {
+        .callout-pet .callout-title {
           color: #affd93 !important;
-        }
-        .callout-doc .callout-strong {
-          color: #f8fafc !important;
         }
         .url-fallback {
           color: #affd93 !important;
@@ -985,192 +983,43 @@
                   <tr>
                     <td class="content-pad">
                       {{emailHeaderLogo}}
-                      <table
-                        role="presentation"
-                        class="brand-block"
-                        width="100%"
-                        cellspacing="0"
-                        cellpadding="0"
-                        border="0"
-                      >
-                        <tr>
-                          <td class="brand-line">
-                            <span class="brand-micro"
-                              >Kame Home · Monaco 2604</span
-                            >
-                          </td>
-                        </tr>
-                      </table>
-
-                      <table
-                        role="presentation"
-                        class="status-pill-wrap"
-                        width="100%"
-                        cellspacing="0"
-                        cellpadding="0"
-                        border="0"
-                      >
-                        <tr>
-                          <td>
-                            <span class="status-pill">Booking Confirmed</span>
-                          </td>
-                        </tr>
-                      </table>
-
-                      <h1 class="h1-title h1-title-lg">
-                        You're all set &amp; ready for check-in!
+                      <p class="brand-micro">Checkout follow-up</p>
+                      <h1 class="h1-title">
+                        Tell us how to refund your security deposit
                       </h1>
-                      <p class="tagline-looser">
-                        {{checkInDate}}
-                        <span class="text-arrow">&nbsp;→&nbsp;</span>
-                        {{checkOutDate}}
+                      <p class="date-line">
+                        {{checkInDate}} → {{checkOutDate}}
                       </p>
-
-                      <p class="intro-dear">
-                        Dear
-                        <strong class="text-strong"
-                          >{{guestFacebookName}}</strong
-                        >,
+                      <div class="body-copy">
+                        <p>Hi <strong>{{guestFacebookName}}</strong>,</p>
+                        <p>
+                          Thank you for staying with us. Your checkout window
+                          has passed — please open the secure link below to
+                          leave quick feedback and choose how you would like
+                          your security deposit refunded
+                          ({{securityDepositFormatted}}).
+                        </p>
+                        <p>
+                          The form takes only a minute. If you leave us a public
+                          review on Facebook, you may qualify for our
+                          <strong>₱300 voucher</strong> toward a future stay
+                          (details on the form).
+                        </p>
+                      </div>
+                      <div class="cta-wrap">
+                        <a
+                          class="cta-btn"
+                          href="{{sdFormUrl}}"
+                          target="_blank"
+                          rel="noopener"
+                          >Open refund form</a
+                        >
+                      </div>
+                      <p class="footer-note">
+                        If the button does not work, copy and paste this link
+                        into your browser:<br />
+                        <span class="url-fallback">{{sdFormUrl}}</span>
                       </p>
-                      <p class="intro-copy">
-                        Your Guest Advise Form (GAF) has been approved and your
-                        booking is now confirmed. We look forward to hosting
-                        you.
-                      </p>
-
-                      <p class="section-label section-label-mt">
-                        Booking summary
-                      </p>
-                      <table
-                        role="presentation"
-                        class="data-table"
-                        width="100%"
-                        cellspacing="0"
-                        cellpadding="0"
-                        border="0"
-                      >
-                        <tr>
-                          <td width="34%" class="tbl-label">Unit</td>
-                          <td class="tbl-value">{{towerAndUnitNumber}}</td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Check-in</td>
-                          <td class="tbl-value">
-                            {{checkInDate}} at {{checkInTime}}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Check-out</td>
-                          <td class="tbl-value">
-                            {{checkOutDate}} at {{checkOutTime}}
-                          </td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Guests</td>
-                          <td class="tbl-value">{{pax}} pax</td>
-                        </tr>
-                      </table>
-
-                      <p class="section-label section-label-mt">
-                        Payment breakdown
-                      </p>
-                      <table
-                        role="presentation"
-                        class="data-table data-table-payment"
-                        width="100%"
-                        cellspacing="0"
-                        cellpadding="0"
-                        border="0"
-                      >
-                        <colgroup>
-                          <col width="24%" />
-                          <col width="22%" />
-                          <col width="54%" />
-                        </colgroup>
-                        <tr>
-                          <td class="tbl-label">Booking rate</td>
-                          <td class="tbl-num">{{bookingRate}}</td>
-                          <td class="tbl-note"></td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Down payment paid</td>
-                          <td class="tbl-num">{{downPayment}}</td>
-                          <td class="tbl-note"></td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Booking rate balance</td>
-                          <td class="tbl-num">{{balance}}</td>
-                          <td class="tbl-note">
-                            <em class="italic-note"
-                              >Payable on or before check-in. Please pay via
-                              online or bank transfer.</em
-                            >
-                          </td>
-                        </tr>
-                        <tr>
-                          <td class="tbl-label">Security deposit</td>
-                          <td class="tbl-num">{{securityDeposit}}</td>
-                          <td class="tbl-note">
-                            <em class="italic-note"
-                              >Refundable after check-out</em
-                            >
-                          </td>
-                        </tr>
-                        {{parkingPaymentRow}} {{petPaymentRow}}
-                        <tr class="tbl-row-emphasis fee-addon-row">
-                          <td class="tbl-label">Total balance</td>
-                          <td class="tbl-num">{{totalBalanceDue}}</td>
-                          <td class="tbl-note">
-                            <em class="italic-note"
-                              >Payable on or before check-in. Please pa via
-                              online or bank transfer.</em
-                            >
-                          </td>
-                        </tr>
-                      </table>
-
-                      {{houseRulesSection}}
-
-                      <p class="section-label section-label-mt-sm">
-                        Approved documents
-                      </p>
-
-                      {{documentRemindersSection}}
-
-                      <p class="section-label section-label-mt-sm">
-                        Contact us
-                      </p>
-                      <p class="contact-us-copy">
-                        If you have any questions before your stay, message us
-                        anytime on Facebook. You may also reach us on our phone
-                        numbers for urgent matters:<br /><br />
-                        <strong class="text-strong">Smart</strong>
-                        &nbsp;&mdash;&nbsp;0962&nbsp;541&nbsp;2941<br />
-                        <strong class="text-strong">Globe</strong>
-                        &nbsp;&mdash;&nbsp;0976&nbsp;676&nbsp;3686<br /><br />
-                        See you soon!
-                      </p>
-
-                      <table
-                        role="presentation"
-                        class="footer-divider"
-                        width="100%"
-                        cellspacing="0"
-                        cellpadding="0"
-                        border="0"
-                      >
-                        <tr>
-                          <td class="signature-pad">
-                            <p class="signature-lead">Best regards,</p>
-                            <p class="signature-body">
-                              Arianna Perez<br />
-                              <span class="signature-role"
-                                >Unit Owner, Monaco 2604</span
-                              >
-                            </p>
-                          </td>
-                        </tr>
-                      </table>
                     </td>
                   </tr>
                 </table>
