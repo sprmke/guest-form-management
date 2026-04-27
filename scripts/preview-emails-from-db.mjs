@@ -166,7 +166,7 @@ function wrapHouseRulesStandalonePreview(fragmentHtml, emailHeaderLogo) {
         font-weight: 600;
         color: #475569;
         vertical-align: top;
-        width: 34%;
+        width: 31%;
       }
       .tbl-value {
         padding: 12px 16px;

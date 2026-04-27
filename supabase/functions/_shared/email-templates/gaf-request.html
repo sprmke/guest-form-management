@@ -225,38 +225,41 @@
           'Helvetica Neue', Arial, sans-serif;
       }
 
-      .step-card {
+      .step-card-outer {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        background-color: transparent;
-        border: none;
-      }
-      .step-card tr:first-child td.step-num-cell {
         background-color: #f1f5f9;
         border: 1px solid #e2e8f0;
-        border-right: none;
-        border-radius: 16px 0 0 16px;
+        border-radius: 16px;
+        overflow: hidden;
       }
-      .step-card tr:first-child td.step-body-cell {
-        background-color: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        border-left: 1px solid #e2e8f0;
-        border-radius: 0 16px 16px 0;
+      .step-card-inner-wrap {
+        padding: 0;
+        vertical-align: top;
+      }
+      .step-card-inner {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
       }
       .step-row-gap {
         padding-bottom: 14px;
       }
       .step-num-cell {
-        width: 48px;
+        width: 52px;
         vertical-align: top;
-        padding: 18px 0 18px 20px;
+        text-align: center;
+        padding: 20px 12px 20px 16px;
         font-size: 22px;
         line-height: 1;
+        background-color: #f1f5f9;
+        border-right: 1px solid #e2e8f0;
       }
       .step-body-cell {
         vertical-align: top;
-        padding: 16px 22px 18px 0;
+        padding: 20px 20px 20px 20px;
+        background-color: #f1f5f9;
       }
       .step-body-cell p {
         margin: 0;
@@ -608,12 +611,14 @@
         font-weight: 700;
       }
 
+      .callout-outer-v.callout-reply {
+        border-radius: 16px;
+        overflow: hidden;
+      }
       .callout-reply td {
         background-color: #f1f5f9;
         border: 1px solid #cbd5e1;
-        border-left-width: 4px;
-        border-left-color: #5f954c;
-        border-radius: 0 16px 16px 0;
+        border-radius: 16px;
         padding: 18px 20px;
         font-family:
           -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
@@ -837,6 +842,9 @@
           background-color: #1e293b !important;
           border-color: #334155 !important;
         }
+        .footer-divider {
+          border-top: 1px solid #334155 !important;
+        }
         .text-heading,
         .text-subheading,
         .h1-title,
@@ -894,10 +902,16 @@
           background-color: #334155 !important;
           border-color: #475569 !important;
         }
-        .step-card tr:first-child td.step-num-cell,
-        .step-card tr:first-child td.step-body-cell {
+        .step-card-outer {
           background-color: #334155 !important;
           border-color: #475569 !important;
+        }
+        .step-num-cell,
+        .step-body-cell {
+          background-color: #334155 !important;
+        }
+        .step-num-cell {
+          border-right-color: #475569 !important;
         }
         .data-table {
           border-color: #475569 !important;
@@ -916,10 +930,14 @@
         .text-strong {
           color: #f8fafc !important;
         }
+        .callout-outer-v.callout-reply {
+          border-radius: 16px !important;
+        }
         .callout-reply td {
           background-color: #1e3a5f !important;
           border-color: #3b82f6 !important;
           color: #dbeafe !important;
+          border-radius: 16px !important;
         }
         .cta-btn {
           background-color: #3b82f6 !important;
