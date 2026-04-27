@@ -84,6 +84,7 @@ enabled = true
 policy = "oneshot"
 inspector_port = 8083
 
+# ── Public (guest-facing) functions — no JWT required ──────────────────────────
 [functions.submit-form]
 verify_jwt = false
 
@@ -91,4 +92,45 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-form]
-verify_jwt = false 
+verify_jwt = false
+
+# ── Admin functions — Kong JWT gate disabled; verifyAdminJwt() in handler is the gate ──
+# verify_jwt = true uses Kong's HS256 secret which rejects newer ES256 auth tokens
+# (Supabase local dev ≥ 1.x issues ES256 JWTs). Our verifyAdminJwt() calls
+# supabase.auth.getUser() which handles both algorithms and additionally
+# checks the ADMIN_ALLOWED_EMAILS allow-list — stronger than the Kong gate.
+[functions.list-bookings]
+verify_jwt = false
+
+[functions.transition-booking]
+verify_jwt = false
+
+[functions.upload-booking-asset]
+verify_jwt = false
+
+[functions.cancel-booking]
+verify_jwt = false
+
+[functions.cleanup-test-data]
+verify_jwt = false
+
+[functions.parking-broadcast-email]
+verify_jwt = false
+
+# ── Scheduled / internal — served locally + triggered by cron in cloud ────────
+# The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
+# fail to parse config.toml. Set the cron schedule in the Supabase dashboard.
+# Both functions are served locally (so the "Run now" admin buttons work) and
+# callable with an admin JWT from the WorkflowPanel (Q6.6).
+[functions.gmail-listener]
+verify_jwt = false
+
+[functions.sd-refund-cron]
+verify_jwt = false
+# Cloud-only schedule:
+# schedule = "*/5 * * * *"   ← set this in Supabase dashboard, NOT here
+
+# ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
+# [functions.gmail-listener] schedule = "*/5 * * * *"
+# [functions.sd-refund-cron] schedule = "*/5 * * * *"
+# schedule = "*/5 * * * *"

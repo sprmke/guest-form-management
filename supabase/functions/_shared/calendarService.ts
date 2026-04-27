@@ -1,5 +1,6 @@
 import { formatPublicUrl, formatDateTime, isDevelopment } from './utils.ts';
 import { GuestFormData } from './types.ts';
+import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
@@ -54,26 +55,8 @@ export class CalendarService {
 
   private static async findExistingEvent(credentials: any, bookingId: string): Promise<string | null> {
     try {
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events?privateExtendedProperty=bookingId=${bookingId}`,
-        {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${await this.getAccessToken(credentials.serviceAccount)}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to search for existing event');
-      }
-
-      const data = await response.json();
-      if (data.items && data.items.length > 0) {
-        return data.items[0].id;
-      }
-
-      return null;
+      const accessToken = await this.getAccessToken(credentials.serviceAccount);
+      return await this.findExistingEventId(credentials, accessToken, bookingId);
     } catch (error) {
       console.error('Error finding existing event:', error);
       return null;
@@ -107,17 +90,236 @@ export class CalendarService {
   }
 
   /**
+   * Updates (or creates if missing) a calendar event to reflect the new booking status.
+   * Called by workflowOrchestrator on every transition.
+   *
+   * - If an existing event is found → PATCH summary + colorId.
+   * - If no event is found and `booking` is provided → CREATE a new event from DB row.
+   * - If credentials are missing → skip gracefully.
+   *
+   * @param bookingId  The booking whose calendar event to update.
+   * @param status     The new booking status (used for colorId + label).
+   * @param pax        Total guests (adults + children).
+   * @param nights     Number of nights.
+   * @param guestName  Guest Facebook/display name.
+   * @param isTest     Whether this is a test booking (prepends [TEST]).
+   * @param booking    Full DB row — used to create a new event when none exists.
+   */
+  static async updateCalendarEventStatus(
+    bookingId: string,
+    status: BookingStatus,
+    pax: number,
+    nights: number,
+    guestName: string,
+    isTest = false,
+    booking?: any,
+  ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean }> {
+    try {
+      console.log(`Updating calendar event status → ${status} for booking: ${bookingId}`);
+
+      const credentials = this.getCredentialsSafe();
+      if (!credentials) {
+        console.log('Google Calendar credentials not found, skipping calendar update');
+        return { success: true, updated: 0, skipped: true };
+      }
+
+      const accessToken = await this.getAccessToken(credentials.serviceAccount);
+      const existingEventId = await this.findExistingEventId(
+        { calendarId: credentials.calendarId },
+        accessToken,
+        bookingId,
+      );
+
+      const meta = STATUS_CALENDAR_META[status];
+      const summary = buildCalendarSummary(status, pax, nights, guestName, isTest);
+
+      if (!existingEventId) {
+        if (!booking) {
+          console.log(`No calendar event found for booking ${bookingId} (no booking data to create one)`);
+          return { success: true, updated: 0 };
+        }
+
+        // Create a brand-new event from the DB row
+        console.log(`No calendar event found — creating new event for booking ${bookingId}`);
+        const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary, isTest);
+
+        const createRes = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...eventData,
+              extendedProperties: { private: { bookingId } },
+            }),
+          },
+        );
+
+        if (!createRes.ok) {
+          const err = await createRes.text();
+          throw new Error(`Failed to create calendar event: ${createRes.status} ${err}`);
+        }
+
+        console.log(`Calendar event created: "${summary}" colorId=${meta.colorId}`);
+        return { success: true, updated: 1, created: true };
+      }
+
+      // Patch the existing event
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId!)}/events/${existingEventId}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ summary, colorId: meta.colorId }),
+        },
+      );
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(`Failed to patch calendar event: ${response.status} ${err}`);
+      }
+
+      console.log(`Calendar event updated: "${summary}" colorId=${meta.colorId}`);
+      return { success: true, updated: 1 };
+    } catch (error) {
+      console.error('Error updating calendar event status:', error);
+      return { success: false, updated: 0 };
+    }
+  }
+
+  /**
+   * Builds a Google Calendar event body from a raw DB booking row.
+   * Used when creating a brand-new event during a transition (no prior event exists).
+   */
+  private static buildEventDataFromDbRow(
+    booking: any,
+    status: BookingStatus,
+    pax: number,
+    nights: number,
+    summary: string,
+    isTest: boolean,
+  ) {
+    const adminLink = `https://kamehomes.space/bookings/${booking.id}`;
+    const isTestingMode = isTest;
+    const testPrefix = isTestingMode ? '[TEST] ' : '';
+
+    const needParking = booking.need_parking === true || booking.need_parking === 'true';
+    const hasPets = booking.has_pets === true || booking.has_pets === 'true';
+
+    const description = `
+<a href="${adminLink}">View Booking in Admin</a>
+
+<strong>Guest Information</strong>
+Facebook/Airbnb Name: ${booking.guest_facebook_name ?? ''}
+Primary Guest: ${testPrefix}${booking.primary_guest_name ?? ''}
+Email: ${booking.guest_email ?? ''}
+Phone Number: ${booking.guest_phone_number ?? ''}
+Address: ${booking.guest_address ?? ''}
+Nationality: ${booking.nationality ?? ''}
+
+<strong>Additional Guests</strong>
+${[booking.guest2_name, booking.guest3_name, booking.guest4_name, booking.guest5_name].filter(Boolean).length === 0
+  ? 'No additional guests'
+  : [
+      booking.guest2_name ? `Guest 2: ${booking.guest2_name}` : '',
+      booking.guest3_name ? `Guest 3: ${booking.guest3_name}` : '',
+      booking.guest4_name ? `Guest 4: ${booking.guest4_name}` : '',
+      booking.guest5_name ? `Guest 5: ${booking.guest5_name}` : '',
+    ].filter(Boolean).join('\n')}
+
+<strong>Stay Details</strong>
+Check-in Date: ${booking.check_in_date ?? ''}
+Check-out Date: ${booking.check_out_date ?? ''}
+Check-in Time: ${booking.check_in_time ?? ''}
+Check-out Time: ${booking.check_out_time ?? ''}
+Number of Nights: ${nights}
+Number of Adults: ${booking.number_of_adults ?? ''}
+Number of Children: ${booking.number_of_children ?? 0}
+
+<strong>Parking Information</strong>
+${needParking
+  ? `Parking Required: Yes\nCar Plate: ${booking.car_plate_number || 'N/A'}\nCar Brand/Model: ${booking.car_brand_model || 'N/A'}\nCar Color: ${booking.car_color || 'N/A'}`
+  : 'Parking Required: No'}
+
+<strong>Pet Information</strong>
+${hasPets
+  ? `Has Pets: Yes\nPet Name: ${booking.pet_name || 'N/A'}\nPet Type: ${booking.pet_type || 'N/A'}\nPet Breed: ${booking.pet_breed || 'N/A'}\nPet Age: ${booking.pet_age || 'N/A'}\nVaccination Date: ${booking.pet_vaccination_date || 'N/A'}${booking.pet_image_url ? `\n<a href="${booking.pet_image_url}">Pet Image</a>` : ''}${booking.pet_vaccination_url ? `\n<a href="${booking.pet_vaccination_url}">Vaccination Record</a>` : ''}`
+  : 'Has Pets: No'}
+
+<strong>Documents</strong>
+${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Payment Receipt</a>` : 'No payment receipt'}
+${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No valid ID'}
+    `.trim();
+
+    // Build start/end datetimes from MM-DD-YYYY
+    const checkInDate = dayjs(booking.check_in_date, 'MM-DD-YYYY');
+    const endDate = checkInDate.add(nights - 1, 'day');
+
+    const toISO = (date: typeof dayjs.prototype, time?: string): string => {
+      const t = time ?? '14:00';
+      const [h, m] = t.split(':');
+      return date
+        .hour(parseInt(h ?? '14', 10))
+        .minute(parseInt(m ?? '0', 10))
+        .second(0)
+        .toISOString()
+        .replace(/Z$/, '+08:00');
+    };
+
+    return {
+      summary,
+      description,
+      start: { dateTime: toISO(checkInDate, booking.check_in_time), timeZone: 'Asia/Manila' },
+      end: { dateTime: toISO(endDate, booking.check_out_time ?? '23:59'), timeZone: 'Asia/Manila' },
+      colorId: STATUS_CALENDAR_META[status].colorId,
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 60 },
+        ],
+      },
+    };
+  }
+
+  /** Finds the Google Calendar event ID for a booking, or null if not found. */
+  private static async findExistingEventId(
+    credentials: any,
+    accessToken: string,
+    bookingId: string,
+  ): Promise<string | null> {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events?privateExtendedProperty=bookingId=${bookingId}`,
+      { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.items?.[0]?.id ?? null;
+  }
+
+  /**
    * Creates the event data object for Google Calendar
    */
   private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, isTestingMode = false) {
-    const testPrefix = isTestingMode ? '[TEST] ' : '';
-    const eventSummary = `${testPrefix}${+formData.numberOfAdults + +(formData.numberOfChildren || 0)}pax ${formData.numberOfNights}night${formData.numberOfNights > 1 ? 's' : ''} - ${formData.guestFacebookName}`;
-    
-    // Add testing parameter to the form URL if in testing mode
-    const formUrlParams = isTestingMode ? `&testing=true` : '&dev=true';
+    const pax = +formData.numberOfAdults + +(formData.numberOfChildren || 0);
+    const nights = formData.numberOfNights || 1;
+
+    // Use the PENDING_REVIEW status for initial event creation (Q: the submit-form
+    // side effects will move to the orchestrator in Phase 5; for now keep using
+    // PENDING_REVIEW color on initial creation).
+    const summary = buildCalendarSummary('PENDING_REVIEW', pax, nights, formData.guestFacebookName, isTestingMode);
+
+    // Admin link — no ?dev=true / ?testing=true per Q7.3 (admin session handles auth)
+    const adminLink = `https://kamehomes.space/bookings/${bookingId}`;
     
     const eventDescription = `
-<a href="https://kamehomes.space/form?bookingId=${bookingId}${formUrlParams}">View/Update Guest Form</a>
+<a href="${adminLink}">View Booking in Admin</a>
 
 <strong>Guest Information</strong>
 Facebook/Airbnb Name: ${formData.guestFacebookName}
@@ -171,7 +373,7 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
     const endDateTime = formatDateTime(endDate.format('MM-DD-YYYY'), '23:59');
 
     return {
-      summary: eventSummary,
+      summary,
       description: eventDescription,
       start: {
         dateTime: checkInDateTime,
@@ -181,7 +383,7 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
         dateTime: endDateTime,
         timeZone: 'Asia/Manila',
       },
-      colorId: '2',
+      colorId: STATUS_CALENDAR_META['PENDING_REVIEW'].colorId,
       reminders: {
         useDefault: false,
         overrides: [
@@ -193,7 +395,8 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
   }
 
   /**
-   * Gets and validates required credentials
+   * Gets and validates required credentials.
+   * Throws when called from the main createOrUpdateCalendarEvent path.
    */
   private static async getCredentials() {
     const serviceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
@@ -207,6 +410,18 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
       serviceAccount: JSON.parse(serviceAccount),
       calendarId
     };
+  }
+
+  /** Same as getCredentials() but returns null instead of throwing. */
+  private static getCredentialsSafe(): { serviceAccount: any; calendarId: string } | null {
+    try {
+      const serviceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
+      const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
+      if (!serviceAccount || !calendarId) return null;
+      return { serviceAccount: JSON.parse(serviceAccount), calendarId };
+    } catch {
+      return null;
+    }
   }
 
   /**

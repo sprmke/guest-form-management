@@ -18,11 +18,11 @@ alwaysApply: false
 
 This repo has three categories. Set JWT policy in `supabase/config.toml` accordingly.
 
-| Category        | Functions                                                      | `verify_jwt` | Notes                                                              |
-| --------------- | -------------------------------------------------------------- | ------------ | ------------------------------------------------------------------ |
-| Public (guest)  | `submit-form`, `get-form`, `get-booked-dates`                  | `false`      | UI passes anon key. Never trust request body blindly.              |
-| Admin           | `list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data` | `true`       | First line of handler must call `verifyAdminJwt(req)`.             |
-| Scheduled / internal | `gmail-listener`, `sd-refund-cron`                          | `true`       | Triggered by Supabase cron; auth via service-role token or scheduled-function signature. |
+| Category             | Functions                                                                                                                       | `verify_jwt` | Notes                                                                                                                                          |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public (guest)       | `submit-form`, `get-form`, `get-booked-dates`                                                                                   | `false`      | UI passes anon key. Never trust request body blindly.                                                                                          |
+| Admin                | `list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data` | `false`      | Kong JWT gate off (ES256 tokens); **first line** of handler must call `verifyAdminJwt(req)` — that is the real gate.                           |
+| Scheduled / internal | `gmail-listener`, `sd-refund-cron`                                                                                              | `false`      | Invoked by hosted **`pg_cron` + `net.http_post`** (see `docs/SCHEDULED_JOBS_AND_TESTING.md`); handlers do **not** call `verifyAdminJwt` today. |
 
 ## Handler skeleton (copy this)
 
@@ -50,7 +50,10 @@ serve(async (req) => {
     const status = error instanceof Response ? error.status : 400;
     return new Response(
       JSON.stringify({ success: false, error: (error as Error).message }),
-      { status, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      {
+        status,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      },
     );
   }
 });
@@ -69,17 +72,7 @@ See `.cursor/rules/admin-auth.mdc` for the full admin contract.
 
 ## Scheduled functions (new in the redesign)
 
-- Declared in `supabase/config.toml` with a cron schedule:
-
-  ```toml
-  [functions.gmail-listener]
-  verify_jwt = true
-  schedule = "*/5 * * * *"
-
-  [functions.sd-refund-cron]
-  verify_jwt = true
-  schedule = "*/5 * * * *"
-  ```
+- **`[functions.gmail-listener]`** and **`[functions.sd-refund-cron]`** in `supabase/config.toml` use **`verify_jwt = false`**. Do **not** add **`schedule = ...`** to `config.toml` in this repo — the local CLI rejects or mishandles it; hosted recurrence is **`pg_cron` + `pg_net`** (SQL + Vault), documented in **`docs/SCHEDULED_JOBS_AND_TESTING.md`**.
 
 - Idempotency: if a scheduled job could fire twice for the same booking/message (it can), **store a processed marker in DB** (`processed_emails` for Gmail; `status_updated_at` + state comparison for SD cron).
 - Logging: always log run summary (how many messages scanned, how many bookings advanced) so you can read Supabase logs and understand it at a glance.
@@ -96,7 +89,7 @@ Per `booking-workflow.mdc`, **never put fan-out logic inside handler functions**
 
 1. Create `supabase/functions/<name>/index.ts` using the skeleton above.
 2. Decide JWT category; set `[functions.<name>]` block in `supabase/config.toml`.
-3. If scheduled, add a `schedule = "..."` value.
+3. If scheduled, add **`pg_cron` + `net.http_post`** in the hosted project (see `docs/SCHEDULED_JOBS_AND_TESTING.md`) — do not add `schedule` to `config.toml` here.
 4. Document env vars in `docs/PROJECT.md` §11.
 5. Update the API table in `docs/PROJECT.md` §8.
 6. If the function participates in the booking workflow, make it go through `workflowOrchestrator`.

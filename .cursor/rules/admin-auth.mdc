@@ -42,10 +42,10 @@ The old query-parameter controls go away:
 
 ### Submit button semantics
 
-| Button            | Behavior                                                                              |
-| ----------------- | ------------------------------------------------------------------------------------- |
-| **Submit**        | Real booking. Server sets `status = PENDING_REVIEW`, `is_test_booking = false`.       |
-| **Test Submit**   | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`, and runs the **exact same test pipeline as today’s `testing=true`** (prefixes, PDF copy, email subject prefixes, calendar/sheet markers, prod email hard-off rules — unchanged). |
+| Button          | Behavior                                                                                                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Submit**      | Real booking. Server sets `status = PENDING_REVIEW`, `is_test_booking = false`.                                                                                                                                                                                     |
+| **Test Submit** | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`, and runs the **exact same test pipeline as today’s `testing=true`** (prefixes, PDF copy, email subject prefixes, calendar/sheet markers, prod email hard-off rules — unchanged). |
 
 Test bookings:
 
@@ -58,35 +58,36 @@ Test bookings:
 
 Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
 
-| Checkbox                          | Shown when                  | Replaces the old            |
-| --------------------------------- | --------------------------- | --------------------------- |
-| Save to database                  | always                      | `saveToDatabase`            |
-| Save images to storage            | always                      | `saveImagesToStorage`       |
-| Generate PDF                      | always                      | `generatePdf`               |
-| **Send GAF request email**        | always                      | renamed from `Send email notification` |
-| **Send Parking broadcast email**  | only when `need_parking`    | new                         |
-| **Send Pet request email**        | only when `has_pets`        | new                         |
-| Update Google Calendar            | always                      | `updateGoogleCalendar`      |
-| Update Google Sheets              | always                      | `updateGoogleSheets`        |
+| Checkbox                         | Shown when               | Replaces the old                       |
+| -------------------------------- | ------------------------ | -------------------------------------- |
+| Save to database                 | always                   | `saveToDatabase`                       |
+| Save images to storage           | always                   | `saveImagesToStorage`                  |
+| Generate PDF                     | always                   | `generatePdf`                          |
+| **Send GAF request email**       | always                   | renamed from `Send email notification` |
+| **Send Parking broadcast email** | only when `need_parking` | new                                    |
+| **Send Pet request email**       | only when `has_pets`     | new                                    |
+| Update Google Calendar           | always                   | `updateGoogleCalendar`                 |
+| Update Google Sheets             | always                   | `updateGoogleSheets`                   |
 
-All checkboxes start **unchecked**. In production they are authoritative — flipping them off means "really don't do it".
+All checkboxes start **checked** so the next action runs the full happy path (DB + Calendar + Sheet + the emails that apply to that transition). Admins **uncheck** the specific side effects they want to skip for that run. In production they are authoritative — flipping a checkbox off means "really don't do it". The server's `flag()` helper in `_shared/workflowOrchestrator.ts` treats `undefined` as `true`, so this UI default mirrors the server default.
 
 ## 6. Server contract
 
-- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`) set `verify_jwt = true` in `supabase/config.toml` and must call `verifyAdminJwt(req)` as the first line of the handler.
+- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data`) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+  - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
+  - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
 - The public functions (`submit-form`, `get-form`, `get-booked-dates`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
 
 ## 7. Env vars summary (new)
 
-| Var                               | Scope | Purpose                                          |
-| --------------------------------- | ----- | ------------------------------------------------ |
-| `ADMIN_ALLOWED_EMAILS`            | edge  | Comma-separated allow list (server-enforced).    |
-| `VITE_ADMIN_ALLOWED_EMAILS`       | UI    | UX reject only; never the only gate.             |
-| `PARKING_OWNER_EMAILS`            | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only. |
-| `GMAIL_OAUTH_CLIENT_ID`           | edge  | Gmail listener OAuth.                            |
-| `GMAIL_OAUTH_CLIENT_SECRET`       | edge  | Gmail listener OAuth.                            |
-| `GMAIL_OAUTH_REFRESH_TOKEN`       | edge  | Gmail listener OAuth (for `kamehome.azurenorth`).|
-| `SD_REFUND_CRON_GRACE_MINUTES`    | edge  | Default `15`; post-checkout grace period.        |
+| Var                            | Scope | Purpose                                                                                                                                                                  |
+| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ADMIN_ALLOWED_EMAILS`         | edge  | Comma-separated allow list (server-enforced).                                                                                                                            |
+| `VITE_ADMIN_ALLOWED_EMAILS`    | UI    | UX reject only; never the only gate.                                                                                                                                     |
+| `PARKING_OWNER_EMAILS`         | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only. |
+| `GMAIL_OAUTH_CLIENT_JSON`      | edge  | Full OAuth client credentials JSON (set by `npm run gmail-auth` from `scripts/gmail-credentials.json`). Contains `client_id` + `client_secret`.                          |
+| `GMAIL_OAUTH_TOKEN_JSON`       | edge  | Token JSON with `refresh_token` (set by `npm run gmail-auth` after browser sign-in for `kamehome.azurenorth`).                                                           |
+| `SD_REFUND_CRON_GRACE_MINUTES` | edge  | Default `15`; post-checkout grace period.                                                                                                                                |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 

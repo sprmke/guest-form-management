@@ -69,16 +69,37 @@ flowchart LR
 
 Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/features/admin/routes/index.tsx` (admin). Both are merged in `ui/src/routes/index.tsx`.
 
-| Route       | Component              | Guard          | Notes                                                                                                                                 |
-| ----------- | ---------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`         | `CalendarPage`         | public         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                     |
-| `/form`     | `GuestFormPage`        | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/` |
-| `/calendar` | `CalendarPage`         | public         | Same as `/`                                                                                                                           |
-| `/success`  | `GuestFormSuccessPage` | public         | Post-submit summary; requires `?bookingId=`                                                                                           |
-| `/sign-in`  | `SignInPage`           | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                               |
-| `/bookings` | `BookingsListPage`     | `RequireAdmin` | Phase 1 — read-only list (search, status chips, flags, 25/50/100 pagination). URL search params are the source of truth for filters.  |
+| Route                  | Component              | Guard          | Notes                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------- | ---------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                    | `CalendarPage`         | public         | Default landing; **Proceed** → `/form?checkInDate=&checkOutDate=`                                                                                                                                                                                                                                                                                                                                                            |
+| `/form`                | `GuestFormPage`        | public         | Guest form (dates from URL and/or `?bookingId=`). With **no** `bookingId` and **no** `checkInDate` + `checkOutDate`, redirects to `/`                                                                                                                                                                                                                                                                                        |
+| `/calendar`            | `CalendarPage`         | public         | Same as `/`                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/success`             | `GuestFormSuccessPage` | public         | Post-submit summary; requires `?bookingId=`                                                                                                                                                                                                                                                                                                                                                                                  |
+| `/sign-in`             | `SignInPage`           | public         | Google OAuth entry for admins. Redirects signed-in admins to `?redirect=` target (default `/bookings`).                                                                                                                                                                                                                                                                                                                      |
+| `/bookings`            | `BookingsListPage`     | `RequireAdmin` | Phase 3 — admin dashboard with **table / card / calendar** views (`?view=table\|card\|calendar`), search, status/sort/pet/parking + **date-range** filters (`?from`/`?to`, presets `week\|month\|year\|custom`), and 25/50/100 pagination. URL search params are the source of truth for all filters. Free-text search spans guest names (primary + additional), email, phone, plate, pet info, special requests, and notes. |
+| `/bookings/:bookingId` | `BookingDetailPage`    | `RequireAdmin` | Phase 3 — booking detail with `WorkflowPanel`. The panel renders a vertical **pipeline stepper** that hides parking/pet stages when those flags are off, plus a single guest-aware "Proceed to {next}" CTA, a "← Back to {previous}" recovery button, and "Cancel Booking". Sub-forms (pricing/parking/SD refund) and dev-control checkboxes (DB/Storage/PDF/each email/Calendar/Sheet) gate every transition.               |
 
-**`/bookings` data:** `useBookings` queries `guest_submissions` via the Supabase JS client (PostgREST). The query does **not** filter on `is_test_booking` in SQL so the list still works if Phase 0 migrations are not applied yet; when `includeTests` is off, test rows are dropped **after** fetch if that column exists. Fetch failures surface a generic message; details are logged with `console.error`. Phase 3 replaces this with the `list-bookings` edge function.
+**`/bookings` data:** `useBookings` calls the **`list-bookings`** admin edge function (JWT required). It supports server-side check-in sort (converting MM-DD-YYYY to YYYY-MM-DD for correct ordering), stale-COMPLETED filtering per Q5.1, and accurate server-side pagination. Falls back to direct PostgREST on auth failure (e.g. hydration race). Stale `COMPLETED` rows (check-in before today) are hidden by default via `hide_stale_completed=true`.
+
+**`/bookings` views:** the page renders one of three layouts driven by the `?view=` query param:
+
+| View       | When to use                              | Notes                                                                                                                                                                                                                 |
+| ---------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `table`    | Default — dense, sortable list           | Whole row is a clickable link to `/bookings/:bookingId` (Enter/Space focus support). Renders the guest's `valid_id_url` thumbnail (single-color green initial fallback). Flag icons (Car/Dog) are large pill buttons. |
+| `card`     | Browsing recent bookings on wide screens | Responsive grid (1/2/3/4 cols at sm/lg/xl). Cards show large avatar, status, stay range, flags, amount. Whole card is clickable.                                                                                      |
+| `calendar` | "What's happening this month" overview   | Two-column on desktop: month grid spans every booking from check-in → check-out, plus a selected-day detail panel. Hides pagination because the date filter scopes results to the active range.                       |
+
+The view is preserved in the URL alongside filters, so deep-linking and refreshes keep state. Switching views resets to page 1 but **does not** alter date or status filters.
+
+**`/bookings` date filter:** the date-range filter mirrors the `property-management-app` calendar dashboard UX:
+
+- Presets: `week` (Mon-Sun), `month` (calendar month), `year` (calendar year).
+- Custom range: 2-month picker (1-month on mobile) using `react-day-picker` with project-token theming.
+- Prev/next chevrons step the active preset by one period (`addWeeks` / `addMonths` / `addYears` from `date-fns`); a "Today" shortcut appears when the user is off-period.
+- The component is `BookingDateRangeFilter`; state is owned by `useDateNavigation` (in `ui/src/features/admin/hooks/`) and synced to URL via `useSyncDateRangeWithQuery` which writes `from`/`to` as `YYYY-MM-DD`.
+- The edge function applies the range to `check_in_date` only (storage format MM-DD-YYYY is normalized to ISO before comparison).
+
+**`/bookings/:bookingId` data:** `useBooking` fetches a single row directly from `guest_submissions` via `supabase.from('guest_submissions').select('*').eq('id', id).single()`. Transitions are submitted via `useTransitionBooking` → `transition-booking` edge function → `WorkflowOrchestrator`.
 
 **Legacy links:** URLs like `/?bookingId=<uuid>` (e.g. older Google Calendar descriptions) are handled on `CalendarPage`: the app **`replace`** navigates to **`/form?bookingId=...`** (other query params are preserved).
 
@@ -116,7 +137,7 @@ Defined in `ui/src/features/guest-form/routes/index.tsx` (public) and `ui/src/fe
 - **`?testing=true`**: prefixes `[TEST]` on primary guest name in DB, `TEST_` on storage object names, test banners/prefixes in email subjects, `[TEST]` on calendar titles and sheet name columns, etc.
 - **Production + `testing=true` + send email**: server **forces** `sendEmail` off when `DENO_DEPLOYMENT_ID` is set (deployed edge).
 - **Cleanup**: `POST /cleanup-test-data` with `{ confirm: true }` removes test-tagged data across DB/storage/calendar/sheets (see function implementation).
-- **Cancel booking (dev tools)**: `POST /cancel-booking` with `{ bookingId, confirm: true }` sets DB `status` to `canceled`, prefixes calendar summary with **`[CANCELED]`** (legacy bracketed prefix) and sets red color, sets sheet column **AK** to `Canceled`—**does not delete** assets or DB row. **New booking flow** (see `docs/NEW_FLOW_PLAN.md` §1.4) switches canceled calendar titles to **`CANCELED - …` with no brackets** (except optional `[TEST] ` for test bookings).
+- **Cancel booking**: `POST /cancel-booking` with `{ bookingId, confirm: true }` (admin JWT required). Routes through `WorkflowOrchestrator` which sets DB `status` to `CANCELLED`, updates Calendar (purple `colorId 3`, summary `CANCELED - {pax}pax {nights}nights - {name}` — no brackets per §1.4), and updates Sheet status column — **does not delete** assets or DB row.
 
 ### 5.5 Error recovery (guest-friendly)
 
@@ -148,15 +169,22 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 ## 8. Edge functions (API surface)
 
-| Function            | Method | Purpose                                                                                          |
-| ------------------- | ------ | ------------------------------------------------------------------------------------------------ |
-| `submit-form`       | POST   | Multipart form processing, overlap check, change detection, DB/storage/PDF/email/calendar/sheets |
-| `get-form`          | GET    | Path: `/get-form/{bookingId}` — returns JSON form payload                                        |
-| `get-booked-dates`  | GET    | Future, non-canceled booking ranges                                                              |
-| `cancel-booking`    | POST   | JSON body; soft-cancel + calendar/sheet markers                                                  |
-| `cleanup-test-data` | POST   | JSON `{ confirm: true }`; scrub test artifacts                                                   |
+| Function                       | Method | Auth          | Purpose                                                                                                           |
+| ------------------------------ | ------ | ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `submit-form`                  | POST   | anon (public) | Multipart form processing, overlap check, change detection, DB/storage/PDF/email/calendar/sheets                  |
+| `get-form`                     | GET    | anon (public) | Path: `/get-form/{bookingId}` — returns JSON form payload                                                         |
+| `get-booked-dates`             | GET    | anon (public) | Future, non-`CANCELLED` booking ranges                                                                            |
+| `cancel-booking`               | POST   | admin JWT     | Soft-cancel via `WorkflowOrchestrator`; updates Calendar (purple, `CANCELED - …`) + Sheet + DB                    |
+| `cleanup-test-data`            | POST   | admin JWT     | JSON `{ confirm: true }`; scrub test artifacts from DB/storage/calendar/sheets                                    |
+| `list-bookings` _(new)_        | GET    | admin JWT     | Paginated admin list; server-side check-in sort; search/status/date/pet/parking/test filters; Q5.1 defaults       |
+| `transition-booking` _(new)_   | POST   | admin JWT     | `{ bookingId, toStatus, payload, devControls, manual }` → validates via status machine → `WorkflowOrchestrator`   |
+| `upload-booking-asset` _(new)_ | POST   | admin JWT     | Multipart upload; `assetType` routes to correct Storage bucket and DB column                                      |
+| `gmail-listener` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; Gmail history poll → `APPROVED GAF.pdf` download → Storage upload → `WorkflowOrchestrator` |
+| `sd-refund-cron` _(Phase 4)_   | POST   | cron/internal | Scheduled every 5 min; transitions `READY_FOR_CHECKIN → PENDING_SD_REFUND` 15 min after checkout (Manila TZ)      |
 
-`supabase/config.toml` explicitly sets **`verify_jwt = false`** for `submit-form`, `get-booked-dates`, and `get-form`**. Other functions rely on defaults—callers still pass **anon key\*\* from the UI as `apikey` and `Authorization: Bearer`.
+**Scheduled jobs (deep dive + testing):** see **`docs/SCHEDULED_JOBS_AND_TESTING.md`** — how `pg_cron` + `pg_net` invoke these URLs on Supabase Cloud, why `schedule` is not in `config.toml` locally, env vars, curl/admin UI test steps, and idempotency.
+
+**Auth**: `verify_jwt = false` for `submit-form`, `get-booked-dates`, `get-form`. All admin functions have `verify_jwt = false` in `config.toml` (Kong's HS256 gate rejects ES256 tokens) and call `verifyAdminJwt(req)` from `_shared/auth.ts` as the sole security boundary. Scheduled functions (`gmail-listener`, `sd-refund-cron`) also use `verify_jwt = false`; hosted recurrence is configured with **`pg_cron` + `net.http_post`** (often with secrets in Vault) per [Supabase scheduling guide](https://supabase.com/docs/guides/functions/schedule-functions). Admin “Run … now” buttons call the same HTTP endpoints with a session JWT (see scheduling doc above for operational detail).
 
 **CORS**: `_shared/cors.ts` builds headers per request origin.
 
@@ -169,6 +197,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`.
 - **Pet** mail: separate flow when pet fields complete; attachments/links for pet PDF and images.
 - From address uses **kamehomes.space** domain (see `emailService.ts`).
+- **HTML bodies** live under `supabase/functions/_shared/email-templates/` as `.html` files with `{{placeholder}}` tokens. `renderEmailHtml.ts` loads them (`Deno.readTextFile`, cached) and `replacePlaceholders` merges in values — use `escapeHtml()` in `emailService.ts` for guest-supplied text. **Local preview** (layout only; `{{placeholders}}` stay literal until send): `npm run preview:emails` then open `http://localhost:3334/gaf-request.html` (or another template path).
 
 ### 9.2 Google Calendar
 
@@ -219,6 +248,11 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`, `EMAIL_TO`, `EMAIL_REPLY_TO`
 - `GOOGLE_SERVICE_ACCOUNT` (JSON string), `GOOGLE_CALENDAR_ID`, `GOOGLE_SPREADSHEET_ID`
+- `ADMIN_ALLOWED_EMAILS` — comma-separated allow list, server-enforced (e.g. `kamehome.azurenorth@gmail.com`)
+- `PARKING_OWNER_EMAILS` — comma-separated BCC list for parking broadcast emails
+- `GMAIL_OAUTH_CLIENT_JSON` — Full OAuth client credentials JSON (for `gmail-listener`); set by `npm run gmail-auth` from `scripts/gmail-credentials.json`
+- `GMAIL_OAUTH_TOKEN_JSON` — Token JSON containing `refresh_token` (for `gmail-listener`); set by `npm run gmail-auth` after browser sign-in
+- `SD_REFUND_CRON_GRACE_MINUTES` — Grace period in minutes before auto-PENDING_SD_REFUND (default: `15`)
 - Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
 
 ---

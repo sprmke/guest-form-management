@@ -54,17 +54,23 @@ const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
 /**
  * Admin-only exceptional edges that the UI workflow panel may surface.
  * These are NOT available to Gmail listener or cron — they exist to let a
- * human recover when automation is late or guest data changes.
+ * human recover when automation is late, guest data changes, or the admin
+ * needs to step the booking back one stage to redo a step.
+ *
+ * Forward overrides are listed first (force-advance), backward overrides
+ * second (recovery / "oops, went too far"). The UI applies guest-data-aware
+ * filtering on top via `isTransitionApplicable` so admins only see the back-
+ * step that actually matches the booking's pipeline.
  *
  * See: .cursor/rules/booking-workflow.mdc §2.2
  */
 const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
   PENDING_REVIEW:          [],
-  PENDING_GAF:             ['READY_FOR_CHECKIN'],   // approved PDF uploaded manually
-  PENDING_PARKING_REQUEST: [],
-  PENDING_PET_REQUEST:     [],
-  READY_FOR_CHECKIN:       ['PENDING_REVIEW'],      // guest fields edited after ready
-  PENDING_SD_REFUND:       [],
+  PENDING_GAF:             ['READY_FOR_CHECKIN', 'PENDING_REVIEW'],
+  PENDING_PARKING_REQUEST: ['PENDING_GAF'],
+  PENDING_PET_REQUEST:     ['PENDING_PARKING_REQUEST', 'PENDING_GAF'],
+  READY_FOR_CHECKIN:       ['PENDING_PET_REQUEST', 'PENDING_PARKING_REQUEST', 'PENDING_GAF', 'PENDING_REVIEW'],
+  PENDING_SD_REFUND:       ['READY_FOR_CHECKIN'],
   COMPLETED:               [],
   CANCELLED:               [],
 };

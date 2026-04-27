@@ -58,3 +58,6 @@ supabase/.temp/
 
 # Local development
 **/.local
+
+# Gmail OAuth credentials (contain secrets — never commit)
+scripts/gmail-credentials.json

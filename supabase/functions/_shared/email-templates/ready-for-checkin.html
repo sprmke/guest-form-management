@@ -1,0 +1,149 @@
+{{testWarning}}
+<h3 style="color: #166534">✅ You're all set! Your booking is confirmed</h3>
+<p style="font-size: 15px">
+  Monaco 2604 &nbsp;·&nbsp; {{checkInDate}} to {{checkOutDate}}
+</p>
+
+<p>Dear <strong>{{guestFacebookName}}</strong>,</p>
+
+<p>
+  Great news! Your Guest Authorization Form has been approved and your booking
+  is now <strong>Ready for Check-in</strong>. We look forward to welcoming you!
+</p>
+
+{{parkingNote}} {{petNote}}
+
+<h4 style="margin-top: 20px">📅 Booking Summary</h4>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+  <tr style="background: #f9fafb">
+    <td
+      style="
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        width: 35%;
+      "
+    >
+      Unit
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb">
+      {{towerAndUnitNumber}}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 600">
+      Check-in
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb">
+      {{checkInDate}} at {{checkInTime}}
+    </td>
+  </tr>
+  <tr style="background: #f9fafb">
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 600">
+      Check-out
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb">
+      {{checkOutDate}} at {{checkOutTime}}
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 600">
+      Guests
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb">{{pax}} pax</td>
+  </tr>
+</table>
+
+<h4 style="margin-top: 20px">💰 Payment Breakdown</h4>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+  <tr style="background: #f9fafb">
+    <td
+      style="
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        font-weight: 600;
+        width: 40%;
+      "
+    >
+      Booking Rate
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: right">
+      {{bookingRate}}
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb"></td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 600">
+      Down Payment Paid
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: right">
+      {{downPayment}}
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb"></td>
+  </tr>
+  <tr style="background: #fef9f0">
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 700">
+      Remaining Balance
+    </td>
+    <td
+      style="
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        text-align: right;
+        font-weight: 700;
+      "
+    >
+      {{balance}}
+    </td>
+    <td
+      style="
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        font-size: 12px;
+        color: #6b7280;
+      "
+    >
+      <em>payable on or before check-in</em>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; font-weight: 600">
+      Security Deposit
+    </td>
+    <td style="padding: 8px 12px; border: 1px solid #e5e7eb; text-align: right">
+      {{securityDeposit}}
+    </td>
+    <td
+      style="
+        padding: 8px 12px;
+        border: 1px solid #e5e7eb;
+        font-size: 12px;
+        color: #6b7280;
+      "
+    >
+      <em>refundable after inspection</em>
+    </td>
+  </tr>
+  {{parkingPaymentRow}} {{petPaymentRow}}
+</table>
+
+<h4 style="margin-top: 20px">📞 On-site Contact</h4>
+<p><strong>{{ownerContactPerson}}</strong> — {{ownerContactNumber}}</p>
+
+{{houseRulesSection}}
+
+<p style="margin-top: 20px">
+  Your approved Guest Authorization Form is attached to this
+  email.{{attachmentExtras}} Please keep these for your reference at check-in.
+</p>
+
+<p>
+  If you have any questions before your stay, please don't hesitate to message
+  us. See you soon! 🏠
+</p>
+<br />
+<p>
+  Best regards,<br />
+  Arianna Perez<br />
+  Unit Owner, Monaco 2604
+</p>

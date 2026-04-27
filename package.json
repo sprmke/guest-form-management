@@ -7,6 +7,8 @@
     "api"
   ],
   "scripts": {
+    "gmail-auth": "node scripts/gmail-auth.mjs",
+    "preview:emails": "cd supabase/functions/_shared/email-templates && python3 -m http.server 3334",
     "dev": "./dev.sh",
     "dev:ui": "cd ui && npm run dev",
     "dev:api": "supabase functions serve submit-form --env-file ./supabase/.env.local",

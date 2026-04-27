@@ -365,6 +365,215 @@ export class DatabaseService {
     return data;
   }
 
+  // ─── Phase 3 helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Fetch a single booking row by ID (used by orchestrator + transition endpoint).
+   * Returns null when not found.
+   */
+  static async getBookingById(bookingId: string) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw new Error(`Failed to fetch booking ${bookingId}: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Update `status` + `status_updated_at` for a booking.
+   * Only the orchestrator should call this — no side effects here.
+   */
+  static async updateBookingStatus(bookingId: string, status: string) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .update({ status, status_updated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update booking status: ${error.message}`);
+    return data;
+  }
+
+  /**
+   * Patch arbitrary workflow-phase fields onto a booking row (pricing, parking,
+   * SD refund fields, approved PDF URLs, etc.).  Called by the orchestrator after
+   * validating the transition.
+   */
+  static async setWorkflowFields(bookingId: string, fields: Record<string, unknown>) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .update({ ...fields, updated_at: new Date().toISOString() })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to set workflow fields: ${error.message}`);
+    return data;
+  }
+
+  /**
+   * Paginated, filtered, sorted booking list for the admin `list-bookings` function.
+   *
+   * Dates in `check_in_date` are stored as `MM-DD-YYYY` text. To sort correctly
+   * across year boundaries we convert to `YYYY-MM-DD` via a Postgres expression
+   * in a `rpc` call — or fall back to `created_at` when the column isn't sortable.
+   *
+   * Sorting approach: we fetch the full result set for the current page using the
+   * PostgREST range API.  For `check_in_date` sorting we convert in JS (fast enough
+   * for admin pages with ≤1000 active rows).
+   */
+  static async listBookings(params: {
+    q?: string;
+    status?: string[];
+    from?: string | null;   // YYYY-MM-DD
+    to?: string | null;     // YYYY-MM-DD
+    hasPets?: boolean | null;
+    needParking?: boolean | null;
+    includeTests?: boolean;
+    sort?: 'check_in_date:asc' | 'check_in_date:desc' | 'created_at:asc' | 'created_at:desc';
+    page?: number;
+    limit?: number;
+    /** When true, hide COMPLETED rows whose check_in_date < today (Manila). */
+    hideStaleCompleted?: boolean;
+  }) {
+    const {
+      q = '',
+      status = [],
+      from = null,
+      to = null,
+      hasPets = null,
+      needParking = null,
+      includeTests = false,
+      sort = 'check_in_date:asc',
+      page = 1,
+      limit = 25,
+      hideStaleCompleted = true,
+    } = params;
+
+    // Today in Asia/Manila (YYYY-MM-DD)
+    const todayManila = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+    ).toISOString().slice(0, 10);
+
+    let request = this.supabase
+      .from('guest_submissions')
+      .select('*', { count: 'exact' });
+
+    // --- Filters ---
+    // Free-text search now spans the full guest record:
+    //   • Primary guest fields  : facebook name, primary name, email, phone, address, nationality
+    //   • Additional guests     : guest2…guest5_name
+    //   • Pet                   : pet_name, pet_type, pet_breed
+    //   • Parking               : car_plate_number, car_brand_model, car_color
+    //   • Notes / source        : guest_special_requests, find_us_details
+    // PostgREST `or()` joins each clause as a comma-separated `<col>.ilike.<needle>`.
+    if (q.trim()) {
+      const needle = `%${q.trim()}%`;
+      request = request.or(
+        [
+          // Primary guest
+          `guest_facebook_name.ilike.${needle}`,
+          `primary_guest_name.ilike.${needle}`,
+          `guest_email.ilike.${needle}`,
+          `guest_phone_number.ilike.${needle}`,
+          `guest_address.ilike.${needle}`,
+          `nationality.ilike.${needle}`,
+          // Additional guests
+          `guest2_name.ilike.${needle}`,
+          `guest3_name.ilike.${needle}`,
+          `guest4_name.ilike.${needle}`,
+          `guest5_name.ilike.${needle}`,
+          // Pet
+          `pet_name.ilike.${needle}`,
+          `pet_type.ilike.${needle}`,
+          `pet_breed.ilike.${needle}`,
+          // Parking
+          `car_plate_number.ilike.${needle}`,
+          `car_brand_model.ilike.${needle}`,
+          `car_color.ilike.${needle}`,
+          // Free-text notes
+          `guest_special_requests.ilike.${needle}`,
+          `find_us_details.ilike.${needle}`,
+        ].join(','),
+      );
+    }
+
+    if (status.length > 0) {
+      request = request.in('status', status);
+    }
+
+    if (hasPets === true) request = request.eq('has_pets', true);
+    if (hasPets === false) request = request.eq('has_pets', false);
+
+    if (needParking === true) request = request.eq('need_parking', true);
+    if (needParking === false) request = request.eq('need_parking', false);
+
+    if (!includeTests) {
+      request = request.or('is_test_booking.is.null,is_test_booking.eq.false');
+    }
+
+    // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
+    // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).
+    const { data: allData, error, count } = await request.order('created_at', { ascending: false });
+
+    if (error) throw new Error(`listBookings query failed: ${error.message}`);
+
+    let rows = (allData ?? []) as any[];
+
+    // Helper: convert MM-DD-YYYY → YYYY-MM-DD for sorting
+    const toISO = (dateStr: string): string => {
+      if (!dateStr) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [m, d, y] = dateStr.split('-');
+        return `${y}-${m}-${d}`;
+      }
+      return dateStr;
+    };
+
+    // Date-range filter (check_in_date in YYYY-MM-DD)
+    if (from) {
+      rows = rows.filter((r) => toISO(r.check_in_date) >= from);
+    }
+    if (to) {
+      rows = rows.filter((r) => toISO(r.check_in_date) <= to);
+    }
+
+    // Hide stale COMPLETED rows (check_in_date strictly before today, Q5.1)
+    if (hideStaleCompleted) {
+      rows = rows.filter((r) => {
+        if (r.status !== 'COMPLETED') return true;
+        return toISO(r.check_in_date) >= todayManila;
+      });
+    }
+
+    // Sort
+    const [sortCol, sortDir] = sort.split(':') as [string, 'asc' | 'desc'];
+    rows.sort((a, b) => {
+      const aVal = sortCol === 'check_in_date' ? toISO(a.check_in_date) : a.created_at;
+      const bVal = sortCol === 'check_in_date' ? toISO(b.check_in_date) : b.created_at;
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    // Paginate
+    const total = rows.length;
+    const from_idx = (page - 1) * limit;
+    const paged = rows.slice(from_idx, from_idx + limit);
+
+    return { rows: paged, total };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   static async checkOverlappingBookings(checkInDate: string, checkOutDate: string, bookingId?: string) {
     console.log('Checking for overlapping bookings...');
     console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);

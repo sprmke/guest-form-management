@@ -81,6 +81,8 @@ Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
 
 Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, `docs/TODOS.md`, and — for redesign work — `docs/NEW_FLOW_PLAN.md` in the same change set as code. Don't leave code and docs out of sync.
 
+For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, local `functions serve`, curl / admin “Run now” testing), see **`docs/SCHEDULED_JOBS_AND_TESTING.md`**.
+
 ## Related rules
 
 - `.cursor/rules/booking-workflow.mdc` — **read before any booking-state task**.

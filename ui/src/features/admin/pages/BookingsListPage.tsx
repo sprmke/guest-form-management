@@ -1,55 +1,77 @@
-import { useCallback, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useCallback, useMemo } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { AdminLayout } from "@/features/admin/components/AdminLayout";
-import { useBookings } from "@/features/admin/hooks/useBookings";
-import { BookingFilters } from "@/features/admin/components/BookingFilters";
-import { BookingTable } from "@/features/admin/components/BookingTable";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { useBookings } from '@/features/admin/hooks/useBookings';
+import {
+  useDateNavigation,
+  useSyncDateRangeWithQuery,
+} from '@/features/admin/hooks/useDateNavigation';
+import { fromIsoDate } from '@/lib/dateNavigation';
+import { BookingFilters } from '@/features/admin/components/BookingFilters';
+import { BookingTable } from '@/features/admin/components/BookingTable';
+import { BookingCardGrid } from '@/features/admin/components/BookingCardGrid';
+import { BookingCalendarView } from '@/features/admin/components/BookingCalendarView';
+import {
+  BookingViewToggle,
+  type BookingView,
+} from '@/features/admin/components/BookingViewToggle';
 import {
   DEFAULT_BOOKINGS_QUERY,
   type BookingsQuery,
   type BookingsSort,
-} from "@/features/admin/lib/types";
+} from '@/features/admin/lib/types';
 
 const PAGE_SIZES = [25, 50, 100] as const;
+const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
 // ─── URL ↔ query helpers ─────────────────────────────────────
 
 function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
-  const statuses = (sp.get("status") ?? "")
-    .split(",")
+  const statuses = (sp.get('status') ?? '')
+    .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
   const parseTri = (v: string | null): boolean | null =>
-    v === "true" ? true : v === "false" ? false : null;
-  const page = Number(sp.get("page") ?? "1");
-  const limit = Number(sp.get("limit") ?? String(DEFAULT_BOOKINGS_QUERY.limit));
-  const sortParam = (sp.get("sort") ??
+    v === 'true' ? true : v === 'false' ? false : null;
+  const page = Number(sp.get('page') ?? '1');
+  const limit = Number(sp.get('limit') ?? String(DEFAULT_BOOKINGS_QUERY.limit));
+  const sortParam = (sp.get('sort') ??
     DEFAULT_BOOKINGS_QUERY.sort) as BookingsSort;
-  const sort: BookingsSort =
-    sortParam === "created_at:asc" || sortParam === "created_at:desc"
-      ? sortParam
-      : DEFAULT_BOOKINGS_QUERY.sort;
+  const VALID_SORTS: BookingsSort[] = [
+    'check_in_date:asc',
+    'check_in_date:desc',
+    'created_at:asc',
+    'created_at:desc',
+  ];
+  const sort: BookingsSort = VALID_SORTS.includes(sortParam as BookingsSort)
+    ? (sortParam as BookingsSort)
+    : DEFAULT_BOOKINGS_QUERY.sort;
   return {
-    q: sp.get("q") ?? "",
+    q: sp.get('q') ?? '',
     status: statuses,
-    from: sp.get("from"),
-    to: sp.get("to"),
-    hasPets: parseTri(sp.get("hasPets")),
-    needParking: parseTri(sp.get("needParking")),
-    includeTests: sp.get("includeTests") === "true",
+    from: sp.get('from'),
+    to: sp.get('to'),
+    hasPets: parseTri(sp.get('hasPets')),
+    needParking: parseTri(sp.get('needParking')),
+    includeTests: sp.get('includeTests') === 'true',
     sort,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     limit: (PAGE_SIZES as ReadonlyArray<number>).includes(limit)
       ? limit
       : DEFAULT_BOOKINGS_QUERY.limit,
   };
+}
+
+function parseViewFromParams(sp: URLSearchParams): BookingView {
+  const v = sp.get('view') as BookingView | null;
+  return v && VIEWS.includes(v) ? v : 'table';
 }
 
 function writeQueryToParams(
@@ -61,17 +83,17 @@ function writeQueryToParams(
     if (!v) next.delete(k);
     else next.set(k, v);
   };
-  set("q", q.q);
-  set("status", q.status.length ? q.status.join(",") : null);
-  set("from", q.from);
-  set("to", q.to);
-  set("hasPets", q.hasPets === null ? null : String(q.hasPets));
-  set("needParking", q.needParking === null ? null : String(q.needParking));
-  set("includeTests", q.includeTests ? "true" : null);
-  set("sort", q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
-  set("page", q.page === 1 ? null : String(q.page));
+  set('q', q.q);
+  set('status', q.status.length ? q.status.join(',') : null);
+  set('from', q.from);
+  set('to', q.to);
+  set('hasPets', q.hasPets === null ? null : String(q.hasPets));
+  set('needParking', q.needParking === null ? null : String(q.needParking));
+  set('includeTests', q.includeTests ? 'true' : null);
+  set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
+  set('page', q.page === 1 ? null : String(q.page));
   set(
-    "limit",
+    'limit',
     q.limit === DEFAULT_BOOKINGS_QUERY.limit ? null : String(q.limit),
   );
   return next;
@@ -79,20 +101,20 @@ function writeQueryToParams(
 
 // ─── Smart page number builder ───────────────────────────────
 
-type PageItem = number | "ellipsis";
+type PageItem = number | 'ellipsis';
 
 function buildPageItems(current: number, total: number): PageItem[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
 
   const items: PageItem[] = [1];
 
-  if (current > 3) items.push("ellipsis");
+  if (current > 3) items.push('ellipsis');
 
   const lo = Math.max(2, current - 1);
   const hi = Math.min(total - 1, current + 1);
   for (let p = lo; p <= hi; p++) items.push(p);
 
-  if (current < total - 2) items.push("ellipsis");
+  if (current < total - 2) items.push('ellipsis');
 
   items.push(total);
   return items;
@@ -106,6 +128,21 @@ export function BookingsListPage() {
     () => parseQueryFromParams(searchParams),
     [searchParams],
   );
+  const view = useMemo(() => parseViewFromParams(searchParams), [searchParams]);
+
+  // Hydrate date navigation from URL `from`/`to` (if present).
+  // The hook then emits ISO strings back via `useSyncDateRangeWithQuery`
+  // when user navigates presets or picks a custom range.
+  const initialFromDate = fromIsoDate(query.from);
+  const initialToDate = fromIsoDate(query.to);
+  const dateNav = useDateNavigation({
+    initialPreset: 'month',
+    initialRange:
+      initialFromDate && initialToDate
+        ? { from: initialFromDate, to: initialToDate }
+        : null,
+  });
+
   const { data, isLoading, isFetching, error, refetch } = useBookings(query);
 
   const patch = useCallback(
@@ -116,10 +153,40 @@ export function BookingsListPage() {
     [query, setSearchParams],
   );
 
-  const resetFilters = useCallback(
-    () => setSearchParams(new URLSearchParams(), { replace: true }),
+  // Sync date-nav state changes (preset switches, custom range, prev/next) → URL.
+  // Pass the URL-derived from/to so the hook can detect "URL is empty but the
+  // user just clicked Month" and still fire a patch.
+  useSyncDateRangeWithQuery(dateNav, query.from, query.to, ({ from, to }) => {
+    patch({ from, to, page: 1 });
+  });
+
+  const setView = useCallback(
+    (next: BookingView) =>
+      setSearchParams(
+        (prev) => {
+          const sp = new URLSearchParams(prev);
+          if (next === 'table') sp.delete('view');
+          else sp.set('view', next);
+          // Reset to first page when switching views; calendar in particular
+          // benefits from seeing all results in the active range.
+          sp.delete('page');
+          return sp;
+        },
+        { replace: true },
+      ),
     [setSearchParams],
   );
+
+  const handleClearDate = useCallback(() => {
+    // Reset preset state to the default month view (no range applied).
+    dateNav.setDatePreset('month');
+    patch({ from: null, to: null, page: 1 });
+  }, [dateNav, patch]);
+
+  const resetFilters = useCallback(() => {
+    setSearchParams(new URLSearchParams(), { replace: true });
+    dateNav.setDatePreset('month');
+  }, [setSearchParams, dateNav]);
 
   const total = data?.total ?? 0;
   const rows = data?.rows ?? [];
@@ -127,6 +194,12 @@ export function BookingsListPage() {
   const startIdx = total === 0 ? 0 : (query.page - 1) * query.limit + 1;
   const endIdx = Math.min(total, startIdx + rows.length - 1);
   const pageItems = buildPageItems(query.page, pageCount);
+
+  // Calendar view: fetch a higher cap so an entire month range can render.
+  // We don't want pagination chopping a month view in half. The list-bookings
+  // edge function caps `limit` at 100 — good enough for a single month at this
+  // property's volume; widen later if needed via a cursor / infinite query.
+  const showPagination = view !== 'calendar' && pageCount > 1;
 
   return (
     <AdminLayout
@@ -142,41 +215,62 @@ export function BookingsListPage() {
             className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-sidebar-muted hover:text-sidebar-accent-foreground hover:bg-sidebar-accent disabled:opacity-40 transition-colors"
           >
             <RefreshCw
-              className={cn("size-4", isFetching && "animate-spin")}
+              className={cn('size-4', isFetching && 'animate-spin')}
               aria-hidden
             />
           </button>
           <Link
             to="/form"
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-lg min-h-[44px]",
-              "text-[13px] font-semibold text-white",
-              "transition-all duration-150",
-              "hover:opacity-90 active:scale-[0.98]",
+              'inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-lg min-h-[44px]',
+              'text-[13px] font-semibold text-white',
+              'transition-all duration-150',
+              'hover:opacity-90 active:scale-[0.98]',
             )}
             style={{
-              background: "hsl(var(--sidebar-primary))",
-              boxShadow: "0 1px 3px hsl(var(--sidebar-primary) / 0.35)",
+              background: 'hsl(var(--sidebar-primary))',
+              boxShadow: '0 1px 3px hsl(var(--sidebar-primary) / 0.35)',
             }}
           >
             <CalendarPlus className="size-4" aria-hidden />
-            {/* Text hidden on very small screens to save topbar space */}
             <span className="hidden sm:inline">New booking</span>
           </Link>
         </div>
       }
     >
       <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
-        {/* Filters */}
-        <BookingFilters query={query} onChange={patch} onReset={resetFilters} />
+        <BookingFilters
+          query={query}
+          onChange={patch}
+          onReset={resetFilters}
+          dateNav={dateNav}
+          onClearDate={handleClearDate}
+        />
 
-        {/* Meta bar */}
+        {/* Meta bar — count + view toggle + page size */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <p className="text-[13px] text-slate-500">
             {isLoading ? (
               <span className="inline-block w-28 h-3 rounded-full bg-slate-200 animate-pulse" />
             ) : total === 0 ? (
-              "No bookings found"
+              'No bookings found'
+            ) : view === 'calendar' ? (
+              <>
+                <span className="font-bold text-slate-700">
+                  {rows.length.toLocaleString()}
+                </span>
+                <span className="ml-1.5 text-slate-400">
+                  {rows.length === 1 ? 'booking' : 'bookings'} in view
+                </span>
+                {total > rows.length && (
+                  <span className="ml-1.5 text-slate-300">
+                    of {total.toLocaleString()}
+                  </span>
+                )}
+                {isFetching && !isLoading && (
+                  <span className="ml-2 text-slate-300">· updating…</span>
+                )}
+              </>
             ) : (
               <>
                 <span className="font-bold text-slate-700">
@@ -198,36 +292,61 @@ export function BookingsListPage() {
             )}
           </p>
 
-          <label className="flex items-center gap-2 text-[12px] text-slate-500">
-            <span>Per page</span>
-            <select
-              value={query.limit}
-              onChange={(e) =>
-                patch({ limit: Number(e.target.value), page: 1 })
-              }
-              className="h-7 rounded-lg border border-sidebar-border bg-white px-2 text-[12px] font-semibold text-sidebar-foreground focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20 focus:border-sidebar-primary"
-            >
-              {PAGE_SIZES.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <BookingViewToggle value={view} onChange={setView} />
+
+            {view !== 'calendar' && (
+              <label className="flex items-center gap-2 text-[12px] text-slate-500">
+                <span className="hidden sm:inline">Per page</span>
+                <select
+                  value={query.limit}
+                  onChange={(e) =>
+                    patch({ limit: Number(e.target.value), page: 1 })
+                  }
+                  aria-label="Items per page"
+                  className="h-9 rounded-lg border border-sidebar-border bg-white px-2 text-[12px] font-semibold text-sidebar-foreground focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20 focus:border-sidebar-primary"
+                >
+                  {PAGE_SIZES.map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
         </div>
 
-        {/* Table */}
-        <BookingTable
-          rows={rows}
-          isLoading={isLoading}
-          error={error ? (error as Error).message : null}
-          isRefreshing={isFetching}
-        />
+        {/* Active view */}
+        {view === 'table' && (
+          <BookingTable
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+          />
+        )}
+        {view === 'card' && (
+          <BookingCardGrid
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+          />
+        )}
+        {view === 'calendar' && (
+          <BookingCalendarView
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+            initialMonth={dateNav.dateRange.from}
+          />
+        )}
 
-        {/* Pagination */}
-        {pageCount > 1 && (
+        {/* Pagination — hidden in calendar view (range already filters scope) */}
+        {showPagination && (
           <div className="flex items-center justify-center gap-1 pt-1">
-            {/* Prev */}
             <PaginationBtn
               onClick={() => patch({ page: Math.max(1, query.page - 1) })}
               disabled={query.page <= 1 || isLoading}
@@ -237,10 +356,9 @@ export function BookingsListPage() {
               <span className="hidden sm:inline">Prev</span>
             </PaginationBtn>
 
-            {/* Page chips */}
             <div className="flex items-center gap-0.5">
               {pageItems.map((item, idx) =>
-                item === "ellipsis" ? (
+                item === 'ellipsis' ? (
                   <span
                     key={`dots-${idx}`}
                     className="w-8 text-center text-[12px] text-slate-400 select-none"
@@ -253,19 +371,19 @@ export function BookingsListPage() {
                     type="button"
                     onClick={() => patch({ page: item })}
                     aria-label={`Go to page ${item}`}
-                    aria-current={item === query.page ? "page" : undefined}
+                    aria-current={item === query.page ? 'page' : undefined}
                     className={cn(
-                      "size-8 rounded-lg text-[13px] font-semibold transition-all duration-100",
+                      'size-8 rounded-lg text-[13px] font-semibold transition-all duration-100',
                       item === query.page
-                        ? "text-sidebar-primary-foreground"
-                        : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        ? 'text-sidebar-primary-foreground'
+                        : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                     )}
                     style={
                       item === query.page
                         ? {
-                            background: "hsl(var(--sidebar-primary))",
+                            background: 'hsl(var(--sidebar-primary))',
                             boxShadow:
-                              "0 1px 4px hsl(var(--sidebar-primary) / 0.3)",
+                              '0 1px 4px hsl(var(--sidebar-primary) / 0.3)',
                           }
                         : undefined
                     }
@@ -276,7 +394,6 @@ export function BookingsListPage() {
               )}
             </div>
 
-            {/* Next */}
             <PaginationBtn
               onClick={() =>
                 patch({ page: Math.min(pageCount, query.page + 1) })
@@ -300,12 +417,12 @@ function PaginationBtn({
   children,
   onClick,
   disabled,
-  "aria-label": ariaLabel,
+  'aria-label': ariaLabel,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  "aria-label": string;
+  'aria-label': string;
 }) {
   return (
     <button
@@ -314,11 +431,11 @@ function PaginationBtn({
       disabled={disabled}
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold",
-        "border border-sidebar-border bg-white text-sidebar-muted",
-        "hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:border-sidebar-primary/30",
-        "transition-all duration-100",
-        "disabled:opacity-40 disabled:pointer-events-none",
+        'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold',
+        'border border-sidebar-border bg-white text-sidebar-muted',
+        'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:border-sidebar-primary/30',
+        'transition-all duration-100',
+        'disabled:opacity-40 disabled:pointer-events-none',
       )}
     >
       {children}

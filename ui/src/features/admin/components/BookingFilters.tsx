@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
+import {
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   BOOKING_STATUSES,
@@ -7,12 +14,25 @@ import {
   statusLabel,
 } from '@/features/admin/lib/bookingStatus';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
-import type { BookingsQuery } from '@/features/admin/lib/types';
+import { BookingDateRangeFilter } from '@/features/admin/components/BookingDateRangeFilter';
+import type { DateNavigationState } from '@/lib/dateNavigation';
+import type { BookingsQuery, BookingsSort } from '@/features/admin/lib/types';
+
+const SORT_OPTIONS: { value: BookingsSort; label: string }[] = [
+  { value: 'check_in_date:asc', label: 'Check-in ↑ (earliest first)' },
+  { value: 'check_in_date:desc', label: 'Check-in ↓ (latest first)' },
+  { value: 'created_at:desc', label: 'Submitted ↓ (newest first)' },
+  { value: 'created_at:asc', label: 'Submitted ↑ (oldest first)' },
+];
 
 type Props = {
   query: BookingsQuery;
   onChange: (patch: Partial<BookingsQuery>) => void;
   onReset: () => void;
+  /** Date navigation state (presets + custom range) shared with parent. */
+  dateNav: DateNavigationState;
+  /** Clear the date filter — sets `from`/`to` to null and resets preset. */
+  onClearDate: () => void;
 };
 
 const ALL_STATUSES = [...BOOKING_STATUSES, ...LEGACY_BOOKING_STATUSES];
@@ -94,7 +114,13 @@ function DropdownPanel({
 }
 
 // ─── Main filter component ─────────────────────────────────
-export function BookingFilters({ query, onChange, onReset }: Props) {
+export function BookingFilters({
+  query,
+  onChange,
+  onReset,
+  dateNav,
+  onClearDate,
+}: Props) {
   const [draft, setDraft] = useState(query.q);
   const [openKey, setOpenKey] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -141,12 +167,15 @@ export function BookingFilters({ query, onChange, onReset }: Props) {
     onChange({ status: Array.from(next), page: 1 });
   };
 
+  const isDateActive = Boolean(query.from || query.to);
+
   const totalActiveFilters =
     (query.q ? 1 : 0) +
     query.status.length +
     (query.hasPets !== null ? 1 : 0) +
     (query.needParking !== null ? 1 : 0) +
-    (query.includeTests ? 1 : 0);
+    (query.includeTests ? 1 : 0) +
+    (isDateActive ? 1 : 0);
 
   const isDirty = totalActiveFilters > 0;
 
@@ -170,7 +199,7 @@ export function BookingFilters({ query, onChange, onReset }: Props) {
             type="search"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search by guest name or email…"
+            placeholder="Search guests, email, phone, plate, pet, notes…"
             aria-label="Search bookings"
             className={cn(
               'pr-8 pl-9 w-full rounded-lg py-[7px] text-[13px] text-slate-700',
@@ -196,6 +225,86 @@ export function BookingFilters({ query, onChange, onReset }: Props) {
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           {/* Divider (desktop only) */}
           <div className="hidden sm:block w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
+
+          {/* — Sort dropdown — */}
+          <div className="relative shrink-0">
+            <FilterBtn
+              label={
+                (SORT_OPTIONS.find((o) => o.value === query.sort)?.label.split(
+                  ' ',
+                )[0] ?? 'Sort') +
+                ' ' +
+                (query.sort.endsWith(':asc') ? '↑' : '↓')
+              }
+              count={0}
+              isOpen={openKey === 'sort'}
+              onClick={() => toggle('sort')}
+            />
+            {openKey === 'sort' && (
+              <DropdownPanel width="w-64">
+                <div
+                  className="px-3.5 py-2.5"
+                  style={{ borderBottom: '1px solid #f1f5f9' }}
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                    Sort by
+                  </span>
+                </div>
+                <div className="py-1">
+                  {SORT_OPTIONS.map((opt) => {
+                    const isSelected = opt.value === query.sort;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          onChange({ sort: opt.value, page: 1 });
+                          setOpenKey(null);
+                        }}
+                        className={cn(
+                          'flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition-colors',
+                          isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
+                        )}
+                      >
+                        <ArrowUpDown
+                          className={cn(
+                            'size-3.5 shrink-0',
+                            isSelected
+                              ? 'text-sidebar-primary'
+                              : 'text-slate-300',
+                          )}
+                          aria-hidden
+                        />
+                        <span
+                          className={cn(
+                            'text-[13px]',
+                            isSelected
+                              ? 'font-semibold text-slate-800'
+                              : 'font-medium text-slate-600',
+                          )}
+                        >
+                          {opt.label}
+                        </span>
+                        {isSelected && (
+                          <Check
+                            className="ml-auto size-3.5 text-sidebar-primary shrink-0"
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </DropdownPanel>
+            )}
+          </div>
+
+          {/* — Date range — presets (week/month/year) + custom calendar — */}
+          <BookingDateRangeFilter
+            {...dateNav}
+            isActive={isDateActive}
+            onClear={onClearDate}
+          />
 
           {/* — Status dropdown — */}
           <div className="relative shrink-0">

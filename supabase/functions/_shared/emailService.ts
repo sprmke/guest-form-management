@@ -1,5 +1,89 @@
-import { GuestFormData } from './types.ts'
+import { GuestFormData, GuestSubmission } from './types.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { escapeHtml, loadEmailTemplate, replacePlaceholders } from './renderEmailHtml.ts'
+
+// ─── Shared storage helpers ───────────────────────────────────────────────────
+
+function supabaseAdminClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+}
+
+/**
+ * Parse a Supabase Storage public URL into { bucket, path }.
+ * Returns null for placeholder values or unparseable URLs.
+ */
+function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+  try {
+    if (!url || url === 'dev-mode-skipped' || url === 'test-mode-skipped' || !url.startsWith('http')) {
+      return null;
+    }
+    const urlObj = new URL(url);
+    const parts = urlObj.pathname.split('/');
+    // Support both /storage/v1/object/public/… and /storage/v1/object/sign/…
+    const markerIdx = parts.findIndex((p) => p === 'public' || p === 'sign');
+    if (markerIdx !== -1 && markerIdx < parts.length - 2) {
+      const bucket = parts[markerIdx + 1];
+      const path = parts.slice(markerIdx + 2).join('/');
+      return { bucket, path };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+type DownloadedFile = {
+  bytes: Uint8Array;
+  filename: string;
+  mimeType: string;
+};
+
+/**
+ * Download a file from Supabase Storage using the service role key.
+ * Works for both public and private buckets.
+ */
+async function downloadStorageFile(url: string, fallbackFilename: string): Promise<DownloadedFile | null> {
+  const loc = parseStorageUrl(url);
+  if (!loc) {
+    console.warn('[emailService] Cannot parse storage URL:', url);
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseAdminClient()
+      .storage
+      .from(loc.bucket)
+      .download(loc.path);
+
+    if (error || !data) {
+      console.error('[emailService] Storage download failed:', error?.message);
+      return null;
+    }
+
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    const filename = loc.path.split('/').pop() || fallbackFilename;
+    const mimeType = data.type || 'application/octet-stream';
+    return { bytes, filename, mimeType };
+  } catch (err) {
+    console.error('[emailService] Unexpected download error:', err);
+    return null;
+  }
+}
+
+/**
+ * Convert file bytes to a base64 string for Resend attachments.
+ */
+function toBase64(bytes: Uint8Array): string {
+  const chunks: string[] = [];
+  const chunkSize = 32768;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    chunks.push(String.fromCharCode.apply(null, Array.from(bytes.slice(i, i + chunkSize))));
+  }
+  return btoa(chunks.join(''));
+}
 
 /**
  * Checks if a booking is urgent (same-day check-in)
@@ -68,47 +152,27 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
   }
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? `
-    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
-    </div>
-  ` : '';
+  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
 
-  const emailContent = `
-    ${testWarning}
-    <h3>Monaco 2604 - GAF Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
-    <br>
-    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
-    <br>
-    <p>Good day,</p>
-    ${isUpdate ? `
-    <p>The Guest Authorization Form details for <strong>${formData.towerAndUnitNumber}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong> for your approval.</p>
-    <p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>
-    ` : `
-    <p>Kindly review the Guest Authorization Form request for <strong>${formData.towerAndUnitNumber}</strong>, dated from <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong>, for your approval.</p>
-    `}
-    <p>Please let me know if you need any additional information.</p>
-    <p>Thank you for your assistance.</p>
-    <br>
-    <p>Best regards,</p>
-    <p>Arianna Perez</p>
-    <p>Unit Owner, Monaco 2604</p>
-  `
+  const bodyParagraphs = isUpdate
+    ? `<p>The Guest Authorization Form details for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${escapeHtml(formData.checkInDate)} to ${escapeHtml(formData.checkOutDate)}</strong> for your approval.</p><p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>`
+    : `<p>Kindly review the Guest Authorization Form request for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong>, dated from <strong>${escapeHtml(formData.checkInDate)} to ${escapeHtml(formData.checkOutDate)}</strong>, for your approval.</p>`;
 
-  // Convert Uint8Array to base64 string efficiently
-  let base64PDF: string | null = null;
-  if (pdfBuffer) {
-    // Use TextEncoder to convert the buffer to base64 in chunks
-    const chunks: string[] = [];
-    const chunkSize = 32768; // Process 32KB chunks
-    
-    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
-      const chunk = pdfBuffer.slice(i, i + chunkSize);
-      chunks.push(String.fromCharCode.apply(null, chunk));
-    }
-    
-    base64PDF = btoa(chunks.join(''));
-  }
+  const urgentBlock = isUrgent
+    ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>'
+    : '';
+
+  const gafTpl = await loadEmailTemplate('gaf-request');
+  const emailContent = replacePlaceholders(gafTpl, {
+    testWarning,
+    updateSuffix: isUpdate ? ' (Updated)' : '',
+    urgentBlock,
+    checkInDate: escapeHtml(formData.checkInDate),
+    checkOutDate: escapeHtml(formData.checkOutDate),
+    bodyParagraphs,
+  });
+
+  const base64PDF = pdfBuffer ? toBase64(pdfBuffer) : null;
 
   const updatePrefix = isUpdate ? 'UPDATED - ' : '';
   
@@ -121,7 +185,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     body: JSON.stringify({
       from: 'Monaco 2604 - GAF Request <mail@kamehomes.space>',
       to: [EMAIL_TO],
-      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      // Never CC the guest on the GAF request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
       subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
@@ -176,15 +240,9 @@ export async function sendPetEmail(
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
-  // Test mode email warning
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? `
-    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
-    </div>
-  ` : '';
+  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
 
-  // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
   const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
 
@@ -192,185 +250,56 @@ export async function sendPetEmail(
     console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
   }
 
-  const emailContent = `
-    ${testWarning}
-    <h3>Monaco 2604 - Pet Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
-    <br>
-    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
-    <br>
-    <p>Good day,</p>
-    ${isUpdate ? `
-    <p>The pet information for our guest at <strong>${formData.towerAndUnitNumber}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
-    <p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>
-    ` : `
-    <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
-    `}
-    <br>
-    <p><strong>Pet Details:</strong></p>
-    <ul>
-      <li><strong>Pet Name:</strong> ${formData.petName || 'N/A'}</li>
-      <li><strong>Pet Type:</strong> ${formData.petType || 'N/A'}</li>
-      <li><strong>Pet Breed:</strong> ${formData.petBreed || 'N/A'}</li>
-      <li><strong>Pet Age:</strong> ${formData.petAge || 'N/A'}</li>
-      <li><strong>Vaccination Date:</strong> ${formData.petVaccinationDate || 'N/A'}</li>
-    </ul>
-    <br>
-    <p>Attached to this email are:</p>
-    <ul>
-      <li>Completed Pet Form with all required information</li>
-      <li>Pet vaccination records</li>
-      <li>Pet photograph</li>
-    </ul>
-    <br>
-    <br>
-    <p>Please let us know if you need any additional information or documentation.</p>
-    <br>
-    <p>Thank you for your consideration.</p>
-    <br>
-    <p>Best regards,</p>
-    <p>Arianna Perez</p>
-    <p>Unit Owner, Monaco 2604</p>
-  `
+  const urgentBlock = isUrgent
+    ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>'
+    : '';
+
+  const bodyParagraphs = isUpdate
+    ? `<p>The pet information for our guest at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${escapeHtml(formData.checkInDate)}</strong> to <strong>${escapeHtml(formData.checkOutDate)}</strong>.</p><p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>`
+    : `<p>We are writing to request approval for our guest on bringing a pet to <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> during their stay from <strong>${escapeHtml(formData.checkInDate)}</strong> to <strong>${escapeHtml(formData.checkOutDate)}</strong>.</p>`;
+
+  const petTpl = await loadEmailTemplate('pet-request');
+  const emailContent = replacePlaceholders(petTpl, {
+    testWarning,
+    updateSuffix: isUpdate ? ' (Updated)' : '',
+    urgentBlock,
+    checkInDate: escapeHtml(formData.checkInDate),
+    checkOutDate: escapeHtml(formData.checkOutDate),
+    bodyParagraphs,
+    petName: escapeHtml(formData.petName || 'N/A'),
+    petType: escapeHtml(formData.petType || 'N/A'),
+    petBreed: escapeHtml(formData.petBreed || 'N/A'),
+    petAge: escapeHtml(formData.petAge || 'N/A'),
+    petVaccinationDate: escapeHtml(formData.petVaccinationDate || 'N/A'),
+  });
 
   // Prepare attachments array
   const attachments: any[] = []
 
   // Add Pet PDF if available
   if (pdfBuffer) {
-    const chunks: string[] = [];
-    const chunkSize = 32768;
-    
-    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
-      const chunk = pdfBuffer.slice(i, i + chunkSize);
-      chunks.push(String.fromCharCode.apply(null, chunk));
-    }
-    
-    const base64PDF = btoa(chunks.join(''));
     attachments.push({
       filename: `MONACO_2604_PET_FORM-${formData.checkInDate}.pdf`,
-      content: base64PDF,
-      encoding: 'base64'
-    })
-  }
-
-  // Initialize Supabase client for downloading files
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
-  // Helper function to extract bucket and path from Supabase URL
-  const parseSupabaseUrl = (url: string): { bucket: string; path: string } | null => {
-    try {
-      // Skip placeholder values from dev/testing mode
-      if (url === 'dev-mode-skipped' || url === 'test-mode-skipped' || !url.startsWith('http')) {
-        console.log('  Skipping placeholder URL:', url);
-        return null;
-      }
-      
-      // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      const publicIndex = pathParts.indexOf('public');
-      if (publicIndex !== -1 && publicIndex < pathParts.length - 2) {
-        const bucket = pathParts[publicIndex + 1];
-        const path = pathParts.slice(publicIndex + 2).join('/');
-        return { bucket, path };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error parsing URL:', error);
-      return null;
-    }
+      content: toBase64(pdfBuffer),
+      encoding: 'base64',
+    });
   }
 
   // Download and attach pet image if URL is provided
-  if (petImageUrl && petImageUrl !== 'dev-mode-skipped' && petImageUrl !== 'test-mode-skipped') {
-    try {
-      console.log('Downloading pet image from:', petImageUrl);
-      const urlInfo = parseSupabaseUrl(petImageUrl);
-      
-      if (urlInfo) {
-        const { data: fileData, error: downloadError } = await supabase
-          .storage
-          .from(urlInfo.bucket)
-          .download(urlInfo.path);
-
-        if (downloadError) {
-          console.error('Error downloading pet image from storage:', downloadError);
-        } else if (fileData) {
-          const imageArray = new Uint8Array(await fileData.arrayBuffer());
-          
-          const chunks: string[] = [];
-          const chunkSize = 32768;
-          
-          for (let i = 0; i < imageArray.length; i += chunkSize) {
-            const chunk = imageArray.slice(i, i + chunkSize);
-            chunks.push(String.fromCharCode.apply(null, chunk));
-          }
-          
-          const base64Image = btoa(chunks.join(''));
-          
-          // Extract filename from path
-          const filename = urlInfo.path.split('/').pop() || `pet-image-${formData.checkInDate}.jpg`;
-          
-          attachments.push({
-            filename: filename,
-            content: base64Image,
-            encoding: 'base64'
-          })
-          console.log('Pet image attached successfully:', filename);
-        }
-      } else {
-        console.warn('Could not parse pet image URL');
-      }
-    } catch (error) {
-      console.error('Error downloading pet image:', error);
+  if (petImageUrl) {
+    const file = await downloadStorageFile(petImageUrl, `pet-image-${formData.checkInDate}.jpg`);
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('Pet image attached successfully:', file.filename);
     }
   }
 
   // Download and attach pet vaccination if URL is provided
-  if (petVaccinationUrl && petVaccinationUrl !== 'dev-mode-skipped' && petVaccinationUrl !== 'test-mode-skipped') {
-    try {
-      console.log('Downloading pet vaccination record from:', petVaccinationUrl);
-      const urlInfo = parseSupabaseUrl(petVaccinationUrl);
-      
-      if (urlInfo) {
-        const { data: fileData, error: downloadError } = await supabase
-          .storage
-          .from(urlInfo.bucket)
-          .download(urlInfo.path);
-
-        if (downloadError) {
-          console.error('Error downloading pet vaccination from storage:', downloadError);
-        } else if (fileData) {
-          const vaccinationArray = new Uint8Array(await fileData.arrayBuffer());
-          
-          const chunks: string[] = [];
-          const chunkSize = 32768;
-          
-          for (let i = 0; i < vaccinationArray.length; i += chunkSize) {
-            const chunk = vaccinationArray.slice(i, i + chunkSize);
-            chunks.push(String.fromCharCode.apply(null, chunk));
-          }
-          
-          const base64Vaccination = btoa(chunks.join(''));
-          
-          // Extract filename from path
-          const filename = urlInfo.path.split('/').pop() || `pet-vaccination-${formData.checkInDate}.jpg`;
-          
-          attachments.push({
-            filename: filename,
-            content: base64Vaccination,
-            encoding: 'base64'
-          })
-          console.log('Pet vaccination record attached successfully:', filename);
-        }
-      } else {
-        console.warn('Could not parse pet vaccination URL');
-      }
-    } catch (error) {
-      console.error('Error downloading pet vaccination record:', error);
+  if (petVaccinationUrl) {
+    const file = await downloadStorageFile(petVaccinationUrl, `pet-vaccination-${formData.checkInDate}.jpg`);
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('Pet vaccination record attached successfully:', file.filename);
     }
   }
 
@@ -390,7 +319,7 @@ export async function sendPetEmail(
     body: JSON.stringify({
       from: 'Monaco 2604 - Pet Request <mail@kamehomes.space>',
       to: [EMAIL_TO],
-      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      // Never CC the guest on the Pet request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
       subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
       html: emailContent,
@@ -406,4 +335,295 @@ export async function sendPetEmail(
 
   console.log('Pet email sent successfully');
   return await res.json()
-} 
+}
+
+// ─── New Phase 3 emails ──────────────────────────────────────────────────────
+
+function getResendCredentials() {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const EMAIL_TO = Deno.env.get('EMAIL_TO');          // Azure / building admin
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO'); // kamehome.azurenorth
+
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY');
+  if (!EMAIL_TO) throw new Error('Missing EMAIL_TO');
+  if (!EMAIL_REPLY_TO) throw new Error('Missing EMAIL_REPLY_TO');
+
+  return { RESEND_API_KEY, EMAIL_TO, EMAIL_REPLY_TO };
+}
+
+function pesoFormat(amount: number | null | undefined): string {
+  if (amount == null) return '—';
+  return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
+ * Booking acknowledgement — sent to the **guest** when moving PENDING_REVIEW → PENDING_GAF.
+ * Confirms we received the form and are processing their GAF.
+ */
+export async function sendBookingAcknowledgement(
+  booking: GuestSubmission,
+  isTestingMode = false,
+) {
+  console.log('Sending booking acknowledgement email to guest...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+
+  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
+  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
+
+  const ackTpl = await loadEmailTemplate('booking-acknowledgement');
+  const html = replacePlaceholders(ackTpl, {
+    testWarning,
+    guestFacebookName: escapeHtml(booking.guest_facebook_name),
+    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+    checkInDate: escapeHtml(booking.check_in_date),
+    checkOutDate: escapeHtml(booking.check_out_date),
+  });
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [booking.guest_email],
+      reply_to: EMAIL_REPLY_TO,
+      subject: `${testPrefix}Your booking request has been received — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send booking acknowledgement: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Booking acknowledgement email sent successfully');
+  return await res.json();
+}
+
+/**
+ * Ready for check-in — sent to the **guest** when transitioning to READY_FOR_CHECKIN.
+ * Includes payment breakdown, house rules, and any relevant approved documents as attachments:
+ *   • Approved GAF PDF (always, if available)
+ *   • Approved Pet PDF (if has_pets and available)
+ *   • Parking endorsement (if need_parking and available)
+ */
+export async function sendReadyForCheckin(
+  booking: GuestSubmission,
+  isTestingMode = false,
+) {
+  console.log('Sending ready-for-check-in email to guest...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+
+  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
+  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
+
+  const balance = booking.balance ?? ((booking.booking_rate ?? 0) - (booking.down_payment ?? 0));
+  const pax = (booking.number_of_adults || 0) + (booking.number_of_children || 0);
+  const displayCheckInTime = escapeHtml(booking.check_in_time || '2:00 PM');
+  const displayCheckOutTime = escapeHtml(booking.check_out_time || '12:00 PM');
+
+  const parkingPaymentRow = booking.need_parking ? `
+    <tr>
+      <td style="padding:4px 8px;">Guest Parking Fee</td>
+      <td style="padding:4px 8px;text-align:right;">${pesoFormat(booking.parking_rate_guest as number | null)}</td>
+      <td style="padding:4px 8px;font-size:12px;color:#6b7280;"><em>non-refundable; no rescheduling once confirmed</em></td>
+    </tr>
+  ` : '';
+
+  const petPaymentRow = booking.has_pets ? `
+    <tr>
+      <td style="padding:4px 8px;">Pet Fee</td>
+      <td style="padding:4px 8px;text-align:right;">${pesoFormat(booking.pet_fee as number | null)}</td>
+      <td></td>
+    </tr>
+  ` : '';
+
+  const parkingNote = booking.need_parking ? `
+    <p style="background-color:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
+      <strong>🚗 Parking reminder:</strong> Your parking slot is confirmed. Please note that the parking fee is
+      <strong>non-refundable</strong> and the booking <strong>cannot be rescheduled</strong> once parking is confirmed.
+      Attached to this email is your parking endorsement with the slot details.
+    </p>
+  ` : '';
+
+  const petNote = booking.has_pets ? `
+    <p style="background-color:#f0fdf4;border-left:4px solid #22c55e;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
+      <strong>🐾 Pet reminder:</strong> Your pet has been approved for this stay. Please ensure your pet remains in
+      approved areas and is kept on a leash in all common areas.
+    </p>
+  ` : '';
+
+  const houseRulesTpl = await loadEmailTemplate('ready-for-checkin-house-rules');
+  const houseRulesSection = replacePlaceholders(houseRulesTpl, {
+    pax: String(pax),
+    checkInTime: displayCheckInTime,
+    checkOutTime: displayCheckOutTime,
+    securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
+  });
+
+  let attachmentExtras = '';
+  if (booking.has_pets) attachmentExtras += ' Your approved pet form is also attached.';
+  if (booking.need_parking) attachmentExtras += ' Your parking endorsement is attached.';
+
+  const rfiTpl = await loadEmailTemplate('ready-for-checkin');
+  const html = replacePlaceholders(rfiTpl, {
+    testWarning,
+    checkInDate: escapeHtml(booking.check_in_date),
+    checkOutDate: escapeHtml(booking.check_out_date),
+    guestFacebookName: escapeHtml(booking.guest_facebook_name),
+    parkingNote,
+    petNote,
+    pax: String(pax),
+    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+    checkInTime: displayCheckInTime,
+    checkOutTime: displayCheckOutTime,
+    bookingRate: pesoFormat(booking.booking_rate as number | null),
+    downPayment: pesoFormat(booking.down_payment as number | null),
+    balance: pesoFormat(balance as number),
+    securityDeposit: pesoFormat(booking.security_deposit as number | null),
+    parkingPaymentRow,
+    petPaymentRow,
+    ownerContactPerson: escapeHtml(booking.owner_onsite_contact_person ?? ''),
+    ownerContactNumber: escapeHtml(booking.owner_contact_number ?? ''),
+    houseRulesSection,
+    attachmentExtras,
+  });
+
+  // ── Build attachments ─────────────────────────────────────────────────────────
+  const attachments: Array<{ filename: string; content: string; encoding: string }> = [];
+
+  // Approved GAF PDF — always attach if available
+  if (booking.approved_gaf_pdf_url) {
+    console.log('[readyForCheckin] Downloading approved GAF PDF...');
+    const file = await downloadStorageFile(
+      booking.approved_gaf_pdf_url,
+      `approved-gaf-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached approved GAF PDF:', file.filename);
+    }
+  }
+
+  // Approved Pet PDF — attach if booking has pets
+  if (booking.has_pets && booking.approved_pet_pdf_url) {
+    console.log('[readyForCheckin] Downloading approved pet PDF...');
+    const file = await downloadStorageFile(
+      booking.approved_pet_pdf_url,
+      `approved-pet-form-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached approved pet PDF:', file.filename);
+    }
+  }
+
+  // Parking endorsement — attach if booking has parking
+  if (booking.need_parking && booking.parking_endorsement_url) {
+    console.log('[readyForCheckin] Downloading parking endorsement...');
+    const file = await downloadStorageFile(
+      booking.parking_endorsement_url,
+      `parking-endorsement-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached parking endorsement:', file.filename);
+    }
+  }
+
+  console.log(`[readyForCheckin] Sending email with ${attachments.length} attachment(s)...`);
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [booking.guest_email],
+      reply_to: EMAIL_REPLY_TO,
+      subject: `${testPrefix}You're all set! Ready for Check-in — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      html,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send ready-for-check-in email: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Ready-for-check-in email sent successfully');
+  return await res.json();
+}
+
+/**
+ * Parking broadcast — BCC to all addresses in PARKING_OWNER_EMAILS env var.
+ * Sent when transitioning PENDING_REVIEW → PENDING_GAF and `need_parking` is true.
+ */
+export async function sendParkingBroadcast(
+  booking: GuestSubmission,
+  isTestingMode = false,
+) {
+  console.log('Sending parking broadcast email...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+
+  const parkingOwnerEmailsRaw = Deno.env.get('PARKING_OWNER_EMAILS') ?? '';
+  const bccEmails = parkingOwnerEmailsRaw
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  if (bccEmails.length === 0) {
+    console.warn('PARKING_OWNER_EMAILS is not set — skipping parking broadcast');
+    return null;
+  }
+
+  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
+  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-parking') : '';
+
+  const parkTpl = await loadEmailTemplate('parking-broadcast');
+  const html = replacePlaceholders(parkTpl, {
+    testWarning,
+    checkInDate: escapeHtml(booking.check_in_date),
+    checkOutDate: escapeHtml(booking.check_out_date),
+    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+    checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
+    checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
+    carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
+    carColor: escapeHtml(booking.car_color || 'N/A'),
+    carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
+  });
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      // Use first email as primary TO, rest as BCC for privacy
+      to: [bccEmails[0]],
+      bcc: bccEmails.slice(1),
+      reply_to: EMAIL_REPLY_TO,
+      subject: `${testPrefix}Parking Availability Request — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send parking broadcast: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Parking broadcast email sent successfully');
+  return await res.json();
+}

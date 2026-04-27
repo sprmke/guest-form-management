@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Car, Dog } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
+import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
 import {
   formatBookingDate,
   formatBookingDateShort,
@@ -17,26 +18,9 @@ type Props = {
   isRefreshing?: boolean;
 };
 
-// Deterministic avatar color from guest name initial
-const AVATAR_PALETTES = [
-  { bg: '#dbeafe', text: '#1d4ed8' }, // blue
-  { bg: '#ede9fe', text: '#6d28d9' }, // violet
-  { bg: '#d1fae5', text: '#065f46' }, // emerald
-  { bg: '#fef3c7', text: '#92400e' }, // amber
-  { bg: '#fce7f3', text: '#9d174d' }, // pink
-  { bg: '#e0f2fe', text: '#0369a1' }, // sky
-  { bg: '#ffedd5', text: '#9a3412' }, // orange
-  { bg: '#f3e8ff', text: '#6b21a8' }, // purple
-];
-
-function getAvatar(name: string) {
-  const initial = (name[0] ?? '?').toUpperCase();
-  const palette =
-    AVATAR_PALETTES[initial.charCodeAt(0) % AVATAR_PALETTES.length];
-  return { initial, ...palette };
-}
-
 export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
+  const navigate = useNavigate();
+
   if (error) {
     return (
       <div
@@ -92,8 +76,6 @@ export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}
     >
-      {/* overflow-x-auto + min-w ensures the table scrolls horizontally on narrow screens
-          rather than collapsing into unreadable columns */}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <thead>
@@ -125,7 +107,12 @@ export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <BookingRow key={row.id} row={row} index={i} />
+              <BookingTableRow
+                key={row.id}
+                row={row}
+                index={i}
+                onOpen={() => navigate(`/bookings/${row.id}`)}
+              />
             ))}
           </tbody>
         </table>
@@ -154,18 +141,41 @@ function Th({
   );
 }
 
-function BookingRow({ row, index }: { row: BookingRow; index: number }) {
+function BookingTableRow({
+  row,
+  index,
+  onOpen,
+}: {
+  row: BookingRow;
+  index: number;
+  onOpen: () => void;
+}) {
   const name =
     row.primary_guest_name ||
     row.guest_facebook_name ||
     row.guest_email ||
     'Guest';
-  const { initial, bg, text } = getAvatar(name);
   const pax = (row.number_of_adults ?? 0) + (row.number_of_children ?? 0);
+
+  const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onOpen();
+    }
+  };
 
   return (
     <tr
-      className="transition-colors duration-100 group hover:bg-sidebar-accent/20"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={handleKey}
+      aria-label={`Open booking for ${name}`}
+      className={cn(
+        'group cursor-pointer transition-colors duration-100 outline-none',
+        'hover:bg-sidebar-accent/30 focus-visible:bg-sidebar-accent/40',
+        'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-primary/40',
+      )}
       style={{ borderTop: index === 0 ? undefined : '1px solid #f8fafc' }}
     >
       {/* Status */}
@@ -183,13 +193,7 @@ function BookingRow({ row, index }: { row: BookingRow; index: number }) {
       {/* Guest — with avatar */}
       <td className="px-3 sm:px-4 py-3 sm:py-3.5 align-middle">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-[140px] sm:min-w-[160px]">
-          <div
-            className="size-7 sm:size-8 rounded-full flex items-center justify-center text-[11px] sm:text-[12px] font-black shrink-0"
-            style={{ backgroundColor: bg, color: text }}
-            aria-hidden
-          >
-            {initial}
-          </div>
+          <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="md" />
           <div className="min-w-0">
             <p className="text-[13px] font-bold text-slate-800 leading-tight truncate">
               {name}
@@ -219,23 +223,25 @@ function BookingRow({ row, index }: { row: BookingRow; index: number }) {
         <span className="text-[13px] font-semibold text-slate-600">{pax}</span>
       </td>
 
-      {/* Flags */}
+      {/* Flags — bigger, more legible icons */}
       <td className="hidden px-3 sm:px-4 py-3.5 text-center align-middle sm:table-cell">
-        <div className="inline-flex gap-1 justify-center items-center">
+        <div className="inline-flex gap-1.5 justify-center items-center">
           {row.need_parking && (
             <span
               title="Needs parking"
-              className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[11px] font-semibold bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/60"
+              aria-label="Needs parking"
+              className="inline-flex items-center justify-center size-7 rounded-md bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70"
             >
-              <Car className="size-3" aria-hidden />
+              <Car className="size-4" aria-hidden />
             </span>
           )}
           {row.has_pets && (
             <span
               title="Has pets"
-              className="inline-flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[11px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/60"
+              aria-label="Has pets"
+              className="inline-flex items-center justify-center size-7 rounded-md bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
             >
-              <Dog className="size-3" aria-hidden />
+              <Dog className="size-4" aria-hidden />
             </span>
           )}
           {!row.need_parking && !row.has_pets && (
@@ -263,24 +269,19 @@ function BookingRow({ row, index }: { row: BookingRow; index: number }) {
         </span>
       </td>
 
-      {/* Action — 44px touch target; always visible on mobile (no hover on touch) */}
+      {/* Action — chevron only, click is handled by the whole row */}
       <td className="py-2 pr-3 pl-2 text-right align-middle sm:pr-4">
-        <Link
-          to={`/form?bookingId=${row.id}`}
-          aria-label={`View booking for ${name}`}
+        <span
+          aria-hidden
           className={cn(
             'inline-flex items-center justify-center rounded-lg',
-            'min-w-[44px] min-h-[44px] text-slate-500',
-            // Mobile: always visible; desktop: reveal on row hover
-            'sm:opacity-0 sm:group-hover:opacity-100',
-            'transition-all duration-150',
-            'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-            'active:bg-sidebar-accent',
+            'min-w-[44px] min-h-[44px] text-slate-400',
+            'sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-visible:opacity-100',
+            'transition-opacity duration-150',
           )}
         >
-          <ArrowUpRight className="size-4" aria-hidden />
-          <span className="sr-only">Open booking</span>
-        </Link>
+          <ArrowUpRight className="size-4" />
+        </span>
       </td>
     </tr>
   );
@@ -292,7 +293,6 @@ function TableSkeleton() {
       className="overflow-hidden bg-white rounded-xl"
       style={{ border: '1px solid rgba(0,0,0,0.08)' }}
     >
-      {/* Header */}
       <div
         className="flex gap-6 items-center px-5 py-[11px]"
         style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
@@ -305,7 +305,6 @@ function TableSkeleton() {
           />
         ))}
       </div>
-      {/* Rows */}
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
@@ -315,19 +314,15 @@ function TableSkeleton() {
             opacity: 1 - i * 0.1,
           }}
         >
-          {/* Status placeholder */}
           <div className="w-24 h-5 rounded-md animate-pulse bg-slate-100" />
-          {/* Avatar + name */}
           <div className="flex flex-1 gap-3 items-center">
-            <div className="rounded-full animate-pulse size-8 bg-slate-100 shrink-0" />
+            <div className="rounded-full animate-pulse size-9 bg-slate-100 shrink-0" />
             <div className="space-y-1.5 flex-1">
               <div className="w-32 h-3 rounded-full animate-pulse bg-slate-100" />
               <div className="h-2.5 rounded-full bg-slate-100/70 animate-pulse w-40" />
             </div>
           </div>
-          {/* Dates */}
           <div className="hidden w-36 h-3 rounded-full animate-pulse md:block bg-slate-100" />
-          {/* Action */}
           <div className="ml-auto w-14 h-7 rounded-lg animate-pulse bg-slate-100" />
         </div>
       ))}
