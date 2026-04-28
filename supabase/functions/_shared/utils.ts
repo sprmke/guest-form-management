@@ -3,25 +3,46 @@ import customParseFormat from 'https://esm.sh/dayjs@1.11.10/plugin/customParseFo
 
 dayjs.extend(customParseFormat)
 
-  /**
-   * Formats a date and time string to ISO 8601 format
-   */
-  export const formatDateTime = (date: string, time: string): string => {
-    const [month, day, year] = date.split('-');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    let [hours, minutes] = time.split(':');
-    const period = minutes.split(' ')[1];
-    minutes = minutes.split(' ')[0];
-    
-    if (period === 'PM' && hours !== '12') {
-      hours = String(Number(hours) + 12);
-    } else if (period === 'AM' && hours === '12') {
-      hours = '00';
-    }
-    
-    return `${formattedDate}T${hours}:${minutes}:00`;
+/**
+ * Normalizes MM-DD-YYYY (DB) or YYYY-MM-DD (guest form) to YYYY-MM-DD for APIs.
+ */
+export const normalizeDateToYYYYMMDD = (dateStr: string): string => {
+  if (!dateStr?.trim()) return '';
+  const s = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdy) {
+    const [, month, day, year] = mdy;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
+  const parsed = dayjs(s);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+};
+
+/**
+ * RFC3339-style local dateTime (no offset) for Google Calendar `dateTime` + `timeZone`.
+ * Parses times with {@link formatTime} so "2:00 PM" maps to 14:00, not 02:00.
+ */
+export const buildGoogleCalendarDateTime = (
+  dateStr: string,
+  timeStr: string | null | undefined,
+  defaultTime: string,
+): string => {
+  const ymd = normalizeDateToYYYYMMDD(dateStr);
+  if (!ymd) return '';
+  const hm = formatTime(timeStr ?? '') || defaultTime;
+  const parts = hm.split(':');
+  const h = (parts[0] ?? '0').padStart(2, '0');
+  const m = (parts[1] ?? '00').padStart(2, '0');
+  return `${ymd}T${h}:${m}:00`;
+};
+
+/**
+ * @deprecated Prefer {@link buildGoogleCalendarDateTime}; kept for call sites that pass explicit HH:mm.
+ */
+export const formatDateTime = (date: string, time: string): string => {
+  return buildGoogleCalendarDateTime(date, time, '00:00');
+}
 
 /**
  * Formats a date string to YYYY-MM-DD format
@@ -44,6 +65,7 @@ export const formatTime = (timeStr: string | null | undefined): string => {
   
   // Try parsing with various formats
   const formats = [
+    'HH:mm:ss', // Postgres / ISO time with seconds
     'HH:mm',    // 24-hour format
     'H:mm',     // 24-hour format without leading zero
     'hh:mm A',  // 12-hour format with AM/PM
