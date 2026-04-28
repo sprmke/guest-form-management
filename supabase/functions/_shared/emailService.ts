@@ -5,12 +5,16 @@ import {
   escapeHtml,
   loadEmailTemplate,
   replacePlaceholders,
+  withEmailShellStyleVars,
 } from './renderEmailHtml.ts'
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const raw = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || DEFAULT_EMAIL_LOGO_URL;
   const frag = await loadEmailTemplate('fragments/email-header-logo');
-  return replacePlaceholders(frag, { logoUrl: escapeHtml(raw) });
+  return replacePlaceholders(
+    frag,
+    withEmailShellStyleVars({ logoUrl: escapeHtml(raw) }),
+  );
 }
 
 // ─── Shared storage helpers ───────────────────────────────────────────────────
@@ -175,15 +179,18 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const gafTpl = await loadEmailTemplate('gaf-request');
-  const emailContent = replacePlaceholders(gafTpl, {
-    emailHeaderLogo,
-    testWarning,
-    updateSuffix: isUpdate ? ' (Updated)' : '',
-    urgentBlock,
-    checkInDate: escapeHtml(formData.checkInDate),
-    checkOutDate: escapeHtml(formData.checkOutDate),
-    bodyParagraphs,
-  });
+  const emailContent = replacePlaceholders(
+    gafTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      updateSuffix: isUpdate ? ' (Updated)' : '',
+      urgentBlock,
+      checkInDate: escapeHtml(formData.checkInDate),
+      checkOutDate: escapeHtml(formData.checkOutDate),
+      bodyParagraphs,
+    }),
+  );
 
   const base64PDF = pdfBuffer ? toBase64(pdfBuffer) : null;
 
@@ -273,20 +280,23 @@ export async function sendPetEmail(
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const petTpl = await loadEmailTemplate('pet-request');
-  const emailContent = replacePlaceholders(petTpl, {
-    emailHeaderLogo,
-    testWarning,
-    updateSuffix: isUpdate ? ' (Updated)' : '',
-    urgentBlock,
-    checkInDate: escapeHtml(formData.checkInDate),
-    checkOutDate: escapeHtml(formData.checkOutDate),
-    bodyParagraphs,
-    petName: escapeHtml(formData.petName || 'N/A'),
-    petType: escapeHtml(formData.petType || 'N/A'),
-    petBreed: escapeHtml(formData.petBreed || 'N/A'),
-    petAge: escapeHtml(formData.petAge || 'N/A'),
-    petVaccinationDate: escapeHtml(formData.petVaccinationDate || 'N/A'),
-  });
+  const emailContent = replacePlaceholders(
+    petTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      updateSuffix: isUpdate ? ' (Updated)' : '',
+      urgentBlock,
+      checkInDate: escapeHtml(formData.checkInDate),
+      checkOutDate: escapeHtml(formData.checkOutDate),
+      bodyParagraphs,
+      petName: escapeHtml(formData.petName || 'N/A'),
+      petType: escapeHtml(formData.petType || 'N/A'),
+      petBreed: escapeHtml(formData.petBreed || 'N/A'),
+      petAge: escapeHtml(formData.petAge || 'N/A'),
+      petVaccinationDate: escapeHtml(formData.petVaccinationDate || 'N/A'),
+    }),
+  );
 
   // Prepare attachments array
   const attachments: any[] = []
@@ -388,14 +398,17 @@ export async function sendBookingAcknowledgement(
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const ackTpl = await loadEmailTemplate('booking-acknowledgement');
-  const html = replacePlaceholders(ackTpl, {
-    emailHeaderLogo,
-    testWarning,
-    guestFacebookName: escapeHtml(booking.guest_facebook_name),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-  });
+  const html = replacePlaceholders(
+    ackTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+    }),
+  );
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -513,26 +526,29 @@ export async function sendReadyForCheckin(
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const rfiTpl = await loadEmailTemplate('ready-for-checkin');
-  const html = replacePlaceholders(rfiTpl, {
-    emailHeaderLogo,
-    testWarning,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    guestFacebookName: escapeHtml(booking.guest_facebook_name),
-    documentRemindersSection,
-    pax: String(pax),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInTime: displayCheckInTime,
-    checkOutTime: displayCheckOutTime,
-    bookingRate: pesoFormat(booking.booking_rate as number | null),
-    downPayment: pesoFormat(booking.down_payment as number | null),
-    balance: pesoFormat(balance as number),
-    securityDeposit: pesoFormat(booking.security_deposit as number | null),
-    totalBalanceDue,
-    parkingPaymentRow,
-    petPaymentRow,
-    houseRulesSection,
-  });
+  const html = replacePlaceholders(
+    rfiTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      documentRemindersSection,
+      pax: String(pax),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: displayCheckInTime,
+      checkOutTime: displayCheckOutTime,
+      bookingRate: pesoFormat(booking.booking_rate as number | null),
+      downPayment: pesoFormat(booking.down_payment as number | null),
+      balance: pesoFormat(balance as number),
+      securityDeposit: pesoFormat(booking.security_deposit as number | null),
+      totalBalanceDue,
+      parkingPaymentRow,
+      petPaymentRow,
+      houseRulesSection,
+    }),
+  );
 
   // ── Build attachments ─────────────────────────────────────────────────────────
   const attachments: Array<{ filename: string; content: string; encoding: string }> = [];
@@ -631,18 +647,21 @@ export async function sendParkingBroadcast(
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const parkTpl = await loadEmailTemplate('parking-broadcast');
-  const html = replacePlaceholders(parkTpl, {
-    emailHeaderLogo,
-    testWarning,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
-    checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
-    carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
-    carColor: escapeHtml(booking.car_color || 'N/A'),
-    carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
-  });
+  const html = replacePlaceholders(
+    parkTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
+      checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
+      carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
+      carColor: escapeHtml(booking.car_color || 'N/A'),
+      carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
+    }),
+  );
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -697,15 +716,18 @@ export async function sendSdRefundFormRequest(
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const tpl = await loadEmailTemplate('sd-refund-form-request');
-  const html = replacePlaceholders(tpl, {
-    emailHeaderLogo,
-    testWarning,
-    guestFacebookName: escapeHtml(booking.guest_facebook_name),
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    sdFormUrl,
-    securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
-  });
+  const html = replacePlaceholders(
+    tpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      sdFormUrl,
+      securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
+    }),
+  );
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
