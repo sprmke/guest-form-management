@@ -963,7 +963,7 @@
       }
     </style>
   </head>
-  <body class="email-outer">
+  <body class="email-outer" style="{{emailShellBodyStyle}}">
     <table
       role="presentation"
       class="email-outer"
@@ -971,9 +971,14 @@
       cellspacing="0"
       cellpadding="0"
       border="0"
+      style="{{emailShellTableOuterStyle}}"
     >
       <tr>
-        <td align="center" class="shell-pad">
+        <td
+          align="center"
+          class="shell-pad"
+          style="{{emailShellTdShellPadStyle}}"
+        >
           <table
             role="presentation"
             class="email-wrapper"
@@ -981,15 +986,21 @@
             cellspacing="0"
             cellpadding="0"
             border="0"
+            style="{{emailShellTableWrapperStyle}}"
           >
             <tr>
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar">&nbsp;</td>
+              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                &nbsp;
+              </td>
             </tr>
             <tr>
-              <td class="email-card-shell">
+              <td
+                class="email-card-shell"
+                style="{{emailShellTdCardShellStyle}}"
+              >
                 <table
                   class="email-card"
                   role="presentation"
@@ -997,18 +1008,30 @@
                   cellspacing="0"
                   cellpadding="0"
                   border="0"
+                  style="{{emailShellTableCardStyle}}"
                 >
                   <tr>
-                    <td class="content-pad">
+                    <td
+                      class="content-pad"
+                      style="{{emailShellTdContentPadStyle}}"
+                    >
                       {{emailHeaderLogo}}
-                      <p class="brand-micro">Checkout follow-up</p>
-                      <h1 class="h1-title">
+                      <p
+                        class="brand-micro"
+                        style="{{emailShellBrandMicroStyle}}"
+                      >
+                        Checkout follow-up
+                      </p>
+                      <h1 class="h1-title" style="{{emailShellH1Style}}">
                         Tell us how to refund your security deposit
                       </h1>
-                      <p class="date-line">
+                      <p class="date-line" style="{{emailShellDateLineStyle}}">
                         {{checkInDate}} → {{checkOutDate}}
                       </p>
-                      <div class="body-copy">
+                      <div
+                        class="body-copy"
+                        style="{{emailShellBodyCopyStyle}}"
+                      >
                         <p>Hi <strong>{{guestFacebookName}}</strong>,</p>
                         <p>
                           Thank you for staying with us. Your checkout window
@@ -1027,6 +1050,7 @@
                       <div class="cta-wrap">
                         <a
                           class="cta-btn"
+                          style="{{emailShellCtaBtnStyle}}"
                           href="{{sdFormUrl}}"
                           target="_blank"
                           rel="noopener"
@@ -1044,7 +1068,11 @@
               </td>
             </tr>
             <tr>
-              <td align="center" class="legal-footer">
+              <td
+                align="center"
+                class="legal-footer"
+                style="{{emailShellTdLegalFooterStyle}}"
+              >
                 &copy; 2025 Kame Home - Azure North. All rights reserved.
               </td>
             </tr>

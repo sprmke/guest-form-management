@@ -964,7 +964,7 @@
       }
     </style>
   </head>
-  <body class="email-outer">
+  <body class="email-outer" style="{{emailShellBodyStyle}}">
     <table
       role="presentation"
       class="email-outer"
@@ -972,9 +972,10 @@
       cellspacing="0"
       cellpadding="0"
       border="0"
+      style="{{emailShellTableOuterStyle}}"
     >
       <tr>
-        <td align="center" class="shell-pad">
+        <td align="center" class="shell-pad" style="{{emailShellTdShellPadStyle}}">
           <table
             role="presentation"
             class="email-wrapper"
@@ -982,15 +983,16 @@
             cellspacing="0"
             cellpadding="0"
             border="0"
+            style="{{emailShellTableWrapperStyle}}"
           >
             <tr>
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar">&nbsp;</td>
+              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">&nbsp;</td>
             </tr>
             <tr>
-              <td class="email-card-shell">
+              <td class="email-card-shell" style="{{emailShellTdCardShellStyle}}">
                 <table
                   class="email-card"
                   role="presentation"
@@ -998,9 +1000,10 @@
                   cellspacing="0"
                   cellpadding="0"
                   border="0"
+                  style="{{emailShellTableCardStyle}}"
                 >
                   <tr>
-                    <td class="content-pad">
+                    <td class="content-pad" style="{{emailShellTdContentPadStyle}}">
                       {{emailHeaderLogo}}
                       <table
                         role="presentation"
@@ -1012,28 +1015,28 @@
                       >
                         <tr>
                           <td class="brand-line">
-                            <span class="brand-micro">Kame Home</span>
+                            <span class="brand-micro" style="{{emailShellBrandMicroStyle}}">Kame Home</span>
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <span class="text-subheading">Monaco 2604</span>
+                            <span class="text-subheading" style="{{emailShellTextSubheadingStyle}}">Monaco 2604</span>
                           </td>
                         </tr>
                       </table>
 
-                      <h1 class="h1-title">
+                      <h1 class="h1-title" style="{{emailShellH1Style}}">
                         Guest Advise Form{{updateSuffix}}
                       </h1>
-                      <p class="date-line">
+                      <p class="date-line" style="{{emailShellDateLineStyle}}">
                         {{checkInDate}}
-                        <span class="text-arrow">&nbsp;→&nbsp;</span>
+                        <span class="text-arrow" style="{{emailShellTextArrowStyle}}">&nbsp;→&nbsp;</span>
                         {{checkOutDate}}
                       </p>
 
                       {{urgentBlock}}
 
-                      <div class="body-copy">
+                      <div class="body-copy" style="{{emailShellBodyCopyStyle}}">
                         <p>Good day,</p>
                         {{bodyParagraphs}}
                         <p class="p-spaced">
@@ -1069,7 +1072,7 @@
               </td>
             </tr>
             <tr>
-              <td align="center" class="legal-footer">
+              <td align="center" class="legal-footer" style="{{emailShellTdLegalFooterStyle}}">
                 &copy; 2025 Kame Home - Azure North. All rights reserved.
               </td>
             </tr>

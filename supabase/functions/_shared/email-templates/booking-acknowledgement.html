@@ -962,7 +962,7 @@
       }
     </style>
   </head>
-  <body class="email-outer">
+  <body class="email-outer" style="{{emailShellBodyStyle}}">
     <table
       role="presentation"
       class="email-outer"
@@ -970,9 +970,14 @@
       cellspacing="0"
       cellpadding="0"
       border="0"
+      style="{{emailShellTableOuterStyle}}"
     >
       <tr>
-        <td align="center" class="shell-pad">
+        <td
+          align="center"
+          class="shell-pad"
+          style="{{emailShellTdShellPadStyle}}"
+        >
           <table
             role="presentation"
             class="email-wrapper"
@@ -980,15 +985,21 @@
             cellspacing="0"
             cellpadding="0"
             border="0"
+            style="{{emailShellTableWrapperStyle}}"
           >
             <tr>
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar">&nbsp;</td>
+              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                &nbsp;
+              </td>
             </tr>
             <tr>
-              <td class="email-card-shell">
+              <td
+                class="email-card-shell"
+                style="{{emailShellTdCardShellStyle}}"
+              >
                 <table
                   class="email-card"
                   role="presentation"
@@ -996,9 +1007,13 @@
                   cellspacing="0"
                   cellpadding="0"
                   border="0"
+                  style="{{emailShellTableCardStyle}}"
                 >
                   <tr>
-                    <td class="content-pad">
+                    <td
+                      class="content-pad"
+                      style="{{emailShellTdContentPadStyle}}"
+                    >
                       {{emailHeaderLogo}}
                       <table
                         role="presentation"
@@ -1010,22 +1025,40 @@
                       >
                         <tr>
                           <td class="brand-line">
-                            <span class="brand-micro">Kame Home</span>
+                            <span
+                              class="brand-micro"
+                              style="{{emailShellBrandMicroStyle}}"
+                              >Kame Home</span
+                            >
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <span class="text-subheading">Monaco 2604</span>
+                            <span
+                              class="text-subheading"
+                              style="{{emailShellTextSubheadingStyle}}"
+                              >Monaco 2604</span
+                            >
                           </td>
                         </tr>
                       </table>
 
-                      <h1 class="h1-title h1-title-lg">
+                      <h1
+                        class="h1-title h1-title-lg"
+                        style="{{emailShellH1LgStyle}}"
+                      >
                         Thank you, {{guestFacebookName}}!
                       </h1>
-                      <p class="tagline-looser">
+                      <p
+                        class="tagline-looser"
+                        style="{{emailShellTaglineLooserStyle}}"
+                      >
                         {{checkInDate}}
-                        <span class="text-arrow">&nbsp;&rarr;&nbsp;</span>
+                        <span
+                          class="text-arrow"
+                          style="{{emailShellTextArrowStyle}}"
+                          >&nbsp;&rarr;&nbsp;</span
+                        >
                         {{checkOutDate}}
                       </p>
 
@@ -1124,7 +1157,7 @@
                                 </td>
                                 <td class="step-body-cell">
                                   <p>
-                                    Approval typically takes a business days.
+                                    Approval typically takes a
                                     <strong class="text-strong"
                                       >few hours up to two (2) business
                                       days</strong
@@ -1187,7 +1220,10 @@
                         </tr>
                       </table>
 
-                      <div class="body-copy">
+                      <div
+                        class="body-copy"
+                        style="{{emailShellBodyCopyStyle}}"
+                      >
                         <p class="p-spaced">
                           Thank you for choosing Kame Home. We look forward to
                           hosting you!
@@ -1220,7 +1256,11 @@
               </td>
             </tr>
             <tr>
-              <td align="center" class="legal-footer">
+              <td
+                align="center"
+                class="legal-footer"
+                style="{{emailShellTdLegalFooterStyle}}"
+              >
                 &copy; 2025 Kame Home - Azure North. All rights reserved.
               </td>
             </tr>
