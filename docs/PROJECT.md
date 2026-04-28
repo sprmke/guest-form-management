@@ -192,6 +192,8 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 **CORS**: `_shared/cors.ts` builds headers per request origin.
 
+**Email HTML at runtime**: Functions that call `loadEmailTemplate()` (through `_shared/emailService.ts` or `_shared/workflowOrchestrator.ts`) must declare **`static_files`** in `supabase/config.toml` (paths relative to `supabase/`, e.g. `./functions/_shared/email-templates/*.html` and `./functions/_shared/email-templates/fragments/*.html`). The hosted Edge bundle otherwise omits those `.html` assets and `Deno.readTextFile` fails at runtime. Requires **Supabase CLI ≥ 2.7** for `static_files`; add the same globs when introducing a new function that sends email.
+
 ---
 
 ## 9. Integrations detail
@@ -209,6 +211,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 - Service account JWT → access token.
 - Events store **`bookingId`** in `extendedProperties.private` for idempotent find/update/delete.
+- **`dateTime` + `timeZone`:** `_shared/utils.ts` builds wall times with `buildGoogleCalendarDateTime` — dates are normalized from **YYYY-MM-DD** (guest form) or **MM-DD-YYYY** (DB), and times go through **`formatTime`** so strings like **`2:00 PM`** become **14:00** (naive `HH` splitting had been treating that as 2:00).
 - Description includes link to **`https://kamehomes.space/form?bookingId=...`** with `&testing=true` or `&dev=true` for non-testing mode (see `createEventData` in `_shared/calendarService.ts`).
 - **Cancel**: search by `privateExtendedProperty`, patch summary **`[CANCELED] …`** today (`colorId: 11`); new flow uses **`CANCELED - …`** summaries + purple `colorId` per `docs/NEW_FLOW_PLAN.md` §1.4.
 
