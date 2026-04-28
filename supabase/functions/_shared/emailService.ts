@@ -7,6 +7,7 @@ import {
   replacePlaceholders,
   withEmailShellStyleVars,
 } from './renderEmailHtml.ts'
+import { formatDateForEmail } from './utils.ts'
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const raw = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || DEFAULT_EMAIL_LOGO_URL;
@@ -168,10 +169,13 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
+  const displayCheckInDate = formatDateForEmail(formData.checkInDate);
+  const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
+  const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
 
   const bodyParagraphs = isUpdate
-    ? `<p>The Guest Advise Form (GAF) details for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${escapeHtml(formData.checkInDate)} to ${escapeHtml(formData.checkOutDate)}</strong> for your approval.</p><p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>`
-    : `<p>Kindly review the Guest Advise Form (GAF) request for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong>, dated from <strong>${escapeHtml(formData.checkInDate)} to ${escapeHtml(formData.checkOutDate)}</strong>, for your approval.</p>`;
+    ? `<p>The Guest Advise Form (GAF) details for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong> for your approval.</p><p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>`
+    : `<p>Kindly review the Guest Advise Form (GAF) request for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong>, dated from <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong>, for your approval.</p>`;
 
   const urgentBlock = isUrgent
     ? `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td><strong class="callout-title">Urgent — same-day check-in</strong><br />This request requires immediate attention and approval from the property administration.</td></tr></table>`
@@ -186,8 +190,8 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       testWarning,
       updateSuffix: isUpdate ? ' (Updated)' : '',
       urgentBlock,
-      checkInDate: escapeHtml(formData.checkInDate),
-      checkOutDate: escapeHtml(formData.checkOutDate),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       bodyParagraphs,
     }),
   );
@@ -207,7 +211,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       // Never CC the guest on the GAF request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -262,6 +266,9 @@ export async function sendPetEmail(
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
+  const displayCheckInDate = formatDateForEmail(formData.checkInDate);
+  const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
+  const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
 
   const isUrgent = isUrgentBooking(formData.checkInDate);
   const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
@@ -275,8 +282,8 @@ export async function sendPetEmail(
     : '';
 
   const bodyParagraphs = isUpdate
-    ? `<p>The pet information for our guest at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${escapeHtml(formData.checkInDate)}</strong> to <strong>${escapeHtml(formData.checkOutDate)}</strong>.</p><p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>`
-    : `<p>May we kindly request approval for our guest to bring a pet during their stay at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> during their stay from <strong>${escapeHtml(formData.checkInDate)}</strong> to <strong>${escapeHtml(formData.checkOutDate)}</strong>.</p>`;
+    ? `<p>The pet information for our guest at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${escapeHtml(displayCheckInDate)}</strong> to <strong>${escapeHtml(displayCheckOutDate)}</strong>.</p><p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>`
+    : `<p>May we kindly request approval for our guest to bring a pet during their stay at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> during their stay from <strong>${escapeHtml(displayCheckInDate)}</strong> to <strong>${escapeHtml(displayCheckOutDate)}</strong>.</p>`;
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const petTpl = await loadEmailTemplate('pet-request');
@@ -287,14 +294,14 @@ export async function sendPetEmail(
       testWarning,
       updateSuffix: isUpdate ? ' (Updated)' : '',
       urgentBlock,
-      checkInDate: escapeHtml(formData.checkInDate),
-      checkOutDate: escapeHtml(formData.checkOutDate),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       bodyParagraphs,
       petName: escapeHtml(formData.petName || 'N/A'),
       petType: escapeHtml(formData.petType || 'N/A'),
       petBreed: escapeHtml(formData.petBreed || 'N/A'),
       petAge: escapeHtml(formData.petAge || 'N/A'),
-      petVaccinationDate: escapeHtml(formData.petVaccinationDate || 'N/A'),
+      petVaccinationDate: escapeHtml(displayPetVaccinationDate || 'N/A'),
     }),
   );
 
@@ -346,7 +353,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       // Never CC the guest on the Pet request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       attachments: attachments
     })
@@ -395,6 +402,8 @@ export async function sendBookingAcknowledgement(
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const ackTpl = await loadEmailTemplate('booking-acknowledgement');
@@ -405,8 +414,8 @@ export async function sendBookingAcknowledgement(
       testWarning,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
     }),
   );
 
@@ -420,7 +429,7 @@ export async function sendBookingAcknowledgement(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Your booking request has been received — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      subject: `${testPrefix}Your booking request has been received — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -451,6 +460,8 @@ export async function sendReadyForCheckin(
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const balance = booking.balance ?? ((booking.booking_rate ?? 0) - (booking.down_payment ?? 0));
   const balanceNum = Number(balance);
@@ -531,8 +542,8 @@ export async function sendReadyForCheckin(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       documentRemindersSection,
       pax: String(pax),
@@ -604,7 +615,7 @@ export async function sendReadyForCheckin(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}You're all set! Ready for Check-in — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      subject: `${testPrefix}You're all set! Ready for Check-in — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
@@ -644,6 +655,8 @@ export async function sendParkingBroadcast(
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-parking') : '';
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const parkTpl = await loadEmailTemplate('parking-broadcast');
@@ -652,8 +665,8 @@ export async function sendParkingBroadcast(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
       checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
       checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
@@ -675,7 +688,7 @@ export async function sendParkingBroadcast(
       to: [bccEmails[0]],
       bcc: bccEmails.slice(1),
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Parking Availability Request — Monaco 2604 (${booking.check_in_date} to ${booking.check_out_date})`,
+      subject: `${testPrefix}Parking Availability Request — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -708,6 +721,8 @@ export async function sendSdRefundFormRequest(
 
   const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const bookingId = booking.id as string;
   if (!bookingId) throw new Error('sendSdRefundFormRequest: booking.id is required');
@@ -722,8 +737,8 @@ export async function sendSdRefundFormRequest(
       emailHeaderLogo,
       testWarning,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       sdFormUrl,
       securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
     }),
@@ -739,7 +754,7 @@ export async function sendSdRefundFormRequest(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - Submit SD Refund Details (${booking.check_in_date} to ${booking.check_out_date})`,
+      subject: `${testPrefix}Monaco 2604 - Submit SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });

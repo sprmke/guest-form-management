@@ -56,6 +56,19 @@ export const formatDate = (dateStr: string | null | undefined): string => {
 };
 
 /**
+ * Formats dates for guest-facing email copy (e.g. "Jun 13, 2026").
+ * Accepts MM-DD-YYYY (DB), YYYY-MM-DD, or parseable date strings.
+ */
+export const formatDateForEmail = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '';
+
+  const normalized = normalizeDateToYYYYMMDD(dateStr);
+  const parsed = normalized ? dayjs(normalized, 'YYYY-MM-DD', true) : dayjs(dateStr);
+
+  return parsed.isValid() ? parsed.format('MMM D, YYYY') : String(dateStr);
+};
+
+/**
  * Formats a time string to 24-hour HH:mm format
  * @param timeStr - The time string to format
  * @returns Formatted time string or empty string if invalid

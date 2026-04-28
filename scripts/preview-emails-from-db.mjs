@@ -70,7 +70,7 @@ const EMAIL_SHELL_STYLE_VARS = {
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
   emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
   emailShellTableWrapperStyle:
-    'width:600px;max-width:100%;margin:0 auto;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+    'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
     'height:5px;line-height:5px;font-size:0;background-color:#5f954c;border-radius:20px 20px 0 0;',
   emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',
@@ -114,6 +114,28 @@ function loadTemplate(name) {
 function pesoFormat(amount) {
   if (amount == null || Number.isNaN(Number(amount))) return '—';
   return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function formatDateForEmail(dateStr) {
+  if (!dateStr) return '';
+
+  const s = String(dateStr).trim();
+  const mdy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  let d;
+  if (mdy) {
+    const [, m, day, y] = mdy;
+    d = new Date(Date.UTC(Number(y), Number(m) - 1, Number(day)));
+  } else if (ymd) {
+    const [, y, m, day] = ymd;
+    d = new Date(Date.UTC(Number(y), Number(m) - 1, Number(day)));
+  } else {
+    d = new Date(s);
+  }
+
+  if (Number.isNaN(d.getTime())) return s;
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
 const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
@@ -449,15 +471,15 @@ function buildDocumentRemindersSection(booking) {
 
 function gafBodyParagraphs(booking) {
   const u = escapeHtml(booking.tower_and_unit_number);
-  const ci = escapeHtml(booking.check_in_date);
-  const co = escapeHtml(booking.check_out_date);
+  const ci = escapeHtml(formatDateForEmail(booking.check_in_date));
+  const co = escapeHtml(formatDateForEmail(booking.check_out_date));
   return `<p>Kindly review the Guest Advise Form (GAF) request for <strong>${u}</strong>, dated from <strong>${ci} to ${co}</strong>, for your approval.</p>`;
 }
 
 function petBodyParagraphs(booking) {
   const u = escapeHtml(booking.tower_and_unit_number);
-  const ci = escapeHtml(booking.check_in_date);
-  const co = escapeHtml(booking.check_out_date);
+  const ci = escapeHtml(formatDateForEmail(booking.check_in_date));
+  const co = escapeHtml(formatDateForEmail(booking.check_out_date));
   return `<p>May we kindly request approval for our guest to bring a pet during their stay at <strong>${u}</strong> during their stay from <strong>${ci}</strong> to <strong>${co}</strong>.</p>`;
 }
 
@@ -508,6 +530,10 @@ function renderAll(booking, meta, emailLogoUrl) {
   const testWarning = '';
   const updateSuffix = '';
 
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+  const displayPetVaccinationDate = formatDateForEmail(booking.pet_vaccination_date);
+
   const gafTpl = loadTemplate('gaf-request');
   const gafHtml = replacePlaceholders(
     gafTpl,
@@ -516,8 +542,8 @@ function renderAll(booking, meta, emailLogoUrl) {
       testWarning,
       updateSuffix,
       urgentBlock: URGENT_BLOCK,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       bodyParagraphs: gafBodyParagraphs(booking),
     }),
   );
@@ -531,14 +557,14 @@ function renderAll(booking, meta, emailLogoUrl) {
       testWarning,
       updateSuffix,
       urgentBlock: URGENT_BLOCK,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       bodyParagraphs: petBodyParagraphs(booking),
       petName: escapeHtml(booking.pet_name || 'N/A'),
       petType: escapeHtml(booking.pet_type || 'N/A'),
       petBreed: escapeHtml(booking.pet_breed || 'N/A'),
       petAge: escapeHtml(booking.pet_age || 'N/A'),
-      petVaccinationDate: escapeHtml(booking.pet_vaccination_date || 'N/A'),
+      petVaccinationDate: escapeHtml(displayPetVaccinationDate || 'N/A'),
     }),
   );
   fs.writeFileSync(path.join(OUT_DIR, 'pet-request.html'), petHtml, 'utf8');
@@ -551,8 +577,8 @@ function renderAll(booking, meta, emailLogoUrl) {
       testWarning,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
     }),
   );
   fs.writeFileSync(
@@ -567,8 +593,8 @@ function renderAll(booking, meta, emailLogoUrl) {
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
       checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
       checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
@@ -617,8 +643,8 @@ function renderAll(booking, meta, emailLogoUrl) {
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
-      checkInDate: escapeHtml(booking.check_in_date),
-      checkOutDate: escapeHtml(booking.check_out_date),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       documentRemindersSection: buildDocumentRemindersSection(booking),
       pax: String(pax),

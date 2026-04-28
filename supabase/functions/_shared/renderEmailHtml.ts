@@ -42,7 +42,7 @@ export const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
   emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
   emailShellTableWrapperStyle:
-    'width:600px;max-width:100%;margin:0 auto;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+    'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
     'height:5px;line-height:5px;font-size:0;background-color:#5f954c;border-radius:20px 20px 0 0;',
   emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',

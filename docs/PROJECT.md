@@ -134,7 +134,7 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 
 - **`VITE_NODE_ENV === 'production'`** is treated as production build; otherwise non-production.
 - **Dev controls** show when `!isProduction` **or** `?testing=true` **or** `?dev=true`.
-- Checkbox panel toggles query params on submit: `saveToDatabase`, `saveImagesToStorage`, `generatePdf`, `sendEmail`, `updateGoogleCalendar`, `updateGoogleSheets` (each `true`/`false`). Defaults: in dev/testing panel, **all start unchecked** except when `isProduction && isDevMode` (then they default true—a niche case for prod+`dev=true`).
+- Checkbox panel toggles query params on submit: `saveToDatabase`, `saveImagesToStorage`, `generatePdf`, `updateGoogleCalendar`, `updateGoogleSheets` (each `true`/`false`). `submit-form` no longer accepts a meaningful `sendEmail` toggle because workflow emails are not sent there. Defaults: in dev/testing panel, **all start unchecked** except when `isProduction && isDevMode` (then they default true—a niche case for prod+`dev=true`).
 - **`?testing=true`**: prefixes `[TEST]` on primary guest name in DB, `TEST_` on storage object names, test banners/prefixes in email subjects, `[TEST]` on calendar titles and sheet name columns, etc.
 - **Production + `testing=true` + send email**: server **forces** `sendEmail` off when `DENO_DEPLOYMENT_ID` is set (deployed edge).
 - **Cleanup**: `POST /cleanup-test-data` with `{ confirm: true }` removes test-tagged data across DB/storage/calendar/sheets (see function implementation).
@@ -200,7 +200,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 ### 9.1 Email (Resend)
 
-- **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`. Sent only on transition **`PENDING_REVIEW → PENDING_GAF`**.
+- **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`. Guest-facing dates in templates/subjects are formatted as **`MMM D, YYYY`** (e.g. `Jun 13, 2026`). Sent only on transition **`PENDING_REVIEW → PENDING_GAF`**.
 - **Pet** mail: separate flow when pet fields complete; attachments/links for pet PDF and images. Sent only on transition **`PENDING_REVIEW → PENDING_GAF`** when `has_pets = true`.
 - **Booking acknowledgement** (guest) and **Parking broadcast** (owners) are also sent only on **`PENDING_REVIEW → PENDING_GAF`**.
 - From address uses **kamehomes.space** domain (see `emailService.ts`).
