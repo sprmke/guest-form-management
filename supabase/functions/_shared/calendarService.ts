@@ -1,4 +1,9 @@
-import { formatPublicUrl, formatDateTime, isDevelopment } from './utils.ts';
+import {
+  buildGoogleCalendarDateTime,
+  DEFAULT_CHECK_IN_TIME,
+  formatPublicUrl,
+  normalizeDateToYYYYMMDD,
+} from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
@@ -257,26 +262,30 @@ ${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Paymen
 ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No valid ID'}
     `.trim();
 
-    // Build start/end datetimes from MM-DD-YYYY
-    const checkInDate = dayjs(booking.check_in_date, 'MM-DD-YYYY');
-    const endDate = checkInDate.add(nights - 1, 'day');
-
-    const toISO = (date: typeof dayjs.prototype, time?: string): string => {
-      const t = time ?? '14:00';
-      const [h, m] = t.split(':');
-      return date
-        .hour(parseInt(h ?? '14', 10))
-        .minute(parseInt(m ?? '0', 10))
-        .second(0)
-        .toISOString()
-        .replace(/Z$/, '+08:00');
-    };
+    const checkInYmd = normalizeDateToYYYYMMDD(booking.check_in_date);
+    const endYmd = checkInYmd
+      ? dayjs(checkInYmd).add(nights - 1, 'day').format('YYYY-MM-DD')
+      : '';
 
     return {
       summary,
       description,
-      start: { dateTime: toISO(checkInDate, booking.check_in_time), timeZone: 'Asia/Manila' },
-      end: { dateTime: toISO(endDate, booking.check_out_time ?? '23:59'), timeZone: 'Asia/Manila' },
+      start: {
+        dateTime: buildGoogleCalendarDateTime(
+          checkInYmd,
+          booking.check_in_time,
+          DEFAULT_CHECK_IN_TIME,
+        ),
+        timeZone: 'Asia/Manila',
+      },
+      end: {
+        dateTime: buildGoogleCalendarDateTime(
+          endYmd,
+          booking.check_out_time,
+          '23:59',
+        ),
+        timeZone: 'Asia/Manila',
+      },
       colorId: STATUS_CALENDAR_META[status].colorId,
       reminders: {
         useDefault: false,
@@ -365,12 +374,17 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 <a href="${validIdUrl}">Valid ID</a>
     `.trim();
 
-    const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
-    
-    // Calculate the end date based on number of nights
-    const checkInDate = dayjs(formData.checkInDate);
-    const endDate = checkInDate.add(formData.numberOfNights - 1, 'day');
-    const endDateTime = formatDateTime(endDate.format('MM-DD-YYYY'), '23:59');
+    const checkInYmd = normalizeDateToYYYYMMDD(formData.checkInDate);
+    const checkInDateTime = buildGoogleCalendarDateTime(
+      formData.checkInDate,
+      formData.checkInTime,
+      DEFAULT_CHECK_IN_TIME,
+    );
+
+    const endYmd = checkInYmd
+      ? dayjs(checkInYmd).add((formData.numberOfNights || 1) - 1, 'day').format('YYYY-MM-DD')
+      : '';
+    const endDateTime = buildGoogleCalendarDateTime(endYmd, '23:59', '23:59');
 
     return {
       summary,
