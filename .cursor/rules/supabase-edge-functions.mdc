@@ -14,6 +14,12 @@ alwaysApply: false
 - **Supabase admin**: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)` inside services; never expose the service role key to the browser.
 - **Production detection**: `Deno.env.get('DENO_DEPLOYMENT_ID')` is used in `submit-form` and (in the new flow) in the orchestrator to force off email for test bookings in prod.
 
+## Email HTML templates (`static_files`)
+
+HTML under `supabase/functions/_shared/email-templates/` (including `fragments/`) is loaded at runtime by `_shared/renderEmailHtml.ts#loadEmailTemplate` via `Deno.readTextFile`. The Edge **deploy bundle does not copy arbitrary `.html` files** next to compiled TS unless each function that needs them sets **`static_files`** in `supabase/config.toml` (Supabase CLI **≥ 2.7**; paths are relative to the `supabase/` directory).
+
+When you add a function that imports `emailService` or `workflowOrchestrator`, copy the same two glob entries used by `submit-form` / `transition-booking` so production does not throw `ENOENT` on missing template paths.
+
 ## Function categories & JWT policy
 
 This repo has three categories. Set JWT policy in `supabase/config.toml` accordingly.
@@ -88,7 +94,7 @@ Per `booking-workflow.mdc`, **never put fan-out logic inside handler functions**
 ## Adding a new function — checklist
 
 1. Create `supabase/functions/<name>/index.ts` using the skeleton above.
-2. Decide JWT category; set `[functions.<name>]` block in `supabase/config.toml`.
+2. Decide JWT category; set `[functions.<name>]` block in `supabase/config.toml`. If the function sends email (imports `emailService` or `workflowOrchestrator`), add **`static_files`** for `_shared/email-templates` globs (see **Email HTML templates** above).
 3. If scheduled, add **`pg_cron` + `net.http_post`** in the hosted project (see `docs/SCHEDULED_JOBS_AND_TESTING.md`) — do not add `schedule` to `config.toml` here.
 4. Document env vars in `docs/PROJECT.md` §11.
 5. Update the API table in `docs/PROJECT.md` §8.
