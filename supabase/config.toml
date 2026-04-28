@@ -84,9 +84,17 @@ enabled = true
 policy = "oneshot"
 inspector_port = 8083
 
+# Email templates are read at runtime (`_shared/renderEmailHtml.ts#loadEmailTemplate`).
+# The Edge bundler does not include arbitrary `.html` files unless listed here (CLI ≥ 2.7).
+# Repeat this block on every function that imports `emailService` or `workflowOrchestrator`.
+
 # ── Public (guest-facing) functions — no JWT required ──────────────────────────
 [functions.submit-form]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.get-booked-dates]
 verify_jwt = false
@@ -99,6 +107,10 @@ verify_jwt = false
 
 [functions.submit-sd-form]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 # ── Admin functions — Kong JWT gate disabled; verifyAdminJwt() in handler is the gate ──
 # verify_jwt = true uses Kong's HS256 secret which rejects newer ES256 auth tokens
@@ -110,21 +122,37 @@ verify_jwt = false
 
 [functions.transition-booking]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.upload-booking-asset]
 verify_jwt = false
 
 [functions.cancel-booking]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.cleanup-test-data]
 verify_jwt = false
 
 [functions.parking-broadcast-email]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.send-sd-refund-form-email]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
@@ -133,9 +161,17 @@ verify_jwt = false
 # callable with an admin JWT from the WorkflowPanel (Q6.6).
 [functions.gmail-listener]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 
 [functions.sd-refund-cron]
 verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
 # Cloud-only schedule:
 # schedule = "*/5 * * * *"   ← set this in Supabase dashboard, NOT here
 
