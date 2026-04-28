@@ -62,6 +62,50 @@ function replacePlaceholders(template, vars) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
 }
 
+/** Keep in sync with `supabase/functions/_shared/renderEmailHtml.ts` `EMAIL_SHELL_STYLE_VARS`. */
+const EMAIL_SHELL_STYLE_VARS = {
+  emailShellBodyStyle:
+    'margin:0 !important;padding:0 !important;-webkit-text-size-adjust:100%;background-color:#f3f4f6;',
+  emailShellTableOuterStyle:
+    'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
+  emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;text-align:center;',
+  emailShellTableWrapperStyle:
+    'width:600px;max-width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+  emailShellTdAccentStyle:
+    'height:5px;line-height:5px;font-size:0;background-color:#5f954c;border-radius:20px 20px 0 0;',
+  emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',
+  emailShellTableCardStyle:
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-top:none;border-radius:0 0 20px 20px;box-shadow:0 12px 40px rgba(15,23,42,0.06);',
+  emailShellTdContentPadStyle:
+    "padding:36px 40px 40px 40px;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellTdLegalFooterStyle:
+    "padding:22px 16px 0 16px;text-align:center;font-size:12px;line-height:1.55;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellH1Style:
+    "margin:0 0 8px 0;font-size:22px;font-weight:700;line-height:1.3;letter-spacing:-0.02em;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellH1LgStyle:
+    "margin:0 0 12px 0;font-size:24px;font-weight:700;line-height:1.25;letter-spacing:-0.02em;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellDateLineStyle:
+    "margin:0 0 24px 0;font-size:14px;line-height:1.5;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellTaglineLooserStyle:
+    "margin:0 0 26px 0;font-size:15px;line-height:1.5;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellBodyCopyStyle:
+    "color:#333333;font-size:16px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellBrandMicroStyle:
+    "font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellTextSubheadingStyle:
+    "font-size:15px;font-weight:700;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailShellTextArrowStyle: 'color:#94a3b8;',
+  emailShellCtaBtnStyle:
+    "display:inline-block;padding:14px 28px;background-color:#2563eb;color:#ffffff !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailLogoWrapTdStyle: 'padding:0 0 22px 0;text-align:center;',
+  emailLogoImgStyle:
+    'display:block;margin:0 auto;width:80px;max-width:80px;height:80px;border:0;outline:none;text-decoration:none;border-radius:50%;',
+};
+
+function withEmailShellStyleVars(vars) {
+  return { ...vars, ...EMAIL_SHELL_STYLE_VARS };
+}
+
 function loadTemplate(name) {
   const rel = name.endsWith('.html') ? name : `${name}.html`;
   return fs.readFileSync(path.join(TPL_DIR, rel), 'utf8');
@@ -76,7 +120,10 @@ const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
 
 function buildEmailHeaderLogoHtml(logoUrl) {
   const frag = loadTemplate('fragments/email-header-logo');
-  return replacePlaceholders(frag, { logoUrl: escapeHtml(logoUrl) });
+  return replacePlaceholders(
+    frag,
+    withEmailShellStyleVars({ logoUrl: escapeHtml(logoUrl) }),
+  );
 }
 
 /**
@@ -462,43 +509,52 @@ function renderAll(booking, meta, emailLogoUrl) {
   const updateSuffix = '';
 
   const gafTpl = loadTemplate('gaf-request');
-  const gafHtml = replacePlaceholders(gafTpl, {
-    emailHeaderLogo,
-    testWarning,
-    updateSuffix,
-    urgentBlock: URGENT_BLOCK,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    bodyParagraphs: gafBodyParagraphs(booking),
-  });
+  const gafHtml = replacePlaceholders(
+    gafTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      updateSuffix,
+      urgentBlock: URGENT_BLOCK,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      bodyParagraphs: gafBodyParagraphs(booking),
+    }),
+  );
   fs.writeFileSync(path.join(OUT_DIR, 'gaf-request.html'), gafHtml, 'utf8');
 
   const petTpl = loadTemplate('pet-request');
-  const petHtml = replacePlaceholders(petTpl, {
-    emailHeaderLogo,
-    testWarning,
-    updateSuffix,
-    urgentBlock: URGENT_BLOCK,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    bodyParagraphs: petBodyParagraphs(booking),
-    petName: escapeHtml(booking.pet_name || 'N/A'),
-    petType: escapeHtml(booking.pet_type || 'N/A'),
-    petBreed: escapeHtml(booking.pet_breed || 'N/A'),
-    petAge: escapeHtml(booking.pet_age || 'N/A'),
-    petVaccinationDate: escapeHtml(booking.pet_vaccination_date || 'N/A'),
-  });
+  const petHtml = replacePlaceholders(
+    petTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      updateSuffix,
+      urgentBlock: URGENT_BLOCK,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      bodyParagraphs: petBodyParagraphs(booking),
+      petName: escapeHtml(booking.pet_name || 'N/A'),
+      petType: escapeHtml(booking.pet_type || 'N/A'),
+      petBreed: escapeHtml(booking.pet_breed || 'N/A'),
+      petAge: escapeHtml(booking.pet_age || 'N/A'),
+      petVaccinationDate: escapeHtml(booking.pet_vaccination_date || 'N/A'),
+    }),
+  );
   fs.writeFileSync(path.join(OUT_DIR, 'pet-request.html'), petHtml, 'utf8');
 
   const ackTpl = loadTemplate('booking-acknowledgement');
-  const ackHtml = replacePlaceholders(ackTpl, {
-    emailHeaderLogo,
-    testWarning,
-    guestFacebookName: escapeHtml(booking.guest_facebook_name),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-  });
+  const ackHtml = replacePlaceholders(
+    ackTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+    }),
+  );
   fs.writeFileSync(
     path.join(OUT_DIR, 'booking-acknowledgement.html'),
     ackHtml,
@@ -506,18 +562,21 @@ function renderAll(booking, meta, emailLogoUrl) {
   );
 
   const parkTpl = loadTemplate('parking-broadcast');
-  const parkHtml = replacePlaceholders(parkTpl, {
-    emailHeaderLogo,
-    testWarning,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
-    checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
-    carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
-    carColor: escapeHtml(booking.car_color || 'N/A'),
-    carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
-  });
+  const parkHtml = replacePlaceholders(
+    parkTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
+      checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
+      carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
+      carColor: escapeHtml(booking.car_color || 'N/A'),
+      carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
+    }),
+  );
   fs.writeFileSync(
     path.join(OUT_DIR, 'parking-broadcast.html'),
     parkHtml,
@@ -553,26 +612,29 @@ function renderAll(booking, meta, emailLogoUrl) {
   );
 
   const rfiTpl = loadTemplate('ready-for-checkin');
-  const rfiHtml = replacePlaceholders(rfiTpl, {
-    emailHeaderLogo,
-    testWarning,
-    checkInDate: escapeHtml(booking.check_in_date),
-    checkOutDate: escapeHtml(booking.check_out_date),
-    guestFacebookName: escapeHtml(booking.guest_facebook_name),
-    documentRemindersSection: buildDocumentRemindersSection(booking),
-    pax: String(pax),
-    towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-    checkInTime: displayCheckInTime,
-    checkOutTime: displayCheckOutTime,
-    bookingRate: pesoFormat(booking.booking_rate),
-    downPayment: pesoFormat(booking.down_payment),
-    balance: pesoFormat(balance),
-    securityDeposit: pesoFormat(booking.security_deposit),
-    totalBalanceDue: pesoFormat(computeTotalDueAtCheckin(booking)),
-    parkingPaymentRow: buildParkingPaymentRow(booking),
-    petPaymentRow: buildPetPaymentRow(booking),
-    houseRulesSection,
-  });
+  const rfiHtml = replacePlaceholders(
+    rfiTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning,
+      checkInDate: escapeHtml(booking.check_in_date),
+      checkOutDate: escapeHtml(booking.check_out_date),
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      documentRemindersSection: buildDocumentRemindersSection(booking),
+      pax: String(pax),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: displayCheckInTime,
+      checkOutTime: displayCheckOutTime,
+      bookingRate: pesoFormat(booking.booking_rate),
+      downPayment: pesoFormat(booking.down_payment),
+      balance: pesoFormat(balance),
+      securityDeposit: pesoFormat(booking.security_deposit),
+      totalBalanceDue: pesoFormat(computeTotalDueAtCheckin(booking)),
+      parkingPaymentRow: buildParkingPaymentRow(booking),
+      petPaymentRow: buildPetPaymentRow(booking),
+      houseRulesSection,
+    }),
+  );
   fs.writeFileSync(
     path.join(OUT_DIR, 'ready-for-checkin.html'),
     rfiHtml,
