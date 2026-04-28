@@ -1,8 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
-import { generatePDF, generatePetPDF } from '../_shared/pdfService.ts'
-import { sendEmail, sendPetEmail } from '../_shared/emailService.ts'
+import { generatePDF } from '../_shared/pdfService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
 import { extractRouteParam, compareFormData } from '../_shared/utils.ts'
@@ -26,7 +25,6 @@ serve(async (req) => {
     const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false' // Default to true for backward compatibility
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
     const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
-    let isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
     const isTestingMode = url.searchParams.get('testing') === 'true'
@@ -34,19 +32,13 @@ serve(async (req) => {
     // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
     const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined
     
-    // Force disable email sending in production when testing mode is enabled
-    if (isProduction && isTestingMode && isSendEmailEnabled) {
-      console.log('🚫 Email sending disabled: Cannot send emails in production with testing mode enabled');
-      isSendEmailEnabled = false
-    }
-    
     // Log enabled features for debugging
     console.log('🎛️ API Action Flags:');
     console.log(`  Environment: ${isProduction ? '🌐 PRODUCTION' : '💻 DEVELOPMENT'}`);
     console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
     console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
     console.log(`  Generate PDF: ${isPDFGenerationEnabled ? '✅' : '❌'}`);
-    console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}${isProduction && isTestingMode ? ' (forced off in prod testing)' : ''}`);
+    console.log('  Send Email: ❌ (submit-form does not send workflow emails)');
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Testing Mode: ${isTestingMode ? '🧪 ENABLED' : '❌'}`);
@@ -98,7 +90,6 @@ serve(async (req) => {
     // Check if this is an update and compare data for changes (only if saving to database)
     let hasDataChanges = true;
     let existingData = null;
-    let isUpdate = false;
     
     if (isSaveToDatabaseEnabled && bookingId) {
       console.log('🔍 Checking for data changes...');
@@ -107,9 +98,6 @@ serve(async (req) => {
       existingData = await DatabaseService.getRawData(bookingId);
       
       if (existingData) {
-        // This is an update since booking exists
-        isUpdate = true;
-        
         // Compare new form data with existing data
         const comparison = compareFormData(formData, existingData);
         hasDataChanges = comparison.hasChanges;
@@ -150,42 +138,9 @@ serve(async (req) => {
       pdfBuffer = await generatePDF(data, isTestingMode)
     }
 
-    // Send email if enabled
-    if (isSendEmailEnabled) {
-      await sendEmail(data, pdfBuffer, isTestingMode, isUpdate)
-    }
-
-    // Generate Pet PDF and send Pet email if guest has pets
-    const hasPets = data.hasPets === true || data.hasPets === 'true'
-    if (hasPets && data.petName && data.petType && data.petBreed && data.petAge && data.petVaccinationDate) {
-      console.log('🐾 Guest has pets, generating Pet PDF and sending Pet email...')
-      
-      let petPdfBuffer = null
-      
-      // Generate Pet PDF if enabled
-      if (isPDFGenerationEnabled) {
-        try {
-          petPdfBuffer = await generatePetPDF(data)
-          console.log('Pet PDF generated successfully')
-        } catch (error) {
-          console.error('Error generating Pet PDF:', error)
-          // Don't throw error, continue with email
-        }
-      }
-
-      // Send Pet email if enabled
-      if (isSendEmailEnabled) {
-        try {
-          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl, isTestingMode, isUpdate)
-          console.log('Pet email sent successfully')
-        } catch (error) {
-          console.error('Error sending Pet email:', error)
-          // Don't throw error, continue with processing
-        }
-      }
-    } else if (hasPets) {
-      console.log('⚠️ Guest has pets but some pet information is missing, skipping Pet PDF and email')
-    }
+    // IMPORTANT: submit-form never sends workflow emails.
+    // GAF, booking acknowledgement, pet request, and parking broadcast are only
+    // sent by WorkflowOrchestrator during PENDING_REVIEW -> PENDING_GAF.
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {

@@ -37,6 +37,8 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
   - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
   - Gmail OAuth credentials already obtained via `npm run gmail-auth` and written to `supabase/.env.local` as `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`.
 - ⏳ Phase 5 — `submit-form` side-effect cleanup + retire `?dev=true` / `?testing=true`.
+  - ✅ `submit-form` no longer sends workflow emails directly. Booking acknowledgement, GAF request, pet request, and parking broadcast now send only via `WorkflowOrchestrator` on `PENDING_REVIEW → PENDING_GAF`.
+  - ⏳ Remaining: retire legacy query-param dev/testing controls and finish Test Submit-only flow.
 - ⏳ Phase 6 — Calendar + Sheet backfill sync.
 
 ---

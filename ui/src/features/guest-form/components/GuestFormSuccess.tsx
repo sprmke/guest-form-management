@@ -49,7 +49,7 @@ export function GuestFormSuccess() {
     ? Math.ceil(
         (dayjs(bookingData.checkOutDate).valueOf() -
           dayjs(bookingData.checkInDate).valueOf()) /
-          (1000 * 60 * 60 * 24)
+          (1000 * 60 * 60 * 24),
       )
     : 0;
 
@@ -271,17 +271,17 @@ export function GuestFormSuccess() {
             </div>
             <div className="space-y-2 text-sm leading-relaxed text-blue-800 dark:text-blue-300">
               <p>
-                We have successfully submitted your Guest Advice Form (GAF) to
-                Azure for processing. You will receive your approved GAF via
-                email within a few hours or 1-2 days.
+                We will now review your booking request. Please wait for our
+                booking acknowledgment email. Once confirmed, we will forward
+                your Guest Advice Form (GAF) to the property administration
+                (Azure) for approval.
               </p>
               <p>
                 <span className="font-semibold">
-                  Please return to our conversation on Facebook Messenger /
+                  Kindly return to our conversation on Facebook Messenger /
                   Airbnb
                 </span>{' '}
-                for your check-in instructions and important next steps
-                regarding your stay.
+                to review our policies and important reminders.
               </p>
               <p className="pt-1 font-medium">
                 Thank you for choosing{' '}

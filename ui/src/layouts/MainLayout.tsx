@@ -39,7 +39,7 @@ export function MainLayout({ children }: MainLayoutProps) {
 
       {/* Footer */}
       <footer className="py-8 text-xs text-center text-muted-foreground">
-        <p>© 2025 Kame Home - Azure North. All rights reserved.</p>
+        <p>© 2024 Kame Home - Azure North. All rights reserved.</p>
       </footer>
     </main>
   );

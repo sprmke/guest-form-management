@@ -113,7 +113,7 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 1. User opens **`/`** or **`/calendar`**, selects check-in and check-out (respecting booked ranges and past dates), then **Proceed** → navigates to **`/form?checkInDate=YYYY-MM-DD&checkOutDate=YYYY-MM-DD`**.
 2. On `GuestForm`, a **new `bookingId`** is generated client-side (`crypto.randomUUID()`) when `bookingId` is absent from the URL.
 3. User fills the form; files are appended to `FormData` with deterministic names via `handleFileUpload` in `ui/src/utils/helpers.ts`.
-4. Submit calls **`POST {VITE_API_URL}/submit-form`** with Supabase anon key headers. In production (no dev controls), query flags default to **all side effects enabled** (save DB, storage, PDF, email, calendar, sheets) and `testing` follows `?testing=true` if present.
+4. Submit calls **`POST {VITE_API_URL}/submit-form`** with Supabase anon key headers. `submit-form` persists booking data/files and optional PDFs, but **does not send workflow emails**. The workflow emails (booking acknowledgement, GAF request, pet request, parking broadcast) are sent only by `WorkflowOrchestrator` when an admin transitions **`PENDING_REVIEW → PENDING_GAF`**.
 5. Edge function checks **date overlap** against active (non-canceled) rows, then processes.
 6. On success, UI navigates to **`/success?bookingId=...`** with `location.state.bookingData` for the summary card.
 
@@ -122,7 +122,7 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 1. URL is **`/form?bookingId=<uuid>`** (or legacy **`/?bookingId=<uuid>`**, which redirects to `/form` as above). The id is sanitized on client and server if query junk is appended.
 2. `GuestForm` loads data via **`GET {VITE_API_URL}/get-form/{bookingId}`** and hydrates the form; image fields use URLs from the API for previews.
 3. On submit, server loads raw row, runs **`compareFormData`**; if **no changes**, returns `{ success: true, skipped: true }` and UI still redirects to success (no DB/email/calendar/sheet work).
-4. If changes exist, row is updated; emails distinguish **update** vs new; calendar event is found by `privateExtendedProperty` `bookingId`, deleted, recreated; sheet row is located by booking ID in column A and updated.
+4. If changes exist, row is updated; calendar event is found by `privateExtendedProperty` `bookingId`, deleted, recreated; sheet row is located by booking ID in column A and updated. **No workflow emails are sent from `submit-form` updates.**
 
 ### 5.3 Calendar and availability
 
@@ -172,7 +172,7 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 | Function                       | Method | Auth          | Purpose                                                                                                                                           |
 | ------------------------------ | ------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `submit-form`                  | POST   | anon (public) | Multipart form processing, overlap check, change detection, DB/storage/PDF/email/calendar/sheets                                                  |
+| `submit-form`                  | POST   | anon (public) | Multipart form processing, overlap check, change detection, DB/storage/PDF (+ optional calendar/sheets), **no workflow emails**                   |
 | `get-form`                     | GET    | anon (public) | Path: `/get-form/{bookingId}` — returns JSON form payload                                                                                         |
 | `get-booked-dates`             | GET    | anon (public) | Future, non-`CANCELLED` booking ranges                                                                                                            |
 | `cancel-booking`               | POST   | admin JWT     | Soft-cancel via `WorkflowOrchestrator`; updates Calendar (purple, `CANCELED - …`) + Sheet + DB                                                    |
@@ -200,8 +200,9 @@ Buckets and MIME types are declared in `supabase/config.toml` (e.g. `payment-rec
 
 ### 9.1 Email (Resend)
 
-- **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`.
-- **Pet** mail: separate flow when pet fields complete; attachments/links for pet PDF and images.
+- **GAF** mail: HTML body, optional PDF attachment, subject includes date range, **urgent** styling for same-day check-in (Philippines timezone), **update** copy when `isUpdate`. Sent only on transition **`PENDING_REVIEW → PENDING_GAF`**.
+- **Pet** mail: separate flow when pet fields complete; attachments/links for pet PDF and images. Sent only on transition **`PENDING_REVIEW → PENDING_GAF`** when `has_pets = true`.
+- **Booking acknowledgement** (guest) and **Parking broadcast** (owners) are also sent only on **`PENDING_REVIEW → PENDING_GAF`**.
 - From address uses **kamehomes.space** domain (see `emailService.ts`).
 - **HTML bodies** live under `supabase/functions/_shared/email-templates/` as full-document `.html` files with `{{placeholder}}` tokens. Layout follows transactional-email conventions (~600px wide, nested `role="presentation"` tables). Shared visual theme (warm outer `#f2e3c6`, sage surfaces `#b9d99f`, teal accents `#5a9a9a` / `#88b6b6`, rounded cards) and most typography live in a single `<style>` block duplicated from **`fragments/email-theme-styles.html`** into each full template — edit that fragment, then copy its `<style>…</style>` into every `*.html` that embeds it (or run the same sync step the team uses) so styles stay in sync. Prefer **classes** over inline `style=`; `prefers-color-scheme: dark` overrides are in that stylesheet. MSO conditional lives in `<head>` where needed. `renderEmailHtml.ts` loads them (`Deno.readTextFile`, cached) and `replacePlaceholders` merges in values — use `escapeHtml()` in `emailService.ts` for guest-supplied text. **Header logo:** each full template includes `{{emailHeaderLogo}}` (built from `fragments/email-header-logo.html`); the image `src` is **`EMAIL_LOGO_URL`** or defaults to **`https://kamehomes.space/images/logo.png`** (same file as `ui/public/images/logo.png` after UI deploy). **Local preview**
 - **Placeholder HTML** (layout only; `{{placeholders}}` stay literal): `npm run preview:emails:serve` then open **`http://localhost:3334/`** or e.g. **`http://localhost:3334/gaf-request.html`**. The **`.html`** suffix is required (`…/gaf-request` without it returns **404**). The server root is `email-templates/`, so paths like `/email-templates/…` also **404**.

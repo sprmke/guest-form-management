@@ -973,10 +973,15 @@
       style="{{emailShellTableOuterStyle}}"
     >
       <tr>
-        <td align="center" class="shell-pad" style="{{emailShellTdShellPadStyle}}">
+        <td
+          align="center"
+          class="shell-pad"
+          style="{{emailShellTdShellPadStyle}}"
+        >
           <table
             role="presentation"
             class="email-wrapper"
+            align="center"
             width="600"
             cellspacing="0"
             cellpadding="0"
@@ -987,10 +992,15 @@
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">&nbsp;</td>
+              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                &nbsp;
+              </td>
             </tr>
             <tr>
-              <td class="email-card-shell" style="{{emailShellTdCardShellStyle}}">
+              <td
+                class="email-card-shell"
+                style="{{emailShellTdCardShellStyle}}"
+              >
                 <table
                   class="email-card"
                   role="presentation"
@@ -1001,7 +1011,10 @@
                   style="{{emailShellTableCardStyle}}"
                 >
                   <tr>
-                    <td class="content-pad" style="{{emailShellTdContentPadStyle}}">
+                    <td
+                      class="content-pad"
+                      style="{{emailShellTdContentPadStyle}}"
+                    >
                       {{emailHeaderLogo}}
                       <table
                         role="presentation"
@@ -1013,12 +1026,20 @@
                       >
                         <tr>
                           <td class="brand-line">
-                            <span class="brand-micro" style="{{emailShellBrandMicroStyle}}">Kame Home</span>
+                            <span
+                              class="brand-micro"
+                              style="{{emailShellBrandMicroStyle}}"
+                              >Kame Home</span
+                            >
                           </td>
                         </tr>
                         <tr>
                           <td>
-                            <span class="text-subheading" style="{{emailShellTextSubheadingStyle}}">Monaco 2604</span>
+                            <span
+                              class="text-subheading"
+                              style="{{emailShellTextSubheadingStyle}}"
+                              >Monaco 2604</span
+                            >
                           </td>
                         </tr>
                       </table>
@@ -1028,13 +1049,20 @@
                       </h1>
                       <p class="date-line" style="{{emailShellDateLineStyle}}">
                         {{checkInDate}}
-                        <span class="text-arrow" style="{{emailShellTextArrowStyle}}">&nbsp;→&nbsp;</span>
+                        <span
+                          class="text-arrow"
+                          style="{{emailShellTextArrowStyle}}"
+                          >&nbsp;→&nbsp;</span
+                        >
                         {{checkOutDate}}
                       </p>
 
                       {{urgentBlock}}
 
-                      <div class="body-copy" style="{{emailShellBodyCopyStyle}}">
+                      <div
+                        class="body-copy"
+                        style="{{emailShellBodyCopyStyle}}"
+                      >
                         <p>Good day,</p>
                         {{bodyParagraphs}}
                       </div>
@@ -1136,8 +1164,12 @@
               </td>
             </tr>
             <tr>
-              <td align="center" class="legal-footer" style="{{emailShellTdLegalFooterStyle}}">
-                &copy; 2025 Kame Home - Azure North. All rights reserved.
+              <td
+                align="center"
+                class="legal-footer"
+                style="{{emailShellTdLegalFooterStyle}}"
+              >
+                &copy; 2024 Kame Home - Azure North. All rights reserved.
               </td>
             </tr>
           </table>

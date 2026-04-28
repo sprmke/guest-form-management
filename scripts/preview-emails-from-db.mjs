@@ -68,16 +68,16 @@ const EMAIL_SHELL_STYLE_VARS = {
     'margin:0 !important;padding:0 !important;-webkit-text-size-adjust:100%;background-color:#f3f4f6;',
   emailShellTableOuterStyle:
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
-  emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;text-align:center;',
+  emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
   emailShellTableWrapperStyle:
-    'width:600px;max-width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+    'width:600px;max-width:100%;margin:0 auto;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
     'height:5px;line-height:5px;font-size:0;background-color:#5f954c;border-radius:20px 20px 0 0;',
   emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',
   emailShellTableCardStyle:
-    'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-top:none;border-radius:0 0 20px 20px;box-shadow:0 12px 40px rgba(15,23,42,0.06);',
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-top:none;border-radius:0 0 20px 20px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,0.06);',
   emailShellTdContentPadStyle:
-    "padding:36px 40px 40px 40px;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+    "padding:36px 40px 40px 40px;text-align:left;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellTdLegalFooterStyle:
     "padding:22px 16px 0 16px;text-align:center;font-size:12px;line-height:1.55;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellH1Style:
@@ -328,7 +328,7 @@ function wrapHouseRulesStandalonePreview(fragmentHtml, emailHeaderLogo) {
             </tr>
             <tr>
               <td align="center" class="legal-footer">
-                &copy; 2025 Kame Home - Azure North. All rights reserved.
+                &copy; 2024 Kame Home - Azure North. All rights reserved.
               </td>
             </tr>
           </table>
