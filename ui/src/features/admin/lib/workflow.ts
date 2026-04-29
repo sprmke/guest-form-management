@@ -18,10 +18,12 @@ import type { BookingStatus } from '@/features/admin/lib/bookingStatus';
  * Mirrors TRANSITION_GRAPH in statusMachine.ts.
  */
 const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW:          ['PENDING_GAF', 'CANCELLED'],
-  PENDING_GAF:             ['PENDING_PARKING_REQUEST', 'PENDING_PET_REQUEST', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  PENDING_PARKING_REQUEST: ['PENDING_PET_REQUEST', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  PENDING_PET_REQUEST:     ['READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_REVIEW:          ['PENDING_DOCUMENTS', 'CANCELLED'],
+  PENDING_DOCUMENTS:       ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  // Legacy compatibility for already-in-flight rows:
+  PENDING_GAF:             ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   READY_FOR_CHECKIN:       ['PENDING_SD_REFUND_DETAILS', 'CANCELLED'],
   PENDING_SD_REFUND_DETAILS: ['PENDING_SD_REFUND', 'CANCELLED'],
   PENDING_SD_REFUND:       ['COMPLETED', 'CANCELLED'],
@@ -38,9 +40,10 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
  */
 const MANUAL_OVERRIDE_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_REVIEW:          [],
-  PENDING_GAF:             ['READY_FOR_CHECKIN', 'PENDING_REVIEW'],
-  PENDING_PARKING_REQUEST: ['PENDING_GAF'],
-  PENDING_PET_REQUEST:     ['PENDING_PARKING_REQUEST', 'PENDING_GAF'],
+  PENDING_DOCUMENTS:       ['PENDING_REVIEW'],
+  PENDING_GAF:             ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   READY_FOR_CHECKIN:       [
     'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
@@ -104,7 +107,49 @@ export function availableTransitions(from: string, ctx: WorkflowContext): Bookin
 type ApplicabilityFlags = {
   need_parking?: boolean | null;
   has_pets?: boolean | null;
+  approved_gaf_pdf_url?: string | null;
+  parking_endorsement_url?: string | null;
+  approved_pet_pdf_url?: string | null;
+  gaf_completed_at?: string | null;
+  parking_completed_at?: string | null;
+  pet_completed_at?: string | null;
 };
+
+export type PendingDocumentSubStatus =
+  | 'PENDING_GAF'
+  | 'PENDING_PARKING_REQUEST'
+  | 'PENDING_PET_REQUEST';
+
+export function isSubStatusRequired(
+  subStatus: PendingDocumentSubStatus,
+  booking: ApplicabilityFlags,
+): boolean {
+  if (subStatus === 'PENDING_PARKING_REQUEST') return !!booking.need_parking;
+  if (subStatus === 'PENDING_PET_REQUEST') return !!booking.has_pets;
+  return true;
+}
+
+export function isSubStatusCompleted(
+  subStatus: PendingDocumentSubStatus,
+  booking: ApplicabilityFlags,
+): boolean {
+  if (!isSubStatusRequired(subStatus, booking)) return true;
+  if (subStatus === 'PENDING_GAF') {
+    return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+  }
+  if (subStatus === 'PENDING_PARKING_REQUEST') {
+    return !!booking.parking_completed_at;
+  }
+  return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
+}
+
+export function arePendingDocumentsComplete(booking: ApplicabilityFlags): boolean {
+  return (
+    isSubStatusCompleted('PENDING_GAF', booking) &&
+    isSubStatusCompleted('PENDING_PARKING_REQUEST', booking) &&
+    isSubStatusCompleted('PENDING_PET_REQUEST', booking)
+  );
+}
 
 /**
  * Whether a graph-legal transition should actually be shown for this booking.
@@ -162,9 +207,7 @@ export function applicableTransitions(
 /** Canonical order of all non-terminal pipeline statuses (excluding CANCELLED). */
 export const PIPELINE_ORDER: readonly BookingStatus[] = [
   'PENDING_REVIEW',
-  'PENDING_GAF',
-  'PENDING_PARKING_REQUEST',
-  'PENDING_PET_REQUEST',
+  'PENDING_DOCUMENTS',
   'READY_FOR_CHECKIN',
   'PENDING_SD_REFUND_DETAILS',
   'PENDING_SD_REFUND',
@@ -257,7 +300,8 @@ export function transitionDirection(
 // ─── Human-readable action labels for transition buttons ─────────────────────
 
 const TRANSITION_ACTION_LABEL: Partial<Record<BookingStatus, string>> = {
-  PENDING_GAF:             'Proceed to Pending GAF',
+  PENDING_DOCUMENTS:       'Proceed to Pending Documents',
+  PENDING_GAF:             'Mark as Complete - Pending GAF',
   PENDING_PARKING_REQUEST: 'Proceed to Pending Parking Request',
   PENDING_PET_REQUEST:     'Proceed to Pending Pet Request',
   READY_FOR_CHECKIN:       'Proceed to Ready for Check-in',
@@ -283,14 +327,14 @@ export type SubFormKind =
   | null;
 
 export const TRANSITION_SUB_FORM: Partial<Record<BookingStatus, SubFormKind>> = {
-  PENDING_GAF:             'pricing',   // admin must enter rates before proceeding
+  PENDING_DOCUMENTS:       'pricing',   // admin must enter rates before proceeding
   PENDING_PARKING_REQUEST: null,
   READY_FOR_CHECKIN:       'parking',   // from PENDING_PARKING_REQUEST → needs parking data
   COMPLETED:               'sd_refund',
 };
 
 export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
-  if (from === 'PENDING_REVIEW' && to === 'PENDING_GAF') return 'pricing';
+  if (from === 'PENDING_REVIEW' && to === 'PENDING_DOCUMENTS') return 'pricing';
   if (from === 'PENDING_PARKING_REQUEST' && (to === 'PENDING_PET_REQUEST' || to === 'READY_FOR_CHECKIN')) return 'parking';
   if (from === 'PENDING_SD_REFUND' && to === 'COMPLETED') return 'sd_refund';
   return null;
