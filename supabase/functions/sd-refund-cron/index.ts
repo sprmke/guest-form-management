@@ -186,6 +186,7 @@ serve(async (req) => {
           {},
           {
             saveToDatabase: true,
+            generatePdf: false,
             updateGoogleCalendar: true,
             updateGoogleSheets: true,
             sendGafRequestEmail: false,

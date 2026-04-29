@@ -12,6 +12,8 @@
 import { DatabaseService } from './databaseService.ts';
 import { CalendarService } from './calendarService.ts';
 import { SheetsService } from './sheetsService.ts';
+import { generatePDF, generatePetPDF } from './pdfService.ts';
+import { UploadService } from './uploadService.ts';
 import {
   sendEmail,
   sendPetEmail,
@@ -33,11 +35,13 @@ import {
  * All are optional; validation of required fields is done per-transition below.
  */
 export type TransitionPayload = {
-  // Pricing (PENDING_REVIEW → PENDING_GAF)
+  // Pricing (PENDING_REVIEW → PENDING_GAF | PENDING_DOCUMENTS)
   booking_rate?: number | null;
   down_payment?: number | null;
   security_deposit?: number | null;
   pet_fee?: number | null;
+  parking_rate_guest?: number | null;
+  guest_additional_fee?: number | null;
 
   // Parking (PENDING_PARKING_REQUEST → *)
   parking_rate_paid?: number | null;
@@ -62,6 +66,9 @@ export type TransitionPayload = {
   // Approved PDFs (set by Gmail listener in Phase 4; admin can also set manually)
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
+
+  /** PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step complete (no status change). */
+  document_completion_target?: 'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
 };
 
 /**
@@ -70,6 +77,8 @@ export type TransitionPayload = {
  */
 export type DevControlFlags = {
   saveToDatabase?: boolean;
+  /** Filled GAF (+ pet request PDF if pets) generate + optional Storage upload on PENDING_REVIEW → initial docs. */
+  generatePdf?: boolean;
   updateGoogleCalendar?: boolean;
   updateGoogleSheets?: boolean;
   sendGafRequestEmail?: boolean;
@@ -160,35 +169,77 @@ export class WorkflowOrchestrator {
       );
     }
 
+    // First step after review: either legacy PENDING_GAF or parent PENDING_DOCUMENTS
+    // (same pricing + same outbound “document request” email bundle).
+    const isReviewToInitialDocs =
+      fromStatus === 'PENDING_REVIEW' &&
+      (toStatus === 'PENDING_GAF' || toStatus === 'PENDING_DOCUMENTS');
+
     // 3. Compute derived fields
-    const balance =
-      toStatus === 'PENDING_GAF'
-        ? computeBalance(payload.booking_rate, payload.down_payment)
-        : null;
+    const balance = isReviewToInitialDocs
+      ? computeBalance(payload.booking_rate, payload.down_payment)
+      : null;
 
     // 4. Build workflow fields to persist in DB
     const workflowFields: Record<string, unknown> = {};
 
-    if (toStatus === 'PENDING_GAF') {
+    if (isReviewToInitialDocs) {
       if (payload.booking_rate != null) workflowFields.booking_rate = payload.booking_rate;
       if (payload.down_payment != null) workflowFields.down_payment = payload.down_payment;
       if (balance != null) workflowFields.balance = balance;
       if (payload.security_deposit != null) workflowFields.security_deposit = payload.security_deposit;
       if (payload.pet_fee != null && booking.has_pets) workflowFields.pet_fee = payload.pet_fee;
+      if (payload.parking_rate_guest != null && booking.need_parking) {
+        workflowFields.parking_rate_guest = payload.parking_rate_guest;
+      }
+      if (payload.guest_additional_fee != null) {
+        workflowFields.guest_additional_fee = payload.guest_additional_fee;
+      }
     }
 
-    if (toStatus === 'PENDING_PARKING_REQUEST' || toStatus === 'PENDING_PET_REQUEST' || toStatus === 'READY_FOR_CHECKIN') {
-      if (payload.approved_gaf_pdf_url) workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
+    // Approved GAF: Gmail listener uses PENDING_DOCUMENTS → PENDING_DOCUMENTS; forward
+    // transitions (→ parking / pet / ready) also carry the URL from the prior step.
+    if (payload.approved_gaf_pdf_url) {
+      if (
+        toStatus === 'PENDING_DOCUMENTS' ||
+        toStatus === 'PENDING_PARKING_REQUEST' ||
+        toStatus === 'PENDING_PET_REQUEST' ||
+        toStatus === 'READY_FOR_CHECKIN'
+      ) {
+        workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
+      }
+    }
+
+    // Approved pet PDF: same listener pattern on PENDING_DOCUMENTS, or pet → ready.
+    if (payload.approved_pet_pdf_url) {
+      if (
+        toStatus === 'PENDING_DOCUMENTS' ||
+        (toStatus === 'READY_FOR_CHECKIN' && fromStatus === 'PENDING_PET_REQUEST')
+      ) {
+        workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
+      }
+    }
+
+    // Admin "Mark … as complete" under Pending Documents (no PDF): persist *_completed_at.
+    if (
+      fromStatus === 'PENDING_DOCUMENTS' &&
+      toStatus === 'PENDING_DOCUMENTS' &&
+      payload.document_completion_target
+    ) {
+      const now = new Date().toISOString();
+      if (payload.document_completion_target === 'PENDING_GAF') {
+        workflowFields.gaf_completed_at = now;
+      } else if (payload.document_completion_target === 'PENDING_PARKING_REQUEST') {
+        workflowFields.parking_completed_at = now;
+      } else if (payload.document_completion_target === 'PENDING_PET_REQUEST') {
+        workflowFields.pet_completed_at = now;
+      }
     }
 
     if (fromStatus === 'PENDING_PARKING_REQUEST') {
       if (payload.parking_rate_paid != null) workflowFields.parking_rate_paid = payload.parking_rate_paid;
       if (payload.parking_owner_email) workflowFields.parking_owner_email = payload.parking_owner_email;
       if (payload.parking_endorsement_url) workflowFields.parking_endorsement_url = payload.parking_endorsement_url;
-    }
-
-    if (toStatus === 'READY_FOR_CHECKIN' && fromStatus === 'PENDING_PET_REQUEST') {
-      if (payload.approved_pet_pdf_url) workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
     }
 
     // Guest /sd-form submit includes sd_refund_method; admin "skip details" advance omits it.
@@ -227,6 +278,9 @@ export class WorkflowOrchestrator {
     const updatedBooking = await DatabaseService.getBookingById(bookingId) ?? { ...booking, ...workflowFields, status: toStatus };
     const { pax, nights } = buildPaxNights(updatedBooking);
     const guestName = updatedBooking.guest_facebook_name as string;
+
+    let gafPdfBuffer: Uint8Array | null = null;
+    let petPdfBuffer: Uint8Array | null = null;
 
     // 6. Google Calendar update
     let calendarOk = true;
@@ -280,21 +334,63 @@ export class WorkflowOrchestrator {
       }
     }
 
+    // 7b. Filled GAF / pet request PDFs (for Azure emails + optional Storage) — same transition as §3 PENDING_REVIEW → docs
+    if (isReviewToInitialDocs && flag(devControls, 'generatePdf') && !suppress) {
+      const fd = buildGuestFormData(updatedBooking);
+      try {
+        gafPdfBuffer = await generatePDF(fd, isTestBooking);
+      } catch (err) {
+        console.error('[orchestrator] GAF PDF generation failed:', err);
+      }
+      if (updatedBooking.has_pets) {
+        try {
+          petPdfBuffer = await generatePetPDF(fd);
+        } catch (err) {
+          console.error('[orchestrator] Pet request PDF generation failed:', err);
+        }
+      }
+      if (flag(devControls, 'saveToDatabase')) {
+        try {
+          const pdfFields: Record<string, unknown> = {};
+          if (gafPdfBuffer) {
+            pdfFields.gaf_request_pdf_url = await UploadService.uploadPdfBytes(
+              'approved-gafs',
+              `${bookingId}/gaf-request.pdf`,
+              gafPdfBuffer,
+            );
+          }
+          if (petPdfBuffer) {
+            pdfFields.pet_request_pdf_url = await UploadService.uploadPdfBytes(
+              'approved-pet-forms',
+              `${bookingId}/pet-request.pdf`,
+              petPdfBuffer,
+            );
+          }
+          if (Object.keys(pdfFields).length > 0) {
+            await DatabaseService.setWorkflowFields(bookingId, pdfFields);
+            Object.assign(updatedBooking, pdfFields);
+          }
+        } catch (err) {
+          console.error('[orchestrator] Request PDF upload failed:', err);
+        }
+      }
+    }
+
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
 
     if (!suppress) {
-      // PENDING_REVIEW → PENDING_GAF:
+      // PENDING_REVIEW → PENDING_GAF or PENDING_DOCUMENTS (same bundle):
       // - GAF request to Azure
       // - Booking acknowledgement to guest
       // - Pet request to Azure (if pets)
       // - Parking broadcast (if parking)
-      if (fromStatus === 'PENDING_REVIEW' && toStatus === 'PENDING_GAF') {
+      if (isReviewToInitialDocs) {
         const formData = buildGuestFormData(updatedBooking);
 
         if (flag(devControls, 'sendGafRequestEmail')) {
           try {
-            await sendEmail(formData, null, isTestBooking, false);
+            await sendEmail(formData, gafPdfBuffer, isTestBooking, false);
             emailsSent.push('gaf_request');
           } catch (err) {
             console.error('[orchestrator] GAF request email failed:', err);
@@ -314,7 +410,7 @@ export class WorkflowOrchestrator {
           try {
             await sendPetEmail(
               formData,
-              null,
+              petPdfBuffer,
               updatedBooking.pet_image_url,
               updatedBooking.pet_vaccination_url,
               isTestBooking,

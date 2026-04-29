@@ -83,6 +83,25 @@ export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }
 
+/**
+ * Guest/admin edits to workflow-sensitive fields (or guest-doc uploads) reset
+ * `status` → `PENDING_REVIEW` only in these stages. Mirrors
+ * `supabase/functions/_shared/statusMachine.ts#GUEST_FIELD_EDIT_REVERT_STATUSES`.
+ */
+export const GUEST_FIELD_EDIT_REVERT_STATUSES = [
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+] as const satisfies readonly BookingStatus[];
+
+export function shouldRevertGuestFieldEditsToPendingReview(
+  status: string | null | undefined,
+): boolean {
+  return !!status && (GUEST_FIELD_EDIT_REVERT_STATUSES as readonly string[]).includes(status);
+}
+
 export function statusLabel(value: string): string {
   return STATUS_LABELS[value as AnyBookingStatus] ?? value;
 }

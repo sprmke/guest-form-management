@@ -2,17 +2,17 @@
  * useUpdateBooking — mutation to patch guest_submissions directly via Supabase.
  *
  * Used by BookingEditForm. All writes go through the authenticated admin session.
- * If the booking is READY_FOR_CHECKIN and the caller passes `revertToPendingReview: true`,
- * this also resets status → PENDING_REVIEW.
- *
- * Admin-dashboard skill: "Guest fields stay editable even after READY_FOR_CHECKIN
- * but saving material changes from that status must revert status → PENDING_REVIEW."
+ * When `revertToPendingReview` is true and `currentStatus` is in the documents pipeline
+ * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
+ * `bookingStatus.ts`), this also resets status → PENDING_REVIEW. The caller should set
+ * `revertToPendingReview` only when workflow-sensitive guest fields changed.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { BOOKING_QUERY_KEY } from './useBooking';
 import type { BookingRow } from '../lib/types';
+import { shouldRevertGuestFieldEditsToPendingReview } from '../lib/bookingStatus';
 
 export type UpdateBookingPayload = {
   // Guest identity
@@ -60,8 +60,10 @@ export type UpdateBookingPayload = {
 
 type MutationArgs = {
   bookingId: string;
+  /** Row status at submit time — used to gate status reset. */
+  currentStatus: string;
   payload: UpdateBookingPayload;
-  /** When true, also resets status to PENDING_REVIEW (required for READY_FOR_CHECKIN edits). */
+  /** When true (and current status allows), also resets status to PENDING_REVIEW. */
   revertToPendingReview?: boolean;
 };
 
@@ -69,13 +71,21 @@ export function useUpdateBooking() {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingId, payload, revertToPendingReview }: MutationArgs) => {
+    mutationFn: async ({
+      bookingId,
+      currentStatus,
+      payload,
+      revertToPendingReview,
+    }: MutationArgs) => {
       const patch: Record<string, unknown> = {
         ...payload,
         updated_at: new Date().toISOString(),
       };
 
-      if (revertToPendingReview) {
+      if (
+        revertToPendingReview &&
+        shouldRevertGuestFieldEditsToPendingReview(currentStatus)
+      ) {
         patch.status = 'PENDING_REVIEW';
         patch.status_updated_at = new Date().toISOString();
       }
@@ -91,9 +101,9 @@ export function useUpdateBooking() {
       return data as BookingRow;
     },
 
-    onSuccess: (updated, { bookingId }) => {
+    onSuccess: async (updated, { bookingId }) => {
       qc.setQueryData(BOOKING_QUERY_KEY(bookingId), updated);
-      void qc.invalidateQueries({ queryKey: ['bookings'] });
+      await qc.invalidateQueries({ queryKey: ['bookings'] });
     },
   });
 }

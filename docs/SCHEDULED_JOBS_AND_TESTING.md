@@ -16,10 +16,10 @@ Related canonical references:
 
 There are **two** Edge Functions meant to run on a **recurring schedule** (every ~5 minutes in production):
 
-| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                          |
-| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies that contain **`APPROVED GAF.pdf`**, match them to a booking in **`PENDING_GAF`** or **`PENDING_PET_REQUEST`**, upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions).                                      |
-| **SD refund cron**          | `sd-refund-cron` | Find bookings in **`READY_FOR_CHECKIN`** whose **check-out date + time + grace period** (default **15 minutes**, Asia/Manila) is already in the past, then transition each to **`PENDING_SD_REFUND`** via the orchestrator (calendar + sheet updates; **no** outbound email on this transition). |
+| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). |
+| **SD refund cron**          | `sd-refund-cron` | Find bookings in **`READY_FOR_CHECKIN`** whose **check-out date + time + grace period** (default **15 minutes**, Asia/Manila) is already in the past, then transition each to **`PENDING_SD_REFUND`** via the orchestrator (calendar + sheet updates; **no** outbound email on this transition).                                                                   |
 
 Neither job reimplements workflow rules in isolation: both defer to **`WorkflowOrchestrator`** so calendar, sheet, and email behavior stay consistent with `transition-booking` and the status machine.
 
@@ -255,7 +255,7 @@ On a **fresh** DB (no row in `gmail_listener_state` or null `history_id`):
 5. Verify:
    - **`processed_emails`** has the Gmail **`message_id`** with status `applied` (or `skipped` / `failed`).
    - **`gmail_listener_state`** updated `history_id` / `last_poll_at`.
-   - Booking **`status`** advanced per flags (`need_parking` / `has_pets` → parking, pet, or ready).
+   - For bookings on **`PENDING_DOCUMENTS`**, top-level **`status`** often stays **`PENDING_DOCUMENTS`** while **`approved_gaf_pdf_url`** (or **`approved_pet_pdf_url`**) is written — the admin pipeline then shows **Pending GAF** / **Pending Pet** as **Complete** from that URL. (Legacy **`PENDING_GAF`** rows behave similarly until an admin advances the parent status.)
    - **`approved_gaf_pdf_url`** (or pet URL) set; file in Storage.
 
 ### 8.5 Pet approval path
@@ -266,12 +266,17 @@ Same as GAF but:
 - Subject uses **`Pet Request`**.
 - Transition should land in **`READY_FOR_CHECKIN`** with pet PDF URL and optional ready-for-check-in email when orchestrator says so.
 
-### 8.6 Gmail history expiry (404)
+### 8.6 Gmail API 404 cases
 
-If Gmail returns **404** on `users.history.list` (cursor too old):
+**`users.history.list` returns 404** (cursor too old):
 
 - Listener **resets** cursor to current profile `historyId`, returns JSON like **`historyReset: true`**.
 - **Mail between old cursor and reset can be missed** — documented in logs; recover with **manual upload** + admin transition per workflow panel.
+
+**`messages.get` returns 404** for an ID listed in `history` (message added):
+
+- Gmail sometimes emits **`messageAdded`** IDs that are **not fetchable** as a full message (deleted draft, superseded thread artifact, or similar). The listener treats these as **`skipped`** with reason **`gmail_message_not_found_404`** — not **`failed`**.
+- The real reply in the same batch is still processed when its ID is valid; **`failed`** in the run summary should stay **0** for this case.
 
 ### 8.7 OAuth failure
 
@@ -315,12 +320,6 @@ If token exchange fails (`invalid_grant`):
 
 Use this section when you want repeatable SQL snippets for local dev or hosted projects.
 
-### 11.0 After `supabase db reset` (local)
-
-1. **Migrations** — Run `npx supabase db reset` (or start so migrations apply). Repo migration `20260504100000_enable_pg_cron.sql` enables **`pg_cron`**; without it, the `cron` schema does not exist and any `select … from cron.job` / `cron.job_run_details` fails with **`42P01`**.
-2. **Re-register jobs** — `cron.job` rows are **not** in migrations; run §11.2 again with your current **`supabase status`** publishable/anon key (or `127.0.0.1:54321` URLs if `kong:8000` does not resolve from Postgres).
-3. **Optional cleanup** — If §11.2 errors on duplicate job name, run §11.5 first to `cron.unschedule` the old names, then schedule again.
-
 ### 11.1 Verify cron prerequisites
 
 ```sql
@@ -330,22 +329,17 @@ where extname in ('pg_cron', 'pg_net')
 order by extname;
 ```
 
-Expected: both `pg_cron` and `pg_net` are present.
-
-If **`pg_cron` is missing**, enable it once (matches [Supabase Cron install](https://supabase.com/docs/guides/cron/install)):
+Expected: **`pg_net`** is almost always present on local Supabase. **`pg_cron`** may be **missing** after a **`db reset`** / fresh volume — it is not recreated by every migration set. If `pg_cron` does not appear in the result above, install it once (same database your app uses, usually `postgres`):
 
 ```sql
-create extension if not exists pg_cron with schema pg_catalog;
-
-grant usage on schema cron to postgres;
-grant all privileges on all tables in schema cron to postgres;
+create extension if not exists pg_cron;
 ```
 
-Then re-run the §11.1 query.
+Then re-run the `select` to confirm both extensions.
 
 ### 11.2 Enable local cron jobs (copy-paste)
 
-Replace `<LOCAL_ANON_KEY>` with your local anon key from `supabase status`.
+Replace `<LOCAL_ANON_KEY>` with your local anon key from `supabase status` (`npx supabase@latest status -o env` → `ANON_KEY`, or Studio → **Project Settings → API** for local).
 
 ```sql
 select cron.schedule(
@@ -381,7 +375,9 @@ select cron.schedule(
 );
 ```
 
-If your local stack cannot reach `kong:8000`, use `http://127.0.0.1:54321/functions/v1/...` instead.
+Run the block in **Studio → SQL** (`http://127.0.0.1:54323`) on the **`postgres`** database. If you apply it from a host shell, use **`docker exec -i`** (with `-i`) so a heredoc or pipe reaches `psql`; without `-i`, the script is ignored.
+
+`pg_cron` runs **inside** the DB container: use **`http://kong:8000/functions/v1/...`** so `pg_net` hits Kong on the Docker network. Use **`http://127.0.0.1:54321/functions/v1/...`** only from the **host** (curl, browser) — not inside `cron.schedule` SQL.
 
 ### 11.3 Enable hosted cron jobs (Vault pattern)
 
@@ -430,19 +426,11 @@ select cron.schedule(
 
 ### 11.4 Verify installed jobs and run history
 
-**Registered jobs** (works as soon as `pg_cron` is enabled):
-
 ```sql
 select jobid, jobname, schedule, active, command
 from cron.job
 where command ilike '%gmail-listener%' or command ilike '%sd-refund-cron%'
 order by jobid desc;
-```
-
-**Cron run audit** — only when `cron.job_run_details` exists (it appears with a normal `pg_cron` install). If you still get **`relation "cron.job_run_details" does not exist`**, `pg_cron` is not installed: fix with §11.1, then schedule again.
-
-```sql
-select to_regclass('cron.job_run_details') is not null as has_job_run_details;
 ```
 
 ```sql
@@ -456,17 +444,6 @@ where jobid in (
 order by runid desc
 limit 50;
 ```
-
-**HTTP outcome from `pg_net`** (async responses; short retention, often ~6 hours — good for “did Kong return 200?”):
-
-```sql
-select id, status_code, error_msg, left(coalesce(content, ''), 200) as content_preview, created
-from net._http_response
-order by created desc
-limit 30;
-```
-
-**Edge Function logs** — Dashboard → Edge Functions → **gmail-listener** / **sd-refund-cron**, or `npx supabase functions serve` terminal output when invoking manually.
 
 ### 11.5 Disable/remove jobs
 

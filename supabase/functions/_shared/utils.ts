@@ -124,12 +124,13 @@ export const extractRouteParam = (pathname: string, routePattern: string): strin
   return match && match[1] ? match[1] : null;
 };
 
-// Format URLs to ensure they are publicly accessible
+// Format URLs so browsers can load them (edge getPublicUrl often uses internal Kong host).
 export const formatPublicUrl = (url: string) => {
   if (!url) return '';
-
-  // If URL contains kong:8000, replace it with the correct public URL
-  return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
+  return url
+    .replace(/^http:\/\/kong:8000\b/, 'http://127.0.0.1:54321')
+    .replace(/^https:\/\/kong:8000\b/, 'https://127.0.0.1:54321')
+    .replace(/^http:\/\/supabase_kong_[^/:]+:8000\b/, 'http://127.0.0.1:54321');
 };
 
 /**
@@ -196,6 +197,7 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
     { form: 'carColor', db: 'car_color' },
     { form: 'hasPets', db: 'has_pets', isBoolean: true },
     { form: 'petName', db: 'pet_name' },
+    { form: 'petType', db: 'pet_type' },
     { form: 'petBreed', db: 'pet_breed' },
     { form: 'petAge', db: 'pet_age' },
     { form: 'petVaccinationDate', db: 'pet_vaccination_date', isDate: true },
@@ -301,3 +303,43 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
   
   return { hasChanges, changedFields };
 };
+
+/**
+ * Form keys emitted by compareFormData().changedFields whose edits require
+ * status → PENDING_REVIEW when saving from public /form, while the row is in
+ * the documents pipeline or Ready for check-in (see statusMachine
+ * `shouldRevertGuestFieldEditsToPendingReview`; docs/TODOS.md + booking-workflow.mdc §2.3).
+ */
+const WORKFLOW_SENSITIVE_FORM_FIELDS = new Set<string>([
+  'guestFacebookName',
+  'primaryGuestName',
+  'guestEmail',
+  'guestPhoneNumber',
+  'guest2Name',
+  'guest3Name',
+  'guest4Name',
+  'guest5Name',
+  'checkInDate',
+  'checkOutDate',
+  'checkInTime',
+  'checkOutTime',
+  'needParking',
+  'carPlateNumber',
+  'carBrandModel',
+  'carColor',
+  'hasPets',
+  'petName',
+  'petType',
+  'petBreed',
+  'petAge',
+  'petVaccinationDate',
+  'paymentReceipt',
+  'validId',
+  'petVaccination',
+  'petImage',
+]);
+
+/** True if any changed field is workflow-sensitive for pipeline → PENDING_REVIEW revert. */
+export function shouldRevertReadyForCheckinToPendingReview(changedFields: string[]): boolean {
+  return changedFields.some((f) => WORKFLOW_SENSITIVE_FORM_FIELDS.has(f));
+}

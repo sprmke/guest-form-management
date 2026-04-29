@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-import { GuestFormData, transformFormToSubmission } from './types.ts'
+import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts'
+import { shouldRevertGuestFieldEditsToPendingReview } from './statusMachine.ts'
 import { UploadService } from './uploadService.ts'
 import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
 
@@ -123,7 +124,13 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData, saveToDatabase = true, saveImagesToStorage = true, isTestingMode = false): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
+  static async processFormData(
+    formData: FormData,
+    saveToDatabase = true,
+    saveImagesToStorage = true,
+    isTestingMode = false,
+    revertReadyForCheckinToPendingReview = false,
+  ): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
       console.log('Processing form data...');
 
@@ -304,7 +311,15 @@ export class DatabaseService {
       let submissionData;
       if (saveToDatabase) {
         if (existingBooking) {
-          submissionData = await this.updateGuestSubmission(bookingId, dbData);
+          const patch: GuestSubmission = { ...dbData };
+          if (
+            revertReadyForCheckinToPendingReview &&
+            shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
+          ) {
+            patch.status = 'PENDING_REVIEW';
+            patch.status_updated_at = new Date().toISOString();
+          }
+          submissionData = await this.updateGuestSubmission(bookingId, patch);
         } else {
           submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
         }

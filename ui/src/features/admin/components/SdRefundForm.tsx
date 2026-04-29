@@ -2,16 +2,30 @@
  * SdRefundForm — Sub-form shown in WorkflowPanel when transitioning
  * PENDING_SD_REFUND → COMPLETED.
  *
- * Captures: sd_additional_expenses (array), sd_additional_profits (array),
- *           sd_refund_amount, sd_refund_receipt_url.
+ * Captures: sd_additional_expense_items / sd_additional_profit_items (label + amount),
+ *           sd_refund_amount (read-only): base SD + Σ(expenses) − Σ(profits),
+ *           sd_refund_receipt_url (image upload).
  *
  * Plan: docs/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  ExternalLink,
+  FileImage,
+  Loader2,
+  Plus,
+  Trash2,
+  Upload,
+} from 'lucide-react';
+import { toast } from 'sonner';
 import { formatMoney } from '@/features/admin/lib/formatters';
-import type { BookingRow } from '@/features/admin/lib/types';
+import type {
+  BookingRow,
+  SdSettlementLineItem,
+} from '@/features/admin/lib/types';
+import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { cn } from '@/lib/utils';
 
 function parseNumberArray(raw: unknown): number[] {
   if (Array.isArray(raw)) {
@@ -30,6 +44,83 @@ function parseNumberArray(raw: unknown): number[] {
   return [];
 }
 
+function parseLineItemsFromBooking(
+  raw: unknown,
+): SdSettlementLineItem[] | null {
+  let arr: unknown = raw;
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      arr = JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  }
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  return arr.map((row) => {
+    if (typeof row !== 'object' || row === null) {
+      return { label: '', amount: 0 };
+    }
+    const r = row as Record<string, unknown>;
+    const label = typeof r.label === 'string' ? r.label : '';
+    const n = Number(r.amount);
+    return {
+      label,
+      amount: Number.isNaN(n) ? 0 : n,
+    };
+  });
+}
+
+function buildInitialLineItems(booking: BookingRow): {
+  expenses: SdSettlementLineItem[];
+  profits: SdSettlementLineItem[];
+} {
+  const expJson = parseLineItemsFromBooking(
+    booking.sd_additional_expense_items,
+  );
+  const profJson = parseLineItemsFromBooking(
+    booking.sd_additional_profit_items,
+  );
+  const expFallback = parseNumberArray(booking.sd_additional_expenses).map(
+    (amount) => ({
+      label: '',
+      amount,
+    }),
+  );
+  const profFallback = parseNumberArray(booking.sd_additional_profits).map(
+    (amount) => ({
+      label: '',
+      amount,
+    }),
+  );
+  return {
+    expenses: expJson ?? (expFallback.length ? expFallback : []),
+    profits: profJson ?? (profFallback.length ? profFallback : []),
+  };
+}
+
+function buildSdInitialState(
+  booking: BookingRow,
+  draft: SdRefundValues | null | undefined,
+): {
+  expenseItems: SdSettlementLineItem[];
+  profitItems: SdSettlementLineItem[];
+  receiptUrl: string;
+} {
+  if (draft) {
+    return {
+      expenseItems: draft.sd_additional_expense_items.map((r) => ({ ...r })),
+      profitItems: draft.sd_additional_profit_items.map((r) => ({ ...r })),
+      receiptUrl: draft.sd_refund_receipt_url ?? '',
+    };
+  }
+  const built = buildInitialLineItems(booking);
+  return {
+    expenseItems: built.expenses,
+    profitItems: built.profits,
+    receiptUrl: booking.sd_refund_receipt_url ?? '',
+  };
+}
+
 function methodLabel(
   method: NonNullable<BookingRow['sd_refund_method']>,
 ): string {
@@ -39,89 +130,140 @@ function methodLabel(
 }
 
 export type SdRefundValues = {
-  sd_additional_expenses: number[];
-  sd_additional_profits: number[];
+  sd_additional_expense_items: SdSettlementLineItem[];
+  sd_additional_profit_items: SdSettlementLineItem[];
   sd_refund_amount: number;
   sd_refund_receipt_url: string;
 };
 
 type Props = {
   booking: BookingRow;
+  initialDraft?: SdRefundValues | null;
   onChange: (values: SdRefundValues | null) => void;
 };
 
-function useNumberList(initial: number[] = []) {
-  const [items, setItems] = useState<number[]>(initial);
-
-  const add = () => setItems((prev) => [...prev, 0]);
-  const remove = (i: number) =>
-    setItems((prev) => prev.filter((_, idx) => idx !== i));
-  const update = (i: number, val: number) =>
-    setItems((prev) => prev.map((v, idx) => (idx === i ? val : v)));
-
-  return { items, add, remove, update };
-}
-
 const SD_DEFAULT = 1500;
 
-export function SdRefundForm({ booking, onChange }: Props) {
-  const expenses = useNumberList(
-    parseNumberArray(booking.sd_additional_expenses),
+export function SdRefundForm({
+  booking,
+  initialDraft = null,
+  onChange,
+}: Props) {
+  const uploadMut = useUploadBookingAsset();
+  const receiptFileRef = useRef<HTMLInputElement>(null);
+
+  const sdInitial = buildSdInitialState(booking, initialDraft);
+
+  const [expenseItems, setExpenseItems] = useState<SdSettlementLineItem[]>(
+    () => sdInitial.expenseItems,
   );
-  const profits = useNumberList(
-    parseNumberArray(booking.sd_additional_profits),
-  );
-  const sdAmt = booking.sd_refund_amount;
-  const [refundAmount, setRefundAmount] = useState<number>(
-    sdAmt != null && sdAmt !== '' ? Number(sdAmt) : SD_DEFAULT,
+  const [profitItems, setProfitItems] = useState<SdSettlementLineItem[]>(
+    () => sdInitial.profitItems,
   );
   const [receiptUrl, setReceiptUrl] = useState<string>(
-    booking.sd_refund_receipt_url ?? '',
+    () => sdInitial.receiptUrl,
   );
 
   const guestMethod = booking.sd_refund_method;
 
-  const totalExpenses = expenses.items.reduce((s, v) => s + (v || 0), 0);
-  const totalProfits = profits.items.reduce((s, v) => s + (v || 0), 0);
-  const netSD =
-    ((booking.security_deposit as number | null) ?? SD_DEFAULT) -
-    totalExpenses +
-    totalProfits;
+  const rawBase = Number(booking.security_deposit);
+  const baseSd =
+    booking.security_deposit == null ||
+    booking.security_deposit === '' ||
+    Number.isNaN(rawBase)
+      ? SD_DEFAULT
+      : rawBase;
+
+  const totalExpenses = expenseItems.reduce(
+    (s, r) => s + (Number(r.amount) || 0),
+    0,
+  );
+  const totalProfits = profitItems.reduce(
+    (s, r) => s + (Number(r.amount) || 0),
+    0,
+  );
+  /** Refund = base SD + additional expenses charged to guest − profits retained from guest. */
+  const netSD = baseSd + totalExpenses - totalProfits;
 
   useEffect(() => {
-    if (refundAmount >= 0) {
+    const url = booking.sd_refund_receipt_url;
+    if (url) setReceiptUrl(url);
+  }, [booking.sd_refund_receipt_url]);
+
+  useEffect(() => {
+    if (netSD >= 0) {
       onChange({
-        sd_additional_expenses: expenses.items,
-        sd_additional_profits: profits.items,
-        sd_refund_amount: refundAmount,
+        sd_additional_expense_items: expenseItems,
+        sd_additional_profit_items: profitItems,
+        sd_refund_amount: Math.round(netSD * 100) / 100,
         sd_refund_receipt_url: receiptUrl,
       });
     } else {
       onChange(null);
     }
-  }, [
-    JSON.stringify(expenses.items),
-    JSON.stringify(profits.items),
-    refundAmount,
-    receiptUrl,
-  ]);
+  }, [expenseItems, profitItems, netSD, receiptUrl]);
+
+  async function handleReceiptFileChange(
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const result = await uploadMut.mutateAsync({
+        bookingId: booking.id,
+        assetType: 'sd_refund_receipt',
+        file,
+      });
+      setReceiptUrl(result.url);
+      toast.success('Refund receipt uploaded');
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to upload refund receipt',
+      );
+    } finally {
+      if (receiptFileRef.current) receiptFileRef.current.value = '';
+    }
+  }
+
+  function addExpense() {
+    setExpenseItems((prev) => [...prev, { label: '', amount: 0 }]);
+  }
+  function addProfit() {
+    setProfitItems((prev) => [...prev, { label: '', amount: 0 }]);
+  }
+  function removeExpense(i: number) {
+    setExpenseItems((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function removeProfit(i: number) {
+    setProfitItems((prev) => prev.filter((_, idx) => idx !== i));
+  }
+  function patchExpense(i: number, patch: Partial<SdSettlementLineItem>) {
+    setExpenseItems((prev) =>
+      prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)),
+    );
+  }
+  function patchProfit(i: number, patch: Partial<SdSettlementLineItem>) {
+    setProfitItems((prev) =>
+      prev.map((row, idx) => (idx === i ? { ...row, ...patch } : row)),
+    );
+  }
 
   return (
     <div className="space-y-4">
       {guestMethod && (
-        <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div className="px-3 py-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50/80">
+          <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
             Guest refund method
           </p>
           <dl className="space-y-1.5 text-sm text-slate-700">
-            <div className="flex justify-between gap-3">
+            <div className="flex gap-3 justify-between">
               <dt className="shrink-0 text-slate-500">Method</dt>
-              <dd className="text-right font-medium">
+              <dd className="font-medium text-right">
                 {methodLabel(guestMethod)}
               </dd>
             </div>
             {guestMethod === 'same_phone' && (
-              <div className="flex justify-between gap-3">
+              <div className="flex gap-3 justify-between">
                 <dt className="shrink-0 text-slate-500">Phone on file</dt>
                 <dd className="text-right break-all">
                   {booking.guest_phone_number}
@@ -130,21 +272,21 @@ export function SdRefundForm({ booking, onChange }: Props) {
             )}
             {guestMethod === 'other_bank' && (
               <>
-                <div className="flex justify-between gap-3">
+                <div className="flex gap-3 justify-between">
                   <dt className="shrink-0 text-slate-500">Bank</dt>
-                  <dd className="text-right font-medium">
+                  <dd className="font-medium text-right">
                     {booking.sd_refund_bank ?? '—'}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-3">
+                <div className="flex gap-3 justify-between">
                   <dt className="shrink-0 text-slate-500">Account name</dt>
                   <dd className="text-right break-all">
                     {booking.sd_refund_account_name ?? '—'}
                   </dd>
                 </div>
-                <div className="flex justify-between gap-3">
+                <div className="flex gap-3 justify-between">
                   <dt className="shrink-0 text-slate-500">Account number</dt>
-                  <dd className="text-right break-all font-mono text-xs">
+                  <dd className="font-mono text-xs text-right break-all">
                     {booking.sd_refund_account_number ?? '—'}
                   </dd>
                 </div>
@@ -170,136 +312,214 @@ export function SdRefundForm({ booking, onChange }: Props) {
         </div>
       )}
 
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
         Security Deposit Settlement
       </p>
 
-      {/* Security Deposit base */}
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex justify-between items-center text-sm">
         <span className="text-slate-600">Security Deposit (base)</span>
-        <span className="font-medium">
-          {formatMoney(
-            (booking.security_deposit as number | null) ?? SD_DEFAULT,
-          )}
-        </span>
+        <span className="font-medium">{formatMoney(baseSd)}</span>
       </div>
 
-      {/* Additional Expenses */}
-      <NumberListSection
+      <LineListSection
         label="Additional Expenses"
-        items={expenses.items}
-        onAdd={expenses.add}
-        onRemove={expenses.remove}
-        onUpdate={expenses.update}
-        sign="-"
-      />
-
-      {/* Additional Profits */}
-      <NumberListSection
-        label="Additional Profits"
-        items={profits.items}
-        onAdd={profits.add}
-        onRemove={profits.remove}
-        onUpdate={profits.update}
         sign="+"
+        items={expenseItems}
+        onAdd={addExpense}
+        onRemove={removeExpense}
+        onPatch={patchExpense}
+        amountPlaceholder="Amount"
+        labelPlaceholder="Pool fee payment"
       />
 
-      {/* Net SD suggestion */}
-      <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 ring-1 ring-slate-200 text-sm">
-        <span className="text-slate-600">Calculated Net SD</span>
-        <span
-          className={`font-semibold ${netSD < 0 ? 'text-red-600' : 'text-slate-900'}`}
+      <LineListSection
+        label="Additional Profits"
+        sign="-"
+        items={profitItems}
+        onAdd={addProfit}
+        onRemove={removeProfit}
+        onPatch={patchProfit}
+        amountPlaceholder="Amount"
+        labelPlaceholder="Honesty store payment"
+      />
+
+      <div className="space-y-1">
+        <label className="block text-xs text-slate-600">
+          Actual Refund Amount{' '}
+          <span className="font-normal text-slate-400">
+            (base + expenses − profits)
+          </span>
+        </label>
+        <div
+          className={cn(
+            'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
+            netSD < 0
+              ? 'border-red-300 bg-red-50 text-red-700'
+              : 'border-slate-200 bg-slate-50 text-slate-900',
+          )}
+          aria-readonly="true"
         >
-          {formatMoney(netSD)}
-        </span>
+          <span className="font-semibold">{formatMoney(netSD)}</span>
+          {netSD < 0 && (
+            <span className="text-[11px] font-medium">
+              Net cannot be negative
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Actual refund amount */}
       <div className="space-y-1">
         <label className="block text-xs text-slate-600">
-          Actual Refund Amount (₱)
+          Refund receipt (optional)
         </label>
-        <input
-          type="number"
-          min={0}
-          step={0.01}
-          value={refundAmount}
-          onChange={(e) => setRefundAmount(Number(e.target.value))}
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
-      </div>
+        <div className="space-y-2">
+          {receiptUrl ? (
+            <a
+              href={receiptUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 hover:border-blue-300 transition-colors"
+            >
+              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-slate-100">
+                <img
+                  src={receiptUrl}
+                  alt="Refund receipt"
+                  className="object-cover w-full h-full shrink-0"
+                  width={48}
+                  height={48}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-slate-700">
+                  Current receipt
+                </p>
+                <p className="inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline">
+                  <ExternalLink className="size-3 shrink-0" />
+                  View image
+                </p>
+              </div>
+            </a>
+          ) : (
+            <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 text-xs text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <FileImage className="size-3.5 shrink-0" />
+                No receipt uploaded
+              </span>
+            </div>
+          )}
 
-      {/* Receipt URL */}
-      <div className="space-y-1">
-        <label className="block text-xs text-slate-600">
-          Refund Receipt URL (optional)
-        </label>
-        <input
-          type="url"
-          placeholder="https://..."
-          value={receiptUrl}
-          onChange={(e) => setReceiptUrl(e.target.value)}
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-        />
+          <input
+            ref={receiptFileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleReceiptFileChange}
+            disabled={uploadMut.isPending}
+          />
+          <button
+            type="button"
+            disabled={uploadMut.isPending}
+            onClick={() => receiptFileRef.current?.click()}
+            className={cn(
+              'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+              uploadMut.isPending
+                ? 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-slate-200'
+                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100',
+            )}
+          >
+            {uploadMut.isPending ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin shrink-0" />
+                Uploading image…
+              </>
+            ) : (
+              <>
+                <Upload className="size-3.5 shrink-0" />
+                {receiptUrl ? 'Replace receipt image' : 'Upload receipt image'}
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Tiny list sub-component ──────────────────────────────────────────────────
-
-function NumberListSection({
+function LineListSection({
   label,
+  sign,
   items,
   onAdd,
   onRemove,
-  onUpdate,
-  sign,
+  onPatch,
+  labelPlaceholder,
+  amountPlaceholder,
 }: {
   label: string;
-  items: number[];
+  sign: '+' | '-';
+  items: SdSettlementLineItem[];
   onAdd: () => void;
   onRemove: (i: number) => void;
-  onUpdate: (i: number, v: number) => void;
-  sign: '+' | '-';
+  onPatch: (i: number, patch: Partial<SdSettlementLineItem>) => void;
+  labelPlaceholder: string;
+  amountPlaceholder: string;
 }) {
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
+      <div className="flex gap-2 justify-between items-center">
         <span className="text-xs text-slate-600">{label}</span>
         <button
           type="button"
           onClick={onAdd}
-          className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 sm:min-h-0 sm:min-w-0 sm:justify-end"
         >
-          <Plus className="size-3" /> Add
+          <Plus className="size-3 shrink-0" /> Add
         </button>
       </div>
       {items.length === 0 && (
         <p className="text-[11px] text-slate-400 italic">None added</p>
       )}
-      {items.map((val, i) => (
-        <div key={i} className="flex items-center gap-2">
+      {items.map((row, i) => (
+        <div
+          key={i}
+          className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5"
+        >
           <span
-            className={`text-xs font-bold ${sign === '+' ? 'text-emerald-600' : 'text-red-600'}`}
+            className={`hidden shrink-0 text-xs font-bold sm:inline sm:w-3 ${sign === '+' ? 'text-emerald-600' : 'text-red-600'}`}
           >
             {sign}
           </span>
           <input
-            type="number"
-            min={0}
-            step={0.01}
-            value={val}
-            onChange={(e) => onUpdate(i, Number(e.target.value))}
-            className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            type="text"
+            value={row.label}
+            onChange={(e) => onPatch(i, { label: e.target.value })}
+            placeholder={labelPlaceholder}
+            className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
-          <button
-            type="button"
-            onClick={() => onRemove(i)}
-            className="text-slate-400 hover:text-red-500"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <span
+              className={`shrink-0 text-xs font-bold sm:hidden ${sign === '+' ? 'text-emerald-600' : 'text-red-600'}`}
+            >
+              {sign}
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={0.01}
+              value={row.amount}
+              onChange={(e) => onPatch(i, { amount: Number(e.target.value) })}
+              placeholder={amountPlaceholder}
+              className="h-9 w-full min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]"
+            />
+            <button
+              type="button"
+              onClick={() => onRemove(i)}
+              className="flex justify-center items-center rounded-md size-11 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+              aria-label="Remove row"
+            >
+              <Trash2 className="size-4" />
+            </button>
+          </div>
         </div>
       ))}
     </div>

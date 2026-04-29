@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
 import { cn } from '@/lib/utils';
 
 type Size = 'sm' | 'md' | 'lg';
@@ -32,8 +33,15 @@ export function GuestAvatar({
   className,
 }: Props) {
   const [imgFailed, setImgFailed] = useState(false);
+  const displayUrl = validIdUrl
+    ? (normalizeStoragePublicUrl(validIdUrl) ?? validIdUrl)
+    : null;
   const initial = (name?.trim()[0] ?? '?').toUpperCase();
-  const showImage = Boolean(validIdUrl) && !imgFailed;
+  const showImage = Boolean(displayUrl) && !imgFailed;
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [validIdUrl]);
 
   return (
     <div
@@ -54,7 +62,7 @@ export function GuestAvatar({
     >
       {showImage ? (
         <img
-          src={validIdUrl ?? undefined}
+          src={displayUrl ?? undefined}
           alt=""
           loading="lazy"
           decoding="async"

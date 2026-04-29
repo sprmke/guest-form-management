@@ -20,6 +20,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
+import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts';
+import { formatPublicUrl } from '../_shared/utils.ts';
 
 const ASSET_CONFIG = {
   // ── Workflow assets (set during transitions) ──────────────────────────────
@@ -59,6 +61,15 @@ const ASSET_CONFIG = {
 } as const;
 
 type AssetType = keyof typeof ASSET_CONFIG;
+
+function isGuestDocRevertAssetType(t: AssetType): boolean {
+  return (
+    t === 'payment_receipt' ||
+    t === 'valid_id' ||
+    t === 'pet_vaccination' ||
+    t === 'pet_image'
+  );
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -102,17 +113,34 @@ serve(async (req) => {
     const { data: { publicUrl } } = supabase.storage
       .from(config.bucket)
       .getPublicUrl(storagePath);
+    const safePublicUrl = formatPublicUrl(publicUrl);
 
-    // Write the URL to the DB column
-    await DatabaseService.setWorkflowFields(bookingId, { [config.column]: publicUrl });
+    const booking = await DatabaseService.getBookingById(bookingId);
+    if (!booking) {
+      throw new Error(`Booking not found: ${bookingId}`);
+    }
 
-    console.log(`[upload-booking-asset] Uploaded ${assetType} for ${bookingId}: ${publicUrl}`);
+    await DatabaseService.setWorkflowFields(bookingId, {
+      [config.column]: safePublicUrl,
+    });
+
+    if (
+      shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
+      isGuestDocRevertAssetType(assetType)
+    ) {
+      await DatabaseService.updateBookingStatus(bookingId, 'PENDING_REVIEW');
+      console.log(
+        `[upload-booking-asset] ${assetType} replaced while ${booking.status} → PENDING_REVIEW`,
+      );
+    }
+
+    console.log(`[upload-booking-asset] Uploaded ${assetType} for ${bookingId}: ${safePublicUrl}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          url: publicUrl,
+          url: safePublicUrl,
           bucket: config.bucket,
           path: storagePath,
           column: config.column,

@@ -151,23 +151,16 @@ export interface GuestSubmission {
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
 
+  // ── Request PDFs (orchestrator: PENDING_REVIEW → initial docs) ──────────────
+  gaf_request_pdf_url?: string | null;
+  pet_request_pdf_url?: string | null;
+
   // ── SD refund stage fields (PENDING_SD_REFUND) ────────────────────────────
   sd_additional_expenses?: number[] | null;  // NUMERIC(12,2)[]
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
   settled_at?: string | null;              // Timestamp when moved to COMPLETED
-
-  // Guest SD form (PENDING_SD_REFUND_DETAILS → PENDING_SD_REFUND)
-  sd_refund_guest_feedback?: string | null;
-  sd_refund_method?: string | null;
-  sd_refund_phone_confirmed?: boolean | null;
-  sd_refund_bank?: string | null;
-  sd_refund_account_name?: string | null;
-  sd_refund_account_number?: string | null;
-  sd_refund_cash_pickup_note?: string | null;
-  sd_refund_form_submitted_at?: string | null;
-  sd_refund_form_emailed_at?: string | null;
 }
 
 // Helper function to convert string to boolean

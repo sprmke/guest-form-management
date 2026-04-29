@@ -1,5 +1,8 @@
 import type { AnyBookingStatus } from './bookingStatus';
 
+/** One labeled amount row in the admin SD settlement form (JSONB on `guest_submissions`). */
+export type SdSettlementLineItem = { label: string; amount: number };
+
 /**
  * Snake-case row shape matching the Supabase `guest_submissions` table.
  * Admin UI speaks snake_case to stay aligned with the raw DB columns.
@@ -73,11 +76,16 @@ export type BookingRow = {
   parking_rate_guest?: number | string | null;
   parking_rate_paid?: number | string | null;
   pet_fee?: number | string | null;
+  guest_additional_fee?: number | string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
+  gaf_request_pdf_url?: string | null;
+  pet_request_pdf_url?: string | null;
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
+  sd_additional_expense_items?: SdSettlementLineItem[] | null;
+  sd_additional_profit_items?: SdSettlementLineItem[] | null;
   sd_additional_expenses?: number[] | null;
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | string | null;

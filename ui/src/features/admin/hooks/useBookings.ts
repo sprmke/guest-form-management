@@ -14,7 +14,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import type { BookingRow, BookingsQuery } from '@/features/admin/lib/types';
-import { normalizeBookingStorageUrls } from '@/features/admin/lib/storageUrls';
 
 export const BOOKINGS_QUERY_KEY = ['bookings'] as const;
 
@@ -58,10 +57,7 @@ async function fetchBookingsFromEdgeFunction(query: BookingsQuery): Promise<Book
     throw new Error(json.error ?? GENERIC_BOOKINGS_ERROR);
   }
 
-  return {
-    rows: (json.data as BookingRow[]).map(normalizeBookingStorageUrls),
-    total: json.total as number,
-  };
+  return { rows: json.data as BookingRow[], total: json.total as number };
 }
 
 export function useBookings(query: BookingsQuery) {
@@ -130,7 +126,7 @@ export function useBookings(query: BookingsQuery) {
           throw new Error(GENERIC_BOOKINGS_ERROR);
         }
 
-        let rows = ((data ?? []) as BookingRow[]).map(normalizeBookingStorageUrls);
+        let rows = (data ?? []) as BookingRow[];
         if (!query.includeTests) {
           rows = rows.filter((r) => r.is_test_booking !== true);
         }

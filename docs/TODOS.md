@@ -126,4 +126,6 @@ Todos
 - On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
 - Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
 - Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
-- Remove dev controls on public guest form
+- ✅ Remove PDF generation process when guest submits the guest form: 2026-04-29T20:21:44.178173637Z [Info] Generate PDF: ✅
+- Improve the mobile responsiveness and look of email templates on mobile
+- Only display Sensitive edit warning on edit booking detail page

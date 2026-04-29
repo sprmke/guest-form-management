@@ -429,7 +429,7 @@ export async function sendBookingAcknowledgement(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Your booking request has been received — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -465,11 +465,13 @@ export async function sendReadyForCheckin(
 
   const balance = booking.balance ?? ((booking.booking_rate ?? 0) - (booking.down_payment ?? 0));
   const balanceNum = Number(balance);
+  const additionalGuestFee = Number(booking.guest_additional_fee ?? 0) || 0;
   const totalDueAtCheckin =
     (Number.isFinite(balanceNum) ? balanceNum : 0) +
     (Number(booking.security_deposit ?? 0) || 0) +
     (booking.need_parking ? Number(booking.parking_rate_guest ?? 0) || 0 : 0) +
-    (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0);
+    (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0) +
+    additionalGuestFee;
   const totalBalanceDue = pesoFormat(totalDueAtCheckin);
   const pax = (booking.number_of_adults || 0) + (booking.number_of_children || 0);
   const displayCheckInTime = escapeHtml(booking.check_in_time || '2:00 PM');
@@ -477,25 +479,36 @@ export async function sendReadyForCheckin(
 
   const parkingPaymentRow = booking.need_parking ? `
     <tr class="fee-addon-row">
-      <td class="tbl-label">Guest parking fee</td>
-      <td class="tbl-num">${pesoFormat(booking.parking_rate_guest as number | null)}</td>
-      <td class="tbl-note"><em class="italic-note">Non-refundable; no rescheduling</em></td>
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Guest parking fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.parking_rate_guest as number | null)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"><em class="italic-note">Non-refundable; no rescheduling</em></td>
     </tr>
   ` : '';
 
   const petPaymentRow = booking.has_pets ? `
     <tr class="fee-addon-row">
-      <td class="tbl-label">Pet fee</td>
-      <td class="tbl-num">${pesoFormat(booking.pet_fee as number | null)}</td>
-      <td class="tbl-note"></td>
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Pet fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.pet_fee as number | null)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td>
     </tr>
   ` : '';
 
+  const additionalFeeRow =
+    additionalGuestFee > 0
+      ? `
+    <tr class="fee-addon-row">
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Additional fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(additionalGuestFee)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;">Early check-in, late check-out, surprise decor, etc.</td>
+    </tr>
+  `
+      : '';
+
   const gafReminderHtml = `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--gaf" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--gaf" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Guest Advise Form (GAF)</span>
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Guest Advise Form (GAF)</span>
           Your GAF has been approved. No need to print it! Simply present it at the guard house upon arrival and to the lobby receptionist during registration.
         </td>
       </tr>
@@ -503,21 +516,21 @@ export async function sendReadyForCheckin(
   `;
 
   const parkingReminderHtml = booking.need_parking ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--parking" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--parking" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Parking</span>
-          Your parking slot is confirmed. The guest parking fee is <strong class="callout-strong">non-refundable</strong>, and once confirmed your parking dates <strong class="callout-strong">cannot be rescheduled</strong>.
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Parking</span>
+          Your parking slot is confirmed. The guest parking fee is <strong class="callout-strong" style="color:#1e293b;font-weight:700;">non-refundable</strong>, and once confirmed your parking dates <strong class="callout-strong" style="color:#1e293b;font-weight:700;">cannot be rescheduled</strong>.
         </td>
       </tr>
     </table>
   ` : '';
 
   const petReminderHtml = booking.has_pets ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--pet" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--pet" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Pet</span>
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Pet</span>
           Your pet has been approved for this stay. 
         </td>
       </tr>
@@ -557,6 +570,7 @@ export async function sendReadyForCheckin(
       totalBalanceDue,
       parkingPaymentRow,
       petPaymentRow,
+      additionalFeeRow,
       houseRulesSection,
     }),
   );
@@ -615,7 +629,7 @@ export async function sendReadyForCheckin(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}You're all set! Ready for Check-in — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
@@ -688,7 +702,7 @@ export async function sendParkingBroadcast(
       to: [bccEmails[0]],
       bcc: bccEmails.slice(1),
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Parking Availability Request — Monaco 2604 (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });

@@ -62,8 +62,8 @@ Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next 
 | --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
 | Save to database                  | always                                  | `saveToDatabase`                                                         |
 | Save images to storage            | always                                  | `saveImagesToStorage`                                                    |
-| Generate PDF                      | always                                  | `generatePdf`                                                            |
-| **Send GAF request email**        | always                                  | renamed from `Send email notification`                                   |
+| Generate GAF / pet request PDFs   | only from `PENDING_REVIEW`              | `generatePdf` (was guest-form query param; now transition-only)          |
+| **Send GAF request email**        | only from `PENDING_REVIEW`              | renamed from `Send email notification`                                   |
 | **Send Parking broadcast email**  | only when `need_parking`                | new                                                                      |
 | **Send Pet request email**        | only when `has_pets`                    | new                                                                      |
 | **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                              |

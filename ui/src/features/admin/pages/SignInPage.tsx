@@ -1,35 +1,35 @@
-import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle } from "lucide-react";
-import { GoogleSignInButton } from "@/features/admin/components/GoogleSignInButton";
-import { supabase } from "@/lib/supabaseClient";
-import { useAdminSession } from "@/features/admin/hooks/useAdminSession";
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
+import { GoogleSignInButton } from '@/features/admin/components/GoogleSignInButton';
+import { supabase } from '@/lib/supabaseClient';
+import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
 function safeRedirect(raw: string | null): string {
-  if (!raw) return "/bookings";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/bookings";
+  if (!raw) return '/bookings';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/bookings';
   return raw;
 }
 
 export function SignInPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
-  const redirect = safeRedirect(params.get("redirect"));
+  const redirect = safeRedirect(params.get('redirect'));
   const { status } = useAdminSession();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "admin") navigate(redirect, { replace: true });
+    if (status === 'admin') navigate(redirect, { replace: true });
   }, [status, redirect, navigate]);
 
   const handleGoogle = async () => {
     setIsSigningIn(true);
     setError(null);
     try {
-      if (status === "not-admin") await supabase.auth.signOut();
+      if (status === 'not-admin') await supabase.auth.signOut();
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
+        provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/sign-in?redirect=${encodeURIComponent(redirect)}`,
         },
@@ -39,7 +39,7 @@ export function SignInPage() {
         setIsSigningIn(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sign-in failed.");
+      setError(err instanceof Error ? err.message : 'Sign-in failed.');
       setIsSigningIn(false);
     }
   };
@@ -49,7 +49,7 @@ export function SignInPage() {
       {/* ─── Left brand panel ─────────────────────────── */}
       <div
         className="hidden lg:flex lg:w-[46%] xl:w-[44%] flex-col justify-between p-10 relative overflow-hidden"
-        style={{ backgroundColor: "hsl(168 65% 40%)" }}
+        style={{ backgroundColor: 'hsl(168 65% 40%)' }}
         aria-hidden="true"
       >
         {/* Subtle noise texture */}
@@ -64,13 +64,13 @@ export function SignInPage() {
         <div
           className="absolute -bottom-32 -left-32 w-[480px] h-[480px] rounded-full opacity-[0.15]"
           style={{
-            background: "radial-gradient(circle, #ffffff 0%, transparent 70%)",
+            background: 'radial-gradient(circle, #ffffff 0%, transparent 70%)',
           }}
         />
         <div
           className="absolute -top-20 -right-20 w-[320px] h-[320px] rounded-full opacity-[0.08]"
           style={{
-            background: "radial-gradient(circle, #ffffff 0%, transparent 70%)",
+            background: 'radial-gradient(circle, #ffffff 0%, transparent 70%)',
           }}
         />
 
@@ -135,7 +135,7 @@ export function SignInPage() {
           </div>
 
           {/* Access-restricted notice */}
-          {status === "not-admin" && (
+          {status === 'not-admin' && (
             <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700">
               <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
               <p className="text-[13px] leading-snug">
@@ -157,13 +157,13 @@ export function SignInPage() {
           <GoogleSignInButton
             onClick={handleGoogle}
             loading={isSigningIn}
-            disabled={status === "loading"}
+            disabled={status === 'loading'}
           />
 
           {/* Footer note */}
           <p className="text-[12px] text-slate-400 text-center leading-relaxed">
             Only authorized property administrators can sign in. Public guests
-            should use the{" "}
+            should use the{' '}
             <a
               href="/form"
               className="text-sidebar-primary underline underline-offset-2 hover:text-sidebar-accent-foreground"

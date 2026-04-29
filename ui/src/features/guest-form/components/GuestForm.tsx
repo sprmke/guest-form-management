@@ -107,7 +107,6 @@ export function GuestForm() {
   const [devApiControls, setDevApiControls] = useState({
     saveToDatabase: isProduction && isDevMode,
     saveImagesToStorage: isProduction && isDevMode,
-    generatePdf: isProduction && isDevMode,
     updateCalendar: isProduction && isDevMode,
     updateGoogleSheets: isProduction && isDevMode,
   });
@@ -543,10 +542,6 @@ export function GuestForm() {
           devApiControls.saveImagesToStorage ? 'true' : 'false',
         );
         queryParams.append(
-          'generatePdf',
-          devApiControls.generatePdf ? 'true' : 'false',
-        );
-        queryParams.append(
           'updateGoogleCalendar',
           devApiControls.updateCalendar ? 'true' : 'false',
         );
@@ -560,7 +555,6 @@ export function GuestForm() {
         // In normal production mode, all actions are enabled by default
         queryParams.append('saveToDatabase', 'true');
         queryParams.append('saveImagesToStorage', 'true');
-        queryParams.append('generatePdf', 'true');
         queryParams.append('updateGoogleCalendar', 'true');
         queryParams.append('updateGoogleSheets', 'true');
         queryParams.append('testing', isTestingMode ? 'true' : 'false');
@@ -2229,27 +2223,6 @@ export function GuestForm() {
                         className="flex-1 text-sm font-medium cursor-pointer"
                       >
                         Save image assets to Supabase Storage
-                      </label>
-                    </div>
-
-                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
-                      <input
-                        type="checkbox"
-                        id="generatePdf"
-                        checked={devApiControls.generatePdf}
-                        onChange={(e) =>
-                          setDevApiControls({
-                            ...devApiControls,
-                            generatePdf: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                      <label
-                        htmlFor="generatePdf"
-                        className="flex-1 text-sm font-medium cursor-pointer"
-                      >
-                        Generate PDF
                       </label>
                     </div>
 

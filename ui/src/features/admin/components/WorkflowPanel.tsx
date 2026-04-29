@@ -106,6 +106,13 @@ const DEV_CONTROLS: DevControlDef[] = [
     isRelevant: () => true,
   },
   {
+    key: 'generatePdf',
+    label: 'Generate GAF / pet request PDFs',
+    description:
+      'Build filled PDFs for Azure (GAF + pet if applicable), attach to request emails, and save URLs when DB save is on',
+    isRelevant: (status) => status === 'PENDING_REVIEW',
+  },
+  {
     key: 'sendGafRequestEmail',
     label: 'Send GAF Request Email',
     description: 'Email Azure North with GAF request',
@@ -302,6 +309,7 @@ export function WorkflowPanel({ booking }: Props) {
         security_deposit: pricingValues.security_deposit,
         pet_fee: pricingValues.pet_fee,
         parking_rate_guest: pricingValues.parking_rate_guest,
+        guest_additional_fee: pricingValues.guest_additional_fee,
       };
     }
     if (subForm === 'parking' && parkingValues) {
@@ -312,8 +320,12 @@ export function WorkflowPanel({ booking }: Props) {
     }
     if (subForm === 'sd_refund' && sdRefundValues) {
       return {
-        sd_additional_expenses: sdRefundValues.sd_additional_expenses,
-        sd_additional_profits: sdRefundValues.sd_additional_profits,
+        sd_additional_expenses: sdRefundValues.sd_additional_expense_items.map(
+          (r) => Number(r.amount) || 0,
+        ),
+        sd_additional_profits: sdRefundValues.sd_additional_profit_items.map(
+          (r) => Number(r.amount) || 0,
+        ),
         sd_refund_amount: sdRefundValues.sd_refund_amount,
         sd_refund_receipt_url: sdRefundValues.sd_refund_receipt_url || null,
       };
@@ -434,13 +446,25 @@ export function WorkflowPanel({ booking }: Props) {
       {(needsPricing || needsParking || needsSdRefund) && (
         <div className="px-4 py-4 border-b border-slate-100">
           {needsPricing && (
-            <ReviewPricingForm booking={booking} onChange={setPricingValues} />
+            <ReviewPricingForm
+              booking={booking}
+              initialDraft={pricingValues}
+              onChange={setPricingValues}
+            />
           )}
           {needsParking && (
-            <ParkingRequestForm booking={booking} onChange={setParkingValues} />
+            <ParkingRequestForm
+              booking={booking}
+              initialDraft={parkingValues}
+              onChange={setParkingValues}
+            />
           )}
           {needsSdRefund && (
-            <SdRefundForm booking={booking} onChange={setSdRefundValues} />
+            <SdRefundForm
+              booking={booking}
+              initialDraft={sdRefundValues}
+              onChange={setSdRefundValues}
+            />
           )}
         </div>
       )}

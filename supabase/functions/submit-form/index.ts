@@ -1,10 +1,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
-import { generatePDF } from '../_shared/pdfService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
-import { extractRouteParam, compareFormData } from '../_shared/utils.ts'
+import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
+import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -24,7 +24,6 @@ serve(async (req) => {
     const url = new URL(req.url)
     const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false' // Default to true for backward compatibility
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
-    const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
     const isTestingMode = url.searchParams.get('testing') === 'true'
@@ -37,7 +36,7 @@ serve(async (req) => {
     console.log(`  Environment: ${isProduction ? '🌐 PRODUCTION' : '💻 DEVELOPMENT'}`);
     console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
     console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
-    console.log(`  Generate PDF: ${isPDFGenerationEnabled ? '✅' : '❌'}`);
+    console.log('  Generate PDF: ❌ (filled GAF/pet PDFs run on admin PENDING_REVIEW → documents transition)');
     console.log('  Send Email: ❌ (submit-form does not send workflow emails)');
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
@@ -90,22 +89,20 @@ serve(async (req) => {
     // Check if this is an update and compare data for changes (only if saving to database)
     let hasDataChanges = true;
     let existingData = null;
-    
+    let revertReadyForCheckinToPendingReview = false;
+
     if (isSaveToDatabaseEnabled && bookingId) {
       console.log('🔍 Checking for data changes...');
-      
-      // Fetch existing booking raw data (in database format)
+
       existingData = await DatabaseService.getRawData(bookingId);
-      
+
       if (existingData) {
-        // Compare new form data with existing data
         const comparison = compareFormData(formData, existingData);
         hasDataChanges = comparison.hasChanges;
-        
+
         if (!hasDataChanges) {
           console.log('ℹ️ No changes detected, skipping processing and redirecting to success page');
-          
-          // Return success without processing
+
           return new Response(
             JSON.stringify({
               success: true,
@@ -121,22 +118,31 @@ serve(async (req) => {
             }
           );
         }
-        
+
+        revertReadyForCheckinToPendingReview =
+          shouldRevertGuestFieldEditsToPendingReview(existingData.status) &&
+          shouldRevertReadyForCheckinToPendingReview(comparison.changedFields);
+
         console.log(`✅ Changes detected (${comparison.changedFields.length} fields), proceeding with update...`);
         console.log('Changed fields:', comparison.changedFields);
+        if (revertReadyForCheckinToPendingReview) {
+          console.log(
+            `↩️ ${existingData.status} + workflow-sensitive edits → status will revert to PENDING_REVIEW`,
+          );
+        }
       }
     } else if (!isSaveToDatabaseEnabled) {
       console.log('⚠️ Skipping change detection check (saveToDatabase=false)');
     }
-    
-    // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData, isSaveToDatabaseEnabled, isSaveImagesToStorageEnabled, isTestingMode)
 
-    let pdfBuffer = null
-    // Generate PDF if enabled
-    if (isPDFGenerationEnabled) {
-      pdfBuffer = await generatePDF(data, isTestingMode)
-    }
+    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } =
+      await DatabaseService.processFormData(
+        formData,
+        isSaveToDatabaseEnabled,
+        isSaveImagesToStorageEnabled,
+        isTestingMode,
+        revertReadyForCheckinToPendingReview,
+      );
 
     // IMPORTANT: submit-form never sends workflow emails.
     // GAF, booking acknowledgement, pet request, and parking broadcast are only

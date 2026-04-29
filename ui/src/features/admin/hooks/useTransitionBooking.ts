@@ -10,8 +10,12 @@ export type TransitionPayload = {
   security_deposit?: number | null;
   pet_fee?: number | null;
   parking_rate_guest?: number | null;
+  guest_additional_fee?: number | null;
   parking_rate_paid?: number | null;
+  parking_owner_email?: string | null;
   parking_endorsement_url?: string | null;
+  sd_additional_expense_items?: Array<{ label: string; amount: number }> | null;
+  sd_additional_profit_items?: Array<{ label: string; amount: number }> | null;
   sd_additional_expenses?: number[] | null;
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | null;
@@ -34,6 +38,7 @@ export type TransitionPayload = {
 
 export type DevControlFlags = {
   saveToDatabase?: boolean;
+  generatePdf?: boolean;
   updateGoogleCalendar?: boolean;
   updateGoogleSheets?: boolean;
   sendGafRequestEmail?: boolean;
@@ -96,9 +101,9 @@ export function useTransitionBooking() {
 
   return useMutation({
     mutationFn: callTransitionBooking,
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
-      qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+    onSuccess: async (_data, variables) => {
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }
@@ -134,9 +139,9 @@ export function useCancelBooking() {
       }
       return json;
     },
-    onSuccess: (_data, variables) => {
-      qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
-      qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+    onSuccess: async (_data, variables) => {
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(variables.bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }
@@ -183,11 +188,11 @@ export function useRunGmailPoll(bookingId?: string) {
       }
       return json as RunAutomationResult;
     },
-    onSuccess: () => {
-      if (bookingId) {
-        qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-        qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      }
+    onSuccess: async () => {
+      if (!bookingId) return;
+      // Await so mutateAsync does not resolve until detail + list refetches finish (avoids stale UI).
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }
@@ -215,11 +220,10 @@ export function useRunSdRefundCron(bookingId?: string) {
       }
       return json as RunAutomationResult;
     },
-    onSuccess: () => {
-      if (bookingId) {
-        qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-        qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      }
+    onSuccess: async () => {
+      if (!bookingId) return;
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }
@@ -254,11 +258,10 @@ export function useResendSdRefundFormEmail(bookingId?: string) {
       }
       return json;
     },
-    onSuccess: () => {
-      if (bookingId) {
-        qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-        qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
-      }
+    onSuccess: async () => {
+      if (!bookingId) return;
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }

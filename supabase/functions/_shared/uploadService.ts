@@ -1,4 +1,5 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { formatPublicUrl } from './utils.ts';
 
 /**
  * Sanitizes a filename for use as a Supabase Storage object key.
@@ -126,7 +127,7 @@ export class UploadService {
         .from(bucket)
         .getPublicUrl(storageKey);
 
-      return { url: publicUrl };
+      return { url: formatPublicUrl(publicUrl) };
     }
 
     // Otherwise, upload the new file using sanitized key
@@ -146,6 +147,25 @@ export class UploadService {
       .getPublicUrl(storageKey);
 
     console.log(`${bucket} uploaded successfully`);
-    return { url: publicUrl };
+    return { url: formatPublicUrl(publicUrl) };
+  }
+
+  /** Upload raw PDF bytes (e.g. orchestrator-generated GAF / pet request forms). */
+  static async uploadPdfBytes(
+    bucket: string,
+    objectPath: string,
+    bytes: Uint8Array,
+  ): Promise<string> {
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const { error } = await this.supabase.storage.from(bucket).upload(objectPath, blob, {
+      contentType: 'application/pdf',
+      upsert: true,
+    });
+    if (error) {
+      console.error(`[UploadService] PDF upload to ${bucket}/${objectPath}:`, error);
+      throw new Error(`Failed to upload PDF to ${bucket}: ${error.message}`);
+    }
+    const { data: { publicUrl } } = this.supabase.storage.from(bucket).getPublicUrl(objectPath);
+    return formatPublicUrl(publicUrl);
   }
 }

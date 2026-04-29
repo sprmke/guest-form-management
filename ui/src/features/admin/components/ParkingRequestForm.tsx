@@ -18,23 +18,8 @@ import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { cn } from '@/lib/utils';
 
-const requiredNumber = (fieldLabel: string) =>
-  z.preprocess(
-    (value) => {
-      if (value == null) return undefined;
-      if (typeof value === 'string' && value.trim() === '') return undefined;
-      return Number(value);
-    },
-    z
-      .number({
-        required_error: `${fieldLabel} is required`,
-        invalid_type_error: `${fieldLabel} must be a valid number`,
-      })
-      .min(0, `${fieldLabel} must be ≥ 0`),
-  );
-
 const schema = z.object({
-  parking_rate_paid: requiredNumber('Paid Parking Rate'),
+  parking_rate_paid: z.coerce.number().min(0, 'Enter a rate ≥ 0'),
   parking_endorsement_url: z
     .string()
     .url('Please upload a parking endorsement image'),
@@ -44,15 +29,22 @@ export type ParkingRequestValues = z.infer<typeof schema>;
 
 type Props = {
   booking: BookingRow;
+  initialDraft?: ParkingRequestValues | null;
   onChange: (values: ParkingRequestValues | null) => void;
 };
 
-export function ParkingRequestForm({ booking, onChange }: Props) {
+export function ParkingRequestForm({
+  booking,
+  initialDraft = null,
+  onChange,
+}: Props) {
   const uploadMut = useUploadBookingAsset();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [currentEndorsementUrl, setCurrentEndorsementUrl] = useState(
-    booking.parking_endorsement_url ?? '',
-  );
+  const [currentEndorsementUrl, setCurrentEndorsementUrl] = useState(() => {
+    if (initialDraft?.parking_endorsement_url)
+      return initialDraft.parking_endorsement_url;
+    return booking.parking_endorsement_url ?? '';
+  });
 
   const {
     register,
@@ -63,8 +55,13 @@ export function ParkingRequestForm({ booking, onChange }: Props) {
   } = useForm<ParkingRequestValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      parking_rate_paid: (booking.parking_rate_paid as number) || undefined,
-      parking_endorsement_url: booking.parking_endorsement_url ?? '',
+      parking_rate_paid:
+        initialDraft?.parking_rate_paid ??
+        ((booking.parking_rate_paid as number) || undefined),
+      parking_endorsement_url:
+        initialDraft?.parking_endorsement_url ??
+        booking.parking_endorsement_url ??
+        '',
     },
     mode: 'onChange',
   });
@@ -108,17 +105,17 @@ export function ParkingRequestForm({ booking, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+      <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
         Parking Details
       </p>
 
-      <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+      <div className="px-3 py-2 text-xs text-amber-800 bg-amber-50 rounded-md ring-1 ring-amber-200">
         Parking fee is <strong>non-refundable</strong> and bookings with parking
         cannot be rescheduled after this step.
       </div>
 
       <Field
-        label="Paid Parking Rate (₱)"
+        label="Paid Parking Rate"
         description="Exact parking amount paid to parking owner"
         error={errors.parking_rate_paid?.message}
       >
@@ -143,16 +140,16 @@ export function ParkingRequestForm({ booking, onChange }: Props) {
               href={currentEndorsementUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 hover:border-blue-300 transition-colors"
+              className="flex gap-2 items-center p-2 bg-white rounded-lg border transition-colors group border-slate-200 hover:border-blue-300"
             >
-              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
+              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-slate-100">
                 <img
                   src={currentEndorsementUrl}
                   alt="Parking endorsement"
-                  className="h-full w-full object-cover"
+                  className="object-cover w-full h-full"
                 />
               </div>
-              <div className="min-w-0 flex-1">
+              <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-slate-700">
                   Current endorsement
                 </p>
@@ -163,7 +160,7 @@ export function ParkingRequestForm({ booking, onChange }: Props) {
               </div>
             </a>
           ) : (
-            <div className="flex h-14 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-xs text-slate-500">
+            <div className="flex justify-center items-center h-14 text-xs bg-white rounded-lg border border-dashed border-slate-300 text-slate-500">
               <span className="inline-flex items-center gap-1.5">
                 <FileImage className="size-3.5" />
                 No parking endorsement uploaded

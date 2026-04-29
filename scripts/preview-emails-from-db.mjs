@@ -104,7 +104,8 @@ const EMAIL_SHELL_STYLE_VARS = {
     'width:100%;border-collapse:separate;border-spacing:0;background-color:#f1f5f9;border-radius:16px;overflow:hidden;',
   emailStepNumCellStyle:
     "width:68px;min-width:68px;padding:20px 14px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;",
-  emailStepNumTextStyle: 'font-size:32px;font-weight:700;line-height:1;color:#5f954c;display:inline-block;',
+  emailStepNumTextStyle:
+    'font-size:32px;font-weight:700;line-height:1;color:#5f954c;display:inline-block;',
   emailStepBodyCellStyle:
     "padding:18px 18px 18px 16px;vertical-align:middle;background-color:#f1f5f9;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
   emailStepBodyPStyle:
@@ -151,7 +152,12 @@ function formatDateForEmail(dateStr) {
   }
 
   if (Number.isNaN(d.getTime())) return s;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
@@ -561,7 +567,9 @@ function renderAll(booking, meta, emailLogoUrl) {
 
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
-  const displayPetVaccinationDate = formatDateForEmail(booking.pet_vaccination_date);
+  const displayPetVaccinationDate = formatDateForEmail(
+    booking.pet_vaccination_date,
+  );
 
   const gafTpl = loadTemplate('gaf-request');
   const gafHtml = replacePlaceholders(

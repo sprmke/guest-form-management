@@ -13,7 +13,7 @@
     "preview:emails": "npm run preview:emails:db && npm run preview:emails:serve",
     "dev": "./dev.sh",
     "dev:ui": "cd ui && npm run dev",
-    "dev:api": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest functions serve submit-form --env-file ./supabase/.env.local",
+    "dev:api": "supabase functions serve submit-form --env-file ./supabase/.env.local",
     "start:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest start",
     "status:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest status",
     "stop:supabase": "./scripts/run-with-ui-dev-env.sh npx --yes supabase@latest stop",

@@ -6,13 +6,15 @@
  *   Right (sticky 344px): WorkflowPanel
  *
  * Admin can switch the left column to an edit form via the "Edit" button.
- * If the booking is READY_FOR_CHECKIN, saving reverts status → PENDING_REVIEW.
+ * While the booking is in Pending documents (GAF / parking / pet) or Ready for check-in,
+ * saving workflow-sensitive guest fields reverts status → PENDING_REVIEW; replacing
+ * payment/ID/pet docs via upload does too.
  *
  * Design: dense-operational, status-color coded, mobile-first.
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -40,6 +42,7 @@ import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { WorkflowPanel } from '@/features/admin/components/WorkflowPanel';
 import { BookingEditForm } from '@/features/admin/components/BookingEditForm';
+import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice';
 import { useBooking } from '@/features/admin/hooks/useBooking';
 import {
   formatBookingDate,
@@ -48,12 +51,11 @@ import {
 } from '@/features/admin/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { BookingRow } from '@/features/admin/lib/types';
-import { supabase } from '@/lib/supabaseClient';
 import {
   normalizeStoragePublicUrl,
-  parseStorageUrl,
-  PRIVATE_STORAGE_BUCKETS,
+  resolveAssetUrlForBrowser,
 } from '@/features/admin/lib/storageUrls';
+import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/admin/lib/bookingStatus';
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -128,103 +130,115 @@ export function BookingDetailPage() {
           )}
 
           {booking && (
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-              {/* ── Left column ───────────────────────────────────────────── */}
-              <div className="flex-1 min-w-0 space-y-4">
-                {/* Booking header */}
-                <BookingHeader booking={booking} />
-
-                {/* Edit mode */}
-                {editMode ? (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
-                    <div className="mb-4 flex items-center justify-between">
-                      <h2 className="text-sm font-bold text-slate-800">
-                        Edit Booking Details
-                      </h2>
-                      <button
-                        onClick={() => setEditMode(false)}
-                        className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800 transition-colors"
-                      >
-                        <X className="size-3.5" />
-                        Cancel
-                      </button>
-                    </div>
-                    <BookingEditForm
-                      booking={booking}
-                      onClose={() => setEditMode(false)}
-                      onSaved={() => setEditMode(false)}
+            <>
+              {shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
+                !editMode && (
+                  <div className="mb-4">
+                    <ReadyForCheckinSensitiveFieldsNotice
+                      show
+                      hasSensitiveEdits={false}
                     />
                   </div>
-                ) : (
-                  /* View mode info cards */
-                  <>
-                    <GuestInfoCard
-                      booking={booking}
-                      onPreview={handlePreview}
-                    />
-                    <AdditionalGuestsCard booking={booking} />
-                    <StayDetailsCard booking={booking} />
-                    {booking.need_parking && (
-                      <ParkingCard
-                        booking={booking}
-                        onPreview={handlePreview}
-                      />
-                    )}
-                    {booking.has_pets && (
-                      <PetsCard booking={booking} onPreview={handlePreview} />
-                    )}
-                    {(booking.find_us || booking.guest_special_requests) && (
-                      <OtherInfoCard booking={booking} />
-                    )}
-                    {booking.booking_rate != null && (
-                      <PricingCard
-                        booking={booking}
-                        onPreview={handlePreview}
-                      />
-                    )}
-                    <DocumentsCard
-                      booking={booking}
-                      onPreview={handlePreview}
-                    />
-                  </>
                 )}
-              </div>
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+                {/* ── Left column ───────────────────────────────────────────── */}
+                <div className="flex-1 min-w-0 space-y-4">
+                  {/* Booking header */}
+                  <BookingHeader booking={booking} />
 
-              {/* ── Right column — WorkflowPanel ───────────────────────────── */}
-              <div className="w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]">
-                <WorkflowPanel booking={booking} />
-
-                {/* Booking meta */}
-                <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                  <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-                    Booking Meta
-                  </p>
-                  <div className="space-y-1.5 text-xs">
-                    <MetaRow label="Booking ID">
-                      <span className="font-mono text-[11px] text-slate-600 break-all">
-                        {booking.id}
-                      </span>
-                    </MetaRow>
-                    <MetaRow label="Created">
-                      {formatRelative(booking.created_at)}
-                    </MetaRow>
-                    {booking.updated_at && (
-                      <MetaRow label="Updated">
-                        {formatRelative(booking.updated_at)}
-                      </MetaRow>
-                    )}
-                    {booking.is_test_booking && (
-                      <div className="mt-2 flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1.5 ring-1 ring-violet-200">
-                        <TestTube2 className="size-3.5 shrink-0 text-violet-600" />
-                        <span className="text-[11px] font-semibold text-violet-700">
-                          Test Booking
-                        </span>
+                  {/* Edit mode */}
+                  {editMode ? (
+                    <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 className="text-sm font-bold text-slate-800">
+                          Edit Booking Details
+                        </h2>
+                        <button
+                          onClick={() => setEditMode(false)}
+                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800 transition-colors"
+                        >
+                          <X className="size-3.5" />
+                          Cancel
+                        </button>
                       </div>
-                    )}
+                      <BookingEditForm
+                        booking={booking}
+                        onClose={() => setEditMode(false)}
+                        onSaved={() => setEditMode(false)}
+                        onPreview={handlePreview}
+                      />
+                    </div>
+                  ) : (
+                    /* View mode info cards */
+                    <>
+                      <GuestInfoCard
+                        booking={booking}
+                        onPreview={handlePreview}
+                      />
+                      <AdditionalGuestsCard booking={booking} />
+                      <StayDetailsCard booking={booking} />
+                      {booking.need_parking && (
+                        <ParkingCard
+                          booking={booking}
+                          onPreview={handlePreview}
+                        />
+                      )}
+                      {booking.has_pets && (
+                        <PetsCard booking={booking} onPreview={handlePreview} />
+                      )}
+                      {(booking.find_us || booking.guest_special_requests) && (
+                        <OtherInfoCard booking={booking} />
+                      )}
+                      {booking.booking_rate != null && (
+                        <PricingCard
+                          booking={booking}
+                          onPreview={handlePreview}
+                        />
+                      )}
+                      <DocumentsCard
+                        booking={booking}
+                        onPreview={handlePreview}
+                      />
+                    </>
+                  )}
+                </div>
+
+                {/* ── Right column — WorkflowPanel ───────────────────────────── */}
+                <div className="w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]">
+                  <WorkflowPanel key={booking.id} booking={booking} />
+
+                  {/* Booking meta */}
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+                      Booking Meta
+                    </p>
+                    <div className="space-y-1.5 text-xs">
+                      <MetaRow label="Booking ID">
+                        <span className="font-mono text-[11px] text-slate-600 break-all">
+                          {booking.id}
+                        </span>
+                      </MetaRow>
+                      <MetaRow label="Created">
+                        {formatRelative(booking.created_at)}
+                      </MetaRow>
+                      {booking.updated_at && (
+                        <MetaRow label="Updated">
+                          {formatRelative(booking.updated_at)}
+                        </MetaRow>
+                      )}
+                      {booking.is_test_booking && (
+                        <div className="mt-2 flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1.5 ring-1 ring-violet-200">
+                          <TestTube2 className="size-3.5 shrink-0 text-violet-600" />
+                          <span className="text-[11px] font-semibold text-violet-700">
+                            Test Booking
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -630,32 +644,6 @@ function getDocType(url: string): 'image' | 'pdf' | 'file' {
   return 'file';
 }
 
-const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
-
-async function resolveAssetUrlForBrowser(url: string): Promise<string> {
-  const normalized = normalizeStoragePublicUrl(url) ?? url;
-  const loc = parseStorageUrl(normalized);
-  if (!loc || !PRIVATE_STORAGE_BUCKETS.has(loc.bucket)) return normalized;
-
-  const { data } = await supabase.auth.getSession();
-  const jwt = data.session?.access_token;
-  if (!jwt) throw new Error('No active admin session');
-
-  const res = await fetch(`${FUNCTIONS_URL}/get-booking-asset-url`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${jwt}`,
-    },
-    body: JSON.stringify({ url: normalized }),
-  });
-  const json = await res.json();
-  if (!res.ok || !json.success || !json.data?.url) {
-    throw new Error(json.error ?? 'Failed to resolve asset URL');
-  }
-  return json.data.url as string;
-}
-
 function DocPreview({
   label,
   url,
@@ -665,13 +653,19 @@ function DocPreview({
   url: string;
   onPreview: (label: string, rawUrl: string) => void;
 }) {
-  const type = getDocType(url);
+  /** Browser-reachable URL (DB may still store `http://kong:8000/...` from edge uploads). */
+  const displayUrl = normalizeStoragePublicUrl(url) ?? url;
+  const type = getDocType(displayUrl);
   const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [url]);
 
   if (type === 'image' && !imgError) {
     return (
       <a
-        href={url}
+        href={displayUrl}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
@@ -682,7 +676,7 @@ function DocPreview({
       >
         <div className="relative aspect-video bg-slate-100 overflow-hidden">
           <img
-            src={url}
+            src={displayUrl}
             alt={label}
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={() => setImgError(true)}
@@ -705,7 +699,7 @@ function DocPreview({
   if (type === 'pdf') {
     return (
       <a
-        href={url}
+        href={displayUrl}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
@@ -735,7 +729,7 @@ function DocPreview({
 
   return (
     <a
-      href={url}
+      href={displayUrl}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => {

@@ -57,7 +57,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - Entry: `supabase/functions/submit-form/index.ts`
 - Shared services: `supabase/functions/_shared/{databaseService,calendarService,sheetsService,emailService,pdfService,uploadService}.ts`
 - Field-level diff for no-op updates: `compareFormData` in `_shared/utils.ts` — **must** stay in sync with DB columns and form field names.
-- Under the **new flow**, `submit-form` only saves DB + storage + PDF. Email/calendar/sheet side effects move to `transition-booking`. See `booking-workflow.mdc`.
+- Under the **new flow**, `submit-form` only saves DB + storage (guest uploads). Filled GAF / pet **request** PDFs are generated in `workflowOrchestrator` when admins move **`PENDING_REVIEW` → initial documents** (`generatePdf` dev control), then attached to Azure request emails. Email/calendar/sheet side effects otherwise move to `transition-booking`. See `booking-workflow.mdc`.
 
 ## When touching booking status, admin UI, emails, calendar, sheets
 

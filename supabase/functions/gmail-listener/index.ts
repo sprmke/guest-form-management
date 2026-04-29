@@ -17,6 +17,8 @@
  *                                (set by `npm run gmail-auth` → supabase/.env.local)
  *   GMAIL_OAUTH_TOKEN_JSON     — Token JSON with refresh_token
  *                                (set by `npm run gmail-auth` after browser sign-in)
+ *   PERMIT_APPROVER_EMAIL      — Permit approver sender email(s) allowed for
+ *                                GAF/Pet approval replies. Comma-separated.
  *   SUPABASE_URL               — set automatically by Supabase
  *   SUPABASE_SERVICE_ROLE_KEY  — set automatically by Supabase
  *
@@ -29,6 +31,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
+import { formatPublicUrl } from '../_shared/utils.ts';
 
 // ─── Gmail OAuth helpers ───────────────────────────────────────────────────────
 //
@@ -212,10 +215,42 @@ function getHeader(headers: Array<{ name: string; value: string }> | undefined, 
   return h?.value ?? '';
 }
 
+function extractEmailAddress(fromHeader: string): string {
+  if (!fromHeader) return '';
+  const bracketMatch = fromHeader.match(/<([^>]+)>/);
+  if (bracketMatch?.[1]) return bracketMatch[1].trim().toLowerCase();
+  return fromHeader.trim().toLowerCase();
+}
+
+function permitApproverAllowList(): string[] {
+  const raw = (Deno.env.get('PERMIT_APPROVER_EMAIL') ?? '').trim();
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 type AttachmentInfo = {
   attachmentId: string;
   filename: string;
 };
+
+function normalizeAttachmentFilename(filename: string): string {
+  return filename
+    .toLowerCase()
+    .replace(/[ _-]+/g, '')
+    .trim();
+}
+
+function findApprovedAttachment(kind: ApprovalKind, attachments: AttachmentInfo[]): AttachmentInfo | undefined {
+  const accepted =
+    kind === 'gaf'
+      ? ['approvedgaf.pdf']
+      : ['approvedpet.pdf', 'approvedpetform.pdf', 'approvedgaf.pdf'];
+
+  return attachments.find((a) => accepted.includes(normalizeAttachmentFilename(a.filename)));
+}
 
 function collectAttachmentParts(part: any, out: AttachmentInfo[]): void {
   if (!part) return;
@@ -237,6 +272,29 @@ type ParsedApprovalSubject = {
   checkOutDate: string;  // MM-DD-YYYY
 };
 
+function toMmDdYyyy(date: Date): string {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = String(date.getFullYear());
+  return `${mm}-${dd}-${yyyy}`;
+}
+
+function parseDateTokenToDbFormat(raw: string): string | null {
+  const token = raw.trim();
+  if (/^\d{2}-\d{2}-\d{4}$/.test(token)) return token;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(token)) {
+    const [y, m, d] = token.split('-');
+    return `${m}-${d}-${y}`;
+  }
+
+  // Handles subjects like "May 13, 2026"
+  const parsed = new Date(token);
+  if (!Number.isNaN(parsed.getTime())) {
+    return toMmDdYyyy(parsed);
+  }
+  return null;
+}
+
 /**
  * Parse Azure approval email subject.
  *
@@ -251,17 +309,23 @@ function parseApprovalSubject(subject: string): ParsedApprovalSubject | null {
   // Check for required attachment keyword as a secondary guard — skipped here;
   // actual attachment presence is checked on the message parts.
 
-  const GAF_RE = /Monaco 2604 - GAF Request \((\d{2}-\d{2}-\d{4}) to (\d{2}-\d{2}-\d{4})\)/;
-  const PET_RE = /Monaco 2604 - Pet Request \((\d{2}-\d{2}-\d{4}) to (\d{2}-\d{2}-\d{4})\)/;
+  const GAF_RE = /Monaco 2604 - GAF Request \(([^)]+?)\s+to\s+([^)]+?)\)/i;
+  const PET_RE = /Monaco 2604 - Pet Request \(([^)]+?)\s+to\s+([^)]+?)\)/i;
 
   const gafMatch = subject.match(GAF_RE);
   if (gafMatch) {
-    return { kind: 'gaf', checkInDate: gafMatch[1], checkOutDate: gafMatch[2] };
+    const checkInDate = parseDateTokenToDbFormat(gafMatch[1]);
+    const checkOutDate = parseDateTokenToDbFormat(gafMatch[2]);
+    if (!checkInDate || !checkOutDate) return null;
+    return { kind: 'gaf', checkInDate, checkOutDate };
   }
 
   const petMatch = subject.match(PET_RE);
   if (petMatch) {
-    return { kind: 'pet', checkInDate: petMatch[1], checkOutDate: petMatch[2] };
+    const checkInDate = parseDateTokenToDbFormat(petMatch[1]);
+    const checkOutDate = parseDateTokenToDbFormat(petMatch[2]);
+    if (!checkInDate || !checkOutDate) return null;
+    return { kind: 'pet', checkInDate, checkOutDate };
   }
 
   return null;
@@ -341,14 +405,14 @@ async function recordProcessedEmail(params: {
 async function findBookingForApproval(params: {
   checkInDate: string;
   checkOutDate: string;
-  expectedStatus: BookingStatus;
+  expectedStatuses: BookingStatus[];
 }): Promise<{ id: string; [key: string]: any } | null> {
   const { data, error } = await supabaseAdmin()
     .from('guest_submissions')
     .select('*')
     .eq('check_in_date', params.checkInDate)
     .eq('check_out_date', params.checkOutDate)
-    .eq('status', params.expectedStatus);
+    .in('status', params.expectedStatuses);
 
   if (error) throw new Error(`DB lookup failed: ${error.message}`);
 
@@ -356,7 +420,7 @@ async function findBookingForApproval(params: {
 
   if (data.length > 1) {
     const err = new Error(
-      `Ambiguous: ${data.length} bookings match ${params.checkInDate} → ${params.checkOutDate} with status ${params.expectedStatus}`,
+      `Ambiguous: ${data.length} bookings match ${params.checkInDate} → ${params.checkOutDate} with statuses ${params.expectedStatuses.join(', ')}`,
     );
     (err as any).ambiguous = true;
     (err as any).matchCount = data.length;
@@ -390,9 +454,9 @@ async function uploadApprovedPdf(params: {
 
   if (error) throw new Error(`Storage upload failed: ${error.message}`);
 
-  // Return the storage path (not signed URL — calendarService/emailService will handle access)
   const { data } = sb.storage.from(bucket).getPublicUrl(filename);
-  return data?.publicUrl ?? filename;
+  const raw = data?.publicUrl ?? filename;
+  return raw.startsWith('http') ? formatPublicUrl(raw) : raw;
 }
 
 // ─── Message processing ────────────────────────────────────────────────────────
@@ -404,8 +468,24 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
   kind?: ApprovalKind;
 }> {
   // 1. Fetch full message (format=full required to see payload.parts with attachments)
-  const full = await getFullMessage(accessToken, messageId);
+  let full: any;
+  try {
+    full = await getFullMessage(accessToken, messageId);
+  } catch (e: unknown) {
+    const status = (e as { status?: number })?.status;
+    // Gmail users.history often lists message IDs that no longer exist as full messages
+    // (deleted drafts, consolidated thread IDs, or race with immediate delete). Not an error.
+    if (status === 404) {
+      console.warn(
+        `[gmail-listener] Message ${messageId.slice(0, 16)}… GET /messages/… returned 404 (gone or inaccessible) — skipping`,
+      );
+      return { action: 'skipped', reason: 'gmail_message_not_found_404', kind: 'gaf' };
+    }
+    throw e;
+  }
   const subject = getHeader(full.payload?.headers, 'Subject');
+  const fromHeader = getHeader(full.payload?.headers, 'From');
+  const senderEmail = extractEmailAddress(fromHeader);
 
   console.log(`[gmail-listener] Message ${messageId.slice(0, 16)}… Subject: ${subject.slice(0, 80)}`);
 
@@ -415,23 +495,40 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
     return { action: 'skipped', reason: 'subject_no_match', kind: 'gaf' };
   }
 
-  // 3. Find APPROVED GAF.pdf attachment
+  // 2b. Enforce sender allow-list for permit approvers when configured.
+  // If env is empty, listener remains permissive for backwards compatibility.
+  const allowedApprovers = permitApproverAllowList();
+  if (allowedApprovers.length > 0 && !allowedApprovers.includes(senderEmail)) {
+    console.warn(
+      `[gmail-listener] Sender not in PERMIT_APPROVER_EMAIL allow-list: ` +
+      `"${senderEmail || fromHeader || 'unknown'}"`,
+    );
+    return { action: 'skipped', reason: `sender_not_allowed:${senderEmail || 'unknown'}`, kind: parsed.kind };
+  }
+
+  // 3. Find approved attachment (kind-aware; tolerant filename variants)
   const attachments: AttachmentInfo[] = [];
   collectAttachmentParts(full.payload, attachments);
 
-  const approvedPdf = attachments.find(
-    (a) => a.filename.toLowerCase() === 'approved gaf.pdf',
-  );
+  const approvedPdf = findApprovedAttachment(parsed.kind, attachments);
 
   if (!approvedPdf) {
-    return { action: 'skipped', reason: 'no_approved_gaf_pdf_attachment', kind: parsed.kind };
+    return {
+      action: 'skipped',
+      reason: parsed.kind === 'pet'
+        ? 'no_approved_pet_attachment'
+        : 'no_approved_gaf_attachment',
+      kind: parsed.kind,
+    };
   }
 
   console.log(`[gmail-listener] Found approval (${parsed.kind}): ${parsed.checkInDate} → ${parsed.checkOutDate}`);
 
   // 4. Determine expected status for the DB lookup
-  const expectedStatus: BookingStatus =
-    parsed.kind === 'gaf' ? 'PENDING_GAF' : 'PENDING_PET_REQUEST';
+  const expectedStatuses: BookingStatus[] =
+    parsed.kind === 'gaf'
+      ? ['PENDING_DOCUMENTS', 'PENDING_GAF']
+      : ['PENDING_DOCUMENTS', 'PENDING_PET_REQUEST'];
 
   // 5. Find the booking
   let booking: { id: string; [key: string]: any } | null;
@@ -439,7 +536,7 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
     booking = await findBookingForApproval({
       checkInDate: parsed.checkInDate,
       checkOutDate: parsed.checkOutDate,
-      expectedStatus,
+      expectedStatuses,
     });
   } catch (e: any) {
     if (e?.ambiguous) {
@@ -451,9 +548,9 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
 
   if (!booking) {
     console.warn(
-      `[gmail-listener] No ${expectedStatus} booking found for dates ${parsed.checkInDate} → ${parsed.checkOutDate}`,
+      `[gmail-listener] No ${expectedStatuses.join(' or ')} booking found for dates ${parsed.checkInDate} → ${parsed.checkOutDate}`,
     );
-    return { action: 'skipped', reason: `no_booking_found_for_${expectedStatus}`, kind: parsed.kind };
+    return { action: 'skipped', reason: `no_booking_found_for_${expectedStatuses.join('_or_')}`, kind: parsed.kind };
   }
 
   const bookingId = booking.id as string;
@@ -466,27 +563,20 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
   const pdfUrl = await uploadApprovedPdf({ kind: parsed.kind, bookingId, bytes });
   console.log(`[gmail-listener] Uploaded PDF → ${pdfUrl}`);
 
-  // 8. Determine next status
-  let toStatus: BookingStatus;
+  // 8. Mark the corresponding pending-document sub-status as complete
+  const toStatus: BookingStatus = 'PENDING_DOCUMENTS';
   const payload: Record<string, any> = {};
 
   if (parsed.kind === 'gaf') {
     payload.approved_gaf_pdf_url = pdfUrl;
-    // Next state depends on booking's parking/pet flags
-    if (booking.need_parking) {
-      toStatus = 'PENDING_PARKING_REQUEST';
-    } else if (booking.has_pets) {
-      toStatus = 'PENDING_PET_REQUEST';
-    } else {
-      toStatus = 'READY_FOR_CHECKIN';
-    }
+    payload.document_completion_target = 'PENDING_GAF';
   } else {
     // pet approval
     payload.approved_pet_pdf_url = pdfUrl;
-    toStatus = 'READY_FOR_CHECKIN';
+    payload.document_completion_target = 'PENDING_PET_REQUEST';
   }
 
-  console.log(`[gmail-listener] Transitioning booking ${bookingId}: ${expectedStatus} → ${toStatus}`);
+  console.log(`[gmail-listener] Marking document sub-status complete for booking ${bookingId}: ${payload.document_completion_target}`);
 
   // 9. Call orchestrator (no dev controls — listener runs all side effects)
   await WorkflowOrchestrator.transition(
@@ -495,13 +585,14 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
     payload,
     {
       saveToDatabase: true,
+      generatePdf: false,
       updateGoogleCalendar: true,
       updateGoogleSheets: true,
       sendGafRequestEmail: false,          // GAF/pet emails already sent; don't resend
       sendParkingBroadcastEmail: false,    // parking broadcast already sent
       sendPetRequestEmail: false,          // pet request already sent
-      sendBookingAcknowledgementEmail: false, // already sent at PENDING_GAF step
-      sendReadyForCheckinEmail: toStatus === 'READY_FOR_CHECKIN', // only send if going to READY
+      sendBookingAcknowledgementEmail: false, // already sent at PENDING_DOCUMENTS step
+      sendReadyForCheckinEmail: false,
     },
     false, // manual=false — listener-driven transition
   );

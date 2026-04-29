@@ -12,7 +12,7 @@
  */
 
 import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { formatMoney } from '@/features/admin/lib/formatters';
@@ -31,6 +31,8 @@ export type ReviewPricingValues = z.infer<typeof schema>;
 
 type Props = {
   booking: BookingRow;
+  /** Last valid values from this session when the sub-form unmounts (e.g. pipeline step change). */
+  initialDraft?: ReviewPricingValues | null;
   onChange: (values: ReviewPricingValues | null) => void;
 };
 
@@ -41,7 +43,11 @@ const DEFAULT_SECURITY_DEPOSIT = 1500;
 const DEFAULT_PET_FEE = 300;
 const DEFAULT_PARKING_FEE = 400;
 
-export function ReviewPricingForm({ booking, onChange }: Props) {
+export function ReviewPricingForm({
+  booking,
+  initialDraft = null,
+  onChange,
+}: Props) {
   const computedDefaultRate = computeDefaultBookingRate(booking);
 
   const {
@@ -52,37 +58,29 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
     trigger,
   } = useForm<ReviewPricingValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      booking_rate:
-        toNullableNumber(booking.booking_rate) ??
-        computedDefaultRate ??
-        undefined,
-      down_payment:
-        toNullableNumber(booking.down_payment) ?? DEFAULT_DOWN_PAYMENT,
-      security_deposit:
-        toNullableNumber(booking.security_deposit) ?? DEFAULT_SECURITY_DEPOSIT,
-      pet_fee: toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE,
-      parking_rate_guest:
-        toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE,
-      guest_additional_fee:
-        toNullableNumber(booking.guest_additional_fee) ?? 0,
-    },
+    defaultValues: buildPricingDefaultValues(
+      booking,
+      computedDefaultRate,
+      initialDraft,
+    ),
     mode: 'onChange',
   });
 
-  const bookingRate = watch('booking_rate') ?? 0;
-  const downPayment = watch('down_payment') ?? 0;
-  const securityDeposit = watch('security_deposit') ?? 0;
-  const petFee = watch('pet_fee') ?? 0;
-  const parkingFee = watch('parking_rate_guest') ?? 0;
-  const additionalFee = watch('guest_additional_fee') ?? 0;
+  // `watch()` often yields strings from <input type="number"> — coerce before math
+  // or `n + "700"` becomes string concat (e.g. 3499 + "700" → "3499700").
+  const bookingRate = toNullableNumber(watch('booking_rate')) ?? 0;
+  const downPayment = toNullableNumber(watch('down_payment')) ?? 0;
+  const securityDeposit = toNullableNumber(watch('security_deposit')) ?? 0;
+  const petFee = toNullableNumber(watch('pet_fee')) ?? 0;
+  const parkingFee = toNullableNumber(watch('parking_rate_guest')) ?? 0;
+  const additionalFee = toNullableNumber(watch('guest_additional_fee')) ?? 0;
   const totalGuestBalance =
-    (bookingRate || 0) -
-    (downPayment || 0) +
-    (securityDeposit || 0) +
-    (petFee || 0) +
-    (parkingFee || 0) +
-    (additionalFee || 0);
+    bookingRate -
+    downPayment +
+    securityDeposit +
+    petFee +
+    parkingFee +
+    additionalFee;
 
   useEffect(() => {
     if (isValid) {
@@ -90,7 +88,15 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
     } else {
       onChange(null);
     }
-  }, [bookingRate, downPayment, securityDeposit, petFee, parkingFee, additionalFee, isValid]);
+  }, [
+    bookingRate,
+    downPayment,
+    securityDeposit,
+    petFee,
+    parkingFee,
+    additionalFee,
+    isValid,
+  ]);
 
   return (
     <div className="space-y-3">
@@ -99,7 +105,7 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
       </p>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Booking Rate (₱)" error={errors.booking_rate?.message}>
+        <Field label="Booking Rate" error={errors.booking_rate?.message}>
           <input
             type="number"
             min={0}
@@ -114,7 +120,7 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
           />
         </Field>
 
-        <Field label="Down Payment (₱)" error={errors.down_payment?.message}>
+        <Field label="Down Payment" error={errors.down_payment?.message}>
           <input
             type="number"
             min={0}
@@ -130,7 +136,7 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
         </Field>
 
         <Field
-          label="Security Deposit (₱)"
+          label="Security Deposit"
           error={errors.security_deposit?.message}
         >
           <input
@@ -143,7 +149,7 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
           />
         </Field>
 
-        <Field label="Pet Fee (₱)" error={errors.pet_fee?.message}>
+        <Field label="Pet Fee" error={errors.pet_fee?.message}>
           <input
             type="number"
             min={0}
@@ -155,7 +161,8 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
         </Field>
 
         <Field
-          label="Parking Fee (₱)"
+          label="Parking Fee"
+          helpText="Amount charged to the guest for parking"
           error={errors.parking_rate_guest?.message}
         >
           <input
@@ -169,7 +176,8 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
         </Field>
 
         <Field
-          label="Additional fee (early check-in, late check-out, surprise decor, etc.) (₱)"
+          label="Additional fee"
+          helpText="Early check-in, late check-out, surprise decor, etc."
           error={errors.guest_additional_fee?.message}
         >
           <input
@@ -215,10 +223,13 @@ function inputClass(hasError: boolean) {
 
 function Field({
   label,
+  helpText,
   error,
   children,
 }: {
   label: string;
+  /** Shown below the input, muted (not part of the label). */
+  helpText?: string;
   error?: string;
   children: React.ReactNode;
 }) {
@@ -226,9 +237,38 @@ function Field({
     <div className="space-y-1">
       <label className="block text-xs text-slate-600">{label}</label>
       {children}
+      {helpText && (
+        <p className="text-[10.5px] leading-snug text-slate-500">{helpText}</p>
+      )}
       {error && <p className="text-[10px] text-red-600">{error}</p>}
     </div>
   );
+}
+
+function buildPricingDefaultValues(
+  booking: BookingRow,
+  computedDefaultRate: number | null,
+  initialDraft: ReviewPricingValues | null | undefined,
+): DefaultValues<ReviewPricingValues> {
+  const fromBooking: DefaultValues<ReviewPricingValues> = {
+    booking_rate:
+      toNullableNumber(booking.booking_rate) ??
+      computedDefaultRate ??
+      undefined,
+    down_payment:
+      toNullableNumber(booking.down_payment) ?? DEFAULT_DOWN_PAYMENT,
+    security_deposit:
+      toNullableNumber(booking.security_deposit) ?? DEFAULT_SECURITY_DEPOSIT,
+    pet_fee: toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE,
+    parking_rate_guest:
+      toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE,
+    guest_additional_fee: toNullableNumber(booking.guest_additional_fee) ?? 0,
+  };
+  if (!initialDraft) return fromBooking;
+  return {
+    ...fromBooking,
+    ...initialDraft,
+  } satisfies DefaultValues<ReviewPricingValues>;
 }
 
 function toNullableNumber(value: unknown): number | null {

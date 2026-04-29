@@ -171,7 +171,7 @@ export class SheetsService {
    * Updates (or creates if missing) the sheet row for a booking.
    * Called by the orchestrator on every transition.
    *
-   * - If an existing row is found → update AK–AW columns with new status + workflow fields.
+   * - If an existing row is found → update AK–AX columns with new status + workflow fields.
    * - If no row is found and `booking` is provided → append a full new row.
    * - If credentials are missing → skip gracefully.
    *
@@ -196,6 +196,7 @@ export class SheetsService {
       sd_refund_amount?: number | null;
       sd_refund_receipt_url?: string | null;
       status_updated_at?: string | null;
+      guest_additional_fee?: number | null;
     } = {},
     booking?: any,
   ): Promise<{ success: boolean; skipped?: boolean; created?: boolean }> {
@@ -249,9 +250,9 @@ export class SheetsService {
 
       const { rowIndex } = existingRow;
 
-      // Update AK–AW columns on the existing row
+      // Update AK–AX columns on the existing row
       const akUpdate = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/AK${rowIndex}:AW${rowIndex}?valueInputOption=USER_ENTERED`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/AK${rowIndex}:AX${rowIndex}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: {
@@ -273,6 +274,7 @@ export class SheetsService {
               workflowFields.sd_refund_amount?.toString() ?? '',    // AU: sd_refund_amount
               workflowFields.sd_refund_receipt_url ?? '',           // AV: sd_refund_receipt_url
               workflowFields.status_updated_at ?? new Date().toISOString(), // AW: status_updated_at
+              workflowFields.guest_additional_fee?.toString() ?? '', // AX: guest_additional_fee
             ]],
           }),
         },
@@ -293,7 +295,7 @@ export class SheetsService {
   }
 
   /**
-   * Formats a full sheet row (A–AW) from a raw DB booking row.
+   * Formats a full sheet row (A–AX) from a raw DB booking row.
    * Used when appending a brand-new row for a booking that has no prior sheet entry.
    */
   private static formatDbRowForSheet(
@@ -312,6 +314,7 @@ export class SheetsService {
       sd_refund_amount?: number | null;
       sd_refund_receipt_url?: string | null;
       status_updated_at?: string | null;
+      guest_additional_fee?: number | null;
     } = {},
   ): string[] {
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
@@ -370,6 +373,7 @@ export class SheetsService {
       workflowFields.sd_refund_amount?.toString() ?? '',           // AU: sd_refund_amount
       workflowFields.sd_refund_receipt_url ?? '',                  // AV: sd_refund_receipt_url
       workflowFields.status_updated_at ?? new Date().toISOString(), // AW: status_updated_at
+      workflowFields.guest_additional_fee?.toString() ?? '',       // AX: guest_additional_fee
     ];
   }
 

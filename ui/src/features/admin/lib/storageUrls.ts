@@ -1,4 +1,4 @@
-import type { BookingRow } from '@/features/admin/lib/types';
+import { supabase } from '@/lib/supabaseClient';
 
 function deriveProjectBaseUrl(): string | null {
   const explicit = import.meta.env.VITE_SUPABASE_PROJECT_URL as
@@ -23,18 +23,16 @@ export const PRIVATE_STORAGE_BUCKETS = new Set([
   'sd-refund-receipts',
 ]);
 
-export function normalizeStoragePublicUrl(url: string | null | undefined): string | null | undefined {
+export function normalizeStoragePublicUrl(
+  url: string | null | undefined,
+): string | null | undefined {
   if (!url) return url;
   if (!PUBLIC_SUPABASE_BASE_URL) return url;
 
-  // Local Supabase sometimes returns docker-internal hostnames in public URLs.
-  // Replace them with the browser-reachable project URL.
   let normalized = url
     .replace(/^http:\/\/kong:8000/, PUBLIC_SUPABASE_BASE_URL)
     .replace(/^http:\/\/supabase_kong_[^/]+:8000/, PUBLIC_SUPABASE_BASE_URL);
 
-  // Repair legacy malformed links accidentally rewritten as:
-  // http://127.0.0.1:54321/functions/v1/storage/v1/object/...
   normalized = normalized.replace(
     /^https?:\/\/[^/]+\/functions\/v1\/storage\/v1\//,
     `${PUBLIC_SUPABASE_BASE_URL}/storage/v1/`,
@@ -56,21 +54,33 @@ export function parseStorageUrl(
   return { bucket, path: decodeURIComponent(rawPath) };
 }
 
-export function normalizeBookingStorageUrls(row: BookingRow): BookingRow {
-  return {
-    ...row,
-    valid_id_url: normalizeStoragePublicUrl(row.valid_id_url) ?? null,
-    payment_receipt_url: normalizeStoragePublicUrl(row.payment_receipt_url) ?? null,
-    pet_vaccination_url: normalizeStoragePublicUrl(row.pet_vaccination_url) ?? null,
-    pet_image_url: normalizeStoragePublicUrl(row.pet_image_url) ?? null,
-    pdf_url: normalizeStoragePublicUrl(row.pdf_url) ?? null,
-    parking_endorsement_url:
-      normalizeStoragePublicUrl(row.parking_endorsement_url) ?? null,
-    approved_gaf_pdf_url:
-      normalizeStoragePublicUrl(row.approved_gaf_pdf_url) ?? null,
-    approved_pet_pdf_url:
-      normalizeStoragePublicUrl(row.approved_pet_pdf_url) ?? null,
-    sd_refund_receipt_url:
-      normalizeStoragePublicUrl(row.sd_refund_receipt_url) ?? null,
-  };
+const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+/**
+ * Returns a URL the browser can load in `<img>` / a new tab.
+ * Public-bucket URLs are returned unchanged; private buckets get a short-lived
+ * signed URL via the `get-booking-asset-url` edge function.
+ */
+export async function resolveAssetUrlForBrowser(url: string): Promise<string> {
+  const normalized = normalizeStoragePublicUrl(url) ?? url;
+  const loc = parseStorageUrl(normalized);
+  if (!loc || !PRIVATE_STORAGE_BUCKETS.has(loc.bucket)) return normalized;
+
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session?.access_token;
+  if (!jwt) throw new Error('No active admin session');
+
+  const res = await fetch(`${FUNCTIONS_URL}/get-booking-asset-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify({ url: normalized }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success || !json.data?.url) {
+    throw new Error(json.error ?? 'Failed to resolve asset URL');
+  }
+  return json.data.url as string;
 }

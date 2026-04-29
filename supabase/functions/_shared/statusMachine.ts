@@ -16,6 +16,8 @@
 
 export const BOOKING_STATUSES = [
   'PENDING_REVIEW',
+  'PENDING_DOCUMENTS',
+  // Legacy in-flight statuses kept for backward compatibility during rollout.
   'PENDING_GAF',
   'PENDING_PARKING_REQUEST',
   'PENDING_PET_REQUEST',
@@ -32,6 +34,25 @@ export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }
 
+/**
+ * While status is in this set, guest or admin edits to workflow-sensitive booking
+ * fields (or guest-doc uploads) reset `status` → `PENDING_REVIEW`.
+ * Excludes: `PENDING_REVIEW`, SD refund stages, `COMPLETED`, `CANCELLED`.
+ */
+export const GUEST_FIELD_EDIT_REVERT_STATUSES = new Set<BookingStatus>([
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+]);
+
+export function shouldRevertGuestFieldEditsToPendingReview(
+  status: string | null | undefined,
+): boolean {
+  return !!status && isBookingStatus(status) && GUEST_FIELD_EDIT_REVERT_STATUSES.has(status);
+}
+
 /** Terminal statuses — no further transitions are valid. */
 export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED']);
 
@@ -42,10 +63,12 @@ export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED
  * Any call from workflowOrchestrator or the Gmail listener uses this.
  */
 const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW:          ['PENDING_GAF', 'CANCELLED'],
-  PENDING_GAF:             ['PENDING_PARKING_REQUEST', 'PENDING_PET_REQUEST', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  PENDING_PARKING_REQUEST: ['PENDING_PET_REQUEST', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  PENDING_PET_REQUEST:     ['READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_REVIEW:          ['PENDING_DOCUMENTS', 'CANCELLED'],
+  PENDING_DOCUMENTS:       ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  // Legacy edges (existing rows may still be here):
+  PENDING_GAF:             ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   READY_FOR_CHECKIN:       ['PENDING_SD_REFUND_DETAILS', 'CANCELLED'],
   PENDING_SD_REFUND_DETAILS: ['PENDING_SD_REFUND', 'CANCELLED'],
   PENDING_SD_REFUND:       ['COMPLETED', 'CANCELLED'],
@@ -68,9 +91,10 @@ const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
  */
 const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
   PENDING_REVIEW:          [],
-  PENDING_GAF:             ['READY_FOR_CHECKIN', 'PENDING_REVIEW'],
-  PENDING_PARKING_REQUEST: ['PENDING_GAF'],
-  PENDING_PET_REQUEST:     ['PENDING_PARKING_REQUEST', 'PENDING_GAF'],
+  PENDING_DOCUMENTS:       ['PENDING_REVIEW'],
+  PENDING_GAF:             ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   READY_FOR_CHECKIN:       [
     'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
@@ -133,6 +157,7 @@ export type CalendarStatusMeta = {
 
 export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
   PENDING_REVIEW:          { colorId: '11', label: 'PENDING REVIEW' },
+  PENDING_DOCUMENTS:       { colorId: '5',  label: 'PENDING DOCUMENTS' },
   PENDING_GAF:             { colorId: '5',  label: 'PENDING GAF' },
   PENDING_PARKING_REQUEST: { colorId: '5',  label: 'PENDING PARKING REQUEST' },
   PENDING_PET_REQUEST:     { colorId: '5',  label: 'PENDING PET REQUEST' },
@@ -143,17 +168,78 @@ export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
   CANCELLED:               { colorId: '3',  label: 'CANCELED' },
 };
 
+/** DB fields used to derive nested “what is still pending” under PENDING_DOCUMENTS (calendar). */
+export type PendingDocumentsCalendarBooking = {
+  need_parking?: boolean | null | string;
+  has_pets?: boolean | null | string;
+  gaf_completed_at?: string | null;
+  parking_completed_at?: string | null;
+  pet_completed_at?: string | null;
+  approved_gaf_pdf_url?: string | null;
+  approved_pet_pdf_url?: string | null;
+  parking_endorsement_url?: string | null;
+};
+
+function bookingFlagTrue(v: unknown): boolean {
+  return v === true || v === 'true';
+}
+
+/**
+ * Completion flags for GAF / parking / pet while the parent row is still PENDING_DOCUMENTS.
+ */
+export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCalendarBooking): {
+  needParking: boolean;
+  hasPets: boolean;
+  gafDone: boolean;
+  parkingDone: boolean;
+  petDone: boolean;
+} {
+  const needParking = bookingFlagTrue(booking.need_parking);
+  const hasPets = bookingFlagTrue(booking.has_pets);
+  const gafDone = !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+  const parkingDone =
+    !needParking ||
+    !!booking.parking_completed_at ||
+    !!booking.parking_endorsement_url;
+  const petDone =
+    !hasPets || !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
+  return { needParking, hasPets, gafDone, parkingDone, petDone };
+}
+
+/**
+ * First segment of the Google Calendar `summary` when `status === PENDING_DOCUMENTS`.
+ * Lists every incomplete required sub-step in order (GAF → PARKING → PET), e.g.
+ * `PENDING_GAF_PARKING_PET_DOCS`, `PENDING_PARKING_DOCS`. When nothing is left,
+ * falls back to `PENDING DOCUMENTS` (parent not yet advanced to ready).
+ */
+export function buildPendingDocumentsCalendarSummaryPrefix(
+  booking: PendingDocumentsCalendarBooking,
+): string {
+  const { needParking, hasPets, gafDone, parkingDone, petDone } =
+    getPendingDocumentsNestedCompletion(booking);
+  const segments: string[] = [];
+  if (!gafDone) segments.push('GAF');
+  if (needParking && !parkingDone) segments.push('PARKING');
+  if (hasPets && !petDone) segments.push('PET');
+  if (segments.length === 0) return STATUS_CALENDAR_META.PENDING_DOCUMENTS.label;
+  return `PENDING_${segments.join('_')}_DOCS`;
+}
+
 /**
  * Builds the Google Calendar event `summary` for a given booking.
  *
  * Format (non-test): `{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
  * Format (test):     `[TEST] {STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
  *
+ * When `status === PENDING_DOCUMENTS'` and `booking` is passed, the first segment is
+ * built from outstanding document sub-steps (see `buildPendingDocumentsCalendarSummaryPrefix`).
+ *
  * @param status     Current booking status.
  * @param pax        Total number of guests (adults + children).
  * @param nights     Number of nights.
  * @param guestName  Guest's Facebook/display name.
  * @param isTest     Whether to prefix with [TEST].
+ * @param booking    Optional row — required for dynamic PENDING_DOCUMENTS calendar titles.
  */
 export function buildCalendarSummary(
   status: BookingStatus,
@@ -161,17 +247,44 @@ export function buildCalendarSummary(
   nights: number,
   guestName: string,
   isTest = false,
+  booking?: PendingDocumentsCalendarBooking | null,
 ): string {
-  const meta = STATUS_CALENDAR_META[status];
+  const label =
+    status === 'PENDING_DOCUMENTS' && booking != null
+      ? buildPendingDocumentsCalendarSummaryPrefix(booking)
+      : STATUS_CALENDAR_META[status].label;
   const nightsText = `${nights}${nights === 1 ? 'night' : 'nights'}`;
-  const core = `${meta.label} - ${pax}pax ${nightsText} - ${guestName}`;
+  const core = `${label} - ${pax}pax ${nightsText} - ${guestName}`;
   return isTest ? `[TEST] ${core}` : core;
+}
+
+/**
+ * For calendar titles, PENDING_DOCUMENTS should display the currently pending
+ * nested stage so operations can immediately see what is still blocked.
+ */
+export function resolveCalendarSummaryStatus(
+  status: BookingStatus,
+  booking?: PendingDocumentsCalendarBooking | null,
+): BookingStatus {
+  if (status !== 'PENDING_DOCUMENTS' || !booking) return status;
+
+  const { needParking, hasPets, gafDone, parkingDone, petDone } =
+    getPendingDocumentsNestedCompletion(booking);
+
+  if (!gafDone) return 'PENDING_GAF';
+  if (!parkingDone) return 'PENDING_PARKING_REQUEST';
+  if (!petDone) return 'PENDING_PET_REQUEST';
+
+  // Fallback if all nested steps are already complete but parent status has
+  // not yet been advanced to READY_FOR_CHECKIN.
+  return 'PENDING_DOCUMENTS';
 }
 
 // ─── Human labels (for admin UI display) ─────────────────────────────────────
 
 export const STATUS_HUMAN_LABEL: Record<BookingStatus, string> = {
   PENDING_REVIEW:          'Pending Review',
+  PENDING_DOCUMENTS:       'Pending Documents',
   PENDING_GAF:             'Pending GAF',
   PENDING_PARKING_REQUEST: 'Pending Parking Request',
   PENDING_PET_REQUEST:     'Pending Pet Request',

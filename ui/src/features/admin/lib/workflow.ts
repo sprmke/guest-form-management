@@ -138,7 +138,7 @@ export function isSubStatusCompleted(
     return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
-    return !!booking.parking_completed_at;
+    return !!(booking.parking_completed_at || booking.parking_endorsement_url);
   }
   return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
 }

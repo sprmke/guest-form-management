@@ -2,40 +2,49 @@
  * BookingEditForm — inline edit form for all guest booking fields.
  *
  * Shown in the left column of BookingDetailPage when the admin clicks "Edit".
- * If the booking is READY_FOR_CHECKIN, saving material fields reverts status
- * back to PENDING_REVIEW per booking-workflow.mdc §2.3.
+ * While the booking is in **Pending documents** (parent or GAF / parking / pet)
+ * or **Ready for check-in**, saving **workflow-sensitive** guest/stay fields
+ * reverts status to PENDING_REVIEW (see `hasWorkflowSensitiveGuestFieldDiff`
+ * + docs/TODOS.md). Other edits keep status unchanged.
  *
  * Uses React Hook Form (no Zod for now — lightweight admin-only form).
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
-import {
-  AlertTriangle,
-  CheckCircle2,
-  ExternalLink,
-  FileText,
-  Loader2,
-  Save,
-  Upload,
-  X,
-} from 'lucide-react';
+import { CheckCircle2, FileText, Loader2, Save, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useUpdateBooking,
   type UpdateBookingPayload,
 } from '@/features/admin/hooks/useUpdateBooking';
+import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/admin/lib/workflowSensitiveGuestDiff';
+import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/admin/lib/bookingStatus';
+import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice';
 import {
   useUploadBookingAsset,
   type GuestDocAssetType,
 } from '@/features/admin/hooks/useUploadBookingAsset';
 import type { BookingRow } from '@/features/admin/lib/types';
+import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
+import { DatePicker } from '@/components/ui/date-picker';
+import {
+  createDisabledCheckoutDateMatcher,
+  createDisabledDateMatcher,
+  dateToString,
+  getNextDay,
+  normalizeDateString,
+  stringToDate,
+  type BookedDateRange,
+} from '@/utils/dates';
 
 type Props = {
   booking: BookingRow;
   onClose: () => void;
   onSaved: (updated: BookingRow) => void;
+  /** Same handler as view-mode doc previews — opens in-page modal (resolved URL for private buckets). */
+  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 };
 
 type FormValues = {
@@ -75,14 +84,88 @@ function toStr(v: string | null | undefined) {
   return v ?? '';
 }
 
-export function BookingEditForm({ booking, onClose, onSaved }: Props) {
-  const isReadyForCheckin = booking.status === 'READY_FOR_CHECKIN';
+function bookingEditPayloadFromValues(
+  values: FormValues,
+): UpdateBookingPayload {
+  return {
+    guest_facebook_name: values.guest_facebook_name,
+    primary_guest_name: values.primary_guest_name,
+    guest_email: values.guest_email,
+    guest_phone_number: values.guest_phone_number,
+    guest_address: values.guest_address || null,
+    nationality: values.nationality || null,
+    guest2_name: values.guest2_name || null,
+    guest3_name: values.guest3_name || null,
+    guest4_name: values.guest4_name || null,
+    guest5_name: values.guest5_name || null,
+    check_in_date: values.check_in_date,
+    check_out_date: values.check_out_date,
+    check_in_time: values.check_in_time || null,
+    check_out_time: values.check_out_time || null,
+    number_of_adults: Number(values.number_of_adults),
+    number_of_children: Number(values.number_of_children) || null,
+    number_of_nights: Number(values.number_of_nights),
+    need_parking: values.need_parking,
+    car_plate_number: values.need_parking
+      ? values.car_plate_number || null
+      : null,
+    car_brand_model: values.need_parking
+      ? values.car_brand_model || null
+      : null,
+    car_color: values.need_parking ? values.car_color || null : null,
+    has_pets: values.has_pets,
+    pet_name: values.has_pets ? values.pet_name || null : null,
+    pet_type: values.has_pets ? values.pet_type || null : null,
+    pet_breed: values.has_pets ? values.pet_breed || null : null,
+    pet_age: values.has_pets ? values.pet_age || null : null,
+    pet_vaccination_date: values.has_pets
+      ? values.pet_vaccination_date || null
+      : null,
+    find_us: values.find_us || null,
+    find_us_details: values.find_us_details || null,
+    guest_special_requests: values.guest_special_requests || null,
+  };
+}
+
+function toTimeInputValue(value: string | null | undefined): string {
+  const raw = (value ?? '').trim();
+  if (!raw) return '';
+
+  // Already HTML time input compatible.
+  if (/^\d{2}:\d{2}$/.test(raw)) return raw;
+
+  // DB values may include seconds.
+  if (/^\d{2}:\d{2}:\d{2}$/.test(raw)) return raw.slice(0, 5);
+
+  // Legacy 12-hour format like "2:00 PM".
+  const m = raw.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
+  if (!m) return '';
+  const hour12 = Number(m[1]);
+  const minute = m[2];
+  const ampm = m[3].toUpperCase();
+  let hour24 = hour12 % 12;
+  if (ampm === 'PM') hour24 += 12;
+  return `${String(hour24).padStart(2, '0')}:${minute}`;
+}
+
+export function BookingEditForm({
+  booking,
+  onClose,
+  onSaved,
+  onPreview,
+}: Props) {
+  const guestEditRevertPipeline = shouldRevertGuestFieldEditsToPendingReview(
+    booking.status,
+  );
   const updateMut = useUpdateBooking();
+  const apiUrl = import.meta.env.VITE_API_URL;
+  const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
 
   const {
     register,
     handleSubmit,
     watch,
+    setValue,
     formState: { isDirty },
   } = useForm<FormValues>({
     defaultValues: {
@@ -96,10 +179,10 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
       guest3_name: toStr(booking.guest3_name),
       guest4_name: toStr(booking.guest4_name),
       guest5_name: toStr(booking.guest5_name),
-      check_in_date: toStr(booking.check_in_date),
-      check_out_date: toStr(booking.check_out_date),
-      check_in_time: toStr(booking.check_in_time),
-      check_out_time: toStr(booking.check_out_time),
+      check_in_date: normalizeDateString(toStr(booking.check_in_date)),
+      check_out_date: normalizeDateString(toStr(booking.check_out_date)),
+      check_in_time: toTimeInputValue(booking.check_in_time),
+      check_out_time: toTimeInputValue(booking.check_out_time),
       number_of_adults: booking.number_of_adults ?? 1,
       number_of_children: booking.number_of_children ?? 0,
       number_of_nights: booking.number_of_nights ?? 1,
@@ -112,7 +195,9 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
       pet_type: toStr(booking.pet_type),
       pet_breed: toStr(booking.pet_breed),
       pet_age: toStr(booking.pet_age),
-      pet_vaccination_date: toStr(booking.pet_vaccination_date),
+      pet_vaccination_date: normalizeDateString(
+        toStr(booking.pet_vaccination_date),
+      ),
       find_us: toStr(booking.find_us),
       find_us_details: toStr(booking.find_us_details),
       guest_special_requests: toStr(booking.guest_special_requests),
@@ -121,55 +206,64 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
 
   const watchParking = watch('need_parking');
   const watchPets = watch('has_pets');
+  const watchCheckInDate = watch('check_in_date');
+  const formSnapshot = watch();
+  const showSensitiveRevertHint =
+    guestEditRevertPipeline &&
+    hasWorkflowSensitiveGuestFieldDiff(
+      booking,
+      bookingEditPayloadFromValues(formSnapshot),
+    );
+
+  React.useEffect(() => {
+    let mounted = true;
+    const fetchBookedDates = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/get-booked-dates`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+        });
+        const result = await response.json();
+        if (!mounted || !response.ok || !result?.success || !result?.data)
+          return;
+        const normalized = result.data.map((entry: BookedDateRange) => ({
+          ...entry,
+          checkInDate: normalizeDateString(entry.checkInDate),
+          checkOutDate: normalizeDateString(entry.checkOutDate),
+        }));
+        setBookedDates(normalized);
+      } catch (error) {
+        console.error(
+          'Failed to fetch booked dates for admin edit form:',
+          error,
+        );
+      }
+    };
+    void fetchBookedDates();
+    return () => {
+      mounted = false;
+    };
+  }, [apiUrl]);
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    const payload: UpdateBookingPayload = {
-      guest_facebook_name: values.guest_facebook_name,
-      primary_guest_name: values.primary_guest_name,
-      guest_email: values.guest_email,
-      guest_phone_number: values.guest_phone_number,
-      guest_address: values.guest_address || null,
-      nationality: values.nationality || null,
-      guest2_name: values.guest2_name || null,
-      guest3_name: values.guest3_name || null,
-      guest4_name: values.guest4_name || null,
-      guest5_name: values.guest5_name || null,
-      check_in_date: values.check_in_date,
-      check_out_date: values.check_out_date,
-      check_in_time: values.check_in_time || null,
-      check_out_time: values.check_out_time || null,
-      number_of_adults: Number(values.number_of_adults),
-      number_of_children: Number(values.number_of_children) || null,
-      number_of_nights: Number(values.number_of_nights),
-      need_parking: values.need_parking,
-      car_plate_number: values.need_parking
-        ? values.car_plate_number || null
-        : null,
-      car_brand_model: values.need_parking
-        ? values.car_brand_model || null
-        : null,
-      car_color: values.need_parking ? values.car_color || null : null,
-      has_pets: values.has_pets,
-      pet_name: values.has_pets ? values.pet_name || null : null,
-      pet_type: values.has_pets ? values.pet_type || null : null,
-      pet_breed: values.has_pets ? values.pet_breed || null : null,
-      pet_age: values.has_pets ? values.pet_age || null : null,
-      pet_vaccination_date: values.has_pets
-        ? values.pet_vaccination_date || null
-        : null,
-      find_us: values.find_us || null,
-      find_us_details: values.find_us_details || null,
-      guest_special_requests: values.guest_special_requests || null,
-    };
+    const payload = bookingEditPayloadFromValues(values);
+    const revertToPendingReview =
+      guestEditRevertPipeline &&
+      hasWorkflowSensitiveGuestFieldDiff(booking, payload);
 
     try {
       const updated = await updateMut.mutateAsync({
         bookingId: booking.id,
+        currentStatus: booking.status,
         payload,
-        revertToPendingReview: isReadyForCheckin && isDirty,
+        revertToPendingReview,
       });
 
-      if (isReadyForCheckin && isDirty) {
+      if (revertToPendingReview) {
         toast.success('Booking updated — status reverted to Pending Review');
       } else {
         toast.success('Booking updated successfully');
@@ -182,24 +276,10 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      {/* READY_FOR_CHECKIN warning */}
-      {isReadyForCheckin && (
-        <div className="flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-600" />
-          <div>
-            <p className="text-sm font-semibold text-amber-800">
-              Status will revert
-            </p>
-            <p className="mt-0.5 text-xs text-amber-700">
-              Saving changes from{' '}
-              <span className="font-medium">Ready for Check-in</span> will
-              revert the booking status back to{' '}
-              <span className="font-medium">Pending Review</span>. Re-process
-              the workflow to advance it again.
-            </p>
-          </div>
-        </div>
-      )}
+      <ReadyForCheckinSensitiveFieldsNotice
+        show={guestEditRevertPipeline}
+        hasSensitiveEdits={showSensitiveRevertHint}
+      />
 
       {/* ── Guest Identity ─────────────────────────────────────────────────── */}
       <Section title="Guest Identity">
@@ -268,24 +348,83 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
       <Section title="Stay Details">
         <Row2>
           <Field label="Check-in Date (MM-DD-YYYY)" required>
-            <Input
-              {...register('check_in_date', { required: true })}
-              placeholder="04-27-2026"
+            <DatePicker
+              date={
+                watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
+              }
+              rangeEnd={
+                watch('check_out_date')
+                  ? stringToDate(watch('check_out_date'))
+                  : undefined
+              }
+              onSelect={(date) => {
+                if (!date) return;
+                const selected = dateToString(date);
+                setValue('check_in_date', selected, { shouldDirty: true });
+                setValue('check_out_date', getNextDay(selected), {
+                  shouldDirty: true,
+                });
+              }}
+              disabled={(date) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (date < today) return true;
+                return createDisabledDateMatcher(bookedDates, booking.id)(date);
+              }}
+              minDate={new Date()}
+              placeholder="Select check-in date"
             />
           </Field>
           <Field label="Check-out Date (MM-DD-YYYY)" required>
-            <Input
-              {...register('check_out_date', { required: true })}
-              placeholder="04-28-2026"
+            <DatePicker
+              date={
+                watch('check_out_date')
+                  ? stringToDate(watch('check_out_date'))
+                  : undefined
+              }
+              rangeEnd={
+                watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
+              }
+              onSelect={(date) => {
+                if (!date) return;
+                setValue('check_out_date', dateToString(date), {
+                  shouldDirty: true,
+                });
+              }}
+              disabled={(date) => {
+                const isBooked = createDisabledCheckoutDateMatcher(
+                  bookedDates,
+                  booking.id,
+                )(date);
+                if (watchCheckInDate) {
+                  const checkIn = stringToDate(watchCheckInDate);
+                  if (date <= checkIn) return true;
+                }
+                return isBooked;
+              }}
+              minDate={
+                watchCheckInDate
+                  ? stringToDate(getNextDay(watchCheckInDate))
+                  : new Date()
+              }
+              placeholder="Select check-out date"
             />
           </Field>
         </Row2>
         <Row2>
           <Field label="Check-in Time">
-            <Input {...register('check_in_time')} placeholder="2:00 PM" />
+            <Input
+              type="time"
+              {...register('check_in_time')}
+              placeholder="14:00"
+            />
           </Field>
           <Field label="Check-out Time">
-            <Input {...register('check_out_time')} placeholder="11:00 AM" />
+            <Input
+              type="time"
+              {...register('check_out_time')}
+              placeholder="11:00"
+            />
           </Field>
         </Row2>
         <Row3>
@@ -325,7 +464,7 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
           <input
             type="checkbox"
             {...register('need_parking')}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
           />
           <span className="text-sm text-slate-700">Needs parking</span>
         </label>
@@ -353,7 +492,7 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
           <input
             type="checkbox"
             {...register('has_pets')}
-            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
           />
           <span className="text-sm text-slate-700">Has pets</span>
         </label>
@@ -375,9 +514,20 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
                 <Input {...register('pet_age')} placeholder="2 years" />
               </Field>
               <Field label="Vaccination Date">
-                <Input
-                  {...register('pet_vaccination_date')}
-                  placeholder="MM-DD-YYYY"
+                <DatePicker
+                  date={
+                    watch('pet_vaccination_date')
+                      ? stringToDate(watch('pet_vaccination_date'))
+                      : undefined
+                  }
+                  onSelect={(date) => {
+                    setValue(
+                      'pet_vaccination_date',
+                      date ? dateToString(date) : '',
+                      { shouldDirty: true },
+                    );
+                  }}
+                  placeholder="Select vaccination date"
                 />
               </Field>
             </Row3>
@@ -412,10 +562,10 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
       </Section>
 
       {/* ── Documents ─────────────────────────────────────────────────────── */}
-      <DocumentsSection booking={booking} />
+      <DocumentsSection booking={booking} onPreview={onPreview} />
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-3 border-t border-slate-200 pt-4">
+      <div className="flex gap-3 justify-end items-center pt-4 border-t border-slate-200">
         <button
           type="button"
           onClick={onClose}
@@ -433,7 +583,7 @@ export function BookingEditForm({ booking, onClose, onSaved }: Props) {
           <Save className="size-3.5" />
           {updateMut.isPending
             ? 'Saving…'
-            : isReadyForCheckin
+            : showSensitiveRevertHint
               ? 'Save & Revert Status'
               : 'Save Changes'}
         </button>
@@ -451,7 +601,13 @@ type DocDef = {
   accept: string;
 };
 
-function DocumentsSection({ booking }: { booking: BookingRow }) {
+function DocumentsSection({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
+}) {
   const docs: DocDef[] = [
     {
       assetType: 'payment_receipt',
@@ -484,7 +640,7 @@ function DocumentsSection({ booking }: { booking: BookingRow }) {
   ];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+    <div className="p-4 space-y-3 bg-white rounded-xl border shadow-sm border-slate-200">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         Documents
       </h3>
@@ -496,6 +652,7 @@ function DocumentsSection({ booking }: { booking: BookingRow }) {
           <DocumentReplacer
             key={doc.assetType}
             bookingId={booking.id}
+            onPreview={onPreview}
             {...doc}
           />
         ))}
@@ -510,10 +667,23 @@ function DocumentReplacer({
   label,
   currentUrl,
   accept,
-}: DocDef & { bookingId: string }) {
+  onPreview,
+}: DocDef & {
+  bookingId: string;
+  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadMut = useUploadBookingAsset();
   const [justUploaded, setJustUploaded] = useState(false);
+  const [thumbFailed, setThumbFailed] = useState(false);
+
+  const displayUrl = currentUrl
+    ? (normalizeStoragePublicUrl(currentUrl) ?? currentUrl)
+    : '';
+
+  useEffect(() => {
+    setThumbFailed(false);
+  }, [currentUrl]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -534,49 +704,47 @@ function DocumentReplacer({
   }
 
   const isLoading = uploadMut.isPending;
-  const docType = currentUrl ? getDocType(currentUrl) : 'file';
+  const docType = displayUrl ? getDocType(displayUrl) : 'file';
+  const showImageThumb = docType === 'image' && !thumbFailed;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+    <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50">
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         {label}
       </p>
 
       {currentUrl ? (
-        <a
-          href={currentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="group flex items-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 hover:border-blue-300 transition-colors"
+        <button
+          type="button"
+          aria-label={`Preview ${label}`}
+          onClick={() => void onPreview(label, currentUrl)}
+          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 text-left transition-colors hover:border-blue-300"
         >
-          {docType === 'image' ? (
-            <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-slate-100">
+          {showImageThumb ? (
+            <div className="overflow-hidden w-14 h-14 rounded-md shrink-0 bg-slate-100">
               <img
-                src={currentUrl}
-                alt={label}
-                className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                }}
+                src={displayUrl}
+                alt=""
+                className="object-cover w-full h-full"
+                onError={() => setThumbFailed(true)}
               />
             </div>
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-red-50">
-              <FileText className="size-6 text-red-400" />
+            <div className="flex justify-center items-center w-14 h-14 bg-red-50 rounded-md shrink-0">
+              <FileText className="text-red-400 size-6" />
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="truncate text-xs font-medium text-slate-600">
+            <p className="text-xs font-medium truncate text-slate-600">
               Current file
             </p>
             <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline">
-              <ExternalLink className="size-3 shrink-0" />
               View
             </p>
           </div>
-        </a>
+        </button>
       ) : (
-        <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white text-xs text-slate-400">
+        <div className="flex justify-center items-center h-16 text-xs bg-white rounded-lg border border-dashed border-slate-300 text-slate-400">
           No file uploaded
         </div>
       )}
@@ -639,7 +807,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3">
+    <div className="p-4 space-y-3 bg-white rounded-xl border shadow-sm border-slate-200">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
         {title}
       </h3>

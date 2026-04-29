@@ -82,10 +82,10 @@ export function useUploadBookingAsset() {
       return json.data as UploadAssetResult;
     },
 
-    onSuccess: (_, { bookingId }) => {
+    onSuccess: async (_, { bookingId }) => {
       // Refresh the booking detail so the new URL renders immediately
-      void qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
-      void qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
 }
