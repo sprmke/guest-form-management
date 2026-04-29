@@ -100,7 +100,30 @@ Todos
 - ✅ Improve the overall UI of our email templates which the same and consistent theme, font, shadows, spacing and colors. Make a research on popular and modern/stunning email templates to use as reference. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI.
 - ✅ Guest SD refund route **`/sd-form`** (feedback step + refund method: GCash same as phone with confirm checkbox, other bank dropdown + name + account number, cash + optional note). Honesty-store purchase step skipped by design. **`PENDING_SD_REFUND_DETAILS`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
 - Improve email template house rules
-- Improve and finalize update guest form flow
+- Review edit booking info form
+- ✅ Improve and finalize update guest form flow
+  - Only revert booking status to `PENDING_REVIEW` when updates come from:
+    - Guest update from the public `/form` flow
+    - Admin update from the `/bookings/:bookingId` detail form
+  - AND ONLY IF one or more of the following fields changed:
+    - Facebook / Airbnb Name
+    - Primary Guest name
+    - Email
+    - Phone Number
+    - Additional Guest Names
+    - Check-in and Check-out Date
+    - Check-in and Check-out Time
+    - Parking Details
+    - Pet Details
+    - Payment Receipt
+    - Valid ID
+    - Pet vaccination and pet photo
+  - If updates do not include the listed fields, do **not** reset status to `PENDING_REVIEW`
+  - Revert applies only while status is **pending documents** (`PENDING_DOCUMENTS` / `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST`) or **`READY_FOR_CHECKIN`** — not when already `PENDING_REVIEW`, in SD refund stages, `COMPLETED`, or `CANCELLED`
 - Update google calendar summary info with new guest form and processes
 - Review and improve form UI validation on workflow status forms
 - Review bucket policy to check public buckets and convert them to private?
+- On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
+- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
+- Remove dev controls on public guest form

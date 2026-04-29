@@ -315,6 +315,12 @@ If token exchange fails (`invalid_grant`):
 
 Use this section when you want repeatable SQL snippets for local dev or hosted projects.
 
+### 11.0 After `supabase db reset` (local)
+
+1. **Migrations** — Run `npx supabase db reset` (or start so migrations apply). Repo migration `20260504100000_enable_pg_cron.sql` enables **`pg_cron`**; without it, the `cron` schema does not exist and any `select … from cron.job` / `cron.job_run_details` fails with **`42P01`**.
+2. **Re-register jobs** — `cron.job` rows are **not** in migrations; run §11.2 again with your current **`supabase status`** publishable/anon key (or `127.0.0.1:54321` URLs if `kong:8000` does not resolve from Postgres).
+3. **Optional cleanup** — If §11.2 errors on duplicate job name, run §11.5 first to `cron.unschedule` the old names, then schedule again.
+
 ### 11.1 Verify cron prerequisites
 
 ```sql
@@ -325,6 +331,17 @@ order by extname;
 ```
 
 Expected: both `pg_cron` and `pg_net` are present.
+
+If **`pg_cron` is missing**, enable it once (matches [Supabase Cron install](https://supabase.com/docs/guides/cron/install)):
+
+```sql
+create extension if not exists pg_cron with schema pg_catalog;
+
+grant usage on schema cron to postgres;
+grant all privileges on all tables in schema cron to postgres;
+```
+
+Then re-run the §11.1 query.
 
 ### 11.2 Enable local cron jobs (copy-paste)
 
@@ -413,11 +430,19 @@ select cron.schedule(
 
 ### 11.4 Verify installed jobs and run history
 
+**Registered jobs** (works as soon as `pg_cron` is enabled):
+
 ```sql
 select jobid, jobname, schedule, active, command
 from cron.job
 where command ilike '%gmail-listener%' or command ilike '%sd-refund-cron%'
 order by jobid desc;
+```
+
+**Cron run audit** — only when `cron.job_run_details` exists (it appears with a normal `pg_cron` install). If you still get **`relation "cron.job_run_details" does not exist`**, `pg_cron` is not installed: fix with §11.1, then schedule again.
+
+```sql
+select to_regclass('cron.job_run_details') is not null as has_job_run_details;
 ```
 
 ```sql
@@ -431,6 +456,17 @@ where jobid in (
 order by runid desc
 limit 50;
 ```
+
+**HTTP outcome from `pg_net`** (async responses; short retention, often ~6 hours — good for “did Kong return 200?”):
+
+```sql
+select id, status_code, error_msg, left(coalesce(content, ''), 200) as content_preview, created
+from net._http_response
+order by created desc
+limit 30;
+```
+
+**Edge Function logs** — Dashboard → Edge Functions → **gmail-listener** / **sd-refund-cron**, or `npx supabase functions serve` terminal output when invoking manually.
 
 ### 11.5 Disable/remove jobs
 
