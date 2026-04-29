@@ -19,8 +19,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 20%;
 
-    /* Professional green primary color for booking/hospitality */
-    --primary: 142 76% 36%;
+    /* Primary matches sidebar primary green */
+    --primary: 168 65% 40%;
     --primary-foreground: 0 0% 100%;
 
     /* Subtle secondary for accents */
@@ -42,7 +42,7 @@
     /* Borders and inputs */
     --border: 215 20% 88%;
     --input: 215 20% 88%;
-    --ring: 142 76% 36%;
+    --ring: 168 65% 40%;
 
     /* Success color for confirmed bookings */
     --success: 142 76% 36%;
@@ -76,7 +76,7 @@
     --popover: 215 25% 15%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 142 76% 40%;
+    --primary: 168 65% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 215 25% 20%;
@@ -93,7 +93,7 @@
 
     --border: 215 25% 25%;
     --input: 215 25% 25%;
-    --ring: 142 76% 40%;
+    --ring: 168 65% 45%;
 
     /* Sidebar dark tokens */
     --sidebar-background: 0 0% 8%;
@@ -115,7 +115,9 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -135,7 +137,8 @@
 [data-sonner-toast] {
   position: relative !important;
   border-radius: 0.75rem !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
