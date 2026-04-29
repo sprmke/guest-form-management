@@ -994,11 +994,6 @@
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
-                &nbsp;
-              </td>
-            </tr>
-            <tr>
               <td
                 class="email-card-shell"
                 style="{{emailShellTdCardShellStyle}}"
@@ -1012,6 +1007,11 @@
                   border="0"
                   style="{{emailShellTableCardStyle}}"
                 >
+                  <tr>
+                    <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                      &nbsp;
+                    </td>
+                  </tr>
                   <tr>
                     <td
                       class="content-pad"
@@ -1076,7 +1076,7 @@
 
                       <table
                         role="presentation"
-                        class="footer-divider"
+                        class="footer-divider" style="border-top:1px solid #e2e8f0;"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"

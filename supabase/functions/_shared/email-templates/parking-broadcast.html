@@ -992,11 +992,6 @@
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
-                &nbsp;
-              </td>
-            </tr>
-            <tr>
               <td
                 class="email-card-shell"
                 style="{{emailShellTdCardShellStyle}}"
@@ -1010,6 +1005,11 @@
                   border="0"
                   style="{{emailShellTableCardStyle}}"
                 >
+                  <tr>
+                    <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                      &nbsp;
+                    </td>
+                  </tr>
                   <tr>
                     <td
                       class="content-pad"
@@ -1071,7 +1071,20 @@
                         </p>
                       </div>
 
-                      <p class="section-label section-label-tight">
+                      <p
+                        class="section-label section-label-tight"
+                        style="
+                          margin: 0 0 12px 0;
+                          font-size: 13px;
+                          font-weight: 700;
+                          letter-spacing: 0.08em;
+                          text-transform: uppercase;
+                          color: #5f954c;
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        "
+                      >
                         Booking &amp; vehicle details
                       </p>
                       <table
@@ -1081,36 +1094,185 @@
                         cellspacing="0"
                         cellpadding="0"
                         border="0"
+                        style="
+                          width: 100%;
+                          border-collapse: separate;
+                          border-spacing: 0;
+                          background-color: #f8fafc;
+                          border: 1px solid #e2e8f0;
+                          border-radius: 16px;
+                          overflow: hidden;
+                        "
                       >
                         <tr>
-                          <td width="36%" valign="top" class="tbl-label">
+                          <td
+                            width="36%"
+                            valign="top"
+                            class="tbl-label"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #f1f5f9;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #475569;
+                              font-weight: 700;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             Check-in
                           </td>
-                          <td valign="top" class="tbl-value">
+                          <td
+                            valign="top"
+                            class="tbl-value"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             {{checkInDate}} at {{checkInTime}}
                           </td>
                         </tr>
                         <tr>
-                          <td width="36%" valign="top" class="tbl-label">
+                          <td
+                            width="36%"
+                            valign="top"
+                            class="tbl-label"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #f1f5f9;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #475569;
+                              font-weight: 700;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             Check-out
                           </td>
-                          <td valign="top" class="tbl-value">
+                          <td
+                            valign="top"
+                            class="tbl-value"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             {{checkOutDate}} at {{checkOutTime}}
                           </td>
                         </tr>
                         <tr>
-                          <td width="36%" valign="top" class="tbl-label">
+                          <td
+                            width="36%"
+                            valign="top"
+                            class="tbl-label"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #f1f5f9;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #475569;
+                              font-weight: 700;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             Vehicle
                           </td>
-                          <td valign="top" class="tbl-value">
+                          <td
+                            valign="top"
+                            class="tbl-value"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             {{carBrandModel}} ({{carColor}})
                           </td>
                         </tr>
                         <tr>
-                          <td width="36%" valign="top" class="tbl-label">
+                          <td
+                            width="36%"
+                            valign="top"
+                            class="tbl-label"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #f1f5f9;
+                              color: #475569;
+                              font-weight: 700;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             Plate
                           </td>
-                          <td valign="top" class="tbl-value">{{carPlate}}</td>
+                          <td
+                            valign="top"
+                            class="tbl-value"
+                            style="
+                              padding: 16px 20px;
+                              background-color: #ffffff;
+                              color: #333333;
+                              font-size: 15px;
+                              line-height: 1.55;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
+                            {{carPlate}}
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            style="
+                              height: 16px;
+                              line-height: 16px;
+                              font-size: 0;
+                            "
+                          >
+                            &nbsp;
+                          </td>
                         </tr>
                       </table>
 
@@ -1121,9 +1283,30 @@
                         cellspacing="0"
                         cellpadding="0"
                         border="0"
+                        style="
+                          width: 100%;
+                          border-collapse: separate;
+                          border-spacing: 0;
+                          border: 1px solid #dbe4ef;
+                          border-radius: 16px;
+                          background-color: #f8fafc;
+                        "
                       >
                         <tr>
-                          <td>
+                          <td
+                            style="
+                              padding: 18px 20px;
+                              background-color: #f8fafc;
+                              border-left: 4px solid #3b82f6;
+                              border-radius: 16px;
+                              color: #334155;
+                              font-size: 15px;
+                              line-height: 1.6;
+                              font-family:
+                                -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                Roboto, 'Helvetica Neue', Arial, sans-serif;
+                            "
+                          >
                             If you have an available parking slot for those
                             dates, please
                             <strong>reply to this email</strong> with your
@@ -1134,7 +1317,48 @@
 
                       <table
                         role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            style="
+                              height: 16px;
+                              line-height: 16px;
+                              font-size: 0;
+                            "
+                          >
+                            &nbsp;
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+                          <td
+                            style="
+                              height: 16px;
+                              line-height: 16px;
+                              font-size: 0;
+                            "
+                          >
+                            &nbsp;
+                          </td>
+                        </tr>
+                      </table>
+
+                      <table
+                        role="presentation"
                         class="footer-divider"
+                        style="border-top: 1px solid #cbd5e1"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"

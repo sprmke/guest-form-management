@@ -992,11 +992,6 @@
               <td class="test-row-pad">{{testWarning}}</td>
             </tr>
             <tr>
-              <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
-                &nbsp;
-              </td>
-            </tr>
-            <tr>
               <td
                 class="email-card-shell"
                 style="{{emailShellTdCardShellStyle}}"
@@ -1010,6 +1005,11 @@
                   border="0"
                   style="{{emailShellTableCardStyle}}"
                 >
+                  <tr>
+                    <td class="accent-bar" style="{{emailShellTdAccentStyle}}">
+                      &nbsp;
+                    </td>
+                  </tr>
                   <tr>
                     <td
                       class="content-pad"
@@ -1085,34 +1085,37 @@
                         </tr>
                       </table>
 
-                      <p class="section-label section-label-mt">
+                      <p
+                        class="section-label section-label-mt"
+                        style="margin:28px 0 14px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;"
+                      >
                         What&rsquo;s next
                       </p>
 
                       <table
                         role="presentation"
-                        class="step-card-outer"
+                        class="step-card-outer" style="{{emailStepCardOuterStyle}}"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"
                         border="0"
                       >
                         <tr>
-                          <td class="step-card-inner-wrap">
+                          <td class="step-card-inner-wrap" style="{{emailStepCardInnerWrapStyle}}">
                             <table
                               role="presentation"
-                              class="step-card-inner"
+                              class="step-card-inner" style="{{emailStepCardInnerStyle}}"
                               width="100%"
                               cellspacing="0"
                               cellpadding="0"
                               border="0"
                             >
                               <tr>
-                                <td class="step-num-cell">
-                                  <span class="step-num">1</span>
+                                <td class="step-num-cell" style="{{emailStepNumCellStyle}}">
+                                  <span class="step-num" style="{{emailStepNumTextStyle}}">1</span>
                                 </td>
-                                <td class="step-body-cell">
-                                  <p>
+                                <td class="step-body-cell" style="{{emailStepBodyCellStyle}}">
+                                  <p style="{{emailStepBodyPStyle}}">
                                     We have forwarded your Guest Advise Form
                                     (GAF) to the property administration (Azure)
                                     for approval.
@@ -1136,28 +1139,28 @@
                       </table>
                       <table
                         role="presentation"
-                        class="step-card-outer"
+                        class="step-card-outer" style="{{emailStepCardOuterStyle}}"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"
                         border="0"
                       >
                         <tr>
-                          <td class="step-card-inner-wrap">
+                          <td class="step-card-inner-wrap" style="{{emailStepCardInnerWrapStyle}}">
                             <table
                               role="presentation"
-                              class="step-card-inner"
+                              class="step-card-inner" style="{{emailStepCardInnerStyle}}"
                               width="100%"
                               cellspacing="0"
                               cellpadding="0"
                               border="0"
                             >
                               <tr>
-                                <td class="step-num-cell">
-                                  <span class="step-num">2</span>
+                                <td class="step-num-cell" style="{{emailStepNumCellStyle}}">
+                                  <span class="step-num" style="{{emailStepNumTextStyle}}">2</span>
                                 </td>
-                                <td class="step-body-cell">
-                                  <p>
+                                <td class="step-body-cell" style="{{emailStepBodyCellStyle}}">
+                                  <p style="{{emailStepBodyPStyle}}">
                                     Approval typically takes a
                                     <strong class="text-strong"
                                       >few hours up to two (2) business
@@ -1186,28 +1189,28 @@
                       </table>
                       <table
                         role="presentation"
-                        class="step-card-outer"
+                        class="step-card-outer" style="{{emailStepCardOuterStyle}}"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"
                         border="0"
                       >
                         <tr>
-                          <td class="step-card-inner-wrap">
+                          <td class="step-card-inner-wrap" style="{{emailStepCardInnerWrapStyle}}">
                             <table
                               role="presentation"
-                              class="step-card-inner"
+                              class="step-card-inner" style="{{emailStepCardInnerStyle}}"
                               width="100%"
                               cellspacing="0"
                               cellpadding="0"
                               border="0"
                             >
                               <tr>
-                                <td class="step-num-cell">
-                                  <span class="step-num">3</span>
+                                <td class="step-num-cell" style="{{emailStepNumCellStyle}}">
+                                  <span class="step-num" style="{{emailStepNumTextStyle}}">3</span>
                                 </td>
-                                <td class="step-body-cell">
-                                  <p>
+                                <td class="step-body-cell" style="{{emailStepBodyCellStyle}}">
+                                  <p style="{{emailStepBodyPStyle}}">
                                     Once your GAF is approved, we will send you
                                     a
                                     <strong>Booking Confirmation email</strong>
@@ -1233,7 +1236,7 @@
 
                       <table
                         role="presentation"
-                        class="footer-divider"
+                        class="footer-divider" style="border-top:1px solid #e2e8f0;"
                         width="100%"
                         cellspacing="0"
                         cellpadding="0"
