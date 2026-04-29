@@ -2,9 +2,11 @@
  * ReviewPricingForm — Sub-form shown in WorkflowPanel when transitioning
  * PENDING_REVIEW → PENDING_GAF.
  *
- * Captures: booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest.
+ * Captures: booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest,
+ * guest_additional_fee.
  * Computes total guest balance:
- * booking_rate - down_payment + security_deposit + pet_fee + parking_rate_guest.
+ * booking_rate - down_payment + security_deposit + pet_fee + parking_rate_guest
+ * + guest_additional_fee.
  *
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
@@ -22,6 +24,7 @@ const schema = z.object({
   security_deposit: z.coerce.number().min(0, 'Must be ≥ 0').default(1500),
   pet_fee: z.coerce.number().min(0).optional(),
   parking_rate_guest: z.coerce.number().min(0).optional(),
+  guest_additional_fee: z.coerce.number().min(0).optional(),
 });
 
 export type ReviewPricingValues = z.infer<typeof schema>;
@@ -61,6 +64,8 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
       pet_fee: toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE,
       parking_rate_guest:
         toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE,
+      guest_additional_fee:
+        toNullableNumber(booking.guest_additional_fee) ?? 0,
     },
     mode: 'onChange',
   });
@@ -70,12 +75,14 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
   const securityDeposit = watch('security_deposit') ?? 0;
   const petFee = watch('pet_fee') ?? 0;
   const parkingFee = watch('parking_rate_guest') ?? 0;
+  const additionalFee = watch('guest_additional_fee') ?? 0;
   const totalGuestBalance =
     (bookingRate || 0) -
     (downPayment || 0) +
     (securityDeposit || 0) +
     (petFee || 0) +
-    (parkingFee || 0);
+    (parkingFee || 0) +
+    (additionalFee || 0);
 
   useEffect(() => {
     if (isValid) {
@@ -83,7 +90,7 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
     } else {
       onChange(null);
     }
-  }, [bookingRate, downPayment, securityDeposit, petFee, parkingFee, isValid]);
+  }, [bookingRate, downPayment, securityDeposit, petFee, parkingFee, additionalFee, isValid]);
 
   return (
     <div className="space-y-3">
@@ -158,6 +165,20 @@ export function ReviewPricingForm({ booking, onChange }: Props) {
             placeholder="400"
             className={inputClass(!!errors.parking_rate_guest)}
             {...register('parking_rate_guest')}
+          />
+        </Field>
+
+        <Field
+          label="Additional fee (early check-in, late check-out, surprise decor, etc.) (₱)"
+          error={errors.guest_additional_fee?.message}
+        >
+          <input
+            type="number"
+            min={0}
+            step={0.01}
+            placeholder="0"
+            className={inputClass(!!errors.guest_additional_fee)}
+            {...register('guest_additional_fee')}
           />
         </Field>
       </div>
