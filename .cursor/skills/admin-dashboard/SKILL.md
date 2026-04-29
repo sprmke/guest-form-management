@@ -91,13 +91,13 @@ See `.cursor/skills/bookings-table/SKILL.md` for column-def helpers.
 
 Two-column on ≥lg, single column on mobile:
 
-- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible). **Guest fields stay editable even after `READY_FOR_CHECKIN`** — but saving material changes from that status **must revert `status → PENDING_REVIEW`** (per `docs/NEW_FLOW_PLAN.md` §6.1 Q5.5). Dev-control checkboxes still gate every side effect on save.
+- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible). **Guest fields stay editable even after `READY_FOR_CHECKIN`** — but status only reverts to `PENDING_REVIEW` when updates come from public `/form` or admin `/bookings/:bookingId` and at least one workflow-sensitive field changed (Facebook/Airbnb name, primary guest name, email, phone, additional guest names, check-in/out dates or times, parking details, pet details, payment receipt, valid ID, pet vaccination, pet photo). If only other fields changed, keep status as-is. Dev-control checkboxes still gate every side effect on save.
 - **Right (1/3, sticky)**: `WorkflowPanel`
   - Status badge + `status_updated_at`
   - Stage-specific sub-form:
     - PENDING_REVIEW → `ReviewPricingForm` (booking rate, down payment, **Guest Parking Rate** (`parking_rate_guest`) when parking, pet fee, **balance = rate − down payment**, SD tracked separately)
     - PENDING_PARKING_REQUEST → `ParkingRequestForm` (**Paid Parking Rate** (`parking_rate_paid`), parking owner email selected, endorsement image upload — labels per §6.1 **Q4.5**)
-    - PENDING_SD_REFUND → `SdRefundForm` (**`sd_additional_expenses` / `sd_additional_profits`** as repeatable “+” rows → `NUMERIC[]` in DB, **`sd_refund_receipt_url`** file upload, **`sd_refund_amount`**)
+    - PENDING_SD_REFUND → `SdRefundForm` (**`sd_additional_expense_items` / `sd_additional_profit_items`** as `{ label, amount }` in `JSONB`; **`sd_additional_expenses` / `sd_additional_profits`** `NUMERIC[]` in sync on transition; **`sd_refund_receipt_url`** via `upload-booking-asset` / `sd_refund_receipt`; **`sd_refund_amount`** = read-only **base SD + Σ(expenses) − Σ(profits)**)
   - List of **available transitions** (buttons) per the state machine.
   - **No v1 activity timeline** on the detail page (`NEW_FLOW_PLAN.md` §6.1 **Q5.4** / **Q1.6** — full history table deferred).
 
@@ -130,5 +130,5 @@ Two-column on ≥lg, single column on mobile:
 
 - Don't duplicate status or transition logic between `ui/src/features/admin/lib/workflow.ts` and `_shared/statusMachine.ts` — keep them aligned; a mismatch is a bug.
 - Don't fetch all bookings client-side for filtering. Server does filter/sort/pagination.
-- Don't hide guest-field editing after `READY_FOR_CHECKIN` — instead show a **warning banner** that saving changes will revert workflow to `PENDING_REVIEW` (per Q5.5).
+- Don't hide guest-field editing after `READY_FOR_CHECKIN` — instead show a **warning banner** that saving workflow-sensitive changes (Q5.5 list) will revert workflow to `PENDING_REVIEW`; non-listed changes should not revert status.
 - Don't bypass `RequireAdmin` via a route-level `<Outlet />` without the guard.

@@ -82,7 +82,29 @@ The server **must** validate every transition before writing. **Manual advances*
 
 ### 2.3 Guest-field edit → revert to review
 
-When `status === READY_FOR_CHECKIN` and an admin saves **material changes** to guest-facing booking fields (dates, guest counts, names, contact, parking/pet flags, uploads, etc.), **set `status` back to `PENDING_REVIEW`** (and update `status_updated_at`). Fan-out (calendar color/title, sheet status column) follows the **new** status.
+Only revert `status` back to `PENDING_REVIEW` when both are true:
+
+1. The update came from one of these flows:
+   - Public guest update (`/form?bookingId=...`)
+   - Admin booking-detail save (`/bookings/:bookingId` edit form → `guest_submissions` patch)
+   - Admin guest-document replacement (`upload-booking-asset` for `payment_receipt` | `valid_id` | `pet_vaccination` | `pet_image` only — other asset types do not revert)
+2. At least one workflow-sensitive field changed:
+   - Facebook / Airbnb Name
+   - Primary Guest name
+   - Email
+   - Phone Number
+   - Additional Guest Names
+   - Check-in and Check-out Date
+   - Check-in and Check-out Time
+   - Parking Details
+   - Pet Details
+   - Payment Receipt
+   - Valid ID
+   - Pet vaccination and pet photo
+
+If only non-listed fields are updated, keep the current status (do **not** revert).
+
+When a listed field changes while the booking’s `status` is one of **`PENDING_DOCUMENTS`**, **`PENDING_GAF`**, **`PENDING_PARKING_REQUEST`**, **`PENDING_PET_REQUEST`**, or **`READY_FOR_CHECKIN`**, set `status` to `PENDING_REVIEW` (and update `status_updated_at`). Do **not** apply this revert when status is already **`PENDING_REVIEW`**, in **`PENDING_SD_REFUND_DETAILS`** / **`PENDING_SD_REFUND`**, **`COMPLETED`**, or **`CANCELLED`**. Fan-out (calendar color/title, sheet status column) follows the **new** status. Server helper: `statusMachine.ts#shouldRevertGuestFieldEditsToPendingReview`.
 
 **Dev-control checkboxes** (save DB, storage, PDF, each email toggle, calendar, sheet) still apply to **every** submit/save — reverting status never bypasses them.
 
@@ -124,17 +146,18 @@ Example: `PENDING REVIEW - 2pax 2nights - Kyle Soriano`
 
 For **test bookings only**, prepend **`[TEST] `** before the status label: `[TEST] PENDING REVIEW - 2pax 2nights - Kyle Soriano`.
 
-| Status                    | `colorId` | `STATUS LABEL` (first segment of `summary`) |
-| ------------------------- | --------- | ------------------------------------------- |
-| PENDING_REVIEW            | `11`      | `PENDING REVIEW`                            |
-| PENDING_GAF               | `5`       | `PENDING GAF`                               |
-| PENDING_PARKING_REQUEST   | `5`       | `PENDING PARKING REQUEST`                   |
-| PENDING_PET_REQUEST       | `5`       | `PENDING PET REQUEST`                       |
-| READY_FOR_CHECKIN         | `10`      | `READY FOR CHECK-IN`                        |
-| PENDING_SD_REFUND_DETAILS | `6`       | `PENDING SD REFUND DETAILS`                 |
-| PENDING_SD_REFUND         | `6`       | `PENDING SD REFUND`                         |
-| COMPLETED                 | `9`       | `COMPLETED`                                 |
-| CANCELLED                 | `3`       | `CANCELED`                                  |
+| Status                    | `colorId` | `STATUS LABEL` (first segment of `summary`)                                                                                            |
+| ------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| PENDING_REVIEW            | `11`      | `PENDING REVIEW`                                                                                                                       |
+| PENDING_DOCUMENTS         | `5`       | Dynamic: `PENDING GAF` / `PENDING PARKING REQUEST` / `PENDING PET REQUEST` based on pending nested step (fallback `PENDING DOCUMENTS`) |
+| PENDING_GAF               | `5`       | `PENDING GAF`                                                                                                                          |
+| PENDING_PARKING_REQUEST   | `5`       | `PENDING PARKING REQUEST`                                                                                                              |
+| PENDING_PET_REQUEST       | `5`       | `PENDING PET REQUEST`                                                                                                                  |
+| READY_FOR_CHECKIN         | `10`      | `READY FOR CHECK-IN`                                                                                                                   |
+| PENDING_SD_REFUND_DETAILS | `6`       | `PENDING SD REFUND DETAILS`                                                                                                            |
+| PENDING_SD_REFUND         | `6`       | `PENDING SD REFUND`                                                                                                                    |
+| COMPLETED                 | `9`       | `COMPLETED`                                                                                                                            |
+| CANCELLED                 | `3`       | `CANCELED`                                                                                                                             |
 
 Canceled spelling **`CANCELED`** matches today’s cancel-booking UX copy; the **DB `status` literal** remains **`CANCELLED`** (calendar `summary` uses `CANCELED`).
 
@@ -142,31 +165,33 @@ Canceled spelling **`CANCELED`** matches today’s cancel-booking UX copy; the *
 
 When the task is…
 
-| Concern                                        | File / folder                                                                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Status enum, transition graph, color/title map | `supabase/functions/_shared/statusMachine.ts` (create) + mirror in `ui/src/features/admin/lib/workflow.ts`                                                                                                                                                                                                                       |
-| Apply side effects for a transition            | `supabase/functions/_shared/workflowOrchestrator.ts` (create)                                                                                                                                                                                                                                                                    |
-| Transition endpoint                            | `supabase/functions/transition-booking/index.ts` (create)                                                                                                                                                                                                                                                                        |
-| Admin booking list endpoint                    | `supabase/functions/list-bookings/index.ts` (create)                                                                                                                                                                                                                                                                             |
-| Gmail approval listener                        | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create) — port **OAuth + `users.history.list` incremental polling + `messages.get(full)` attachment download** from `automated-tasks/pay-credit-cards` (`src/gmail-*.ts`), persisting `historyId` in **`gmail_listener_state`** (not a local JSON file) |
-| SD refund cron                                 | `supabase/functions/sd-refund-cron/index.ts` (create)                                                                                                                                                                                                                                                                            |
-| Guest SD refund form (public)                  | `supabase/functions/get-sd-form`, `submit-sd-form`; UI `ui/src/features/sd-form/**`, route `/sd-form?bookingId=`                                                                                                                                                                                                                 |
-| Re-send SD form email (admin)                  | `supabase/functions/send-sd-refund-form-email/index.ts`                                                                                                                                                                                                                                                                          |
-| Parking broadcast email                        | `supabase/functions/parking-broadcast-email/index.ts` (create)                                                                                                                                                                                                                                                                   |
-| Drop side effects from submit                  | `supabase/functions/submit-form/index.ts` (edit)                                                                                                                                                                                                                                                                                 |
-| Calendar color/title                           | `supabase/functions/_shared/calendarService.ts` (edit — replace `colorId: 2` literal with map)                                                                                                                                                                                                                                   |
-| Sheet columns (add new ones)                   | `supabase/functions/_shared/sheetsService.ts` (edit — widen beyond AK)                                                                                                                                                                                                                                                           |
-| New email templates                            | `supabase/functions/_shared/email-templates/*.html` + `replacePlaceholders` in `emailService.ts`                                                                                                                                                                                                                                 |
-| DB columns                                     | `supabase/migrations/2026…*.sql` (add new migrations — never edit shipped ones)                                                                                                                                                                                                                                                  |
-| Overlap check (non-CANCELLED blocks)           | `supabase/functions/_shared/databaseService.ts` → `checkOverlappingBookings`                                                                                                                                                                                                                                                     |
-| Admin UI (auth + list + detail)                | `ui/src/features/admin/**` (create)                                                                                                                                                                                                                                                                                              |
-| Remove `?dev=true` / `?testing=true`           | `ui/src/features/guest-form/components/GuestForm.tsx` + `CalendarPage.tsx` + calendar URL builder                                                                                                                                                                                                                                |
-| Test Submit button                             | `ui/src/features/guest-form/components/GuestForm.tsx`                                                                                                                                                                                                                                                                            |
+| Concern                                          | File / folder                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Status enum, transition graph, color/title map   | `supabase/functions/_shared/statusMachine.ts` (create) + mirror in `ui/src/features/admin/lib/workflow.ts`                                                                                                                                                                                                                       |
+| Apply side effects for a transition              | `supabase/functions/_shared/workflowOrchestrator.ts` (create)                                                                                                                                                                                                                                                                    |
+| Transition endpoint                              | `supabase/functions/transition-booking/index.ts` (create)                                                                                                                                                                                                                                                                        |
+| Admin booking list endpoint                      | `supabase/functions/list-bookings/index.ts` (create)                                                                                                                                                                                                                                                                             |
+| Gmail approval listener                          | `supabase/functions/gmail-listener/index.ts` + `_shared/gmailClient.ts` (create) — port **OAuth + `users.history.list` incremental polling + `messages.get(full)` attachment download** from `automated-tasks/pay-credit-cards` (`src/gmail-*.ts`), persisting `historyId` in **`gmail_listener_state`** (not a local JSON file) |
+| SD refund cron                                   | `supabase/functions/sd-refund-cron/index.ts` (create)                                                                                                                                                                                                                                                                            |
+| Guest SD refund form (public)                    | `supabase/functions/get-sd-form`, `submit-sd-form`; UI `ui/src/features/sd-form/**`, route `/sd-form?bookingId=`                                                                                                                                                                                                                 |
+| Re-send SD form email (admin)                    | `supabase/functions/send-sd-refund-form-email/index.ts`                                                                                                                                                                                                                                                                          |
+| Parking broadcast email                          | `supabase/functions/parking-broadcast-email/index.ts` (create)                                                                                                                                                                                                                                                                   |
+| Drop side effects from submit                    | `supabase/functions/submit-form/index.ts` (edit)                                                                                                                                                                                                                                                                                 |
+| Calendar color/title                             | `supabase/functions/_shared/calendarService.ts` (edit — replace `colorId: 2` literal with map)                                                                                                                                                                                                                                   |
+| Sheet columns (add new ones)                     | `supabase/functions/_shared/sheetsService.ts` (edit — widen beyond AK)                                                                                                                                                                                                                                                           |
+| New email templates                              | `supabase/functions/_shared/email-templates/*.html` + `replacePlaceholders` in `emailService.ts`                                                                                                                                                                                                                                 |
+| DB columns                                       | `supabase/migrations/2026…*.sql` (add new migrations — never edit shipped ones)                                                                                                                                                                                                                                                  |
+| Overlap check (non-CANCELLED blocks)             | `supabase/functions/_shared/databaseService.ts` → `checkOverlappingBookings`                                                                                                                                                                                                                                                     |
+| Admin UI (auth + list + detail)                  | `ui/src/features/admin/**` (create)                                                                                                                                                                                                                                                                                              |
+| Pipeline + RFCI revert (whitelist) on admin save | `ui/src/features/admin/lib/workflowSensitiveGuestDiff.ts` + `bookingStatus.ts#shouldRevertGuestFieldEditsToPendingReview` + `BookingEditForm.tsx` → `useUpdateBooking`                                                                                                                                                           |
+| Pipeline + RFCI revert on guest doc upload       | `supabase/functions/upload-booking-asset/index.ts` (guest doc `assetType`s only) + `statusMachine.ts#shouldRevertGuestFieldEditsToPendingReview`                                                                                                                                                                                 |
+| Remove `?dev=true` / `?testing=true`             | `ui/src/features/guest-form/components/GuestForm.tsx` + `CalendarPage.tsx` + calendar URL builder                                                                                                                                                                                                                                |
+| Test Submit button                               | `ui/src/features/guest-form/components/GuestForm.tsx`                                                                                                                                                                                                                                                                            |
 
 ## 6. Invariants (tests should cover these)
 
 - `submit-form` never calls `sendEmail`, `CalendarService`, or `SheetsService`.
-- Only `workflowOrchestrator.transition()` mutates `status` and `status_updated_at` (including manual admin overrides and the `READY_FOR_CHECKIN → PENDING_REVIEW` revert on guest-field edits).
+- Only `workflowOrchestrator.transition()` mutates `status` and `status_updated_at` for **workflow transitions** (admin/cron/listener). **Exception — pipeline / `READY_FOR_CHECKIN` → `PENDING_REVIEW` safety revert** (no orchestrator): `submit-form` when workflow-sensitive guest fields change while `shouldRevertGuestFieldEditsToPendingReview(status)`, admin `guest_submissions` patch from `BookingEditForm` under the same rule, and `upload-booking-asset` for guest doc `assetType`s `payment_receipt` | `valid_id` | `pet_vaccination` | `pet_image`. These paths set `status` + `status_updated_at` only; they do not send workflow emails.
 - `get-booked-dates` returns everything where `status <> 'CANCELLED'` (not just `'booked'`).
 - Test bookings (`is_test_booking = true`) in **production** never send outbound email, never write Calendar, and never write Sheet — even if an admin checkbox is on (**`NEW_FLOW_PLAN.md` §6.1 Q3.4**).
 - Calendar event summary always matches `status → colorId` map; drift means orchestration is broken.
