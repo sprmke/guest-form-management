@@ -124,6 +124,7 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GMAIL_OAUTH_CLIENT_JSON` | OAuth client JSON (`installed` or `web` with `client_id` / `client_secret`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`. |
 | `GMAIL_OAUTH_TOKEN_JSON`  | Token JSON including **`refresh_token`**. Same script flow.                                                                                                   |
+| `PERMIT_APPROVER_EMAIL`   | Comma-separated sender allow-list for permit approvers. `gmail-listener` skips approvals when message `From` is not in this list.                             |
 
 If either Gmail secret is missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3.
 
@@ -210,18 +211,28 @@ This path is **longer** because it touches **Gmail OAuth**, **Gmail history IDs*
 ### 8.1 Preconditions
 
 - `GMAIL_OAUTH_CLIENT_JSON` and `GMAIL_OAUTH_TOKEN_JSON` set in **`supabase/.env.local`** (from `npm run gmail-auth` per `admin-auth.mdc`).
+- `PERMIT_APPROVER_EMAIL` set to the permit approver sender address (or comma-separated addresses) expected in the Gmail `From` header.
 - Migrations applied so tables exist: **`gmail_listener_state`**, **`processed_emails`** (see project migrations).
 - Storage bucket **`approved-gafs`** / **`approved-pet-forms`** available (declared in `config.toml` + migrations).
 - A booking row in **`PENDING_GAF`** (for GAF approval) or **`PENDING_PET_REQUEST`** (for pet approval) with **`check_in_date` / `check_out_date`** matching the **subject line** you will use in the test email.
 
 ### 8.2 Subject and attachment contract
 
-The listener parses subjects of the form (after optional prefixes like test/urgent/update — see code `parseApprovalSubject`):
+The listener parses subjects of the form (after optional prefixes like test/urgent/update/reply — see code `parseApprovalSubject`):
 
 - `Monaco 2604 - GAF Request (MM-DD-YYYY to MM-DD-YYYY)`
 - `Monaco 2604 - Pet Request (MM-DD-YYYY to MM-DD-YYYY)`
 
-Attachment filename must match (case-insensitive): **`APPROVED GAF.pdf`**.
+It also accepts month-name date format commonly seen in email threads, e.g.:
+
+- `Re: Monaco 2604 - GAF Request (May 13, 2026 to May 14, 2026)`
+
+Attachment filename matching is case-insensitive and tolerant to spaces/underscores/hyphens:
+
+- GAF approvals accept `APPROVED GAF.pdf` variants (e.g. `APPROVED_GAF.pdf`, `approved-gaf.pdf`).
+- Pet approvals accept `APPROVED PET.pdf` / `APPROVED PET FORM.pdf` variants, and also allow `APPROVED GAF.pdf` for backward compatibility with existing approver behavior.
+
+Sender `From` must match one of the addresses in **`PERMIT_APPROVER_EMAIL`** (when configured). If not, listener records `sender_not_allowed:<email>` and skips.
 
 If multiple bookings match the same dates + expected status, the listener **skips** and records **`ambiguous_multiple_bookings`** (per Q6.5).
 
@@ -300,7 +311,152 @@ If token exchange fails (`invalid_grant`):
 
 ---
 
-## 11. FAQ
+## 11. SQL scripts (enable / verify / remove)
+
+Use this section when you want repeatable SQL snippets for local dev or hosted projects.
+
+### 11.1 Verify cron prerequisites
+
+```sql
+select extname, extversion
+from pg_extension
+where extname in ('pg_cron', 'pg_net')
+order by extname;
+```
+
+Expected: both `pg_cron` and `pg_net` are present.
+
+### 11.2 Enable local cron jobs (copy-paste)
+
+Replace `<LOCAL_ANON_KEY>` with your local anon key from `supabase status`.
+
+```sql
+select cron.schedule(
+  'local-gmail-listener-every-5m',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := 'http://kong:8000/functions/v1/gmail-listener',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '<LOCAL_ANON_KEY>',
+      'Authorization', 'Bearer <LOCAL_ANON_KEY>'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+select cron.schedule(
+  'local-sd-refund-cron-every-5m',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := 'http://kong:8000/functions/v1/sd-refund-cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'apikey', '<LOCAL_ANON_KEY>',
+      'Authorization', 'Bearer <LOCAL_ANON_KEY>'
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+If your local stack cannot reach `kong:8000`, use `http://127.0.0.1:54321/functions/v1/...` instead.
+
+### 11.3 Enable hosted cron jobs (Vault pattern)
+
+Store project URL and key in Vault once:
+
+```sql
+select vault.create_secret('https://<project-ref>.supabase.co', 'project_url');
+select vault.create_secret('<ANON_OR_SCHEDULE_KEY>', 'anon_key');
+```
+
+Create jobs:
+
+```sql
+select cron.schedule(
+  'gmail-listener-every-5m',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url')
+           || '/functions/v1/gmail-listener',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'anon_key')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+
+select cron.schedule(
+  'sd-refund-cron-every-5m',
+  '*/5 * * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url')
+           || '/functions/v1/sd-refund-cron',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'anon_key')
+    ),
+    body := '{}'::jsonb
+  );
+  $$
+);
+```
+
+### 11.4 Verify installed jobs and run history
+
+```sql
+select jobid, jobname, schedule, active, command
+from cron.job
+where command ilike '%gmail-listener%' or command ilike '%sd-refund-cron%'
+order by jobid desc;
+```
+
+```sql
+select runid, jobid, status, return_message, start_time, end_time
+from cron.job_run_details
+where jobid in (
+  select jobid
+  from cron.job
+  where command ilike '%gmail-listener%' or command ilike '%sd-refund-cron%'
+)
+order by runid desc
+limit 50;
+```
+
+### 11.5 Disable/remove jobs
+
+By job name:
+
+```sql
+select cron.unschedule('local-gmail-listener-every-5m');
+select cron.unschedule('local-sd-refund-cron-every-5m');
+```
+
+Hosted names:
+
+```sql
+select cron.unschedule('gmail-listener-every-5m');
+select cron.unschedule('sd-refund-cron-every-5m');
+```
+
+Or by `jobid`:
+
+```sql
+select cron.unschedule(<jobid>);
+```
+
+---
+
+## 12. FAQ
 
 **Q: Does my laptop need to stay on for cron to run?**  
 **A:** No. On Supabase Cloud, **`pg_cron`** runs in the **hosted database**. Your machine only matters for **local** testing.
