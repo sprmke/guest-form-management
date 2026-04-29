@@ -4,6 +4,7 @@
 
 export const BOOKING_STATUSES = [
   'PENDING_REVIEW',
+  'PENDING_DOCUMENTS',
   'PENDING_GAF',
   'PENDING_PARKING_REQUEST',
   'PENDING_PET_REQUEST',
@@ -28,6 +29,7 @@ export type AnyBookingStatus = BookingStatus | LegacyBookingStatus;
 /** Human labels for display (matches calendar summary conventions in `NEW_FLOW_PLAN.md §1.4`). */
 export const STATUS_LABELS: Record<AnyBookingStatus, string> = {
   PENDING_REVIEW: 'Pending Review',
+  PENDING_DOCUMENTS: 'Pending Documents',
   PENDING_GAF: 'Pending GAF',
   PENDING_PARKING_REQUEST: 'Pending Parking Request',
   PENDING_PET_REQUEST: 'Pending Pet Request',
@@ -57,6 +59,7 @@ export type StatusTone =
 
 export const STATUS_TONE: Record<AnyBookingStatus, StatusTone> = {
   PENDING_REVIEW: 'red',
+  PENDING_DOCUMENTS: 'yellow',
   PENDING_GAF: 'yellow',
   PENDING_PARKING_REQUEST: 'yellow',
   PENDING_PET_REQUEST: 'yellow',

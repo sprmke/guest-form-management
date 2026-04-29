@@ -38,7 +38,6 @@ export type BookingRow = {
   car_plate_number: string | null;
   car_brand_model: string | null;
   car_color: string | null;
-  parking_owner_email: string | null;
   parking_endorsement_url: string | null;
 
   // ── Pets ──────────────────────────────────────────────────────────────────
@@ -76,6 +75,9 @@ export type BookingRow = {
   pet_fee?: number | string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
+  gaf_completed_at?: string | null;
+  parking_completed_at?: string | null;
+  pet_completed_at?: string | null;
   sd_additional_expenses?: number[] | null;
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | string | null;
