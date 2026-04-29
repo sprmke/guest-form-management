@@ -14,6 +14,7 @@
 
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Calendar,
@@ -22,11 +23,13 @@ import {
   Edit2,
   ExternalLink,
   FileText,
+  ImageIcon,
   Info,
   Mail,
   MapPin,
   MessageSquare,
   Phone,
+  Loader2,
   Search,
   TestTube2,
   User,
@@ -45,11 +48,23 @@ import {
 } from '@/features/admin/lib/formatters';
 import { cn } from '@/lib/utils';
 import type { BookingRow } from '@/features/admin/lib/types';
+import { supabase } from '@/lib/supabaseClient';
+import {
+  normalizeStoragePublicUrl,
+  parseStorageUrl,
+  PRIVATE_STORAGE_BUCKETS,
+} from '@/features/admin/lib/storageUrls';
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const { data: booking, isLoading, error } = useBooking(bookingId);
   const [editMode, setEditMode] = useState(false);
+  const [previewAsset, setPreviewAsset] = useState<{
+    label: string;
+    url: string;
+    type: 'image' | 'pdf' | 'file';
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const title =
     booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
@@ -63,6 +78,24 @@ export function BookingDetailPage() {
       <span className="hidden sm:inline">Edit</span>
     </button>
   );
+
+  const handlePreview = async (label: string, rawUrl: string) => {
+    setPreviewLoading(true);
+    try {
+      const resolved = await resolveAssetUrlForBrowser(rawUrl);
+      setPreviewAsset({
+        label,
+        url: resolved,
+        type: getDocType(rawUrl),
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to open document',
+      );
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
 
   return (
     <AdminLayout title={title} breadcrumb="Bookings" actions={editButton}>
@@ -125,24 +158,40 @@ export function BookingDetailPage() {
                 ) : (
                   /* View mode info cards */
                   <>
-                    <GuestInfoCard booking={booking} />
+                    <GuestInfoCard
+                      booking={booking}
+                      onPreview={handlePreview}
+                    />
                     <AdditionalGuestsCard booking={booking} />
                     <StayDetailsCard booking={booking} />
-                    {booking.need_parking && <ParkingCard booking={booking} />}
-                    {booking.has_pets && <PetsCard booking={booking} />}
+                    {booking.need_parking && (
+                      <ParkingCard
+                        booking={booking}
+                        onPreview={handlePreview}
+                      />
+                    )}
+                    {booking.has_pets && (
+                      <PetsCard booking={booking} onPreview={handlePreview} />
+                    )}
                     {(booking.find_us || booking.guest_special_requests) && (
                       <OtherInfoCard booking={booking} />
                     )}
                     {booking.booking_rate != null && (
-                      <PricingCard booking={booking} />
+                      <PricingCard
+                        booking={booking}
+                        onPreview={handlePreview}
+                      />
                     )}
-                    <DocumentsCard booking={booking} />
+                    <DocumentsCard
+                      booking={booking}
+                      onPreview={handlePreview}
+                    />
                   </>
                 )}
               </div>
 
               {/* ── Right column — WorkflowPanel ───────────────────────────── */}
-              <div className="w-full lg:w-[344px] lg:shrink-0 lg:sticky lg:top-[73px]">
+              <div className="w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]">
                 <WorkflowPanel booking={booking} />
 
                 {/* Booking meta */}
@@ -179,6 +228,13 @@ export function BookingDetailPage() {
           )}
         </div>
       </div>
+      <AssetPreviewModal
+        asset={previewAsset}
+        loading={previewLoading}
+        onClose={() => {
+          if (!previewLoading) setPreviewAsset(null);
+        }}
+      />
     </AdminLayout>
   );
 }
@@ -223,7 +279,13 @@ function BookingHeader({ booking }: { booking: BookingRow }) {
   );
 }
 
-function GuestInfoCard({ booking }: { booking: BookingRow }) {
+function GuestInfoCard({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
   return (
     <Card title="Guest Information" icon={<User className="size-3.5" />}>
       <Grid2>
@@ -249,6 +311,24 @@ function GuestInfoCard({ booking }: { booking: BookingRow }) {
         />
         <InfoField label="Nationality" value={booking.nationality} />
       </Grid2>
+      {(booking.approved_gaf_pdf_url || booking.valid_id_url) && (
+        <div className="mt-3 flex flex-wrap gap-3">
+          {booking.approved_gaf_pdf_url && (
+            <DocPreview
+              label="Approved GAF"
+              url={booking.approved_gaf_pdf_url}
+              onPreview={onPreview}
+            />
+          )}
+          {booking.valid_id_url && (
+            <DocPreview
+              label="Valid ID"
+              url={booking.valid_id_url}
+              onPreview={onPreview}
+            />
+          )}
+        </div>
+      )}
     </Card>
   );
 }
@@ -307,12 +387,15 @@ function StayDetailsCard({ booking }: { booking: BookingRow }) {
   );
 }
 
-function ParkingCard({ booking }: { booking: BookingRow }) {
+function ParkingCard({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
   return (
     <Card title="Parking" icon={<Car className="size-3.5" />}>
-      <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
-        Non-refundable parking. Cannot be rescheduled after confirmation.
-      </div>
       <Grid2>
         <InfoField label="Plate Number" value={booking.car_plate_number} />
         <InfoField
@@ -333,18 +416,13 @@ function ParkingCard({ booking }: { booking: BookingRow }) {
             value={formatMoney(booking.parking_rate_paid as number)}
           />
         )}
-        {booking.parking_owner_email && (
-          <InfoField
-            label="Parking Owner Email"
-            value={booking.parking_owner_email}
-          />
-        )}
       </Grid2>
       {booking.parking_endorsement_url && (
         <div className="mt-3">
           <DocPreview
             label="Parking Endorsement"
             url={booking.parking_endorsement_url}
+            onPreview={onPreview}
           />
         </div>
       )}
@@ -352,7 +430,13 @@ function ParkingCard({ booking }: { booking: BookingRow }) {
   );
 }
 
-function PetsCard({ booking }: { booking: BookingRow }) {
+function PetsCard({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
   return (
     <Card title="Pet Information" icon={<Dog className="size-3.5" />}>
       <Grid2>
@@ -376,18 +460,24 @@ function PetsCard({ booking }: { booking: BookingRow }) {
         booking.approved_pet_pdf_url) && (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
           {booking.pet_image_url && (
-            <DocPreview label="Pet Photo" url={booking.pet_image_url} />
+            <DocPreview
+              label="Pet Photo"
+              url={booking.pet_image_url}
+              onPreview={onPreview}
+            />
           )}
           {booking.pet_vaccination_url && (
             <DocPreview
               label="Vaccination Record"
               url={booking.pet_vaccination_url}
+              onPreview={onPreview}
             />
           )}
           {booking.approved_pet_pdf_url && (
             <DocPreview
               label="Approved Pet Form"
               url={booking.approved_pet_pdf_url}
+              onPreview={onPreview}
             />
           )}
         </div>
@@ -434,7 +524,13 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
   );
 }
 
-function PricingCard({ booking }: { booking: BookingRow }) {
+function PricingCard({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
   return (
     <Card title="Pricing" icon={<FileText className="size-3.5" />}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -464,11 +560,6 @@ function PricingCard({ booking }: { booking: BookingRow }) {
           />
         )}
       </div>
-      {booking.approved_gaf_pdf_url && (
-        <div className="mt-3">
-          <DocPreview label="Approved GAF" url={booking.approved_gaf_pdf_url} />
-        </div>
-      )}
       {booking.sd_refund_amount != null && (
         <div className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
           <p className="text-xs font-semibold text-emerald-800">
@@ -479,24 +570,38 @@ function PricingCard({ booking }: { booking: BookingRow }) {
           </p>
         </div>
       )}
-      {booking.sd_refund_receipt_url && (
-        <div className="mt-3">
-          <DocPreview
-            label="SD Refund Receipt"
-            url={booking.sd_refund_receipt_url}
-          />
+      {(booking.sd_refund_receipt_url || booking.payment_receipt_url) && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {booking.sd_refund_receipt_url && (
+            <DocPreview
+              label="SD Refund Receipt"
+              url={booking.sd_refund_receipt_url}
+              onPreview={onPreview}
+            />
+          )}
+          {booking.payment_receipt_url && (
+            <DocPreview
+              label="Payment Receipt"
+              url={booking.payment_receipt_url}
+              onPreview={onPreview}
+            />
+          )}
         </div>
       )}
     </Card>
   );
 }
 
-function DocumentsCard({ booking }: { booking: BookingRow }) {
-  const docs = [
-    { label: 'Payment Receipt', url: booking.payment_receipt_url },
-    { label: 'Valid ID', url: booking.valid_id_url },
-    { label: 'Booking PDF', url: booking.pdf_url },
-  ].filter((d): d is { label: string; url: string } => !!d.url);
+function DocumentsCard({
+  booking,
+  onPreview,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
+  const docs = [{ label: 'Booking PDF', url: booking.pdf_url }].filter(
+    (d): d is { label: string; url: string } => !!d.url,
+  );
 
   if (docs.length === 0) return null;
 
@@ -504,7 +609,12 @@ function DocumentsCard({ booking }: { booking: BookingRow }) {
     <Card title="Documents" icon={<FileText className="size-3.5" />}>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {docs.map((d) => (
-          <DocPreview key={d.label} label={d.label} url={d.url} />
+          <DocPreview
+            key={d.label}
+            label={d.label}
+            url={d.url}
+            onPreview={onPreview}
+          />
         ))}
       </div>
     </Card>
@@ -520,7 +630,41 @@ function getDocType(url: string): 'image' | 'pdf' | 'file' {
   return 'file';
 }
 
-function DocPreview({ label, url }: { label: string; url: string }) {
+const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+async function resolveAssetUrlForBrowser(url: string): Promise<string> {
+  const normalized = normalizeStoragePublicUrl(url) ?? url;
+  const loc = parseStorageUrl(normalized);
+  if (!loc || !PRIVATE_STORAGE_BUCKETS.has(loc.bucket)) return normalized;
+
+  const { data } = await supabase.auth.getSession();
+  const jwt = data.session?.access_token;
+  if (!jwt) throw new Error('No active admin session');
+
+  const res = await fetch(`${FUNCTIONS_URL}/get-booking-asset-url`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify({ url: normalized }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success || !json.data?.url) {
+    throw new Error(json.error ?? 'Failed to resolve asset URL');
+  }
+  return json.data.url as string;
+}
+
+function DocPreview({
+  label,
+  url,
+  onPreview,
+}: {
+  label: string;
+  url: string;
+  onPreview: (label: string, rawUrl: string) => void;
+}) {
   const type = getDocType(url);
   const [imgError, setImgError] = useState(false);
 
@@ -530,7 +674,11 @@ function DocPreview({ label, url }: { label: string; url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all"
+        onClick={(e) => {
+          e.preventDefault();
+          onPreview(label, url);
+        }}
+        className="group flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md lg:max-w-[255px]"
       >
         <div className="relative aspect-video bg-slate-100 overflow-hidden">
           <img
@@ -544,8 +692,9 @@ function DocPreview({ label, url }: { label: string; url: string }) {
           </div>
         </div>
         <div className="flex items-center justify-between px-3 py-2 bg-white">
-          <span className="truncate text-[11px] font-medium text-slate-600">
-            {label}
+          <span className="truncate inline-flex items-center gap-1 text-[11px] font-medium text-slate-600">
+            <ImageIcon className="size-3 shrink-0 text-slate-400" />
+            <span className="truncate">{label}</span>
           </span>
           <ExternalLink className="size-3 shrink-0 text-slate-400" />
         </div>
@@ -559,17 +708,27 @@ function DocPreview({ label, url }: { label: string; url: string }) {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="group flex flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 hover:border-red-300 hover:bg-red-50 transition-all min-h-[100px]"
+        onClick={(e) => {
+          e.preventDefault();
+          onPreview(label, url);
+        }}
+        className="group flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md lg:max-w-[255px]"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-100 group-hover:bg-red-200 transition-colors">
-          <FileText className="size-5 text-red-600" />
+        <div className="relative aspect-video bg-slate-100 overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center bg-rose-100">
+            <FileText className="size-10 text-rose-500" />
+          </div>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
+            <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+          </div>
         </div>
-        <span className="text-center text-[11px] font-medium text-slate-600 leading-tight">
-          {label}
-        </span>
-        <span className="text-[10px] text-slate-400 group-hover:text-red-500 transition-colors">
-          Open PDF
-        </span>
+        <div className="flex items-center justify-between px-3 py-2 bg-white">
+          <span className="truncate inline-flex items-center gap-1 text-[11px] font-medium text-slate-600">
+            <FileText className="size-3 shrink-0 text-rose-500" />
+            <span className="truncate">{label}</span>
+          </span>
+          <ExternalLink className="size-3 shrink-0 text-slate-400" />
+        </div>
       </a>
     );
   }
@@ -579,13 +738,98 @@ function DocPreview({ label, url }: { label: string; url: string }) {
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 hover:bg-slate-100 transition-colors"
+      onClick={(e) => {
+        e.preventDefault();
+        onPreview(label, url);
+      }}
+      className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 lg:max-w-[255px]"
     >
       <ExternalLink className="size-4 shrink-0 text-slate-400" />
       <span className="truncate text-xs font-medium text-slate-700">
         {label}
       </span>
     </a>
+  );
+}
+
+function AssetPreviewModal({
+  asset,
+  loading,
+  onClose,
+}: {
+  asset: { label: string; url: string; type: 'image' | 'pdf' | 'file' } | null;
+  loading: boolean;
+  onClose: () => void;
+}) {
+  if (!asset && !loading) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-[1px] p-2 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={asset ? `Preview ${asset.label}` : 'Loading preview'}
+      onClick={onClose}
+    >
+      <div
+        className="mx-auto flex h-[calc(100vh-1rem)] w-full max-w-4xl flex-col rounded-lg border border-slate-200 bg-white shadow-2xl sm:h-[calc(100vh-2rem)] sm:max-w-5xl sm:rounded-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex min-h-[52px] items-center justify-between border-b border-slate-200 px-2.5 sm:min-h-[56px] sm:px-4">
+          <div className="min-w-0">
+            <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
+              {asset?.label ?? 'Loading preview...'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {asset && (
+              <a
+                href={asset.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-700 hover:bg-slate-50 sm:min-h-[44px] sm:px-3 sm:text-xs"
+              >
+                Open in new tab
+              </a>
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 sm:min-h-[44px] sm:min-w-[44px]"
+              aria-label="Close preview"
+            >
+              <X className="size-4" />
+            </button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 bg-slate-100 p-1.5 sm:p-3">
+          {loading && (
+            <div className="flex h-full items-center justify-center gap-2 text-slate-600">
+              <Loader2 className="size-5 animate-spin" />
+              <span className="text-sm">Loading preview...</span>
+            </div>
+          )}
+
+          {!loading && asset?.type === 'image' && (
+            <div className="flex h-full items-center justify-center overflow-auto rounded-lg bg-white">
+              <img
+                src={asset.url}
+                alt={asset.label}
+                className="max-h-full w-auto object-contain"
+              />
+            </div>
+          )}
+
+          {!loading && asset?.type !== 'image' && asset && (
+            <iframe
+              title={asset.label}
+              src={asset.url}
+              className="h-full w-full rounded-lg bg-white"
+            />
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
