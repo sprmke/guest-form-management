@@ -70,12 +70,12 @@ const EMAIL_SHELL_STYLE_VARS = {
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
   emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
   emailShellTableWrapperStyle:
-    'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;border-radius:20px;overflow:hidden;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+    'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
-    'height:5px;line-height:5px;font-size:0;background-color:#5f954c;border-radius:20px 20px 0 0;',
+    'height:5px;line-height:5px;font-size:0;background-color:#5f954c;',
   emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',
   emailShellTableCardStyle:
-    'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-top:none;border-radius:0 0 20px 20px;overflow:hidden;box-shadow:0 12px 40px rgba(15,23,42,0.06);',
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:none;',
   emailShellTdContentPadStyle:
     "padding:36px 40px 40px 40px;text-align:left;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellTdLegalFooterStyle:
@@ -97,6 +97,22 @@ const EMAIL_SHELL_STYLE_VARS = {
   emailShellTextArrowStyle: 'color:#94a3b8;',
   emailShellCtaBtnStyle:
     "display:inline-block;padding:14px 28px;background-color:#2563eb;color:#ffffff !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+  emailStepCardOuterStyle:
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:#f1f5f9;border:1px solid #e2e8f0;border-radius:16px;',
+  emailStepCardInnerWrapStyle: 'padding:0;border-radius:16px;',
+  emailStepCardInnerStyle:
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:#f1f5f9;border-radius:16px;overflow:hidden;',
+  emailStepNumCellStyle:
+    "width:68px;min-width:68px;padding:20px 14px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;",
+  emailStepNumTextStyle: 'font-size:32px;font-weight:700;line-height:1;color:#5f954c;display:inline-block;',
+  emailStepBodyCellStyle:
+    "padding:18px 18px 18px 16px;vertical-align:middle;background-color:#f1f5f9;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
+  emailStepBodyPStyle:
+    "margin:0;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
+  emailAttachListWrapStyle:
+    'width:100%;border-collapse:separate;border-spacing:0;background-color:transparent;',
+  emailAttachListCellStyle:
+    "padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-left:4px solid #affd93;border-radius:16px;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
   emailLogoWrapTdStyle: 'padding:0 0 22px 0;text-align:center;',
   emailLogoImgStyle:
     'display:block;margin:0 auto;width:80px;max-width:80px;height:80px;border:0;outline:none;text-decoration:none;border-radius:50%;',
@@ -392,6 +408,7 @@ const DEMO_BOOKING = {
   security_deposit: 1500,
   parking_rate_guest: 500,
   pet_fee: 300,
+  guest_additional_fee: 250,
   status: 'READY_FOR_CHECKIN',
   is_test_booking: false,
 };
@@ -400,9 +417,9 @@ function buildParkingPaymentRow(booking) {
   if (!booking.need_parking) return '';
   return `
     <tr class="fee-addon-row">
-      <td class="tbl-label">Guest parking fee</td>
-      <td class="tbl-num">${pesoFormat(booking.parking_rate_guest)}</td>
-      <td class="tbl-note"><em class="italic-note">Non-refundable; no rescheduling</em></td>
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Guest parking fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.parking_rate_guest)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"><em class="italic-note">Non-refundable; no rescheduling</em></td>
     </tr>`;
 }
 
@@ -410,9 +427,20 @@ function buildPetPaymentRow(booking) {
   if (!booking.has_pets) return '';
   return `
     <tr class="fee-addon-row">
-      <td class="tbl-label">Pet fee</td>
-      <td class="tbl-num">${pesoFormat(booking.pet_fee)}</td>
-      <td class="tbl-note"></td>
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Pet fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.pet_fee)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td>
+    </tr>`;
+}
+
+function buildAdditionalFeeRow(booking) {
+  const amt = Number(booking.guest_additional_fee) || 0;
+  if (amt <= 0) return '';
+  return `
+    <tr class="fee-addon-row">
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Additional fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(amt)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;">Early check-in, late check-out, surprise decor, etc.</td>
     </tr>`;
 }
 
@@ -428,15 +456,16 @@ function computeTotalDueAtCheckin(booking) {
     ? Number(booking.parking_rate_guest) || 0
     : 0;
   const pet = booking.has_pets ? Number(booking.pet_fee) || 0 : 0;
-  return (Number.isFinite(bal) ? bal : 0) + sec + park + pet;
+  const addl = Number(booking.guest_additional_fee) || 0;
+  return (Number.isFinite(bal) ? bal : 0) + sec + park + pet + addl;
 }
 
 function buildDocumentRemindersSection(booking) {
   const gafReminderHtml = `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--gaf" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--gaf" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Guest Advise Form (GAF)</span>
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Guest Advise Form (GAF)</span>
           Your GAF has been approved. No need to print it! Simply present it at the guard house upon arrival and to the lobby receptionist during registration.
         </td>
       </tr>
@@ -444,11 +473,11 @@ function buildDocumentRemindersSection(booking) {
 
   const parkingReminderHtml = booking.need_parking
     ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--parking" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--parking" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Parking</span>
-          Your parking slot is confirmed. The guest parking fee is <strong class="callout-strong">non-refundable</strong>, and once confirmed your parking dates <strong class="callout-strong">cannot be rescheduled</strong>.
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Parking</span>
+          Your parking slot is confirmed. The guest parking fee is <strong class="callout-strong" style="color:#1e293b;font-weight:700;">non-refundable</strong>, and once confirmed your parking dates <strong class="callout-strong" style="color:#1e293b;font-weight:700;">cannot be rescheduled</strong>.
         </td>
       </tr>
     </table>`
@@ -456,10 +485,10 @@ function buildDocumentRemindersSection(booking) {
 
   const petReminderHtml = booking.has_pets
     ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--pet" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <table role="presentation" class="callout-outer callout-doc callout-doc--pet" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
       <tr>
-        <td>
-          <span class="callout-title">Pet</span>
+        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Pet</span>
           Your pet has been approved for this stay. Please keep your pet on a leash at all times and keep them within designated pet areas.
         </td>
       </tr>
@@ -658,6 +687,7 @@ function renderAll(booking, meta, emailLogoUrl) {
       totalBalanceDue: pesoFormat(computeTotalDueAtCheckin(booking)),
       parkingPaymentRow: buildParkingPaymentRow(booking),
       petPaymentRow: buildPetPaymentRow(booking),
+      additionalFeeRow: buildAdditionalFeeRow(booking),
       houseRulesSection,
     }),
   );

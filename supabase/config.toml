@@ -28,7 +28,7 @@ sql_paths = ["./seed.sql"]
 # ui/.env.development (same file as Vite dev vars). dev.sh / npm run start:supabase
 # load that file into the environment before `supabase start`. Google Cloud → OAuth
 # Web client → Authorized redirect URIs: http://127.0.0.1:54321/auth/v1/callback and
-# http://localhost:54321/auth/v1/callback
+# http://localhost:54321/auth/v1/callback (both must match a single entry here + GCP).
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:5173"
@@ -41,6 +41,9 @@ additional_redirect_urls = [
 enabled = true
 client_id = "env(GOOGLE_CLIENT_ID)"
 secret = "env(GOOGLE_CLIENT_SECRET)"
+# GoTrue validates non-empty redirect_uri before redirecting to Google; without this,
+# /auth/v1/authorize returns 400 validation_failed "Unsupported provider: missing redirect URI".
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 skip_nonce_check = false
 
 [storage]
@@ -84,33 +87,15 @@ enabled = true
 policy = "oneshot"
 inspector_port = 8083
 
-# Email templates are read at runtime (`_shared/renderEmailHtml.ts#loadEmailTemplate`).
-# The Edge bundler does not include arbitrary `.html` files unless listed here (CLI ≥ 2.7).
-# Repeat this block on every function that imports `emailService` or `workflowOrchestrator`.
-
 # ── Public (guest-facing) functions — no JWT required ──────────────────────────
 [functions.submit-form]
 verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
 
 [functions.get-booked-dates]
 verify_jwt = false
 
 [functions.get-form]
 verify_jwt = false
-
-[functions.get-sd-form]
-verify_jwt = false
-
-[functions.submit-sd-form]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
 
 # ── Admin functions — Kong JWT gate disabled; verifyAdminJwt() in handler is the gate ──
 # verify_jwt = true uses Kong's HS256 secret which rejects newer ES256 auth tokens
@@ -122,60 +107,23 @@ verify_jwt = false
 
 [functions.transition-booking]
 verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
 
 [functions.upload-booking-asset]
 verify_jwt = false
 
 [functions.cancel-booking]
 verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
 
 [functions.cleanup-test-data]
 verify_jwt = false
 
-[functions.parking-broadcast-email]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
-
-[functions.send-sd-refund-form-email]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
-
-# ── Scheduled / internal — served locally + triggered by cron in cloud ────────
-# The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
-# fail to parse config.toml. Set the cron schedule in the Supabase dashboard.
-# Both functions are served locally (so the "Run now" admin buttons work) and
-# callable with an admin JWT from the WorkflowPanel (Q6.6).
-[functions.gmail-listener]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
-
-[functions.sd-refund-cron]
-verify_jwt = false
-static_files = [
-  "./functions/_shared/email-templates/*.html",
-  "./functions/_shared/email-templates/fragments/*.html",
-]
-# Cloud-only schedule:
-# schedule = "*/5 * * * *"   ← set this in Supabase dashboard, NOT here
-
-# ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
-# [functions.gmail-listener] schedule = "*/5 * * * *"
-# [functions.sd-refund-cron] schedule = "*/5 * * * *"
+# ── Scheduled / internal — triggered by Supabase cron (Phase 4) ───────────────
+# Uncomment ONLY when deploying to Supabase Cloud — the local CLI does not
+# support the `schedule` key and will fail to parse config.toml if it is set.
+# [functions.gmail-listener]
+# verify_jwt = false
+# schedule = "*/5 * * * *"
+#
+# [functions.sd-refund-cron]
+# verify_jwt = false
 # schedule = "*/5 * * * *"
