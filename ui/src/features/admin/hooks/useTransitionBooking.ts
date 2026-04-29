@@ -9,8 +9,8 @@ export type TransitionPayload = {
   down_payment?: number | null;
   security_deposit?: number | null;
   pet_fee?: number | null;
+  parking_rate_guest?: number | null;
   parking_rate_paid?: number | null;
-  parking_owner_email?: string | null;
   parking_endorsement_url?: string | null;
   sd_additional_expenses?: number[] | null;
   sd_additional_profits?: number[] | null;
@@ -25,6 +25,11 @@ export type TransitionPayload = {
   sd_refund_cash_pickup_note?: string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
+  document_completion_target?:
+    | 'PENDING_GAF'
+    | 'PENDING_PARKING_REQUEST'
+    | 'PENDING_PET_REQUEST'
+    | null;
 };
 
 export type DevControlFlags = {
