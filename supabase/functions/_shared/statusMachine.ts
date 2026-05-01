@@ -96,6 +96,7 @@ const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>>
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   READY_FOR_CHECKIN:       [
+    'PENDING_DOCUMENTS',
     'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
     'PENDING_GAF',
@@ -186,6 +187,7 @@ function bookingFlagTrue(v: unknown): boolean {
 
 /**
  * Completion flags for GAF / parking / pet while the parent row is still PENDING_DOCUMENTS.
+ * Parking is "done" only when `parking_completed_at` is set (not merely `parking_endorsement_url`).
  */
 export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCalendarBooking): {
   needParking: boolean;
@@ -197,10 +199,11 @@ export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCal
   const needParking = bookingFlagTrue(booking.need_parking);
   const hasPets = bookingFlagTrue(booking.has_pets);
   const gafDone = !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+  // Parking: URL alone does not clear the nested step — only `parking_completed_at`
+  // (admin "Mark as Complete — Pending Parking Request" / same-field transition).
   const parkingDone =
     !needParking ||
-    !!booking.parking_completed_at ||
-    !!booking.parking_endorsement_url;
+    !!booking.parking_completed_at;
   const petDone =
     !hasPets || !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
   return { needParking, hasPets, gafDone, parkingDone, petDone };

@@ -148,7 +148,11 @@ const DEV_CONTROLS: DevControlDef[] = [
     // Only relevant on FORWARD transitions to READY_FOR_CHECKIN. The server
     // gates this too — backward transitions (e.g. PENDING_SD_REFUND →
     // READY_FOR_CHECKIN) never fire the ready email regardless of this flag.
-    isRelevant: (status) => status === 'PENDING_DOCUMENTS',
+    isRelevant: (status) =>
+      status === 'PENDING_DOCUMENTS' ||
+      status === 'PENDING_GAF' ||
+      status === 'PENDING_PARKING_REQUEST' ||
+      status === 'PENDING_PET_REQUEST',
   },
   {
     key: 'sendSdRefundFormEmail',

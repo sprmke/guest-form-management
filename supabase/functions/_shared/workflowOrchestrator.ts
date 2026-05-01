@@ -437,6 +437,7 @@ export class WorkflowOrchestrator {
       // (e.g. PENDING_SD_REFUND → READY_FOR_CHECKIN) never re-fires the
       // ready-for-checkin email even if the dev control is checked.
       const isForwardToReady =
+        fromStatus === 'PENDING_DOCUMENTS' ||
         fromStatus === 'PENDING_GAF' ||
         fromStatus === 'PENDING_PARKING_REQUEST' ||
         fromStatus === 'PENDING_PET_REQUEST';

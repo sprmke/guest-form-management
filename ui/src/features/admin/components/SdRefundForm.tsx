@@ -9,8 +9,9 @@
  * Plan: docs/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  Copy,
   ExternalLink,
   FileImage,
   Loader2,
@@ -121,12 +122,44 @@ function buildSdInitialState(
   };
 }
 
+/** Digits only — used for `gcash://` deep links. */
+function phoneDigitsOnly(raw: string | null | undefined): string {
+  if (!raw?.trim()) return '';
+  return raw.replace(/\D/g, '');
+}
+
 function methodLabel(
   method: NonNullable<BookingRow['sd_refund_method']>,
 ): string {
   if (method === 'same_phone') return 'GCash (same number as phone on file)';
   if (method === 'cash') return 'Cash pickup';
   return 'Bank / e-wallet transfer';
+}
+
+function RefundSummaryRow({
+  label,
+  children,
+  mono,
+}: {
+  label: string;
+  children: ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="py-3 border-b border-slate-100 first:pt-0 last:border-b-0">
+      <p className="text-[11px] font-medium leading-tight text-slate-500">
+        {label}
+      </p>
+      <div
+        className={cn(
+          'mt-1.5 text-sm leading-relaxed text-slate-900 break-words',
+          mono && 'font-mono text-[13px] tracking-tight text-slate-800',
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
 }
 
 export type SdRefundValues = {
@@ -184,6 +217,29 @@ export function SdRefundForm({
   );
   /** Refund = base SD + additional expenses charged to guest − profits retained from guest. */
   const netSD = baseSd + totalExpenses - totalProfits;
+
+  const phoneDisplay = booking.guest_phone_number?.trim() ?? '';
+  const phoneDigits = phoneDigitsOnly(booking.guest_phone_number);
+  const refundAmountForGcash =
+    netSD > 0 && Number.isFinite(netSD)
+      ? (Math.round(netSD * 100) / 100).toFixed(2)
+      : '';
+  const gcashSendHref =
+    guestMethod === 'same_phone' &&
+    phoneDigits.length >= 10 &&
+    refundAmountForGcash
+      ? `gcash://send?mobile=${phoneDigits}&amount=${refundAmountForGcash}`
+      : null;
+
+  async function copyGuestPhone() {
+    if (!phoneDisplay) return;
+    try {
+      await navigator.clipboard.writeText(phoneDisplay);
+      toast.success('Phone number copied');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }
 
   useEffect(() => {
     const url = booking.sd_refund_receipt_url;
@@ -251,64 +307,74 @@ export function SdRefundForm({
   return (
     <div className="space-y-4">
       {guestMethod && (
-        <div className="px-3 py-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50/80">
-          <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
+        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm sm:px-5">
+          <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
             Guest refund method
           </p>
-          <dl className="space-y-1.5 text-sm text-slate-700">
-            <div className="flex gap-3 justify-between">
-              <dt className="shrink-0 text-slate-500">Method</dt>
-              <dd className="font-medium text-right">
-                {methodLabel(guestMethod)}
-              </dd>
-            </div>
+          <div className="mt-2 min-w-0">
+            <RefundSummaryRow label="Method">
+              {methodLabel(guestMethod)}
+            </RefundSummaryRow>
             {guestMethod === 'same_phone' && (
-              <div className="flex gap-3 justify-between">
-                <dt className="shrink-0 text-slate-500">Phone on file</dt>
-                <dd className="text-right break-all">
-                  {booking.guest_phone_number}
-                </dd>
+              <div className="py-3 border-b border-slate-100 first:pt-0 last:border-b-0">
+                <p className="text-[11px] font-medium leading-tight text-slate-500">
+                  Phone on file
+                </p>
+                <div className="mt-1.5 flex min-h-[44px] flex-wrap items-center gap-2 sm:min-h-0">
+                  <span
+                    className={cn(
+                      'min-w-0 break-words font-mono text-[13px] leading-relaxed tracking-tight text-slate-800',
+                      !phoneDisplay && 'text-slate-400',
+                    )}
+                  >
+                    {phoneDisplay || '—'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => void copyGuestPhone()}
+                    disabled={!phoneDisplay}
+                    className={cn(
+                      'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium ring-1 transition-colors sm:min-h-0',
+                      phoneDisplay
+                        ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100'
+                        : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                    )}
+                    aria-label="Copy phone number to clipboard"
+                  >
+                    <Copy className="size-4 shrink-0" aria-hidden />
+                    Copy
+                  </button>
+                </div>
               </div>
             )}
             {guestMethod === 'other_bank' && (
               <>
-                <div className="flex gap-3 justify-between">
-                  <dt className="shrink-0 text-slate-500">Bank</dt>
-                  <dd className="font-medium text-right">
-                    {booking.sd_refund_bank ?? '—'}
-                  </dd>
-                </div>
-                <div className="flex gap-3 justify-between">
-                  <dt className="shrink-0 text-slate-500">Account name</dt>
-                  <dd className="text-right break-all">
-                    {booking.sd_refund_account_name ?? '—'}
-                  </dd>
-                </div>
-                <div className="flex gap-3 justify-between">
-                  <dt className="shrink-0 text-slate-500">Account number</dt>
-                  <dd className="font-mono text-xs text-right break-all">
-                    {booking.sd_refund_account_number ?? '—'}
-                  </dd>
-                </div>
+                <RefundSummaryRow label="Bank">
+                  {booking.sd_refund_bank ?? '—'}
+                </RefundSummaryRow>
+                <RefundSummaryRow label="Account name">
+                  {booking.sd_refund_account_name ?? '—'}
+                </RefundSummaryRow>
+                <RefundSummaryRow label="Account number" mono>
+                  {booking.sd_refund_account_number ?? '—'}
+                </RefundSummaryRow>
               </>
             )}
             {guestMethod === 'cash' && booking.sd_refund_cash_pickup_note && (
-              <div className="space-y-0.5">
-                <dt className="text-slate-500">Guest note</dt>
-                <dd className="text-[13px] leading-snug whitespace-pre-wrap">
+              <RefundSummaryRow label="Guest note (cash pickup)">
+                <span className="whitespace-pre-wrap">
                   {booking.sd_refund_cash_pickup_note}
-                </dd>
-              </div>
+                </span>
+              </RefundSummaryRow>
             )}
             {booking.sd_refund_guest_feedback && (
-              <div className="space-y-0.5 border-t border-slate-200 pt-2 mt-1">
-                <dt className="text-slate-500">Guest feedback</dt>
-                <dd className="text-[13px] leading-snug whitespace-pre-wrap text-slate-600">
+              <RefundSummaryRow label="Guest feedback">
+                <span className="whitespace-pre-wrap text-slate-700">
                   {booking.sd_refund_guest_feedback}
-                </dd>
-              </div>
+                </span>
+              </RefundSummaryRow>
             )}
-          </dl>
+          </div>
         </div>
       )}
 
@@ -343,29 +409,39 @@ export function SdRefundForm({
         labelPlaceholder="Honesty store payment"
       />
 
-      <div className="space-y-1">
-        <label className="block text-xs text-slate-600">
-          Actual Refund Amount{' '}
-          <span className="font-normal text-slate-400">
-            (base + expenses − profits)
-          </span>
-        </label>
-        <div
-          className={cn(
-            'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
-            netSD < 0
-              ? 'border-red-300 bg-red-50 text-red-700'
-              : 'border-slate-200 bg-slate-50 text-slate-900',
-          )}
-          aria-readonly="true"
-        >
-          <span className="font-semibold">{formatMoney(netSD)}</span>
-          {netSD < 0 && (
-            <span className="text-[11px] font-medium">
-              Net cannot be negative
+      <div className="space-y-2">
+        <div className="space-y-1">
+          <label className="block text-xs text-slate-600">
+            Actual Refund Amount{' '}
+            <span className="font-normal text-slate-400">
+              (base + expenses − profits)
             </span>
-          )}
+          </label>
+          <div
+            className={cn(
+              'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
+              netSD < 0
+                ? 'border-red-300 bg-red-50 text-red-700'
+                : 'border-slate-200 bg-slate-50 text-slate-900',
+            )}
+            aria-readonly="true"
+          >
+            <span className="font-semibold">{formatMoney(netSD)}</span>
+            {netSD < 0 && (
+              <span className="text-[11px] font-medium">
+                Net cannot be negative
+              </span>
+            )}
+          </div>
         </div>
+        {gcashSendHref && (
+          <a
+            href={gcashSendHref}
+            className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-[#0074FF] px-3 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-[#0066CC] transition-colors hover:bg-[#0066E6] active:bg-[#005AD9] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0074FF] focus-visible:ring-offset-2"
+          >
+            Pay now with GCash
+          </a>
+        )}
       </div>
 
       <div className="space-y-1">

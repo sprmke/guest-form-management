@@ -45,6 +45,7 @@ const MANUAL_OVERRIDE_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   READY_FOR_CHECKIN:       [
+    'PENDING_DOCUMENTS',
     'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
     'PENDING_GAF',
@@ -138,7 +139,9 @@ export function isSubStatusCompleted(
     return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
-    return !!(booking.parking_completed_at || booking.parking_endorsement_url);
+    // Endorsement upload only fills `parking_endorsement_url`; admin must still
+    // click "Mark as Complete" so `transition-booking` sets `parking_completed_at`.
+    return !!booking.parking_completed_at;
   }
   return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
 }
