@@ -60,14 +60,14 @@ READY_FOR_CHECKIN       → PENDING_SD_REFUND   # skip guest SD form stage (manu
 PENDING_GAF                 → PENDING_REVIEW
 PENDING_PARKING_REQUEST     → PENDING_GAF
 PENDING_PET_REQUEST         → PENDING_PARKING_REQUEST | PENDING_GAF
-READY_FOR_CHECKIN           → PENDING_PET_REQUEST | PENDING_PARKING_REQUEST | PENDING_GAF | PENDING_REVIEW
+READY_FOR_CHECKIN           → PENDING_DOCUMENTS | PENDING_PET_REQUEST | PENDING_PARKING_REQUEST | PENDING_GAF | PENDING_REVIEW
 PENDING_SD_REFUND_DETAILS   → READY_FOR_CHECKIN
 PENDING_SD_REFUND           → PENDING_SD_REFUND_DETAILS
 ```
 
 The override **graph** is permissive — it lists every back-step that is structurally valid. The **UI** narrows it down via `bookingPipeline()` to a single "Back to …" button that always points at the booking's _immediately previous_ applicable step (e.g. parking is skipped when `need_parking = false`).
 
-**Email safety:** backward transitions never fire outbound email. The orchestrator gates the ready-for-check-in email on `fromStatus ∈ {PENDING_GAF, PENDING_PARKING_REQUEST, PENDING_PET_REQUEST}`, and the `Send Ready-for-Check-in Email` dev control is only surfaced when the _current_ status is one of those three. An admin reverting toward `READY_FOR_CHECKIN` therefore cannot accidentally re-fire the ready email. The **SD refund form request** email is gated on `fromStatus === READY_FOR_CHECKIN && toStatus === PENDING_SD_REFUND_DETAILS` (and the `sendSdRefundFormEmail` dev control), so stepping back from `PENDING_SD_REFUND_DETAILS` to `READY_FOR_CHECKIN` does not re-send; admins can re-send from **Automation Triggers** while the booking stays on `PENDING_SD_REFUND_DETAILS`.
+**Email safety:** backward transitions never fire outbound email. The orchestrator sends the ready-for-check-in email only on **forward** moves to `READY_FOR_CHECKIN` from `PENDING_DOCUMENTS` (parent docs complete) or legacy `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST` — not from e.g. `PENDING_SD_REFUND` → `READY_FOR_CHECKIN`. The `Send Ready-for-Check-in Email` dev control is shown for those same pre-ready statuses. The **SD refund form request** email is gated on `fromStatus === READY_FOR_CHECKIN && toStatus === PENDING_SD_REFUND_DETAILS` (and the `sendSdRefundFormEmail` dev control), so stepping back from `PENDING_SD_REFUND_DETAILS` to `READY_FOR_CHECKIN` does not re-send; admins can re-send from **Automation Triggers** while the booking stays on `PENDING_SD_REFUND_DETAILS`.
 
 **Manual "force advance"** (workflow panel): admins must be able to trigger transitions that would normally be fired by **cron** or the **Gmail listener** when those automations are late or skipped.
 
@@ -133,6 +133,7 @@ Rules:
 - **The guest acknowledgement email** (to guest) is separate and only goes out on `PENDING_REVIEW → PENDING_GAF` or **`PENDING_REVIEW → PENDING_DOCUMENTS`** (same bundle as GAF request / pet / parking).
 - The **parking broadcast email** uses BCC to all addresses in `PARKING_OWNER_EMAILS` (comma-separated env var; initial seed list documented in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1).
 - **Parking owner replies** are **manual** in v1 — no Gmail listener for parking threads.
+- **Parking nested completion:** `parking_endorsement_url` (upload) alone does **not** mark the parking sub-step complete in the admin stepper or in `PENDING_DOCUMENTS` calendar prefixes. **`parking_completed_at`** is set only when the admin confirms **Mark as Complete — Pending Parking Request** (`document_completion_target: 'PENDING_PARKING_REQUEST'` on `transition-booking`).
 
 ## 4. Calendar color + title map
 

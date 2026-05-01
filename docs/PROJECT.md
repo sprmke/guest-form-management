@@ -103,6 +103,12 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 
 **`/bookings/:bookingId` data:** `useBooking` fetches a single row directly from `guest_submissions` via `supabase.from('guest_submissions').select('*').eq('id', id).single()` and auto-refetches every ~15 seconds while the tab is active (so cron/listener-driven status changes appear without manual refresh). Transitions are submitted via `useTransitionBooking` → `transition-booking` edge function → `WorkflowOrchestrator`.
 
+**Pending parking (nested under `PENDING_DOCUMENTS`):** uploading a parking endorsement (`upload-booking-asset` → `parking_endorsement_url`) does **not** mark the parking pipeline step complete. Completion is **`parking_completed_at`**, written when the admin uses **Mark as Complete — Pending Parking Request** (`document_completion_target: 'PENDING_PARKING_REQUEST'`). Calendar dynamic titles under `PENDING_DOCUMENTS` use the same rule (`statusMachine.ts#getPendingDocumentsNestedCompletion`).
+
+**Manual back from ready-for-check-in:** admins may move **`READY_FOR_CHECKIN` → `PENDING_DOCUMENTS`** (same as the simplified pipeline “Back to Pending Documents” step) to reopen the nested docs workflow without going through legacy `PENDING_PET_REQUEST` / `PENDING_PARKING_REQUEST` / `PENDING_GAF` only; deeper recovery edges remain on `statusMachine.ts#MANUAL_OVERRIDE_GRAPH`.
+
+**Ready-for-check-in email:** `WorkflowOrchestrator` sends it when moving **forward** to `READY_FOR_CHECKIN` from **`PENDING_DOCUMENTS`** (after all required nested doc steps are complete) or from legacy **`PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST`** — not from backward recovery edges such as **`PENDING_SD_REFUND` → `READY_FOR_CHECKIN`**.
+
 **Booking edit form parity:** `BookingEditForm` reuses the guest-form date/time UX for `check_in_date`, `check_out_date`, `check_in_time`, and `check_out_time` (calendar popovers + `type="time"` inputs). It also calls `get-booked-dates` so admins see disabled booked ranges while editing dates.
 
 **Legacy links:** URLs like `/?bookingId=<uuid>` (e.g. older Google Calendar descriptions) are handled on `CalendarPage`: the app **`replace`** navigates to **`/form?bookingId=...`** (other query params are preserved).
