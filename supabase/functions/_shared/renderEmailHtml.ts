@@ -40,7 +40,7 @@ export const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
     'margin:0 !important;padding:0 !important;-webkit-text-size-adjust:100%;background-color:#f3f4f6;',
   emailShellTableOuterStyle:
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
-  emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
+  emailShellTdShellPadStyle: 'padding:22px 12px 30px 12px;',
   emailShellTableWrapperStyle:
     'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
@@ -49,13 +49,13 @@ export const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
   emailShellTableCardStyle:
     'width:100%;border-collapse:separate;border-spacing:0;background-color:#ffffff;border:2px solid #e2e8f0;border-radius:20px;overflow:hidden;box-shadow:none;',
   emailShellTdContentPadStyle:
-    "padding:36px 40px 40px 40px;text-align:left;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+    "padding:28px 24px 30px 24px;text-align:left;color:#333333;font-size:15px;line-height:1.65;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellTdLegalFooterStyle:
     "padding:22px 16px 0 16px;text-align:center;font-size:12px;line-height:1.55;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellH1Style:
     "margin:0 0 8px 0;font-size:22px;font-weight:700;line-height:1.3;letter-spacing:-0.02em;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellH1LgStyle:
-    "margin:0 0 12px 0;font-size:24px;font-weight:700;line-height:1.25;letter-spacing:-0.02em;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+    "margin:20px 0 12px 0;font-size:24px;font-weight:700;line-height:1.25;letter-spacing:-0.02em;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellDateLineStyle:
     "margin:0 0 24px 0;font-size:14px;line-height:1.5;color:#666666;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
   emailShellTaglineLooserStyle:
@@ -75,10 +75,10 @@ export const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
   emailStepCardInnerStyle:
     'width:100%;border-collapse:separate;border-spacing:0;background-color:#f1f5f9;border-radius:16px;overflow:hidden;',
   emailStepNumCellStyle:
-    "width:68px;min-width:68px;padding:20px 14px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;",
+    "width:68px;min-width:68px;padding:14px 10px 14px 12px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;",
   emailStepNumTextStyle: 'font-size:32px;font-weight:700;line-height:1;color:#5f954c;display:inline-block;',
   emailStepBodyCellStyle:
-    "padding:18px 18px 18px 16px;vertical-align:middle;background-color:#f1f5f9;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
+    "padding:14px 14px 14px 12px;vertical-align:middle;background-color:#f1f5f9;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
   emailStepBodyPStyle:
     "margin:0;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;",
   emailAttachListWrapStyle:
