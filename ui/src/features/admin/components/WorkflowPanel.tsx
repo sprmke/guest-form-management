@@ -7,7 +7,7 @@
  * - Dev-control checkboxes (collapsible, default collapsed; only relevant controls
  *   are shown based on the current booking status)
  * - Available transition buttons (from canTransition / canManualForceTransition)
- * - Cancel booking (always visible unless already CANCELLED)
+ * - Cancel booking (non-terminal; dev-control flags apply)
  *
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §WorkflowPanel
  * Auth: admin-auth.mdc §5 (Dev controls panel)
@@ -293,6 +293,8 @@ export function WorkflowPanel({ booking }: Props) {
     selectedPendingDocRequired &&
     !selectedPendingDocCompleted &&
     (!selectedPendingDocIsParking || parkingValues !== null);
+  const selectedPendingDocCanMarkIncomplete =
+    selectedPendingDocRequired && selectedPendingDocCompleted;
 
   // Relevant dev controls for this booking + status
   const relevantControls = DEV_CONTROLS.filter((c) =>
@@ -385,6 +387,23 @@ export function WorkflowPanel({ booking }: Props) {
       toast.success(`Marked ${statusLabel(subStatus)} as complete`);
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to mark sub-status complete');
+    }
+  }
+
+  async function handleMarkPendingDocSubStatusIncomplete(
+    subStatus: PendingDocumentSubStatus,
+  ) {
+    try {
+      await transitionMut.mutateAsync({
+        bookingId: booking.id,
+        toStatus: 'PENDING_DOCUMENTS',
+        payload: { document_completion_clear_target: subStatus },
+        devControls,
+        manual: true,
+      });
+      toast.success(`Marked ${statusLabel(subStatus)} as incomplete`);
+    } catch (err: any) {
+      toast.error(err?.message ?? 'Failed to mark sub-status incomplete');
     }
   }
 
@@ -568,39 +587,57 @@ export function WorkflowPanel({ booking }: Props) {
                     </span>
                   </button>
                 )}
-                <button
-                  disabled={
-                    !selectedPendingDocCanMarkComplete ||
-                    transitionMut.isPending
-                  }
-                  onClick={() =>
-                    handleMarkPendingDocSubStatusComplete(
-                      activePendingDocSubStatus,
-                    )
-                  }
-                  className={cn(
-                    'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
-                    selectedPendingDocCanMarkComplete &&
-                      !transitionMut.isPending
-                      ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
-                      : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
-                  )}
-                >
-                  <span>
-                    {!selectedPendingDocRequired
-                      ? `${statusLabel(activePendingDocSubStatus)} is not required`
-                      : selectedPendingDocCompleted
-                        ? `Completed - ${statusLabel(activePendingDocSubStatus)}`
-                        : `Mark as Complete - ${statusLabel(activePendingDocSubStatus)}`}
-                  </span>
-                  {transitionMut.isPending ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" />
-                  ) : selectedPendingDocCompleted ? (
-                    <Check className="size-4 shrink-0 text-emerald-600" />
-                  ) : (
-                    <ChevronRight className="size-4 shrink-0" />
-                  )}
-                </button>
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    disabled={
+                      !selectedPendingDocCanMarkComplete ||
+                      transitionMut.isPending
+                    }
+                    onClick={() =>
+                      handleMarkPendingDocSubStatusComplete(
+                        activePendingDocSubStatus,
+                      )
+                    }
+                    className={cn(
+                      'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                      selectedPendingDocCanMarkComplete &&
+                        !transitionMut.isPending
+                        ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
+                        : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                    )}
+                  >
+                    <span>
+                      {!selectedPendingDocRequired
+                        ? `${statusLabel(activePendingDocSubStatus)} is not required`
+                        : selectedPendingDocCompleted
+                          ? `Completed - ${statusLabel(activePendingDocSubStatus)}`
+                          : `Mark as Complete - ${statusLabel(activePendingDocSubStatus)}`}
+                    </span>
+                    {transitionMut.isPending ? (
+                      <Loader2 className="size-4 shrink-0 animate-spin" />
+                    ) : selectedPendingDocCompleted ? (
+                      <Check className="size-4 shrink-0 text-emerald-600" />
+                    ) : (
+                      <ChevronRight className="size-4 shrink-0" />
+                    )}
+                  </button>
+                  {selectedPendingDocCanMarkIncomplete ? (
+                    <button
+                      type="button"
+                      disabled={transitionMut.isPending}
+                      onClick={() =>
+                        handleMarkPendingDocSubStatusIncomplete(
+                          activePendingDocSubStatus,
+                        )
+                      }
+                      className="flex min-h-[44px] items-center justify-center rounded-lg px-3.5 py-2.5 text-sm font-medium text-amber-800 ring-1 ring-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                    >
+                      Mark as Incomplete —{' '}
+                      {statusLabel(activePendingDocSubStatus)}
+                    </button>
+                  ) : null}
+                </div>
                 <button
                   disabled={
                     !pendingDocumentsComplete || transitionMut.isPending
@@ -677,7 +714,6 @@ export function WorkflowPanel({ booking }: Props) {
               </button>
             )}
 
-            {/* Cancel — always visible when non-terminal. */}
             <button
               disabled={cancelMut.isPending}
               onClick={() => setCancelConfirm(true)}
@@ -777,7 +813,6 @@ export function WorkflowPanel({ booking }: Props) {
         />
       )}
 
-      {/* ── Confirm cancel modal ─────────────────────────────────────────── */}
       {cancelConfirm && (
         <ConfirmModal
           title="Cancel Booking"

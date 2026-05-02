@@ -69,6 +69,11 @@ export type TransitionPayload = {
 
   /** PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step complete (no status change). */
   document_completion_target?: 'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
+  /**
+   * PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step incomplete again (manual only).
+   * GAF/pet keep approved PDF URLs but are treated as incomplete until Gmail or admin completes again.
+   */
+  document_completion_clear_target?: 'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
 };
 
 /**
@@ -207,6 +212,7 @@ export class WorkflowOrchestrator {
         toStatus === 'READY_FOR_CHECKIN'
       ) {
         workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
+        workflowFields.gaf_manual_incomplete = false;
       }
     }
 
@@ -217,6 +223,40 @@ export class WorkflowOrchestrator {
         (toStatus === 'READY_FOR_CHECKIN' && fromStatus === 'PENDING_PET_REQUEST')
       ) {
         workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
+        workflowFields.pet_manual_incomplete = false;
+      }
+    }
+
+    const docClear = payload.document_completion_clear_target;
+    const docComplete = payload.document_completion_target;
+    if (docClear && docComplete) {
+      throw new Error(
+        'document_completion_target and document_completion_clear_target cannot both be set',
+      );
+    }
+    if (docClear) {
+      if (!manual || fromStatus !== 'PENDING_DOCUMENTS' || toStatus !== 'PENDING_DOCUMENTS') {
+        throw new Error(
+          'document_completion_clear_target requires manual=true and PENDING_DOCUMENTS → PENDING_DOCUMENTS',
+        );
+      }
+    }
+
+    // Admin "Mark … as incomplete" under Pending Documents (manual only).
+    if (
+      manual &&
+      fromStatus === 'PENDING_DOCUMENTS' &&
+      toStatus === 'PENDING_DOCUMENTS' &&
+      docClear
+    ) {
+      if (docClear === 'PENDING_GAF') {
+        workflowFields.gaf_completed_at = null;
+        workflowFields.gaf_manual_incomplete = true;
+      } else if (docClear === 'PENDING_PARKING_REQUEST') {
+        workflowFields.parking_completed_at = null;
+      } else if (docClear === 'PENDING_PET_REQUEST') {
+        workflowFields.pet_completed_at = null;
+        workflowFields.pet_manual_incomplete = true;
       }
     }
 
@@ -224,15 +264,17 @@ export class WorkflowOrchestrator {
     if (
       fromStatus === 'PENDING_DOCUMENTS' &&
       toStatus === 'PENDING_DOCUMENTS' &&
-      payload.document_completion_target
+      docComplete
     ) {
       const now = new Date().toISOString();
-      if (payload.document_completion_target === 'PENDING_GAF') {
+      if (docComplete === 'PENDING_GAF') {
         workflowFields.gaf_completed_at = now;
-      } else if (payload.document_completion_target === 'PENDING_PARKING_REQUEST') {
+        workflowFields.gaf_manual_incomplete = false;
+      } else if (docComplete === 'PENDING_PARKING_REQUEST') {
         workflowFields.parking_completed_at = now;
-      } else if (payload.document_completion_target === 'PENDING_PET_REQUEST') {
+      } else if (docComplete === 'PENDING_PET_REQUEST') {
         workflowFields.pet_completed_at = now;
+        workflowFields.pet_manual_incomplete = false;
       }
     }
 

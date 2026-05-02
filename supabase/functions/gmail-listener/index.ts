@@ -12,11 +12,10 @@
  *   - `processed_emails` table holds message IDs that have been handled (applied/skipped/failed).
  *   - Both layers are required: history can replay/expire, so the DB dedupe is the durable layer.
  *
- * Secrets required:
- *   GMAIL_OAUTH_CLIENT_JSON    — Full OAuth client JSON from scripts/gmail-credentials.json
- *                                (set by `npm run gmail-auth` → supabase/.env.local)
- *   GMAIL_OAUTH_TOKEN_JSON     — Token JSON with refresh_token
- *                                (set by `npm run gmail-auth` after browser sign-in)
+ * Secrets required (either path):
+ *   A) Web OAuth (in-app Connect Gmail): GMAIL_API_WEB_CLIENT_JSON, GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY,
+ *      refresh token in `gmail_mail_integration` (written by google-mail-oauth-callback).
+ *   B) Legacy: GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON (`npm run gmail-auth`).
  *   PERMIT_APPROVER_EMAIL      — Permit approver sender email(s) allowed for
  *                                GAF/Pet approval replies. Comma-separated.
  *   SUPABASE_URL               — set automatically by Supabase
@@ -32,84 +31,10 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
+import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
 
-// ─── Gmail OAuth helpers ───────────────────────────────────────────────────────
-//
-// Secrets are stored as two JSON blobs (set by `npm run gmail-auth`):
-//   GMAIL_OAUTH_CLIENT_JSON  — full credentials JSON (web or installed client)
-//   GMAIL_OAUTH_TOKEN_JSON   — token JSON with refresh_token
-//
-// This mirrors the pay-credit-cards pattern, adapted for Supabase secrets instead
-// of local JSON files.
-
-type AccessTokenResult = { accessToken: string };
-
-async function getGmailAccessToken(): Promise<AccessTokenResult> {
-  const clientJsonRaw = Deno.env.get('GMAIL_OAUTH_CLIENT_JSON');
-  const tokenJsonRaw = Deno.env.get('GMAIL_OAUTH_TOKEN_JSON');
-
-  if (!clientJsonRaw || !tokenJsonRaw) {
-    throw new Error(
-      'Missing Gmail OAuth secrets: GMAIL_OAUTH_CLIENT_JSON and/or GMAIL_OAUTH_TOKEN_JSON. ' +
-      'Run `npm run gmail-auth` to generate them.',
-    );
-  }
-
-  // Parse client credentials JSON — supports both "installed" and "web" client types
-  let clientConfig: { client_id: string; client_secret: string };
-  try {
-    const clientJson = JSON.parse(clientJsonRaw);
-    const inner = clientJson.installed ?? clientJson.web;
-    if (!inner?.client_id || !inner?.client_secret) {
-      throw new Error('client_id or client_secret missing in GMAIL_OAUTH_CLIENT_JSON');
-    }
-    clientConfig = { client_id: inner.client_id, client_secret: inner.client_secret };
-  } catch (e: any) {
-    throw new Error(`Failed to parse GMAIL_OAUTH_CLIENT_JSON: ${e.message}`);
-  }
-
-  // Parse token JSON — must contain refresh_token
-  let refreshToken: string;
-  try {
-    const tokenJson = JSON.parse(tokenJsonRaw);
-    if (!tokenJson.refresh_token) {
-      throw new Error('refresh_token missing in GMAIL_OAUTH_TOKEN_JSON');
-    }
-    refreshToken = tokenJson.refresh_token;
-  } catch (e: any) {
-    throw new Error(`Failed to parse GMAIL_OAUTH_TOKEN_JSON: ${e.message}`);
-  }
-
-  // Exchange refresh_token → short-lived access_token
-  const resp = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      client_id: clientConfig.client_id,
-      client_secret: clientConfig.client_secret,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-
-  if (!resp.ok) {
-    const body = await resp.text();
-    if (body.includes('invalid_grant')) {
-      throw new Error(
-        'Gmail OAuth failed: invalid_grant. Refresh token is expired or revoked. ' +
-        'Re-run `npm run gmail-auth` to obtain a new refresh token.',
-      );
-    }
-    throw new Error(`Gmail token exchange failed (${resp.status}): ${body}`);
-  }
-
-  const json = await resp.json() as { access_token?: string };
-  if (!json.access_token) {
-    throw new Error('Gmail token exchange returned no access_token');
-  }
-
-  return { accessToken: json.access_token };
-}
+// Gmail OAuth: DB-stored web refresh token (GMAIL_API_WEB_CLIENT_JSON) preferred;
+// else legacy GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON env blobs (`npm run gmail-auth`).
 
 // ─── Gmail REST helpers ────────────────────────────────────────────────────────
 
@@ -349,14 +274,25 @@ async function loadHistoryId(): Promise<string | null> {
   return data?.history_id ?? null;
 }
 
+async function resolveListenerMailboxEmail(): Promise<string> {
+  const { data } = await supabaseAdmin()
+    .from('gmail_mail_integration')
+    .select('google_account_email')
+    .eq('id', 'default')
+    .maybeSingle();
+  const fromIntegration = data?.google_account_email as string | undefined;
+  if (fromIntegration?.trim()) return fromIntegration.trim();
+  return 'kamehome.azurenorth@gmail.com';
+}
+
 async function saveHistoryId(historyId: string): Promise<void> {
   const sb = supabaseAdmin();
+  const email_address = await resolveListenerMailboxEmail();
   // gmail_listener_state has exactly one row with id = 'default' (singleton constraint).
-  // The conflict key is the primary key `id`, and the email column is `email_address`.
   const { error } = await sb.from('gmail_listener_state').upsert(
     {
       id: 'default',
-      email_address: 'kamehome.azurenorth@gmail.com',
+      email_address,
       history_id: historyId,
       last_poll_at: new Date().toISOString(),
       last_poll_status: 'ok',
@@ -613,12 +549,16 @@ serve(async (req) => {
     // 1. Get Gmail access token
     let accessToken: string;
     try {
-      ({ accessToken } = await getGmailAccessToken());
+      ({ accessToken } = await getGmailAccessTokenUnified());
     } catch (e: any) {
       console.error('[gmail-listener] OAuth failed:', e.message);
+      const needsReAuth =
+        e?.needsReAuth === true ||
+        e.message?.includes('invalid_grant') ||
+        e.message?.includes('Reconnect Gmail');
       // Return 200 so cron doesn't alarm — the error is logged; ops must re-auth
       return new Response(
-        JSON.stringify({ success: false, error: e.message, needsReAuth: e.message.includes('invalid_grant') }),
+        JSON.stringify({ success: false, error: e.message, needsReAuth }),
         { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }

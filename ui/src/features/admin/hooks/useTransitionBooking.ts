@@ -34,6 +34,11 @@ export type TransitionPayload = {
     | 'PENDING_PARKING_REQUEST'
     | 'PENDING_PET_REQUEST'
     | null;
+  document_completion_clear_target?:
+    | 'PENDING_GAF'
+    | 'PENDING_PARKING_REQUEST'
+    | 'PENDING_PET_REQUEST'
+    | null;
 };
 
 export type DevControlFlags = {
@@ -181,7 +186,9 @@ export function useRunGmailPoll(bookingId?: string) {
 
       const json = await res.json();
       if (!json.success && json.needsReAuth) {
-        throw new Error('Gmail OAuth expired — re-run `npm run gmail-auth` to refresh the token.');
+        throw new Error(
+          'Gmail OAuth expired — open /bookings and use “Reconnect Gmail”, or re-run `npm run gmail-auth` for legacy env tokens.',
+        );
       }
       if (!res.ok) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
