@@ -179,6 +179,9 @@ export type PendingDocumentsCalendarBooking = {
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
   parking_endorsement_url?: string | null;
+  /** Admin marked GAF sub-step incomplete; Gmail approval or "mark complete" clears this. */
+  gaf_manual_incomplete?: boolean | null | string;
+  pet_manual_incomplete?: boolean | null | string;
 };
 
 function bookingFlagTrue(v: unknown): boolean {
@@ -198,14 +201,20 @@ export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCal
 } {
   const needParking = bookingFlagTrue(booking.need_parking);
   const hasPets = bookingFlagTrue(booking.has_pets);
-  const gafDone = !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
+  const gafManualIncomplete = bookingFlagTrue(booking.gaf_manual_incomplete);
+  const petManualIncomplete = bookingFlagTrue(booking.pet_manual_incomplete);
+  const gafDone =
+    !gafManualIncomplete &&
+    (!!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url);
   // Parking: URL alone does not clear the nested step — only `parking_completed_at`
   // (admin "Mark as Complete — Pending Parking Request" / same-field transition).
   const parkingDone =
     !needParking ||
     !!booking.parking_completed_at;
   const petDone =
-    !hasPets || !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
+    !hasPets ||
+    (!petManualIncomplete &&
+      (!!booking.pet_completed_at || !!booking.approved_pet_pdf_url));
   return { needParking, hasPets, gafDone, parkingDone, petDone };
 }
 

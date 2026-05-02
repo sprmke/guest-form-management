@@ -137,6 +137,16 @@ function isUrgentBooking(checkInDate: string): boolean {
   }
 }
 
+/** Same-day check-in (Asia/Manila) — HTML callout for Azure + guest templates. */
+function buildUrgentSameDayCallout(isUrgent: boolean): string {
+  if (!isUrgent) return '';
+  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td><strong class="callout-title">Urgent — same-day check-in</strong><br />This request requires immediate attention and approval from the property administration.</td></tr></table>`;
+}
+
+function urgentEmailSubjectPrefix(isUrgent: boolean): string {
+  return isUrgent ? '🚨 URGENT - ' : '';
+}
+
 export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false, isUpdate = false) {
   console.log(`Sending ${isUpdate ? 'update' : 'confirmation'} email...`);
   
@@ -159,9 +169,8 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
-  // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
 
   if (isUrgent) {
     console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
@@ -177,9 +186,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     ? `<p>The Guest Advise Form (GAF) details for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong> for your approval.</p><p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>`
     : `<p>Kindly review the Guest Advise Form (GAF) request for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong>, dated from <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong>, for your approval.</p>`;
 
-  const urgentBlock = isUrgent
-    ? `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td><strong class="callout-title">Urgent — same-day check-in</strong><br />This request requires immediate attention and approval from the property administration.</td></tr></table>`
-    : '';
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const gafTpl = await loadEmailTemplate('gaf-request');
@@ -271,15 +278,13 @@ export async function sendPetEmail(
   const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
 
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
 
   if (isUrgent) {
     console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
   }
 
-  const urgentBlock = isUrgent
-    ? `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td><strong class="callout-title">Urgent — same-day check-in</strong><br />This request requires immediate attention and approval from the property administration.</td></tr></table>`
-    : '';
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
 
   const bodyParagraphs = isUpdate
     ? `<p>The pet information for our guest at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${escapeHtml(displayCheckInDate)}</strong> to <strong>${escapeHtml(displayCheckOutDate)}</strong>.</p><p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>`
@@ -405,6 +410,13 @@ export async function sendBookingAcknowledgement(
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — booking acknowledgement');
+  }
+
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const ackTpl = await loadEmailTemplate('booking-acknowledgement');
   const html = replacePlaceholders(
@@ -412,6 +424,7 @@ export async function sendBookingAcknowledgement(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
+      urgentBlock,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
       checkInDate: escapeHtml(displayCheckInDate),
@@ -429,7 +442,7 @@ export async function sendBookingAcknowledgement(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -462,6 +475,13 @@ export async function sendReadyForCheckin(
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — ready for check-in email');
+  }
 
   const balance = booking.balance ?? ((booking.booking_rate ?? 0) - (booking.down_payment ?? 0));
   const balanceNum = Number(balance);
@@ -555,6 +575,7 @@ export async function sendReadyForCheckin(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
+      urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
@@ -629,7 +650,7 @@ export async function sendReadyForCheckin(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
@@ -672,6 +693,13 @@ export async function sendParkingBroadcast(
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — parking broadcast');
+  }
+
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const parkTpl = await loadEmailTemplate('parking-broadcast');
   const html = replacePlaceholders(
@@ -679,6 +707,7 @@ export async function sendParkingBroadcast(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
+      urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
@@ -702,7 +731,7 @@ export async function sendParkingBroadcast(
       to: [bccEmails[0]],
       bcc: bccEmails.slice(1),
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -738,6 +767,13 @@ export async function sendSdRefundFormRequest(
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — SD refund form request');
+  }
+
   const bookingId = booking.id as string;
   if (!bookingId) throw new Error('sendSdRefundFormRequest: booking.id is required');
 
@@ -750,6 +786,7 @@ export async function sendSdRefundFormRequest(
     withEmailShellStyleVars({
       emailHeaderLogo,
       testWarning,
+      urgentBlock,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
@@ -768,7 +805,7 @@ export async function sendSdRefundFormRequest(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}Monaco 2604 - Submit SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Submit SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
