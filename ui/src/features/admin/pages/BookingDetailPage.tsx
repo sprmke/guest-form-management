@@ -5,10 +5,14 @@
  *   Left (flexible): all booking info cards + document previews
  *   Right (sticky 344px): WorkflowPanel
  *
- * Admin can switch the left column to an edit form via the "Edit" button.
+ * Header card toggles **Edit** ↔ **Cancel** above the status badge; **Cancel booking**
+ * stays in the workflow panel Actions.
  * While the booking is in Pending documents (GAF / parking / pet) or Ready for check-in,
  * saving workflow-sensitive guest fields reverts status → PENDING_REVIEW; replacing
  * payment/ID/pet docs via upload does too.
+ *
+ * **Pricing** card (below Stay Details): omitted in `PENDING_REVIEW`; afterward shows
+ * review-pricing fields, payment receipt, and on `COMPLETED` the SD refund block.
  *
  * Design: dense-operational, status-color coded, mobile-first.
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
@@ -19,6 +23,7 @@ import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
+  Banknote,
   Calendar,
   Car,
   Dog,
@@ -49,8 +54,10 @@ import {
   formatMoney,
   formatRelative,
 } from '@/features/admin/lib/formatters';
-import { cn } from '@/lib/utils';
-import type { BookingRow } from '@/features/admin/lib/types';
+import type {
+  BookingRow,
+  SdSettlementLineItem,
+} from '@/features/admin/lib/types';
 import {
   normalizeStoragePublicUrl,
   resolveAssetUrlForBrowser,
@@ -71,16 +78,6 @@ export function BookingDetailPage() {
   const title =
     booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
 
-  const editButton = !editMode && booking && (
-    <button
-      onClick={() => setEditMode(true)}
-      className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 shadow-sm hover:bg-slate-50 hover:border-slate-300 transition-colors min-h-[36px]"
-    >
-      <Edit2 className="size-3.5" />
-      <span className="hidden sm:inline">Edit</span>
-    </button>
-  );
-
   const handlePreview = async (label: string, rawUrl: string) => {
     setPreviewLoading(true);
     try {
@@ -100,7 +97,7 @@ export function BookingDetailPage() {
   };
 
   return (
-    <AdminLayout title={title} breadcrumb="Bookings" actions={editButton}>
+    <AdminLayout title={title} breadcrumb="Bookings">
       <div className="min-h-screen bg-[hsl(210_20%_98%)]">
         <div className="mx-auto max-w-7xl p-3 sm:p-4 lg:p-6">
           {/* Back nav */}
@@ -144,23 +141,19 @@ export function BookingDetailPage() {
                 {/* ── Left column ───────────────────────────────────────────── */}
                 <div className="flex-1 min-w-0 space-y-4">
                   {/* Booking header */}
-                  <BookingHeader booking={booking} />
+                  <BookingHeader
+                    booking={booking}
+                    editMode={editMode}
+                    onEdit={() => setEditMode(true)}
+                    onCancelEdit={() => setEditMode(false)}
+                  />
 
                   {/* Edit mode */}
                   {editMode ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
-                      <div className="mb-4 flex items-center justify-between">
-                        <h2 className="text-sm font-bold text-slate-800">
-                          Edit Booking Details
-                        </h2>
-                        <button
-                          onClick={() => setEditMode(false)}
-                          className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs text-slate-500 hover:bg-white hover:text-slate-800 transition-colors"
-                        >
-                          <X className="size-3.5" />
-                          Cancel
-                        </button>
-                      </div>
+                      <h2 className="mb-4 text-sm font-bold text-slate-800">
+                        Edit Booking Details
+                      </h2>
                       <BookingEditForm
                         booking={booking}
                         onClose={() => setEditMode(false)}
@@ -177,6 +170,10 @@ export function BookingDetailPage() {
                       />
                       <AdditionalGuestsCard booking={booking} />
                       <StayDetailsCard booking={booking} />
+                      <PricingSummaryCard
+                        booking={booking}
+                        onPreview={handlePreview}
+                      />
                       {booking.need_parking && (
                         <ParkingCard
                           booking={booking}
@@ -188,12 +185,6 @@ export function BookingDetailPage() {
                       )}
                       {(booking.find_us || booking.guest_special_requests) && (
                         <OtherInfoCard booking={booking} />
-                      )}
-                      {booking.booking_rate != null && (
-                        <PricingCard
-                          booking={booking}
-                          onPreview={handlePreview}
-                        />
                       )}
                       <DocumentsCard
                         booking={booking}
@@ -255,15 +246,25 @@ export function BookingDetailPage() {
 
 // ─── Sub-sections ──────────────────────────────────────────────────────────────
 
-function BookingHeader({ booking }: { booking: BookingRow }) {
+function BookingHeader({
+  booking,
+  editMode,
+  onEdit,
+  onCancelEdit,
+}: {
+  booking: BookingRow;
+  editMode: boolean;
+  onEdit: () => void;
+  onCancelEdit: () => void;
+}) {
   const pax =
     (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2 mb-1">
-            <h1 className="text-base font-bold text-slate-900 truncate">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h1 className="truncate text-base font-bold text-slate-900">
               {booking.guest_facebook_name}
             </h1>
             {booking.is_test_booking && (
@@ -287,7 +288,34 @@ function BookingHeader({ booking }: { booking: BookingRow }) {
             </span>
           </div>
         </div>
-        <StatusBadge status={booking.status} />
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[min(100%,280px)] sm:items-end">
+          <div className="flex flex-wrap items-center justify-end">
+            {editMode ? (
+              <button
+                type="button"
+                onClick={onCancelEdit}
+                aria-label="Cancel and close the form"
+                className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+              >
+                <X className="size-3 shrink-0" aria-hidden />
+                <span className="inline">Cancel</span>
+                <span className="hidden sm:inline"> edit</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onEdit}
+                className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+              >
+                <Edit2 className="size-3 shrink-0" aria-hidden />
+                Edit
+              </button>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <StatusBadge status={booking.status} />
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -538,67 +566,311 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
   );
 }
 
-function PricingCard({
+const SD_REFUND_METHOD_LABELS: Record<string, string> = {
+  same_phone: 'Refund to same phone (GCash)',
+  other_bank: 'Bank transfer',
+  cash: 'Cash pickup',
+};
+
+function toMoneyNumber(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0;
+  const n = typeof value === 'string' ? Number(value) : value;
+  return Number.isNaN(n) ? 0 : n;
+}
+
+function parseSdNumberArray(raw: unknown): number[] {
+  if (Array.isArray(raw)) {
+    return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
+  }
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.map((v) => Number(v)).filter((n) => !Number.isNaN(n))
+        : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function parseSdLineItemsFromBooking(raw: unknown): SdSettlementLineItem[] {
+  let arr: unknown = raw;
+  if (typeof raw === 'string' && raw.trim()) {
+    try {
+      arr = JSON.parse(raw) as unknown;
+    } catch {
+      return [];
+    }
+  }
+  if (!Array.isArray(arr) || arr.length === 0) return [];
+  return arr.map((row) => {
+    if (typeof row !== 'object' || row === null) {
+      return { label: '', amount: 0 };
+    }
+    const r = row as Record<string, unknown>;
+    const label = typeof r.label === 'string' ? r.label : '';
+    const n = Number(r.amount);
+    return { label, amount: Number.isNaN(n) ? 0 : n };
+  });
+}
+
+function buildSdExpenseProfitRows(booking: BookingRow): {
+  expenses: SdSettlementLineItem[];
+  profits: SdSettlementLineItem[];
+} {
+  const expJson = parseSdLineItemsFromBooking(
+    booking.sd_additional_expense_items,
+  );
+  const profJson = parseSdLineItemsFromBooking(
+    booking.sd_additional_profit_items,
+  );
+  const expFallback = parseSdNumberArray(booking.sd_additional_expenses).map(
+    (amount, i) => ({
+      label: `Expense line ${i + 1}`,
+      amount,
+    }),
+  );
+  const profFallback = parseSdNumberArray(booking.sd_additional_profits).map(
+    (amount, i) => ({
+      label: `Profit line ${i + 1}`,
+      amount,
+    }),
+  );
+  return {
+    expenses: expJson.length ? expJson : expFallback,
+    profits: profJson.length ? profJson : profFallback,
+  };
+}
+
+function computeTotalGuestBalance(booking: BookingRow): number | null {
+  if (booking.booking_rate == null || booking.booking_rate === '') return null;
+  const rate = toMoneyNumber(booking.booking_rate);
+  return (
+    rate -
+    toMoneyNumber(booking.down_payment) +
+    toMoneyNumber(booking.security_deposit) +
+    toMoneyNumber(booking.pet_fee) +
+    toMoneyNumber(booking.parking_rate_guest) +
+    toMoneyNumber(booking.guest_additional_fee)
+  );
+}
+
+/**
+ * Post-review pricing + payment proof; on COMPLETED, adds SD refund settlement fields.
+ * Hidden while status is PENDING_REVIEW (rates captured on first workflow transition).
+ */
+function PricingSummaryCard({
   booking,
   onPreview,
 }: {
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
 }) {
+  if (booking.status === 'PENDING_REVIEW') return null;
+
+  const isCompleted = booking.status === 'COMPLETED';
+  const totalGuestBalance = computeTotalGuestBalance(booking);
+  const { expenses: sdExpenses, profits: sdProfits } =
+    buildSdExpenseProfitRows(booking);
+
   return (
-    <Card title="Pricing" icon={<FileText className="size-3.5" />}>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {booking.booking_rate != null && (
-          <PriceChip
-            label="Booking Rate"
-            value={formatMoney(booking.booking_rate as number)}
-          />
-        )}
-        {booking.down_payment != null && (
-          <PriceChip
-            label="Down Payment"
-            value={formatMoney(booking.down_payment as number)}
-          />
-        )}
-        {booking.balance != null && (
-          <PriceChip
-            label="Balance"
-            value={formatMoney(booking.balance as number)}
-            highlight
-          />
-        )}
-        {booking.security_deposit != null && (
-          <PriceChip
-            label="Security Deposit"
-            value={formatMoney(booking.security_deposit as number)}
-          />
-        )}
-      </div>
-      {booking.sd_refund_amount != null && (
-        <div className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-          <p className="text-xs font-semibold text-emerald-800">
-            SD Refund Amount
-          </p>
-          <p className="text-sm font-bold text-emerald-800">
-            {formatMoney(booking.sd_refund_amount as number)}
-          </p>
+    <Card title="Pricing" icon={<Banknote className="size-3.5" />}>
+      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+        Rates & fees
+      </p>
+      <Grid2>
+        <InfoField
+          label="Booking rate"
+          value={formatMoney(booking.booking_rate as number)}
+        />
+        <InfoField
+          label="Down payment"
+          value={formatMoney(booking.down_payment as number)}
+        />
+        <InfoField
+          label="Security deposit"
+          value={formatMoney(booking.security_deposit as number)}
+        />
+        <InfoField
+          label="Balance (recorded)"
+          value={formatMoney(booking.balance as number)}
+        />
+        <InfoField
+          label="Pet fee"
+          value={formatMoney(booking.pet_fee as number)}
+        />
+        <InfoField
+          label="Parking fee (guest)"
+          value={formatMoney(booking.parking_rate_guest as number)}
+        />
+        <InfoField
+          label="Parking rate (paid)"
+          value={formatMoney(booking.parking_rate_paid as number)}
+        />
+        <InfoField
+          label="Additional guest fee"
+          value={formatMoney(booking.guest_additional_fee as number)}
+        />
+      </Grid2>
+
+      {totalGuestBalance != null && (
+        <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2.5 ring-1 ring-slate-200">
+          <span className="text-xs font-semibold text-slate-700">
+            Total guest balance
+          </span>
+          <span className="text-sm font-bold text-slate-800">
+            {formatMoney(totalGuestBalance)}
+          </span>
         </div>
       )}
-      {(booking.sd_refund_receipt_url || booking.payment_receipt_url) && (
-        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {booking.sd_refund_receipt_url && (
-            <DocPreview
-              label="SD Refund Receipt"
-              url={booking.sd_refund_receipt_url}
-              onPreview={onPreview}
+
+      {booking.payment_receipt_url && (
+        <div className="mt-4">
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+            Payment receipts
+          </p>
+          <DocPreview
+            label="Payment receipt"
+            url={booking.payment_receipt_url}
+            onPreview={onPreview}
+          />
+        </div>
+      )}
+
+      {isCompleted && (
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+            Security deposit refund
+          </p>
+          <Grid2>
+            <InfoField
+              label="SD refund amount"
+              value={formatMoney(booking.sd_refund_amount as number)}
             />
+            <InfoField
+              label="Refund method"
+              value={
+                booking.sd_refund_method
+                  ? (SD_REFUND_METHOD_LABELS[booking.sd_refund_method] ??
+                    booking.sd_refund_method)
+                  : undefined
+              }
+            />
+            <InfoField
+              label="Refund bank"
+              value={booking.sd_refund_bank ?? undefined}
+            />
+            <InfoField
+              label="Account name"
+              value={booking.sd_refund_account_name ?? undefined}
+            />
+            <InfoField
+              label="Account number"
+              value={booking.sd_refund_account_number ?? undefined}
+            />
+            <InfoField
+              label="Cash pickup note"
+              value={booking.sd_refund_cash_pickup_note ?? undefined}
+            />
+            <InfoField
+              label="Phone confirmed for refund"
+              value={
+                booking.sd_refund_phone_confirmed === true
+                  ? 'Yes'
+                  : booking.sd_refund_phone_confirmed === false
+                    ? 'No'
+                    : undefined
+              }
+            />
+            <InfoField
+              label="Guest feedback"
+              value={booking.sd_refund_guest_feedback ?? undefined}
+            />
+            <InfoField
+              label="SD form emailed"
+              value={
+                booking.sd_refund_form_emailed_at
+                  ? formatRelative(booking.sd_refund_form_emailed_at)
+                  : undefined
+              }
+            />
+            <InfoField
+              label="SD form submitted"
+              value={
+                booking.sd_refund_form_submitted_at
+                  ? formatRelative(booking.sd_refund_form_submitted_at)
+                  : undefined
+              }
+            />
+            <InfoField
+              label="Settled"
+              value={
+                booking.settled_at
+                  ? formatRelative(booking.settled_at)
+                  : undefined
+              }
+            />
+          </Grid2>
+
+          {sdExpenses.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                Additional SD expenses
+              </p>
+              <ul className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+                {sdExpenses.map((row, i) => (
+                  <li
+                    key={`e-${i}`}
+                    className="flex justify-between gap-2 text-xs text-slate-700"
+                  >
+                    <span className="min-w-0 truncate">
+                      {row.label?.trim() || `Line ${i + 1}`}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums">
+                      {formatMoney(row.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-          {booking.payment_receipt_url && (
-            <DocPreview
-              label="Payment Receipt"
-              url={booking.payment_receipt_url}
-              onPreview={onPreview}
-            />
+
+          {sdProfits.length > 0 && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                Additional SD profits
+              </p>
+              <ul className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+                {sdProfits.map((row, i) => (
+                  <li
+                    key={`p-${i}`}
+                    className="flex justify-between gap-2 text-xs text-slate-700"
+                  >
+                    <span className="min-w-0 truncate">
+                      {row.label?.trim() || `Line ${i + 1}`}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums">
+                      {formatMoney(row.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {booking.sd_refund_receipt_url && (
+            <div className="mt-3">
+              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+                Refund receipt
+              </p>
+              <DocPreview
+                label="SD refund receipt"
+                url={booking.sd_refund_receipt_url}
+                onPreview={onPreview}
+              />
+            </div>
           )}
         </div>
       )}
@@ -878,39 +1150,6 @@ function InfoField({
       <span className="flex items-center gap-1.5 text-sm text-slate-800">
         {icon}
         {String(value)}
-      </span>
-    </div>
-  );
-}
-
-function PriceChip({
-  label,
-  value,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        'flex flex-col gap-0.5 rounded-xl border p-3',
-        highlight
-          ? 'border-blue-200 bg-blue-50'
-          : 'border-slate-200 bg-slate-50',
-      )}
-    >
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-        {label}
-      </span>
-      <span
-        className={cn(
-          'text-sm font-bold',
-          highlight ? 'text-blue-700' : 'text-slate-800',
-        )}
-      >
-        {value}
       </span>
     </div>
   );

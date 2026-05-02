@@ -1,5 +1,6 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   CalendarPlus,
   ChevronLeft,
@@ -27,6 +28,7 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/admin/lib/types';
+import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
 
 const PAGE_SIZES = [25, 50, 100] as const;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
@@ -188,6 +190,25 @@ export function BookingsListPage() {
     dateNav.setDatePreset('month');
   }, [setSearchParams, dateNav]);
 
+  useEffect(() => {
+    const gmailOk = searchParams.get('gmail_connected');
+    const gmailErr = searchParams.get('gmail_error');
+    if (!gmailOk && !gmailErr) return;
+
+    const next = new URLSearchParams(searchParams);
+    if (gmailOk) {
+      toast.success(
+        'Gmail connected. The scheduled listener will use this mailbox.',
+      );
+      next.delete('gmail_connected');
+    }
+    if (gmailErr) {
+      toast.error(`Gmail connection failed: ${gmailErr}`);
+      next.delete('gmail_error');
+    }
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
   const total = data?.total ?? 0;
   const rows = data?.rows ?? [];
   const pageCount = Math.max(1, Math.ceil(total / query.limit));
@@ -239,6 +260,8 @@ export function BookingsListPage() {
       }
     >
       <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
+        <GmailMailIntegrationCard />
+
         <BookingFilters
           query={query}
           onChange={patch}
