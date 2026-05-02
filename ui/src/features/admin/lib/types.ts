@@ -84,6 +84,8 @@ export type BookingRow = {
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
+  gaf_manual_incomplete?: boolean | null;
+  pet_manual_incomplete?: boolean | null;
   sd_additional_expense_items?: SdSettlementLineItem[] | null;
   sd_additional_profit_items?: SdSettlementLineItem[] | null;
   sd_additional_expenses?: number[] | null;

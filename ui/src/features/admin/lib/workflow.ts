@@ -114,6 +114,8 @@ type ApplicabilityFlags = {
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
+  gaf_manual_incomplete?: boolean | null;
+  pet_manual_incomplete?: boolean | null;
 };
 
 export type PendingDocumentSubStatus =
@@ -130,12 +132,17 @@ export function isSubStatusRequired(
   return true;
 }
 
+function flagTrue(v: unknown): boolean {
+  return v === true || v === 'true';
+}
+
 export function isSubStatusCompleted(
   subStatus: PendingDocumentSubStatus,
   booking: ApplicabilityFlags,
 ): boolean {
   if (!isSubStatusRequired(subStatus, booking)) return true;
   if (subStatus === 'PENDING_GAF') {
+    if (flagTrue(booking.gaf_manual_incomplete)) return false;
     return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
   }
   if (subStatus === 'PENDING_PARKING_REQUEST') {
@@ -143,6 +150,7 @@ export function isSubStatusCompleted(
     // click "Mark as Complete" so `transition-booking` sets `parking_completed_at`.
     return !!booking.parking_completed_at;
   }
+  if (flagTrue(booking.pet_manual_incomplete)) return false;
   return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
 }
 
