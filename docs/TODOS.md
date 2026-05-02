@@ -35,7 +35,7 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
   - Public edge functions **`get-sd-form`** / **`submit-sd-form`**; admin **`send-sd-refund-form-email`** resend; UI **`/sd-form`** stepper (`ui/src/features/sd-form/**`) and admin **`WorkflowPanel`** resend + dev checkbox.
   - After guest submit (or admin skip without `sd_refund_method`), booking moves to **`PENDING_SD_REFUND`** for settlement (`SdRefundForm` shows read-only guest refund block when present).
   - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
-  - Gmail OAuth credentials already obtained via `npm run gmail-auth` and written to `supabase/.env.local` as `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`.
+  - Gmail OAuth: legacy `npm run gmail-auth` → `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`, **or** in-app **Connect Gmail** on `/bookings` (stores encrypted refresh token in `gmail_mail_integration`; requires `GMAIL_API_WEB_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — see `docs/PROJECT.md` §8 / §11).
 - ⏳ Phase 5 — `submit-form` side-effect cleanup + retire `?dev=true` / `?testing=true`.
   - ✅ `submit-form` no longer sends workflow emails directly. Booking acknowledgement, GAF request, pet request, and parking broadcast now send only via `WorkflowOrchestrator` on `PENDING_REVIEW → PENDING_DOCUMENTS`.
   - ⏳ Remaining: retire legacy query-param dev/testing controls and finish Test Submit-only flow.

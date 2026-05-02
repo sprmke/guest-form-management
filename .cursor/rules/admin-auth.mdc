@@ -83,14 +83,17 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 
 ## 7. Env vars summary (new)
 
-| Var                            | Scope | Purpose                                                                                                                                                                  |
-| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ADMIN_ALLOWED_EMAILS`         | edge  | Comma-separated allow list (server-enforced).                                                                                                                            |
-| `VITE_ADMIN_ALLOWED_EMAILS`    | UI    | UX reject only; never the only gate.                                                                                                                                     |
-| `PARKING_OWNER_EMAILS`         | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only. |
-| `GMAIL_OAUTH_CLIENT_JSON`      | edge  | Full OAuth client credentials JSON (set by `npm run gmail-auth` from `scripts/gmail-credentials.json`). Contains `client_id` + `client_secret`.                          |
-| `GMAIL_OAUTH_TOKEN_JSON`       | edge  | Token JSON with `refresh_token` (set by `npm run gmail-auth` after browser sign-in for `kamehome.azurenorth`).                                                           |
-| `SD_REFUND_CRON_GRACE_MINUTES` | edge  | Default `15`; post-checkout grace period.                                                                                                                                |
+| Var                                  | Scope | Purpose                                                                                                                                                                                       |
+| ------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ALLOWED_EMAILS`               | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                 |
+| `VITE_ADMIN_ALLOWED_EMAILS`          | UI    | UX reject only; never the only gate.                                                                                                                                                          |
+| `PARKING_OWNER_EMAILS`               | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                      |
+| `GMAIL_API_WEB_CLIENT_JSON`          | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on `/bookings`; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`. |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                           |
+| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                               |
+| `GMAIL_OAUTH_CLIENT_JSON`            | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                  |
+| `GMAIL_OAUTH_TOKEN_JSON`             | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                               |
+| `SD_REFUND_CRON_GRACE_MINUTES`       | edge  | Default `15`; post-checkout grace period.                                                                                                                                                     |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 

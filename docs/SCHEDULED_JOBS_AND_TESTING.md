@@ -120,13 +120,16 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 
 ### 5.3 `gmail-listener` only
 
-| Variable                  | Purpose                                                                                                                                                       |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GMAIL_OAUTH_CLIENT_JSON` | OAuth client JSON (`installed` or `web` with `client_id` / `client_secret`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`. |
-| `GMAIL_OAUTH_TOKEN_JSON`  | Token JSON including **`refresh_token`**. Same script flow.                                                                                                   |
-| `PERMIT_APPROVER_EMAIL`   | Comma-separated sender allow-list for permit approvers. `gmail-listener` skips approvals when message `From` is not in this list.                             |
+| Variable                             | Purpose                                                                                                                                                                                |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GMAIL_API_WEB_CLIENT_JSON`          | _(Web OAuth path)_ OAuth **Web application** client JSON. With `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` and a row in `gmail_mail_integration`, the listener uses the DB refresh token first. |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | 32-byte key (64 hex or base64) matching the value used when storing tokens via **Connect Gmail** on `/bookings`.                                                                       |
+| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | _(Web OAuth path)_ Comma-separated SPA origins for `google-mail-oauth-start` (defaults include local Vite).                                                                            |
+| `GMAIL_OAUTH_CLIENT_JSON`            | _(Legacy)_ OAuth client JSON (`installed` or `web`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`.                                                  |
+| `GMAIL_OAUTH_TOKEN_JSON`             | _(Legacy)_ Token JSON including **`refresh_token`**. Same script flow. Used when no DB-stored refresh exists for `GMAIL_API_WEB_CLIENT_JSON`.                                          |
+| `PERMIT_APPROVER_EMAIL`              | Comma-separated sender allow-list for permit approvers. `gmail-listener` skips approvals when message `From` is not in this list.                                                      |
 
-If either Gmail secret is missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3.
+If tokens are missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3. Prefer **Reconnect Gmail** on `/bookings` when using the web OAuth path.
 
 ---
 
