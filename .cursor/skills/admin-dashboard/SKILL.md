@@ -91,7 +91,7 @@ See `.cursor/skills/bookings-table/SKILL.md` for column-def helpers.
 
 Two-column on ≥lg, single column on mobile:
 
-- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible). **Guest fields stay editable even after `READY_FOR_CHECKIN`** — but status only reverts to `PENDING_REVIEW` when updates come from public `/form` or admin `/bookings/:bookingId` and at least one workflow-sensitive field changed (Facebook/Airbnb name, primary guest name, email, phone, additional guest names, check-in/out dates or times, parking details, pet details, payment receipt, valid ID, pet vaccination, pet photo). If only other fields changed, keep status as-is. Dev-control checkboxes still gate every side effect on save.
+- **Left (2/3)**: the existing `GuestForm.tsx` rendered in admin mode (dev controls visible). **Guest fields stay editable even after `READY_FOR_CHECKIN`** — but status only reverts to `PENDING_REVIEW` when updates come from public `/form` or admin `/bookings/:bookingId` and at least one workflow-sensitive field changed (Facebook/Airbnb name, primary guest name, email, phone, additional guest names, check-in/out dates or times, parking details, pet details, downpayment receipt, valid ID, pet vaccination, pet photo). If only other fields changed, keep status as-is. Dev-control checkboxes still gate every side effect on save.
 - **Right (1/3, sticky)**: `WorkflowPanel`
   - Status badge + `status_updated_at`
   - Stage-specific sub-form:

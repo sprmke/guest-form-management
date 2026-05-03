@@ -38,7 +38,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - `/calendar` — same calendar component as `/`.
 - `/form` — guest form (`GuestFormPage`); requires dates **or** `bookingId`, else redirect to `/`.
 - `/success` — needs `bookingId` query param; summary from `navigate` state.
-- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); requires `?bookingId=`; only valid while status is `PENDING_SD_REFUND_DETAILS` (link emailed from workflow).
+- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; only valid while status is `READY_FOR_CHECKOUT` (link emailed from workflow). Step 1 has two sub-phases: a Facebook-review CTA, then a slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher` edge function) that idempotently awards a `KAME-*` next-stay voucher and persists `next_stay_voucher_*` on `guest_submissions`.
 
 ### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
 
@@ -63,7 +63,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 
 Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
 
-- Status enum (**9** literals — includes `PENDING_SD_REFUND_DETAILS`; see `booking-workflow.mdc`)
+- Status enum (**10** canonical literals — includes `READY_FOR_CHECKOUT`; see `booking-workflow.mdc`)
 - Allowed transition graph
 - Side-effect matrix per transition
 - Calendar `colorId` + title prefix map

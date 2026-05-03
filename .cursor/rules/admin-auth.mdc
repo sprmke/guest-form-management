@@ -58,19 +58,19 @@ Test bookings:
 
 Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
 
-| Checkbox                          | Shown when                              | Replaces the old                                                         |
-| --------------------------------- | --------------------------------------- | ------------------------------------------------------------------------ |
-| Save to database                  | always                                  | `saveToDatabase`                                                         |
-| Save images to storage            | always                                  | `saveImagesToStorage`                                                    |
-| Generate GAF / pet request PDFs   | only from `PENDING_REVIEW`              | `generatePdf` (was guest-form query param; now transition-only)          |
-| **Send GAF request email**        | only from `PENDING_REVIEW`              | renamed from `Send email notification`                                   |
-| **Send Parking broadcast email**  | only when `need_parking`                | new                                                                      |
-| **Send Pet request email**        | only when `has_pets`                    | new                                                                      |
-| **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                              |
-| **Send Ready-for-check-in email** | only from GAF / parking / pet stages    | gates server + UI                                                        |
-| **Send SD refund form email**     | only when status is `READY_FOR_CHECKIN` | email guest `/sd-form` link on transition to `PENDING_SD_REFUND_DETAILS` |
-| Update Google Calendar            | always                                  | `updateGoogleCalendar`                                                   |
-| Update Google Sheets              | always                                  | `updateGoogleSheets`                                                     |
+| Checkbox                          | Shown when                              | Replaces the old                                                  |
+| --------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
+| Save to database                  | always                                  | `saveToDatabase`                                                  |
+| Save images to storage            | always                                  | `saveImagesToStorage`                                             |
+| Generate GAF / pet request PDFs   | only from `PENDING_REVIEW`              | `generatePdf` (was guest-form query param; now transition-only)   |
+| **Send GAF request email**        | only from `PENDING_REVIEW`              | renamed from `Send email notification`                            |
+| **Send Parking broadcast email**  | only when `need_parking`                | new                                                               |
+| **Send Pet request email**        | only when `has_pets`                    | new                                                               |
+| **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                       |
+| **Send Ready-for-check-in email** | only from GAF / parking / pet stages    | gates server + UI                                                 |
+| **Send SD refund form email**     | only when status is `READY_FOR_CHECKIN` | email guest `/sd-form` link on transition to `READY_FOR_CHECKOUT` |
+| Update Google Calendar            | always                                  | `updateGoogleCalendar`                                            |
+| Update Google Sheets              | always                                  | `updateGoogleSheets`                                              |
 
 All checkboxes start **checked** so the next action runs the full happy path (DB + Calendar + Sheet + the emails that apply to that transition). Admins **uncheck** the specific side effects they want to skip for that run. In production they are authoritative — flipping a checkbox off means "really don't do it". The server's `flag()` helper in `_shared/workflowOrchestrator.ts` treats `undefined` as `true`, so this UI default mirrors the server default.
 
@@ -83,17 +83,18 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 
 ## 7. Env vars summary (new)
 
-| Var                                  | Scope | Purpose                                                                                                                                                                                       |
-| ------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_ALLOWED_EMAILS`               | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                 |
-| `VITE_ADMIN_ALLOWED_EMAILS`          | UI    | UX reject only; never the only gate.                                                                                                                                                          |
-| `PARKING_OWNER_EMAILS`               | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                      |
-| `GMAIL_API_WEB_CLIENT_JSON`          | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on `/bookings`; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`. |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                           |
-| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                               |
-| `GMAIL_OAUTH_CLIENT_JSON`            | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                  |
-| `GMAIL_OAUTH_TOKEN_JSON`             | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                               |
-| `SD_REFUND_CRON_GRACE_MINUTES`       | edge  | Default `15`; post-checkout grace period.                                                                                                                                                     |
+| Var                                    | Scope | Purpose                                                                                                                                                                                       |
+| -------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                 |
+| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                          |
+| `PARKING_OWNER_EMAILS`                 | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                      |
+| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on `/bookings`; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`. |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                           |
+| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                               |
+| `GMAIL_OAUTH_CLIENT_JSON`              | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                  |
+| `GMAIL_OAUTH_TOKEN_JSON`               | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                               |
+| `SD_REFUND_CRON_GRACE_MINUTES`         | edge  | Default `15`; post-checkout grace period.                                                                                                                                                     |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | Default `21`; `sd-refund-cron` suppresses guest SD form email when check-out is older than this many days (`0` = never suppress). Scoped cron (`POST` body `bookingId`) requires admin JWT.   |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 
