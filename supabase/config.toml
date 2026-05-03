@@ -115,6 +115,9 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+[functions.claim-sd-voucher]
+verify_jwt = false
+
 # ── Admin functions — Kong JWT gate disabled; verifyAdminJwt() in handler is the gate ──
 # verify_jwt = true uses Kong's HS256 secret which rejects newer ES256 auth tokens
 # (Supabase local dev ≥ 1.x issues ES256 JWTs). Our verifyAdminJwt() calls
@@ -131,6 +134,9 @@ static_files = [
 ]
 
 [functions.upload-booking-asset]
+verify_jwt = false
+
+[functions.get-booking-asset-url]
 verify_jwt = false
 
 [functions.cancel-booking]
@@ -156,6 +162,18 @@ static_files = [
   "./functions/_shared/email-templates/*.html",
   "./functions/_shared/email-templates/fragments/*.html",
 ]
+
+[functions.google-mail-oauth-start]
+verify_jwt = false
+
+[functions.google-mail-oauth-callback]
+verify_jwt = false
+
+[functions.google-mail-oauth-status]
+verify_jwt = false
+
+[functions.google-mail-oauth-disconnect]
+verify_jwt = false
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
