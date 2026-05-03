@@ -19,7 +19,36 @@ export type SdFormBootstrap = {
   check_in_date: string;
   check_out_date: string;
   facebook_reviews_url: string;
+  /** Persisted voucher (if guest already revealed it on a prior visit). */
+  next_stay_voucher_code: string | null;
+  next_stay_voucher_amount: number | null;
 };
+
+export type ClaimVoucherResponse = {
+  code: string;
+  amount: number;
+  /** True if the booking already had a voucher (no new roll). */
+  alreadyAwarded: boolean;
+};
+
+export async function claimSdVoucher(
+  bookingId: string,
+): Promise<ClaimVoucherResponse> {
+  const res = await fetch(`${FUNCTIONS_URL}/claim-sd-voucher`, {
+    method: 'POST',
+    headers: fnHeaders(),
+    body: JSON.stringify({ bookingId }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(
+      json.error ??
+        json.message ??
+        `Could not claim voucher (${res.status})`,
+    );
+  }
+  return json.data as ClaimVoucherResponse;
+}
 
 export async function fetchSdForm(bookingId: string): Promise<SdFormBootstrap> {
   const url = `${FUNCTIONS_URL}/get-sd-form?bookingId=${encodeURIComponent(bookingId)}`;
@@ -37,14 +66,14 @@ export async function fetchSdForm(bookingId: string): Promise<SdFormBootstrap> {
 
 export type SubmitSdRefundBody = {
   bookingId: string;
-  guestFeedback: string;
+  /** Optional; omitted or empty stores null on the booking. */
+  guestFeedback?: string | null;
   refund: {
     method: 'same_phone' | 'other_bank' | 'cash';
     phoneConfirmed?: boolean;
     bank?: SdBank;
     accountName?: string;
     accountNumber?: string;
-    cashPickupNote?: string | null;
   };
 };
 
