@@ -63,6 +63,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
     includeTests: sp.get('includeTests') === 'true',
+    hideStaleCompleted: sp.get('hideStaleCompleted') !== 'false',
     sort,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     limit: (PAGE_SIZES as ReadonlyArray<number>).includes(limit)
@@ -92,6 +93,7 @@ function writeQueryToParams(
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
   set('includeTests', q.includeTests ? 'true' : null);
+  set('hideStaleCompleted', q.hideStaleCompleted === false ? 'false' : null);
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
   set(
@@ -222,6 +224,11 @@ export function BookingsListPage() {
   // property's volume; widen later if needed via a cursor / infinite query.
   const showPagination = view !== 'calendar' && pageCount > 1;
 
+  const listEmptyExtraHint =
+    query.hideStaleCompleted && !isLoading && total === 0
+      ? 'Tip: turn on “Past completed” to include finished stays whose check-in was before today (Asia/Manila). Also confirm the date range includes that stay’s check-in month.'
+      : null;
+
   return (
     <AdminLayout
       title="Bookings"
@@ -347,6 +354,7 @@ export function BookingsListPage() {
             isLoading={isLoading}
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
+            emptyExtraHint={listEmptyExtraHint}
           />
         )}
         {view === 'card' && (
@@ -355,6 +363,7 @@ export function BookingsListPage() {
             isLoading={isLoading}
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
+            emptyExtraHint={listEmptyExtraHint}
           />
         )}
         {view === 'calendar' && (
