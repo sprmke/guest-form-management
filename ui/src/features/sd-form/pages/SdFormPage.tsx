@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -25,10 +25,13 @@ import {
 } from '@/features/sd-form/lib/api';
 import {
   SD_BANKS,
+  refundBodySchema,
   sdFormSubmitSchema,
   type RefundBodyValues,
   type SdBank,
 } from '@/features/sd-form/lib/sdFormSchema';
+import { handleNameInputChange } from '@/utils/helpers';
+import { toCapitalCase } from '@/utils/formatters';
 import type { SubmitSdRefundBody } from '@/features/sd-form/lib/api';
 import { findVoucher, type Voucher } from '@/features/sd-form/lib/voucher';
 import { VoucherReveal } from '@/features/sd-form/components/VoucherReveal';
@@ -45,10 +48,6 @@ type Step = 1 | 2 | 'done';
 type Step1Phase = 'review' | 'voucher';
 
 const SD_FORM_BRAND_TITLE = 'SD Refund Form';
-
-/** Shown when guest selects cash pickup (no free-text note; coordinate via Facebook/Airbnb). */
-const CASH_SD_REFUND_NOTICE =
-  'For cash SD refund, this is only applicable if you pay your Balance and SD payment via cash. Also, we can only proceed with cash refund if our staff is available and on the Azure premises. Please contact us separately on Facebook/Airbnb to discuss before leaving Azure building.';
 
 function StepperStepRow({
   stepNum,
@@ -301,19 +300,31 @@ export function SdFormPage() {
       <MainLayout>
         <div className="relative space-y-6 p-4 text-center sm:p-6 lg:p-8">
           <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} />
-          <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <Check className="size-7" strokeWidth={2.5} aria-hidden />
+          <div className="mx-auto flex max-w-md flex-col items-center gap-5">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+              <Check className="size-7" strokeWidth={2.5} aria-hidden />
+            </div>
+            <div className="space-y-3 px-3 sm:px-0">
+              <h1 className="text-base font-bold text-foreground sm:text-lg">
+                You&apos;re all set
+              </h1>
+              <p className="leading-relaxed text-muted-foreground">
+                Thank you, <strong>{data.primary_guest_name}</strong> for
+                staying with us! We&apos;ll process your security deposit refund
+                after 1-2 hours using the details you shared.
+              </p>
+              <p className="strong leading-relaxed text-muted-foreground">
+                We hope we can accommodate you on your next stay again. See you,
+                Ka-Homies!
+              </p>
+            </div>
+            <Button
+              asChild
+              className="min-h-[44px] w-full min-w-[44px] sm:w-auto"
+            >
+              <Link to="/">Check next available dates</Link>
+            </Button>
           </div>
-          <h1 className="text-base font-bold text-foreground sm:text-lg">
-            You&apos;re all set
-          </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Thank you, {data.primary_guest_name}. We&apos;ll process your
-            security deposit refund using the details you shared.
-          </p>
-          <Button asChild variant="outline" className="min-h-[44px]">
-            <Link to="/">Back to home</Link>
-          </Button>
         </div>
       </MainLayout>
     );
@@ -488,6 +499,51 @@ function StepTwo({
   onSubmit: () => void;
   isSubmitting: boolean;
 }) {
+  const [otherBankFieldTouch, setOtherBankFieldTouch] = useState({
+    bank: false,
+    accountName: false,
+    accountNumber: false,
+  });
+
+  useEffect(() => {
+    if (method !== 'other_bank') {
+      setOtherBankFieldTouch({
+        bank: false,
+        accountName: false,
+        accountNumber: false,
+      });
+    }
+  }, [method]);
+
+  const stepTwoValidation = useMemo(() => {
+    const payload =
+      method === 'same_phone'
+        ? ({ method: 'same_phone' } as const)
+        : method === 'cash'
+          ? ({ method: 'cash' } as const)
+          : ({
+              method: 'other_bank' as const,
+              bank: bank as SdBank,
+              accountName,
+              accountNumber,
+            } as const);
+    const r = refundBodySchema.safeParse(payload);
+    if (r.success) {
+      return { canSubmit: true, errors: {} as Record<string, string> };
+    }
+    const errors: Record<string, string> = {};
+    for (const iss of r.error.issues) {
+      const k = iss.path[0];
+      if (typeof k === 'string' && !errors[k]) errors[k] = iss.message;
+    }
+    return { canSubmit: false, errors };
+  }, [method, bank, accountName, accountNumber]);
+
+  const showOtherBankFieldError = (field: keyof typeof otherBankFieldTouch) =>
+    method === 'other_bank' &&
+    otherBankFieldTouch[field] &&
+    Boolean(stepTwoValidation.errors[field]);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3 rounded-xl border border-border/80 bg-muted/15 px-4 py-3">
@@ -530,10 +586,24 @@ function StepTwo({
             <Label htmlFor="sd-bank" className="text-sm font-medium">
               Bank / channel
             </Label>
-            <Select value={bank} onValueChange={onBankChange}>
+            <Select
+              value={bank}
+              onValueChange={(v) => {
+                setOtherBankFieldTouch((prev) => ({ ...prev, bank: true }));
+                onBankChange(v);
+              }}
+            >
               <SelectTrigger
                 id="sd-bank"
-                className="bg-background font-normal text-foreground"
+                className={cn(
+                  'bg-background font-normal text-foreground',
+                  showOtherBankFieldError('bank') &&
+                    'border-destructive ring-1 ring-destructive/30',
+                )}
+                aria-invalid={showOtherBankFieldError('bank')}
+                aria-describedby={
+                  showOtherBankFieldError('bank') ? 'sd-bank-error' : undefined
+                }
               >
                 <SelectValue placeholder="Choose bank" />
               </SelectTrigger>
@@ -545,6 +615,15 @@ function StepTwo({
                 ))}
               </SelectContent>
             </Select>
+            {showOtherBankFieldError('bank') ? (
+              <p
+                id="sd-bank-error"
+                className="text-xs text-destructive"
+                role="alert"
+              >
+                {stepTwoValidation.errors.bank}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sd-acc-name" className="text-sm font-medium">
@@ -553,10 +632,43 @@ function StepTwo({
             <input
               id="sd-acc-name"
               value={accountName}
-              onChange={(e) => onAccountNameChange(e.target.value)}
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm"
-              placeholder="Name on the account"
+              onChange={(e) => {
+                setOtherBankFieldTouch((prev) => ({
+                  ...prev,
+                  accountName: true,
+                }));
+                handleNameInputChange(e, onAccountNameChange, toCapitalCase);
+              }}
+              onBlur={() =>
+                setOtherBankFieldTouch((prev) => ({
+                  ...prev,
+                  accountName: true,
+                }))
+              }
+              className={cn(
+                'h-11 w-full rounded-lg border bg-background px-3 text-sm',
+                showOtherBankFieldError('accountName')
+                  ? 'border-destructive ring-1 ring-destructive/30'
+                  : 'border-input',
+              )}
+              placeholder="Ex. Juan Dela Cruz"
+              autoComplete="name"
+              aria-invalid={showOtherBankFieldError('accountName')}
+              aria-describedby={
+                showOtherBankFieldError('accountName')
+                  ? 'sd-acc-name-error'
+                  : undefined
+              }
             />
+            {showOtherBankFieldError('accountName') ? (
+              <p
+                id="sd-acc-name-error"
+                className="text-xs text-destructive"
+                role="alert"
+              >
+                {stepTwoValidation.errors.accountName}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sd-acc-no" className="text-sm font-medium">
@@ -565,11 +677,46 @@ function StepTwo({
             <input
               id="sd-acc-no"
               value={accountNumber}
-              onChange={(e) => onAccountNumberChange(e.target.value)}
-              className="h-11 w-full rounded-lg border border-input bg-background px-3 text-sm font-mono"
-              placeholder="Digits only"
+              onChange={(e) => {
+                setOtherBankFieldTouch((prev) => ({
+                  ...prev,
+                  accountNumber: true,
+                }));
+                onAccountNumberChange(
+                  e.target.value.replace(/\D/g, '').slice(0, 20),
+                );
+              }}
+              onBlur={() =>
+                setOtherBankFieldTouch((prev) => ({
+                  ...prev,
+                  accountNumber: true,
+                }))
+              }
+              className={cn(
+                'h-11 w-full rounded-lg border bg-background px-3 text-sm font-mono',
+                showOtherBankFieldError('accountNumber')
+                  ? 'border-destructive ring-1 ring-destructive/30'
+                  : 'border-input',
+              )}
+              placeholder="Ex. 09876543210"
               inputMode="numeric"
+              autoComplete="off"
+              aria-invalid={showOtherBankFieldError('accountNumber')}
+              aria-describedby={
+                showOtherBankFieldError('accountNumber')
+                  ? 'sd-acc-no-error'
+                  : undefined
+              }
             />
+            {showOtherBankFieldError('accountNumber') ? (
+              <p
+                id="sd-acc-no-error"
+                className="text-xs text-destructive"
+                role="alert"
+              >
+                {stepTwoValidation.errors.accountNumber}
+              </p>
+            ) : null}
           </div>
         </div>
       )}
@@ -580,7 +727,13 @@ function StepTwo({
           role="note"
         >
           <p className="text-sm leading-relaxed text-amber-950">
-            {CASH_SD_REFUND_NOTICE}
+            For cash SD refund, this option is only available if your balance
+            and security deposit were paid in cash. We can only process the cash
+            refund if our staff is available and on the Azure premises.{' '}
+            <strong>
+              Please contact us via Facebook or Airbnb so we can arrange your
+              cash refund before you leave the building.
+            </strong>
           </p>
         </div>
       )}
@@ -598,7 +751,7 @@ function StepTwo({
         <Button
           type="button"
           className="min-h-[44px] w-full shadow-md shadow-primary/15 sm:w-auto"
-          disabled={isSubmitting}
+          disabled={isSubmitting || !stepTwoValidation.canSubmit}
           onClick={onSubmit}
         >
           {isSubmitting ? (
