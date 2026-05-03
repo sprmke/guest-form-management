@@ -29,9 +29,9 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
   - **Email re-fire safety**: the workflow orchestrator sends ready-for-check-in only on forward transitions to `READY_FOR_CHECKIN` from `PENDING_DOCUMENTS` or legacy `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST` — not from e.g. `PENDING_SD_REFUND → READY_FOR_CHECKIN`. The dev control is relevant on those same pre-ready statuses.
 - ✅ **Phase 4 — Gmail listener + SD refund cron.**
   - Created `gmail-listener` edge function — Gmail OAuth via `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON` (set by `npm run gmail-auth`), incremental `users.history.list` polling, `APPROVED GAF.pdf` attachment download + Storage upload, booking correlation by date range + status, ambiguous multi-match recorded as `skipped` (Q6.5), idempotency via `processed_emails` table + `gmail_listener_state` history cursor, transitions through `workflowOrchestrator`.
-  - Created `sd-refund-cron` edge function — scans `READY_FOR_CHECKIN` bookings, computes `check_out_date + check_out_time + 15min` in Asia/Manila (Q7.1), auto-transitions through orchestrator to **`PENDING_SD_REFUND_DETAILS`** (guest SD form + email), not directly to `PENDING_SD_REFUND`.
-- ✅ **Phase 4b — Guest SD refund form (`PENDING_SD_REFUND_DETAILS`).**
-  - Status `PENDING_SD_REFUND_DETAILS` + DB columns (`sd_refund_*`, form timestamps); cron + manual `READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS` with **`sendSdRefundFormEmail`** dev control and `sendSdRefundFormRequest` template.
+  - Created `sd-refund-cron` edge function — scans `READY_FOR_CHECKIN` bookings, computes `check_out_date + check_out_time + 15min` in Asia/Manila (Q7.1), auto-transitions through orchestrator to **`READY_FOR_CHECKOUT`** (guest SD form + email), not directly to `PENDING_SD_REFUND`.
+- ✅ **Phase 4b — Guest SD refund form (`READY_FOR_CHECKOUT`).**
+  - Status `READY_FOR_CHECKOUT` + DB columns (`sd_refund_*`, form timestamps); cron + manual `READY_FOR_CHECKIN → READY_FOR_CHECKOUT` with **`sendSdRefundFormEmail`** dev control and `sendSdRefundFormRequest` template.
   - Public edge functions **`get-sd-form`** / **`submit-sd-form`**; admin **`send-sd-refund-form-email`** resend; UI **`/sd-form`** stepper (`ui/src/features/sd-form/**`) and admin **`WorkflowPanel`** resend + dev checkbox.
   - After guest submit (or admin skip without `sd_refund_method`), booking moves to **`PENDING_SD_REFUND`** for settlement (`SdRefundForm` shows read-only guest refund block when present).
   - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
@@ -98,7 +98,7 @@ Todos
 - Combine GAF request and pet request in one email when sending to Azure
 - Cleanup all [TEST] or test related UI and logic across our app. Since we have separate local env now, we don't need to support any test related actions/logic. Please cleanup all our UI, filters, test data, logic to different service that's related to test submit action
 - ✅ Improve the overall UI of our email templates which the same and consistent theme, font, shadows, spacing and colors. Make a research on popular and modern/stunning email templates to use as reference. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI.
-- ✅ Guest SD refund route **`/sd-form`** (feedback step + refund method: GCash same as phone with confirm checkbox, other bank dropdown + name + account number, cash + optional note). Honesty-store purchase step skipped by design. **`PENDING_SD_REFUND_DETAILS`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
+- ✅ Guest SD refund route **`/sd-form`** (UI stepper: Facebook review step → refund method: GCash same as on-file phone (number shown on the option card), other bank dropdown + name + account number, cash pickup with static policy copy only). Honesty-store purchase step skipped by design. **`READY_FOR_CHECKOUT`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
 - Improve email template house rules
 - Review edit booking info form
 - ✅ Improve and finalize update guest form flow
@@ -115,7 +115,7 @@ Todos
     - Check-in and Check-out Time
     - Parking Details
     - Pet Details
-    - Payment Receipt
+    - Downpayment receipt
     - Valid ID
     - Pet vaccination and pet photo
   - If updates do not include the listed fields, do **not** reset status to `PENDING_REVIEW`
@@ -132,7 +132,11 @@ Todos
 - Support 'Mark as incomplete' to sub booking status?
 - Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
 - We should add label for additional fee and update the ready for check-in email what's the additional fee is about
-- Update SD refund form (http://localhost:5173/sd-form?bookingId=3ea29e22-c355-4829-973b-3faec2d64618)
+- ✅ Update SD refund form UI (stepper, no feedback field, Facebook-first then Continue, optional `guestFeedback` on API)
+- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
 - Do we have 'Send SD refund form email now' CRON?? Why we have this on Automation Triggers?
 - Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
 - Update ready for check-in email to add generated Gcash QR or link for the total balance payment upon check-in
+- Update booking flow when guest is coming from Airbnb
+- Update guest form and booking flow if the guest have surprise decor.
+- Update Review process to deduct P50-P100 pesos on SD?

@@ -16,10 +16,10 @@ Related canonical references:
 
 There are **two** Edge Functions meant to run on a **recurring schedule** (every ~5 minutes in production):
 
-| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                            |
-| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). |
-| **SD refund cron**          | `sd-refund-cron` | Find bookings in **`READY_FOR_CHECKIN`** whose **check-out date + time + grace period** (default **15 minutes**, Asia/Manila) is already in the past, then transition each to **`PENDING_SD_REFUND`** via the orchestrator (calendar + sheet updates; **no** outbound email on this transition).                                                                   |
+| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**). |
+| **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose **check-out + grace** (default **15 min**, Asia/Manila) is in the past and **settlement** is complete → **`READY_FOR_CHECKOUT`** via orchestrator. **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id (Workflow panel button). **Email:** guest SD form email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; set **`0`** to disable suppression); calendar/sheet still update.                                                                        |
 
 Neither job reimplements workflow rules in isolation: both defer to **`WorkflowOrchestrator`** so calendar, sheet, and email behavior stay consistent with `transition-booking` and the status machine.
 
@@ -87,17 +87,17 @@ Reasons:
 
 Current repo behavior:
 
-| Function         | `[functions.*] verify_jwt` in `config.toml` | Handler calls `verifyAdminJwt`? |
-| ---------------- | ------------------------------------------- | ------------------------------- |
-| `gmail-listener` | `false`                                     | **No**                          |
-| `sd-refund-cron` | `false`                                     | **No**                          |
+| Function         | `[functions.*] verify_jwt` in `config.toml` | Handler calls `verifyAdminJwt`?                                                                                                                                                      |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gmail-listener` | `false`                                     | **No**                                                                                                                                                                               |
+| `sd-refund-cron` | `false`                                     | **Only when** JSON body includes **`bookingId`** (admin “Run SD refund cron now” from `/bookings/:id`). **Global** scheduled runs omit `bookingId` and do **not** require admin JWT. |
 
 Effects:
 
-- **Scheduled `pg_net` POST** can use the **`anon` JWT** in `Authorization` (as in Supabase’s scheduling doc) and still reach the handler, because Kong is not enforcing JWT for these functions.
-- **Admin UI “Run … now”** sends the **signed-in admin’s** `access_token` (`useTransitionBooking.ts`), but the handler **does not validate** it today—those buttons are for **trusted operators** only; the real production boundary is that only your project’s cron SQL + keys should call these endpoints routinely.
+- **Scheduled `pg_net` POST** can use the **`anon` JWT** in `Authorization` (as in Supabase’s scheduling doc) with **`body := '{}'::jsonb`** and still reach the handler for the **global** scan (no `bookingId`).
+- **Admin UI “Run SD refund cron now”** sends `{ "bookingId" }` plus the admin **`access_token`**; the function calls **`verifyAdminJwt`** so only allow-listed Google accounts can scope a run to one booking.
 
-**Operational implication:** Treat the function URLs like **semi-internal** APIs: configure cron in Vault, avoid sharing keys, and rely on Supabase project isolation.
+**Operational implication:** Treat unscoped `sd-refund-cron` URLs like **semi-internal** APIs (cron + keys). Scoped calls are gated by **`verifyAdminJwt`**.
 
 ---
 
@@ -114,9 +114,10 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 
 ### 5.2 `sd-refund-cron` only
 
-| Variable                       | Default | Purpose                                                                                                                      |
-| ------------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `SD_REFUND_CRON_GRACE_MINUTES` | `15`    | Minutes **after** parsed check-out (Manila) before the booking becomes eligible for `READY_FOR_CHECKIN → PENDING_SD_REFUND`. |
+| Variable                               | Default | Purpose                                                                                                                                                       |
+| -------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SD_REFUND_CRON_GRACE_MINUTES`         | `15`    | Minutes **after** parsed check-out (Manila) before the booking becomes eligible for `READY_FOR_CHECKIN → READY_FOR_CHECKOUT`.                                 |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | `21`    | If **now − check-out** exceeds this many days, the cron still transitions but **does not** send the guest SD form email. Set **`0`** to never suppress email. |
 
 ### 5.3 `gmail-listener` only
 
@@ -176,7 +177,7 @@ http://127.0.0.1:54321/functions/v1
 2. In **Workflow panel**, use **“Run SD refund cron now”**.
 3. Expect a toast summarizing `transitioned` / `scanned`; list invalidates.
 
-**Option B — curl (local)**
+**Option B — curl (global scan, same as `pg_cron`)**
 
 ```bash
 curl -sS -X POST \
@@ -188,11 +189,23 @@ curl -sS -X POST \
 
 (Use the **anon** key from local Supabase status output or `.env.local`; with `verify_jwt = false` the header may still be required by some gateways—if a bare POST works locally, that matches your CLI version.)
 
+**Option C — curl (scoped to one booking, matches admin UI)**
+
+Use a **signed-in admin** `access_token` (same as the browser session) and your booking UUID:
+
+```bash
+curl -sS -X POST \
+  "http://127.0.0.1:54321/functions/v1/sd-refund-cron" \
+  -H "Authorization: Bearer <ADMIN_ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"bookingId":"<BOOKING_UUID>"}'
+```
+
 ### 7.4 Assert results
 
 - **HTTP 200** and JSON roughly:  
-  `{ "success": true, "scanned": N, "transitioned": 1, "skipped": ..., "results": [ ... ] }`
-- DB: that booking’s **`status`** is now **`PENDING_SD_REFUND`**.
+  `{ "success": true, "scoped": false|true, "scanned": N, "transitioned": 1, "skipped": ..., "transitionedSdEmailSent": ..., "transitionedSdEmailSuppressed": ..., "results": [ ... ] }`
+- DB: that booking’s **`status`** is now **`READY_FOR_CHECKOUT`** (not `PENDING_SD_REFUND`; guest SD form comes next).
 - If Google env vars are configured: **Calendar** event color/summary and **Sheet** row updated per workflow matrix (orchestrator).
 - Re-run the same cron: booking should appear **only** in `scanned` if still `READY_FOR_CHECKIN` for others; the already-moved row is no longer a candidate—**idempotent** for the same booking.
 
