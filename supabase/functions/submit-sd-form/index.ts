@@ -10,22 +10,45 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
+import {
+  isSdRefundBank,
+  type SdRefundBank,
+} from '../_shared/sdRefundBank.ts';
 
 type RefundBody = {
   method: 'same_phone' | 'other_bank' | 'cash';
   phoneConfirmed?: boolean;
-  bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  bank?: SdRefundBank | null;
   accountName?: string | null;
   accountNumber?: string | null;
 };
+
+function validateAccountName(name: string): boolean {
+  const trimmed = name.trim();
+  if (!trimmed) return false;
+  const words = trimmed.split(/\s+/);
+  if (words.length < 2) return false;
+  if (words[0].length < 2 || words[words.length - 1].length < 2) return false;
+  const middleWords = words.slice(1, -1);
+  return middleWords.every((word) => word.length >= 1);
+}
 
 function validateRefund(r: RefundBody): string | null {
   if (!r?.method) return 'refund.method is required';
   // same_phone — guest selects the option that shows their on-file number; no separate checkbox.
   if (r.method === 'other_bank') {
     if (!r.bank) return 'Bank is required';
-    if (!r.accountName?.trim()) return 'Account name is required';
-    if (!r.accountNumber?.trim()) return 'Account number is required';
+    if (!isSdRefundBank(r.bank)) return 'Invalid bank';
+    const name = (r.accountName ?? '').trim();
+    if (!name) return 'Account name is required';
+    if (!validateAccountName(name)) {
+      return 'Please enter the complete name on the account (first and last name)';
+    }
+    const acct = (r.accountNumber ?? '').replace(/\s+/g, '');
+    if (!acct) return 'Account number is required';
+    if (!/^\d+$/.test(acct)) return 'Account number must contain digits only';
+    if (acct.length < 5) return 'Account number must be at least 5 digits';
+    if (acct.length > 20) return 'Account number is too long';
   }
   return null;
 }

@@ -21,7 +21,10 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts';
+import {
+  pendingDocumentsClearPatchForGuestEditRevert,
+  shouldRevertGuestFieldEditsToPendingReview,
+} from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const ASSET_CONFIG = {
@@ -125,19 +128,21 @@ serve(async (req) => {
       throw new Error(`Booking not found: ${bookingId}`);
     }
 
-    await DatabaseService.setWorkflowFields(bookingId, {
+    const workflowUpdate: Record<string, unknown> = {
       [config.column]: safePublicUrl,
-    });
-
+    };
     if (
       shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
       isGuestDocRevertAssetType(assetType)
     ) {
-      await DatabaseService.updateBookingStatus(bookingId, 'PENDING_REVIEW');
+      Object.assign(workflowUpdate, pendingDocumentsClearPatchForGuestEditRevert());
+      workflowUpdate.status = 'PENDING_REVIEW';
+      workflowUpdate.status_updated_at = new Date().toISOString();
       console.log(
         `[upload-booking-asset] ${assetType} replaced while ${booking.status} → PENDING_REVIEW`,
       );
     }
+    await DatabaseService.setWorkflowFields(bookingId, workflowUpdate);
 
     console.log(`[upload-booking-asset] Uploaded ${assetType} for ${bookingId}: ${safePublicUrl}`);
 
