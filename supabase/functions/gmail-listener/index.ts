@@ -11,6 +11,9 @@
  *   - `gmail_listener_state` table holds the Gmail `historyId` cursor.
  *   - `processed_emails` table holds message IDs that have been handled (applied/skipped/failed).
  *   - Both layers are required: history can replay/expire, so the DB dedupe is the durable layer.
+ *   - After each poll, **reconciliation** re-applies approval state for rows where an admin marked
+ *     GAF/pet “incomplete” (`*_manual_incomplete`) but `approved_*_pdf_url` is already set — Gmail
+ *     will not re-deliver the same message, so we refresh from DB + orchestrator without re-fetching MIME.
  *
  * Secrets required (either path):
  *   A) Web OAuth (in-app Connect Gmail): GMAIL_API_WEB_CLIENT_JSON, GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY,
@@ -35,6 +38,19 @@ import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
 
 // Gmail OAuth: DB-stored web refresh token (GMAIL_API_WEB_CLIENT_JSON) preferred;
 // else legacy GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON env blobs (`npm run gmail-auth`).
+
+/** Dev flags for listener-driven `WorkflowOrchestrator.transition` (no outbound request emails). */
+const GMAIL_LISTENER_DEV_CONTROLS = {
+  saveToDatabase: true,
+  generatePdf: false,
+  updateGoogleCalendar: true,
+  updateGoogleSheets: true,
+  sendGafRequestEmail: false,
+  sendParkingBroadcastEmail: false,
+  sendPetRequestEmail: false,
+  sendBookingAcknowledgementEmail: false,
+  sendReadyForCheckinEmail: false,
+} as const;
 
 // ─── Gmail REST helpers ────────────────────────────────────────────────────────
 
@@ -519,21 +535,98 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
     bookingId,
     toStatus,
     payload,
-    {
-      saveToDatabase: true,
-      generatePdf: false,
-      updateGoogleCalendar: true,
-      updateGoogleSheets: true,
-      sendGafRequestEmail: false,          // GAF/pet emails already sent; don't resend
-      sendParkingBroadcastEmail: false,    // parking broadcast already sent
-      sendPetRequestEmail: false,          // pet request already sent
-      sendBookingAcknowledgementEmail: false, // already sent at PENDING_DOCUMENTS step
-      sendReadyForCheckinEmail: false,
-    },
+    { ...GMAIL_LISTENER_DEV_CONTROLS },
     false, // manual=false — listener-driven transition
   );
 
   return { action: 'applied', bookingId, kind: parsed.kind };
+}
+
+/**
+ * Re-apply GAF/pet nested completion when admins marked a sub-step incomplete but the row still
+ * has an `approved_*_pdf_url` from a prior Gmail apply. Those message IDs stay in `processed_emails`,
+ * and history often has no new messages — so this pass runs on every poll (usually 0 rows).
+ */
+async function reconcileManualIncompleteApprovals(): Promise<{ gaf: number; pet: number }> {
+  const sb = supabaseAdmin();
+  let gaf = 0;
+  let pet = 0;
+
+  const { data: gafRows, error: gafErr } = await sb
+    .from('guest_submissions')
+    .select('id, approved_gaf_pdf_url')
+    .eq('status', 'PENDING_DOCUMENTS')
+    .eq('gaf_manual_incomplete', true)
+    .not('approved_gaf_pdf_url', 'is', null);
+
+  if (gafErr) {
+    console.error('[gmail-listener] reconcile GAF query failed:', gafErr.message);
+  } else {
+    for (const row of gafRows ?? []) {
+      const url = (row.approved_gaf_pdf_url as string | null)?.trim();
+      if (!url) continue;
+      try {
+        await WorkflowOrchestrator.transition(
+          row.id as string,
+          'PENDING_DOCUMENTS',
+          {
+            approved_gaf_pdf_url: url,
+            document_completion_target: 'PENDING_GAF',
+          },
+          { ...GMAIL_LISTENER_DEV_CONTROLS },
+          false,
+        );
+        gaf++;
+        console.log(
+          `[gmail-listener] Reconciled GAF for booking ${row.id} (manual incomplete + existing PDF URL)`,
+        );
+      } catch (e: unknown) {
+        console.error(
+          `[gmail-listener] Reconcile GAF failed for ${row.id}:`,
+          (e as Error).message,
+        );
+      }
+    }
+  }
+
+  const { data: petRows, error: petErr } = await sb
+    .from('guest_submissions')
+    .select('id, approved_pet_pdf_url')
+    .eq('status', 'PENDING_DOCUMENTS')
+    .eq('pet_manual_incomplete', true)
+    .not('approved_pet_pdf_url', 'is', null);
+
+  if (petErr) {
+    console.error('[gmail-listener] reconcile pet query failed:', petErr.message);
+  } else {
+    for (const row of petRows ?? []) {
+      const url = (row.approved_pet_pdf_url as string | null)?.trim();
+      if (!url) continue;
+      try {
+        await WorkflowOrchestrator.transition(
+          row.id as string,
+          'PENDING_DOCUMENTS',
+          {
+            approved_pet_pdf_url: url,
+            document_completion_target: 'PENDING_PET_REQUEST',
+          },
+          { ...GMAIL_LISTENER_DEV_CONTROLS },
+          false,
+        );
+        pet++;
+        console.log(
+          `[gmail-listener] Reconciled pet for booking ${row.id} (manual incomplete + existing PDF URL)`,
+        );
+      } catch (e: unknown) {
+        console.error(
+          `[gmail-listener] Reconcile pet failed for ${row.id}:`,
+          (e as Error).message,
+        );
+      }
+    }
+  }
+
+  return { gaf, pet };
 }
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
@@ -603,8 +696,19 @@ serve(async (req) => {
 
     if (addedMessageIds.length === 0) {
       await saveHistoryId(newHistoryId);
+      const reconciled = await reconcileManualIncompleteApprovals();
+      const reconciledTotal = reconciled.gaf + reconciled.pet;
       return new Response(
-        JSON.stringify({ success: true, messagesScanned: 0, applied: 0 }),
+        JSON.stringify({
+          success: true,
+          messagesScanned: 0,
+          applied: 0,
+          skipped: 0,
+          failed: 0,
+          reconciled: reconciledTotal,
+          reconciledGaf: reconciled.gaf,
+          reconciledPet: reconciled.pet,
+        }),
         { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
@@ -660,17 +764,26 @@ serve(async (req) => {
     // 5. Advance historyId cursor (always, even on partial failures)
     await saveHistoryId(newHistoryId);
 
+    const reconciled = await reconcileManualIncompleteApprovals();
+    const reconciledTotal = reconciled.gaf + reconciled.pet;
+
     const summary = {
       success: true,
       messagesScanned: addedMessageIds.length,
       applied,
       skipped,
       failed,
+      reconciled: reconciledTotal,
+      reconciledGaf: reconciled.gaf,
+      reconciledPet: reconciled.pet,
       historyId: newHistoryId,
       results,
     };
 
-    console.log('[gmail-listener] Run complete:', JSON.stringify({ applied, skipped, failed }));
+    console.log(
+      '[gmail-listener] Run complete:',
+      JSON.stringify({ applied, skipped, failed, reconciled: reconciledTotal }),
+    );
 
     return new Response(JSON.stringify(summary), {
       status: 200,

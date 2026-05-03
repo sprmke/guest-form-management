@@ -3,9 +3,20 @@
  *
  * Purpose:  Scan for bookings in `READY_FOR_CHECKIN` status where the guest's
  *           check-out datetime has passed by at least 15 minutes (Asia/Manila),
- *           and auto-transition them to `PENDING_SD_REFUND_DETAILS` (guest SD form + email).
+ *           and auto-transition them to `READY_FOR_CHECKOUT` (guest SD form + email)
+ *           only when balance settlement is already recorded (paid amount = total guest balance + receipt URL).
  *
- * Trigger:  Supabase cron — every 5 minutes.
+ * Trigger:  Supabase cron — every 5 minutes (POST with empty or `{}` body — processes all candidates).
+ *
+ * Scoped admin runs:
+ *   POST JSON `{ "bookingId": "<uuid>" }` with a valid **admin** JWT (`verifyAdminJwt`).
+ *   Only that booking is evaluated (same due + settlement rules). Prevents one admin click
+ *   from transitioning unrelated `READY_FOR_CHECKIN` rows.
+ *
+ * Email guard (all runs):
+ *   If check-out is older than `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` (default 21; set `0` to disable),
+ *   the transition still runs (status / calendar / sheet) but **`sendSdRefundFormEmail` is false** so guests
+ *   who checked out long ago are not emailed the `/sd-form` link from automation.
  *
  * Idempotency:
  *   - The status machine (`canTransition`) prevents re-processing: a booking
@@ -23,9 +34,14 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
+import { verifyAdminJwt } from '../_shared/auth.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
+import { computeTotalGuestBalanceFromBooking } from '../_shared/totalGuestBalance.ts';
 
 const MANILA_TZ = 'Asia/Manila';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // ─── Date/time helpers ─────────────────────────────────────────────────────────
 
@@ -97,6 +113,43 @@ function defaultCheckoutTime(): string {
   return '11:00 AM';
 }
 
+/** Same rules as WorkflowOrchestrator for RFCI → READY_FOR_CHECKOUT payload (paid = total). */
+function canAutoTransitionWithSettlement(row: Record<string, unknown>): {
+  ok: true;
+} | { ok: false; reason: string } {
+  const totalDue = computeTotalGuestBalanceFromBooking(row);
+  if (totalDue === null) {
+    return { ok: false, reason: 'missing_total_guest_balance' };
+  }
+
+  const paidRaw = row.guest_balance_paid_amount;
+  if (paidRaw === null || paidRaw === undefined || paidRaw === '') {
+    return { ok: false, reason: 'missing_guest_balance_paid_amount' };
+  }
+  const paidNum = Number(paidRaw);
+  if (Number.isNaN(paidNum) || paidNum < 0) {
+    return { ok: false, reason: 'invalid_guest_balance_paid_amount' };
+  }
+  const balCents = Math.round(totalDue * 100);
+  const paidCents = Math.round(paidNum * 100);
+  if (paidCents > balCents) {
+    return { ok: false, reason: 'guest_balance_paid_exceeds_balance' };
+  }
+  if (paidCents !== balCents) {
+    return { ok: false, reason: 'guest_balance_not_fully_paid' };
+  }
+
+  const receipt =
+    typeof row.guest_balance_payment_receipt_url === 'string'
+      ? row.guest_balance_payment_receipt_url.trim()
+      : '';
+  if (!receipt) {
+    return { ok: false, reason: 'missing_guest_balance_payment_receipt' };
+  }
+
+  return { ok: true };
+}
+
 // ─── DB helper ─────────────────────────────────────────────────────────────────
 
 function supabaseAdmin() {
@@ -104,6 +157,30 @@ function supabaseAdmin() {
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
+}
+
+const SELECT_COLUMNS =
+  'id, check_in_date, check_out_date, check_out_time, is_test_booking, guest_facebook_name, booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest, guest_additional_fee, guest_balance_paid_amount, guest_balance_payment_receipt_url';
+
+type CronResultRow = {
+  bookingId: string;
+  action: string;
+  reason?: string;
+  sdRefundFormEmailSent?: boolean;
+};
+
+async function parseOptionalBookingId(req: Request): Promise<string | undefined> {
+  const ct = req.headers.get('content-type') ?? '';
+  if (!ct.includes('application/json')) return undefined;
+  try {
+    const body = (await req.json()) as { bookingId?: unknown };
+    if (typeof body?.bookingId === 'string' && body.bookingId.trim()) {
+      return body.bookingId.trim();
+    }
+  } catch {
+    // empty body
+  }
+  return undefined;
 }
 
 // ─── Main handler ──────────────────────────────────────────────────────────────
@@ -118,33 +195,84 @@ serve(async (req) => {
 
   try {
     const graceMinutes = parseInt(Deno.env.get('SD_REFUND_CRON_GRACE_MINUTES') ?? '15', 10);
+    const maxCheckoutAgeDays = parseInt(
+      Deno.env.get('SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS') ?? '21',
+      10,
+    );
     const nowMs = nowManila().getTime();
 
     console.log(`[sd-refund-cron] Now (Manila): ${nowManila().toISOString()}, grace: ${graceMinutes}min`);
+    console.log(
+      `[sd-refund-cron] Max checkout age for SD form email: ${
+        maxCheckoutAgeDays <= 0 ? 'disabled (always allow email when transitioning)' : `${maxCheckoutAgeDays} day(s)`
+      }`,
+    );
 
-    // Fetch all READY_FOR_CHECKIN bookings
-    const { data: candidates, error } = await supabaseAdmin()
+    const scopedBookingId = await parseOptionalBookingId(req);
+    let scoped = false;
+
+    if (scopedBookingId) {
+      if (!UUID_RE.test(scopedBookingId)) {
+        return new Response(
+          JSON.stringify({ success: false, error: 'Invalid bookingId (expected UUID)' }),
+          { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        );
+      }
+      await verifyAdminJwt(req);
+      scoped = true;
+      console.log(`[sd-refund-cron] Scoped run for bookingId=${scopedBookingId}`);
+    }
+
+    const admin = supabaseAdmin();
+    let query = admin
       .from('guest_submissions')
-      .select('id, check_in_date, check_out_date, check_out_time, is_test_booking, guest_facebook_name')
+      .select(SELECT_COLUMNS)
       .eq('status', 'READY_FOR_CHECKIN');
+
+    if (scopedBookingId) {
+      query = query.eq('id', scopedBookingId);
+    }
+
+    const { data: candidates, error } = await query;
 
     if (error) {
       throw new Error(`DB fetch failed: ${error.message}`);
     }
 
     if (!candidates || candidates.length === 0) {
-      console.log('[sd-refund-cron] No READY_FOR_CHECKIN bookings. Nothing to do.');
+      const msg = scopedBookingId
+        ? `[sd-refund-cron] No READY_FOR_CHECKIN booking for id=${scopedBookingId}.`
+        : '[sd-refund-cron] No READY_FOR_CHECKIN bookings. Nothing to do.';
+      console.log(msg);
       return new Response(
-        JSON.stringify({ success: true, scanned: 0, transitioned: 0, skipped: 0 }),
+        JSON.stringify({
+          success: true,
+          scoped,
+          scanned: 0,
+          transitioned: 0,
+          skipped: scopedBookingId ? 1 : 0,
+          results: scopedBookingId
+            ? [{
+              bookingId: scopedBookingId,
+              action: 'skipped',
+              reason: 'not_found_or_not_ready_for_checkin',
+            } satisfies CronResultRow]
+            : [],
+        }),
         { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
-    console.log(`[sd-refund-cron] Scanning ${candidates.length} READY_FOR_CHECKIN booking(s)`);
+    console.log(
+      `[sd-refund-cron] Scanning ${candidates.length} READY_FOR_CHECKIN booking(s)${scoped ? ' (scoped)' : ''}`,
+    );
 
     let transitioned = 0;
     let skipped = 0;
-    const results: Array<{ bookingId: string; action: string; reason?: string }> = [];
+    const results: CronResultRow[] = [];
+
+    const maxAgeMs =
+      maxCheckoutAgeDays > 0 ? maxCheckoutAgeDays * 24 * 60 * 60 * 1000 : Number.POSITIVE_INFINITY;
 
     for (const booking of candidates) {
       const bookingId = booking.id as string;
@@ -167,23 +295,47 @@ serve(async (req) => {
         const minutesRemaining = Math.round((checkoutWithGraceMs - nowMs) / 60000);
         console.log(
           `[sd-refund-cron] Booking ${bookingId} (${booking.guest_facebook_name}) not yet due ` +
-          `(${minutesRemaining} min remaining after grace period)`,
+            `(${minutesRemaining} min remaining after grace period)`,
         );
         results.push({ bookingId, action: 'skipped', reason: `not_yet_due_${minutesRemaining}min` });
         skipped++;
         continue;
       }
 
+      const settlement = canAutoTransitionWithSettlement(booking);
+      if (!settlement.ok) {
+        console.log(
+          `[sd-refund-cron] Booking ${bookingId} checkout due but skipping auto-transition: ${settlement.reason}`,
+        );
+        results.push({ bookingId, action: 'skipped', reason: settlement.reason });
+        skipped++;
+        continue;
+      }
+
+      const checkoutAgeMs = nowMs - checkoutDt.getTime();
+      const suppressSdFormEmail = checkoutAgeMs > maxAgeMs;
+      if (suppressSdFormEmail) {
+        console.log(
+          `[sd-refund-cron] Booking ${bookingId}: check-out older than ${maxCheckoutAgeDays}d — ` +
+            'transitioning without SD refund form email',
+        );
+      }
+
       console.log(
         `[sd-refund-cron] Transitioning booking ${bookingId} (${booking.guest_facebook_name}) ` +
-        `checkout ${checkOutDate} ${checkOutTime} → PENDING_SD_REFUND_DETAILS`,
+          `checkout ${checkOutDate} ${checkOutTime} → READY_FOR_CHECKOUT` +
+          (suppressSdFormEmail ? ' (no SD form email)' : ''),
       );
 
       try {
         await WorkflowOrchestrator.transition(
           bookingId,
-          'PENDING_SD_REFUND_DETAILS',
-          {},
+          'READY_FOR_CHECKOUT',
+          {
+            guest_balance_paid_amount: Number(booking.guest_balance_paid_amount),
+            guest_balance_payment_receipt_url:
+              String(booking.guest_balance_payment_receipt_url ?? '').trim(),
+          },
           {
             saveToDatabase: true,
             generatePdf: false,
@@ -194,26 +346,41 @@ serve(async (req) => {
             sendPetRequestEmail: false,
             sendBookingAcknowledgementEmail: false,
             sendReadyForCheckinEmail: false,
-            sendSdRefundFormEmail: true,
+            sendSdRefundFormEmail: !suppressSdFormEmail,
           },
           false, // manual=false — cron-driven transition
         );
 
-        console.log(`[sd-refund-cron] Transitioned booking ${bookingId} → PENDING_SD_REFUND_DETAILS`);
-        results.push({ bookingId, action: 'transitioned' });
+        console.log(`[sd-refund-cron] Transitioned booking ${bookingId} → READY_FOR_CHECKOUT`);
+        results.push({
+          bookingId,
+          action: 'transitioned',
+          sdRefundFormEmailSent: !suppressSdFormEmail,
+        });
         transitioned++;
-      } catch (e: any) {
-        console.error(`[sd-refund-cron] Failed to transition booking ${bookingId}:`, e.message);
-        results.push({ bookingId, action: 'failed', reason: e.message });
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[sd-refund-cron] Failed to transition booking ${bookingId}:`, msg);
+        results.push({ bookingId, action: 'failed', reason: msg });
         // Don't re-throw — continue processing remaining bookings
       }
     }
 
+    const emailSentCount = results.filter((r) =>
+      r.action === 'transitioned' && r.sdRefundFormEmailSent === true
+    ).length;
+    const emailSuppressedCount = results.filter((r) =>
+      r.action === 'transitioned' && r.sdRefundFormEmailSent === false
+    ).length;
+
     const summary = {
       success: true,
+      scoped,
       scanned: candidates.length,
       transitioned,
       skipped,
+      transitionedSdEmailSent: emailSentCount,
+      transitionedSdEmailSuppressed: emailSuppressedCount,
       results,
     };
 
@@ -224,6 +391,9 @@ serve(async (req) => {
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });
   } catch (error) {
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('[sd-refund-cron] Fatal error:', error);
     return new Response(
       JSON.stringify({ success: false, error: (error as Error).message }),

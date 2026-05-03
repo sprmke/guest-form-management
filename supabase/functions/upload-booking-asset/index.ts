@@ -5,6 +5,7 @@
  * Expects multipart/form-data with:
  *   bookingId   — string (UUID)
  *   assetType   — 'parking_endorsement' | 'approved_gaf' | 'approved_pet' | 'sd_refund_receipt'
+ *                 | 'guest_balance_payment_receipt'
  *   file        — the file to upload
  *   fileName    — original filename
  *
@@ -40,6 +41,10 @@ const ASSET_CONFIG = {
   sd_refund_receipt: {
     bucket: 'sd-refund-receipts',
     column: 'sd_refund_receipt_url',
+  },
+  guest_balance_payment_receipt: {
+    bucket: 'sd-refund-receipts',
+    column: 'guest_balance_payment_receipt_url',
   },
   // ── Guest documents (replaceable by admin from the booking edit form) ─────
   valid_id: {

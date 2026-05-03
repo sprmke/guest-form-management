@@ -2,7 +2,7 @@
  * get-sd-form — Public read-only payload for the guest SD refund stepper (/sd-form).
  *
  * GET ?bookingId=<uuid>
- * Returns minimal fields only when status === PENDING_SD_REFUND_DETAILS.
+ * Returns minimal fields only when status === READY_FOR_CHECKOUT.
  * Otherwise 404 with a generic message (no status disclosure).
  */
 
@@ -36,7 +36,7 @@ serve(async (req) => {
     }
 
     const row = await DatabaseService.getBookingById(bookingId);
-    if (!row || row.status !== 'PENDING_SD_REFUND_DETAILS') {
+    if (!row || row.status !== 'READY_FOR_CHECKOUT') {
       return new Response(JSON.stringify(NOT_FOUND), {
         status: 404,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
@@ -60,6 +60,11 @@ serve(async (req) => {
           check_in_date: row.check_in_date,
           check_out_date: row.check_out_date,
           facebook_reviews_url: facebookReviewsUrl,
+          next_stay_voucher_code: row.next_stay_voucher_code ?? null,
+          next_stay_voucher_amount:
+            row.next_stay_voucher_amount != null
+              ? Number(row.next_stay_voucher_amount)
+              : null,
         },
       }),
       { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },

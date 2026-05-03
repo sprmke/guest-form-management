@@ -236,7 +236,7 @@ export class DatabaseService {
         }
       }
 
-      // Get the payment receipt file
+      // Get the downpayment receipt file (FormData: paymentReceipt → payment_receipt_url)
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
@@ -244,7 +244,7 @@ export class DatabaseService {
         if (saveImagesToStorage) {
           paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, prefixedFileName);
         } else {
-          console.log('⚠️ Skipping payment receipt upload (saveImagesToStorage=false)');
+          console.log('⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)');
           paymentReceiptUrl = 'dev-mode-skipped';
         }
       } else if (existingBooking) {
@@ -252,7 +252,7 @@ export class DatabaseService {
       } else if (!saveImagesToStorage) {
         paymentReceiptUrl = 'dev-mode-skipped';
       } else {
-        throw new Error('Payment receipt is required');
+        throw new Error('Downpayment receipt is required');
       }
 
       // Get the valid ID file
@@ -291,7 +291,7 @@ export class DatabaseService {
       
       // Transform data for database
       if (!paymentReceiptUrl) {
-        throw new Error('Failed to upload payment receipt');
+        throw new Error('Failed to upload downpayment receipt');
       }
       
       if (!validIdUrl) {

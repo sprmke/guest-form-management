@@ -158,7 +158,7 @@ export class SheetsService {
       formData.findUsDetails || '',       // AC: Find Us Details
       formData.guestSpecialRequests || '', // AD: Special Requests
       validIdUrl,                          // AE: Valid ID URL
-      paymentReceiptUrl,                   // AF: Payment Receipt URL
+      paymentReceiptUrl,                   // AF: Downpayment receipt URL (payment_receipt_url)
       petVaccinationUrl,                   // AG: Pet Vaccination URL
       petImageUrl,                         // AH: Pet Image URL
       createdAt || currentTimestamp,       // AI: Created At (use provided value or current timestamp)
@@ -171,7 +171,7 @@ export class SheetsService {
    * Updates (or creates if missing) the sheet row for a booking.
    * Called by the orchestrator on every transition.
    *
-   * - If an existing row is found → update AK–AX columns with new status + workflow fields.
+   * - If an existing row is found → update AK–AZ columns with new status + workflow fields.
    * - If no row is found and `booking` is provided → append a full new row.
    * - If credentials are missing → skip gracefully.
    *
@@ -197,6 +197,8 @@ export class SheetsService {
       sd_refund_receipt_url?: string | null;
       status_updated_at?: string | null;
       guest_additional_fee?: number | null;
+      guest_balance_paid_amount?: number | null;
+      guest_balance_payment_receipt_url?: string | null;
     } = {},
     booking?: any,
   ): Promise<{ success: boolean; skipped?: boolean; created?: boolean }> {
@@ -250,9 +252,9 @@ export class SheetsService {
 
       const { rowIndex } = existingRow;
 
-      // Update AK–AX columns on the existing row
+      // Update AK–AZ columns on the existing row
       const akUpdate = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/AK${rowIndex}:AX${rowIndex}?valueInputOption=USER_ENTERED`,
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/AK${rowIndex}:AZ${rowIndex}?valueInputOption=USER_ENTERED`,
         {
           method: 'PUT',
           headers: {
@@ -275,6 +277,8 @@ export class SheetsService {
               workflowFields.sd_refund_receipt_url ?? '',           // AV: sd_refund_receipt_url
               workflowFields.status_updated_at ?? new Date().toISOString(), // AW: status_updated_at
               workflowFields.guest_additional_fee?.toString() ?? '', // AX: guest_additional_fee
+              workflowFields.guest_balance_paid_amount?.toString() ?? '', // AY: guest_balance_paid_amount
+              workflowFields.guest_balance_payment_receipt_url ?? '', // AZ: guest_balance_payment_receipt_url
             ]],
           }),
         },
@@ -295,7 +299,7 @@ export class SheetsService {
   }
 
   /**
-   * Formats a full sheet row (A–AX) from a raw DB booking row.
+   * Formats a full sheet row (A–AZ) from a raw DB booking row.
    * Used when appending a brand-new row for a booking that has no prior sheet entry.
    */
   private static formatDbRowForSheet(
@@ -315,6 +319,8 @@ export class SheetsService {
       sd_refund_receipt_url?: string | null;
       status_updated_at?: string | null;
       guest_additional_fee?: number | null;
+      guest_balance_paid_amount?: number | null;
+      guest_balance_payment_receipt_url?: string | null;
     } = {},
   ): string[] {
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
@@ -355,7 +361,7 @@ export class SheetsService {
       booking.find_us_details ?? '',                               // AC: Find Us Details
       booking.guest_special_requests ?? '',                        // AD: Special Requests
       booking.valid_id_url ?? '',                                  // AE: Valid ID URL
-      booking.payment_receipt_url ?? '',                           // AF: Payment Receipt URL
+      booking.payment_receipt_url ?? '',                           // AF: Downpayment receipt URL
       booking.pet_vaccination_url ?? '',                           // AG: Pet Vaccination URL
       booking.pet_image_url ?? '',                                 // AH: Pet Image URL
       booking.created_at ? dayjs(booking.created_at).format('YYYY-MM-DD HH:mm:ss') : now, // AI: Created At
@@ -374,6 +380,12 @@ export class SheetsService {
       workflowFields.sd_refund_receipt_url ?? '',                  // AV: sd_refund_receipt_url
       workflowFields.status_updated_at ?? new Date().toISOString(), // AW: status_updated_at
       workflowFields.guest_additional_fee?.toString() ?? '',       // AX: guest_additional_fee
+      workflowFields.guest_balance_paid_amount?.toString() ??
+        booking.guest_balance_paid_amount?.toString() ??
+        '',                                                       // AY: guest_balance_paid_amount
+      workflowFields.guest_balance_payment_receipt_url ??
+        booking.guest_balance_payment_receipt_url ??
+        '',                                                       // AZ: guest_balance_payment_receipt_url
     ];
   }
 

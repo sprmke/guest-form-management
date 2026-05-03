@@ -253,7 +253,7 @@ ${hasPets
   : 'Has Pets: No'}
 
 <strong>Documents</strong>
-${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Payment Receipt</a>` : 'No payment receipt'}
+${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Downpayment receipt</a>` : 'No downpayment receipt'}
 ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No valid ID'}
     `.trim();
 
@@ -361,7 +361,7 @@ How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formDat
 Special Requests: ${formData.guestSpecialRequests || 'None'}
 
 <strong>Documents</strong>
-<a href="${paymentReceiptUrl}">Payment Receipt</a>
+<a href="${paymentReceiptUrl}">Downpayment receipt</a>
 <a href="${validIdUrl}">Valid ID</a>
     `.trim();
 

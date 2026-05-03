@@ -65,7 +65,7 @@ export interface GuestFormData {
   petImageUrl?: string;
   petImageFileName?: string;
   
-  // Payment receipt fields
+  // Downpayment receipt (`payment_receipt_url`) fields
   paymentReceipt?: File;
   paymentReceiptUrl?: string;
   paymentReceiptFileName?: string;
@@ -143,6 +143,7 @@ export interface GuestSubmission {
   parking_rate_paid?: number | null;       // UI label: "Paid Parking Rate"
   parking_endorsement_url?: string | null;
   parking_owner_email?: string | null;
+  parking_owner?: string | null;
 
   // ── Pet fee ───────────────────────────────────────────────────────────────
   pet_fee?: number | null;

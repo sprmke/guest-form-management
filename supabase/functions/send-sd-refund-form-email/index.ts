@@ -2,7 +2,7 @@
  * send-sd-refund-form-email — Admin-only: re-send the guest SD refund form email.
  *
  * POST { bookingId }
- * Status must be PENDING_SD_REFUND_DETAILS. Does not change status; updates sd_refund_form_emailed_at.
+ * Status must be READY_FOR_CHECKOUT. Does not change status; updates sd_refund_form_emailed_at.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -40,11 +40,11 @@ serve(async (req) => {
       );
     }
 
-    if (booking.status !== 'PENDING_SD_REFUND_DETAILS') {
+    if (booking.status !== 'READY_FOR_CHECKOUT') {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Booking must be in PENDING_SD_REFUND_DETAILS (current: ${booking.status})`,
+          error: `Booking must be in READY_FOR_CHECKOUT (current: ${booking.status})`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );

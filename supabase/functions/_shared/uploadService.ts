@@ -35,15 +35,15 @@ export class UploadService {
   ): Promise<string> {
     try {
       if (!file) {
-        console.log('No payment receipt file provided, skipping upload');
+        console.log('No downpayment receipt file provided, skipping upload');
         return '';
       }
       
       const { url } = await this.uploadFile(file, fileName, 'payment-receipts');
       return url;
     } catch (error) {
-      console.error('Error uploading payment receipt:', error);
-      throw new Error('Failed to upload payment receipt');
+      console.error('Error uploading downpayment receipt:', error);
+      throw new Error('Failed to upload downpayment receipt');
     }
   }
 

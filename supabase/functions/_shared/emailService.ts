@@ -752,7 +752,7 @@ function guestAppOrigin(): string {
 
 /**
  * After checkout + grace — email guest a link to submit security-deposit refund preferences (/sd-form).
- * Sent on READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron or admin with dev control on).
+ * Sent on READY_FOR_CHECKIN → READY_FOR_CHECKOUT (cron or admin with dev control on).
  */
 export async function sendSdRefundFormRequest(
   booking: GuestSubmission,
@@ -766,6 +766,8 @@ export async function sendSdRefundFormRequest(
   const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+  const unitLabel = String(booking.tower_and_unit_number ?? '').trim() ||
+    'Monaco 2604';
 
   const isUrgent = isUrgentBooking(booking.check_in_date);
   const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
@@ -788,6 +790,7 @@ export async function sendSdRefundFormRequest(
       testWarning,
       urgentBlock,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
       sdFormUrl,
@@ -805,7 +808,8 @@ export async function sendSdRefundFormRequest(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Submit SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject:
+        `${testPrefix}${urgentPrefix}${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });

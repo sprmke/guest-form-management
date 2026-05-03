@@ -10,6 +10,7 @@
  */
 
 import { DatabaseService } from './databaseService.ts';
+import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 import { CalendarService } from './calendarService.ts';
 import { SheetsService } from './sheetsService.ts';
 import { generatePDF, generatePetPDF } from './pdfService.ts';
@@ -46,6 +47,8 @@ export type TransitionPayload = {
   // Parking (PENDING_PARKING_REQUEST → *)
   parking_rate_paid?: number | null;
   parking_owner_email?: string | null;
+  /** Owner or agent display name (who parking was obtained from). */
+  parking_owner?: string | null;
   parking_endorsement_url?: string | null;
 
   // SD Refund (PENDING_SD_REFUND → COMPLETED)
@@ -54,14 +57,17 @@ export type TransitionPayload = {
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
 
-  // Guest SD form (PENDING_SD_REFUND_DETAILS → PENDING_SD_REFUND)
+  /** READY_FOR_CHECKIN → READY_FOR_CHECKOUT: paid must equal computed total guest balance + receipt. */
+  guest_balance_paid_amount?: number | null;
+  guest_balance_payment_receipt_url?: string | null;
+
+  // Guest SD form (READY_FOR_CHECKOUT → PENDING_SD_REFUND)
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
   sd_refund_phone_confirmed?: boolean | null;
   sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
   sd_refund_account_name?: string | null;
   sd_refund_account_number?: string | null;
-  sd_refund_cash_pickup_note?: string | null;
 
   // Approved PDFs (set by Gmail listener in Phase 4; admin can also set manually)
   approved_gaf_pdf_url?: string | null;
@@ -91,7 +97,7 @@ export type DevControlFlags = {
   sendPetRequestEmail?: boolean;
   sendBookingAcknowledgementEmail?: boolean;
   sendReadyForCheckinEmail?: boolean;
-  /** Email guest the /sd-form link when moving READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron + manual). */
+  /** Email guest the /sd-form link when moving READY_FOR_CHECKIN → READY_FOR_CHECKOUT (cron + manual). */
   sendSdRefundFormEmail?: boolean;
 };
 
@@ -281,12 +287,19 @@ export class WorkflowOrchestrator {
     if (fromStatus === 'PENDING_PARKING_REQUEST') {
       if (payload.parking_rate_paid != null) workflowFields.parking_rate_paid = payload.parking_rate_paid;
       if (payload.parking_owner_email) workflowFields.parking_owner_email = payload.parking_owner_email;
+      if (payload.parking_owner !== undefined) {
+        const po =
+          typeof payload.parking_owner === 'string'
+            ? payload.parking_owner.trim()
+            : '';
+        workflowFields.parking_owner = po || null;
+      }
       if (payload.parking_endorsement_url) workflowFields.parking_endorsement_url = payload.parking_endorsement_url;
     }
 
     // Guest /sd-form submit includes sd_refund_method; admin "skip details" advance omits it.
     if (
-      fromStatus === 'PENDING_SD_REFUND_DETAILS' &&
+      fromStatus === 'READY_FOR_CHECKOUT' &&
       toStatus === 'PENDING_SD_REFUND' &&
       payload.sd_refund_method != null
     ) {
@@ -296,7 +309,6 @@ export class WorkflowOrchestrator {
       workflowFields.sd_refund_bank = payload.sd_refund_bank ?? null;
       workflowFields.sd_refund_account_name = payload.sd_refund_account_name ?? null;
       workflowFields.sd_refund_account_number = payload.sd_refund_account_number ?? null;
-      workflowFields.sd_refund_cash_pickup_note = payload.sd_refund_cash_pickup_note ?? null;
       workflowFields.sd_refund_form_submitted_at = new Date().toISOString();
     }
 
@@ -306,6 +318,43 @@ export class WorkflowOrchestrator {
       if (payload.sd_refund_amount != null) workflowFields.sd_refund_amount = payload.sd_refund_amount;
       if (payload.sd_refund_receipt_url) workflowFields.sd_refund_receipt_url = payload.sd_refund_receipt_url;
       workflowFields.settled_at = new Date().toISOString();
+    }
+
+    // READY_FOR_CHECKIN → READY_FOR_CHECKOUT: require paid amount (= total guest balance) + receipt URL.
+    if (fromStatus === 'READY_FOR_CHECKIN' && toStatus === 'READY_FOR_CHECKOUT') {
+      const totalDue = computeTotalGuestBalanceFromBooking(booking as Record<string, unknown>);
+      if (totalDue === null) {
+        throw new Error(
+          'Total guest balance cannot be computed. Complete pricing (booking rate and related fields) before this step.',
+        );
+      }
+      const paidRaw = payload.guest_balance_paid_amount;
+      if (paidRaw === null || paidRaw === undefined || paidRaw === '') {
+        throw new Error('guest_balance_paid_amount is required');
+      }
+      const paidNum = Number(paidRaw);
+      if (Number.isNaN(paidNum) || paidNum < 0) {
+        throw new Error('guest_balance_paid_amount must be a valid non-negative number');
+      }
+      const balCents = Math.round(totalDue * 100);
+      const paidCents = Math.round(paidNum * 100);
+      if (paidCents > balCents) {
+        throw new Error('Amount paid cannot exceed total guest balance');
+      }
+      if (paidCents !== balCents) {
+        throw new Error(
+          'Amount paid must equal total guest balance before advancing to ready for check-out',
+        );
+      }
+      const receipt =
+        typeof payload.guest_balance_payment_receipt_url === 'string'
+          ? payload.guest_balance_payment_receipt_url.trim()
+          : '';
+      if (!receipt) {
+        throw new Error('guest_balance_payment_receipt_url is required');
+      }
+      workflowFields.guest_balance_paid_amount = paidNum;
+      workflowFields.guest_balance_payment_receipt_url = receipt;
     }
 
     // 5. Persist workflow fields + update status
@@ -365,6 +414,9 @@ export class WorkflowOrchestrator {
             approved_pet_pdf_url: updatedBooking.approved_pet_pdf_url,
             sd_refund_amount: updatedBooking.sd_refund_amount,
             sd_refund_receipt_url: updatedBooking.sd_refund_receipt_url,
+            guest_additional_fee: updatedBooking.guest_additional_fee,
+            guest_balance_paid_amount: updatedBooking.guest_balance_paid_amount,
+            guest_balance_payment_receipt_url: updatedBooking.guest_balance_payment_receipt_url,
             status_updated_at: updatedBooking.status_updated_at,
           },
           updatedBooking,
@@ -492,11 +544,11 @@ export class WorkflowOrchestrator {
         }
       }
 
-      // READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS: SD refund form link (cron).
-      // Gated on fromStatus so PENDING_SD_REFUND_DETAILS → READY_FOR_CHECKIN never re-sends.
+      // READY_FOR_CHECKIN → READY_FOR_CHECKOUT: SD refund form link (cron).
+      // Gated on fromStatus so READY_FOR_CHECKOUT → READY_FOR_CHECKIN never re-sends.
       if (
         fromStatus === 'READY_FOR_CHECKIN' &&
-        toStatus === 'PENDING_SD_REFUND_DETAILS' &&
+        toStatus === 'READY_FOR_CHECKOUT' &&
         flag(devControls, 'sendSdRefundFormEmail')
       ) {
         try {
