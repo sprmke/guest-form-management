@@ -4,7 +4,7 @@
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="x-apple-disable-message-reformatting" />
-    <title>Security deposit refund</title>
+    <title>Check-out & SD Refund Details</title>
     <!--[if mso]>
       <noscript>
         <xml>
@@ -1017,17 +1017,48 @@
                       style="{{emailShellTdContentPadStyle}}"
                     >
                       {{emailHeaderLogo}}
-                      <p
-                        class="brand-micro"
-                        style="{{emailShellBrandMicroStyle}}"
+                      <table
+                        role="presentation"
+                        class="brand-block"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
                       >
-                        Checkout follow-up
-                      </p>
-                      <h1 class="h1-title" style="{{emailShellH1Style}}">
-                        Tell us how to refund your security deposit
+                        <tr>
+                          <td class="brand-line">
+                            <span
+                              class="brand-micro"
+                              style="{{emailShellBrandMicroStyle}}"
+                              >Kame Home</span
+                            >
+                          </td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <span
+                              class="text-subheading"
+                              style="{{emailShellTextSubheadingStyle}}"
+                              >{{towerAndUnitNumber}}</span
+                            >
+                          </td>
+                        </tr>
+                      </table>
+
+                      <h1
+                        class="h1-title h1-title-lg"
+                        style="{{emailShellH1LgStyle}}"
+                      >
+                        Check-out & SD Refund Details
                       </h1>
                       <p class="date-line" style="{{emailShellDateLineStyle}}">
-                        {{checkInDate}} → {{checkOutDate}}
+                        {{checkInDate}}
+                        <span
+                          class="text-arrow"
+                          style="{{emailShellTextArrowStyle}}"
+                          >&nbsp;&rarr;&nbsp;</span
+                        >
+                        {{checkOutDate}}
                       </p>
 
                       {{urgentBlock}}
@@ -1038,19 +1069,342 @@
                       >
                         <p>Hi <strong>{{guestFacebookName}}</strong>,</p>
                         <p>
-                          Thank you for staying with us. Your checkout window
-                          has passed — please open the secure link below to
-                          leave quick feedback and choose how you would like
-                          your security deposit refunded
-                          ({{securityDepositFormatted}}).
-                        </p>
-                        <p>
-                          The form takes only a minute. If you leave us a public
-                          review on Facebook, you may qualify for our
-                          <strong>₱300 voucher</strong> toward a future stay
-                          (details on the form).
+                          Thank you for staying with us Ka-Homies! We hope you
+                          had a wonderful stay! Please follow the check-out
+                          instructions below. After that, please open and fill
+                          out the SD refund form so that we can process your
+                          refund.
                         </p>
                       </div>
+
+                      <p
+                        class="section-label"
+                        style="
+                          margin: 24px 0 10px 0;
+                          font-size: 13px;
+                          font-weight: 700;
+                          letter-spacing: 0.08em;
+                          text-transform: uppercase;
+                          color: #5f954c;
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        "
+                      >
+                        Check-out checklist
+                      </p>
+                      <table
+                        role="presentation"
+                        class="data-table"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                        style="
+                          width: 100%;
+                          table-layout: fixed;
+                          border: 1px solid #e2e8f0;
+                          border-radius: 16px;
+                          border-collapse: separate;
+                          border-spacing: 0;
+                          overflow: hidden;
+                          font-size: 14px;
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, 'Helvetica Neue', Arial, sans-serif;
+                          margin: 0 0 28px 0;
+                        "
+                      >
+                        <tr>
+                          <td
+                            width="31%"
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            1. Check-out time
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Check-out time is strictly on or before
+                            <strong
+                              class="text-strong"
+                              style="color: #111827; font-weight: 700"
+                              >11:00 AM</strong
+                            >.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            2. Trash &amp; dishes
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Before leaving, please ensure all trash is properly
+                            bagged and no unwashed dishes are left behind.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            3. Lights &amp; appliances
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Turn off all lights, air conditioning, and
+                            appliances, except for the refrigerator.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            4. Belongings
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Double-check your belongings to make sure nothing is
+                            left behind.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            5. Elevator card
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Return the Elevator Access Card to the mailbox
+                            indicated for
+                            <strong
+                              class="text-strong"
+                              style="color: #111827; font-weight: 700"
+                              >{{towerAndUnitNumber}}</strong
+                            >
+                            (ask lobby reception if you are unsure) and send us
+                            a photo as proof.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            6. Visitor&#8217;s pass
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Kindly surrender the Visitor&#8217;s Pass to the
+                            receptionist at the lobby.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              border-bottom: 1px solid #e2e8f0;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            7. Unit inspection
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              border-bottom: 1px solid #e2e8f0;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            Let us know once you have completed all the steps
+                            above so our staff can proceed with the unit
+                            inspection.
+                          </td>
+                        </tr>
+                        <tr>
+                          <td
+                            class="tbl-label"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #f8fafc;
+                              font-weight: 600;
+                              color: #475569;
+                              vertical-align: top;
+                            "
+                          >
+                            8. SD Refund
+                          </td>
+                          <td
+                            class="tbl-value"
+                            style="
+                              padding: 12px 16px;
+                              background-color: #ffffff;
+                              color: #333333;
+                              line-height: 1.55;
+                              vertical-align: top;
+                            "
+                          >
+                            If everything is in order (no damages or missing
+                            items), your security deposit refund will be
+                            processed within
+                            <strong
+                              class="text-strong"
+                              style="color: #111827; font-weight: 700"
+                              >1&#8211;2 hours</strong
+                            >
+                            after you submit
+                            <strong
+                              class="text-strong"
+                              style="color: #111827; font-weight: 700"
+                            >
+                              the SD refund form below</strong
+                            >.
+                          </td>
+                        </tr>
+                      </table>
+
+                      <p
+                        class="section-label"
+                        style="
+                          margin: 0 0 10px 0;
+                          font-size: 13px;
+                          font-weight: 700;
+                          letter-spacing: 0.08em;
+                          text-transform: uppercase;
+                          color: #5f954c;
+                          font-family:
+                            -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                            Roboto, 'Helvetica Neue', Arial, sans-serif;
+                        "
+                      >
+                        Security Deposit Refund details
+                      </p>
+                      <div
+                        class="body-copy"
+                        style="{{emailShellBodyCopyStyle}};margin-bottom:22px;"
+                      >
+                        <p style="margin: 0">
+                          After check-out, please fill out the SD refund form
+                          below so that we can process your security deposit
+                          refund amounting to
+                          <strong
+                            class="text-strong"
+                            style="color: #111827; font-weight: 700"
+                            >{{securityDepositFormatted}}</strong
+                          >. Thank you Ka-Homies!
+                        </p>
+                      </div>
+
                       <div class="cta-wrap">
                         <a
                           class="cta-btn"
@@ -1058,14 +1412,9 @@
                           href="{{sdFormUrl}}"
                           target="_blank"
                           rel="noopener"
-                          >Open refund form</a
+                          >Fill out Refund Form</a
                         >
                       </div>
-                      <p class="footer-note">
-                        If the button does not work, copy and paste this link
-                        into your browser:<br />
-                        <span class="url-fallback">{{sdFormUrl}}</span>
-                      </p>
                     </td>
                   </tr>
                 </table>
