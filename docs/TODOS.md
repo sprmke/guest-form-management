@@ -140,3 +140,8 @@ Todos
 - Update booking flow when guest is coming from Airbnb
 - Update guest form and booking flow if the guest have surprise decor.
 - Update Review process to deduct P50-P100 pesos on SD?
+- Add settings page on dashboard to customized form values: Discount vouchers, etc
+- Rethink and plan how to manage bookings with surprise decor
+- Rethink and plan how to mange parking request
+- Add total profits and expenses on booking detail pricing section
+- Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document

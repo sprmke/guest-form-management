@@ -309,3 +309,11 @@ No DB or storage rollback is needed.
 - **Phase 6** — One-shot calendar + sheet backfill script.
 
 Each phase adds its own section to this runbook before it ships.
+
+---
+
+## 9. Additive: `sd_refund_bank` allow-list (June 2026)
+
+| File                                       | Purpose                                                                                                                                                                                            | Reversible?                                                                    |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `20260607130000_sd_refund_bank_gotyme.sql` | Sets **`sd_refund_bank`** to **NULL** where it was **`BDO`** or **`BPI`**, then replaces **`guest_submissions_sd_refund_bank_check`** with **`GCash` \| `GoTyme` \| `Maribank`** only (plus NULL). | Yes — reinstate the old `IN (...)` list only after fixing any disallowed rows. |

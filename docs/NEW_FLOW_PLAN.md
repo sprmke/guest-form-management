@@ -314,7 +314,7 @@ ui/src/features/guest-form/components/GuestForm.tsx
     'Send email notification' → 'Send GAF request email'
     + 'Send Parking broadcast email' (shown if needParking)
     + 'Send Pet request email' (shown if hasPets)
-  - Parking help text: "Parking fee is non-refundable and bookings with parking cannot be rescheduled."
+  - Parking help text: "Parking fee is non-refundable and cannot be rescheduled."
 
 ui/src/features/guest-form/pages/CalendarPage.tsx
   - Legacy /?bookingId=... redirect: drop dev/testing appends; admin session handles it.
