@@ -26,8 +26,10 @@ import {
 import {
   BookingStatus,
   canTransition,
+  pendingDocumentsClearPatchForGuestEditRevert,
   STATUS_HUMAN_LABEL,
 } from './statusMachine.ts';
+import type { SdRefundBank } from './sdRefundBank.ts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,7 +67,7 @@ export type TransitionPayload = {
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
   sd_refund_phone_confirmed?: boolean | null;
-  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_bank?: SdRefundBank | null;
   sd_refund_account_name?: string | null;
   sd_refund_account_number?: string | null;
 
@@ -195,6 +197,9 @@ export class WorkflowOrchestrator {
     const workflowFields: Record<string, unknown> = {};
 
     if (isReviewToInitialDocs) {
+      // Strip any stale workflow data from a prior cycle so nested substeps and
+      // pricing/parking forms do not read as “complete” before admins re-enter them.
+      Object.assign(workflowFields, pendingDocumentsClearPatchForGuestEditRevert());
       if (payload.booking_rate != null) workflowFields.booking_rate = payload.booking_rate;
       if (payload.down_payment != null) workflowFields.down_payment = payload.down_payment;
       if (balance != null) workflowFields.balance = balance;

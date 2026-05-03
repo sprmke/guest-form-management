@@ -53,6 +53,47 @@ export function shouldRevertGuestFieldEditsToPendingReview(
   return !!status && isBookingStatus(status) && GUEST_FIELD_EDIT_REVERT_STATUSES.has(status);
 }
 
+/**
+ * Columns cleared when guest-sensitive edits force `status` → `PENDING_REVIEW`
+ * (admin `guest_submissions` patch, public `submit-form` update, or guest-doc
+ * `upload-booking-asset`). Resets nested Pending Documents substeps, stale
+ * request/approved PDF pointers, **admin parking settlement**, and **guest
+ * balance settlement** — **not** pricing snapshot fields (`booking_rate`,
+ * `down_payment`, `balance`, `security_deposit`, `pet_fee`,
+ * `parking_rate_guest`, `guest_additional_fee`) so the Pending Review pricing
+ * card stays as last submitted.
+ *
+ * Also merged at the **start** of `WorkflowOrchestrator` `PENDING_REVIEW →
+ * PENDING_DOCUMENTS | PENDING_GAF` so leftover `*_completed_at` / PDF rows
+ * cannot show substeps complete immediately after “Proceed to Pending
+ * Documents” (pricing on the row is preserved unless the transition payload
+ * overwrites it).
+ *
+ * Mirror: `ui/src/features/admin/lib/bookingStatus.ts#pendingDocumentsClearPatchForGuestEditRevert`.
+ */
+export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
+  string,
+  null | false
+> {
+  return {
+    gaf_completed_at: null,
+    parking_completed_at: null,
+    pet_completed_at: null,
+    gaf_manual_incomplete: false,
+    pet_manual_incomplete: false,
+    approved_gaf_pdf_url: null,
+    approved_pet_pdf_url: null,
+    gaf_request_pdf_url: null,
+    pet_request_pdf_url: null,
+    parking_rate_paid: null,
+    parking_owner: null,
+    parking_owner_email: null,
+    parking_endorsement_url: null,
+    guest_balance_paid_amount: null,
+    guest_balance_payment_receipt_url: null,
+  };
+}
+
 /** Terminal statuses — no further transitions are valid. */
 export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED']);
 

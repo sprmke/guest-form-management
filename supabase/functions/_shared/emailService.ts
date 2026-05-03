@@ -140,7 +140,7 @@ function isUrgentBooking(checkInDate: string): boolean {
 /** Same-day check-in (Asia/Manila) — HTML callout for Azure + guest templates. */
 function buildUrgentSameDayCallout(isUrgent: boolean): string {
   if (!isUrgent) return '';
-  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0"><tr><td><strong class="callout-title">Urgent — same-day check-in</strong><br />This request requires immediate attention and approval from the property administration.</td></tr></table>`;
+  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 35px 0;"><tr><td><strong class="callout-title">Urgent! Same-day check-in!</strong><br />This request requires immediate attention and approval.</td></tr></table>`;
 }
 
 function urgentEmailSubjectPrefix(isUrgent: boolean): string {
