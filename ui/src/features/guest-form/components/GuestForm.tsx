@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
 import { Button } from '@/components/ui/button';
 import 'react-day-picker/dist/style.css';
 import {
@@ -19,14 +20,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import dayjs from 'dayjs';
 import { toCapitalCase, transformFieldValues } from '@/utils/formatters';
 import { generateRandomData, setDummyFile } from '@/utils/mockData';
 import {
   guestFormSchema,
   type GuestFormData,
 } from '@/features/guest-form/schemas/guestFormSchema';
-import { defaultFormValues } from '@/features/guest-form/constants/guestFormData';
+import {
+  defaultFormValues,
+  getGuestFormDefaultValuesFromSearchParams,
+} from '@/features/guest-form/constants/guestFormData';
 import {
   handleNameInputChange,
   validateImageFile,
@@ -92,6 +97,13 @@ export function GuestForm() {
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
 
+  /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
+  const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
+  if (seededDefaultsRef.current === null) {
+    seededDefaultsRef.current =
+      getGuestFormDefaultValuesFromSearchParams(searchParams);
+  }
+
   // Check if testing & dev modes are enabled (via query parameter)
   const isTestingMode = searchParams.get('testing') === 'true';
   const isDevMode = searchParams.get('dev') === 'true';
@@ -113,7 +125,7 @@ export function GuestForm() {
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: defaultFormValues,
+    defaultValues: seededDefaultsRef.current ?? defaultFormValues,
     mode: 'all',
   });
 
@@ -278,13 +290,6 @@ export function GuestForm() {
     fetchFormData();
   }, [bookingId]);
 
-  // Generate new random data on page load only when dev controls are shown and no bookingId
-  useEffect(() => {
-    if (showDevControls && !bookingId && !isLoading) {
-      handleGenerateNewData();
-    }
-  }, [isLoading, bookingId, showDevControls]);
-
   // Paste booking info from clipboard
   const handlePasteFromClipboard = async () => {
     if (!showDevControls) return;
@@ -326,33 +331,61 @@ export function GuestForm() {
   };
 
   // Update file input when generating new data
-  const handleGenerateNewData = async () => {
-    if (!showDevControls) return;
+  const handleGenerateNewData = useCallback(
+    async (opts?: { preserveCalendarStayDates?: boolean }) => {
+      if (!showDevControls) return;
 
-    try {
-      const randomData = await generateRandomData();
-      form.reset(randomData);
+      try {
+        const randomData = await generateRandomData();
 
-      // Set the dummy files in the file inputs
-      if (randomData.paymentReceipt) {
-        setDummyFile(fileInputRef, randomData.paymentReceipt);
+        if (opts?.preserveCalendarStayDates) {
+          const rawIn = urlCheckInDate;
+          const rawOut = urlCheckOutDate;
+          if (rawIn && rawOut) {
+            const checkInDate = normalizeDateString(rawIn);
+            const checkOutDate = normalizeDateString(rawOut);
+            if (checkInDate && checkOutDate) {
+              randomData.checkInDate = checkInDate;
+              randomData.checkOutDate = checkOutDate;
+              randomData.numberOfNights = dayjs(checkOutDate).diff(
+                dayjs(checkInDate),
+                'day',
+              );
+            }
+          }
+        }
+
+        form.reset(randomData);
+
+        // Set the dummy files in the file inputs
+        if (randomData.paymentReceipt) {
+          setDummyFile(fileInputRef, randomData.paymentReceipt);
+        }
+        if (randomData.validId) {
+          setDummyFile(validIdInputRef, randomData.validId);
+        }
+        if (randomData.petVaccination) {
+          setDummyFile(petVaccinationInputRef, randomData.petVaccination);
+        }
+        if (randomData.petImage) {
+          setDummyFile(petImageInputRef, randomData.petImage);
+        }
+      } catch (error) {
+        toast.error('Failed to generate test data', {
+          description:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        });
       }
-      if (randomData.validId) {
-        setDummyFile(validIdInputRef, randomData.validId);
-      }
-      if (randomData.petVaccination) {
-        setDummyFile(petVaccinationInputRef, randomData.petVaccination);
-      }
-      if (randomData.petImage) {
-        setDummyFile(petImageInputRef, randomData.petImage);
-      }
-    } catch (error) {
-      toast.error('Failed to generate test data', {
-        description:
-          error instanceof Error ? error.message : 'Unknown error occurred',
-      });
+    },
+    [showDevControls, urlCheckInDate, urlCheckOutDate, form.reset],
+  );
+
+  // Generate random test payload on load in dev; calendar URL dates stay on the row above.
+  useEffect(() => {
+    if (showDevControls && !bookingId && !isLoading) {
+      void handleGenerateNewData({ preserveCalendarStayDates: true });
     }
-  };
+  }, [isLoading, bookingId, showDevControls, handleGenerateNewData]);
 
   const handleCleanupTestData = async () => {
     if (!showDevControls) return;
@@ -814,16 +847,8 @@ export function GuestForm() {
             </div>
           </div>
         ) : (
-          <div className="pt-10 space-y-6 md:pt-14">
-            {/* logo here */}
-            <img
-              src="/images/logo.png"
-              alt="Kame Home"
-              className="absolute top-[-3.5rem] md:top-[-4.5rem] right-0 left-0 mx-auto w-[120px] md:w-[160px] border-4 border-white rounded-full"
-            />
-            <h2 className="text-2xl font-bold text-center md:text-3xl text-primary">
-              Guest Advise Form
-            </h2>
+          <div className="space-y-6">
+            <KameFormBrandHeader />
             {/* Guest Information Section */}
             <div className="form-section">
               <div className="form-section-header">
@@ -2084,7 +2109,7 @@ export function GuestForm() {
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>
-                      Payment Receipt{' '}
+                      Downpayment receipt{' '}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
@@ -2096,7 +2121,7 @@ export function GuestForm() {
                                 paymentReceiptPreview ||
                                 (value && URL.createObjectURL(value))
                               }
-                              alt="Payment Receipt Preview"
+                              alt="Downpayment receipt preview"
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
@@ -2293,7 +2318,7 @@ export function GuestForm() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleGenerateNewData}
+                        onClick={() => void handleGenerateNewData()}
                         className="w-full"
                       >
                         Generate New Data

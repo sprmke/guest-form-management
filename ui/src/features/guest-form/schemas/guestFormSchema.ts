@@ -90,7 +90,9 @@ export const guestFormSchema = z.object({
   petImage: z.instanceof(File).optional(),
   
   // File upload fields
-  paymentReceipt: z.instanceof(File, { message: "Please upload a copy of your payment receipt" }),
+  paymentReceipt: z.instanceof(File, {
+    message: 'Please upload a copy of your downpayment receipt',
+  }),
   validId: z.instanceof(File, { message: "Please upload a copy of your valid ID" }),
   
   // Unit and owner information with defaults
