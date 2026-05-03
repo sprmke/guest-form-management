@@ -5,14 +5,15 @@
  *   Left (flexible): all booking info cards + document previews
  *   Right (sticky 344px): WorkflowPanel
  *
- * Header card toggles **Edit** ↔ **Cancel** above the status badge; **Cancel booking**
- * stays in the workflow panel Actions.
+ * Header card toggles **Edit** ↔ **Cancel**; booking status is shown on the
+ * **Progress** card in `WorkflowPanel`. **Cancel booking** stays in the workflow panel Actions.
  * While the booking is in Pending documents (GAF / parking / pet) or Ready for check-in,
  * saving workflow-sensitive guest fields reverts status → PENDING_REVIEW; replacing
  * payment/ID/pet docs via upload does too.
  *
  * **Pricing** card (below Stay Details): omitted in `PENDING_REVIEW`; afterward shows
- * review-pricing fields, payment receipt, and on `COMPLETED` the SD refund block.
+ * review-pricing fields, total guest balance vs paid/unpaid, receipts, and on
+ * `COMPLETED` the SD refund block.
  *
  * Design: dense-operational, status-color coded, mobile-first.
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
@@ -26,6 +27,7 @@ import {
   Banknote,
   Calendar,
   Car,
+  CheckCircle2,
   Dog,
   Edit2,
   ExternalLink,
@@ -38,16 +40,16 @@ import {
   Phone,
   Loader2,
   Search,
+  Sparkles,
   TestTube2,
+  Ticket,
   User,
   Users,
   X,
 } from 'lucide-react';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { WorkflowPanel } from '@/features/admin/components/WorkflowPanel';
 import { BookingEditForm } from '@/features/admin/components/BookingEditForm';
-import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice';
 import { useBooking } from '@/features/admin/hooks/useBooking';
 import {
   formatBookingDate,
@@ -60,9 +62,14 @@ import type {
 } from '@/features/admin/lib/types';
 import {
   normalizeStoragePublicUrl,
+  parseStorageUrl,
+  PRIVATE_STORAGE_BUCKETS,
   resolveAssetUrlForBrowser,
 } from '@/features/admin/lib/storageUrls';
-import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/admin/lib/bookingStatus';
+import {
+  computeTotalGuestBalance,
+  guestBalancePaidRecorded,
+} from '@/features/admin/lib/totalGuestBalance';
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -85,7 +92,7 @@ export function BookingDetailPage() {
       setPreviewAsset({
         label,
         url: resolved,
-        type: getDocType(rawUrl),
+        type: getDocType(resolved),
       });
     } catch (err) {
       toast.error(
@@ -128,15 +135,6 @@ export function BookingDetailPage() {
 
           {booking && (
             <>
-              {shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
-                !editMode && (
-                  <div className="mb-4">
-                    <ReadyForCheckinSensitiveFieldsNotice
-                      show
-                      hasSensitiveEdits={false}
-                    />
-                  </div>
-                )}
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
                 {/* ── Left column ───────────────────────────────────────────── */}
                 <div className="flex-1 min-w-0 space-y-4">
@@ -288,33 +286,27 @@ function BookingHeader({
             </span>
           </div>
         </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-[min(100%,280px)] sm:items-end">
-          <div className="flex flex-wrap items-center justify-end">
-            {editMode ? (
-              <button
-                type="button"
-                onClick={onCancelEdit}
-                aria-label="Cancel and close the form"
-                className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
-              >
-                <X className="size-3 shrink-0" aria-hidden />
-                <span className="inline">Cancel</span>
-                <span className="hidden sm:inline"> edit</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onEdit}
-                className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
-              >
-                <Edit2 className="size-3 shrink-0" aria-hidden />
-                Edit
-              </button>
-            )}
-          </div>
-          <div className="flex justify-end">
-            <StatusBadge status={booking.status} />
-          </div>
+        <div className="flex w-full flex-wrap items-start justify-end gap-2 sm:w-auto sm:max-w-[min(100%,280px)]">
+          {editMode ? (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              aria-label="Cancel and close the form"
+              className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+            >
+              <X className="size-3 shrink-0" aria-hidden />
+              <span className="inline">Cancel</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+            >
+              <Edit2 className="size-3 shrink-0" aria-hidden />
+              Edit
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -446,6 +438,12 @@ function ParkingCard({
             .filter(Boolean)
             .join(' · ')}
         />
+        {booking.parking_owner?.trim() ? (
+          <InfoField
+            label="Parking owner / agent"
+            value={booking.parking_owner}
+          />
+        ) : null}
         {booking.parking_rate_guest != null && (
           <InfoField
             label="Guest Parking Rate"
@@ -572,12 +570,6 @@ const SD_REFUND_METHOD_LABELS: Record<string, string> = {
   cash: 'Cash pickup',
 };
 
-function toMoneyNumber(value: number | string | null | undefined): number {
-  if (value === null || value === undefined || value === '') return 0;
-  const n = typeof value === 'string' ? Number(value) : value;
-  return Number.isNaN(n) ? 0 : n;
-}
-
 function parseSdNumberArray(raw: unknown): number[] {
   if (Array.isArray(raw)) {
     return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
@@ -644,19 +636,6 @@ function buildSdExpenseProfitRows(booking: BookingRow): {
   };
 }
 
-function computeTotalGuestBalance(booking: BookingRow): number | null {
-  if (booking.booking_rate == null || booking.booking_rate === '') return null;
-  const rate = toMoneyNumber(booking.booking_rate);
-  return (
-    rate -
-    toMoneyNumber(booking.down_payment) +
-    toMoneyNumber(booking.security_deposit) +
-    toMoneyNumber(booking.pet_fee) +
-    toMoneyNumber(booking.parking_rate_guest) +
-    toMoneyNumber(booking.guest_additional_fee)
-  );
-}
-
 /**
  * Post-review pricing + payment proof; on COMPLETED, adds SD refund settlement fields.
  * Hidden while status is PENDING_REVIEW (rates captured on first workflow transition).
@@ -672,15 +651,26 @@ function PricingSummaryCard({
 
   const isCompleted = booking.status === 'COMPLETED';
   const totalGuestBalance = computeTotalGuestBalance(booking);
+  const paidTowardBalance = guestBalancePaidRecorded(booking);
+  const unpaidCents =
+    totalGuestBalance != null
+      ? Math.round(totalGuestBalance * 100) -
+        Math.round(paidTowardBalance * 100)
+      : null;
   const { expenses: sdExpenses, profits: sdProfits } =
     buildSdExpenseProfitRows(booking);
+
+  const hasPaymentReceipt = Boolean(booking.payment_receipt_url?.trim());
+  const hasBalanceReceipt = Boolean(
+    booking.guest_balance_payment_receipt_url?.trim(),
+  );
 
   return (
     <Card title="Pricing" icon={<Banknote className="size-3.5" />}>
       <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
         Rates & fees
       </p>
-      <Grid2>
+      <Grid3>
         <InfoField
           label="Booking rate"
           value={formatMoney(booking.booking_rate as number)}
@@ -694,7 +684,7 @@ function PricingSummaryCard({
           value={formatMoney(booking.security_deposit as number)}
         />
         <InfoField
-          label="Balance (recorded)"
+          label="Balance after down (recorded)"
           value={formatMoney(booking.balance as number)}
         />
         <InfoField
@@ -713,30 +703,83 @@ function PricingSummaryCard({
           label="Additional guest fee"
           value={formatMoney(booking.guest_additional_fee as number)}
         />
-      </Grid2>
+      </Grid3>
 
       {totalGuestBalance != null && (
-        <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-50 px-3.5 py-2.5 ring-1 ring-slate-200">
-          <span className="text-xs font-semibold text-slate-700">
-            Total guest balance
-          </span>
-          <span className="text-sm font-bold text-slate-800">
-            {formatMoney(totalGuestBalance)}
-          </span>
+        <div className="mt-3 overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200">
+          <div className="divide-y divide-slate-200/80">
+            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                Total guest balance
+              </span>
+              <span className="text-right text-sm font-semibold tabular-nums text-slate-900">
+                {formatMoney(totalGuestBalance)}
+              </span>
+            </div>
+            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                Balance Amount Paid
+              </span>
+              <span className="text-right text-sm font-semibold tabular-nums text-slate-900">
+                {paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : '—'}
+              </span>
+            </div>
+            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
+              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+                Total unpaid
+              </span>
+              <div className="flex min-h-9 justify-end">
+                {unpaidCents !== null && unpaidCents <= 0 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200">
+                    <CheckCircle2
+                      className="size-3.5 shrink-0 text-emerald-600"
+                      aria-hidden
+                    />
+                    Paid in full
+                  </span>
+                ) : (
+                  <span className="text-right text-sm font-semibold tabular-nums text-amber-900">
+                    {unpaidCents != null ? formatMoney(unpaidCents / 100) : '—'}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+          {unpaidCents !== null && unpaidCents < 0 && (
+            <p className="border-t border-slate-200/80 px-3 py-2 text-[10.5px] leading-snug text-slate-500 sm:px-3.5">
+              Recorded payments exceed total guest balance by{' '}
+              {formatMoney(Math.abs(unpaidCents) / 100)}.
+            </p>
+          )}
         </div>
       )}
 
-      {booking.payment_receipt_url && (
+      {(hasPaymentReceipt || hasBalanceReceipt) && (
         <div className="mt-4">
           <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
             Payment receipts
           </p>
-          <DocPreview
-            label="Payment receipt"
-            url={booking.payment_receipt_url}
-            onPreview={onPreview}
-          />
+          <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
+            {hasPaymentReceipt && (
+              <DocPreview
+                label="Downpayment receipt"
+                url={booking.payment_receipt_url!.trim()}
+                onPreview={onPreview}
+              />
+            )}
+            {hasBalanceReceipt && (
+              <DocPreview
+                label="Payment balance receipt"
+                url={booking.guest_balance_payment_receipt_url!.trim()}
+                onPreview={onPreview}
+              />
+            )}
+          </div>
         </div>
+      )}
+
+      {isCompleted && booking.next_stay_voucher_code && (
+        <NextStayVoucherCard booking={booking} />
       )}
 
       {isCompleted && (
@@ -769,10 +812,6 @@ function PricingSummaryCard({
             <InfoField
               label="Account number"
               value={booking.sd_refund_account_number ?? undefined}
-            />
-            <InfoField
-              label="Cash pickup note"
-              value={booking.sd_refund_cash_pickup_note ?? undefined}
             />
             <InfoField
               label="Phone confirmed for refund"
@@ -878,6 +917,59 @@ function PricingSummaryCard({
   );
 }
 
+/**
+ * Next-stay voucher awarded on /sd-form (Facebook-review thank-you).
+ * Rendered inside the Pricing card only when status === COMPLETED so admins
+ * can verify the discount on the guest's next booking.
+ */
+function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
+  const code = booking.next_stay_voucher_code;
+  if (!code) return null;
+  const amountRaw = booking.next_stay_voucher_amount;
+  const amount =
+    amountRaw == null
+      ? null
+      : typeof amountRaw === 'string'
+        ? Number(amountRaw)
+        : amountRaw;
+  const awardedAt = booking.next_stay_voucher_awarded_at;
+
+  return (
+    <div className="mt-4 border-t border-slate-100 pt-4">
+      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+        Next-stay voucher
+      </p>
+      <div className="relative overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80">
+        <Sparkles
+          className="absolute right-3 top-3 size-4 text-emerald-500/70"
+          aria-hidden
+        />
+        <div className="flex items-center gap-3">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+            <Ticket className="size-4" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-mono text-sm font-bold tracking-[0.18em] text-slate-900 sm:text-base">
+              {code}
+            </p>
+            <p className="mt-0.5 text-[11px] text-slate-500">
+              {amount != null ? formatMoney(amount) : '—'} off the next booking
+              {awardedAt && (
+                <>
+                  {' · '}
+                  <span title={awardedAt}>
+                    awarded {formatRelative(awardedAt)}
+                  </span>
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DocumentsCard({
   booking,
   onPreview,
@@ -911,9 +1003,13 @@ function DocumentsCard({
 
 function getDocType(url: string): 'image' | 'pdf' | 'file' {
   const path = url.split('?')[0].toLowerCase();
-  if (/\.(jpg|jpeg|png|webp|gif)$/.test(path)) return 'image';
+  if (/\.(jpg|jpeg|png|webp|gif|heic|heif)$/.test(path)) return 'image';
   if (/\.pdf$/.test(path)) return 'pdf';
   return 'file';
+}
+
+function docPreviewOuterWidth() {
+  return 'min-w-0 w-full max-w-full lg:max-w-[255px]';
 }
 
 function DocPreview({
@@ -925,31 +1021,98 @@ function DocPreview({
   url: string;
   onPreview: (label: string, rawUrl: string) => void;
 }) {
-  /** Browser-reachable URL (DB may still store `http://kong:8000/...` from edge uploads). */
-  const displayUrl = normalizeStoragePublicUrl(url) ?? url;
-  const type = getDocType(displayUrl);
+  const normalized = normalizeStoragePublicUrl(url) ?? url;
+  const parsed = parseStorageUrl(normalized);
+  const inPrivateBucket = Boolean(
+    parsed && PRIVATE_STORAGE_BUCKETS.has(parsed.bucket),
+  );
+  const layoutType = getDocType(normalized);
+  /** Private objects may omit a recognizable extension; still resolve a signed URL. */
+  const needsResolve =
+    inPrivateBucket || layoutType === 'image' || layoutType === 'pdf';
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
+    const n = normalizeStoragePublicUrl(url) ?? url;
+    const loc = parseStorageUrl(n);
+    const priv = Boolean(loc && PRIVATE_STORAGE_BUCKETS.has(loc.bucket));
+    const t = getDocType(n);
+    if (!priv && t === 'file') {
+      setDisplayUrl(n);
+      setImgError(false);
+      return;
+    }
+    let cancelled = false;
+    setDisplayUrl(null);
     setImgError(false);
+    resolveAssetUrlForBrowser(url)
+      .then((u) => {
+        if (!cancelled) setDisplayUrl(u);
+      })
+      .catch(() => {
+        if (!cancelled) setDisplayUrl(n);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [url]);
 
-  if (type === 'image' && !imgError) {
+  const hrefForOpen = displayUrl ?? normalized;
+
+  if (needsResolve && !displayUrl) {
+    return (
+      <div
+        className={`flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white ${docPreviewOuterWidth()}`}
+      >
+        <div className="relative flex aspect-video items-center justify-center bg-slate-100">
+          <Loader2 className="size-8 animate-spin text-slate-400" aria-hidden />
+        </div>
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="truncate text-[11px] font-medium text-slate-500">
+            {label}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  if (layoutType === 'image' && imgError) {
     return (
       <a
-        href={displayUrl}
+        href={hrefForOpen}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
           e.preventDefault();
           onPreview(label, url);
         }}
-        className="group flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md lg:max-w-[255px]"
+        className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 ${docPreviewOuterWidth()}`}
+      >
+        <ExternalLink className="size-4 shrink-0 text-slate-400" />
+        <span className="truncate text-xs font-medium text-slate-700">
+          {label}
+        </span>
+      </a>
+    );
+  }
+
+  if (layoutType === 'image' && !imgError) {
+    return (
+      <a
+        href={hrefForOpen}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => {
+          e.preventDefault();
+          onPreview(label, url);
+        }}
+        className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
       >
         <div className="relative aspect-video bg-slate-100 overflow-hidden">
           <img
-            src={displayUrl}
-            alt={label}
+            src={hrefForOpen}
+            alt=""
             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             onError={() => setImgError(true)}
           />
@@ -968,17 +1131,17 @@ function DocPreview({
     );
   }
 
-  if (type === 'pdf') {
+  if (layoutType === 'pdf') {
     return (
       <a
-        href={displayUrl}
+        href={hrefForOpen}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => {
           e.preventDefault();
           onPreview(label, url);
         }}
-        className="group flex w-full flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md lg:max-w-[255px]"
+        className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
       >
         <div className="relative aspect-video bg-slate-100 overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center bg-rose-100">
@@ -1001,14 +1164,14 @@ function DocPreview({
 
   return (
     <a
-      href={displayUrl}
+      href={hrefForOpen}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => {
         e.preventDefault();
         onPreview(label, url);
       }}
-      className="flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 lg:max-w-[255px]"
+      className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 ${docPreviewOuterWidth()}`}
     >
       <ExternalLink className="size-4 shrink-0 text-slate-400" />
       <span className="truncate text-xs font-medium text-slate-700">
@@ -1126,6 +1289,15 @@ function Card({
 function Grid2({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+      {children}
+    </div>
+  );
+}
+
+/** Rates-style dense grid: 1 col mobile, 2 on small tablet, 3 from md up. */
+function Grid3({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 md:grid-cols-3">
       {children}
     </div>
   );
