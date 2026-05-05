@@ -2,8 +2,10 @@
  * get-sd-form — Public read-only payload for the guest SD refund stepper (/sd-form).
  *
  * GET ?bookingId=<uuid>
- * Returns minimal fields only when status === READY_FOR_CHECKOUT.
- * Otherwise 404 with a generic message (no status disclosure).
+ * Returns minimal fields when status === READY_FOR_CHECKOUT, **or** when status is
+ * READY_FOR_CHECKIN and the automated check-out email was already sent (`sd_refund_form_emailed_at`),
+ * in which case `awaiting_balance_settlement` is true until staff records final balance and the
+ * booking moves to READY_FOR_CHECKOUT.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -36,7 +38,21 @@ serve(async (req) => {
     }
 
     const row = await DatabaseService.getBookingById(bookingId);
-    if (!row || row.status !== 'READY_FOR_CHECKOUT') {
+    if (!row) {
+      return new Response(JSON.stringify(NOT_FOUND), {
+        status: 404,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
+    }
+
+    const emailedAt =
+      typeof row.sd_refund_form_emailed_at === 'string'
+        ? row.sd_refund_form_emailed_at.trim()
+        : '';
+    const awaitingBalanceSettlement =
+      row.status === 'READY_FOR_CHECKIN' && emailedAt !== '';
+
+    if (row.status !== 'READY_FOR_CHECKOUT' && !awaitingBalanceSettlement) {
       return new Response(JSON.stringify(NOT_FOUND), {
         status: 404,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
@@ -65,6 +81,7 @@ serve(async (req) => {
             row.next_stay_voucher_amount != null
               ? Number(row.next_stay_voucher_amount)
               : null,
+          awaiting_balance_settlement: awaitingBalanceSettlement,
         },
       }),
       { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },

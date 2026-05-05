@@ -26,8 +26,7 @@ serve(async (req) => {
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
-    const isTestingMode = url.searchParams.get('testing') === 'true'
-    
+
     // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
     const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined
     
@@ -40,7 +39,6 @@ serve(async (req) => {
     console.log('  Send Email: ❌ (submit-form does not send workflow emails)');
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
-    console.log(`  Testing Mode: ${isTestingMode ? '🧪 ENABLED' : '❌'}`);
     console.log('---');
     
     // Get and process form data
@@ -140,7 +138,6 @@ serve(async (req) => {
         formData,
         isSaveToDatabaseEnabled,
         isSaveImagesToStorageEnabled,
-        isTestingMode,
         revertReadyForCheckinToPendingReview,
       );
 
@@ -150,12 +147,12 @@ serve(async (req) => {
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     // Append to Google Sheet if enabled
     if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     console.log('Form submission process completed successfully')

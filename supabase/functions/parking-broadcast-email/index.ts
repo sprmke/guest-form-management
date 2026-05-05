@@ -84,21 +84,9 @@ serve(async (req) => {
       );
     }
 
-    // ── 5. Guard: no real emails for test bookings in production ──────────────
-    const isTestBooking = booking.is_test_booking === true;
-    const isProduction = !!Deno.env.get('DENO_DEPLOYMENT_ID');
-
-    if (isProduction && isTestBooking) {
-      console.log('[parking-broadcast-email] Suppressed: test booking in production');
-      return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: 'test_booking_in_production' }),
-        { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    // ── 6. Send broadcast ──────────────────────────────────────────────────────
+    // ── 5. Send broadcast ──────────────────────────────────────────────────────
     console.log(`[parking-broadcast-email] Sending broadcast for booking ${bookingId}...`);
-    const result = await sendParkingBroadcast(booking, isTestBooking);
+    const result = await sendParkingBroadcast(booking);
 
     if (result === null) {
       // sendParkingBroadcast returns null when PARKING_OWNER_EMAILS is not set

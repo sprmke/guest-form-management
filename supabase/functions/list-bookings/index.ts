@@ -6,7 +6,6 @@
  * - Status multi-filter
  * - Date-range filter on check_in_date (converted from MM-DD-YYYY for correct sort)
  * - has_pets / need_parking boolean filters
- * - Test-booking inclusion toggle
  * - Default sort: check_in_date ASC (Q5.1)
  * - Default filter: hide stale COMPLETED (Q5.1)
  *
@@ -39,7 +38,6 @@ serve(async (req) => {
       p.get('has_pets') === 'true' ? true : p.get('has_pets') === 'false' ? false : null;
     const needParking =
       p.get('need_parking') === 'true' ? true : p.get('need_parking') === 'false' ? false : null;
-    const includeTests = p.get('include_tests') === 'true';
     const hideStaleCompleted = p.get('hide_stale_completed') !== 'false'; // default true
     const sort = (p.get('sort') ?? 'check_in_date:asc') as
       | 'check_in_date:asc'
@@ -56,7 +54,6 @@ serve(async (req) => {
       to,
       hasPets,
       needParking,
-      includeTests,
       sort,
       page,
       limit,

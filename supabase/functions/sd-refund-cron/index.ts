@@ -1,10 +1,13 @@
 /**
  * sd-refund-cron — Phase 4 scheduled edge function.
  *
- * Purpose:  Scan for bookings in `READY_FOR_CHECKIN` status where the guest's
- *           check-out datetime has passed by at least 15 minutes (Asia/Manila),
- *           and auto-transition them to `READY_FOR_CHECKOUT` (guest SD form + email)
- *           only when balance settlement is already recorded (paid amount = total guest balance + receipt URL).
+ * Purpose:  Scan for bookings in `READY_FOR_CHECKIN` where wall-clock **now** (Asia/Manila) is **on or after**
+ *           `check_out_date` + `check_out_time` **minus** a configurable **lead** (default **120 minutes**).
+ *           **Check-out & SD Refund Details email** to the guest runs on that schedule **without** requiring
+ *           final guest-balance settlement (idempotent via `sd_refund_form_emailed_at`).
+ *           **Status** `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` still runs **only** when settlement is complete
+ *           (paid = total guest balance + receipt URL), via `WorkflowOrchestrator` (calendar/sheet; SD email on
+ *           transition is skipped if the guest was already emailed in this phase).
  *
  * Trigger:  Supabase cron — every 5 minutes (POST with empty or `{}` body — processes all candidates).
  *
@@ -13,19 +16,20 @@
  *   Only that booking is evaluated (same due + settlement rules). Prevents one admin click
  *   from transitioning unrelated `READY_FOR_CHECKIN` rows.
  *
- * Email guard (all runs):
+ * Email guard (stale check-outs):
  *   If check-out is older than `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` (default 21; set `0` to disable),
- *   the transition still runs (status / calendar / sheet) but **`sendSdRefundFormEmail` is false** so guests
- *   who checked out long ago are not emailed the `/sd-form` link from automation.
+ *   the cron **does not** send the check-out email and passes **`sendSdRefundFormEmail: false`** on transition
+ *   so guests who departed long ago are not surprised. Calendar/sheet still update when the transition runs.
  *
  * Idempotency:
  *   - The status machine (`canTransition`) prevents re-processing: a booking
- *     already moved to PENDING_SD_REFUND cannot move back.
+ *     already moved to `READY_FOR_CHECKOUT` (or beyond) is no longer a candidate.
  *   - Safe to run multiple times; re-entrant — only READY_FOR_CHECKIN rows are touched.
  *
  * Timezone:  Asia/Manila (UTC+8) for all wall-clock comparisons (Q7.1).
  *
- * Grace period:  15 minutes after check_out_date + check_out_time (env: SD_REFUND_CRON_GRACE_MINUTES, default 15).
+ * Lead window:  minutes **before** parsed check-out (Manila) when the booking becomes eligible
+ *               (env: `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`, default **120**).
  *
  * Reference:  docs/NEW_FLOW_PLAN.md §5 Phase 4, §6.1 Q7.1
  *             .cursor/rules/booking-workflow.mdc §3
@@ -37,6 +41,8 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { computeTotalGuestBalanceFromBooking } from '../_shared/totalGuestBalance.ts';
+import { DatabaseService } from '../_shared/databaseService.ts';
+import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 
@@ -160,7 +166,7 @@ function supabaseAdmin() {
 }
 
 const SELECT_COLUMNS =
-  'id, check_in_date, check_out_date, check_out_time, is_test_booking, guest_facebook_name, booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest, guest_additional_fee, guest_balance_paid_amount, guest_balance_payment_receipt_url';
+  'id, check_in_date, check_out_date, check_out_time, guest_facebook_name, booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest, guest_additional_fee, guest_balance_paid_amount, guest_balance_payment_receipt_url, sd_refund_form_emailed_at';
 
 type CronResultRow = {
   bookingId: string;
@@ -194,14 +200,21 @@ serve(async (req) => {
   console.log('[sd-refund-cron] Run started at', runStarted);
 
   try {
-    const graceMinutes = parseInt(Deno.env.get('SD_REFUND_CRON_GRACE_MINUTES') ?? '15', 10);
+    const leadRaw = Deno.env.get('SD_REFUND_CRON_EMAIL_LEAD_MINUTES');
+    let leadMinutes = leadRaw != null && leadRaw !== '' ? parseInt(leadRaw, 10) : 120;
+    if (Number.isNaN(leadMinutes) || leadMinutes < 0) {
+      console.warn(
+        '[sd-refund-cron] Invalid SD_REFUND_CRON_EMAIL_LEAD_MINUTES; falling back to 120',
+      );
+      leadMinutes = 120;
+    }
     const maxCheckoutAgeDays = parseInt(
       Deno.env.get('SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS') ?? '21',
       10,
     );
     const nowMs = nowManila().getTime();
 
-    console.log(`[sd-refund-cron] Now (Manila): ${nowManila().toISOString()}, grace: ${graceMinutes}min`);
+    console.log(`[sd-refund-cron] Now (Manila): ${nowManila().toISOString()}, email lead: ${leadMinutes}min before checkout`);
     console.log(
       `[sd-refund-cron] Max checkout age for SD form email: ${
         maxCheckoutAgeDays <= 0 ? 'disabled (always allow email when transitioning)' : `${maxCheckoutAgeDays} day(s)`
@@ -251,6 +264,9 @@ serve(async (req) => {
           scanned: 0,
           transitioned: 0,
           skipped: scopedBookingId ? 1 : 0,
+          checkoutEmailsSent: 0,
+          transitionedSdEmailSent: 0,
+          transitionedSdEmailSuppressed: 0,
           results: scopedBookingId
             ? [{
               bookingId: scopedBookingId,
@@ -288,43 +304,77 @@ serve(async (req) => {
         continue;
       }
 
-      const checkoutWithGraceMs = checkoutDt.getTime() + graceMinutes * 60 * 1000;
-      const isOverdue = nowMs >= checkoutWithGraceMs;
+      const eligibleAtMs = checkoutDt.getTime() - leadMinutes * 60 * 1000;
+      const isDue = nowMs >= eligibleAtMs;
 
-      if (!isOverdue) {
-        const minutesRemaining = Math.round((checkoutWithGraceMs - nowMs) / 60000);
+      if (!isDue) {
+        const minutesRemaining = Math.max(1, Math.ceil((eligibleAtMs - nowMs) / 60000));
         console.log(
           `[sd-refund-cron] Booking ${bookingId} (${booking.guest_facebook_name}) not yet due ` +
-            `(${minutesRemaining} min remaining after grace period)`,
+            `(${minutesRemaining} min until lead window opens)`,
         );
         results.push({ bookingId, action: 'skipped', reason: `not_yet_due_${minutesRemaining}min` });
         skipped++;
         continue;
       }
 
+      const checkoutAgeMs = nowMs - checkoutDt.getTime();
+      const suppressStaleEmail = checkoutAgeMs > maxAgeMs;
+
+      const emailedAtRaw = (booking as Record<string, unknown>).sd_refund_form_emailed_at;
+      const hadCheckoutEmailInDb =
+        typeof emailedAtRaw === 'string' && emailedAtRaw.trim() !== '';
+
+      let sentCheckoutEmailThisRun = false;
+      if (!suppressStaleEmail && !hadCheckoutEmailInDb) {
+        try {
+          const fullRow = await DatabaseService.getBookingById(bookingId);
+          if (fullRow) {
+            await sendSdRefundFormRequest(fullRow);
+            await DatabaseService.setWorkflowFields(bookingId, {
+              sd_refund_form_emailed_at: new Date().toISOString(),
+            });
+            sentCheckoutEmailThisRun = true;
+            console.log(
+              `[sd-refund-cron] Sent check-out / SD details email for booking ${bookingId} (still READY_FOR_CHECKIN until settlement)`,
+            );
+          }
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.error(`[sd-refund-cron] Check-out email failed for ${bookingId}:`, msg);
+          results.push({ bookingId, action: 'failed', reason: `checkout_email:${msg}` });
+          continue;
+        }
+      }
+
       const settlement = canAutoTransitionWithSettlement(booking);
       if (!settlement.ok) {
         console.log(
-          `[sd-refund-cron] Booking ${bookingId} checkout due but skipping auto-transition: ${settlement.reason}`,
+          `[sd-refund-cron] Booking ${bookingId} in email window but not transitioning yet: ${settlement.reason}`,
         );
-        results.push({ bookingId, action: 'skipped', reason: settlement.reason });
-        skipped++;
+        if (sentCheckoutEmailThisRun) {
+          results.push({ bookingId, action: 'checkout_email_sent', sdRefundFormEmailSent: true });
+        } else {
+          results.push({ bookingId, action: 'skipped', reason: settlement.reason });
+          skipped++;
+        }
         continue;
       }
 
-      const checkoutAgeMs = nowMs - checkoutDt.getTime();
-      const suppressSdFormEmail = checkoutAgeMs > maxAgeMs;
-      if (suppressSdFormEmail) {
+      if (suppressStaleEmail) {
         console.log(
           `[sd-refund-cron] Booking ${bookingId}: check-out older than ${maxCheckoutAgeDays}d — ` +
-            'transitioning without SD refund form email',
+            'transitioning without automated guest email',
         );
       }
+
+      const hadEmailBeforeTransition = hadCheckoutEmailInDb || sentCheckoutEmailThisRun;
+      const sendEmailOnTransition = !suppressStaleEmail && !hadEmailBeforeTransition;
 
       console.log(
         `[sd-refund-cron] Transitioning booking ${bookingId} (${booking.guest_facebook_name}) ` +
           `checkout ${checkOutDate} ${checkOutTime} → READY_FOR_CHECKOUT` +
-          (suppressSdFormEmail ? ' (no SD form email)' : ''),
+          (!sendEmailOnTransition ? ' (no SD form email on transition — already sent or stale)' : ''),
       );
 
       try {
@@ -346,7 +396,7 @@ serve(async (req) => {
             sendPetRequestEmail: false,
             sendBookingAcknowledgementEmail: false,
             sendReadyForCheckinEmail: false,
-            sendSdRefundFormEmail: !suppressSdFormEmail,
+            sendSdRefundFormEmail: sendEmailOnTransition,
           },
           false, // manual=false — cron-driven transition
         );
@@ -355,7 +405,7 @@ serve(async (req) => {
         results.push({
           bookingId,
           action: 'transitioned',
-          sdRefundFormEmailSent: !suppressSdFormEmail,
+          sdRefundFormEmailSent: sendEmailOnTransition || sentCheckoutEmailThisRun,
         });
         transitioned++;
       } catch (e: unknown) {
@@ -367,11 +417,12 @@ serve(async (req) => {
     }
 
     const emailSentCount = results.filter((r) =>
-      r.action === 'transitioned' && r.sdRefundFormEmailSent === true
+      (r.action === 'transitioned' || r.action === 'checkout_email_sent') && r.sdRefundFormEmailSent === true
     ).length;
     const emailSuppressedCount = results.filter((r) =>
       r.action === 'transitioned' && r.sdRefundFormEmailSent === false
     ).length;
+    const checkoutEmailsOnly = results.filter((r) => r.action === 'checkout_email_sent').length;
 
     const summary = {
       success: true,
@@ -379,6 +430,7 @@ serve(async (req) => {
       scanned: candidates.length,
       transitioned,
       skipped,
+      checkoutEmailsSent: checkoutEmailsOnly,
       transitionedSdEmailSent: emailSentCount,
       transitionedSdEmailSuppressed: emailSuppressedCount,
       results,

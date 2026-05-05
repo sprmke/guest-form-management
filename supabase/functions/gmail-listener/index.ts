@@ -396,7 +396,6 @@ async function uploadApprovedPdf(params: {
   const sb = supabaseAdmin();
   const bucket = params.kind === 'gaf' ? 'approved-gafs' : 'approved-pet-forms';
   // Path is just {bookingId}/approved-gaf.pdf — UUID uniquely identifies the booking.
-  // Test booking status is tracked via is_test_booking in the DB, not the storage path.
   const filename = `${params.bookingId}/${params.kind === 'gaf' ? 'approved-gaf' : 'approved-pet'}.pdf`;
 
   const { error } = await sb.storage.from(bucket).upload(filename, params.bytes, {

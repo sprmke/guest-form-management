@@ -1,8 +1,9 @@
 /**
- * send-sd-refund-form-email — Admin-only: re-send the guest SD refund form email.
+ * send-sd-refund-form-email — Admin-only: re-send the guest Check-out & SD Refund Details email.
  *
  * POST { bookingId }
- * Status must be READY_FOR_CHECKOUT. Does not change status; updates sd_refund_form_emailed_at.
+ * Status must be READY_FOR_CHECKIN (after automated email may run) or READY_FOR_CHECKOUT.
+ * Does not change status; updates sd_refund_form_emailed_at.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -40,26 +41,21 @@ serve(async (req) => {
       );
     }
 
-    if (booking.status !== 'READY_FOR_CHECKOUT') {
+    if (
+      booking.status !== 'READY_FOR_CHECKOUT' &&
+      booking.status !== 'READY_FOR_CHECKIN'
+    ) {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Booking must be in READY_FOR_CHECKOUT (current: ${booking.status})`,
+          error:
+            `Booking must be in READY_FOR_CHECKIN or READY_FOR_CHECKOUT (current: ${booking.status})`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }
 
-    const isTestBooking = booking.is_test_booking === true;
-    const isProduction = !!Deno.env.get('DENO_DEPLOYMENT_ID');
-    if (isProduction && isTestBooking) {
-      return new Response(
-        JSON.stringify({ success: true, skipped: true, reason: 'test_booking_in_production' }),
-        { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    await sendSdRefundFormRequest(booking, isTestBooking);
+    await sendSdRefundFormRequest(booking);
     await DatabaseService.setWorkflowFields(bookingId, {
       sd_refund_form_emailed_at: new Date().toISOString(),
     });

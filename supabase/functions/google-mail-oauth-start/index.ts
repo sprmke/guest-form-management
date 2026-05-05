@@ -39,7 +39,7 @@ serve(async (req) => {
   try {
     await verifyAdminJwt(req);
 
-    let returnPath = '/bookings';
+    let returnPath = '/settings';
     try {
       const body = await req.json().catch(() => ({}));
       if (body && typeof body.returnPath === 'string') {

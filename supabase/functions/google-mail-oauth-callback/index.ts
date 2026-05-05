@@ -51,7 +51,7 @@ serve(async (req) => {
     if (!isReturnOriginAllowed(data.return_origin as string)) return null;
     return {
       return_origin: data.return_origin as string,
-      return_path: (data.return_path as string) || '/bookings',
+      return_path: (data.return_path as string) || '/settings',
     };
   }
 
@@ -62,7 +62,7 @@ serve(async (req) => {
   if (oauthError) {
     const dest = st
       ? buildErrorRedirect(st.return_origin, st.return_path, oauthError)
-      : `${fallbackOrigin()}/bookings?gmail_error=${encodeURIComponent(oauthError)}`;
+      : `${fallbackOrigin()}/settings?gmail_error=${encodeURIComponent(oauthError)}`;
     if (state) await sb.from('gmail_mail_oauth_state').delete().eq('state', state);
     return Response.redirect(dest, 302);
   }
@@ -70,7 +70,7 @@ serve(async (req) => {
   if (!code || !state || !st) {
     const dest = st
       ? buildErrorRedirect(st.return_origin, st.return_path, 'invalid_state')
-      : `${fallbackOrigin()}/bookings?gmail_error=invalid_state`;
+      : `${fallbackOrigin()}/settings?gmail_error=invalid_state`;
     return Response.redirect(dest, 302);
   }
 
