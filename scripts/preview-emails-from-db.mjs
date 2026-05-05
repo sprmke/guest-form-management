@@ -416,7 +416,6 @@ const DEMO_BOOKING = {
   pet_fee: 300,
   guest_additional_fee: 250,
   status: 'READY_FOR_CHECKIN',
-  is_test_booking: false,
 };
 
 function buildParkingPaymentRow(booking) {
@@ -525,7 +524,6 @@ async function pickBooking(supabase) {
     supabase
       .from('guest_submissions')
       .select('*')
-      .or('is_test_booking.eq.false,is_test_booking.is.null')
       .neq('status', 'CANCELLED')
       .neq('status', 'canceled');
 
