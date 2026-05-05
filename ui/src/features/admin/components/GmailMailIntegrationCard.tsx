@@ -18,7 +18,7 @@ export function GmailMailIntegrationCard() {
   return (
     <section
       className={cn(
-        'rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5',
+        'w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5',
         'shadow-sm',
       )}
       aria-labelledby="gmail-integration-heading"
@@ -47,8 +47,7 @@ export function GmailMailIntegrationCard() {
               <span className="font-medium text-sidebar-foreground/90">
                 gmail-listener
               </span>{' '}
-              polls for Azure approval PDFs. Uses read-only Gmail access;
-              refresh token is stored encrypted on the server.
+              polls for Azure approval PDFs.
             </p>
             {isLoading && (
               <p className="text-xs text-slate-400 mt-1">Loading status…</p>

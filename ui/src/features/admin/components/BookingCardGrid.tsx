@@ -16,6 +16,7 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
+  emptyExtraHint?: string | null;
 };
 
 /**
@@ -29,6 +30,7 @@ export function BookingCardGrid({
   isLoading,
   error,
   isRefreshing,
+  emptyExtraHint,
 }: Props) {
   const navigate = useNavigate();
 
@@ -71,6 +73,11 @@ export function BookingCardGrid({
           <p className="mt-1 text-[12px] text-slate-400">
             Adjust your filters or clear the search.
           </p>
+          {emptyExtraHint ? (
+            <p className="mt-2 text-[12px] text-slate-500 max-w-sm">
+              {emptyExtraHint}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -161,11 +168,6 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
       <div className="px-4 pb-3 space-y-2.5">
         <div className="flex items-center gap-1.5 flex-wrap">
           <StatusBadge status={row.status} />
-          {row.is_test_booking && (
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">
-              TEST
-            </span>
-          )}
         </div>
 
         <div>

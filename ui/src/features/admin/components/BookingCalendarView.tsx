@@ -11,6 +11,7 @@ import {
   isToday,
   parse,
   startOfMonth,
+  subDays,
   subMonths,
 } from 'date-fns';
 import {
@@ -47,7 +48,8 @@ type Props = {
  * Mirrors property-management-app's `BookingsCalendarView`:
  *   - Two-column layout on desktop: month grid + selected-day detail panel.
  *   - Single column stacked on mobile.
- *   - Each booking spans every day from check-in → check-out.
+ *   - Each night is shown on its calendar date only: check-in through the day
+ *     before check-out (checkout morning is not an occupied night).
  *
  * Differs in:
  *   - Date strings come in as MM-DD-YYYY (not ISO); we parse via date-fns.
@@ -310,12 +312,12 @@ export function BookingCalendarView({
           {!selectedDay ? (
             <EmptyDetail
               title="Select a day"
-              caption="Click any day to see the bookings that span it"
+              caption="Click any day to see bookings with a stay that night"
             />
           ) : selectedDayBookings.length === 0 ? (
             <EmptyDetail
               title="No bookings"
-              caption="There are no bookings spanning this day"
+              caption="No guest stays are scheduled for this night"
             />
           ) : (
             <div className="space-y-2">
@@ -355,8 +357,11 @@ function buildBookingsByDay(rows: BookingRow[]): Map<string, BookingRow[]> {
   for (const row of rows) {
     const start = parseBookingDate(row.check_in_date);
     const end = parseBookingDate(row.check_out_date);
-    if (!start || !end || start > end) continue;
-    const days = eachDayOfInterval({ start, end });
+    if (!start || !end || start >= end) continue;
+    // Checkout date is departure morning, not an overnight — same as overlap
+    // logic elsewhere: occupied calendar dates are [check-in, check-out).
+    const lastNight = subDays(end, 1);
+    const days = eachDayOfInterval({ start, end: lastNight });
     for (const day of days) {
       const key = format(day, 'yyyy-MM-dd');
       const existing = map.get(key);

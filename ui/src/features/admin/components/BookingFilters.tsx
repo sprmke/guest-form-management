@@ -3,8 +3,8 @@ import {
   ArrowUpDown,
   Check,
   ChevronDown,
+  History,
   Search,
-  SlidersHorizontal,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -174,7 +174,7 @@ export function BookingFilters({
     query.status.length +
     (query.hasPets !== null ? 1 : 0) +
     (query.needParking !== null ? 1 : 0) +
-    (query.includeTests ? 1 : 0) +
+    (!query.hideStaleCompleted ? 1 : 0) +
     (isDateActive ? 1 : 0);
 
   const isDirty = totalActiveFilters > 0;
@@ -430,24 +430,30 @@ export function BookingFilters({
             )}
           </div>
 
-          {/* — Tests toggle — */}
+          {/* — Past completed (show COMPLETED with check-in before today) — */}
           <button
             type="button"
             role="switch"
-            aria-checked={query.includeTests}
+            aria-checked={!query.hideStaleCompleted}
+            aria-label="Show completed bookings whose check-in was before today"
+            title="Completed stays with check-in before today (Manila) are hidden by default. Turn on to list them."
             onClick={() =>
-              onChange({ includeTests: !query.includeTests, page: 1 })
+              onChange({
+                hideStaleCompleted: !query.hideStaleCompleted,
+                page: 1,
+              })
             }
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold',
               'border transition-all duration-100 select-none shrink-0 min-h-[44px]',
-              query.includeTests
+              !query.hideStaleCompleted
                 ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
                 : 'bg-white text-sidebar-muted border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             )}
           >
-            <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
-            Tests
+            <History className="size-3.5 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Past completed</span>
+            <span className="sm:hidden">Past</span>
           </button>
 
           {/* — Reset — */}

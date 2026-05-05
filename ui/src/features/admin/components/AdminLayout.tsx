@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
-import type { ComponentType, ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import React, { useEffect, useRef, useState } from 'react';
+import type { ComponentType, ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,
   ChevronLeft,
@@ -10,9 +10,9 @@ import {
   Menu,
   Settings,
   X,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAdminSession } from "@/features/admin/hooks/useAdminSession";
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
 type NavItem = {
   label: string;
@@ -25,14 +25,14 @@ type NavSection = { label: string; items: NavItem[] };
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    label: "Manage",
-    items: [{ label: "Bookings", href: "/bookings", Icon: BookOpen }],
+    label: 'Manage',
+    items: [{ label: 'Bookings', href: '/bookings', Icon: BookOpen }],
   },
   {
-    label: "Configure",
+    label: 'Configure',
     items: [
-      { label: "Reports", href: null, Icon: LayoutDashboard, soon: true },
-      { label: "Settings", href: null, Icon: Settings, soon: true },
+      { label: 'Reports', href: null, Icon: LayoutDashboard, soon: true },
+      { label: 'Settings', href: '/settings', Icon: Settings },
     ],
   },
 ];
@@ -51,7 +51,7 @@ type Props = {
  */
 export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
   const location = useLocation();
-  const { email, signOut } = useAdminSession();
+  const { email, name, signOut } = useAdminSession();
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -65,8 +65,8 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
         setProfileOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   // Close mobile menu on route change
@@ -74,8 +74,8 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
     setMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const displayName = email?.split("@")[0] ?? "Admin";
-  const initial = displayName[0]?.toUpperCase() ?? "A";
+  const displayName = name ?? email?.split('@')[0] ?? 'Admin';
+  const initial = displayName[0]?.toUpperCase() ?? 'A';
 
   const SidebarContent = ({ onClose }: { onClose?: () => void }) => (
     <div className="flex h-full flex-col bg-sidebar border-r border-sidebar-border">
@@ -120,7 +120,7 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
                   const active =
                     href !== null &&
                     (location.pathname === href ||
-                      location.pathname.startsWith(href + "/"));
+                      location.pathname.startsWith(href + '/'));
 
                   if (href === null) {
                     return (
@@ -146,20 +146,20 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
                       key={href}
                       to={href}
                       onClick={onClose}
-                      aria-current={active ? "page" : undefined}
+                      aria-current={active ? 'page' : undefined}
                       className={cn(
-                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                        'group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
                         active
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                          : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                       )}
                     >
                       <Icon
                         className={cn(
-                          "h-5 w-5 shrink-0 transition-colors",
+                          'h-5 w-5 shrink-0 transition-colors',
                           active
-                            ? "text-sidebar-primary-foreground"
-                            : "text-sidebar-muted group-hover:text-sidebar-accent-foreground",
+                            ? 'text-sidebar-primary-foreground'
+                            : 'text-sidebar-muted group-hover:text-sidebar-accent-foreground',
                         )}
                       />
                       <span className="flex-1 truncate">{label}</span>
@@ -182,9 +182,9 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
           <div
             className="absolute bottom-full left-3 right-3 mb-1.5 overflow-hidden rounded-xl bg-white"
             style={{
-              border: "1px solid hsl(220 13% 91%)",
+              border: '1px solid hsl(220 13% 91%)',
               boxShadow:
-                "0 -4px 24px rgba(0,0,0,0.1), 0 -1px 6px rgba(0,0,0,0.05)",
+                '0 -4px 24px rgba(0,0,0,0.1), 0 -1px 6px rgba(0,0,0,0.05)',
             }}
           >
             {/* Identity */}
@@ -224,13 +224,13 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
         <button
           type="button"
           onClick={() => !onClose && setProfileOpen((o) => !o)}
-          aria-haspopup={!onClose ? "true" : undefined}
+          aria-haspopup={!onClose ? 'true' : undefined}
           aria-expanded={!onClose ? profileOpen : undefined}
           aria-label="Account menu"
           className={cn(
-            "flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-all duration-150",
-            "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            profileOpen && !onClose && "bg-sidebar-accent",
+            'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 transition-all duration-150',
+            'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            profileOpen && !onClose && 'bg-sidebar-accent',
           )}
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-[11px] font-black shrink-0">
@@ -247,8 +247,8 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
           {!onClose && (
             <ChevronLeft
               className={cn(
-                "h-3.5 w-3.5 shrink-0 text-sidebar-muted transition-transform duration-200",
-                profileOpen ? "rotate-90" : "-rotate-90",
+                'h-3.5 w-3.5 shrink-0 text-sidebar-muted transition-transform duration-200',
+                profileOpen ? 'rotate-90' : '-rotate-90',
               )}
               aria-hidden
             />
@@ -289,7 +289,7 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
         {/* Topbar */}
         <header
           className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b px-4 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-          style={{ borderColor: "hsl(220 13% 91%)" }}
+          style={{ borderColor: 'hsl(220 13% 91%)' }}
         >
           {/* Left: hamburger (mobile) + breadcrumb (desktop) + title */}
           <div className="flex items-center gap-3 min-w-0">

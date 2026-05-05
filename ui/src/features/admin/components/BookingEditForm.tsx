@@ -11,7 +11,7 @@
  */
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { CheckCircle2, FileText, Loader2, Save, Upload, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -164,8 +164,8 @@ export function BookingEditForm({
   const {
     register,
     handleSubmit,
-    watch,
     setValue,
+    control,
     formState: { isDirty },
   } = useForm<FormValues>({
     defaultValues: {
@@ -204,10 +204,11 @@ export function BookingEditForm({
     },
   });
 
-  const watchParking = watch('need_parking');
-  const watchPets = watch('has_pets');
-  const watchCheckInDate = watch('check_in_date');
-  const formSnapshot = watch();
+  /** `useWatch` subscribes reliably; bare `watch()` here did not always re-render on edits. */
+  const formSnapshot = useWatch({ control }) as FormValues;
+  const watchParking = !!formSnapshot?.need_parking;
+  const watchPets = !!formSnapshot?.has_pets;
+  const watchCheckInDate = formSnapshot?.check_in_date ?? '';
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
     hasWorkflowSensitiveGuestFieldDiff(
@@ -276,10 +277,7 @@ export function BookingEditForm({
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <ReadyForCheckinSensitiveFieldsNotice
-        show={guestEditRevertPipeline}
-        hasSensitiveEdits={showSensitiveRevertHint}
-      />
+      <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
 
       {/* ── Guest Identity ─────────────────────────────────────────────────── */}
       <Section title="Guest Identity">
@@ -353,8 +351,8 @@ export function BookingEditForm({
                 watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
               }
               rangeEnd={
-                watch('check_out_date')
-                  ? stringToDate(watch('check_out_date'))
+                formSnapshot.check_out_date
+                  ? stringToDate(formSnapshot.check_out_date)
                   : undefined
               }
               onSelect={(date) => {
@@ -378,8 +376,8 @@ export function BookingEditForm({
           <Field label="Check-out Date (MM-DD-YYYY)" required>
             <DatePicker
               date={
-                watch('check_out_date')
-                  ? stringToDate(watch('check_out_date'))
+                formSnapshot.check_out_date
+                  ? stringToDate(formSnapshot.check_out_date)
                   : undefined
               }
               rangeEnd={
@@ -516,8 +514,8 @@ export function BookingEditForm({
               <Field label="Vaccination Date">
                 <DatePicker
                   date={
-                    watch('pet_vaccination_date')
-                      ? stringToDate(watch('pet_vaccination_date'))
+                    formSnapshot.pet_vaccination_date
+                      ? stringToDate(formSnapshot.pet_vaccination_date)
                       : undefined
                   }
                   onSelect={(date) => {
@@ -611,7 +609,7 @@ function DocumentsSection({
   const docs: DocDef[] = [
     {
       assetType: 'payment_receipt',
-      label: 'Payment Receipt',
+      label: 'Downpayment receipt',
       currentUrl: booking.payment_receipt_url,
       accept: 'image/*,.pdf',
     },

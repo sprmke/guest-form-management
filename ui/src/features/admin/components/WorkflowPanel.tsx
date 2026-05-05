@@ -2,10 +2,12 @@
  * WorkflowPanel — Right-side rail on the booking detail page.
  *
  * Shows:
- * - Current status badge + status_updated_at
- * - Stage-specific sub-form (ReviewPricingForm / ParkingRequestForm / SdRefundForm)
+ * - Progress card: **StatusBadge** in the header row + pipeline stepper (per-step timing)
+ * - Stage-specific sub-form (ReviewPricingForm / ParkingRequestForm / SdRefundForm),
+ *   plus **READY_FOR_CHECKOUT** guest `/sd-form` link + copy + **Recheck** (refetch booking)
  * - Dev-control checkboxes (collapsible, default collapsed; only relevant controls
  *   are shown based on the current booking status)
+ * - Automation triggers (collapsible help + manual run buttons when expanded)
  * - Available transition buttons (from canTransition / canManualForceTransition)
  * - Cancel booking (non-terminal; dev-control flags apply)
  *
@@ -13,7 +15,8 @@
  * Auth: admin-auth.mdc §5 (Dev controls panel)
  */
 
-import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
@@ -26,28 +29,38 @@ import {
   Loader2,
   Mail,
   RefreshCw,
+  RotateCcw,
   Settings2,
+  Timer,
   Square,
   X,
 } from 'lucide-react';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   ReviewPricingForm,
   type ReviewPricingValues,
 } from '@/features/admin/components/ReviewPricingForm';
 import {
   ParkingRequestForm,
+  isParkingRequestDraftComplete,
   type ParkingRequestValues,
 } from '@/features/admin/components/ParkingRequestForm';
 import {
+  InlineCopyIconButton,
   SdRefundForm,
   type SdRefundValues,
 } from '@/features/admin/components/SdRefundForm';
+import {
+  GuestBalanceSettlementForm,
+  type GuestBalanceSettlementValues,
+} from '@/features/admin/components/GuestBalanceSettlementForm';
+import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   applicableTransitions,
   arePendingDocumentsComplete,
   bookingPipeline,
   isSubStatusCompleted,
+  isSubStatusCompletedInStepper,
   isSubStatusRequired,
   nextStep,
   type PendingDocumentSubStatus,
@@ -69,6 +82,7 @@ import {
   type DevControlFlags,
   type TransitionPayload,
 } from '@/features/admin/hooks/useTransitionBooking';
+import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -157,8 +171,9 @@ const DEV_CONTROLS: DevControlDef[] = [
   {
     key: 'sendSdRefundFormEmail',
     label: 'Send SD Refund Form Email',
-    description: 'Email guest the link to submit refund details (/sd-form)',
-    // READY_FOR_CHECKIN → PENDING_SD_REFUND_DETAILS (cron uses the same flag).
+    description:
+      'Email guest the /sd-form link (security deposit refund) when moving to check-out',
+    // READY_FOR_CHECKIN → READY_FOR_CHECKOUT (cron uses the same flag).
     isRelevant: (status) => status === 'READY_FOR_CHECKIN',
   },
 ];
@@ -177,6 +192,7 @@ type Props = {
 };
 
 export function WorkflowPanel({ booking }: Props) {
+  const queryClient = useQueryClient();
   const status = booking.status as BookingStatus;
   const isTerminal = TERMINAL_STATUSES.has(status);
 
@@ -186,6 +202,7 @@ export function WorkflowPanel({ booking }: Props) {
   // effects they want to skip. The server's `flag()` helper also treats
   // undefined as `true`, so this UI default mirrors the server default.
   const [devOpen, setDevOpen] = useState(false);
+  const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
   const [devControls, setDevControls] = useState<DevControlFlags>(() =>
     DEV_CONTROLS.reduce<DevControlFlags>(
       (acc, c) => ({ ...acc, [c.key]: true }),
@@ -204,6 +221,8 @@ export function WorkflowPanel({ booking }: Props) {
   const [sdRefundValues, setSdRefundValues] = useState<SdRefundValues | null>(
     null,
   );
+  const [guestBalanceValues, setGuestBalanceValues] =
+    useState<GuestBalanceSettlementValues | null>(null);
   const [activePendingDocSubStatus, setActivePendingDocSubStatus] =
     useState<PendingDocumentSubStatus>('PENDING_GAF');
 
@@ -223,17 +242,63 @@ export function WorkflowPanel({ booking }: Props) {
     status === 'PENDING_GAF' ||
     status === 'PENDING_PET_REQUEST';
   const showSdCron = status === 'READY_FOR_CHECKIN';
-  const showSdFormResend = status === 'PENDING_SD_REFUND_DETAILS';
+  const showSdFormResend =
+    status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
+  const showReadyForCheckoutSdGuestInfo = status === 'READY_FOR_CHECKOUT';
+  const sdGuestFormUrl = `${window.location.origin}/sd-form?bookingId=${encodeURIComponent(booking.id)}`;
+
+  const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] =
+    useState(false);
+
+  const copySdGuestFormUrl = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(sdGuestFormUrl);
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }, [sdGuestFormUrl]);
+
+  const recheckGuestSdSubmission = useCallback(async () => {
+    const before = booking.status;
+    setRecheckSdGuestSubmitPending(true);
+    try {
+      await queryClient.refetchQueries({
+        queryKey: BOOKING_QUERY_KEY(booking.id),
+      });
+      const data = queryClient.getQueryData<BookingRow | null>(
+        BOOKING_QUERY_KEY(booking.id),
+      );
+      const next = data?.status ?? before;
+      if (next === 'PENDING_SD_REFUND' && before !== 'PENDING_SD_REFUND') {
+        toast.success('Guest submitted the SD refund form.');
+      } else {
+        toast.message(
+          'We’re still waiting for the guest to submit the SD Refund Form.',
+        );
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : 'Could not refresh this booking.',
+      );
+    } finally {
+      setRecheckSdGuestSubmitPending(false);
+    }
+  }, [booking.id, booking.status, queryClient]);
 
   async function handleGmailPoll() {
     try {
       const result = await gmailPollMut.mutateAsync();
       const applied = result.applied ?? 0;
+      const reconciled = result.reconciled ?? 0;
+      const recSuffix =
+        reconciled > 0
+          ? `, ${reconciled} sub-step(s) re-synced from saved approvals`
+          : '';
       const msg = result.initialized
         ? 'Gmail cursor initialized (first run — no backlog processed)'
         : result.historyReset
           ? 'Gmail history expired and was reset — check for missed emails manually'
-          : `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed`;
+          : `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed${recSuffix}`;
       toast.success(msg);
     } catch (err: any) {
       toast.error(err?.message ?? 'Gmail poll failed');
@@ -244,11 +309,34 @@ export function WorkflowPanel({ booking }: Props) {
     try {
       const result = await sdCronMut.mutateAsync();
       const transitioned = result.transitioned ?? 0;
-      toast.success(
-        transitioned > 0
-          ? `SD refund cron: ${transitioned} booking(s) transitioned → Pending SD Refund Details`
-          : `SD refund cron: no bookings due yet (${result.scanned ?? 0} scanned)`,
-      );
+      const suppressed = result.transitionedSdEmailSuppressed ?? 0;
+      const sent = result.transitionedSdEmailSent ?? 0;
+      const checkoutOnly = result.checkoutEmailsSent ?? 0;
+      if (transitioned > 0) {
+        const suffix =
+          suppressed > 0 && sent === 0
+            ? ' (automated guest email skipped — check-out older than configured window)'
+            : suppressed > 0
+              ? ` (${sent} check-out email(s) tied to runs, ${suppressed} stale check-out without guest email)`
+              : '';
+        toast.success(
+          `SD refund cron: ${transitioned} booking(s) → Ready for Check-out${suffix}`,
+        );
+      } else if (checkoutOnly > 0) {
+        toast.success(
+          `SD refund cron: sent check-out email to ${checkoutOnly} stay(s) still on Ready for check-in (awaiting final balance before status moves to Ready for check-out).`,
+        );
+      } else {
+        const scanned = result.scanned ?? 0;
+        const isScoped = Boolean(result.scoped);
+        const idleMsg =
+          isScoped && scanned === 0
+            ? 'SD refund cron: booking not found or not Ready for check-in'
+            : isScoped
+              ? `SD refund cron: nothing updated (${scanned} checked). Either we're still outside the automated window before check-out, or the check-out email was already sent and final balance isn't settled yet.`
+              : `SD refund cron: no matching actions (${scanned} checked)`;
+        toast.success(idleMsg);
+      }
     } catch (err: any) {
       toast.error(err?.message ?? 'SD refund cron failed');
     }
@@ -292,7 +380,8 @@ export function WorkflowPanel({ booking }: Props) {
   const selectedPendingDocCanMarkComplete =
     selectedPendingDocRequired &&
     !selectedPendingDocCompleted &&
-    (!selectedPendingDocIsParking || parkingValues !== null);
+    (!selectedPendingDocIsParking ||
+      isParkingRequestDraftComplete(parkingValues));
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
 
@@ -320,6 +409,7 @@ export function WorkflowPanel({ booking }: Props) {
     }
     if (subForm === 'parking' && parkingValues) {
       return {
+        parking_owner: parkingValues.parking_owner.trim() || null,
         parking_rate_paid: parkingValues.parking_rate_paid,
         parking_endorsement_url: parkingValues.parking_endorsement_url || null,
       };
@@ -336,14 +426,23 @@ export function WorkflowPanel({ booking }: Props) {
         sd_refund_receipt_url: sdRefundValues.sd_refund_receipt_url || null,
       };
     }
+    if (subForm === 'guest_balance' && guestBalanceValues) {
+      return {
+        guest_balance_paid_amount: guestBalanceValues.guest_balance_paid_amount,
+        guest_balance_payment_receipt_url:
+          guestBalanceValues.guest_balance_payment_receipt_url || null,
+      };
+    }
     return {};
   }
 
   function isTransitionDisabled(toStatus: BookingStatus): boolean {
     const subForm = requiredSubForm(status, toStatus);
     if (subForm === 'pricing') return pricingValues === null;
-    if (subForm === 'parking') return parkingValues === null;
+    if (subForm === 'parking')
+      return !isParkingRequestDraftComplete(parkingValues);
     if (subForm === 'sd_refund') return sdRefundValues === null;
+    if (subForm === 'guest_balance') return guestBalanceValues === null;
     return false;
   }
 
@@ -372,7 +471,12 @@ export function WorkflowPanel({ booking }: Props) {
       const payload: TransitionPayload = {
         document_completion_target: subStatus,
       };
-      if (subStatus === 'PENDING_PARKING_REQUEST' && parkingValues) {
+      if (
+        subStatus === 'PENDING_PARKING_REQUEST' &&
+        parkingValues &&
+        isParkingRequestDraftComplete(parkingValues)
+      ) {
+        payload.parking_owner = parkingValues.parking_owner.trim() || null;
         payload.parking_rate_paid = parkingValues.parking_rate_paid;
         payload.parking_endorsement_url =
           parkingValues.parking_endorsement_url || null;
@@ -431,28 +535,21 @@ export function WorkflowPanel({ booking }: Props) {
   const needsSdRefund = transitions.some(
     (t) => requiredSubForm(status, t) === 'sd_refund',
   );
+  const needsGuestBalance = transitions.some(
+    (t) => requiredSubForm(status, t) === 'guest_balance',
+  );
 
   return (
     <aside className="flex overflow-hidden flex-col gap-0 bg-white rounded-xl border shadow-sm border-slate-200">
-      {/* ── Status header ─────────────────────────────────────────────────── */}
-      <div className="border-b border-slate-100 px-4 py-3.5">
-        <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-          Workflow Status
-        </p>
-        <StatusBadge status={status} />
-        {booking.status_updated_at && (
-          <p className="mt-1.5 text-[11px] text-slate-400">
-            Updated {formatRelative(booking.status_updated_at)}
-          </p>
-        )}
-      </div>
-
       {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
       {pipeline.length > 0 && status !== 'CANCELLED' ? (
-        <div className="px-4 py-4 border-b border-slate-100">
-          <p className="mb-3 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-            Progress
-          </p>
+        <div className="border-b border-slate-100 px-4 py-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+              Progress
+            </p>
+            <StatusBadge status={booking.status} />
+          </div>
           <PipelineStepper
             pipeline={pipeline}
             currentStatus={status}
@@ -463,11 +560,72 @@ export function WorkflowPanel({ booking }: Props) {
             transitionPending={transitionMut.isPending}
           />
         </div>
+      ) : status === 'CANCELLED' ? (
+        <div className="border-b border-slate-100 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+              Status
+            </p>
+            <StatusBadge status={booking.status} />
+          </div>
+        </div>
       ) : null}
 
       {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
-      {(needsPricing || needsParking || needsSdRefund) && (
-        <div className="px-4 py-4 border-b border-slate-100">
+      {(needsPricing ||
+        needsParking ||
+        needsSdRefund ||
+        needsGuestBalance ||
+        showReadyForCheckoutSdGuestInfo) && (
+        <div className="px-4 py-4 border-b border-slate-100 space-y-6">
+          {showReadyForCheckoutSdGuestInfo && (
+            <WorkflowSubFormCard title="Guest SD refund form">
+              <p className="text-[11.5px] leading-relaxed text-slate-600">
+                We are just waiting for the guest to fill out the SD Refund
+                form. Once they submit it, this booking will automatically move
+                to{' '}
+                <span className="font-medium text-slate-800">
+                  Pending SD Refund
+                </span>{' '}
+                status.
+              </p>
+              <div>
+                <span className="inline-flex max-w-full flex-wrap items-center gap-x-1 gap-y-1">
+                  <a
+                    href={sdGuestFormUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-blue-700 underline decoration-blue-700/30 underline-offset-2 hover:text-blue-800 sm:text-[13px] sm:font-normal"
+                  >
+                    SD Refund Link
+                  </a>
+                  <InlineCopyIconButton
+                    aria-label="Copy SD refund form link to clipboard"
+                    onClick={() => void copySdGuestFormUrl()}
+                  />
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={recheckSdGuestSubmitPending}
+                onClick={() => void recheckGuestSdSubmission()}
+                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[13px]"
+              >
+                {recheckSdGuestSubmitPending ? (
+                  <Loader2
+                    className="size-3.5 shrink-0 animate-spin text-slate-500"
+                    aria-hidden
+                  />
+                ) : (
+                  <RefreshCw
+                    className="size-3.5 shrink-0 text-slate-500"
+                    aria-hidden
+                  />
+                )}
+                Check for guest submission
+              </button>
+            </WorkflowSubFormCard>
+          )}
           {needsPricing && (
             <ReviewPricingForm
               booking={booking}
@@ -480,6 +638,13 @@ export function WorkflowPanel({ booking }: Props) {
               booking={booking}
               initialDraft={parkingValues}
               onChange={setParkingValues}
+            />
+          )}
+          {needsGuestBalance && (
+            <GuestBalanceSettlementForm
+              booking={booking}
+              initialDraft={guestBalanceValues}
+              onChange={setGuestBalanceValues}
             />
           )}
           {needsSdRefund && (
@@ -557,6 +722,163 @@ export function WorkflowPanel({ booking }: Props) {
         </div>
       )}
 
+      {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
+      {(showGmailPoll || showSdCron || showSdFormResend) && (
+        <div className="border-b border-slate-100">
+          <button
+            type="button"
+            aria-expanded={automationHelpOpen}
+            onClick={() => setAutomationHelpOpen((o) => !o)}
+            className="flex min-h-[44px] w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+          >
+            <span className="flex min-w-0 flex-1 items-center gap-2">
+              <Timer className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                Automation Triggers
+              </span>
+            </span>
+            {automationHelpOpen ? (
+              <ChevronDown
+                className="size-3.5 shrink-0 text-slate-400"
+                aria-hidden
+              />
+            ) : (
+              <ChevronRight
+                className="size-3.5 shrink-0 text-slate-400"
+                aria-hidden
+              />
+            )}
+          </button>
+
+          {automationHelpOpen && (
+            <div className="space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed text-slate-500">
+              {showSdCron ? (
+                <>
+                  <p className="text-slate-500">
+                    Two hours before the check-out time, we will send an email
+                    to the guest regarding the{' '}
+                    <span className="font-medium text-slate-600">
+                      Check-out and Security-deposit refund details
+                    </span>
+                    . That email will still send even we haven&apos;t settle the
+                    guest balance but is required to move the booking to{' '}
+                    <span className="font-medium text-slate-600">
+                      Ready for check-out
+                    </span>{' '}
+                    status .
+                  </p>
+                  <p className="text-slate-500">
+                    <span className="font-medium text-slate-600">
+                      Run SD refund cron
+                    </span>{' '}
+                    runs the checks for{' '}
+                    <span className="font-medium text-slate-600">
+                      this booking only
+                    </span>
+                    . The same checks also run automatically in the background
+                    for{' '}
+                    <span className="font-medium text-slate-600">
+                      other bookings
+                    </span>{' '}
+                    that's still at 'Ready for Check-in' status.
+                  </p>
+                  <p className="text-slate-500">
+                    <span className="font-medium text-slate-600">
+                      Send SD refund form email
+                    </span>{' '}
+                    only sends the email again in case the guest didn't receive
+                    it. This does{' '}
+                    <span className="font-medium text-slate-600">not</span>{' '}
+                    change booking status automatically.
+                  </p>
+                </>
+              ) : showGmailPoll ? (
+                <>
+                  <p className="text-slate-500">
+                    Use this if approval emails from the inbox look stuck. Shown
+                    while this booking is waiting on documents from the
+                    pipeline.
+                  </p>
+                  <ol className="list-decimal space-y-1.5 pl-4 marker:text-slate-400">
+                    <li>
+                      <span className="font-medium text-slate-600">
+                        Run Gmail poll now
+                      </span>{' '}
+                      — checks the inbox for{' '}
+                      <strong className="font-semibold text-slate-600">
+                        every
+                      </strong>{' '}
+                      booking that might be waiting on that kind of reply, not
+                      just this one. Safe to run more than once.
+                    </li>
+                  </ol>
+                </>
+              ) : (
+                <>
+                  <p className="text-slate-500">
+                    <span className="font-medium text-slate-600">
+                      Send SD refund form email
+                    </span>{' '}
+                    mails the check-out and security-deposit link to the guest
+                    again—for example they missed it or you need a manual
+                    resend. It does not move the booking to the next step; it
+                    only sends the message.
+                  </p>
+                </>
+              )}
+
+              <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
+                {showGmailPoll && (
+                  <button
+                    type="button"
+                    disabled={gmailPollMut.isPending}
+                    onClick={handleGmailPoll}
+                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    {gmailPollMut.isPending ? (
+                      <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <Mail className="size-3.5 shrink-0" />
+                    )}
+                    Run Gmail poll now
+                  </button>
+                )}
+                {showSdCron && (
+                  <button
+                    type="button"
+                    disabled={sdCronMut.isPending}
+                    onClick={handleSdCron}
+                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    {sdCronMut.isPending ? (
+                      <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <RefreshCw className="size-3.5 shrink-0" />
+                    )}
+                    Run SD refund cron
+                  </button>
+                )}
+                {showSdFormResend && (
+                  <button
+                    type="button"
+                    disabled={resendSdFormMut.isPending}
+                    onClick={handleResendSdFormEmail}
+                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    {resendSdFormMut.isPending ? (
+                      <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <Mail className="size-3.5 shrink-0" />
+                    )}
+                    Send SD refund form email
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── Transition actions ────────────────────────────────────────────── */}
       {!isTerminal && (
         <div className="px-4 py-4">
@@ -578,50 +900,16 @@ export function WorkflowPanel({ booking }: Props) {
                     className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
                   >
                     <span className="flex gap-2 items-center">
+                      <span>Back to {statusLabel(prev)}</span>
                       {transitionMut.isPending ? (
                         <Loader2 className="size-4 shrink-0 animate-spin" />
                       ) : (
                         <ArrowLeft className="size-4 shrink-0" />
                       )}
-                      <span>Back to {statusLabel(prev)}</span>
                     </span>
                   </button>
                 )}
                 <div className="flex flex-col gap-2">
-                  <button
-                    type="button"
-                    disabled={
-                      !selectedPendingDocCanMarkComplete ||
-                      transitionMut.isPending
-                    }
-                    onClick={() =>
-                      handleMarkPendingDocSubStatusComplete(
-                        activePendingDocSubStatus,
-                      )
-                    }
-                    className={cn(
-                      'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
-                      selectedPendingDocCanMarkComplete &&
-                        !transitionMut.isPending
-                        ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
-                        : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
-                    )}
-                  >
-                    <span>
-                      {!selectedPendingDocRequired
-                        ? `${statusLabel(activePendingDocSubStatus)} is not required`
-                        : selectedPendingDocCompleted
-                          ? `Completed - ${statusLabel(activePendingDocSubStatus)}`
-                          : `Mark as Complete - ${statusLabel(activePendingDocSubStatus)}`}
-                    </span>
-                    {transitionMut.isPending ? (
-                      <Loader2 className="size-4 shrink-0 animate-spin" />
-                    ) : selectedPendingDocCompleted ? (
-                      <Check className="size-4 shrink-0 text-emerald-600" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0" />
-                    )}
-                  </button>
                   {selectedPendingDocCanMarkIncomplete ? (
                     <button
                       type="button"
@@ -631,12 +919,57 @@ export function WorkflowPanel({ booking }: Props) {
                           activePendingDocSubStatus,
                         )
                       }
-                      className="flex min-h-[44px] items-center justify-center rounded-lg px-3.5 py-2.5 text-sm font-medium text-amber-800 ring-1 ring-amber-200 bg-amber-50 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                      className="flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 bg-amber-50 hover:bg-amber-100/90 hover:ring-amber-300/80 transition-colors disabled:opacity-50"
                     >
-                      Mark as Incomplete —{' '}
-                      {statusLabel(activePendingDocSubStatus)}
+                      <span>
+                        Mark as Incomplete -{' '}
+                        {statusLabel(activePendingDocSubStatus)}
+                      </span>
+                      {transitionMut.isPending ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin text-amber-700" />
+                      ) : (
+                        <RotateCcw
+                          className="size-4 shrink-0 text-amber-700"
+                          aria-hidden
+                        />
+                      )}
                     </button>
-                  ) : null}
+                  ) : !selectedPendingDocRequired ? (
+                    <p className="flex min-h-[44px] items-center rounded-lg px-3.5 py-2.5 text-sm text-slate-500 bg-slate-50 ring-1 ring-slate-200">
+                      {statusLabel(activePendingDocSubStatus)} is not required
+                      for this booking.
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={
+                        !selectedPendingDocCanMarkComplete ||
+                        transitionMut.isPending
+                      }
+                      onClick={() =>
+                        handleMarkPendingDocSubStatusComplete(
+                          activePendingDocSubStatus,
+                        )
+                      }
+                      className={cn(
+                        'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                        selectedPendingDocCanMarkComplete &&
+                          !transitionMut.isPending
+                          ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
+                          : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                      )}
+                    >
+                      <span>
+                        Mark as Complete -{' '}
+                        {statusLabel(activePendingDocSubStatus)}
+                      </span>
+                      {transitionMut.isPending ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                      ) : (
+                        <ChevronRight className="size-4 shrink-0" />
+                      )}
+                    </button>
+                  )}
                 </div>
                 <button
                   disabled={
@@ -729,76 +1062,6 @@ export function WorkflowPanel({ booking }: Props) {
               </p>
             )}
           </div>
-        </div>
-      )}
-
-      {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
-      {(showGmailPoll || showSdCron || showSdFormResend) && (
-        <div className="border-t border-slate-100 px-4 py-3.5">
-          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-            Automation Triggers
-          </p>
-          <p className="mb-2.5 text-[10.5px] text-slate-400 leading-relaxed">
-            Use these when the scheduled automation is late or stuck. They run
-            the same logic as the Supabase cron jobs.
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {showGmailPoll && (
-              <button
-                type="button"
-                disabled={gmailPollMut.isPending}
-                onClick={handleGmailPoll}
-                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-              >
-                {gmailPollMut.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <Mail className="size-3.5 shrink-0" />
-                )}
-                Run Gmail poll now
-              </button>
-            )}
-            {showSdCron && (
-              <button
-                type="button"
-                disabled={sdCronMut.isPending}
-                onClick={handleSdCron}
-                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-              >
-                {sdCronMut.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <RefreshCw className="size-3.5 shrink-0" />
-                )}
-                Run SD refund cron now
-              </button>
-            )}
-            {showSdFormResend && (
-              <button
-                type="button"
-                disabled={resendSdFormMut.isPending}
-                onClick={handleResendSdFormEmail}
-                className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-              >
-                {resendSdFormMut.isPending ? (
-                  <Loader2 className="size-3.5 animate-spin shrink-0" />
-                ) : (
-                  <Mail className="size-3.5 shrink-0" />
-                )}
-                Send SD refund form email now
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Terminal state footer */}
-      {isTerminal && (
-        <div className="px-4 py-4 text-center">
-          <p className="text-xs text-slate-400">
-            This booking is in a terminal state — no further transitions are
-            available.
-          </p>
         </div>
       )}
 
@@ -947,8 +1210,8 @@ function PendingDocumentsSubTree({
 }) {
   const allStatuses: PendingDocumentSubStatus[] = [
     'PENDING_GAF',
-    'PENDING_PARKING_REQUEST',
     'PENDING_PET_REQUEST',
+    'PENDING_PARKING_REQUEST',
   ];
 
   const statuses = showAllStatuses
@@ -958,7 +1221,7 @@ function PendingDocumentsSubTree({
   return (
     <div className={cn('space-y-1.5 pl-2', className)}>
       {statuses.map((sub, index) => {
-        const completed = isSubStatusCompleted(sub, booking);
+        const completed = isSubStatusCompletedInStepper(booking, sub);
         const isLast = index === statuses.length - 1;
         const isActive = activeStatus === sub;
         return (
@@ -1045,7 +1308,7 @@ function ConfirmModal({
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-[2px]">
-      <div className="p-5 w-full max-w-sm bg-white rounded-2xl shadow-2xl">
+      <div className="p-5 w-full max-w-md bg-white rounded-2xl shadow-2xl">
         <div className="flex gap-3 items-start">
           {destructive && (
             <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
@@ -1053,8 +1316,8 @@ function ConfirmModal({
             </div>
           )}
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-slate-900">{title}</h3>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">
+            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            <p className="mt-1 text-sm leading-relaxed text-slate-500">
               {description}
             </p>
           </div>

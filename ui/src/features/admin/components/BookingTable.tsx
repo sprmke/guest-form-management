@@ -16,9 +16,17 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
+  /** Shown under the default empty hint when the list has no rows. */
+  emptyExtraHint?: string | null;
 };
 
-export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
+export function BookingTable({
+  rows,
+  isLoading,
+  error,
+  isRefreshing,
+  emptyExtraHint,
+}: Props) {
   const navigate = useNavigate();
 
   if (error) {
@@ -60,6 +68,11 @@ export function BookingTable({ rows, isLoading, error, isRefreshing }: Props) {
           <p className="mt-1 text-[12px] text-slate-400">
             Adjust your filters or clear the search.
           </p>
+          {emptyExtraHint ? (
+            <p className="mt-2 text-[12px] text-slate-500 max-w-sm">
+              {emptyExtraHint}
+            </p>
+          ) : null}
         </div>
       </div>
     );
@@ -182,11 +195,6 @@ function BookingTableRow({
       <td className="pl-4 sm:pl-5 pr-3 py-3 sm:py-3.5 align-middle">
         <div className="inline-flex flex-col gap-1">
           <StatusBadge status={row.status} />
-          {row.is_test_booking && (
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">
-              TEST
-            </span>
-          )}
         </div>
       </td>
 

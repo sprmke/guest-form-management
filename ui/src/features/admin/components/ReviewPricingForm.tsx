@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import { useForm, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 
@@ -99,13 +100,13 @@ export function ReviewPricingForm({
   ]);
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
-        Pricing
-      </p>
-
+    <WorkflowSubFormCard title="Review pricing">
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Booking Rate" error={errors.booking_rate?.message}>
+        <Field
+          label="Booking Rate"
+          required
+          error={errors.booking_rate?.message}
+        >
           <input
             type="number"
             min={0}
@@ -120,7 +121,11 @@ export function ReviewPricingForm({
           />
         </Field>
 
-        <Field label="Down Payment" error={errors.down_payment?.message}>
+        <Field
+          label="Down Payment"
+          required
+          error={errors.down_payment?.message}
+        >
           <input
             type="number"
             min={0}
@@ -137,6 +142,7 @@ export function ReviewPricingForm({
 
         <Field
           label="Security Deposit"
+          required
           error={errors.security_deposit?.message}
         >
           <input
@@ -197,9 +203,6 @@ export function ReviewPricingForm({
           <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-slate-700">
             Total Guest Balance
           </span>
-          <span className="pl-5.5 text-[11px] leading-tight text-slate-500">
-            (paid on or before check-in)
-          </span>
         </span>
         <span
           className={`text-xl font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-slate-900'}`}
@@ -207,7 +210,7 @@ export function ReviewPricingForm({
           {formatMoney(totalGuestBalance)}
         </span>
       </div>
-    </div>
+    </WorkflowSubFormCard>
   );
 }
 
@@ -223,11 +226,14 @@ function inputClass(hasError: boolean) {
 
 function Field({
   label,
+  required,
   helpText,
   error,
   children,
 }: {
   label: string;
+  /** Red asterisk (matches Guest balance settlement / workflow sidebar pattern). */
+  required?: boolean;
   /** Shown below the input, muted (not part of the label). */
   helpText?: string;
   error?: string;
@@ -235,7 +241,15 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-xs text-slate-600">{label}</label>
+      <label className="block text-xs text-slate-600">
+        {label}
+        {required ? (
+          <>
+            {' '}
+            <span className="text-red-600">*</span>
+          </>
+        ) : null}
+      </label>
       {children}
       {helpText && (
         <p className="text-[10.5px] leading-snug text-slate-500">{helpText}</p>

@@ -2,7 +2,8 @@
  * ParkingRequestForm — Sub-form shown in WorkflowPanel when transitioning
  * from PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | READY_FOR_CHECKIN.
  *
- * Captures: parking_rate_paid (Paid Parking Rate) and parking_endorsement_url.
+ * Captures: parking_owner (owner/agent name), parking_rate_paid (Paid Parking Rate),
+ * and parking_endorsement_url.
  * Parking endorsement is uploaded directly from this form.
  *
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q4.4, Q4.5
@@ -16,16 +17,37 @@ import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
 import { cn } from '@/lib/utils';
 
-const schema = z.object({
-  parking_rate_paid: z.coerce.number().min(0, 'Enter a rate ≥ 0'),
+export const parkingRequestFormSchema = z.object({
+  parking_owner: z.string().trim().min(1, 'Enter parking owner or agent name'),
+  /** Empty number inputs must not coerce to `0` (that wrongly passed `min(0)`). */
+  parking_rate_paid: z.preprocess(
+    (v) => {
+      if (v === '' || v === null || v === undefined) return undefined;
+      if (typeof v === 'string' && v.trim() === '') return undefined;
+      const n = typeof v === 'number' ? v : Number(String(v).trim());
+      return Number.isFinite(n) ? n : Number.NaN;
+    },
+    z
+      .number({ required_error: 'Enter paid parking rate' })
+      .min(0, 'Enter a rate ≥ 0'),
+  ),
   parking_endorsement_url: z
     .string()
     .url('Please upload a parking endorsement image'),
 });
 
-export type ParkingRequestValues = z.infer<typeof schema>;
+export type ParkingRequestValues = z.infer<typeof parkingRequestFormSchema>;
+
+/** Use for CTAs (e.g. Mark as Complete) so they stay in sync with form validation. */
+export function isParkingRequestDraftComplete(
+  values: ParkingRequestValues | null,
+): boolean {
+  if (values == null) return false;
+  return parkingRequestFormSchema.safeParse(values).success;
+}
 
 type Props = {
   booking: BookingRow;
@@ -53,8 +75,11 @@ export function ParkingRequestForm({
     getValues,
     setValue,
   } = useForm<ParkingRequestValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(parkingRequestFormSchema),
     defaultValues: {
+      parking_owner:
+        initialDraft?.parking_owner?.trim() ??
+        String(booking.parking_owner ?? '').trim(),
       parking_rate_paid:
         initialDraft?.parking_rate_paid ??
         ((booking.parking_rate_paid as number) || undefined),
@@ -104,18 +129,30 @@ export function ParkingRequestForm({
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
-        Parking Details
-      </p>
-
+    <WorkflowSubFormCard title="Parking request">
       <div className="px-3 py-2 text-xs text-amber-800 bg-amber-50 rounded-md ring-1 ring-amber-200">
-        Parking fee is <strong>non-refundable</strong> and bookings with parking
-        cannot be rescheduled after this step.
+        Parking fee is <strong>non-refundable</strong> and cannot be rescheduled
+        after this step.
       </div>
 
       <Field
+        label="Parking Owner"
+        required
+        description="Parking owner facebook name"
+        error={errors.parking_owner?.message}
+      >
+        <input
+          type="text"
+          autoComplete="off"
+          placeholder="Juan Dela Cruz"
+          className={inputClass(!!errors.parking_owner)}
+          {...register('parking_owner')}
+        />
+      </Field>
+
+      <Field
         label="Paid Parking Rate"
+        required
         description="Exact parking amount paid to parking owner"
         error={errors.parking_rate_paid?.message}
       >
@@ -123,7 +160,7 @@ export function ParkingRequestForm({
           type="number"
           min={0}
           step={0.01}
-          placeholder="300"
+          placeholder="400"
           className={inputClass(!!errors.parking_rate_paid)}
           {...register('parking_rate_paid')}
         />
@@ -131,6 +168,7 @@ export function ParkingRequestForm({
 
       <Field
         label="Parking Endorsement"
+        required
         error={errors.parking_endorsement_url?.message}
       >
         <input type="hidden" {...register('parking_endorsement_url')} />
@@ -203,13 +241,13 @@ export function ParkingRequestForm({
           </button>
         </div>
       </Field>
-    </div>
+    </WorkflowSubFormCard>
   );
 }
 
 function inputClass(hasError: boolean) {
   return [
-    'w-full rounded-md border px-3 py-1.5 text-sm',
+    'h-10 w-full rounded-md border px-3 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
     hasError ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white',
   ].join(' ');
@@ -217,18 +255,28 @@ function inputClass(hasError: boolean) {
 
 function Field({
   label,
+  required,
   description,
   error,
   children,
 }: {
   label: string;
+  required?: boolean;
   description?: string;
   error?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-xs text-slate-600">{label}</label>
+      <label className="block text-xs text-slate-600">
+        {label}
+        {required ? (
+          <>
+            {' '}
+            <span className="text-red-600">*</span>
+          </>
+        ) : null}
+      </label>
       {description && (
         <p className="text-[10px] text-slate-500 -mt-0.5">{description}</p>
       )}

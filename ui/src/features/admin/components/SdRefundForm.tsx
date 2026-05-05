@@ -26,6 +26,7 @@ import type {
   SdSettlementLineItem,
 } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
 import { cn } from '@/lib/utils';
 
 function parseNumberArray(raw: unknown): number[] {
@@ -131,9 +132,39 @@ function phoneDigitsOnly(raw: string | null | undefined): string {
 function methodLabel(
   method: NonNullable<BookingRow['sd_refund_method']>,
 ): string {
-  if (method === 'same_phone') return 'GCash (same number as phone on file)';
+  if (method === 'same_phone')
+    return 'GCash (same as provided phone number from GAF)';
   if (method === 'cash') return 'Cash pickup';
   return 'Bank / e-wallet transfer';
+}
+
+/** 18×18px icon-only copy control, inline after value text. */
+export function InlineCopyIconButton({
+  'aria-label': ariaLabel,
+  disabled,
+  onClick,
+}: {
+  'aria-label': string;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'relative top-px inline-flex shrink-0 items-center justify-center rounded border p-0 align-middle transition-colors ml-1',
+        disabled
+          ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
+          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100',
+      )}
+      style={{ width: 18, height: 18, padding: 0 }}
+      aria-label={ariaLabel}
+    >
+      <Copy className="size-2.5 shrink-0" aria-hidden />
+    </button>
+  );
 }
 
 function RefundSummaryRow({
@@ -146,18 +177,19 @@ function RefundSummaryRow({
   mono?: boolean;
 }) {
   return (
-    <div className="py-3 border-b border-slate-100 first:pt-0 last:border-b-0">
-      <p className="text-[11px] font-medium leading-tight text-slate-500">
+    <div className="grid gap-1.5 py-3.5 sm:grid-cols-[minmax(0,5.75rem)_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:gap-y-0 sm:py-3.5">
+      <dt className="text-left text-xs font-semibold leading-snug text-slate-500 sm:pt-[2px] sm:text-[11px]">
         {label}
-      </p>
-      <div
+      </dt>
+      <dd
         className={cn(
-          'mt-1.5 text-sm leading-relaxed text-slate-900 break-words',
-          mono && 'font-mono text-[13px] tracking-tight text-slate-800',
+          'min-w-0 text-sm font-medium leading-relaxed text-slate-900 break-words sm:text-[13px] sm:leading-relaxed sm:font-normal',
+          mono &&
+            'font-mono text-[13px] tracking-tight text-slate-800 sm:font-mono',
         )}
       >
         {children}
-      </div>
+      </dd>
     </div>
   );
 }
@@ -220,22 +252,55 @@ export function SdRefundForm({
 
   const phoneDisplay = booking.guest_phone_number?.trim() ?? '';
   const phoneDigits = phoneDigitsOnly(booking.guest_phone_number);
+  const otherBankGcashDigits = phoneDigitsOnly(
+    booking.sd_refund_account_number,
+  );
+  /** GCash app send link: on-file phone (same_phone) or guest-submitted GCash number (other_bank + GCash). */
+  const gcashDestinationDigits =
+    guestMethod === 'same_phone'
+      ? phoneDigits
+      : guestMethod === 'other_bank' && booking.sd_refund_bank === 'GCash'
+        ? otherBankGcashDigits
+        : '';
   const refundAmountForGcash =
     netSD > 0 && Number.isFinite(netSD)
       ? (Math.round(netSD * 100) / 100).toFixed(2)
       : '';
   const gcashSendHref =
-    guestMethod === 'same_phone' &&
-    phoneDigits.length >= 10 &&
-    refundAmountForGcash
-      ? `gcash://send?mobile=${phoneDigits}&amount=${refundAmountForGcash}`
+    gcashDestinationDigits.length >= 10 && refundAmountForGcash
+      ? `gcash://send?mobile=${gcashDestinationDigits}&amount=${refundAmountForGcash}`
       : null;
+
+  const accountNameForCopy = booking.sd_refund_account_name?.trim() ?? '';
+  const accountNumberForCopy =
+    phoneDigitsOnly(booking.sd_refund_account_number) ||
+    (booking.sd_refund_account_number ?? '').trim();
 
   async function copyGuestPhone() {
     if (!phoneDisplay) return;
     try {
       await navigator.clipboard.writeText(phoneDisplay);
       toast.success('Phone number copied');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }
+
+  async function copyAccountName() {
+    if (!accountNameForCopy) return;
+    try {
+      await navigator.clipboard.writeText(accountNameForCopy);
+      toast.success('Account name copied');
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }
+
+  async function copyAccountNumber() {
+    if (!accountNumberForCopy) return;
+    try {
+      await navigator.clipboard.writeText(accountNumberForCopy);
+      toast.success('Account number copied');
     } catch {
       toast.error('Could not copy to clipboard');
     }
@@ -305,47 +370,39 @@ export function SdRefundForm({
   }
 
   return (
-    <div className="space-y-4">
+    <WorkflowSubFormCard
+      title="Security deposit settlement"
+      bodyClassName="space-y-4"
+    >
       {guestMethod && (
-        <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white px-4 py-3.5 shadow-sm sm:px-5">
-          <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-            Guest refund method
-          </p>
-          <div className="mt-2 min-w-0">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
+          <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3.5 sm:px-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              Guest refund details
+            </h3>
+          </div>
+          <dl className="min-w-0 divide-y divide-slate-100 px-4 sm:px-5">
             <RefundSummaryRow label="Method">
               {methodLabel(guestMethod)}
             </RefundSummaryRow>
             {guestMethod === 'same_phone' && (
-              <div className="py-3 border-b border-slate-100 first:pt-0 last:border-b-0">
-                <p className="text-[11px] font-medium leading-tight text-slate-500">
-                  Phone on file
-                </p>
-                <div className="mt-1.5 flex min-h-[44px] flex-wrap items-center gap-2 sm:min-h-0">
+              <RefundSummaryRow label="Phone Number">
+                <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
                   <span
                     className={cn(
-                      'min-w-0 break-words font-mono text-[13px] leading-relaxed tracking-tight text-slate-800',
+                      'min-w-0 break-words font-mono text-[13px] leading-snug tracking-tight text-slate-800 sm:leading-normal',
                       !phoneDisplay && 'text-slate-400',
                     )}
                   >
                     {phoneDisplay || '—'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => void copyGuestPhone()}
-                    disabled={!phoneDisplay}
-                    className={cn(
-                      'flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium ring-1 transition-colors sm:min-h-0',
-                      phoneDisplay
-                        ? 'bg-blue-50 text-blue-700 ring-blue-200 hover:bg-blue-100'
-                        : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
-                    )}
+                  <InlineCopyIconButton
                     aria-label="Copy phone number to clipboard"
-                  >
-                    <Copy className="size-4 shrink-0" aria-hidden />
-                    Copy
-                  </button>
-                </div>
-              </div>
+                    disabled={!phoneDisplay}
+                    onClick={() => void copyGuestPhone()}
+                  />
+                </span>
+              </RefundSummaryRow>
             )}
             {guestMethod === 'other_bank' && (
               <>
@@ -353,34 +410,51 @@ export function SdRefundForm({
                   {booking.sd_refund_bank ?? '—'}
                 </RefundSummaryRow>
                 <RefundSummaryRow label="Account name">
-                  {booking.sd_refund_account_name ?? '—'}
+                  <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                    <span
+                      className={cn(
+                        'min-w-0 break-words text-sm leading-snug text-slate-900 sm:text-[13px] sm:font-normal sm:leading-normal',
+                        !accountNameForCopy && 'text-slate-400',
+                      )}
+                    >
+                      {accountNameForCopy || '—'}
+                    </span>
+                    <InlineCopyIconButton
+                      aria-label="Copy account name to clipboard"
+                      disabled={!accountNameForCopy}
+                      onClick={() => void copyAccountName()}
+                    />
+                  </span>
                 </RefundSummaryRow>
                 <RefundSummaryRow label="Account number" mono>
-                  {booking.sd_refund_account_number ?? '—'}
+                  <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                    <span
+                      className={cn(
+                        'min-w-0 break-all font-mono text-[13px] leading-snug tracking-tight text-slate-800 sm:font-mono sm:leading-normal',
+                        !accountNumberForCopy && 'text-slate-400',
+                      )}
+                    >
+                      {booking.sd_refund_account_number?.trim() || '—'}
+                    </span>
+                    <InlineCopyIconButton
+                      aria-label="Copy account number to clipboard"
+                      disabled={!accountNumberForCopy}
+                      onClick={() => void copyAccountNumber()}
+                    />
+                  </span>
                 </RefundSummaryRow>
               </>
             )}
-            {guestMethod === 'cash' && booking.sd_refund_cash_pickup_note && (
-              <RefundSummaryRow label="Guest note (cash pickup)">
-                <span className="whitespace-pre-wrap">
-                  {booking.sd_refund_cash_pickup_note}
-                </span>
-              </RefundSummaryRow>
-            )}
             {booking.sd_refund_guest_feedback && (
               <RefundSummaryRow label="Guest feedback">
-                <span className="whitespace-pre-wrap text-slate-700">
+                <span className="whitespace-pre-wrap font-normal text-slate-700">
                   {booking.sd_refund_guest_feedback}
                 </span>
               </RefundSummaryRow>
             )}
-          </div>
+          </dl>
         </div>
       )}
-
-      <p className="text-xs font-semibold tracking-wider uppercase text-slate-500">
-        Security Deposit Settlement
-      </p>
 
       <div className="flex justify-between items-center text-sm">
         <span className="text-slate-600">Security Deposit (base)</span>
@@ -517,7 +591,7 @@ export function SdRefundForm({
           </button>
         </div>
       </div>
-    </div>
+    </WorkflowSubFormCard>
   );
 }
 
