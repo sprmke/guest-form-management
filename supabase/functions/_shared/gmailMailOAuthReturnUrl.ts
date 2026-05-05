@@ -24,11 +24,11 @@ export function isReturnOriginAllowed(origin: string): boolean {
 
 /** Safe path segment for post-OAuth redirect (same-origin navigation). */
 export function sanitizeReturnPath(input: string | undefined): string {
-  const p = (input ?? '/bookings').trim() || '/bookings';
+  const p = (input ?? '/settings').trim() || '/settings';
   if (!p.startsWith('/') || p.startsWith('//') || p.includes('\\') || p.includes('\0')) {
-    return '/bookings';
+    return '/settings';
   }
-  if (p.length > 512) return '/bookings';
+  if (p.length > 512) return '/settings';
   return p;
 }
 

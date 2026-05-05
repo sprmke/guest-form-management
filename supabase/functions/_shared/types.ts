@@ -130,7 +130,6 @@ export interface GuestSubmission {
   // ── Workflow status (Phase 2) ─────────────────────────────────────────────
   status?: BookingStatus | string;         // TEXT + CHECK — canonical enum after Phase 2 migration
   status_updated_at?: string | null;       // Timestamp of last transition (orchestrator-only write)
-  is_test_booking?: boolean | null;        // Phase 0 additive flag
 
   // ── Pricing fields (Phase 0 additive, entered at PENDING_REVIEW) ──────────
   booking_rate?: number | null;            // NUMERIC(12,2)
@@ -195,12 +194,16 @@ const validateGuestName = (name: string | undefined): string | undefined => {
 };
 
 // Transform function to convert form data to database schema
-export const transformFormToSubmission = (formData: GuestFormData, paymentReceiptUrl: string, validIdUrl: string, petVaccinationUrl?: string, petImageUrl?: string, isTestingMode = false): GuestSubmission => {
-  const testPrefix = isTestingMode ? '[TEST] ' : '';
-  
+export const transformFormToSubmission = (
+  formData: GuestFormData,
+  paymentReceiptUrl: string,
+  validIdUrl: string,
+  petVaccinationUrl?: string,
+  petImageUrl?: string,
+): GuestSubmission => {
   return {
     guest_facebook_name: formData.guestFacebookName,
-    primary_guest_name: `${testPrefix}${formData.primaryGuestName}`,
+    primary_guest_name: formData.primaryGuestName,
     guest_email: formData.guestEmail,
     guest_phone_number: formData.guestPhoneNumber,
     guest_address: formData.guestAddress,

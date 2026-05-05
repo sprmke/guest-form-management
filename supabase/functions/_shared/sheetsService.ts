@@ -3,7 +3,7 @@ import { GuestFormData } from './types.ts';
 import { isDevelopment } from './utils.ts';
 
 export class SheetsService {
-  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, isTestingMode = false) {
+  static async appendToSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string) {
     try {
       console.log('Processing Google Sheet operation...');
       
@@ -18,7 +18,7 @@ export class SheetsService {
       
       if (existingRow) {
         // For updates, preserve the original created_at timestamp
-        const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, isTestingMode, existingRow.createdAt);
+        const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, existingRow.createdAt);
         // Update existing row
         await this.updateRow(credentials, existingRow.rowIndex, values);
         console.log('Updated existing row in Google Sheet');
@@ -26,7 +26,7 @@ export class SheetsService {
       }
 
       // If row not found, append new row
-      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId, isTestingMode);
+      const values = this.formatDataForSheet(formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, bookingId);
 
       const response = await fetch(
         `https://sheets.googleapis.com/v4/spreadsheets/${credentials.spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
@@ -122,14 +122,13 @@ export class SheetsService {
     return await response.json();
   }
 
-  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, isTestingMode = false, createdAt?: string): string[] {
+  private static formatDataForSheet(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId: string, createdAt?: string): string[] {
     const currentTimestamp = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    const testPrefix = isTestingMode ? '[TEST] ' : '';
-    
+
     return [
       bookingId,                          // A: Booking ID
-      `${testPrefix}${formData.guestFacebookName}`,         // B: Facebook/Airbnb Name
-      `${testPrefix}${formData.primaryGuestName}`,          // C: Primary Guest Name
+      formData.guestFacebookName,         // B: Facebook/Airbnb Name
+      formData.primaryGuestName,          // C: Primary Guest Name
       formData.guestEmail,                // D: Email
       formData.guestPhoneNumber,          // E: Phone Number
       formData.guestAddress,              // F: Address
@@ -324,15 +323,13 @@ export class SheetsService {
     } = {},
   ): string[] {
     const now = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    const isTest = booking.is_test_booking === true;
-    const testPrefix = isTest ? '[TEST] ' : '';
     const needParking = booking.need_parking === true || booking.need_parking === 'true';
     const hasPets = booking.has_pets === true || booking.has_pets === 'true';
 
     return [
       booking.id ?? '',                                           // A: Booking ID
-      `${testPrefix}${booking.guest_facebook_name ?? ''}`,        // B: Facebook/Airbnb Name
-      `${testPrefix}${booking.primary_guest_name ?? ''}`,         // C: Primary Guest Name
+      booking.guest_facebook_name ?? '',        // B: Facebook/Airbnb Name
+      booking.primary_guest_name ?? '',         // C: Primary Guest Name
       booking.guest_email ?? '',                                   // D: Email
       booking.guest_phone_number ?? '',                            // E: Phone Number
       booking.guest_address ?? '',                                 // F: Address

@@ -101,6 +101,27 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(chunks.join(''));
 }
 
+/** `content_id` for Resend inline image; `<img src="cid:…">` must match without the prefix. */
+const READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID = 'kame-home-gcash-qr';
+
+async function loadBundledReadyForCheckinPaymentQr(): Promise<Uint8Array | null> {
+  try {
+    const url = new URL('./email-assets/kame-home-gcash-qr-payment.jpg', import.meta.url);
+    return await Deno.readFile(url);
+  } catch (err) {
+    console.warn('[emailService] Bundled payment QR asset missing or unreadable:', err);
+    return null;
+  }
+}
+
+type ResendAttachment = {
+  filename: string;
+  content: string;
+  encoding: string;
+  content_id?: string;
+  content_type?: string;
+};
+
 /**
  * Checks if a booking is urgent (same-day check-in)
  * @param checkInDate - Check-in date in MM-DD-YYYY or YYYY-MM-DD format
@@ -147,7 +168,7 @@ function urgentEmailSubjectPrefix(isUrgent: boolean): string {
   return isUrgent ? '🚨 URGENT - ' : '';
 }
 
-export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false, isUpdate = false) {
+export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isUpdate = false) {
   console.log(`Sending ${isUpdate ? 'update' : 'confirmation'} email...`);
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -176,8 +197,6 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
   }
 
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
   const displayCheckInDate = formatDateForEmail(formData.checkInDate);
   const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
   const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
@@ -194,7 +213,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     gafTpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       updateSuffix: isUpdate ? ' (Updated)' : '',
       urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
@@ -218,7 +237,7 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
       to: [EMAIL_TO],
       // Never CC the guest on the GAF request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -241,12 +260,11 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 }
 
 export async function sendPetEmail(
-  formData: GuestFormData, 
+  formData: GuestFormData,
   pdfBuffer: Uint8Array | null,
   petImageUrl?: string,
   petVaccinationUrl?: string,
-  isTestingMode = false,
-  isUpdate = false
+  isUpdate = false,
 ) {
   console.log(`Sending pet ${isUpdate ? 'update' : 'request'} email...`);
   console.log('Pet Image URL:', petImageUrl);
@@ -271,8 +289,6 @@ export async function sendPetEmail(
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-azure') : '';
   const displayCheckInDate = formatDateForEmail(formData.checkInDate);
   const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
   const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
@@ -296,7 +312,7 @@ export async function sendPetEmail(
     petTpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       updateSuffix: isUpdate ? ' (Updated)' : '',
       urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
@@ -358,7 +374,7 @@ export async function sendPetEmail(
       to: [EMAIL_TO],
       // Never CC the guest on the Pet request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       attachments: attachments
     })
@@ -397,16 +413,10 @@ function pesoFormat(amount: number | null | undefined): string {
  * Booking acknowledgement — sent to the **guest** when moving PENDING_REVIEW → PENDING_GAF.
  * Confirms we received the form and are processing their GAF.
  */
-export async function sendBookingAcknowledgement(
-  booking: GuestSubmission,
-  isTestingMode = false,
-) {
+export async function sendBookingAcknowledgement(booking: GuestSubmission) {
   console.log('Sending booking acknowledgement email to guest...');
 
   const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
-
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
@@ -423,7 +433,7 @@ export async function sendBookingAcknowledgement(
     ackTpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       urgentBlock,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
@@ -442,7 +452,7 @@ export async function sendBookingAcknowledgement(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${urgentPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -463,16 +473,10 @@ export async function sendBookingAcknowledgement(
  *   • Approved Pet PDF (if has_pets and available)
  *   • Parking endorsement (if need_parking and available)
  */
-export async function sendReadyForCheckin(
-  booking: GuestSubmission,
-  isTestingMode = false,
-) {
+export async function sendReadyForCheckin(booking: GuestSubmission) {
   console.log('Sending ready-for-check-in email to guest...');
 
   const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
-
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
@@ -524,57 +528,58 @@ export async function sendReadyForCheckin(
   `
       : '';
 
-  const gafReminderHtml = `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--gaf" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
-      <tr>
-        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Guest Advise Form (GAF)</span>
-          Your GAF has been approved. No need to print it! Simply present it at the guard house upon arrival and to the lobby receptionist during registration.
-        </td>
-      </tr>
-    </table>
-  `;
+  const docReminderCardStyle =
+    'padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;';
 
-  const parkingReminderHtml = booking.need_parking ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--parking" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
-      <tr>
-        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Parking</span>
-          Your parking slot is confirmed. The guest parking fee is <strong class="callout-strong" style="color:#1e293b;font-weight:700;">non-refundable</strong>, and once confirmed your parking dates <strong class="callout-strong" style="color:#1e293b;font-weight:700;">cannot be rescheduled</strong>.
-        </td>
-      </tr>
-    </table>
-  ` : '';
+  const documentReminderBodies: string[] = [
+    '<strong style="color:#1e293b;font-weight:700;">Guest Advise Form (GAF)</strong> — Your GAF has been approved. No need to print it! Simply present it at the guard house upon arrival and to the lobby receptionist during registration.',
+  ];
+  if (booking.need_parking) {
+    documentReminderBodies.push(
+      '<strong style="color:#1e293b;font-weight:700;">Parking</strong> — Your parking slot is confirmed. The guest parking fee is <strong style="color:#1e293b;font-weight:700;">non-refundable</strong>, and once confirmed your parking dates <strong style="color:#1e293b;font-weight:700;">cannot be rescheduled</strong>.',
+    );
+  }
+  if (booking.has_pets) {
+    documentReminderBodies.push(
+      '<strong style="color:#1e293b;font-weight:700;">Pet</strong> — Your pet has been approved for this stay.',
+    );
+  }
+  const documentReminderLis = documentReminderBodies
+    .map((body, idx) => {
+      const isLast = idx === documentReminderBodies.length - 1;
+      const margin = isLast ? 'margin:0' : 'margin:0 0 12px 0';
+      return `<li class="doc-reminders-card__li" style="${margin};padding:0;color:#334155;">${body}</li>`;
+    })
+    .join('');
 
-  const petReminderHtml = booking.has_pets ? `
-    <table role="presentation" class="callout-outer callout-doc callout-doc--pet" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0 0 14px 0;">
-      <tr>
-        <td style="padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
-          <span class="callout-title" style="display:block;margin-bottom:8px;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:#5f954c;font-weight:700;">Pet</span>
-          Your pet has been approved for this stay. 
-        </td>
-      </tr>
-    </table>
-  ` : '';
+  const documentRemindersSection = `
+<table role="presentation" class="doc-reminders-card" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0;">
+  <tr>
+    <td class="doc-reminders-card__cell" style="${docReminderCardStyle}">
+      <ul class="doc-reminders-card__list" style="margin:0;padding:0 0 0 20px;list-style-type:disc;">
+        ${documentReminderLis}
+      </ul>
+    </td>
+  </tr>
+</table>`;
 
-  const documentRemindersSection =
-    gafReminderHtml + parkingReminderHtml + petReminderHtml;
-
-  const houseRulesTpl = await loadEmailTemplate('ready-for-checkin-house-rules');
-  const houseRulesSection = replacePlaceholders(houseRulesTpl, {
-    pax: String(pax),
-    checkInTime: displayCheckInTime,
-    checkOutTime: displayCheckOutTime,
-    securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
-  });
+  // TEMP: Skip `ready-for-checkin-house-rules` (Important reminders table) to keep
+  // final HTML under Gmail's ~102KB clip threshold. Re-enable by restoring the
+  // loadEmailTemplate + replacePlaceholders block and `{{houseRulesSection}}` in
+  // `ready-for-checkin.html`.
+  const houseRulesSection = '';
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
+  const qrBytes = await loadBundledReadyForCheckinPaymentQr();
+  const paymentQrImageUrl = qrBytes && qrBytes.length > 0
+    ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
+    : escapeHtml(guestAppAssetUrl('/images/kame-home-gcash-qr-payment.jpg'));
   const rfiTpl = await loadEmailTemplate('ready-for-checkin');
   const html = replacePlaceholders(
     rfiTpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
@@ -592,12 +597,23 @@ export async function sendReadyForCheckin(
       parkingPaymentRow,
       petPaymentRow,
       additionalFeeRow,
-      houseRulesSection,
+      paymentQrImageUrl,
     }),
   );
 
   // ── Build attachments ─────────────────────────────────────────────────────────
-  const attachments: Array<{ filename: string; content: string; encoding: string }> = [];
+  const attachments: ResendAttachment[] = [];
+
+  if (qrBytes && qrBytes.length > 0) {
+    attachments.push({
+      filename: 'kame-home-gcash-qr-payment.jpg',
+      content: toBase64(qrBytes),
+      encoding: 'base64',
+      content_type: 'image/jpeg',
+      content_id: READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID,
+    });
+    console.log('[readyForCheckin] Inline payment QR (CID attachment, bundled asset)');
+  }
 
   // Approved GAF PDF — always attach if available
   if (booking.approved_gaf_pdf_url) {
@@ -650,7 +666,7 @@ export async function sendReadyForCheckin(
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${urgentPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
@@ -669,10 +685,7 @@ export async function sendReadyForCheckin(
  * Parking broadcast — BCC to all addresses in PARKING_OWNER_EMAILS env var.
  * Sent when transitioning PENDING_REVIEW → PENDING_GAF and `need_parking` is true.
  */
-export async function sendParkingBroadcast(
-  booking: GuestSubmission,
-  isTestingMode = false,
-) {
+export async function sendParkingBroadcast(booking: GuestSubmission) {
   console.log('Sending parking broadcast email...');
 
   const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
@@ -687,9 +700,6 @@ export async function sendParkingBroadcast(
     console.warn('PARKING_OWNER_EMAILS is not set — skipping parking broadcast');
     return null;
   }
-
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-parking') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
@@ -706,7 +716,7 @@ export async function sendParkingBroadcast(
     parkTpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       urgentBlock,
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
@@ -731,7 +741,7 @@ export async function sendParkingBroadcast(
       to: [bccEmails[0]],
       bcc: bccEmails.slice(1),
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `${urgentPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -750,20 +760,22 @@ function guestAppOrigin(): string {
   return raw || 'https://kamehomes.space';
 }
 
+/** Absolute URL for a static file under the guest SPA (`ui/public/...`). */
+function guestAppAssetUrl(path: string): string {
+  const base = guestAppOrigin().replace(/\/+$/, '');
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${p}`;
+}
+
 /**
- * After checkout + grace — email guest a link to submit security-deposit refund preferences (/sd-form).
- * Sent on READY_FOR_CHECKIN → READY_FOR_CHECKOUT (cron or admin with dev control on).
+ * Check-out & SD Refund Details — email guest a link to `/sd-form` (security deposit refund stepper).
+ * Sent from `sd-refund-cron` when the pre-checkout **lead** window opens (independent of balance settlement),
+ * on `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` transitions when enabled, and via admin re-send.
  */
-export async function sendSdRefundFormRequest(
-  booking: GuestSubmission,
-  isTestingMode = false,
-) {
+export async function sendSdRefundFormRequest(booking: GuestSubmission) {
   console.log('Sending SD refund form request email to guest...');
 
   const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
-
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? await loadEmailTemplate('fragments/test-warning-guest') : '';
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
   const unitLabel = String(booking.tower_and_unit_number ?? '').trim() ||
@@ -787,7 +799,7 @@ export async function sendSdRefundFormRequest(
     tpl,
     withEmailShellStyleVars({
       emailHeaderLogo,
-      testWarning,
+      testWarning: '',
       urgentBlock,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
@@ -809,7 +821,7 @@ export async function sendSdRefundFormRequest(
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
       subject:
-        `${testPrefix}${urgentPrefix}${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+        `${urgentPrefix}${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });

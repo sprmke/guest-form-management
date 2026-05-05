@@ -120,19 +120,6 @@ function flag(flags: DevControlFlags, key: keyof DevControlFlags): boolean {
   return val === undefined ? true : val;
 }
 
-/** True when running in a Supabase cloud deployment (not local dev). */
-function isProduction(): boolean {
-  return !!Deno.env.get('DENO_DEPLOYMENT_ID');
-}
-
-/**
- * Whether to suppress external blasts (email/calendar/sheet) for test bookings.
- * Per Q3.4: test bookings in production NEVER send outbound email or write external services.
- */
-function shouldSuppressExternals(isTestBooking: boolean): boolean {
-  return isTestBooking && isProduction();
-}
-
 function computeBalance(bookingRate?: number | null, downPayment?: number | null): number | null {
   if (bookingRate == null || downPayment == null) return null;
   return bookingRate - downPayment;
@@ -172,8 +159,6 @@ export class WorkflowOrchestrator {
     }
 
     const fromStatus = booking.status as BookingStatus;
-    const isTestBooking = booking.is_test_booking === true;
-    const suppress = shouldSuppressExternals(isTestBooking);
 
     // 2. Validate transition
     if (!canTransition(fromStatus, toStatus, { manual })) {
@@ -380,7 +365,7 @@ export class WorkflowOrchestrator {
 
     // 6. Google Calendar update
     let calendarOk = true;
-    if (flag(devControls, 'updateGoogleCalendar') && !suppress) {
+    if (flag(devControls, 'updateGoogleCalendar')) {
       try {
         const result = await CalendarService.updateCalendarEventStatus(
           bookingId,
@@ -388,7 +373,6 @@ export class WorkflowOrchestrator {
           pax,
           nights,
           guestName,
-          isTestBooking,
           updatedBooking,
         );
         calendarOk = result.success;
@@ -397,12 +381,12 @@ export class WorkflowOrchestrator {
         calendarOk = false;
       }
     } else {
-      console.log(`[orchestrator] Calendar update skipped (flag=${flag(devControls, 'updateGoogleCalendar')}, suppress=${suppress})`);
+      console.log(`[orchestrator] Calendar update skipped (flag=${flag(devControls, 'updateGoogleCalendar')})`);
     }
 
     // 7. Google Sheets update
     let sheetOk = true;
-    if (flag(devControls, 'updateGoogleSheets') && !suppress) {
+    if (flag(devControls, 'updateGoogleSheets')) {
       try {
         const result = await SheetsService.updateSheetWorkflowStatus(
           bookingId,
@@ -434,10 +418,10 @@ export class WorkflowOrchestrator {
     }
 
     // 7b. Filled GAF / pet request PDFs (for Azure emails + optional Storage) — same transition as §3 PENDING_REVIEW → docs
-    if (isReviewToInitialDocs && flag(devControls, 'generatePdf') && !suppress) {
+    if (isReviewToInitialDocs && flag(devControls, 'generatePdf')) {
       const fd = buildGuestFormData(updatedBooking);
       try {
-        gafPdfBuffer = await generatePDF(fd, isTestBooking);
+        gafPdfBuffer = await generatePDF(fd);
       } catch (err) {
         console.error('[orchestrator] GAF PDF generation failed:', err);
       }
@@ -478,86 +462,86 @@ export class WorkflowOrchestrator {
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
 
-    if (!suppress) {
-      // PENDING_REVIEW → PENDING_GAF or PENDING_DOCUMENTS (same bundle):
-      // - GAF request to Azure
-      // - Booking acknowledgement to guest
-      // - Pet request to Azure (if pets)
-      // - Parking broadcast (if parking)
-      if (isReviewToInitialDocs) {
-        const formData = buildGuestFormData(updatedBooking);
+    // PENDING_REVIEW → PENDING_GAF or PENDING_DOCUMENTS (same bundle):
+    // - GAF request to Azure
+    // - Booking acknowledgement to guest
+    // - Pet request to Azure (if pets)
+    // - Parking broadcast (if parking)
+    if (isReviewToInitialDocs) {
+      const formData = buildGuestFormData(updatedBooking);
 
-        if (flag(devControls, 'sendGafRequestEmail')) {
-          try {
-            await sendEmail(formData, gafPdfBuffer, isTestBooking, false);
-            emailsSent.push('gaf_request');
-          } catch (err) {
-            console.error('[orchestrator] GAF request email failed:', err);
-          }
-        }
-
-        if (flag(devControls, 'sendBookingAcknowledgementEmail')) {
-          try {
-            await sendBookingAcknowledgement(updatedBooking, isTestBooking);
-            emailsSent.push('booking_acknowledgement');
-          } catch (err) {
-            console.error('[orchestrator] Booking acknowledgement email failed:', err);
-          }
-        }
-
-        if (updatedBooking.has_pets && flag(devControls, 'sendPetRequestEmail')) {
-          try {
-            await sendPetEmail(
-              formData,
-              petPdfBuffer,
-              updatedBooking.pet_image_url,
-              updatedBooking.pet_vaccination_url,
-              isTestBooking,
-              false,
-            );
-            emailsSent.push('pet_request');
-          } catch (err) {
-            console.error('[orchestrator] Pet request email failed:', err);
-          }
-        }
-
-        if (updatedBooking.need_parking && flag(devControls, 'sendParkingBroadcastEmail')) {
-          try {
-            await sendParkingBroadcast(updatedBooking, isTestBooking);
-            emailsSent.push('parking_broadcast');
-          } catch (err) {
-            console.error('[orchestrator] Parking broadcast email failed:', err);
-          }
-        }
-      }
-
-      // forward → READY_FOR_CHECKIN: send ready-for-check-in to guest.
-      // Gated on `fromStatus` so a backward "oops, step back" transition
-      // (e.g. PENDING_SD_REFUND → READY_FOR_CHECKIN) never re-fires the
-      // ready-for-checkin email even if the dev control is checked.
-      const isForwardToReady =
-        fromStatus === 'PENDING_DOCUMENTS' ||
-        fromStatus === 'PENDING_GAF' ||
-        fromStatus === 'PENDING_PARKING_REQUEST' ||
-        fromStatus === 'PENDING_PET_REQUEST';
-      if (toStatus === 'READY_FOR_CHECKIN' && isForwardToReady && flag(devControls, 'sendReadyForCheckinEmail')) {
+      if (flag(devControls, 'sendGafRequestEmail')) {
         try {
-          await sendReadyForCheckin(updatedBooking, isTestBooking);
-          emailsSent.push('ready_for_checkin');
+          await sendEmail(formData, gafPdfBuffer, false);
+          emailsSent.push('gaf_request');
         } catch (err) {
-          console.error('[orchestrator] Ready-for-check-in email failed:', err);
+          console.error('[orchestrator] GAF request email failed:', err);
         }
       }
 
-      // READY_FOR_CHECKIN → READY_FOR_CHECKOUT: SD refund form link (cron).
-      // Gated on fromStatus so READY_FOR_CHECKOUT → READY_FOR_CHECKIN never re-sends.
-      if (
-        fromStatus === 'READY_FOR_CHECKIN' &&
-        toStatus === 'READY_FOR_CHECKOUT' &&
-        flag(devControls, 'sendSdRefundFormEmail')
-      ) {
+      if (flag(devControls, 'sendBookingAcknowledgementEmail')) {
         try {
-          await sendSdRefundFormRequest(updatedBooking, isTestBooking);
+          await sendBookingAcknowledgement(updatedBooking);
+          emailsSent.push('booking_acknowledgement');
+        } catch (err) {
+          console.error('[orchestrator] Booking acknowledgement email failed:', err);
+        }
+      }
+
+      if (updatedBooking.has_pets && flag(devControls, 'sendPetRequestEmail')) {
+        try {
+          await sendPetEmail(
+            formData,
+            petPdfBuffer,
+            updatedBooking.pet_image_url,
+            updatedBooking.pet_vaccination_url,
+            false,
+          );
+          emailsSent.push('pet_request');
+        } catch (err) {
+          console.error('[orchestrator] Pet request email failed:', err);
+        }
+      }
+
+      if (updatedBooking.need_parking && flag(devControls, 'sendParkingBroadcastEmail')) {
+        try {
+          await sendParkingBroadcast(updatedBooking);
+          emailsSent.push('parking_broadcast');
+        } catch (err) {
+          console.error('[orchestrator] Parking broadcast email failed:', err);
+        }
+      }
+    }
+
+    // forward → READY_FOR_CHECKIN: send ready-for-check-in to guest.
+    const isForwardToReady =
+      fromStatus === 'PENDING_DOCUMENTS' ||
+      fromStatus === 'PENDING_GAF' ||
+      fromStatus === 'PENDING_PARKING_REQUEST' ||
+      fromStatus === 'PENDING_PET_REQUEST';
+    if (toStatus === 'READY_FOR_CHECKIN' && isForwardToReady && flag(devControls, 'sendReadyForCheckinEmail')) {
+      try {
+        await sendReadyForCheckin(updatedBooking);
+        emailsSent.push('ready_for_checkin');
+      } catch (err) {
+        console.error('[orchestrator] Ready-for-check-in email failed:', err);
+      }
+    }
+
+    if (
+      fromStatus === 'READY_FOR_CHECKIN' &&
+      toStatus === 'READY_FOR_CHECKOUT' &&
+      flag(devControls, 'sendSdRefundFormEmail')
+    ) {
+      const emailedRaw = (updatedBooking as { sd_refund_form_emailed_at?: string | null })
+        .sd_refund_form_emailed_at;
+      const alreadyEmailed =
+        typeof emailedRaw === 'string' && emailedRaw.trim() !== '';
+      if (alreadyEmailed) {
+        console.log('[orchestrator] SD refund form email skipped (already sent for this stay)');
+      } else {
+        try {
+          await sendSdRefundFormRequest(updatedBooking);
           emailsSent.push('sd_refund_form_request');
           if (flag(devControls, 'saveToDatabase')) {
             await DatabaseService.setWorkflowFields(bookingId, {
@@ -568,8 +552,6 @@ export class WorkflowOrchestrator {
           console.error('[orchestrator] SD refund form request email failed:', err);
         }
       }
-    } else {
-      console.log('[orchestrator] All email sends suppressed (test booking in production)');
     }
 
     console.log(`[orchestrator] Transition complete: ${fromStatus} → ${toStatus}`, {

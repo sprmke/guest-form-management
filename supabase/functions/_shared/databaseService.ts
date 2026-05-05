@@ -131,7 +131,6 @@ export class DatabaseService {
     formData: FormData,
     saveToDatabase = true,
     saveImagesToStorage = true,
-    isTestingMode = false,
     revertReadyForCheckinToPendingReview = false,
   ): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
@@ -198,14 +197,11 @@ export class DatabaseService {
       const petImage = formData.get('petImage') as File;
       const hasPets = formData.get('hasPets') === 'true';
       
-      // Add TEST prefix to filenames if in testing mode (without brackets to avoid invalid storage keys)
-      const testPrefix = isTestingMode ? 'TEST_' : '';
-      
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
           const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
-          const prefixedFileName = `${testPrefix}${petVaccinationFileName}`;
+          const prefixedFileName = petVaccinationFileName;
           if (saveImagesToStorage) {
             petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, prefixedFileName);
           } else {
@@ -223,7 +219,7 @@ export class DatabaseService {
         // Handle pet image upload
         if (petImage) {
           const petImageFileName = formData.get('petImageFileName') as string;
-          const prefixedFileName = `${testPrefix}${petImageFileName}`;
+          const prefixedFileName = petImageFileName;
           if (saveImagesToStorage) {
             petImageUrl = await UploadService.uploadPetImage(petImage, prefixedFileName);
           } else {
@@ -243,7 +239,7 @@ export class DatabaseService {
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
-        const prefixedFileName = `${testPrefix}${paymentReceiptFileName}`;
+        const prefixedFileName = paymentReceiptFileName;
         if (saveImagesToStorage) {
           paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, prefixedFileName);
         } else {
@@ -262,7 +258,7 @@ export class DatabaseService {
       const validId = formData.get('validId') as File;
       if (validId) {
         const validIdFileName = formData.get('validIdFileName') as string;
-        const prefixedFileName = `${testPrefix}${validIdFileName}`;
+        const prefixedFileName = validIdFileName;
         if (saveImagesToStorage) {
           validIdUrl = await UploadService.uploadValidId(validId, prefixedFileName);
         } else {
@@ -302,12 +298,11 @@ export class DatabaseService {
       }
       
       const dbData = transformFormToSubmission(
-        data, 
+        data,
         paymentReceiptUrl,
         validIdUrl,
         petVaccinationUrl,
         petImageUrl,
-        isTestingMode
       );
 
       // Save or update in database using the booking ID
@@ -456,7 +451,6 @@ export class DatabaseService {
     to?: string | null;     // YYYY-MM-DD
     hasPets?: boolean | null;
     needParking?: boolean | null;
-    includeTests?: boolean;
     sort?: 'check_in_date:asc' | 'check_in_date:desc' | 'created_at:asc' | 'created_at:desc';
     page?: number;
     limit?: number;
@@ -470,7 +464,6 @@ export class DatabaseService {
       to = null,
       hasPets = null,
       needParking = null,
-      includeTests = false,
       sort = 'check_in_date:asc',
       page = 1,
       limit = 25,
@@ -534,10 +527,6 @@ export class DatabaseService {
 
     if (needParking === true) request = request.eq('need_parking', true);
     if (needParking === false) request = request.eq('need_parking', false);
-
-    if (!includeTests) {
-      request = request.or('is_test_booking.is.null,is_test_booking.eq.false');
-    }
 
     // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
     // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).

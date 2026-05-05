@@ -281,25 +281,16 @@ export function buildPendingDocumentsCalendarSummaryPrefix(
 /**
  * Builds the Google Calendar event `summary` for a given booking.
  *
- * Format (non-test): `{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
- * Format (test):     `[TEST] {STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
+ * Format: `{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
  *
  * When `status === PENDING_DOCUMENTS'` and `booking` is passed, the first segment is
  * built from outstanding document sub-steps (see `buildPendingDocumentsCalendarSummaryPrefix`).
- *
- * @param status     Current booking status.
- * @param pax        Total number of guests (adults + children).
- * @param nights     Number of nights.
- * @param guestName  Guest's Facebook/display name.
- * @param isTest     Whether to prefix with [TEST].
- * @param booking    Optional row — required for dynamic PENDING_DOCUMENTS calendar titles.
  */
 export function buildCalendarSummary(
   status: BookingStatus,
   pax: number,
   nights: number,
   guestName: string,
-  isTest = false,
   booking?: PendingDocumentsCalendarBooking | null,
 ): string {
   const label =
@@ -307,8 +298,7 @@ export function buildCalendarSummary(
       ? buildPendingDocumentsCalendarSummaryPrefix(booking)
       : STATUS_CALENDAR_META[status].label;
   const nightsText = `${nights}${nights === 1 ? 'night' : 'nights'}`;
-  const core = `${label} - ${pax}pax ${nightsText} - ${guestName}`;
-  return isTest ? `[TEST] ${core}` : core;
+  return `${label} - ${pax}pax ${nightsText} - ${guestName}`;
 }
 
 /**

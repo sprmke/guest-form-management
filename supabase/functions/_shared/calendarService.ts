@@ -4,12 +4,12 @@ import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './sta
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
-  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string, isTestingMode = false) {
+  static async createOrUpdateCalendarEvent(formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, bookingId?: string) {
     try {
       console.log('Creating or updating calendar event...');
       
       const credentials = await this.getCredentials();
-      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, isTestingMode);
+      const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl);
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
@@ -102,7 +102,6 @@ export class CalendarService {
    * @param pax        Total guests (adults + children).
    * @param nights     Number of nights.
    * @param guestName  Guest Facebook/display name.
-   * @param isTest     Whether this is a test booking (prepends [TEST]).
    * @param booking    Full DB row — used to create a new event when none exists.
    */
   static async updateCalendarEventStatus(
@@ -111,7 +110,6 @@ export class CalendarService {
     pax: number,
     nights: number,
     guestName: string,
-    isTest = false,
     booking?: any,
   ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean }> {
     try {
@@ -131,7 +129,7 @@ export class CalendarService {
       );
 
       const meta = STATUS_CALENDAR_META[status];
-      const summary = buildCalendarSummary(status, pax, nights, guestName, isTest, booking);
+      const summary = buildCalendarSummary(status, pax, nights, guestName, booking);
 
       if (!existingEventId) {
         if (!booking) {
@@ -141,7 +139,7 @@ export class CalendarService {
 
         // Create a brand-new event from the DB row
         console.log(`No calendar event found — creating new event for booking ${bookingId}`);
-        const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary, isTest);
+        const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
 
         const createRes = await fetch(
           `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
@@ -203,11 +201,8 @@ export class CalendarService {
     pax: number,
     nights: number,
     summary: string,
-    isTest: boolean,
   ) {
     const adminLink = `https://kamehomes.space/bookings/${booking.id}`;
-    const isTestingMode = isTest;
-    const testPrefix = isTestingMode ? '[TEST] ' : '';
 
     const needParking = booking.need_parking === true || booking.need_parking === 'true';
     const hasPets = booking.has_pets === true || booking.has_pets === 'true';
@@ -217,7 +212,7 @@ export class CalendarService {
 
 <strong>Guest Information</strong>
 Facebook/Airbnb Name: ${booking.guest_facebook_name ?? ''}
-Primary Guest: ${testPrefix}${booking.primary_guest_name ?? ''}
+Primary Guest: ${booking.primary_guest_name ?? ''}
 Email: ${booking.guest_email ?? ''}
 Phone Number: ${booking.guest_phone_number ?? ''}
 Address: ${booking.guest_address ?? ''}
@@ -306,16 +301,16 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
   /**
    * Creates the event data object for Google Calendar
    */
-  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string, isTestingMode = false) {
+  private static createEventData(bookingId: string, formData: GuestFormData, validIdUrl: string, paymentReceiptUrl: string, petVaccinationUrl: string, petImageUrl: string) {
     const pax = +formData.numberOfAdults + +(formData.numberOfChildren || 0);
     const nights = formData.numberOfNights || 1;
 
     // Use the PENDING_REVIEW status for initial event creation (Q: the submit-form
     // side effects will move to the orchestrator in Phase 5; for now keep using
     // PENDING_REVIEW color on initial creation).
-    const summary = buildCalendarSummary('PENDING_REVIEW', pax, nights, formData.guestFacebookName, isTestingMode);
+    const summary = buildCalendarSummary('PENDING_REVIEW', pax, nights, formData.guestFacebookName);
 
-    // Admin link — no ?dev=true / ?testing=true per Q7.3 (admin session handles auth)
+    // Admin link
     const adminLink = `https://kamehomes.space/bookings/${bookingId}`;
     
     const eventDescription = `

@@ -61,7 +61,7 @@ export async function exchangeRefreshForAccessToken(
     const body = await resp.text();
     if (body.includes('invalid_grant')) {
       const err = new Error(
-        'Gmail OAuth failed: invalid_grant. Refresh token is expired or revoked — reconnect Gmail in /bookings.',
+        'Gmail OAuth failed: invalid_grant. Refresh token is expired or revoked — reconnect Gmail in Admin → Settings.',
       );
       (err as Error & { needsReAuth?: boolean }).needsReAuth = true;
       throw err;
@@ -206,7 +206,7 @@ export async function getGmailAccessTokenUnified(): Promise<{ accessToken: strin
   }
 
   throw new Error(
-    'Gmail is not connected: set up web OAuth (GMAIL_API_WEB_CLIENT_JSON + connect from /bookings) ' +
+    'Gmail is not connected: set up web OAuth (GMAIL_API_WEB_CLIENT_JSON + connect from Admin → Settings) ' +
       'or legacy GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON — see supabase/.env.example',
   );
 }
