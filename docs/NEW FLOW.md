@@ -52,7 +52,7 @@
 
   - **PENDING SD REFUND** — Guest has checked out; security deposit refund pending.
     - Google Calendar: **orange** `PENDING SD REFUND - 2pax 2nights - Guest Name`
-    - Cron: automatically update the status to 'PENDING SD REFUND' in the database, calendar, and sheet on the checkout date and 15 minutes after checkout time.
+    - Cron: email check-out / SD refund details in a configurable window before check-out (Asia/Manila); move status toward **Ready for check-out** in the database, calendar, and sheet when final balance is settled (not on email timing alone).
     - Display new multiple fields: **additional expenses (+)** and **additional profits (+)** as **lists of amounts** (stored as Postgres `NUMERIC[]`), **SD refund receipt** upload (`sd_refund_receipt_url`), and settle **SD refund amount** + payments.
     - After clicking (Proceed to 'BOOKING COMPLETED'), update the booking status to database, calendar, and Google Sheet with parking fields
 
@@ -73,10 +73,10 @@ With this, let's create new routes and dashboard to manage all of this instead o
 - let's also create 'bookings/<bookingId>'
   - render the guest form with developers control (same behavior with ?dev=true)
 
-Let's cleanup all frontend query parameters:
+Guest form cleanup (shipped):
 
-- Dev mode should be enabled automatically when we login as admin user. Let's remove ?dev=true query parameter.
-- Let's create a separate Test Submit button for Test mode so that we don't need to rely on query parameter for testing
+- **Admin** routes: dev/workflow controls apply when signed in as allow-listed admin (`RequireAdmin`).
+- **Public `/form`:** optional `?dev=true` only when you need save/storage/calendar/sheet toggles on a production build; non-production builds show the same toggles without it. **No** `?testing=true`, **no** test-booking column — use **local/staging Supabase** for integration testing.
 
 Let's create a new migration scripts to:
 

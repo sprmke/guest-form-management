@@ -19,7 +19,7 @@ There are **two** Edge Functions meant to run on a **recurring schedule** (every
 | Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**). |
-| **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose **check-out + grace** (default **15 min**, Asia/Manila) is in the past and **settlement** is complete → **`READY_FOR_CHECKOUT`** via orchestrator. **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id (Workflow panel button). **Email:** guest SD form email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; set **`0`** to disable suppression); calendar/sheet still update.                                                                        |
+| **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose Manila check-out is within the **lead** window (**`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, default **120** min before check-out): sends the guest **Check-out & SD Refund** email if not already sent (**independent** of balance settlement). **Status** → **`READY_FOR_CHECKOUT`** only when **settlement** is complete (orchestrator). **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id. **Stale check-outs:** automated guest email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; **`0`** = never suppress); transition + calendar + sheet still run when settlement is met.                                                                        |
 
 Neither job reimplements workflow rules in isolation: both defer to **`WorkflowOrchestrator`** so calendar, sheet, and email behavior stay consistent with `transition-booking` and the status machine.
 
@@ -116,21 +116,21 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 
 | Variable                               | Default | Purpose                                                                                                                                                       |
 | -------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SD_REFUND_CRON_GRACE_MINUTES`         | `15`    | Minutes **after** parsed check-out (Manila) before the booking becomes eligible for `READY_FOR_CHECKIN → READY_FOR_CHECKOUT`.                                 |
-| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | `21`    | If **now − check-out** exceeds this many days, the cron still transitions but **does not** send the guest SD form email. Set **`0`** to never suppress email. |
+| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | `120`   | Minutes **before** parsed check-out (Manila) when the cron may send the guest check-out email (not gated on settlement).                                 |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | `21`    | If **now − check-out** exceeds this many days, the cron **does not** send the automated guest check-out email; settlement-based transition still runs. Set **`0`** to never suppress by age. |
 
 ### 5.3 `gmail-listener` only
 
 | Variable                             | Purpose                                                                                                                                                                                |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GMAIL_API_WEB_CLIENT_JSON`          | _(Web OAuth path)_ OAuth **Web application** client JSON. With `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` and a row in `gmail_mail_integration`, the listener uses the DB refresh token first. |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | 32-byte key (64 hex or base64) matching the value used when storing tokens via **Connect Gmail** on `/bookings`.                                                                       |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | 32-byte key (64 hex or base64) matching the value used when storing tokens via **Connect Gmail** on **`/settings`**.                                                                       |
 | `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | _(Web OAuth path)_ Comma-separated SPA origins for `google-mail-oauth-start` (defaults include local Vite).                                                                            |
 | `GMAIL_OAUTH_CLIENT_JSON`            | _(Legacy)_ OAuth client JSON (`installed` or `web`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`.                                                  |
 | `GMAIL_OAUTH_TOKEN_JSON`             | _(Legacy)_ Token JSON including **`refresh_token`**. Same script flow. Used when no DB-stored refresh exists for `GMAIL_API_WEB_CLIENT_JSON`.                                          |
 | `PERMIT_APPROVER_EMAIL`              | Comma-separated sender allow-list for permit approvers. `gmail-listener` skips approvals when message `From` is not in this list.                                                      |
 
-If tokens are missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3. Prefer **Reconnect Gmail** on `/bookings` when using the web OAuth path.
+If tokens are missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3. Prefer **Reconnect Gmail** on **`/settings`** when using the web OAuth path.
 
 ---
 
@@ -160,14 +160,14 @@ http://127.0.0.1:54321/functions/v1
 
 - Local stack up (`./dev.sh` or `supabase start` + `functions serve` with `supabase/.env.local`).
 - A row in **`guest_submissions`** you can edit (SQL Editor in Studio, or seed data).
-- Optional: set `SD_REFUND_CRON_GRACE_MINUTES=0` in `supabase/.env.local` during testing to avoid waiting 15 minutes (restart `functions serve` after changing env).
+- Optional: set `SD_REFUND_CRON_EMAIL_LEAD_MINUTES` high (e.g. `10080` = one week) in `supabase/.env.local` so a future test check-out falls inside the window immediately, or set check-out a few hours ahead with the default **120** (restart `functions serve` after changing env).
 
 ### 7.2 Prepare a booking that should transition
 
 1. Set **`status`** = **`READY_FOR_CHECKIN`**.
 2. Set **`check_out_date`** in **`MM-DD-YYYY`** form (this is what the cron parser expects first—see `parseCheckoutManila` in `sd-refund-cron/index.ts`).
-3. Set **`check_out_time`** to something clearly in the **past** today in Manila, e.g. `12:00 AM` or `6:00 AM`, **or** set checkout **date** to **yesterday** with any valid time.
-4. Ensure **`check_out_time`** is not empty; if empty, the code falls back to **`11:00 AM`** which can make “past checkout” harder to hit on the same calendar day.
+3. Set **`check_out_time`** so that **now (Manila) ≥ check-out − lead** (default lead **120 min**). Example: check-out **90 minutes from now** → email path runs on next cron even **without** settlement; keep settlement incomplete to verify email-only, then add receipt + paid amount to verify transition.
+4. Ensure **`check_out_time`** is not empty; if empty, the code falls back to **`11:00 AM`**.
 
 ### 7.3 Invoke the function
 
@@ -204,7 +204,7 @@ curl -sS -X POST \
 ### 7.4 Assert results
 
 - **HTTP 200** and JSON roughly:  
-  `{ "success": true, "scoped": false|true, "scanned": N, "transitioned": 1, "skipped": ..., "transitionedSdEmailSent": ..., "transitionedSdEmailSuppressed": ..., "results": [ ... ] }`
+  `{ "success": true, "scoped": false|true, "scanned": N, "transitioned": 0|1, "skipped": ..., "checkoutEmailsSent": ..., "transitionedSdEmailSent": ..., "transitionedSdEmailSuppressed": ..., "results": [ ... ] }`
 - DB: that booking’s **`status`** is now **`READY_FOR_CHECKOUT`** (not `PENDING_SD_REFUND`; guest SD form comes next).
 - If Google env vars are configured: **Calendar** event color/summary and **Sheet** row updated per workflow matrix (orchestrator).
 - Re-run the same cron: booking should appear **only** in `scanned` if still `READY_FOR_CHECKIN` for others; the already-moved row is no longer a candidate—**idempotent** for the same booking.
@@ -213,7 +213,8 @@ curl -sS -X POST \
 
 | Scenario                                                     | Expected                                                                                |
 | ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Checkout + grace **still in the future**                     | `skipped` with reason like `not_yet_due_Xmin` in `results`.                             |
+| Lead window **not open yet** (check-out still more than **lead** minutes away) | `skipped` with reason like `not_yet_due_Xmin` in `results`.                             |
+| Settlement incomplete (email may have sent already)       | `skipped` with `missing_guest_balance_*` / `guest_balance_not_fully_paid` **or** result `action: 'checkout_email_sent'` if only the email ran.                             |
 | **`READY_FOR_CHECKIN`** but **unparseable** `check_out_date` | `skipped`, `unparseable_checkout_datetime`.                                             |
 | **No** rows in `READY_FOR_CHECKIN`                           | `scanned: 0`, `transitioned: 0`.                                                        |
 | Orchestrator throws (e.g. misconfigured Google)              | That booking `action: 'failed'` in `results`, run still **200** with partial successes. |
@@ -310,7 +311,7 @@ If token exchange fails (`invalid_grant`):
 ## 9. Hosted (production / staging) testing checklist
 
 1. **Deploy** Edge Functions (`gmail-listener`, `sd-refund-cron`) to the project.
-2. **Set secrets** in Supabase Dashboard (same names as local `.env.local` for Gmail, grace minutes, Google, etc.).
+2. **Set secrets** in Supabase Dashboard (same names as local `.env.local` for Gmail, SD cron lead minutes, Google, etc.).
 3. **Create pg_cron jobs** via SQL (Vault + `net.http_post`) for each function on `*/5 * * * *` or your preferred cadence.
 4. Confirm **first** `gmail-listener` run in a new environment: expect **`initialized: true`**; plan a **test mail** after.
 5. Use **Dashboard → Edge Functions → Logs** (or Log Explorer) to watch `[gmail-listener]` / `[sd-refund-cron]` log lines.
