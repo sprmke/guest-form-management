@@ -7,7 +7,8 @@
  *
  * Supported assetTypes:
  *   Workflow:  parking_endorsement | approved_gaf | approved_pet | sd_refund_receipt
- *   Guest docs: valid_id | payment_receipt | pet_vaccination | pet_image
+ *              | guest_balance_payment_receipt
+ *   Guest docs: valid_id | payment_receipt (downpayment) | pet_vaccination | pet_image
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -25,7 +26,8 @@ export type WorkflowAssetType =
   | 'parking_endorsement'
   | 'approved_gaf'
   | 'approved_pet'
-  | 'sd_refund_receipt';
+  | 'sd_refund_receipt'
+  | 'guest_balance_payment_receipt';
 
 export type AssetType = GuestDocAssetType | WorkflowAssetType;
 

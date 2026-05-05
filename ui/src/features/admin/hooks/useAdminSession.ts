@@ -7,6 +7,8 @@ export type AdminSessionState = {
   status: 'loading' | 'signed-out' | 'not-admin' | 'admin';
   session: Session | null;
   email: string | null;
+  /** Full name from Google OAuth (user_metadata.full_name), or null if absent. */
+  name: string | null;
   /** True while we're resolving the initial session from storage. */
   isLoading: boolean;
   /** Signs the current user out (e.g. when the signed-in account fails the client allow-list check). */
@@ -53,6 +55,9 @@ export function useAdminSession(): AdminSessionState {
   }, []);
 
   const email = session?.user?.email?.toLowerCase() ?? null;
+  const name =
+    (session?.user?.user_metadata?.full_name as string | undefined)?.trim() ||
+    null;
   const status: AdminSessionState['status'] = useMemo(() => {
     if (isLoading) return 'loading';
     if (!session) return 'signed-out';
@@ -64,6 +69,7 @@ export function useAdminSession(): AdminSessionState {
     status,
     session,
     email,
+    name,
     isLoading,
     signOut: async () => {
       await supabase.auth.signOut();

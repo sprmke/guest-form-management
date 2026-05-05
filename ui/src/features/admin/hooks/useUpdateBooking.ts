@@ -4,15 +4,43 @@
  * Used by BookingEditForm. All writes go through the authenticated admin session.
  * When `revertToPendingReview` is true and `currentStatus` is in the documents pipeline
  * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
- * `bookingStatus.ts`), this also resets status → PENDING_REVIEW. The caller should set
- * `revertToPendingReview` only when workflow-sensitive guest fields changed.
+ * `bookingStatus.ts`), this also resets status → PENDING_REVIEW and merges
+ * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, PDF URLs,
+ * parking settlement, guest balance settlement — **not** pricing snapshot fields).
+ * The caller should set `revertToPendingReview` only when workflow-sensitive guest fields changed.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  toGuestSubmissionDate,
+  toGuestSubmissionTime,
+} from '@/utils/dates';
 import { BOOKING_QUERY_KEY } from './useBooking';
 import type { BookingRow } from '../lib/types';
-import { shouldRevertGuestFieldEditsToPendingReview } from '../lib/bookingStatus';
+import {
+  pendingDocumentsClearPatchForGuestEditRevert,
+  shouldRevertGuestFieldEditsToPendingReview,
+} from '../lib/bookingStatus';
+
+function patchGuestSubmissionForDb(
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...patch };
+  if (typeof out.check_in_date === 'string' && out.check_in_date) {
+    out.check_in_date = toGuestSubmissionDate(out.check_in_date);
+  }
+  if (typeof out.check_out_date === 'string' && out.check_out_date) {
+    out.check_out_date = toGuestSubmissionDate(out.check_out_date);
+  }
+  if (typeof out.check_in_time === 'string' && out.check_in_time) {
+    out.check_in_time = toGuestSubmissionTime(out.check_in_time);
+  }
+  if (typeof out.check_out_time === 'string' && out.check_out_time) {
+    out.check_out_time = toGuestSubmissionTime(out.check_out_time);
+  }
+  return out;
+}
 
 export type UpdateBookingPayload = {
   // Guest identity
@@ -77,15 +105,18 @@ export function useUpdateBooking() {
       payload,
       revertToPendingReview,
     }: MutationArgs) => {
-      const patch: Record<string, unknown> = {
+      let patch: Record<string, unknown> = {
         ...payload,
         updated_at: new Date().toISOString(),
       };
+
+      patch = patchGuestSubmissionForDb(patch);
 
       if (
         revertToPendingReview &&
         shouldRevertGuestFieldEditsToPendingReview(currentStatus)
       ) {
+        Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
         patch.status = 'PENDING_REVIEW';
         patch.status_updated_at = new Date().toISOString();
       }

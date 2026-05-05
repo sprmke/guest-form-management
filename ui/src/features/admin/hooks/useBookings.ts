@@ -24,6 +24,25 @@ type BookingsResult = {
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
+/** Manila calendar date YYYY-MM-DD (matches server listBookings). */
+function manilaTodayIso(): string {
+  return new Date(
+    new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+
+function checkInToIso(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+    const [m, d, y] = dateStr.split('-');
+    return `${y}-${m}-${d}`;
+  }
+  return dateStr;
+}
+
 const GENERIC_BOOKINGS_ERROR =
   'We could not load bookings. Please try again in a moment.';
 
@@ -39,12 +58,13 @@ async function fetchBookingsFromEdgeFunction(query: BookingsQuery): Promise<Book
   if (query.to) params.set('to', query.to);
   if (query.hasPets !== null) params.set('has_pets', String(query.hasPets));
   if (query.needParking !== null) params.set('need_parking', String(query.needParking));
-  if (query.includeTests) params.set('include_tests', 'true');
   params.set('sort', query.sort);
   params.set('page', String(query.page));
   params.set('limit', String(query.limit));
-  // Default hide stale COMPLETED per Q5.1
-  params.set('hide_stale_completed', 'true');
+  params.set(
+    'hide_stale_completed',
+    query.hideStaleCompleted ? 'true' : 'false',
+  );
 
   const res = await fetch(`${FUNCTIONS_URL}/list-bookings?${params.toString()}`, {
     headers: {
@@ -127,8 +147,12 @@ export function useBookings(query: BookingsQuery) {
         }
 
         let rows = (data ?? []) as BookingRow[];
-        if (!query.includeTests) {
-          rows = rows.filter((r) => r.is_test_booking !== true);
+        if (query.hideStaleCompleted) {
+          const today = manilaTodayIso();
+          rows = rows.filter((r) => {
+            if (r.status !== 'COMPLETED') return true;
+            return checkInToIso(r.check_in_date) >= today;
+          });
         }
 
         return { rows, total: count ?? 0 };

@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import type { BookingStatus } from '@/features/admin/lib/bookingStatus';
+import type { SdBank } from '@/features/sd-form/lib/sdFormSchema';
 import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
 import { BOOKINGS_QUERY_KEY } from '@/features/admin/hooks/useBookings';
 
@@ -13,6 +14,7 @@ export type TransitionPayload = {
   guest_additional_fee?: number | null;
   parking_rate_paid?: number | null;
   parking_owner_email?: string | null;
+  parking_owner?: string | null;
   parking_endorsement_url?: string | null;
   sd_additional_expense_items?: Array<{ label: string; amount: number }> | null;
   sd_additional_profit_items?: Array<{ label: string; amount: number }> | null;
@@ -20,13 +22,14 @@ export type TransitionPayload = {
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
+  guest_balance_paid_amount?: number | null;
+  guest_balance_payment_receipt_url?: string | null;
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
   sd_refund_phone_confirmed?: boolean | null;
-  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_bank?: SdBank | null;
   sd_refund_account_name?: string | null;
   sd_refund_account_number?: string | null;
-  sd_refund_cash_pickup_note?: string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
   document_completion_target?:
@@ -160,8 +163,18 @@ type RunAutomationResult = {
   applied?: number;
   skipped?: number;
   failed?: number;
+  /** Sub-steps re-completed from existing `approved_*_pdf_url` after admin “mark incomplete”. */
+  reconciled?: number;
+  reconciledGaf?: number;
+  reconciledPet?: number;
   transitioned?: number;
   scanned?: number;
+  /** True when `sd-refund-cron` was called with `{ bookingId }` (admin detail only). */
+  scoped?: boolean;
+  transitionedSdEmailSent?: number;
+  transitionedSdEmailSuppressed?: number;
+  /** Cron sent check-out email while booking stayed READY_FOR_CHECKIN (awaiting settlement). */
+  checkoutEmailsSent?: number;
   initialized?: boolean;
   historyReset?: boolean;
   [key: string]: unknown;
@@ -187,7 +200,7 @@ export function useRunGmailPoll(bookingId?: string) {
       const json = await res.json();
       if (!json.success && json.needsReAuth) {
         throw new Error(
-          'Gmail OAuth expired — open /bookings and use “Reconnect Gmail”, or re-run `npm run gmail-auth` for legacy env tokens.',
+          'Gmail OAuth expired — open Admin → Settings and use “Reconnect Gmail”, or re-run `npm run gmail-auth` for legacy env tokens.',
         );
       }
       if (!res.ok) {
@@ -206,7 +219,7 @@ export function useRunGmailPoll(bookingId?: string) {
 
 /**
  * Manually trigger the SD refund cron (Phase 4 — Q6.6).
- * Use when READY_FOR_CHECKIN is stuck and the cron hasn't fired after checkout.
+ * When `bookingId` is set, POSTs `{ bookingId }` so only that row is evaluated (same rules as scheduled cron).
  * Invalidates the booking detail so status updates show immediately.
  */
 export function useRunSdRefundCron(bookingId?: string) {
@@ -218,7 +231,13 @@ export function useRunSdRefundCron(bookingId?: string) {
 
       const res = await fetch(`${FUNCTIONS_URL}/sd-refund-cron`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${jwt}` },
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          ...(bookingId
+            ? { 'Content-Type': 'application/json' }
+            : {}),
+        },
+        body: bookingId ? JSON.stringify({ bookingId }) : undefined,
       });
 
       const json = await res.json();
@@ -236,7 +255,7 @@ export function useRunSdRefundCron(bookingId?: string) {
 }
 
 /**
- * Re-send the guest SD refund form email (PENDING_SD_REFUND_DETAILS only).
+ * Re-send the guest Check-out & SD Refund Details email (READY_FOR_CHECKIN or READY_FOR_CHECKOUT).
  */
 export function useResendSdRefundFormEmail(bookingId?: string) {
   const qc = useQueryClient();
