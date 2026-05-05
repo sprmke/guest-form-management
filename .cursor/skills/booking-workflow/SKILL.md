@@ -26,7 +26,7 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ### Phase 0 — Backup + additive migration
 
 - Migration: `supabase/migrations/2026…_backup_guest_submissions.sql` → `CREATE TABLE guest_submissions_backup_<ts> AS SELECT * FROM guest_submissions`.
-- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD expense/profit **`NUMERIC[]`**, SD refund receipt URL, SD refund amount, `is_test_booking`, `status_updated_at`).
+- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD expense/profit **`NUMERIC[]`**, SD refund receipt URL, SD refund amount, `status_updated_at`). (Historical: `is_test_booking` was added then removed — use staging for trials.)
 - Do **not** change behavior yet. Deploy, verify, only then move to Phase 1.
 
 ### Phase 1 — Admin auth + empty `/bookings`

@@ -24,14 +24,18 @@ ui/src/features/admin/
     SignInPage.tsx                 # /sign-in
     BookingsListPage.tsx           # /bookings
     BookingDetailPage.tsx          # /bookings/:bookingId
+    AdminSettingsPage.tsx          # /settings (integrations, e.g. Gmail listener)
   components/
     RequireAdmin.tsx               # session + allow-list guard
     BookingTable.tsx               # <BookingTable data={...} />
     BookingFilters.tsx             # search, status, date range, flags
     StatusBadge.tsx                # status → color dot + label
+    GmailMailIntegrationCard.tsx   # Gmail listener OAuth (used on /settings)
     WorkflowPanel.tsx              # right-hand rail on detail page
+    WorkflowSubFormCard.tsx        # shared card shell for all rail sub-forms
     ReviewPricingForm.tsx          # PENDING_REVIEW pricing inputs
     ParkingRequestForm.tsx         # PENDING_PARKING_REQUEST inputs
+    GuestBalanceSettlementForm.tsx # RFCI → checkout settlement
     SdRefundForm.tsx               # PENDING_SD_REFUND inputs
   hooks/
     useAdminSession.ts             # wraps supabase.auth + allow list check

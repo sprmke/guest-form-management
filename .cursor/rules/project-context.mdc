@@ -38,13 +38,14 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - `/calendar` — same calendar component as `/`.
 - `/form` — guest form (`GuestFormPage`); requires dates **or** `bookingId`, else redirect to `/`.
 - `/success` — needs `bookingId` query param; summary from `navigate` state.
-- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; only valid while status is `READY_FOR_CHECKOUT` (link emailed from workflow). Step 1 has two sub-phases: a Facebook-review CTA, then a slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher` edge function) that idempotently awards a `KAME-*` next-stay voucher and persists `next_stay_voucher_*` on `guest_submissions`.
+- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; **`get-sd-form`** allows `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` once the check-out email was sent (`sd_refund_form_emailed_at`), returning **`awaiting_balance_settlement`** until the stay advances. **`submit-sd-form`** and **`claim-sd-voucher`** require `READY_FOR_CHECKOUT`. Step 1: Facebook-review CTA, optional wait for settlement, then slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher`) that idempotently awards a `KAME-*` next-stay voucher and persists `next_stay_voucher_*` on `guest_submissions`.
 
 ### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
 
 - `/sign-in` — Google OAuth for admin.
 - `/bookings` — admin dashboard (list with search / filter / sort / pagination).
 - `/bookings/:bookingId` — detail page; renders the guest form with dev controls + workflow panel.
+- `/settings` — admin settings (**Gmail listener** connect / reconnect / disconnect via `GmailMailIntegrationCard`).
 
 ## When editing the guest form
 

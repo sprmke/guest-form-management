@@ -33,7 +33,7 @@ For each surface, look for:
 - Missing or weak input validation (Zod schemas on form data, type coercion in edge functions).
 - SQL injection (this repo uses `@supabase/supabase-js`, but watch raw `.rpc` or string-built queries if any).
 - XSS: untrusted content written into HTML strings in `_shared/emailService.ts`, `_shared/calendarService.ts#createEventData` (the description is HTML), success page rendering.
-- Missing authorization on admin endpoints (`list-bookings`, `transition-booking`, `cancel-booking`, `cleanup-test-data`, `upload-booking-asset`, `parking-broadcast-email`).
+- Missing authorization on admin endpoints (`list-bookings`, `transition-booking`, `cancel-booking`, `upload-booking-asset`, `parking-broadcast-email`).
 - CORS: every response — including errors and OPTIONS preflight — includes `corsHeaders(req)`. Non-wildcard if credentials are sent.
 - Guest PII in logs (console.log of full form data, storage object paths that leak PII).
 - Gmail listener: attachment size limits, filename validation (strictly `APPROVED GAF.pdf`), sender domain check against Azure.

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Admin auth — agent reference
 
-Applies whenever a change touches the `/bookings` routes, the new admin-only edge functions, or anything that used to be gated by `?dev=true` / `?testing=true`.
+Applies whenever a change touches the `/bookings` routes, the new admin-only edge functions, or guest-form dev toggles (`?dev=true`, non-production builds).
 
 ## 1. Auth model
 
@@ -28,31 +28,16 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
   - Shows a loader while the session hydrates.
   - Redirects to `/sign-in` if unauthenticated.
   - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
-- Applied to: `/bookings`, `/bookings/:bookingId`, and any other admin route added later.
+- Applied to: `/bookings`, `/bookings/:bookingId`, `/settings`, and any other admin route added later.
 - The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
 
-## 4. Dev mode & testing mode — new rules
+## 4. Guest form dev controls (`GuestForm.tsx`)
 
-The old query-parameter controls go away:
+- **Production (`VITE_NODE_ENV === 'production'`):** no dev checkbox panel; submits use full save + storage + calendar + sheet flags as wired in `submit-form`.
+- **Non-production:** dev panel shows save/storage/calendar/sheet toggles (default off in local dev unless adjusted).
+- **`?dev=true`** on `/form` enables the same panel in production builds when operators need to flip individual API flags (rare).
 
-- ❌ `?dev=true` — removed. An admin session automatically enables dev controls on guest-form views.
-- ❌ `?testing=true` — removed from the public form. Replaced by a dedicated **Test Submit** button available only when the admin session is active (or when the environment is non-production).
-- ✅ **Admin session implies dev mode.** When `useAdminSession()` reports an authenticated admin, the guest form shows the dev controls panel and the Test Submit button.
-- ✅ **Non-production envs** (`import.meta.env.VITE_NODE_ENV !== 'production'`) still show dev controls without requiring admin login for local development.
-
-### Submit button semantics
-
-| Button          | Behavior                                                                                                                                                                                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Submit**      | Real booking. Server sets `status = PENDING_REVIEW`, `is_test_booking = false`.                                                                                                                                                                                     |
-| **Test Submit** | Test booking. Server sets `is_test_booking = true`, keeps status `PENDING_REVIEW`, and runs the **exact same test pipeline as today’s `testing=true`** (prefixes, PDF copy, email subject prefixes, calendar/sheet markers, prod email hard-off rules — unchanged). |
-
-Test bookings:
-
-- Prefix `[TEST] ` on primary guest name, storage objects, calendar/sheet titles, **email subjects**, PDF title tweaks — same as current `isTestingMode` behavior in `submit-form` + `_shared/*`.
-- Are filtered out of `/bookings` by default (toggleable filter).
-- **Never send email in production**, regardless of other toggles (`DENO_DEPLOYMENT_ID` + `is_test_booking` ⇒ force `sendEmail = false`).
-- Are subject to `cleanup-test-data` wipe.
+There is **no** separate test-booking mode, `?testing=true`, `is_test_booking` column, or test-data cleanup edge function — use local/staging projects instead.
 
 ## 5. Dev controls panel (admin detail page)
 
@@ -76,25 +61,25 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 
 ## 6. Server contract
 
-- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, `cleanup-test-data`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
   - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
   - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
 - The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
 
 ## 7. Env vars summary (new)
 
-| Var                                    | Scope | Purpose                                                                                                                                                                                       |
-| -------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                 |
-| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                          |
-| `PARKING_OWNER_EMAILS`                 | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                      |
-| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on `/bookings`; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`. |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                           |
-| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                               |
-| `GMAIL_OAUTH_CLIENT_JSON`              | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                  |
-| `GMAIL_OAUTH_TOKEN_JSON`               | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                               |
-| `SD_REFUND_CRON_GRACE_MINUTES`         | edge  | Default `15`; post-checkout grace period.                                                                                                                                                     |
-| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | Default `21`; `sd-refund-cron` suppresses guest SD form email when check-out is older than this many days (`0` = never suppress). Scoped cron (`POST` body `bookingId`) requires admin JWT.   |
+| Var                                    | Scope | Purpose                                                                                                                                                                                                     |
+| -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                               |
+| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                                        |
+| `PARKING_OWNER_EMAILS`                 | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                                    |
+| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on **`/settings`**; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.           |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                                         |
+| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                                             |
+| `GMAIL_OAUTH_CLIENT_JSON`              | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                                |
+| `GMAIL_OAUTH_TOKEN_JSON`               | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                                             |
+| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | edge  | Default `120`; minutes **before** Manila check-out when `sd-refund-cron` may send the guest check-out email (not gated on balance settlement).                                                              |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | Default `21`; `sd-refund-cron` suppresses **automated** guest check-out email when check-out is older than this many days (`0` = never suppress). Scoped cron (`POST` body `bookingId`) requires admin JWT. |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 
