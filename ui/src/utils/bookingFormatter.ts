@@ -51,6 +51,12 @@ export function formatBookingInfoForClipboard(
     lines.push(`Guest 5 Name: ${formData.guest5Name}`);
   }
 
+  lines.push('');
+  lines.push('--- Surprise decor ---');
+  lines.push(
+    `Surprise decor requested: ${formData.guestRequestsSurpriseDecor ? 'Yes' : 'No'}`,
+  );
+
   // Parking Information
   lines.push('');
   lines.push('--- Parking Information ---');
@@ -170,6 +176,9 @@ export function parseBookingInfoFromClipboard(
         formData.guest4Name = extractValue(trimmedLine);
       } else if (trimmedLine.startsWith('Guest 5 Name:')) {
         formData.guest5Name = extractValue(trimmedLine);
+      } else if (trimmedLine.startsWith('Surprise decor requested:')) {
+        const value = extractValue(trimmedLine).toLowerCase();
+        formData.guestRequestsSurpriseDecor = value === 'yes' || value === 'true';
       } else if (trimmedLine.startsWith('Need Parking:')) {
         const value = extractValue(trimmedLine).toLowerCase();
         formData.needParking = value === 'yes' || value === 'true';

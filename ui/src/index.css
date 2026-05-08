@@ -133,30 +133,83 @@
   }
 }
 
-/* Professional Sonner Toast Customization */
+/* Sonner toasts: light card, status as accent (not full bleed background).
+   Do not set position here — Sonner uses position:absolute + translateY offsets;
+   forcing relative breaks stacking and creates huge gaps between toasts. */
 [data-sonner-toast] {
-  position: relative !important;
   border-radius: 0.75rem !important;
+  background: hsl(0 0% 100%) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-left-width: 4px !important;
+  border-left-color: hsl(var(--border)) !important;
   box-shadow:
     0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
 }
 
+.dark [data-sonner-toast] {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500 !important;
+}
+
 [data-sonner-toast] [data-close-button] {
   position: absolute !important;
-  top: 20px !important;
-  right: 16px !important;
+  top: 50% !important;
+  right: 8px !important;
   left: auto !important;
+  transform: translateY(-50%) !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: hsl(215 16% 92%) !important;
+  color: hsl(215 25% 28%) !important;
+}
+
+[data-sonner-toast] [data-close-button]:focus-visible {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+.dark [data-sonner-toast] [data-close-button]:hover {
+  background: hsl(215 25% 22%) !important;
+  color: hsl(210 20% 92%) !important;
 }
 
 [data-sonner-toast][data-type='success'] {
-  background: hsl(142 76% 36%) !important;
-  color: white !important;
+  border-left-color: hsl(var(--success)) !important;
 }
 
 [data-sonner-toast][data-type='error'] {
-  background: hsl(0 72% 51%) !important;
-  color: white !important;
+  border-left-color: hsl(var(--destructive)) !important;
+}
+
+[data-sonner-toast][data-type='warning'] {
+  border-left-color: hsl(var(--warning)) !important;
+}
+
+[data-sonner-toast][data-type='loading'] {
+  border-left-color: hsl(var(--primary)) !important;
+}
+
+[data-sonner-toast][data-type='info'],
+[data-sonner-toast][data-type='default'] {
+  border-left-color: hsl(var(--primary)) !important;
 }
 
 /* Professional Calendar Styling */

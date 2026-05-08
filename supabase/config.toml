@@ -137,6 +137,9 @@ static_files = [
   "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
 
+[functions.sync-booking-integrations]
+verify_jwt = false
+
 [functions.upload-booking-asset]
 verify_jwt = false
 
