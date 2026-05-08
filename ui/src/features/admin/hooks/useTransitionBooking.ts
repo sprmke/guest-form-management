@@ -12,6 +12,7 @@ export type TransitionPayload = {
   pet_fee?: number | null;
   parking_rate_guest?: number | null;
   guest_additional_fee?: number | null;
+  surprise_decor_staff_acknowledged?: boolean;
   parking_rate_paid?: number | null;
   parking_owner_email?: string | null;
   parking_owner?: string | null;
