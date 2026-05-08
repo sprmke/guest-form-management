@@ -59,12 +59,11 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 - See the `gmail-listener` skill for the full pattern.
 - Cron: `sd-refund-cron` scans every 5 min for `READY_FOR_CHECKIN` with `check_out_date + check_out_time + 15min ≤ now(Asia/Manila)` and calls `transition-booking` → `PENDING_SD_REFUND`.
 
-### Phase 5 — Submit-form cleanup
+### Phase 5 — Submit-form cleanup (shipped)
 
-- Remove email, calendar, sheet side effects from `submit-form/index.ts`. Always DB + storage + PDF.
-- Default `status = 'PENDING_REVIEW'`. **Testing behavior stays the same as today** — the only UX change is: use **Test Submit** instead of `?testing=true`, and persist `is_test_booking = true` on the row for easier querying. Server may still accept legacy `?testing=true` briefly while old links exist; `is_test_booking` should mirror that flag.
-- Delete `?dev=true` / `?testing=true` **from the public UI URL bar** (no more query-param driven test mode), but keep the underlying `isTestingMode` plumbing in edge functions until fully migrated.
-- Add a separate **Test Submit** button in `GuestForm.tsx`.
+- `submit-form` is **DB + storage** (optional calendar/sheet via dev query flags). **No PDF** on submit; **no workflow emails** (GAF / ack / pet / parking — orchestrator only).
+- After a successful DB save, when **`sendEmail` ≠ `false`** (guest dev **Send email**; default on), **`sendNewBookingRequestNotify`** emails **New Booking Request** to **`EMAIL_REPLY_TO`** only (`new-booking-request.html`); failures are non-fatal for the guest.
+- **No test-booking mode** — use staging/local Supabase; `?dev=true` remains for optional side-effect flags in non-prod / prod-debug builds.
 
 ### Phase 6 — Prod backfill
 
@@ -74,10 +73,9 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ## Implementation rules (please follow)
 
 - **Single source of truth for status/color/prefix** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/admin/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
-- **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / `sendEmail` directly from a handler.
+- **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / Azure GAF `sendEmail` / `sendPetEmail` directly from a handler for workflow work — **exception:** `submit-form` may call **`sendNewBookingRequestNotify`** (owner inbox only).
 - **Never CC the guest** on GAF or pet request emails.
 - **Pricing math** lives in one helper (`_shared/pricing.ts`): **`balance = booking_rate - down_payment`**. SD (`security_deposit`, default ₱1500) and parking/pet line items are **not** in balance — they are separate fields shown in breakdown UIs/emails. UI must import the same helper (or call a tiny `compute-pricing` edge function) — no duplicated math.
-- **Test bookings in production**: orchestrator must force `sendEmail = false` when `is_test_booking && DENO_DEPLOYMENT_ID`.
 - **Update the docs** in the same change (`PROJECT.md`, `TODOS.md`, and flip the relevant question/phase in `NEW_FLOW_PLAN.md`).
 
 ## Testing checklist for a transition PR
@@ -86,7 +84,6 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 - [ ] Calendar event exists with correct `colorId` + title prefix.
 - [ ] Sheet row has the new column values.
 - [ ] Expected email(s) sent, none of the forbidden ones (e.g. no guest CC on GAF).
-- [ ] Test booking in prod does not send email.
 - [ ] Idempotent: running the transition twice does not duplicate emails or calendar events.
 - [ ] `get-booked-dates` still blocks this booking (unless CANCELLED).
 - [ ] Admin allow-list rejects non-allow-listed users.

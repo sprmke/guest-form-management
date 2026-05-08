@@ -34,9 +34,9 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 
 ### Current (public)
 
-- `/` — calendar (`CalendarPage`); **Proceed** → `/form?checkInDate=&checkOutDate=`. Legacy `/?bookingId=` links redirect to `/form`.
+- `/` — calendar (`CalendarPage`); **Proceed** → `/form` with dates and current query params preserved (e.g. `?source=airbnb`). Legacy `/?bookingId=` links redirect to `/form`. Legacy `?from=airbnb` on `/form` is replaced with `?source=airbnb`.
 - `/calendar` — same calendar component as `/`.
-- `/form` — guest form (`GuestFormPage`); requires dates **or** `bookingId`, else redirect to `/`.
+- `/form` — guest form (`GuestFormPage`); always reachable (defaults apply when dates/`bookingId` are absent). Optional **`?source=airbnb`** for Airbnb copy + `booking_source` (case-insensitive).
 - `/success` — needs `bookingId` query param; summary from `navigate` state.
 - `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; **`get-sd-form`** allows `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` once the check-out email was sent (`sd_refund_form_emailed_at`), returning **`awaiting_balance_settlement`** until the stay advances. **`submit-sd-form`** and **`claim-sd-voucher`** require `READY_FOR_CHECKOUT`. Step 1: Facebook-review CTA, optional wait for settlement, then slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher`) that idempotently awards a `KAME-*` next-stay voucher and persists `next_stay_voucher_*` on `guest_submissions`.
 
@@ -50,7 +50,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 ## When editing the guest form
 
 - Schema: `ui/src/features/guest-form/schemas/guestFormSchema.ts`
-- Large UI: `ui/src/features/guest-form/components/GuestForm.tsx` (dev controls, submit `FormData`, clipboard recovery)
+- Large UI: `ui/src/features/guest-form/components/GuestForm.tsx` (dev controls — **all toggles on by default** when the panel is shown, submit `FormData`, clipboard recovery)
 - Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports.
 
 ## When editing submit behavior
@@ -58,7 +58,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - Entry: `supabase/functions/submit-form/index.ts`
 - Shared services: `supabase/functions/_shared/{databaseService,calendarService,sheetsService,emailService,pdfService,uploadService}.ts`
 - Field-level diff for no-op updates: `compareFormData` in `_shared/utils.ts` — **must** stay in sync with DB columns and form field names.
-- Under the **new flow**, `submit-form` only saves DB + storage (guest uploads). Filled GAF / pet **request** PDFs are generated in `workflowOrchestrator` when admins move **`PENDING_REVIEW` → initial documents** (`generatePdf` dev control), then attached to Azure request emails. Email/calendar/sheet side effects otherwise move to `transition-booking`. See `booking-workflow.mdc`.
+- Under the **new flow**, `submit-form` only saves DB + storage (guest uploads). Filled GAF / pet **request** PDFs are generated in `workflowOrchestrator` when admins move **`PENDING_REVIEW` → initial documents** (`generatePdf` dev control), then attached to Azure request emails. Email/calendar/sheet side effects otherwise move to `transition-booking`. **Exception:** after a successful DB save, when **`sendEmail` ≠ `false`**, `submit-form` calls **`sendNewBookingRequestNotify`** (HTML to **`EMAIL_REPLY_TO`** only — not workflow mail; guest dev checkbox **Send email**). See `booking-workflow.mdc`.
 
 ## When touching booking status, admin UI, emails, calendar, sheets
 

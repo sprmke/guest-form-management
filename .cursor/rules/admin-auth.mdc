@@ -33,8 +33,8 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
 
 ## 4. Guest form dev controls (`GuestForm.tsx`)
 
-- **Production (`VITE_NODE_ENV === 'production'`):** no dev checkbox panel; submits use full save + storage + calendar + sheet flags as wired in `submit-form`.
-- **Non-production:** dev panel shows save/storage/calendar/sheet toggles (default off in local dev unless adjusted).
+- **Production (`VITE_NODE_ENV === 'production'`):** no dev checkbox panel; submits use full save + storage + calendar + sheet flags as wired in `submit-form`, and **New Booking Request** email runs by default (`sendEmail` omitted → treated as on server-side).
+- **Non-production:** dev panel shows save/storage/calendar/sheet/**Send email** toggles (**all on by default**; uncheck to skip). **`sendEmail=false`** skips the owner notify only.
 - **`?dev=true`** on `/form` enables the same panel in production builds when operators need to flip individual API flags (rare).
 
 There is **no** separate test-booking mode, `?testing=true`, `is_test_booking` column, or test-data cleanup edge function — use local/staging projects instead.
@@ -61,7 +61,7 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 
 ## 6. Server contract
 
-- All admin edge functions (`list-bookings`, `transition-booking`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+- All admin edge functions (`list-bookings`, `transition-booking`, `sync-booking-integrations`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
   - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
   - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
 - The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
