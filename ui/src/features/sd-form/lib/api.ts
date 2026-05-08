@@ -22,6 +22,11 @@ export type SdFormBootstrap = {
   /** Persisted voucher (if guest already revealed it on a prior visit). */
   next_stay_voucher_code: string | null;
   next_stay_voucher_amount: number | null;
+  /**
+   * True while status is still Ready for check-in but the check-out email already went out;
+   * refund submit stays closed until the stay moves to Ready for check-out.
+   */
+  awaiting_balance_settlement?: boolean;
 };
 
 export type ClaimVoucherResponse = {

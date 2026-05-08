@@ -27,7 +27,7 @@ interface VoucherRevealProps {
   /** Pre-existing voucher (returning guests skip the animation). */
   existingVoucher?: Voucher | null;
   isClaiming: boolean;
-  /** Called when the guest taps "Reveal my voucher". Should resolve with the awarded voucher. */
+  /** Called when the guest taps "Claim it!". Should resolve with the awarded voucher. */
   onClaim: () => Promise<Voucher>;
   /** Called when the guest taps "Continue to refund process" after the reveal. */
   onContinue: () => void;
@@ -186,7 +186,7 @@ export function VoucherReveal({
           ) : (
             <>
               <Sparkles className="size-5" aria-hidden />
-              Reveal my voucher
+              Claim it!
             </>
           )}
         </Button>

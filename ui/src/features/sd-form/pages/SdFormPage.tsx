@@ -39,13 +39,14 @@ import { VoucherReveal } from '@/features/sd-form/components/VoucherReveal';
 type Step = 1 | 2 | 'done';
 /**
  * Step 1 sub-phases:
- * - 'review'  → "Review us on Facebook" CTA + intro greeting.
- * - 'voucher' → randomized slot-machine reveal + "Continue to refund process".
+ * - 'review'       → "Review us on Facebook" CTA + intro greeting.
+ * - 'wait_balance' → check-out email arrived but stay is still Ready for check-in; poll until it opens.
+ * - 'voucher'      → randomized slot-machine reveal + "Continue to refund process".
  *
  * If a voucher was already awarded on a prior visit, /sd-form jumps straight
  * to 'voucher' so the guest re-sees the same code (no re-roll).
  */
-type Step1Phase = 'review' | 'voucher';
+type Step1Phase = 'review' | 'wait_balance' | 'voucher';
 
 const SD_FORM_BRAND_TITLE = 'SD Refund Form';
 
@@ -157,6 +158,8 @@ export function SdFormPage() {
     queryFn: () => fetchSdForm(bookingId),
     enabled: bookingId.length > 0,
     retry: false,
+    refetchInterval: (q) =>
+      q.state.data?.awaiting_balance_settlement === true ? 8000 : false,
   });
 
   const existingVoucher = query.data?.next_stay_voucher_code
@@ -170,6 +173,19 @@ export function SdFormPage() {
       setStep1Phase('voucher');
     }
   }, [existingVoucher, step1Phase]);
+
+  useEffect(() => {
+    const d = query.data;
+    if (!d?.awaiting_balance_settlement && step1Phase === 'wait_balance') {
+      setStep1Phase('voucher');
+    }
+  }, [query.data, step1Phase]);
+
+  useEffect(() => {
+    if (query.data?.awaiting_balance_settlement && step1Phase === 'voucher') {
+      setStep1Phase('wait_balance');
+    }
+  }, [query.data?.awaiting_balance_settlement, step1Phase]);
 
   const claimMut = useMutation({
     mutationFn: async (): Promise<Voucher> => {
@@ -306,16 +322,16 @@ export function SdFormPage() {
             </div>
             <div className="space-y-3 px-3 sm:px-0">
               <h1 className="text-base font-bold text-foreground sm:text-lg">
-                You&apos;re all set
+                You&apos;re all set!
               </h1>
               <p className="leading-relaxed text-muted-foreground">
-                Thank you, <strong>{data.primary_guest_name}</strong> for
-                staying with us! We&apos;ll process your security deposit refund
-                after 1-2 hours using the details you shared.
+                Thank you, <strong>{data.primary_guest_name}</strong>!
+                We&apos;ll process your security deposit refund after 1-2 hours
+                using the details you shared.
               </p>
               <p className="strong leading-relaxed text-muted-foreground">
-                We hope we can accommodate you on your next stay again. See you,
-                Ka-Homies!
+                We are looking forward to accommodate you again on your next
+                stay. See you, Ka-Homies!
               </p>
             </div>
             <Button
@@ -362,24 +378,65 @@ export function SdFormPage() {
         {step === 1 && step1Phase === 'review' && (
           <StepOneReview
             reviewsUrl={data.facebook_reviews_url}
-            onReviewOpened={() => setStep1Phase('voucher')}
+            onReviewOpened={() =>
+              setStep1Phase(
+                data.awaiting_balance_settlement ? 'wait_balance' : 'voucher',
+              )
+            }
           />
         )}
 
-        {step === 1 && step1Phase === 'voucher' && (
-          <VoucherReveal
-            facebookReviewsUrl={data.facebook_reviews_url}
-            existingVoucher={existingVoucher}
-            isClaiming={claimMut.isPending}
-            onClaim={() => claimMut.mutateAsync()}
-            onContinue={() => setStep(2)}
-            primaryGuestName={data.primary_guest_name}
-            checkInDate={data.check_in_date}
-            checkOutDate={data.check_out_date}
-          />
+        {step === 1 && step1Phase === 'wait_balance' && (
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border border-border/60 bg-muted/20 px-4 py-8 text-center sm:px-6">
+            <Loader2 className="size-9 animate-spin text-primary" aria-hidden />
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-foreground">
+                Almost there
+              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                We emailed you check-out and security-deposit details.
+                We&apos;re still recording your final balance on our side—refund
+                steps open here automatically when that&apos;s done. You can
+                leave this tab open; it refreshes every few seconds.
+              </p>
+            </div>
+          </div>
         )}
 
-        {step === 2 && (
+        {step === 1 &&
+          step1Phase === 'voucher' &&
+          !data.awaiting_balance_settlement && (
+            <VoucherReveal
+              facebookReviewsUrl={data.facebook_reviews_url}
+              existingVoucher={existingVoucher}
+              isClaiming={claimMut.isPending}
+              onClaim={() => claimMut.mutateAsync()}
+              onContinue={() => setStep(2)}
+              primaryGuestName={data.primary_guest_name}
+              checkInDate={data.check_in_date}
+              checkOutDate={data.check_out_date}
+            />
+          )}
+
+        {step === 2 && data.awaiting_balance_settlement && (
+          <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border border-border/60 bg-muted/20 px-4 py-8 text-center sm:px-6">
+            <Loader2 className="size-9 animate-spin text-primary" aria-hidden />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Refund details unlock once your stay moves to check-out on our
+              system. This page will update shortly.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px]"
+              onClick={() => setStep(1)}
+            >
+              Back
+            </Button>
+          </div>
+        )}
+
+        {step === 2 && !data.awaiting_balance_settlement && (
           <StepTwo
             data={data}
             method={method}
