@@ -68,6 +68,15 @@ export const formatDateForEmail = (dateStr: string | null | undefined): string =
   return parsed.isValid() ? parsed.format('MMM D, YYYY') : String(dateStr);
 };
 
+/** Whole-night count between check-in and check-out (exclusive of checkout night). */
+export function countStayNights(checkInDate: string, checkOutDate: string): number {
+  const ci = normalizeDateToYYYYMMDD(checkInDate);
+  const co = normalizeDateToYYYYMMDD(checkOutDate);
+  if (!ci || !co) return 0;
+  const d = dayjs(co, 'YYYY-MM-DD', true).diff(dayjs(ci, 'YYYY-MM-DD', true), 'day');
+  return Math.max(0, d);
+}
+
 /**
  * Formats a time string to 24-hour HH:mm format
  * @param timeStr - The time string to format
@@ -191,6 +200,12 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
     { form: 'guestSpecialRequests', db: 'guest_special_requests' },
     { form: 'findUs', db: 'find_us' },
     { form: 'findUsDetails', db: 'find_us_details' },
+    { form: 'bookingSource', db: 'booking_source' },
+    {
+      form: 'guestRequestsSurpriseDecor',
+      db: 'guest_requests_surprise_decor',
+      isBoolean: true,
+    },
     { form: 'needParking', db: 'need_parking', isBoolean: true },
     { form: 'carPlateNumber', db: 'car_plate_number' },
     { form: 'carBrandModel', db: 'car_brand_model' },
@@ -323,6 +338,7 @@ const WORKFLOW_SENSITIVE_FORM_FIELDS = new Set<string>([
   'checkOutDate',
   'checkInTime',
   'checkOutTime',
+  'guestRequestsSurpriseDecor',
   'needParking',
   'carPlateNumber',
   'carBrandModel',

@@ -28,6 +28,7 @@ export interface GuestFormData {
   checkInDate: string;
   checkOutDate: string;
   findUs: string;
+  bookingSource?: string;
   
   // Required fields with defaults
   checkInTime: string;
@@ -45,6 +46,9 @@ export interface GuestFormData {
   findUsDetails?: string;
   numberOfNights?: number;
   
+  /** Guest wants a surprise decor / setup (discussed theme + price with host separately). */
+  guestRequestsSurpriseDecor: boolean;
+
   // Parking related fields
   needParking: boolean;
   carPlateNumber?: string;
@@ -108,6 +112,9 @@ export interface GuestSubmission {
   guest_special_requests?: string;
   find_us: string;
   find_us_details?: string;
+  booking_source?: string;
+  guest_requests_surprise_decor?: boolean;
+  surprise_decor_staff_acknowledged?: boolean;
   need_parking?: boolean;
   car_plate_number?: string;
   car_brand_model?: string;
@@ -222,6 +229,8 @@ export const transformFormToSubmission = (
     guest_special_requests: formData.guestSpecialRequests,
     find_us: formData.findUs,
     find_us_details: formData.findUsDetails,
+    booking_source: formData.bookingSource || 'Facebook',
+    guest_requests_surprise_decor: toBoolean(formData.guestRequestsSurpriseDecor) ?? false,
     need_parking: toBoolean(formData.needParking),
     car_plate_number: formData.carPlateNumber,
     car_brand_model: formData.carBrandModel,

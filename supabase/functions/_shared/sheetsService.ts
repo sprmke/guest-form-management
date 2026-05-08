@@ -163,6 +163,7 @@ export class SheetsService {
       createdAt || currentTimestamp,       // AI: Created At (use provided value or current timestamp)
       currentTimestamp,                    // AJ: Updated At (always current timestamp)
       'Booked',                            // AK: Status (Booked or Canceled)
+      formData.bookingSource || 'Facebook', // AL: Booking Source (Facebook or Airbnb)
     ];
   }
 
@@ -298,6 +299,106 @@ export class SheetsService {
   }
 
   /**
+   * Overwrites the entire sheet row (A–BA) from the current DB booking.
+   * Used after admin booking-detail saves so guest-facing columns and workflow
+   * columns match Postgres (same layout as `formatDbRowForSheet` / append path).
+   */
+  static async syncFullRowFromDbBooking(
+    booking: any,
+    statusLabel: string,
+  ): Promise<{ success: boolean; skipped?: boolean; created?: boolean }> {
+    try {
+      const bookingId = booking?.id as string | undefined;
+      if (!bookingId) {
+        return { success: false };
+      }
+
+      console.log(`[Sheets] syncFullRowFromDbBooking for ${bookingId}`);
+
+      const serviceAccount = Deno.env.get('GOOGLE_SERVICE_ACCOUNT');
+      const spreadsheetId = Deno.env.get('GOOGLE_SPREADSHEET_ID');
+
+      if (!serviceAccount || !spreadsheetId) {
+        console.log('Google Sheets credentials not found, skipping full-row sync');
+        return { success: true, skipped: true };
+      }
+
+      const credentials = { serviceAccount: JSON.parse(serviceAccount), spreadsheetId };
+      const accessToken = await this.getAccessToken(credentials.serviceAccount);
+      const existingRow = await this.findRowByBookingId(credentials, bookingId);
+
+      const workflowFields = {
+        booking_rate: booking.booking_rate,
+        down_payment: booking.down_payment,
+        balance: booking.balance,
+        security_deposit: booking.security_deposit,
+        parking_rate_guest: booking.parking_rate_guest,
+        parking_rate_paid: booking.parking_rate_paid,
+        pet_fee: booking.pet_fee,
+        approved_gaf_pdf_url: booking.approved_gaf_pdf_url,
+        approved_pet_pdf_url: booking.approved_pet_pdf_url,
+        sd_refund_amount: booking.sd_refund_amount,
+        sd_refund_receipt_url: booking.sd_refund_receipt_url,
+        status_updated_at: booking.status_updated_at,
+        guest_additional_fee: booking.guest_additional_fee,
+        guest_balance_paid_amount: booking.guest_balance_paid_amount,
+        guest_balance_payment_receipt_url: booking.guest_balance_payment_receipt_url,
+      };
+
+      const values = this.formatDbRowForSheet(booking, statusLabel, workflowFields);
+
+      if (!existingRow) {
+        console.log(`No sheet row found — appending full row for booking ${bookingId}`);
+        const appendRes = await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A1:append?valueInputOption=USER_ENTERED`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ values: [values] }),
+          },
+        );
+
+        if (!appendRes.ok) {
+          const err = await appendRes.json();
+          console.error('Failed to append sheet row (full sync):', err);
+          return { success: false };
+        }
+
+        console.log(`Sheet row created (full sync) for booking ${bookingId}`);
+        return { success: true, created: true };
+      }
+
+      const { rowIndex } = existingRow;
+      const putRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/A${rowIndex}:BA${rowIndex}?valueInputOption=USER_ENTERED`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ values: [values] }),
+        },
+      );
+
+      if (!putRes.ok) {
+        const err = await putRes.json();
+        console.error('Failed to PUT full sheet row:', err);
+        return { success: false };
+      }
+
+      console.log(`Sheet full-row sync: row ${rowIndex} for booking ${bookingId}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error in syncFullRowFromDbBooking:', error);
+      return { success: false };
+    }
+  }
+
+  /**
    * Formats a full sheet row (A–AZ) from a raw DB booking row.
    * Used when appending a brand-new row for a booking that has no prior sheet entry.
    */
@@ -383,6 +484,7 @@ export class SheetsService {
       workflowFields.guest_balance_payment_receipt_url ??
         booking.guest_balance_payment_receipt_url ??
         '',                                                       // AZ: guest_balance_payment_receipt_url
+      booking.booking_source ?? 'Facebook',                       // BA: Booking Source
     ];
   }
 

@@ -26,6 +26,7 @@ import {
 import {
   BookingStatus,
   canTransition,
+  getPendingDocumentsNestedCompletion,
   pendingDocumentsClearPatchForGuestEditRevert,
   STATUS_HUMAN_LABEL,
 } from './statusMachine.ts';
@@ -45,6 +46,8 @@ export type TransitionPayload = {
   pet_fee?: number | null;
   parking_rate_guest?: number | null;
   guest_additional_fee?: number | null;
+  /** Required on PENDING_REVIEW → initial docs when `guest_requests_surprise_decor` is true. */
+  surprise_decor_staff_acknowledged?: boolean;
 
   // Parking (PENDING_PARKING_REQUEST → *)
   parking_rate_paid?: number | null;
@@ -173,6 +176,16 @@ export class WorkflowOrchestrator {
       fromStatus === 'PENDING_REVIEW' &&
       (toStatus === 'PENDING_GAF' || toStatus === 'PENDING_DOCUMENTS');
 
+    const wantsSurpriseDecor =
+      booking.guest_requests_surprise_decor === true ||
+      booking.guest_requests_surprise_decor === 'true';
+
+    if (isReviewToInitialDocs && wantsSurpriseDecor && !payload.surprise_decor_staff_acknowledged) {
+      throw new Error(
+        'Confirm with staff that this guest’s surprise decor (theme and agreed price) is coordinated before proceeding.',
+      );
+    }
+
     // 3. Compute derived fields
     const balance = isReviewToInitialDocs
       ? computeBalance(payload.booking_rate, payload.down_payment)
@@ -195,6 +208,9 @@ export class WorkflowOrchestrator {
       }
       if (payload.guest_additional_fee != null) {
         workflowFields.guest_additional_fee = payload.guest_additional_fee;
+      }
+      if (wantsSurpriseDecor && payload.surprise_decor_staff_acknowledged) {
+        workflowFields.surprise_decor_staff_acknowledged = true;
       }
     }
 
@@ -357,6 +373,48 @@ export class WorkflowOrchestrator {
 
     // Re-fetch to get latest row (needed for email content)
     const updatedBooking = await DatabaseService.getBookingById(bookingId) ?? { ...booking, ...workflowFields, status: toStatus };
+
+    // ── Auto-advance: PENDING_DOCUMENTS → READY_FOR_CHECKIN ──────────────────
+    // When a sub-step is marked complete (document_completion_target) and every
+    // required sub-step (GAF + parking if needed + pet if needed) is now done,
+    // immediately advance to READY_FOR_CHECKIN instead of leaving the booking
+    // stranded in PENDING_DOCUMENTS waiting for a manual "Proceed" click.
+    // This fires for every caller (gmail-listener, admin parking form,
+    // reconciliation) since they all route through the orchestrator.
+    if (
+      fromStatus === 'PENDING_DOCUMENTS' &&
+      toStatus === 'PENDING_DOCUMENTS' &&
+      docComplete &&
+      flag(devControls, 'saveToDatabase')
+    ) {
+      const { gafDone, parkingDone, petDone } =
+        getPendingDocumentsNestedCompletion(updatedBooking as Parameters<typeof getPendingDocumentsNestedCompletion>[0]);
+      if (gafDone && parkingDone && petDone) {
+        console.log(
+          `[orchestrator] All document sub-steps complete for ${bookingId} — auto-advancing to READY_FOR_CHECKIN`,
+        );
+        try {
+          // Recursive call: re-uses same calendar/sheet flags but always sends
+          // the ready-for-check-in email (automated behaviour, not a manual click).
+          return await WorkflowOrchestrator.transition(
+            bookingId,
+            'READY_FOR_CHECKIN',
+            {},
+            { ...devControls, sendReadyForCheckinEmail: true },
+            false, // automated — not a manual admin click
+          );
+        } catch (err) {
+          // Non-fatal: log and fall through so the caller still gets a valid
+          // PENDING_DOCUMENTS result. Admin can advance manually.
+          console.error(
+            '[orchestrator] Auto-advance to READY_FOR_CHECKIN failed (non-fatal):',
+            err,
+          );
+        }
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
+
     const { pax, nights } = buildPaxNights(updatedBooking);
     const guestName = updatedBooking.guest_facebook_name as string;
 
@@ -596,6 +654,7 @@ function buildGuestFormData(booking: any): any {
     guestSpecialRequests: booking.guest_special_requests,
     findUs: booking.find_us,
     findUsDetails: booking.find_us_details,
+    bookingSource: booking.booking_source || 'Facebook',
     needParking: booking.need_parking,
     carPlateNumber: booking.car_plate_number,
     carBrandModel: booking.car_brand_model,

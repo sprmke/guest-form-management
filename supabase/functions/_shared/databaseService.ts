@@ -103,6 +103,8 @@ export class DatabaseService {
         guestSpecialRequests: data.guest_special_requests || '',
         findUs: data.find_us || 'Facebook',
         findUsDetails: data.find_us_details || '',
+        bookingSource: data.booking_source || 'Facebook',
+        guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
         carPlateNumber: data.car_plate_number || '',
         carBrandModel: data.car_brand_model || '',

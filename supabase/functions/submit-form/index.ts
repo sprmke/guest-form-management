@@ -3,8 +3,10 @@ import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
+import { sendNewBookingRequestNotify } from '../_shared/emailService.ts'
 import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
+import type { GuestSubmission } from '../_shared/types.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -26,6 +28,8 @@ serve(async (req) => {
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
+    /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
+    const isSendEmailEnabled = url.searchParams.get('sendEmail') !== 'false'
 
     // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
     const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined
@@ -36,7 +40,10 @@ serve(async (req) => {
     console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
     console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
     console.log('  Generate PDF: ❌ (filled GAF/pet PDFs run on admin PENDING_REVIEW → documents transition)');
-    console.log('  Send Email: ❌ (submit-form does not send workflow emails)');
+    console.log('  Send workflow emails: ❌ (GAF / ack / pet / parking only on admin transitions)');
+    console.log(
+      `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (query sendEmail, default on — only sent after a DB save with an id; not this flag alone)`,
+    );
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log('---');
@@ -100,6 +107,11 @@ serve(async (req) => {
 
         if (!hasDataChanges) {
           console.log('ℹ️ No changes detected, skipping processing and redirecting to success page');
+          if (isSendEmailEnabled) {
+            console.log(
+              '[submit-form] New booking request notify skipped: no data changes (same booking update)',
+            );
+          }
 
           return new Response(
             JSON.stringify({
@@ -141,9 +153,26 @@ serve(async (req) => {
         revertReadyForCheckinToPendingReview,
       );
 
-    // IMPORTANT: submit-form never sends workflow emails.
-    // GAF, booking acknowledgement, pet request, and parking broadcast are only
-    // sent by WorkflowOrchestrator during PENDING_REVIEW -> PENDING_GAF.
+    // Workflow emails (GAF, acknowledgement, pet, parking) are only sent by
+    // WorkflowOrchestrator on admin transitions. Optional **New Booking Request**
+    // notify (`sendEmail` query; default on) — non-fatal if it fails.
+
+    if (isSendEmailEnabled && isSaveToDatabaseEnabled && submissionData?.id) {
+      try {
+        const notifyResult = await sendNewBookingRequestNotify(submissionData as GuestSubmission);
+        console.log(
+          '[submit-form] New booking request notify ok, Resend id:',
+          (notifyResult as { id?: string })?.id ?? JSON.stringify(notifyResult),
+        );
+      } catch (notifyErr) {
+        console.error('[submit-form] New booking request notify failed (non-fatal):', notifyErr);
+      }
+    } else if (isSendEmailEnabled) {
+      const reasons: string[] = [];
+      if (!isSaveToDatabaseEnabled) reasons.push('saveToDatabase=false');
+      if (!submissionData?.id) reasons.push('no submission id after save');
+      console.log(`[submit-form] New booking request notify skipped: ${reasons.join(', ')}`);
+    }
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {

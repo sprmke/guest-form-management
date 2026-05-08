@@ -7,7 +7,7 @@ import {
   replacePlaceholders,
   withEmailShellStyleVars,
 } from './renderEmailHtml.ts'
-import { formatDateForEmail } from './utils.ts'
+import { countStayNights, formatDateForEmail } from './utils.ts'
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const raw = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || DEFAULT_EMAIL_LOGO_URL;
@@ -161,9 +161,19 @@ function isUrgentBooking(checkInDate: string): boolean {
 /** Same-day check-in (Asia/Manila) — HTML callout for Azure + guest templates. */
 function buildUrgentSameDayCallout(isUrgent: boolean): string {
   if (!isUrgent) return '';
-  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 35px 0;"><tr><td><strong class="callout-title">Urgent! Same-day check-in!</strong><br />This request requires immediate attention and approval.</td></tr></table>`;
+  const tdStyle =
+    "background-color:#fde8e8;border:1px solid #e8a0a0;border-left-width:4px;border-left-color:#c94c4c;border-radius:0 16px 16px 0;padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.55;color:#6b2d2d;";
+  const titleStyle =
+    "display:block;margin-bottom:6px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#8b3a3a;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;";
+  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr><td style="${tdStyle}"><strong class="callout-title" style="${titleStyle}">Urgent! Same-day check-in!</strong><br />This request requires immediate attention and approval.</td></tr></table>`;
 }
 
+/**
+ * Same-day check-in (Asia/Manila) — **subject line** prefix for ops-facing
+ * mail (GAF, Pet, Parking broadcast, **New Booking Request** notify to
+ * `EMAIL_REPLY_TO`). Guest-facing templates (acknowledgement, check-in details,
+ * SD refund form request subject, etc.) do not use this prefix on the subject.
+ */
 function urgentEmailSubjectPrefix(isUrgent: boolean): string {
   return isUrgent ? '🚨 URGENT - ' : '';
 }
@@ -409,6 +419,167 @@ function pesoFormat(amount: number | null | undefined): string {
   return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
+function getResendNewBookingNotifyCredentials() {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO');
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY');
+  if (!EMAIL_REPLY_TO) throw new Error('Missing EMAIL_REPLY_TO');
+  return { RESEND_API_KEY, EMAIL_REPLY_TO };
+}
+
+function formatBookingSourceLabelForNotify(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim();
+  if (/^airbnb$/i.test(s)) return 'Airbnb';
+  if (/^facebook$/i.test(s)) return 'Facebook';
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Facebook';
+}
+
+function yesNo(v: boolean | null | undefined): string {
+  return v ? 'Yes ‼️' : 'No';
+}
+
+function notifyDetailTableStyle(): string {
+  return [
+    'width:100%;table-layout:fixed;border:1px solid #e2e8f0;border-radius:16px;',
+    'border-collapse:separate;border-spacing:0;overflow:hidden;font-size:14px;',
+    "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+    'margin:0 0 26px 0;',
+  ].join('');
+}
+
+function notifyRow(label: string, valueHtml: string, withBottomBorder: boolean): string {
+  const b = withBottomBorder ? 'border-bottom:1px solid #e2e8f0;' : '';
+  return `<tr>
+  <td class="tbl-label" style="padding:12px 16px;background-color:#f8fafc;${b}font-weight:600;color:#475569;vertical-align:top;width:38%;">${label}</td>
+  <td class="tbl-value" style="padding:12px 16px;background-color:#ffffff;${b}color:#333333;line-height:1.55;vertical-align:top;">${valueHtml}</td>
+</tr>`;
+}
+
+function notifySectionTitle(text: string): string {
+  return `<p class="section-label" style="margin:24px 0 10px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">${text}</p>`;
+}
+
+function buildNewBookingRequestEmailBodyMain(booking: GuestSubmission): string {
+  const nn = booking.number_of_nights;
+  const nights =
+    nn != null && Number.isFinite(Number(nn)) && Number(nn) >= 0
+      ? Number(nn)
+      : countStayNights(booking.check_in_date, booking.check_out_date);
+  const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const displayCheckIn = formatDateForEmail(booking.check_in_date);
+  const displayCheckOut = formatDateForEmail(booking.check_out_date);
+  const tblStyle = notifyDetailTableStyle();
+
+  const stayRows = [
+    notifyRow('Check-in', escapeHtml(displayCheckIn), true),
+    notifyRow('Check-out', escapeHtml(displayCheckOut), true),
+    notifyRow('Number of nights', escapeHtml(String(nights)), true),
+    notifyRow('Number of pax', escapeHtml(String(pax)), false),
+  ].join('');
+
+  const guestRows = [
+    notifyRow('Facebook Name', escapeHtml(booking.guest_facebook_name), true),
+    notifyRow('Primary Guest Name', escapeHtml(booking.primary_guest_name), true),
+    notifyRow('Address', escapeHtml(booking.guest_address), true),
+    notifyRow('Phone Number', escapeHtml(booking.guest_phone_number), true),
+    notifyRow('Email', escapeHtml(booking.guest_email), true),
+    notifyRow('Source', escapeHtml(formatBookingSourceLabelForNotify(booking.booking_source)), false),
+  ].join('');
+
+  const notableRows = [
+    notifyRow('Requires pay parking?', escapeHtml(yesNo(booking.need_parking)), true),
+    notifyRow('Requires pet approval', escapeHtml(yesNo(booking.has_pets)), true),
+    notifyRow('Requires surprise setup / room decor?', escapeHtml(yesNo(booking.guest_requests_surprise_decor)), false),
+  ].join('');
+
+  const bookingId = booking.id as string;
+  const adminUrl = `${guestAppOrigin()}/bookings/${encodeURIComponent(bookingId)}`;
+  const cta = `<div class="cta-wrap" style="margin:28px 0 8px 0;text-align:center;">
+  <a class="cta-btn" style="{{emailShellCtaBtnStyle}}" href="${escapeHtml(adminUrl)}" target="_blank" rel="noopener">View Booking Details</a>
+</div>`;
+
+  return [
+    notifySectionTitle('Stay details'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${stayRows}</table>`,
+    notifySectionTitle('Guest details'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${guestRows}</table>`,
+    notifySectionTitle('Notable information'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${notableRows}</table>`,
+    cta,
+  ].join('\n');
+}
+
+/**
+ * **Owner / ops notify** — sent only to `EMAIL_REPLY_TO` when a guest saves the public form (`submit-form`).
+ * Not a workflow transition email; failures are logged as non-fatal in `submit-form`.
+ */
+export async function sendNewBookingRequestNotify(booking: GuestSubmission) {
+  const bookingId = booking.id as string | undefined;
+  if (!bookingId) throw new Error('sendNewBookingRequestNotify: booking.id is required');
+
+  console.log('Sending new booking request notify email to EMAIL_REPLY_TO...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendNewBookingNotifyCredentials();
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+  const unitLabel = String(booking.tower_and_unit_number ?? '').trim() || 'Monaco 2604';
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — new booking request notify');
+  }
+
+  const emailBodyMainRaw = buildNewBookingRequestEmailBodyMain(booking);
+  const emailBodyMain = replacePlaceholders(emailBodyMainRaw, withEmailShellStyleVars({}));
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const tpl = await loadEmailTemplate('new-booking-request');
+  const html = replacePlaceholders(
+    tpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      /** Same string prepended to API `subject` and to `<title>` / `<h1>` in the template. */
+      newBookingTitlePrefix: urgentPrefix,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      towerAndUnitNumber: escapeHtml(unitLabel),
+      emailBodyMain,
+    }),
+  );
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [EMAIL_REPLY_TO],
+      reply_to: booking.guest_email,
+      subject: `${urgentPrefix}${unitLabel} - New Booking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send new booking request notify: ${JSON.stringify(err)}`);
+  }
+
+  const body = (await res.json()) as { id?: string };
+  console.log(
+    '[new-booking-notify] Resend accepted message; id:',
+    body?.id ?? '(no id in response)',
+    '| to: EMAIL_REPLY_TO from env (check spam / Resend dashboard if inbox empty)',
+  );
+  return body;
+}
+
 /**
  * Booking acknowledgement — sent to the **guest** when moving PENDING_REVIEW → PENDING_GAF.
  * Confirms we received the form and are processing their GAF.
@@ -421,7 +592,6 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const isUrgent = isUrgentBooking(booking.check_in_date);
-  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
   const urgentBlock = buildUrgentSameDayCallout(isUrgent);
   if (isUrgent) {
     console.log('🚨 URGENT same-day check-in — booking acknowledgement');
@@ -452,7 +622,7 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${urgentPrefix}Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });
@@ -481,7 +651,6 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const isUrgent = isUrgentBooking(booking.check_in_date);
-  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
   const urgentBlock = buildUrgentSameDayCallout(isUrgent);
   if (isUrgent) {
     console.log('🚨 URGENT same-day check-in — ready for check-in email');
@@ -666,7 +835,7 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
       from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
-      subject: `${urgentPrefix}Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      subject: `Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
       ...(attachments.length > 0 ? { attachments } : {}),
     }),
@@ -782,7 +951,6 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
     'Monaco 2604';
 
   const isUrgent = isUrgentBooking(booking.check_in_date);
-  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
   const urgentBlock = buildUrgentSameDayCallout(isUrgent);
   if (isUrgent) {
     console.log('🚨 URGENT same-day check-in — SD refund form request');
@@ -821,7 +989,7 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
       to: [booking.guest_email],
       reply_to: EMAIL_REPLY_TO,
       subject:
-        `${urgentPrefix}${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+        `${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
       html,
     }),
   });

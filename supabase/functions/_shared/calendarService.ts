@@ -165,7 +165,17 @@ export class CalendarService {
         return { success: true, updated: 1, created: true };
       }
 
-      // Patch the existing event
+      // Patch the existing event: summary/color, full description, and stay
+      // window (start/end) when we have the DB row — keeps Google in sync after
+      // admin edits to dates, guest block, or surprise decor without a transition.
+      const patchBody: Record<string, unknown> = { summary, colorId: meta.colorId };
+      if (booking) {
+        const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
+        patchBody.description = eventData.description;
+        patchBody.start = eventData.start;
+        patchBody.end = eventData.end;
+      }
+
       const response = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId!)}/events/${existingEventId}`,
         {
@@ -174,7 +184,7 @@ export class CalendarService {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ summary, colorId: meta.colorId }),
+          body: JSON.stringify(patchBody),
         },
       );
 
@@ -195,19 +205,25 @@ export class CalendarService {
    * Builds a Google Calendar event body from a raw DB booking row.
    * Used when creating a brand-new event during a transition (no prior event exists).
    */
-  private static buildEventDataFromDbRow(
+  private static bookingFlagTrue(v: unknown): boolean {
+    return v === true || v === 'true';
+  }
+
+  /**
+   * HTML body shown in Google Calendar (matches guest-submit event copy + DB-only fields).
+   */
+  private static buildGoogleCalendarDescriptionFromDbBooking(
     booking: any,
-    status: BookingStatus,
-    pax: number,
     nights: number,
-    summary: string,
-  ) {
+  ): string {
     const adminLink = `https://kamehomes.space/bookings/${booking.id}`;
+    const needParking = CalendarService.bookingFlagTrue(booking.need_parking);
+    const hasPets = CalendarService.bookingFlagTrue(booking.has_pets);
+    const decorRequested = CalendarService.bookingFlagTrue(
+      booking.guest_requests_surprise_decor,
+    );
 
-    const needParking = booking.need_parking === true || booking.need_parking === 'true';
-    const hasPets = booking.has_pets === true || booking.has_pets === 'true';
-
-    const description = `
+    return `
 <a href="${adminLink}">View Booking in Admin</a>
 
 <strong>Guest Information</strong>
@@ -247,10 +263,26 @@ ${hasPets
   ? `Has Pets: Yes\nPet Name: ${booking.pet_name || 'N/A'}\nPet Type: ${booking.pet_type || 'N/A'}\nPet Breed: ${booking.pet_breed || 'N/A'}\nPet Age: ${booking.pet_age || 'N/A'}\nVaccination Date: ${booking.pet_vaccination_date || 'N/A'}${booking.pet_image_url ? `\n<a href="${booking.pet_image_url}">Pet Image</a>` : ''}${booking.pet_vaccination_url ? `\n<a href="${booking.pet_vaccination_url}">Vaccination Record</a>` : ''}`
   : 'Has Pets: No'}
 
+<strong>Additional Information</strong>
+Booking Source: ${booking.booking_source ?? 'Facebook'}
+How Found Us: ${booking.find_us ?? ''}${booking.find_us_details ? `\nDetails: ${booking.find_us_details}` : ''}
+Surprise decor setup: ${decorRequested ? 'Yes' : 'No'}
+Special Requests: ${booking.guest_special_requests || 'None'}
+
 <strong>Documents</strong>
 ${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Downpayment receipt</a>` : 'No downpayment receipt'}
 ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No valid ID'}
     `.trim();
+  }
+
+  private static buildEventDataFromDbRow(
+    booking: any,
+    status: BookingStatus,
+    pax: number,
+    nights: number,
+    summary: string,
+  ) {
+    const description = this.buildGoogleCalendarDescriptionFromDbBooking(booking, nights);
 
     // Build start/end datetimes from MM-DD-YYYY
     const checkInDate = dayjs(booking.check_in_date, 'MM-DD-YYYY');
@@ -308,7 +340,17 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     // Use the PENDING_REVIEW status for initial event creation (Q: the submit-form
     // side effects will move to the orchestrator in Phase 5; for now keep using
     // PENDING_REVIEW color on initial creation).
-    const summary = buildCalendarSummary('PENDING_REVIEW', pax, nights, formData.guestFacebookName);
+    const summary = buildCalendarSummary(
+      'PENDING_REVIEW',
+      pax,
+      nights,
+      formData.guestFacebookName,
+      {
+        guest_requests_surprise_decor: formData.guestRequestsSurpriseDecor,
+        has_pets: formData.hasPets,
+        need_parking: formData.needParking,
+      },
+    );
 
     // Admin link
     const adminLink = `https://kamehomes.space/bookings/${bookingId}`;
@@ -352,7 +394,9 @@ ${petImageUrl ? `<a href="${petImageUrl}">Pet Image</a>` : ''}
 ${petVaccinationUrl ? `<a href="${petVaccinationUrl}">Vaccination Record</a>` : ''}` : 'Has Pets: No'}
 
 <strong>Additional Information</strong>
+Booking Source: ${formData.bookingSource || 'Facebook'}
 How Found Us: ${formData.findUs}${formData.findUsDetails ? `\nDetails: ${formData.findUsDetails}` : ''}
+Surprise decor setup: ${formData.guestRequestsSurpriseDecor ? 'Yes' : 'No'}
 Special Requests: ${formData.guestSpecialRequests || 'None'}
 
 <strong>Documents</strong>

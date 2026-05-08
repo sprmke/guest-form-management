@@ -91,6 +91,7 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
     parking_endorsement_url: null,
     guest_balance_paid_amount: null,
     guest_balance_payment_receipt_url: null,
+    surprise_decor_staff_acknowledged: false,
   };
 }
 
@@ -214,6 +215,11 @@ export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
 export type PendingDocumentsCalendarBooking = {
   need_parking?: boolean | null | string;
   has_pets?: boolean | null | string;
+  /**
+   * When true, Google Calendar `summary` gets a leading 🎉 (see `buildCalendarSummary`).
+   * `has_pets` / `need_parking` add 🐶 / 🚗 in the same prefix when applicable.
+   */
+  guest_requests_surprise_decor?: boolean | null | string;
   gaf_completed_at?: string | null;
   parking_completed_at?: string | null;
   pet_completed_at?: string | null;
@@ -279,9 +285,25 @@ export function buildPendingDocumentsCalendarSummaryPrefix(
 }
 
 /**
+ * Leading emoji prefix for Google Calendar `summary` (at-a-glance in month view).
+ * Order: surprise decor → pets → parking. Each flag is independent.
+ */
+function buildCalendarSummaryIconPrefix(booking: PendingDocumentsCalendarBooking): string {
+  const icons: string[] = [];
+  if (bookingFlagTrue(booking.guest_requests_surprise_decor)) icons.push('🎉');
+  if (bookingFlagTrue(booking.has_pets)) icons.push('🐶');
+  if (bookingFlagTrue(booking.need_parking)) icons.push('🚗');
+  if (icons.length === 0) return '';
+  return `${icons.join(' ')} `;
+}
+
+/**
  * Builds the Google Calendar event `summary` for a given booking.
  *
  * Format: `{STATUS LABEL} - {pax}pax {nights}night(s) - {guestFacebookName}`
+ *
+ * Optional leading icons when `booking` is passed: **`🎉`** if surprise decor,
+ * **`🐶`** if `has_pets`, **`🚗`** if `need_parking` (space-separated, then the core title).
  *
  * When `status === PENDING_DOCUMENTS'` and `booking` is passed, the first segment is
  * built from outstanding document sub-steps (see `buildPendingDocumentsCalendarSummaryPrefix`).
@@ -298,7 +320,12 @@ export function buildCalendarSummary(
       ? buildPendingDocumentsCalendarSummaryPrefix(booking)
       : STATUS_CALENDAR_META[status].label;
   const nightsText = `${nights}${nights === 1 ? 'night' : 'nights'}`;
-  return `${label} - ${pax}pax ${nightsText} - ${guestName}`;
+  const core = `${label} - ${pax}pax ${nightsText} - ${guestName}`;
+  if (booking != null) {
+    const iconPrefix = buildCalendarSummaryIconPrefix(booking);
+    if (!!iconPrefix.trim()) return `${iconPrefix}| ${core}`;
+  }
+  return core;
 }
 
 /**
