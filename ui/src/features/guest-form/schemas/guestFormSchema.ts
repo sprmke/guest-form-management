@@ -70,6 +70,8 @@ export const guestFormSchema = z.object({
       "Please enter the complete name of the fifth guest"
     ),
   guestSpecialRequests: z.string().optional(),
+  /** Guest intends a surprise decor / setup (theme and price agreed with host on Facebook or Airbnb). */
+  guestRequestsSurpriseDecor: z.boolean().default(false),
   findUsDetails: z.string().optional(),
   numberOfNights: z.number().optional(),
   

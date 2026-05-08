@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
 import { MainLayout } from '@/layouts/MainLayout';
+import { stripLegacyFromQueryParam } from '@/features/guest-form/lib/bookingSourceFromSearchParams';
 import {
   dateToString,
   stringToDate,
@@ -27,7 +28,7 @@ export function CalendarPage() {
   useEffect(() => {
     const bookingId = searchParams.get('bookingId')?.trim();
     if (!bookingId) return;
-    const next = new URLSearchParams(searchParams);
+    const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
     navigate(`/form?${next.toString()}`, { replace: true });
   }, [navigate, searchParams]);
 
@@ -47,11 +48,13 @@ export function CalendarPage() {
         const result = await response.json();
 
         if (response.ok && result.success && result.data) {
-          const normalizedDates = result.data.map((booking: BookedDateRange) => ({
-            ...booking,
-            checkInDate: normalizeDateString(booking.checkInDate),
-            checkOutDate: normalizeDateString(booking.checkOutDate),
-          }));
+          const normalizedDates = result.data.map(
+            (booking: BookedDateRange) => ({
+              ...booking,
+              checkInDate: normalizeDateString(booking.checkInDate),
+              checkOutDate: normalizeDateString(booking.checkOutDate),
+            }),
+          );
           setBookedDates(normalizedDates);
         }
       } catch (error) {
@@ -104,19 +107,24 @@ export function CalendarPage() {
     setCheckOutDate(undefined);
   };
 
-  // Proceed to guest form
+  // Proceed to guest form — keep query params (e.g. source=airbnb, dev=true); drop legacy `from`
   const handleProceed = () => {
     if (checkInDate && checkOutDate) {
       const checkIn = dateToString(checkInDate);
       const checkOut = dateToString(checkOutDate);
-      navigate(`/form?checkInDate=${checkIn}&checkOutDate=${checkOut}`);
+      const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
+      next.set('checkInDate', checkIn);
+      next.set('checkOutDate', checkOut);
+      // Fresh date selection from calendar is a new booking flow
+      next.delete('bookingId');
+      navigate(`/form?${next.toString()}`);
     }
   };
 
   // Find the first booked check-in date after the selected check-in
   const getFirstBlockingDate = (fromDate: Date): Date | null => {
     let firstBlocking: Date | null = null;
-    
+
     for (const booking of bookedDates) {
       const bookingCheckIn = stringToDate(booking.checkInDate);
       if (bookingCheckIn > fromDate) {
@@ -125,19 +133,19 @@ export function CalendarPage() {
         }
       }
     }
-    
+
     return firstBlocking;
   };
 
   // Check if a date is within a booked range (for checkout: allows check-in dates)
   const isDateBookedForCheckout = (date: Date) => {
-    return bookedDates.some(booking => {
+    return bookedDates.some((booking) => {
       try {
         const bookingCheckIn = stringToDate(booking.checkInDate);
         const bookingCheckOut = stringToDate(booking.checkOutDate);
         const dateToCheck = new Date(date);
         dateToCheck.setHours(0, 0, 0, 0);
-        
+
         // For checkout: only disable dates AFTER check-in and BEFORE check-out
         // This allows selecting check-in dates as checkout (same-day turnover)
         return dateToCheck > bookingCheckIn && dateToCheck < bookingCheckOut;
@@ -164,12 +172,12 @@ export function CalendarPage() {
       if (date <= checkInDate) {
         return true;
       }
-      
+
       // For potential checkout dates: use lenient check that allows check-in dates
       if (isDateBookedForCheckout(date)) {
         return true;
       }
-      
+
       // Also disable dates that would span across a booked period
       const firstBlocking = getFirstBlockingDate(checkInDate);
       if (firstBlocking) {
@@ -178,7 +186,7 @@ export function CalendarPage() {
           return true;
         }
       }
-      
+
       return false;
     }
 
@@ -339,7 +347,10 @@ export function CalendarPage() {
               <ul className="mt-1 space-y-1 list-disc list-inside text-blue-700">
                 <li>Standard check-in time is 2:00 PM</li>
                 <li>Standard check-out time is 11:00 AM</li>
-                <li>Early check-in and late check-out may be available upon request</li>
+                <li>
+                  Early check-in and late check-out may be available upon
+                  request
+                </li>
               </ul>
             </div>
           </div>
@@ -348,4 +359,3 @@ export function CalendarPage() {
     </MainLayout>
   );
 }
-

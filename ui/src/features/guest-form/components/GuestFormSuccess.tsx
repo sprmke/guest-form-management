@@ -1,4 +1,3 @@
-import { Button } from '@/components/ui/button';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { formatDateToLongFormat, formatTimeToAMPM } from '@/utils/dates';
 import { Users, User, PawPrint, Mail, Phone, Info } from 'lucide-react';
@@ -37,12 +36,6 @@ export function GuestFormSuccess() {
       navigate('/', { replace: true });
     }
   }, [bookingId, navigate]);
-
-  const handleViewForm = () => {
-    if (bookingId) {
-      navigate(`/form?bookingId=${bookingId}`);
-    }
-  };
 
   // Calculate number of nights
   const numberOfNights = bookingData
@@ -281,25 +274,16 @@ export function GuestFormSuccess() {
                   Kindly return to our conversation on Facebook Messenger /
                   Airbnb
                 </span>{' '}
-                to review our policies and important reminders.
+                to review our policies and important reminders, or if you need
+                to update your booking details.
               </p>
               <p className="pt-1 font-medium">
-                Thank you for choosing{' '}
-                <span className="font-semibold">Kame Home</span>! 🐢
+                See you soon, <span className="font-semibold">Ka-Homies</span>!
+                🐢💚
               </p>
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="space-y-3 w-full max-w-xl">
-        <Button
-          className="w-full h-12 text-base font-medium"
-          variant="outline"
-          onClick={handleViewForm}
-        >
-          View or Update Information
-        </Button>
       </div>
     </div>
   );
