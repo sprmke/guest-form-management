@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Car, Dog } from 'lucide-react';
+import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
@@ -9,6 +9,7 @@ import {
   formatMoney,
   formatRelative,
 } from '@/features/admin/lib/formatters';
+import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
@@ -212,7 +213,18 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
               <Dog className="size-4" aria-hidden />
             </span>
           ) : null}
-          {!row.need_parking && !row.has_pets && (
+          {bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) ? (
+            <span
+              title="Surprise decor setup"
+              aria-label="Surprise decor setup"
+              className="inline-flex items-center justify-center size-7 rounded-md bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+            >
+              <PartyPopper className="size-4" aria-hidden />
+            </span>
+          ) : null}
+          {!row.need_parking &&
+            !row.has_pets &&
+            !bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
             <span className="text-[11px] text-slate-300">No flags</span>
           )}
         </div>

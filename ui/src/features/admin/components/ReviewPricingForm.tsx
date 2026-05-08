@@ -11,7 +11,7 @@
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useForm, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,22 +19,43 @@ import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubForm
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 
-const schema = z.object({
-  booking_rate: z.coerce.number().positive('Enter a positive rate'),
-  down_payment: z.coerce.number().min(0, 'Must be ≥ 0'),
-  security_deposit: z.coerce.number().min(0, 'Must be ≥ 0').default(1500),
-  pet_fee: z.coerce.number().min(0).optional(),
-  parking_rate_guest: z.coerce.number().min(0).optional(),
-  guest_additional_fee: z.coerce.number().min(0).optional(),
-});
+function createReviewPricingSchema(surpriseDecorRequested: boolean) {
+  const guestAdditionalFeeSchema = surpriseDecorRequested
+    ? z.preprocess(
+        (v) => {
+          if (v === '' || v === null || v === undefined) return undefined;
+          const n = Number(v);
+          return Number.isFinite(n) ? n : NaN;
+        },
+        z
+          .number({
+            required_error:
+              'Additional fee is required when the guest requested surprise decor',
+            invalid_type_error: 'Enter a valid amount',
+          })
+          .min(0, 'Must be ≥ 0'),
+      )
+    : z.coerce.number().min(0).optional();
 
-export type ReviewPricingValues = z.infer<typeof schema>;
+  return z.object({
+    booking_rate: z.coerce.number().positive('Enter a positive rate'),
+    down_payment: z.coerce.number().min(0, 'Must be ≥ 0'),
+    security_deposit: z.coerce.number().min(0, 'Must be ≥ 0').default(1500),
+    pet_fee: z.coerce.number().min(0).optional(),
+    parking_rate_guest: z.coerce.number().min(0).optional(),
+    guest_additional_fee: guestAdditionalFeeSchema,
+  });
+}
+
+export type ReviewPricingFormValues = z.infer<
+  ReturnType<typeof createReviewPricingSchema>
+>;
 
 type Props = {
   booking: BookingRow;
   /** Last valid values from this session when the sub-form unmounts (e.g. pipeline step change). */
-  initialDraft?: ReviewPricingValues | null;
-  onChange: (values: ReviewPricingValues | null) => void;
+  initialDraft?: ReviewPricingFormValues | null;
+  onChange: (values: ReviewPricingFormValues | null) => void;
 };
 
 const WEEKDAY_RATE = 2799;
@@ -49,6 +70,11 @@ export function ReviewPricingForm({
   initialDraft = null,
   onChange,
 }: Props) {
+  const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
+  const schema = useMemo(
+    () => createReviewPricingSchema(surpriseDecorRequested),
+    [surpriseDecorRequested],
+  );
   const computedDefaultRate = computeDefaultBookingRate(booking);
 
   const {
@@ -57,12 +83,13 @@ export function ReviewPricingForm({
     formState: { errors, isValid },
     getValues,
     trigger,
-  } = useForm<ReviewPricingValues>({
+  } = useForm<ReviewPricingFormValues>({
     resolver: zodResolver(schema),
     defaultValues: buildPricingDefaultValues(
       booking,
       computedDefaultRate,
       initialDraft,
+      surpriseDecorRequested,
     ),
     mode: 'onChange',
   });
@@ -85,7 +112,7 @@ export function ReviewPricingForm({
 
   useEffect(() => {
     if (isValid) {
-      onChange(getValues());
+      onChange(getValues() as ReviewPricingFormValues);
     } else {
       onChange(null);
     }
@@ -183,16 +210,26 @@ export function ReviewPricingForm({
 
         <Field
           label="Additional fee"
-          helpText="Early check-in, late check-out, surprise decor, etc."
+          required={surpriseDecorRequested}
+          helpText={
+            surpriseDecorRequested
+              ? 'Includes the surprise decor setup fee.'
+              : 'Early check-in, late check-out, surprise decor, etc.'
+          }
           error={errors.guest_additional_fee?.message}
         >
           <input
             type="number"
             min={0}
             step={0.01}
-            placeholder="0"
+            placeholder={surpriseDecorRequested ? '₱800-₱2000' : '0'}
+            aria-required={surpriseDecorRequested}
             className={inputClass(!!errors.guest_additional_fee)}
             {...register('guest_additional_fee')}
+            onChange={async (e) => {
+              register('guest_additional_fee').onChange(e);
+              await trigger('guest_additional_fee');
+            }}
           />
         </Field>
       </div>
@@ -262,27 +299,35 @@ function Field({
 function buildPricingDefaultValues(
   booking: BookingRow,
   computedDefaultRate: number | null,
-  initialDraft: ReviewPricingValues | null | undefined,
-): DefaultValues<ReviewPricingValues> {
-  const fromBooking: DefaultValues<ReviewPricingValues> = {
+  initialDraft: ReviewPricingFormValues | null | undefined,
+  surpriseDecorRequested: boolean,
+): DefaultValues<ReviewPricingFormValues> {
+  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
+  const storedAdditional = toNullableNumber(booking.guest_additional_fee);
+  const defaultAdditional = surpriseDecorRequested
+    ? (storedAdditional ?? undefined)
+    : (storedAdditional ?? 0);
+  const fromBooking: DefaultValues<ReviewPricingFormValues> = {
     booking_rate:
       toNullableNumber(booking.booking_rate) ??
       computedDefaultRate ??
       undefined,
     down_payment:
-      toNullableNumber(booking.down_payment) ?? DEFAULT_DOWN_PAYMENT,
+      toNullableNumber(booking.down_payment) ??
+      (isAirbnb ? 0 : DEFAULT_DOWN_PAYMENT),
     security_deposit:
-      toNullableNumber(booking.security_deposit) ?? DEFAULT_SECURITY_DEPOSIT,
+      toNullableNumber(booking.security_deposit) ??
+      (isAirbnb ? 0 : DEFAULT_SECURITY_DEPOSIT),
     pet_fee: toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE,
     parking_rate_guest:
       toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE,
-    guest_additional_fee: toNullableNumber(booking.guest_additional_fee) ?? 0,
+    guest_additional_fee: defaultAdditional,
   };
   if (!initialDraft) return fromBooking;
   return {
     ...fromBooking,
     ...initialDraft,
-  } satisfies DefaultValues<ReviewPricingValues>;
+  } satisfies DefaultValues<ReviewPricingFormValues>;
 }
 
 function toNullableNumber(value: unknown): number | null {

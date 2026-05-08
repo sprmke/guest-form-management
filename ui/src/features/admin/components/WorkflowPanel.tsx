@@ -3,7 +3,8 @@
  *
  * Shows:
  * - Progress card: **StatusBadge** in the header row + pipeline stepper (per-step timing)
- * - Stage-specific sub-form (ReviewPricingForm / ParkingRequestForm / SdRefundForm),
+ * - Stage-specific sub-form (ReviewPricingForm + SurpriseDecorAckCard when applicable,
+ *   ParkingRequestForm / SdRefundForm),
  *   plus **READY_FOR_CHECKOUT** guest `/sd-form` link + copy + **Recheck** (refetch booking)
  * - Dev-control checkboxes (collapsible, default collapsed; only relevant controls
  *   are shown based on the current booking status)
@@ -16,7 +17,13 @@
  */
 
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 import {
@@ -37,8 +44,9 @@ import {
 } from 'lucide-react';
 import {
   ReviewPricingForm,
-  type ReviewPricingValues,
+  type ReviewPricingFormValues,
 } from '@/features/admin/components/ReviewPricingForm';
+import { SurpriseDecorAckCard } from '@/features/admin/components/SurpriseDecorAckCard';
 import {
   ParkingRequestForm,
   isParkingRequestDraftComplete,
@@ -72,7 +80,11 @@ import {
   statusLabel,
   type BookingStatus,
 } from '@/features/admin/lib/bookingStatus';
-import { formatRelative } from '@/features/admin/lib/formatters';
+import {
+  formatBookingDate,
+  formatRelative,
+} from '@/features/admin/lib/formatters';
+import { shouldWarnPastBookingStayForProceed } from '@/features/admin/lib/bookingPastPipelineManila';
 import {
   useTransitionBooking,
   useCancelBooking,
@@ -85,6 +97,30 @@ import {
 import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { cn } from '@/lib/utils';
+
+/** Shared copy for manual “Run Gmail poll” and auto-poll on Pending Documents load. */
+function buildGmailPollSuccessMessage(result: {
+  applied?: number;
+  skipped?: number;
+  failed?: number;
+  reconciled?: number;
+  initialized?: boolean;
+  historyReset?: boolean;
+}): string {
+  const applied = result.applied ?? 0;
+  const reconciled = result.reconciled ?? 0;
+  const recSuffix =
+    reconciled > 0
+      ? `, ${reconciled} sub-step(s) re-synced from saved approvals`
+      : '';
+  if (result.initialized) {
+    return 'Gmail cursor initialized (Please run again.)';
+  }
+  if (result.historyReset) {
+    return 'Gmail history expired and was reset — check for missed emails manually';
+  }
+  return `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed${recSuffix}`;
+}
 
 // ─── Dev-control config (status-aware) ───────────────────────────────────────
 
@@ -183,6 +219,8 @@ const DEV_CONTROLS: DevControlDef[] = [
 type ConfirmState = {
   toStatus: BookingStatus;
   label: string;
+  /** Extra banner when stay dates are before today (Manila) for early pipeline statuses. */
+  pastStayWarning?: boolean;
 } | null;
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -215,7 +253,14 @@ export function WorkflowPanel({ booking }: Props) {
 
   // Sub-form state
   const [pricingValues, setPricingValues] =
-    useState<ReviewPricingValues | null>(null);
+    useState<ReviewPricingFormValues | null>(null);
+  const [surpriseDecorStaffAck, setSurpriseDecorStaffAck] = useState(
+    () => !!booking.surprise_decor_staff_acknowledged,
+  );
+
+  useEffect(() => {
+    setSurpriseDecorStaffAck(!!booking.surprise_decor_staff_acknowledged);
+  }, [booking.id, booking.surprise_decor_staff_acknowledged]);
   const [parkingValues, setParkingValues] =
     useState<ParkingRequestValues | null>(null);
   const [sdRefundValues, setSdRefundValues] = useState<SdRefundValues | null>(
@@ -226,6 +271,12 @@ export function WorkflowPanel({ booking }: Props) {
   const [activePendingDocSubStatus, setActivePendingDocSubStatus] =
     useState<PendingDocumentSubStatus>('PENDING_GAF');
 
+  useEffect(() => {
+    setActivePendingDocSubStatus((current) =>
+      isSubStatusRequired(current, booking) ? current : 'PENDING_GAF',
+    );
+  }, [booking.id, booking.need_parking, booking.has_pets]);
+
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
@@ -233,6 +284,10 @@ export function WorkflowPanel({ booking }: Props) {
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
   const gmailPollMut = useRunGmailPoll(booking.id);
+  const gmailPollMutRef = useRef(gmailPollMut);
+  gmailPollMutRef.current = gmailPollMut;
+  /** Dedupes React Strict Mode double-invoke; cleared when leaving PENDING_DOCUMENTS. */
+  const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
@@ -285,21 +340,36 @@ export function WorkflowPanel({ booking }: Props) {
     }
   }, [booking.id, booking.status, queryClient]);
 
+  useEffect(() => {
+    if (status !== 'PENDING_DOCUMENTS') {
+      pendingDocsAutoGmailPollRef.current = null;
+      return;
+    }
+    const dedupeKey = `${booking.id}:PENDING_DOCUMENTS`;
+    if (pendingDocsAutoGmailPollRef.current === dedupeKey) return;
+    pendingDocsAutoGmailPollRef.current = dedupeKey;
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await gmailPollMutRef.current.mutateAsync();
+        if (cancelled) return;
+        toast.success(buildGmailPollSuccessMessage(result));
+      } catch (err: unknown) {
+        if (cancelled) return;
+        toast.error(err instanceof Error ? err.message : 'Gmail poll failed');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [booking.id, status]);
+
   async function handleGmailPoll() {
     try {
       const result = await gmailPollMut.mutateAsync();
-      const applied = result.applied ?? 0;
-      const reconciled = result.reconciled ?? 0;
-      const recSuffix =
-        reconciled > 0
-          ? `, ${reconciled} sub-step(s) re-synced from saved approvals`
-          : '';
-      const msg = result.initialized
-        ? 'Gmail cursor initialized (first run — no backlog processed)'
-        : result.historyReset
-          ? 'Gmail history expired and was reset — check for missed emails manually'
-          : `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed${recSuffix}`;
-      toast.success(msg);
+      toast.success(buildGmailPollSuccessMessage(result));
     } catch (err: any) {
       toast.error(err?.message ?? 'Gmail poll failed');
     }
@@ -398,7 +468,7 @@ export function WorkflowPanel({ booking }: Props) {
   function buildPayload(toStatus: BookingStatus): TransitionPayload {
     const subForm = requiredSubForm(status, toStatus);
     if (subForm === 'pricing' && pricingValues) {
-      return {
+      const base = {
         booking_rate: pricingValues.booking_rate,
         down_payment: pricingValues.down_payment,
         security_deposit: pricingValues.security_deposit,
@@ -406,6 +476,13 @@ export function WorkflowPanel({ booking }: Props) {
         parking_rate_guest: pricingValues.parking_rate_guest,
         guest_additional_fee: pricingValues.guest_additional_fee,
       };
+      if (booking.guest_requests_surprise_decor && surpriseDecorStaffAck) {
+        return {
+          ...base,
+          surprise_decor_staff_acknowledged: true,
+        };
+      }
+      return base;
     }
     if (subForm === 'parking' && parkingValues) {
       return {
@@ -438,7 +515,13 @@ export function WorkflowPanel({ booking }: Props) {
 
   function isTransitionDisabled(toStatus: BookingStatus): boolean {
     const subForm = requiredSubForm(status, toStatus);
-    if (subForm === 'pricing') return pricingValues === null;
+    if (subForm === 'pricing') {
+      if (pricingValues === null) return true;
+      if (booking.guest_requests_surprise_decor && !surpriseDecorStaffAck) {
+        return true;
+      }
+      return false;
+    }
     if (subForm === 'parking')
       return !isParkingRequestDraftComplete(parkingValues);
     if (subForm === 'sd_refund') return sdRefundValues === null;
@@ -447,6 +530,14 @@ export function WorkflowPanel({ booking }: Props) {
   }
 
   // ─── Handlers ────────────────────────────────────────────────────────────
+
+  function openForwardProceedConfirm(toStatus: BookingStatus, label: string) {
+    setConfirm({
+      toStatus,
+      label,
+      pastStayWarning: shouldWarnPastBookingStayForProceed(status, booking),
+    });
+  }
 
   async function handleTransition(toStatus: BookingStatus) {
     setConfirm(null);
@@ -627,11 +718,20 @@ export function WorkflowPanel({ booking }: Props) {
             </WorkflowSubFormCard>
           )}
           {needsPricing && (
-            <ReviewPricingForm
-              booking={booking}
-              initialDraft={pricingValues}
-              onChange={setPricingValues}
-            />
+            <>
+              <ReviewPricingForm
+                key={`${booking.id}-pricing-sd-${booking.guest_requests_surprise_decor ? 1 : 0}`}
+                booking={booking}
+                initialDraft={pricingValues}
+                onChange={setPricingValues}
+              />
+              {booking.guest_requests_surprise_decor ? (
+                <SurpriseDecorAckCard
+                  acknowledged={surpriseDecorStaffAck}
+                  onAcknowledgedChange={setSurpriseDecorStaffAck}
+                />
+              ) : null}
+            </>
           )}
           {needsParking && (
             <ParkingRequestForm
@@ -976,10 +1076,10 @@ export function WorkflowPanel({ booking }: Props) {
                     !pendingDocumentsComplete || transitionMut.isPending
                   }
                   onClick={() =>
-                    setConfirm({
-                      toStatus: 'READY_FOR_CHECKIN',
-                      label: 'Proceed to Ready for Check-in',
-                    })
+                    openForwardProceedConfirm(
+                      'READY_FOR_CHECKIN',
+                      'Proceed to Ready for Check-in',
+                    )
                   }
                   className={cn(
                     'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
@@ -1026,10 +1126,10 @@ export function WorkflowPanel({ booking }: Props) {
               <button
                 disabled={isTransitionDisabled(next) || transitionMut.isPending}
                 onClick={() =>
-                  setConfirm({
-                    toStatus: next,
-                    label: `Proceed to ${statusLabel(next)}`,
-                  })
+                  openForwardProceedConfirm(
+                    next,
+                    `Proceed to ${statusLabel(next)}`,
+                  )
                 }
                 className={cn(
                   'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
@@ -1069,6 +1169,21 @@ export function WorkflowPanel({ booking }: Props) {
       {confirm && (
         <ConfirmModal
           title={confirm.label}
+          secondaryLabel="Cancel"
+          banner={
+            confirm.pastStayWarning ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                <p className="font-semibold">Stay dates are in the past</p>
+                <p className="mt-1 text-xs leading-relaxed text-amber-900/95">
+                  At least one of check-in (
+                  {formatBookingDate(booking.check_in_date)}) or check-out (
+                  {formatBookingDate(booking.check_out_date)}) is before today’s
+                  calendar date in Asia/Manila. Only continue if you still
+                  intend to advance this booking.
+                </p>
+              </div>
+            ) : null
+          }
           description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Checked dev-control side effects will fire.`}
           onConfirm={() => handleTransition(confirm.toStatus)}
           onCancel={() => setConfirm(null)}
@@ -1079,6 +1194,7 @@ export function WorkflowPanel({ booking }: Props) {
       {cancelConfirm && (
         <ConfirmModal
           title="Cancel Booking"
+          secondaryLabel="Keep booking"
           description="This will mark the booking as CANCELLED, update the Calendar (purple) and Sheet. All guest data is preserved. This cannot be undone."
           onConfirm={handleCancel}
           onCancel={() => setCancelConfirm(false)}
@@ -1170,7 +1286,6 @@ function PipelineStepper({
               {step === 'PENDING_DOCUMENTS' && (
                 <PendingDocumentsSubTree
                   booking={booking}
-                  showAllStatuses
                   className="mt-4"
                   activeStatus={activePendingDocSubStatus}
                   onSelect={onSelectPendingDocSubStatus}
@@ -1193,7 +1308,6 @@ function PipelineStepper({
 
 function PendingDocumentsSubTree({
   booking,
-  showAllStatuses = false,
   className,
   activeStatus,
   onSelect,
@@ -1201,22 +1315,20 @@ function PendingDocumentsSubTree({
   isInteractive = false,
 }: {
   booking: BookingRow;
-  showAllStatuses?: boolean;
   className?: string;
   activeStatus?: PendingDocumentSubStatus;
   onSelect?: (status: PendingDocumentSubStatus) => void;
   transitionPending?: boolean;
   isInteractive?: boolean;
 }) {
+  /** Canonical order: GAF → parking → pet (matches server / booking pipeline). */
   const allStatuses: PendingDocumentSubStatus[] = [
     'PENDING_GAF',
-    'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
+    'PENDING_PET_REQUEST',
   ];
 
-  const statuses = showAllStatuses
-    ? allStatuses
-    : allStatuses.filter((s) => isSubStatusRequired(s, booking));
+  const statuses = allStatuses.filter((s) => isSubStatusRequired(s, booking));
 
   return (
     <div className={cn('space-y-1.5 pl-2', className)}>
@@ -1292,6 +1404,8 @@ function PendingDocumentsSubTree({
 function ConfirmModal({
   title,
   description,
+  banner,
+  secondaryLabel = 'Back',
   onConfirm,
   onCancel,
   isLoading,
@@ -1299,6 +1413,9 @@ function ConfirmModal({
 }: {
   title: string;
   description: string;
+  banner?: ReactNode;
+  /** Dismiss control (e.g. `Cancel` for transitions, `Keep booking` when cancelling a booking). */
+  secondaryLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
   isLoading: boolean;
@@ -1317,6 +1434,7 @@ function ConfirmModal({
           )}
           <div className="flex-1">
             <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            {banner ? <div className="mt-3">{banner}</div> : null}
             <p className="mt-1 text-sm leading-relaxed text-slate-500">
               {description}
             </p>
@@ -1324,17 +1442,19 @@ function ConfirmModal({
         </div>
         <div className="flex gap-2 justify-end mt-5">
           <button
+            type="button"
             onClick={onCancel}
             disabled={isLoading}
-            className="px-4 py-2 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+            className="min-h-[44px] px-4 py-2 text-sm font-medium rounded-lg transition-colors text-slate-600 hover:bg-slate-100 disabled:opacity-50"
           >
-            Back
+            {secondaryLabel}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
             disabled={isLoading}
             className={cn(
-              'px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50',
+              'min-h-[44px] px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50',
               destructive
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-blue-600 hover:bg-blue-700',

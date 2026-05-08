@@ -13,7 +13,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
-import { CheckCircle2, FileText, Loader2, Save, Upload, X } from 'lucide-react';
+import {
+  CheckCircle2,
+  FileText,
+  Info,
+  Loader2,
+  Save,
+  Upload,
+  X,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useUpdateBooking,
@@ -78,6 +86,7 @@ type FormValues = {
   find_us: string;
   find_us_details: string;
   guest_special_requests: string;
+  guest_requests_surprise_decor: boolean;
 };
 
 function toStr(v: string | null | undefined) {
@@ -124,6 +133,7 @@ function bookingEditPayloadFromValues(
     find_us: values.find_us || null,
     find_us_details: values.find_us_details || null,
     guest_special_requests: values.guest_special_requests || null,
+    guest_requests_surprise_decor: values.guest_requests_surprise_decor,
   };
 }
 
@@ -201,6 +211,7 @@ export function BookingEditForm({
       find_us: toStr(booking.find_us),
       find_us_details: toStr(booking.find_us_details),
       guest_special_requests: toStr(booking.guest_special_requests),
+      guest_requests_surprise_decor: !!booking.guest_requests_surprise_decor,
     },
   });
 
@@ -208,6 +219,9 @@ export function BookingEditForm({
   const formSnapshot = useWatch({ control }) as FormValues;
   const watchParking = !!formSnapshot?.need_parking;
   const watchPets = !!formSnapshot?.has_pets;
+  const watchSurpriseDecor = !!formSnapshot?.guest_requests_surprise_decor;
+  const surpriseDecorChangedFromSaved =
+    watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
   const watchCheckInDate = formSnapshot?.check_in_date ?? '';
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
@@ -530,6 +544,37 @@ export function BookingEditForm({
               </Field>
             </Row3>
           </>
+        )}
+      </Section>
+
+      {/* ── Surprise decor ───────────────────────────────────────────────── */}
+      <Section title="Surprise decor">
+        <label className="flex items-center gap-2.5 min-h-[44px] cursor-pointer py-1">
+          <input
+            type="checkbox"
+            {...register('guest_requests_surprise_decor')}
+            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+          />
+          <span className="text-sm text-slate-700">
+            Guest requested a surprise decor / room setup
+          </span>
+        </label>
+        {surpriseDecorChangedFromSaved && (
+          <div
+            role="status"
+            className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 sm:text-[13px]"
+          >
+            <Info
+              className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
+              aria-hidden
+            />
+            <p className="min-w-0">
+              Please update the <strong>Additional fee</strong> field from{' '}
+              <strong>Pricing Form</strong> in{' '}
+              <strong>Pending Review step</strong> if you will update this
+              checkbox.
+            </p>
+          </div>
         )}
       </Section>
 

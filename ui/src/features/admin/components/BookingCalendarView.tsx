@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Dog,
+  PartyPopper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
@@ -29,6 +30,7 @@ import {
   formatBookingDate,
   formatMoney,
 } from '@/features/admin/lib/formatters';
+import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
 import { statusLabel } from '@/features/admin/lib/bookingStatus';
 import type { BookingRow } from '@/features/admin/lib/types';
 
@@ -453,6 +455,14 @@ function DayBookingItem({
               className="inline-flex items-center justify-center size-5 rounded bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
             >
               <Dog className="size-3" aria-hidden />
+            </span>
+          )}
+          {bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
+            <span
+              title="Surprise decor setup"
+              className="inline-flex items-center justify-center size-5 rounded bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+            >
+              <PartyPopper className="size-3" aria-hidden />
             </span>
           )}
         </div>
