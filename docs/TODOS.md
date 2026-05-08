@@ -135,14 +135,31 @@ Todos
 - ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
 - ✅ Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
 - ✅ Update ready for check-in email to add generated Gcash QR or link for the total balance payment upon check-in
-- Update booking flow when guest is coming from Airbnb
-- Update guest form and booking flow if the guest have surprise decor.
+- ✅ Update booking flow when guest is coming from Airbnb.
+  - ✅ Public guest form: `?source=airbnb` switches all "Facebook" labels/text to "Airbnb". Source saved to DB (`booking_source` column), Google Calendar description, and Google Sheets (new AL/BA column).
+  - ✅ Booking Detail page: `booking_source` shown in Other Information card with color-coded badge (blue=Facebook, orange=Airbnb). Airbnb bookings default Down Payment = 0, Security Deposit = 0 in the Review Pricing form.
+- ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
 - Update Review process to deduct P50-P100 pesos on SD?
 - Add settings page on dashboard to customized form values: Discount vouchers, etc
-- Rethink and plan how to manage bookings with surprise decor
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
 - Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
-- Automatic run cron job functions (specify here) after page refresh
+- ✅ Automatic run cron job functions (specify here) after page refresh
 - Update Check-in Details email to add check-in instructions
 - Add Gcash number and name to Check-in email
+- Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
+- Cleanup isDevMode. This is unnecessary since we have admin dashboard now
+- Update booking confirmed UI and display the complete booking details
+- Improve Other information section UI / cols
+- ✅ If booking date is already past on the date today and the booking status is still either PENDING_REVIEW, PENDING_DOCS and READY_FOR_CHECKIN, display a modal warning that says that the booking date is already passed every time we click the "Proceed to.." button. If they confirm, proceed to next step, if cancel, do not proceed.
+- Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
+- Update additional guests and ask if adult or child (below 5 years old) per field
+- Support slack and telegram notifications for important booking events
+  - New booking requests
+  - ?
+- Automate booking flow for cleaners/staff as well
+  - Telegram notification or Facebook page will chat cleaner messenger
+  - Every time there's a new booking, send a notification for upcoming bookings
+  - Each booking will contain important info for cleaners like no of pax, requires room decor, guest special requests
+  - Notification for guest check-out
+  - ?
