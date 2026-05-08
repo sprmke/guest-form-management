@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
   CalendarPlus,
@@ -28,8 +28,7 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/admin/lib/types';
-import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
-
+import { useGmailMailIntegrationStatus } from '@/features/admin/hooks/useGmailMailIntegration';
 const PAGE_SIZES = [25, 50, 100] as const;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
@@ -62,7 +61,6 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
-    includeTests: sp.get('includeTests') === 'true',
     hideStaleCompleted: sp.get('hideStaleCompleted') !== 'false',
     sort,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
@@ -92,7 +90,6 @@ function writeQueryToParams(
   set('to', q.to);
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
-  set('includeTests', q.includeTests ? 'true' : null);
   set('hideStaleCompleted', q.hideStaleCompleted === false ? 'false' : null);
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
@@ -127,6 +124,7 @@ function buildPageItems(current: number, total: number): PageItem[] {
 // ─── Page component ──────────────────────────────────────────
 
 export function BookingsListPage() {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = useMemo(
     () => parseQueryFromParams(searchParams),
@@ -148,6 +146,22 @@ export function BookingsListPage() {
   });
 
   const { data, isLoading, isFetching, error, refetch } = useBookings(query);
+  const gmailIntegration = useGmailMailIntegrationStatus();
+
+  useEffect(() => {
+    if (!gmailIntegration.isSuccess) return;
+    if (gmailIntegration.data.connected) return;
+    toast.warning('Gmail is not connected', {
+      id: 'admin-gmail-not-connected',
+      description:
+        'Connect Gmail under Settings so the scheduled listener can process Azure approval emails. Bookings still work; automations that need the mailbox will stall until Gmail is set up. If this deployment only uses legacy server tokens (npm run gmail-auth), you can ignore this.',
+      duration: 14_000,
+      action: {
+        label: 'Open Settings',
+        onClick: () => navigate('/settings'),
+      },
+    });
+  }, [gmailIntegration.isSuccess, gmailIntegration.data?.connected, navigate]);
 
   const patch = useCallback(
     (p: Partial<BookingsQuery>) =>
@@ -191,25 +205,6 @@ export function BookingsListPage() {
     setSearchParams(new URLSearchParams(), { replace: true });
     dateNav.setDatePreset('month');
   }, [setSearchParams, dateNav]);
-
-  useEffect(() => {
-    const gmailOk = searchParams.get('gmail_connected');
-    const gmailErr = searchParams.get('gmail_error');
-    if (!gmailOk && !gmailErr) return;
-
-    const next = new URLSearchParams(searchParams);
-    if (gmailOk) {
-      toast.success(
-        'Gmail connected. The scheduled listener will use this mailbox.',
-      );
-      next.delete('gmail_connected');
-    }
-    if (gmailErr) {
-      toast.error(`Gmail connection failed: ${gmailErr}`);
-      next.delete('gmail_error');
-    }
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
 
   const total = data?.total ?? 0;
   const rows = data?.rows ?? [];
@@ -267,8 +262,6 @@ export function BookingsListPage() {
       }
     >
       <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
-        <GmailMailIntegrationCard />
-
         <BookingFilters
           query={query}
           onChange={patch}

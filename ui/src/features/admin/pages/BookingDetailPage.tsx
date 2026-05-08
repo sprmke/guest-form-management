@@ -6,7 +6,8 @@
  *   Right (sticky 344px): WorkflowPanel
  *
  * Header card toggles **Edit** ↔ **Cancel**; booking status is shown on the
- * **Progress** card in `WorkflowPanel`. **Cancel booking** stays in the workflow panel Actions.
+ * **Progress** card in `WorkflowPanel` (after `PendingReviewWorkflowGate` when
+ * status is `PENDING_REVIEW`). **Cancel booking** stays in the workflow panel Actions.
  * While the booking is in Pending documents (GAF / parking / pet) or Ready for check-in,
  * saving workflow-sensitive guest fields reverts status → PENDING_REVIEW; replacing
  * payment/ID/pet docs via upload does too.
@@ -19,7 +20,7 @@
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -41,15 +42,16 @@ import {
   Loader2,
   Search,
   Sparkles,
-  TestTube2,
   Ticket,
   User,
   Users,
   X,
 } from 'lucide-react';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { PendingReviewWorkflowGate } from '@/features/admin/components/PendingReviewWorkflowGate';
 import { WorkflowPanel } from '@/features/admin/components/WorkflowPanel';
 import { BookingEditForm } from '@/features/admin/components/BookingEditForm';
+import { InlineCopyIconButton } from '@/features/admin/components/SdRefundForm';
 import { useBooking } from '@/features/admin/hooks/useBooking';
 import {
   formatBookingDate,
@@ -67,6 +69,7 @@ import {
   resolveAssetUrlForBrowser,
 } from '@/features/admin/lib/storageUrls';
 import {
+  computeCompletedStayProfitLoss,
   computeTotalGuestBalance,
   guestBalancePaidRecorded,
 } from '@/features/admin/lib/totalGuestBalance';
@@ -81,6 +84,16 @@ export function BookingDetailPage() {
     type: 'image' | 'pdf' | 'file';
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  const copyBookingIdToClipboard = useCallback(async () => {
+    const id = bookingId?.trim();
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+    } catch {
+      toast.error('Could not copy to clipboard');
+    }
+  }, [bookingId]);
 
   const title =
     booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
@@ -181,9 +194,7 @@ export function BookingDetailPage() {
                       {booking.has_pets && (
                         <PetsCard booking={booking} onPreview={handlePreview} />
                       )}
-                      {(booking.find_us || booking.guest_special_requests) && (
-                        <OtherInfoCard booking={booking} />
-                      )}
+                      <OtherInfoCard booking={booking} />
                       <DocumentsCard
                         booking={booking}
                         onPreview={handlePreview}
@@ -194,7 +205,9 @@ export function BookingDetailPage() {
 
                 {/* ── Right column — WorkflowPanel ───────────────────────────── */}
                 <div className="w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]">
-                  <WorkflowPanel key={booking.id} booking={booking} />
+                  <PendingReviewWorkflowGate booking={booking}>
+                    <WorkflowPanel key={booking.id} booking={booking} />
+                  </PendingReviewWorkflowGate>
 
                   {/* Booking meta */}
                   <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
@@ -203,8 +216,14 @@ export function BookingDetailPage() {
                     </p>
                     <div className="space-y-1.5 text-xs">
                       <MetaRow label="Booking ID">
-                        <span className="font-mono text-[11px] text-slate-600 break-all">
-                          {booking.id}
+                        <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
+                          <span className="font-mono text-[11px] text-slate-600 break-all">
+                            {booking.id}
+                          </span>
+                          <InlineCopyIconButton
+                            aria-label="Copy booking ID to clipboard"
+                            onClick={() => void copyBookingIdToClipboard()}
+                          />
                         </span>
                       </MetaRow>
                       <MetaRow label="Created">
@@ -214,14 +233,6 @@ export function BookingDetailPage() {
                         <MetaRow label="Updated">
                           {formatRelative(booking.updated_at)}
                         </MetaRow>
-                      )}
-                      {booking.is_test_booking && (
-                        <div className="mt-2 flex items-center gap-1.5 rounded-md bg-violet-50 px-2.5 py-1.5 ring-1 ring-violet-200">
-                          <TestTube2 className="size-3.5 shrink-0 text-violet-600" />
-                          <span className="text-[11px] font-semibold text-violet-700">
-                            Test Booking
-                          </span>
-                        </div>
                       )}
                     </div>
                   </div>
@@ -257,53 +268,66 @@ function BookingHeader({
 }) {
   const pax =
     (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const fb = booking.guest_facebook_name?.trim() ?? '';
+  const primary = booking.primary_guest_name?.trim() ?? '';
+  const heading = fb || primary || 'Booking';
+  const showPrimarySubtitle = Boolean(
+    fb && primary && fb.toLowerCase() !== primary.toLowerCase(),
+  );
+
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <h1 className="truncate text-base font-bold text-slate-900">
-              {booking.guest_facebook_name}
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="min-w-0 max-w-full break-words text-base font-bold leading-snug text-slate-900 sm:text-[17px]">
+              {heading}
             </h1>
-            {booking.is_test_booking && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700 ring-1 ring-violet-200">
-                <TestTube2 className="size-3" />
-                TEST
-              </span>
-            )}
           </div>
-          <p className="text-sm text-slate-500">{booking.primary_guest_name}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-            <span className="flex items-center gap-1">
-              <Calendar className="size-3.5" />
-              {formatBookingDate(booking.check_in_date)} →{' '}
-              {formatBookingDate(booking.check_out_date)}
+          {showPrimarySubtitle && (
+            <p className="text-xs font-medium text-slate-500 sm:text-[13px]">
+              <span className="text-slate-400">Primary guest</span>{' '}
+              <span className="text-slate-600">{primary}</span>
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500 sm:text-[13px]">
+            <span className="flex items-center gap-1.5">
+              <Calendar
+                className="size-3.5 shrink-0 text-slate-400"
+                aria-hidden
+              />
+              <span>
+                {formatBookingDate(booking.check_in_date)} →{' '}
+                {formatBookingDate(booking.check_out_date)}
+              </span>
             </span>
-            <span className="flex items-center gap-1">
-              <Users className="size-3.5" />
-              {pax} pax · {booking.number_of_nights} night
-              {booking.number_of_nights !== 1 ? 's' : ''}
+            <span className="flex items-center gap-1.5">
+              <Users className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+              <span>
+                {pax} pax · {booking.number_of_nights} night
+                {booking.number_of_nights !== 1 ? 's' : ''}
+              </span>
             </span>
           </div>
         </div>
-        <div className="flex w-full flex-wrap items-start justify-end gap-2 sm:w-auto sm:max-w-[min(100%,280px)]">
+        <div className="flex w-full shrink-0 flex-wrap items-start justify-stretch gap-2 sm:w-auto sm:justify-end">
           {editMode ? (
             <button
               type="button"
               onClick={onCancelEdit}
               aria-label="Cancel and close the form"
-              className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex-initial sm:px-4"
             >
-              <X className="size-3 shrink-0" aria-hidden />
-              <span className="inline">Cancel</span>
+              <X className="size-3.5 shrink-0" aria-hidden />
+              <span>Cancel</span>
             </button>
           ) : (
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex h-9 items-center justify-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:px-3"
+              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex-initial sm:px-4"
             >
-              <Edit2 className="size-3 shrink-0" aria-hidden />
+              <Edit2 className="size-3.5 shrink-0" aria-hidden />
               Edit
             </button>
           )}
@@ -527,8 +551,43 @@ function PetsCard({
 }
 
 function OtherInfoCard({ booking }: { booking: BookingRow }) {
+  const source = booking.booking_source || 'Facebook';
+  const isAirbnb = source === 'Airbnb';
   return (
     <Card title="Other Information" icon={<Info className="size-3.5" />}>
+      {/* Booking Source */}
+      <div className="mb-3">
+        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Booking Source
+        </p>
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+            isAirbnb
+              ? 'border-orange-200 bg-orange-50 text-orange-700'
+              : 'border-blue-200 bg-blue-50 text-blue-700'
+          }`}
+        >
+          {source}
+        </span>
+      </div>
+
+      <div className="mb-3">
+        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+          Surprise decor
+        </p>
+        <span
+          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+            booking.guest_requests_surprise_decor
+              ? 'border-violet-200 bg-violet-50 text-violet-800'
+              : 'border-slate-200 bg-slate-50 text-slate-600'
+          }`}
+        >
+          {booking.guest_requests_surprise_decor
+            ? 'Requested'
+            : 'Not requested'}
+        </span>
+      </div>
+
       {(booking.find_us || booking.find_us_details) && (
         <div className="mb-3">
           <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
@@ -660,6 +719,10 @@ function PricingSummaryCard({
   const { expenses: sdExpenses, profits: sdProfits } =
     buildSdExpenseProfitRows(booking);
 
+  const { totalProfit, totalExpenses, totalNet } = isCompleted
+    ? computeCompletedStayProfitLoss(booking, sdProfits, sdExpenses)
+    : { totalProfit: 0, totalExpenses: 0, totalNet: 0 };
+
   const hasPaymentReceipt = Boolean(booking.payment_receipt_url?.trim());
   const hasBalanceReceipt = Boolean(
     booking.guest_balance_payment_receipt_url?.trim(),
@@ -706,49 +769,73 @@ function PricingSummaryCard({
       </Grid3>
 
       {totalGuestBalance != null && (
-        <div className="mt-3 overflow-hidden rounded-lg bg-slate-50 ring-1 ring-slate-200">
-          <div className="divide-y divide-slate-200/80">
-            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                Total guest balance
-              </span>
-              <span className="text-right text-sm font-semibold tabular-nums text-slate-900">
-                {formatMoney(totalGuestBalance)}
-              </span>
-            </div>
-            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                Balance Amount Paid
-              </span>
-              <span className="text-right text-sm font-semibold tabular-nums text-slate-900">
-                {paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : '—'}
-              </span>
-            </div>
-            <div className="grid min-h-11 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 px-3 py-2.5 sm:px-3.5 sm:py-3">
-              <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
-                Total unpaid
-              </span>
-              <div className="flex min-h-9 justify-end">
-                {unpaidCents !== null && unpaidCents <= 0 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-900 ring-1 ring-emerald-200">
-                    <CheckCircle2
-                      className="size-3.5 shrink-0 text-emerald-600"
-                      aria-hidden
-                    />
-                    Paid in full
-                  </span>
-                ) : (
-                  <span className="text-right text-sm font-semibold tabular-nums text-amber-900">
-                    {unpaidCents != null ? formatMoney(unpaidCents / 100) : '—'}
-                  </span>
-                )}
+        <div className="mt-3 overflow-hidden rounded-lg ring-1 ring-slate-200">
+          {/* Guest settlement */}
+          <p className="bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            Guest settlement
+          </p>
+          <div className="divide-y divide-slate-100 bg-white">
+            <MiniRow
+              label="Total guest balance"
+              value={formatMoney(totalGuestBalance)}
+            />
+            <MiniRow
+              label="Balance paid"
+              value={
+                paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : '—'
+              }
+            />
+            <MiniRow label="Unpaid">
+              {unpaidCents !== null && unpaidCents <= 0 ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                  <CheckCircle2
+                    className="size-3 shrink-0 text-emerald-600"
+                    aria-hidden
+                  />
+                  Paid in full
+                </span>
+              ) : (
+                <span className="text-[13px] font-semibold tabular-nums text-amber-800">
+                  {unpaidCents != null ? formatMoney(unpaidCents / 100) : '—'}
+                </span>
+              )}
+            </MiniRow>
+          </div>
+
+          {/* P&L — COMPLETED only */}
+          {isCompleted && (
+            <div className="border-t border-slate-200">
+              <p className="bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                Profit &amp; loss
+              </p>
+              <div className="divide-y divide-slate-100 bg-white">
+                <MiniRow
+                  label="Profit"
+                  value={formatMoney(totalProfit)}
+                  valueClass={
+                    totalProfit >= 0 ? 'text-emerald-700' : 'text-red-600'
+                  }
+                />
+                <MiniRow label="Expenses" value={formatMoney(totalExpenses)} />
+                <MiniRow
+                  label="Net"
+                  bold
+                  value={formatMoney(totalNet)}
+                  valueClass={
+                    totalNet > 0
+                      ? 'text-emerald-700'
+                      : totalNet < 0
+                        ? 'text-red-600'
+                        : 'text-slate-900'
+                  }
+                />
               </div>
             </div>
-          </div>
+          )}
+
           {unpaidCents !== null && unpaidCents < 0 && (
-            <p className="border-t border-slate-200/80 px-3 py-2 text-[10.5px] leading-snug text-slate-500 sm:px-3.5">
-              Recorded payments exceed total guest balance by{' '}
-              {formatMoney(Math.abs(unpaidCents) / 100)}.
+            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-[10.5px] text-amber-900">
+              Overpaid by {formatMoney(Math.abs(unpaidCents) / 100)}
             </p>
           )}
         </div>
@@ -1282,6 +1369,38 @@ function Card({
         </h2>
       </div>
       {children}
+    </div>
+  );
+}
+
+/** Compact 2-col key/value row for the settlement + P&L block. */
+function MiniRow({
+  label,
+  value,
+  valueClass,
+  bold,
+  children,
+}: {
+  label: string;
+  value?: string;
+  valueClass?: string;
+  bold?: boolean;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 px-4 py-2">
+      <span
+        className={`text-[11px] uppercase tracking-wider ${bold ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}`}
+      >
+        {label}
+      </span>
+      {children ?? (
+        <span
+          className={`text-[13px] tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${valueClass ?? 'text-slate-900'}`}
+        >
+          {value}
+        </span>
+      )}
     </div>
   );
 }
