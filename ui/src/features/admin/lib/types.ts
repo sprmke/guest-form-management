@@ -1,3 +1,4 @@
+import type { SdBank } from '@/features/sd-form/lib/sdFormSchema';
 import type { AnyBookingStatus } from './bookingStatus';
 
 /** One labeled amount row in the admin SD settlement form (JSONB on `guest_submissions`). */
@@ -54,6 +55,9 @@ export type BookingRow = {
   // ── How found / requests ──────────────────────────────────────────────────
   find_us: string | null;
   find_us_details: string | null;
+  booking_source: string | null;
+  guest_requests_surprise_decor?: boolean | null;
+  surprise_decor_staff_acknowledged?: boolean | null;
   guest_special_requests: string | null;
 
   // ── Documents ─────────────────────────────────────────────────────────────
@@ -68,13 +72,13 @@ export type BookingRow = {
   status_updated_at?: string | null;
 
   // Phase 0 additive columns — may be absent on prod until migration applied.
-  is_test_booking?: boolean | null;
   booking_rate?: number | string | null;
   down_payment?: number | string | null;
   balance?: number | string | null;
   security_deposit?: number | string | null;
   parking_rate_guest?: number | string | null;
   parking_rate_paid?: number | string | null;
+  parking_owner?: string | null;
   pet_fee?: number | string | null;
   guest_additional_fee?: number | string | null;
   approved_gaf_pdf_url?: string | null;
@@ -92,16 +96,23 @@ export type BookingRow = {
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | string | null;
   sd_refund_receipt_url?: string | null;
+  guest_balance_paid_amount?: number | string | null;
+  guest_balance_payment_receipt_url?: string | null;
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
   sd_refund_phone_confirmed?: boolean | null;
-  sd_refund_bank?: 'GCash' | 'Maribank' | 'BDO' | 'BPI' | null;
+  sd_refund_bank?: SdBank | null;
   sd_refund_account_name?: string | null;
   sd_refund_account_number?: string | null;
-  sd_refund_cash_pickup_note?: string | null;
   sd_refund_form_submitted_at?: string | null;
   sd_refund_form_emailed_at?: string | null;
   settled_at?: string | null;
+
+  // Next-stay Facebook-review voucher (awarded on /sd-form). Visible to admin
+  // on the Pricing card once status = COMPLETED so it can be honoured later.
+  next_stay_voucher_code?: string | null;
+  next_stay_voucher_amount?: number | string | null;
+  next_stay_voucher_awarded_at?: string | null;
 };
 
 export type BookingsSort =
@@ -120,8 +131,11 @@ export type BookingsQuery = {
   to: string | null;
   hasPets: boolean | null;
   needParking: boolean | null;
-  /** Whether to include test rows. Default `false` = hide test data. */
-  includeTests: boolean;
+  /**
+   * When true (default), list-bookings omits COMPLETED rows whose check-in is
+   * strictly before today (Asia/Manila). Set false to include those stays.
+   */
+  hideStaleCompleted: boolean;
   sort: BookingsSort;
   page: number;  // 1-indexed
   limit: number;
@@ -134,7 +148,7 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   to: null,
   hasPets: null,
   needParking: null,
-  includeTests: false,
+  hideStaleCompleted: true,
   sort: 'check_in_date:asc',
   page: 1,
   limit: 25,

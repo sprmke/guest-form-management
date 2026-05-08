@@ -69,6 +69,10 @@ export function hasWorkflowSensitiveGuestFieldDiff(
     return true;
   }
 
+  if (!sameBool(booking.guest_requests_surprise_decor, v.guest_requests_surprise_decor)) {
+    return true;
+  }
+
   if (!sameBool(booking.need_parking, v.need_parking)) return true;
   if (v.need_parking) {
     if (!sameText(booking.car_plate_number, v.car_plate_number)) return true;

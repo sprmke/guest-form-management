@@ -9,7 +9,7 @@ export const BOOKING_STATUSES = [
   'PENDING_PARKING_REQUEST',
   'PENDING_PET_REQUEST',
   'READY_FOR_CHECKIN',
-  'PENDING_SD_REFUND_DETAILS',
+  'READY_FOR_CHECKOUT',
   'PENDING_SD_REFUND',
   'COMPLETED',
   'CANCELLED',
@@ -30,11 +30,11 @@ export type AnyBookingStatus = BookingStatus | LegacyBookingStatus;
 export const STATUS_LABELS: Record<AnyBookingStatus, string> = {
   PENDING_REVIEW: 'Pending Review',
   PENDING_DOCUMENTS: 'Pending Documents',
-  PENDING_GAF: 'Pending GAF',
+  PENDING_GAF: 'Pending GAF Request',
   PENDING_PARKING_REQUEST: 'Pending Parking Request',
   PENDING_PET_REQUEST: 'Pending Pet Request',
   READY_FOR_CHECKIN: 'Ready for Check-in',
-  PENDING_SD_REFUND_DETAILS: 'Pending SD Refund Details',
+  READY_FOR_CHECKOUT: 'Ready for Check-out',
   PENDING_SD_REFUND: 'Pending SD Refund',
   COMPLETED: 'Completed',
   CANCELLED: 'Cancelled',
@@ -64,7 +64,7 @@ export const STATUS_TONE: Record<AnyBookingStatus, StatusTone> = {
   PENDING_PARKING_REQUEST: 'yellow',
   PENDING_PET_REQUEST: 'yellow',
   READY_FOR_CHECKIN: 'green',
-  PENDING_SD_REFUND_DETAILS: 'amber',
+  READY_FOR_CHECKOUT: 'amber',
   PENDING_SD_REFUND: 'orange',
   COMPLETED: 'blue',
   CANCELLED: 'purple',
@@ -100,6 +100,38 @@ export function shouldRevertGuestFieldEditsToPendingReview(
   status: string | null | undefined,
 ): boolean {
   return !!status && (GUEST_FIELD_EDIT_REVERT_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * Clears nested Pending Documents state, request/approved PDF URLs, admin
+ * parking settlement, and guest balance settlement when sensitive guest edits
+ * revert the row to `PENDING_REVIEW`. Does **not** clear pricing snapshot
+ * fields — same column set as server.
+ *
+ * Mirror: `supabase/functions/_shared/statusMachine.ts#pendingDocumentsClearPatchForGuestEditRevert`.
+ */
+export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
+  string,
+  null | false
+> {
+  return {
+    gaf_completed_at: null,
+    parking_completed_at: null,
+    pet_completed_at: null,
+    gaf_manual_incomplete: false,
+    pet_manual_incomplete: false,
+    approved_gaf_pdf_url: null,
+    approved_pet_pdf_url: null,
+    gaf_request_pdf_url: null,
+    pet_request_pdf_url: null,
+    parking_rate_paid: null,
+    parking_owner: null,
+    parking_owner_email: null,
+    parking_endorsement_url: null,
+    guest_balance_paid_amount: null,
+    guest_balance_payment_receipt_url: null,
+    surprise_decor_staff_acknowledged: false,
+  };
 }
 
 export function statusLabel(value: string): string {

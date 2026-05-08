@@ -24,8 +24,8 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_GAF:             ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  READY_FOR_CHECKIN:       ['PENDING_SD_REFUND_DETAILS', 'CANCELLED'],
-  PENDING_SD_REFUND_DETAILS: ['PENDING_SD_REFUND', 'CANCELLED'],
+  READY_FOR_CHECKIN:       ['READY_FOR_CHECKOUT', 'CANCELLED'],
+  READY_FOR_CHECKOUT: ['PENDING_SD_REFUND', 'CANCELLED'],
   PENDING_SD_REFUND:       ['COMPLETED', 'CANCELLED'],
   COMPLETED:               [],
   CANCELLED:               [],
@@ -52,8 +52,8 @@ const MANUAL_OVERRIDE_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
     'PENDING_REVIEW',
     'PENDING_SD_REFUND',
   ],
-  PENDING_SD_REFUND_DETAILS: ['READY_FOR_CHECKIN'],
-  PENDING_SD_REFUND:       ['PENDING_SD_REFUND_DETAILS'],
+  READY_FOR_CHECKOUT: ['READY_FOR_CHECKIN'],
+  PENDING_SD_REFUND:       ['READY_FOR_CHECKOUT'],
   COMPLETED:               [],
   CANCELLED:               [],
 };
@@ -154,6 +154,21 @@ export function isSubStatusCompleted(
   return !!booking.pet_completed_at || !!booking.approved_pet_pdf_url;
 }
 
+/**
+ * Pipeline stepper nested rows under **Pending Documents**: when the booking is
+ * back in **PENDING_REVIEW** (e.g. sensitive-field revert), substeps must not
+ * show green "complete" from a prior cycle — DB may still hold old completion
+ * URLs until the next admin transition, and the UX should match "fresh review".
+ */
+export function isSubStatusCompletedInStepper(
+  booking: ApplicabilityFlags & { status?: string | null },
+  subStatus: PendingDocumentSubStatus,
+): boolean {
+  if (!isSubStatusRequired(subStatus, booking)) return true;
+  if (booking.status === 'PENDING_REVIEW') return false;
+  return isSubStatusCompleted(subStatus, booking);
+}
+
 export function arePendingDocumentsComplete(booking: ApplicabilityFlags): boolean {
   return (
     isSubStatusCompleted('PENDING_GAF', booking) &&
@@ -220,7 +235,7 @@ export const PIPELINE_ORDER: readonly BookingStatus[] = [
   'PENDING_REVIEW',
   'PENDING_DOCUMENTS',
   'READY_FOR_CHECKIN',
-  'PENDING_SD_REFUND_DETAILS',
+  'READY_FOR_CHECKOUT',
   'PENDING_SD_REFUND',
   'COMPLETED',
 ] as const;
@@ -316,7 +331,7 @@ const TRANSITION_ACTION_LABEL: Partial<Record<BookingStatus, string>> = {
   PENDING_PARKING_REQUEST: 'Proceed to Pending Parking Request',
   PENDING_PET_REQUEST:     'Proceed to Pending Pet Request',
   READY_FOR_CHECKIN:       'Proceed to Ready for Check-in',
-  PENDING_SD_REFUND_DETAILS: 'Proceed to Pending SD Refund Details',
+  READY_FOR_CHECKOUT: 'Proceed to Ready for Check-out',
   PENDING_SD_REFUND:       'Proceed to Pending SD Refund',
   COMPLETED:               'Complete Booking',
   PENDING_REVIEW:          'Revert to Pending Review',
@@ -334,19 +349,21 @@ export function transitionActionLabel(to: BookingStatus): string {
 export type SubFormKind =
   | 'pricing'       // ReviewPricingForm (booking rate, down payment, SD, pet fee)
   | 'parking'       // ParkingRequestForm (parking rates, endorsement upload)
+  | 'guest_balance' // GuestBalanceSettlementForm (paid = total guest balance + receipt)
   | 'sd_refund'     // SdRefundForm (expenses, profits, refund amount, receipt upload)
   | null;
 
 export const TRANSITION_SUB_FORM: Partial<Record<BookingStatus, SubFormKind>> = {
   PENDING_DOCUMENTS:       'pricing',   // admin must enter rates before proceeding
   PENDING_PARKING_REQUEST: null,
-  READY_FOR_CHECKIN:       'parking',   // from PENDING_PARKING_REQUEST → needs parking data
+  READY_FOR_CHECKIN:       null,        // use requiredSubForm(from, to) — RFCI → READY_FOR_CHECKOUT uses guest_balance
   COMPLETED:               'sd_refund',
 };
 
 export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
   if (from === 'PENDING_REVIEW' && to === 'PENDING_DOCUMENTS') return 'pricing';
   if (from === 'PENDING_PARKING_REQUEST' && (to === 'PENDING_PET_REQUEST' || to === 'READY_FOR_CHECKIN')) return 'parking';
+  if (from === 'READY_FOR_CHECKIN' && to === 'READY_FOR_CHECKOUT') return 'guest_balance';
   if (from === 'PENDING_SD_REFUND' && to === 'COMPLETED') return 'sd_refund';
   return null;
 }
