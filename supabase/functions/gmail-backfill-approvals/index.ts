@@ -176,6 +176,13 @@ type ParsedApprovalSubject = {
   checkOutDate: string;
 };
 
+function toMmDdYyyy(date: Date): string {
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const yyyy = String(date.getFullYear());
+  return `${mm}-${dd}-${yyyy}`;
+}
+
 function parseDateTokenToDbFormat(raw: string): string | null {
   const token = raw.trim();
   if (/^\d{2}-\d{2}-\d{4}$/.test(token)) return token;
@@ -183,12 +190,10 @@ function parseDateTokenToDbFormat(raw: string): string | null {
     const [y, m, d] = token.split('-');
     return `${m}-${d}-${y}`;
   }
+  // Handles subjects like "May 13, 2026" (same as gmail-listener)
   const parsed = new Date(token);
   if (!Number.isNaN(parsed.getTime())) {
-    const mm = String(parsed.getMonth() + 1).padStart(2, '0');
-    const dd = String(parsed.getDate()).padStart(2, '0');
-    const yyyy = String(parsed.getFullYear());
-    return `${mm}-${dd}-${yyyy}`;
+    return toMmDdYyyy(parsed);
   }
   return null;
 }

@@ -184,6 +184,12 @@ verify_jwt = false
 
 [functions.gmail-backfill-approvals]
 verify_jwt = false
+# Orchestrator may auto-advance to READY_FOR_CHECKIN and send RFCI (same as gmail-listener).
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+  "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
+]
 
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
