@@ -24,11 +24,11 @@ When you add a function that imports `emailService` or `workflowOrchestrator`, c
 
 This repo has three categories. Set JWT policy in `supabase/config.toml` accordingly.
 
-| Category             | Functions                                                                                                  | `verify_jwt` | Notes                                                                                                                                          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Public (guest)       | `submit-form`, `get-form`, `get-booked-dates`                                                              | `false`      | UI passes anon key. Never trust request body blindly.                                                                                          |
-| Admin                | `list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking` | `false`      | Kong JWT gate off (ES256 tokens); **first line** of handler must call `verifyAdminJwt(req)` — that is the real gate.                           |
-| Scheduled / internal | `gmail-listener`, `sd-refund-cron`                                                                         | `false`      | Invoked by hosted **`pg_cron` + `net.http_post`** (see `docs/SCHEDULED_JOBS_AND_TESTING.md`); handlers do **not** call `verifyAdminJwt` today. |
+| Category             | Functions                                                                                                                              | `verify_jwt` | Notes                                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public (guest)       | `submit-form`, `get-form`, `get-booked-dates`                                                                                          | `false`      | UI passes anon key. Never trust request body blindly.                                                                                          |
+| Admin                | `list-bookings`, `transition-booking`, `upload-booking-asset`, `parking-broadcast-email`, `cancel-booking`, `gmail-backfill-approvals` | `false`      | Kong JWT gate off (ES256 tokens); **first line** of handler must call `verifyAdminJwt(req)` — that is the real gate.                           |
+| Scheduled / internal | `gmail-listener`, `sd-refund-cron`                                                                                                     | `false`      | Invoked by hosted **`pg_cron` + `net.http_post`** (see `docs/SCHEDULED_JOBS_AND_TESTING.md`); handlers do **not** call `verifyAdminJwt` today. |
 
 ## Handler skeleton (copy this)
 
