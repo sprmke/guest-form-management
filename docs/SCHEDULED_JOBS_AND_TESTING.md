@@ -7,7 +7,7 @@ Related canonical references:
 - `docs/NEW_FLOW_PLAN.md` — product intent, Phase 4 notes, Q6.6 manual triggers
 - `.cursor/rules/booking-workflow.mdc` — status machine and side-effect matrix
 - `supabase/config.toml` — `verify_jwt` and why `schedule` is not committed for local CLI
-- Implementations: `supabase/functions/gmail-listener/index.ts`, `supabase/functions/sd-refund-cron/index.ts`
+- Implementations: `supabase/functions/gmail-listener/index.ts`, `supabase/functions/gmail-backfill-approvals/index.ts`, `supabase/functions/sd-refund-cron/index.ts`
 - Admin manual triggers: `ui/src/features/admin/hooks/useTransitionBooking.ts` (`useRunGmailPoll`, `useRunSdRefundCron`) and `ui/src/features/admin/components/WorkflowPanel.tsx`
 
 ---
@@ -16,12 +16,46 @@ Related canonical references:
 
 There are **two** Edge Functions meant to run on a **recurring schedule** (every ~5 minutes in production):
 
-| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**). |
-| **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose Manila check-out is within the **lead** window (**`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, default **120** min before check-out): sends the guest **Check-out & SD Refund** email if not already sent (**independent** of balance settlement). **Status** → **`READY_FOR_CHECKOUT`** only when **settlement** is complete (orchestrator). **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id. **Stale check-outs:** automated guest email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; **`0`** = never suppress); transition + calendar + sheet still run when settlement is met.                                                                        |
+| Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**).                                                                                                                             |
+| **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose Manila check-out is within the **lead** window (**`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, default **120** min before check-out): sends the guest **Check-out & SD Refund** email if not already sent (**independent** of balance settlement). **Status** → **`READY_FOR_CHECKOUT`** only when **settlement** is complete (orchestrator). **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id. **Stale check-outs:** automated guest email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; **`0`** = never suppress); transition + calendar + sheet still run when settlement is met. |
 
 Neither job reimplements workflow rules in isolation: both defer to **`WorkflowOrchestrator`** so calendar, sheet, and email behavior stay consistent with `transition-booking` and the status machine.
+
+### 1.1 One-time historical approval backfill (`gmail-backfill-approvals`)
+
+**Not scheduled.** This is an **admin-only** `POST` (`verifyAdminJwt`) used once (or in small batches) after Gmail is connected, so older Azure approval threads are recovered **without** turning the listener into a full-inbox scanner.
+
+**Recommended order**
+
+1. Deploy Edge Functions and complete **Connect Gmail** (or legacy `GMAIL_OAUTH_*` secrets) so `getGmailAccessTokenUnified()` works.
+2. Run **`gmail-listener`** once (admin “Run Gmail poll” or curl). That initializes **`gmail_listener_state.history_id`** at the **current** mailbox cursor so ongoing cron only sees **new** mail.
+3. Run **`gmail-backfill-approvals`** with defaults (`dryRun: true`) from an admin session; inspect JSON `results`.
+4. Re-run with **`dryRun: false`** in conservative batches (`limitBookings`, `maxMessagesPerKind`, `lookbackDays` in the JSON body). Repeat until `no_match` / `would_apply` counts stabilize.
+5. Enable **`pg_cron`** for **`gmail-listener`** only after backfill (or in parallel—backfill uses **Gmail `messages.list` search**, not `historyId`, so it does not fight the cursor).
+
+**Body (all optional)**
+
+| Field                | Default    | Notes                                                                                  |
+| -------------------- | ---------- | -------------------------------------------------------------------------------------- |
+| `dryRun`             | **`true`** | When true, only reports `would_apply` / `no_match`; no Storage or orchestrator writes. |
+| `lookbackDays`       | `180`      | Passed into Gmail `newer_than:` (max 3650).                                            |
+| `limitBookings`      | `60`       | Candidate rows from DB (max 300).                                                      |
+| `maxMessagesPerKind` | `6`        | Cap per booking task per Gmail search (max 20).                                        |
+
+**Candidate bookings:** `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PET_REQUEST` — same URL + attachment rules as **`gmail-listener`**. Rows missing only pet when `has_pets` is false are skipped. **`processed_emails`** dedupes by `message_id` so reruns are safe.
+
+**curl (local, dry run)**
+
+```bash
+curl -sS -X POST "${SUPABASE_URL}/functions/v1/gmail-backfill-approvals" \
+  -H "Authorization: Bearer ${ADMIN_ACCESS_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"dryRun":true}'
+```
+
+Replace `dryRun` with `false` when ready to apply. Use a **service** admin JWT from the same allow list as `/bookings`.
 
 ---
 
@@ -114,9 +148,9 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 
 ### 5.2 `sd-refund-cron` only
 
-| Variable                               | Default | Purpose                                                                                                                                                       |
-| -------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | `120`   | Minutes **before** parsed check-out (Manila) when the cron may send the guest check-out email (not gated on settlement).                                 |
+| Variable                               | Default | Purpose                                                                                                                                                                                      |
+| -------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | `120`   | Minutes **before** parsed check-out (Manila) when the cron may send the guest check-out email (not gated on settlement).                                                                     |
 | `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | `21`    | If **now − check-out** exceeds this many days, the cron **does not** send the automated guest check-out email; settlement-based transition still runs. Set **`0`** to never suppress by age. |
 
 ### 5.3 `gmail-listener` only
@@ -124,7 +158,7 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 | Variable                             | Purpose                                                                                                                                                                                |
 | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GMAIL_API_WEB_CLIENT_JSON`          | _(Web OAuth path)_ OAuth **Web application** client JSON. With `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` and a row in `gmail_mail_integration`, the listener uses the DB refresh token first. |
-| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | 32-byte key (64 hex or base64) matching the value used when storing tokens via **Connect Gmail** on **`/settings`**.                                                                       |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`   | 32-byte key (64 hex or base64) matching the value used when storing tokens via **Connect Gmail** on **`/settings`**.                                                                   |
 | `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | _(Web OAuth path)_ Comma-separated SPA origins for `google-mail-oauth-start` (defaults include local Vite).                                                                            |
 | `GMAIL_OAUTH_CLIENT_JSON`            | _(Legacy)_ OAuth client JSON (`installed` or `web`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`.                                                  |
 | `GMAIL_OAUTH_TOKEN_JSON`             | _(Legacy)_ Token JSON including **`refresh_token`**. Same script flow. Used when no DB-stored refresh exists for `GMAIL_API_WEB_CLIENT_JSON`.                                          |
@@ -211,13 +245,13 @@ curl -sS -X POST \
 
 ### 7.5 Negative / edge cases to try
 
-| Scenario                                                     | Expected                                                                                |
-| ------------------------------------------------------------ | --------------------------------------------------------------------------------------- |
-| Lead window **not open yet** (check-out still more than **lead** minutes away) | `skipped` with reason like `not_yet_due_Xmin` in `results`.                             |
-| Settlement incomplete (email may have sent already)       | `skipped` with `missing_guest_balance_*` / `guest_balance_not_fully_paid` **or** result `action: 'checkout_email_sent'` if only the email ran.                             |
-| **`READY_FOR_CHECKIN`** but **unparseable** `check_out_date` | `skipped`, `unparseable_checkout_datetime`.                                             |
-| **No** rows in `READY_FOR_CHECKIN`                           | `scanned: 0`, `transitioned: 0`.                                                        |
-| Orchestrator throws (e.g. misconfigured Google)              | That booking `action: 'failed'` in `results`, run still **200** with partial successes. |
+| Scenario                                                                       | Expected                                                                                                                                       |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lead window **not open yet** (check-out still more than **lead** minutes away) | `skipped` with reason like `not_yet_due_Xmin` in `results`.                                                                                    |
+| Settlement incomplete (email may have sent already)                            | `skipped` with `missing_guest_balance_*` / `guest_balance_not_fully_paid` **or** result `action: 'checkout_email_sent'` if only the email ran. |
+| **`READY_FOR_CHECKIN`** but **unparseable** `check_out_date`                   | `skipped`, `unparseable_checkout_datetime`.                                                                                                    |
+| **No** rows in `READY_FOR_CHECKIN`                                             | `scanned: 0`, `transitioned: 0`.                                                                                                               |
+| Orchestrator throws (e.g. misconfigured Google)                                | That booking `action: 'failed'` in `results`, run still **200** with partial successes.                                                        |
 
 ---
 
