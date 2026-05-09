@@ -182,6 +182,9 @@ verify_jwt = false
 [functions.google-mail-oauth-disconnect]
 verify_jwt = false
 
+[functions.gmail-backfill-approvals]
+verify_jwt = false
+
 # ── Scheduled / internal — served locally + triggered by cron in cloud ────────
 # The `schedule` key is Cloud-only — do NOT add it here or the local CLI will
 # fail to parse config.toml. Set the cron schedule in the Supabase dashboard.
