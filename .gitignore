@@ -56,6 +56,10 @@ api/build/
 **/temp/
 supabase/.temp/
 
+# Manual Postgres dumps from production (contain PII)
+supabase_backup_*.sql
+supabase_backup*.dump
+
 # Local development
 **/.local
 

@@ -11,6 +11,32 @@ ALTER TABLE guest_submissions
 ALTER TABLE guest_submissions
   DROP CONSTRAINT IF EXISTS guest_submissions_status_check;
 
+-- Normalize legacy statuses before attaching CHECK (Q1.1 date rules mirror
+-- `20260502000000_widen_status_enum.sql`). Do not touch `status_updated_at` or
+-- `settled_at` — both are added later in `20260501000002_add_workflow_columns.sql`.
+
+UPDATE guest_submissions
+SET status = 'CANCELLED'
+WHERE status = 'canceled';
+
+UPDATE guest_submissions
+SET status = 'COMPLETED'
+WHERE status = 'booked'
+  AND (
+    (
+      check_in_date ~ '^\d{4}-\d{2}-\d{2}$'
+      AND check_in_date::DATE < (NOW() AT TIME ZONE 'Asia/Manila')::DATE
+    )
+    OR (
+      check_in_date ~ '^\d{2}-\d{2}-\d{4}$'
+      AND TO_DATE(check_in_date, 'MM-DD-YYYY') < (NOW() AT TIME ZONE 'Asia/Manila')::DATE
+    )
+  );
+
+UPDATE guest_submissions
+SET status = 'PENDING_REVIEW'
+WHERE status = 'booked';
+
 ALTER TABLE guest_submissions
   ADD CONSTRAINT guest_submissions_status_check
   CHECK (status IN (
