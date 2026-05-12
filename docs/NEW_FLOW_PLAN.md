@@ -371,7 +371,7 @@ Order:
 7. ✅ **Phase 5 — Submit-form cleanup.** Shipped: `submit-form` is DB + storage only (optional calendar/sheet via guest dev flags); workflow emails only on transitions; **no** test-booking mode (`?testing=true`, `is_test_booking`, `[TEST]` prefixes, `cleanup-test-data`).
 8. **Phase 6 — Backfill sync.** One-shot migration script resyncs all non-cancelled bookings into Google Calendar & Sheet with new titles/colors/columns.
 
-See **`docs/MIGRATION_RUNBOOK.md`** for apply order, verification queries, production checklist, Phase 0 rollback caveats, and **§1.3** follow-on migrations.
+See **`docs/production-deployment.md`** for the **ordered production cutover** (backups, CLI, secrets, Google, UI, cron). See **`docs/MIGRATION_RUNBOOK.md`** for migration detail, verification queries, Phase 0 rollback caveats, and **§1.3** follow-on migrations.
 
 ---
 

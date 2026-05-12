@@ -1,5 +1,7 @@
 # Migration Runbook — New Booking Flow
 
+> **Production cutover (ordered backups → migrations → functions → secrets → Google → UI → cron):** see **[`docs/production-deployment.md`](./production-deployment.md)** for a single checklist with exact commands.
+>
 > Step-by-step apply + rollback instructions for the redesign in `docs/NEW_FLOW_PLAN.md`.
 > Every step is **additive and reversible** on Phase 0. Later phases (1–6) introduce behavior change and must be deployed in order.
 >
@@ -210,9 +212,11 @@ This project doesn't have a dedicated staging Supabase project today. If you spi
 
 ## 5. Applying to production
 
+Follow **`docs/production-deployment.md`** for the full production checklist (backups, CLI, secrets, Google, hosting, `pg_cron`). The steps below are the **database push** slice.
+
 **Do not skip any step.**
 
-1. Backup the DB from the Supabase dashboard (**Database → Backups → Create backup**) and note the backup ID / timestamp.
+1. Backup the DB: **Pro+** Dashboard → Database → Backups; **Free** → **`pg_dump`** (pooler URI from **Connect** — **§3.5.3** URI guidance) **and/or** **`npx supabase@latest db dump --linked --data-only`**; keep dumps **off git** (**PII**).
 2. Confirm the linked project ref:
 
    ```bash
@@ -235,6 +239,17 @@ This project doesn't have a dedicated staging Supabase project today. If you spi
 5. Re-run the verification queries from §3 against prod (Dashboard → SQL Editor).
 6. Smoke-test **`/form`** submit/update and admin **`/bookings`** flows against staging/prod expectations (workflow emails and transitions ship with Edge Functions + migrations — regression testing advised).
 7. **Production integrations:** deploy Edge Functions if needed, then set **Supabase Edge secrets**, **Authentication → Google**, **UI (Vercel) env**, **Google service account / Gmail OAuth**, and **`pg_cron`** per **§11** below.
+
+### 5.1 `db push`: “Remote migration versions not found in local migrations directory”
+
+The linked database’s **`supabase_migrations.schema_migrations`** lists a **version** with **no matching file** `supabase/migrations/<VERSION>_*.sql` in your repo.
+
+1. Inspect: **`npx supabase@latest migration list`** — note orphan **Remote** versions.
+2. **Preferred:** Recover the SQL that actually ran remotely (branch, teammate, Dashboard SQL history) and add **`supabase/migrations/<VERSION>_short_name.sql`** with that DDL; **`db push`** again.
+3. **If the history row is wrong** but live schema matches your committed migrations (**`supabase db diff --linked`**): **`npx supabase@latest migration repair <VERSION> --status reverted`** then **`db push`**. **`repair`** only adjusts the history table — it **does not** roll back DDL; if that migration created objects your chain would recreate, you may hit **already exists**.
+4. **`GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` warnings** from the CLI during push/dump: harmless if OAuth is configured in Dashboard for hosted projects.
+
+After **`repair --status reverted`**, if **`db push`** says **found local migrations to insert before the last migration on remote** — run **`npx supabase@latest db push --include-all`**, or **`migration repair <MISSING_VERSION> --status applied`** when live schema already matches that file (**`migration list`** to see gaps). Prefer eyeballing the SQL (**`IF NOT EXISTS`** migrations are safest to replay).
 
 ---
 

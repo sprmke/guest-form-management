@@ -339,8 +339,9 @@ Run in the Supabase Dashboard SQL editor (or `psql`). After the guest submits th
 
 ## 12. Deployment
 
+- **Production checklist (backups, `supabase db push`, `supabase functions deploy`, Dashboard secrets, Google OAuth clients + service account, Vercel `VITE_*`, `pg_cron`):** **`docs/production-deployment.md`**.
 - `ui/vercel.json`: SPA rewrites to `index.html`, Vite build output `dist`.
-- Supabase: deploy functions + run migrations; configure secrets in dashboard.
+- Supabase: deploy functions + run migrations; configure secrets in dashboard (details in **`docs/MIGRATION_RUNBOOK.md` §11**).
 
 ---
 
