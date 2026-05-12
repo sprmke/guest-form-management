@@ -24,13 +24,16 @@ serve(async (req) => {
     const today = new Date();
     const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-    // Get all bookings from database
-    // Note: Dates are stored as TEXT in MM-DD-YYYY format
-    // We'll filter canceled bookings in JavaScript for backwards compatibility
-    // (works both before and after the status column migration is applied)
+    // Get all non-CANCELLED bookings from the database.
+    // Phase 2+: only 'CANCELLED' frees dates; every other status (including
+    // COMPLETED) still blocks the calendar picker — see NEW_FLOW_PLAN.md §6.1 Q7.2.
+    // We push the filter to the DB so Postgres only returns rows we care about.
+    // Belt-and-suspenders: the JS filter below also checks for legacy 'canceled'
+    // in case the migration hasn't been applied yet on a fresh local clone.
     const { data: bookings, error } = await supabase
       .from('guest_submissions')
-      .select('id, check_in_date, check_out_date, status');
+      .select('id, check_in_date, check_out_date, status')
+      .neq('status', 'CANCELLED');
 
     if (error) {
       console.error('Database error:', error);
@@ -66,14 +69,16 @@ serve(async (req) => {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
     // Filter out:
-    // 1. Canceled bookings (status === 'canceled')
+    // 1. CANCELLED bookings (DB query already excludes 'CANCELLED'; legacy 'canceled'
+    //    is handled here for safety during local dev before the migration runs)
     // 2. Past bookings (where check_out_date < today)
     // Then transform bookings to normalized date ranges
     const bookedDateRanges = bookings
       ?.filter(booking => {
-        // Exclude canceled bookings (status column may not exist yet, so check for it)
-        // If status is 'canceled', exclude. If status is null/undefined/'booked', include.
-        if (booking.status === 'canceled') {
+        // Belt-and-suspenders: exclude legacy 'canceled' value in case migration
+        // hasn't been applied (production rows are all migrated, but a fresh local
+        // clone might not have run Phase 2 yet).
+        if (booking.status === 'CANCELLED' || booking.status === 'canceled') {
           return false;
         }
 

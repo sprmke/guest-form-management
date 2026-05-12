@@ -1,16 +1,26 @@
 #!/bin/bash
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$ROOT"
 
-# Start Supabase in the background
-echo "Starting Supabase..."
-supabase start &
+# Load ui/.env.development so GOOGLE_CLIENT_* are set for supabase/config.toml env().
+echo "Starting Supabase (DB, Auth, Storage)..."
+# Use CLI from npx so Postgres 17 + storage schema order matches migrations (global `supabase` <2.80 often fails on storage.buckets).
+"$ROOT/scripts/run-with-ui-dev-env.sh" npx --yes supabase@latest start
 
-# Wait for Supabase to be ready (adjust sleep time if needed)
-sleep 10
+# Remove the stale edge runtime container if it exists.
+# The Supabase CLI auto-reload creates a conflict when the old container isn't removed first,
+# causing functions to lose their env vars. Removing it here ensures a clean start every time.
+docker rm -f supabase_edge_runtime_guest-form-management 2>/dev/null || true
 
-# Start Edge Functions in the background
-echo "Starting Edge Functions..."
-supabase functions serve --env-file ./supabase/.env.local &
+# Start edge functions with secrets from supabase/.env.local.
+# --env-file is required; without it Deno env vars like ADMIN_ALLOWED_EMAILS are not injected.
+echo "Starting Supabase Edge Functions (with supabase/.env.local secrets)..."
+npx --yes supabase@latest functions serve --env-file "$ROOT/supabase/.env.local" &
+FUNCTIONS_PID=$!
+
+# Ensure the functions server is stopped when this script exits.
+trap "kill $FUNCTIONS_PID 2>/dev/null" EXIT
 
 # Start the UI
 echo "Starting UI development server..."
-cd ui && npm run dev
+cd "$ROOT/ui" && npm run dev

@@ -1,0 +1,91 @@
+---
+description: Admin authentication (Supabase Google OAuth + allow list) and dev-mode rules for the new /bookings dashboard
+alwaysApply: true
+---
+
+# Admin auth — agent reference
+
+Applies whenever a change touches the `/bookings` routes, the new admin-only edge functions, or guest-form dev toggles (`?dev=true`, non-production builds).
+
+## 1. Auth model
+
+- Provider: **Supabase Auth** with **Google OAuth**.
+- Client: `@supabase/supabase-js` (add to `ui/package.json` when implementing).
+- Single shared Supabase client: `ui/src/lib/supabaseClient.ts`.
+- Entry point: a new `/sign-in` route that calls `supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: <origin>/bookings } })`.
+
+## 2. Allow list
+
+- Only these emails may access admin routes and admin edge functions:
+  - **Config**: `ADMIN_ALLOWED_EMAILS` — comma-separated env var in `supabase/.env.local` and Supabase dashboard.
+  - **Default value**: `kamehome.azurenorth@gmail.com`.
+- The allow list is enforced **server-side** on every admin edge function via `_shared/auth.ts#verifyAdminJwt(req)`. Never trust the client.
+- Client also reads `ADMIN_ALLOWED_EMAILS` (via `VITE_ADMIN_ALLOWED_EMAILS`) for an immediate UX reject, but never as the only gate.
+
+## 3. Route guards (UI)
+
+- New component: `ui/src/features/admin/components/RequireAdmin.tsx`.
+  - Shows a loader while the session hydrates.
+  - Redirects to `/sign-in` if unauthenticated.
+  - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
+- Applied to: `/bookings`, `/bookings/:bookingId`, `/settings`, and any other admin route added later.
+- The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
+
+## 4. Guest form dev controls (`GuestForm.tsx`)
+
+- **Production (`VITE_NODE_ENV === 'production'`):** no dev checkbox panel; submits use full save + storage + calendar + sheet flags as wired in `submit-form`, and **New Booking Request** email runs by default (`sendEmail` omitted → treated as on server-side).
+- **Non-production:** dev panel shows save/storage/calendar/sheet/**Send email** toggles (**all on by default**; uncheck to skip). **`sendEmail=false`** skips the owner notify only.
+- **`?dev=true`** on `/form` enables the same panel in production builds when operators need to flip individual API flags (rare).
+
+There is **no** separate test-booking mode, `?testing=true`, `is_test_booking` column, or test-data cleanup edge function — use local/staging projects instead.
+
+## 5. Dev controls panel (admin detail page)
+
+Shown on `/bookings/:bookingId`. Checkbox list driving what happens on the next action click:
+
+| Checkbox                          | Shown when                              | Replaces the old                                                  |
+| --------------------------------- | --------------------------------------- | ----------------------------------------------------------------- |
+| Save to database                  | always                                  | `saveToDatabase`                                                  |
+| Save images to storage            | always                                  | `saveImagesToStorage`                                             |
+| Generate GAF / pet request PDFs   | only from `PENDING_REVIEW`              | `generatePdf` (was guest-form query param; now transition-only)   |
+| **Send GAF request email**        | only from `PENDING_REVIEW`              | renamed from `Send email notification`                            |
+| **Send Parking broadcast email**  | only when `need_parking`                | new                                                               |
+| **Send Pet request email**        | only when `has_pets`                    | new                                                               |
+| **Send Acknowledgement email**    | only from `PENDING_REVIEW`              | renamed / split from legacy                                       |
+| **Send Ready-for-check-in email** | only from GAF / parking / pet stages    | gates server + UI                                                 |
+| **Send SD refund form email**     | only when status is `READY_FOR_CHECKIN` | email guest `/sd-form` link on transition to `READY_FOR_CHECKOUT` |
+| Update Google Calendar            | always                                  | `updateGoogleCalendar`                                            |
+| Update Google Sheets              | always                                  | `updateGoogleSheets`                                              |
+
+All checkboxes start **checked** so the next action runs the full happy path (DB + Calendar + Sheet + the emails that apply to that transition). Admins **uncheck** the specific side effects they want to skip for that run. In production they are authoritative — flipping a checkbox off means "really don't do it". The server's `flag()` helper in `_shared/workflowOrchestrator.ts` treats `undefined` as `true`, so this UI default mirrors the server default.
+
+## 6. Server contract
+
+- All admin edge functions (`list-bookings`, `transition-booking`, `sync-booking-integrations`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
+  - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
+  - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
+- The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
+
+## 7. Env vars summary (new)
+
+| Var                                    | Scope | Purpose                                                                                                                                                                                                     |
+| -------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ADMIN_ALLOWED_EMAILS`                 | edge  | Comma-separated allow list (server-enforced).                                                                                                                                                               |
+| `VITE_ADMIN_ALLOWED_EMAILS`            | UI    | UX reject only; never the only gate.                                                                                                                                                                        |
+| `PARKING_OWNER_EMAILS`                 | edge  | Comma-separated BCC list for parking broadcast. Initial seed list lives in `docs/NEW_FLOW_PLAN.md` §6.1 Q4.1 — **never hardcode emails in source**; rotate via env only.                                    |
+| `GMAIL_API_WEB_CLIENT_JSON`            | edge  | _(Optional)_ Web OAuth client JSON for **Connect Gmail** on **`/settings`**; redirect URI `{SUPABASE_URL}/functions/v1/google-mail-oauth-callback`. Pair with `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`.           |
+| `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`     | edge  | 32-byte AES key (64 hex or base64) for encrypting Gmail refresh tokens in `gmail_mail_integration`.                                                                                                         |
+| `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`   | edge  | Comma-separated SPA origins allowed by `google-mail-oauth-start` (defaults include local Vite).                                                                                                             |
+| `GMAIL_OAUTH_CLIENT_JSON`              | edge  | Legacy: full OAuth client JSON (`npm run gmail-auth`). Used when DB refresh token is absent.                                                                                                                |
+| `GMAIL_OAUTH_TOKEN_JSON`               | edge  | Legacy: token JSON with `refresh_token` (`npm run gmail-auth`).                                                                                                                                             |
+| `SD_REFUND_CRON_EMAIL_LEAD_MINUTES`    | edge  | Default `120`; minutes **before** Manila check-out when `sd-refund-cron` may send the guest check-out email (not gated on balance settlement).                                                              |
+| `SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS` | edge  | Default `21`; `sd-refund-cron` suppresses **automated** guest check-out email when check-out is older than this many days (`0` = never suppress). Scoped cron (`POST` body `bookingId`) requires admin JWT. |
+
+Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
+
+## 8. Don'ts
+
+- Don't pass JWTs or admin emails through URL query strings.
+- Don't add a second Supabase client — share `ui/src/lib/supabaseClient.ts`.
+- Don't hardcode `kamehome.azurenorth@gmail.com` in code; read from env.
+- Don't build admin features that work without `verifyAdminJwt` server-side — the allow list is the one real gate.

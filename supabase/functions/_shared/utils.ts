@@ -3,25 +3,46 @@ import customParseFormat from 'https://esm.sh/dayjs@1.11.10/plugin/customParseFo
 
 dayjs.extend(customParseFormat)
 
-  /**
-   * Formats a date and time string to ISO 8601 format
-   */
-  export const formatDateTime = (date: string, time: string): string => {
-    const [month, day, year] = date.split('-');
-    const formattedDate = `${year}-${month}-${day}`;
-    
-    let [hours, minutes] = time.split(':');
-    const period = minutes.split(' ')[1];
-    minutes = minutes.split(' ')[0];
-    
-    if (period === 'PM' && hours !== '12') {
-      hours = String(Number(hours) + 12);
-    } else if (period === 'AM' && hours === '12') {
-      hours = '00';
-    }
-    
-    return `${formattedDate}T${hours}:${minutes}:00`;
+/**
+ * Normalizes MM-DD-YYYY (DB) or YYYY-MM-DD (guest form) to YYYY-MM-DD for APIs.
+ */
+export const normalizeDateToYYYYMMDD = (dateStr: string): string => {
+  if (!dateStr?.trim()) return '';
+  const s = dateStr.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const mdy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (mdy) {
+    const [, month, day, year] = mdy;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
   }
+  const parsed = dayjs(s);
+  return parsed.isValid() ? parsed.format('YYYY-MM-DD') : '';
+};
+
+/**
+ * RFC3339-style local dateTime (no offset) for Google Calendar `dateTime` + `timeZone`.
+ * Parses times with {@link formatTime} so "2:00 PM" maps to 14:00, not 02:00.
+ */
+export const buildGoogleCalendarDateTime = (
+  dateStr: string,
+  timeStr: string | null | undefined,
+  defaultTime: string,
+): string => {
+  const ymd = normalizeDateToYYYYMMDD(dateStr);
+  if (!ymd) return '';
+  const hm = formatTime(timeStr ?? '') || defaultTime;
+  const parts = hm.split(':');
+  const h = (parts[0] ?? '0').padStart(2, '0');
+  const m = (parts[1] ?? '00').padStart(2, '0');
+  return `${ymd}T${h}:${m}:00`;
+};
+
+/**
+ * @deprecated Prefer {@link buildGoogleCalendarDateTime}; kept for call sites that pass explicit HH:mm.
+ */
+export const formatDateTime = (date: string, time: string): string => {
+  return buildGoogleCalendarDateTime(date, time, '00:00');
+}
 
 /**
  * Formats a date string to YYYY-MM-DD format
@@ -35,6 +56,28 @@ export const formatDate = (dateStr: string | null | undefined): string => {
 };
 
 /**
+ * Formats dates for guest-facing email copy (e.g. "Jun 13, 2026").
+ * Accepts MM-DD-YYYY (DB), YYYY-MM-DD, or parseable date strings.
+ */
+export const formatDateForEmail = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '';
+
+  const normalized = normalizeDateToYYYYMMDD(dateStr);
+  const parsed = normalized ? dayjs(normalized, 'YYYY-MM-DD', true) : dayjs(dateStr);
+
+  return parsed.isValid() ? parsed.format('MMM D, YYYY') : String(dateStr);
+};
+
+/** Whole-night count between check-in and check-out (exclusive of checkout night). */
+export function countStayNights(checkInDate: string, checkOutDate: string): number {
+  const ci = normalizeDateToYYYYMMDD(checkInDate);
+  const co = normalizeDateToYYYYMMDD(checkOutDate);
+  if (!ci || !co) return 0;
+  const d = dayjs(co, 'YYYY-MM-DD', true).diff(dayjs(ci, 'YYYY-MM-DD', true), 'day');
+  return Math.max(0, d);
+}
+
+/**
  * Formats a time string to 24-hour HH:mm format
  * @param timeStr - The time string to format
  * @returns Formatted time string or empty string if invalid
@@ -44,6 +87,7 @@ export const formatTime = (timeStr: string | null | undefined): string => {
   
   // Try parsing with various formats
   const formats = [
+    'HH:mm:ss', // Postgres / ISO time with seconds
     'HH:mm',    // 24-hour format
     'H:mm',     // 24-hour format without leading zero
     'hh:mm A',  // 12-hour format with AM/PM
@@ -89,12 +133,13 @@ export const extractRouteParam = (pathname: string, routePattern: string): strin
   return match && match[1] ? match[1] : null;
 };
 
-// Format URLs to ensure they are publicly accessible
+// Format URLs so browsers can load them (edge getPublicUrl often uses internal Kong host).
 export const formatPublicUrl = (url: string) => {
   if (!url) return '';
-
-  // If URL contains kong:8000, replace it with the correct public URL
-  return url.replace('http://kong:8000', 'http://127.0.0.1:54321');
+  return url
+    .replace(/^http:\/\/kong:8000\b/, 'http://127.0.0.1:54321')
+    .replace(/^https:\/\/kong:8000\b/, 'https://127.0.0.1:54321')
+    .replace(/^http:\/\/supabase_kong_[^/:]+:8000\b/, 'http://127.0.0.1:54321');
 };
 
 /**
@@ -155,12 +200,19 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
     { form: 'guestSpecialRequests', db: 'guest_special_requests' },
     { form: 'findUs', db: 'find_us' },
     { form: 'findUsDetails', db: 'find_us_details' },
+    { form: 'bookingSource', db: 'booking_source' },
+    {
+      form: 'guestRequestsSurpriseDecor',
+      db: 'guest_requests_surprise_decor',
+      isBoolean: true,
+    },
     { form: 'needParking', db: 'need_parking', isBoolean: true },
     { form: 'carPlateNumber', db: 'car_plate_number' },
     { form: 'carBrandModel', db: 'car_brand_model' },
     { form: 'carColor', db: 'car_color' },
     { form: 'hasPets', db: 'has_pets', isBoolean: true },
     { form: 'petName', db: 'pet_name' },
+    { form: 'petType', db: 'pet_type' },
     { form: 'petBreed', db: 'pet_breed' },
     { form: 'petAge', db: 'pet_age' },
     { form: 'petVaccinationDate', db: 'pet_vaccination_date', isDate: true },
@@ -266,3 +318,44 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
   
   return { hasChanges, changedFields };
 };
+
+/**
+ * Form keys emitted by compareFormData().changedFields whose edits require
+ * status → PENDING_REVIEW when saving from public /form, while the row is in
+ * the documents pipeline or Ready for check-in (see statusMachine
+ * `shouldRevertGuestFieldEditsToPendingReview`; docs/TODOS.md + booking-workflow.mdc §2.3).
+ */
+const WORKFLOW_SENSITIVE_FORM_FIELDS = new Set<string>([
+  'guestFacebookName',
+  'primaryGuestName',
+  'guestEmail',
+  'guestPhoneNumber',
+  'guest2Name',
+  'guest3Name',
+  'guest4Name',
+  'guest5Name',
+  'checkInDate',
+  'checkOutDate',
+  'checkInTime',
+  'checkOutTime',
+  'guestRequestsSurpriseDecor',
+  'needParking',
+  'carPlateNumber',
+  'carBrandModel',
+  'carColor',
+  'hasPets',
+  'petName',
+  'petType',
+  'petBreed',
+  'petAge',
+  'petVaccinationDate',
+  'paymentReceipt',
+  'validId',
+  'petVaccination',
+  'petImage',
+]);
+
+/** True if any changed field is workflow-sensitive for pipeline → PENDING_REVIEW revert. */
+export function shouldRevertReadyForCheckinToPendingReview(changedFields: string[]): boolean {
+  return changedFields.some((f) => WORKFLOW_SENSITIVE_FORM_FIELDS.has(f));
+}

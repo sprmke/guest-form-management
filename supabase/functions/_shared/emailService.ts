@@ -1,5 +1,126 @@
-import { GuestFormData } from './types.ts'
+import { GuestFormData, GuestSubmission } from './types.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import {
+  DEFAULT_EMAIL_LOGO_URL,
+  escapeHtml,
+  loadEmailTemplate,
+  replacePlaceholders,
+  withEmailShellStyleVars,
+} from './renderEmailHtml.ts'
+import { countStayNights, formatDateForEmail } from './utils.ts'
+
+async function emailHeaderLogoHtml(): Promise<string> {
+  const raw = (Deno.env.get('EMAIL_LOGO_URL') ?? '').trim() || DEFAULT_EMAIL_LOGO_URL;
+  const frag = await loadEmailTemplate('fragments/email-header-logo');
+  return replacePlaceholders(
+    frag,
+    withEmailShellStyleVars({ logoUrl: escapeHtml(raw) }),
+  );
+}
+
+// ─── Shared storage helpers ───────────────────────────────────────────────────
+
+function supabaseAdminClient() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+}
+
+/**
+ * Parse a Supabase Storage public URL into { bucket, path }.
+ * Returns null for placeholder values or unparseable URLs.
+ */
+function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+  try {
+    if (!url || url === 'dev-mode-skipped' || url === 'test-mode-skipped' || !url.startsWith('http')) {
+      return null;
+    }
+    const urlObj = new URL(url);
+    const parts = urlObj.pathname.split('/');
+    // Support both /storage/v1/object/public/… and /storage/v1/object/sign/…
+    const markerIdx = parts.findIndex((p) => p === 'public' || p === 'sign');
+    if (markerIdx !== -1 && markerIdx < parts.length - 2) {
+      const bucket = parts[markerIdx + 1];
+      const path = parts.slice(markerIdx + 2).join('/');
+      return { bucket, path };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+type DownloadedFile = {
+  bytes: Uint8Array;
+  filename: string;
+  mimeType: string;
+};
+
+/**
+ * Download a file from Supabase Storage using the service role key.
+ * Works for both public and private buckets.
+ */
+async function downloadStorageFile(url: string, fallbackFilename: string): Promise<DownloadedFile | null> {
+  const loc = parseStorageUrl(url);
+  if (!loc) {
+    console.warn('[emailService] Cannot parse storage URL:', url);
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseAdminClient()
+      .storage
+      .from(loc.bucket)
+      .download(loc.path);
+
+    if (error || !data) {
+      console.error('[emailService] Storage download failed:', error?.message);
+      return null;
+    }
+
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    const filename = loc.path.split('/').pop() || fallbackFilename;
+    const mimeType = data.type || 'application/octet-stream';
+    return { bytes, filename, mimeType };
+  } catch (err) {
+    console.error('[emailService] Unexpected download error:', err);
+    return null;
+  }
+}
+
+/**
+ * Convert file bytes to a base64 string for Resend attachments.
+ */
+function toBase64(bytes: Uint8Array): string {
+  const chunks: string[] = [];
+  const chunkSize = 32768;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    chunks.push(String.fromCharCode.apply(null, Array.from(bytes.slice(i, i + chunkSize))));
+  }
+  return btoa(chunks.join(''));
+}
+
+/** `content_id` for Resend inline image; `<img src="cid:…">` must match without the prefix. */
+const READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID = 'kame-home-gcash-qr';
+
+async function loadBundledReadyForCheckinPaymentQr(): Promise<Uint8Array | null> {
+  try {
+    const url = new URL('./email-assets/kame-home-gcash-qr-payment.jpg', import.meta.url);
+    return await Deno.readFile(url);
+  } catch (err) {
+    console.warn('[emailService] Bundled payment QR asset missing or unreadable:', err);
+    return null;
+  }
+}
+
+type ResendAttachment = {
+  filename: string;
+  content: string;
+  encoding: string;
+  content_id?: string;
+  content_type?: string;
+};
 
 /**
  * Checks if a booking is urgent (same-day check-in)
@@ -37,7 +158,27 @@ function isUrgentBooking(checkInDate: string): boolean {
   }
 }
 
-export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isTestingMode = false, isUpdate = false) {
+/** Same-day check-in (Asia/Manila) — HTML callout for Azure + guest templates. */
+function buildUrgentSameDayCallout(isUrgent: boolean): string {
+  if (!isUrgent) return '';
+  const tdStyle =
+    "background-color:#fde8e8;border:1px solid #e8a0a0;border-left-width:4px;border-left-color:#c94c4c;border-radius:0 16px 16px 0;padding:18px 20px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:14px;line-height:1.55;color:#6b2d2d;";
+  const titleStyle =
+    "display:block;margin-bottom:6px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:#8b3a3a;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;";
+  return `<table role="presentation" class="callout-outer callout-urgent" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:20px 0;width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;"><tr><td style="${tdStyle}"><strong class="callout-title" style="${titleStyle}">Urgent! Same-day check-in!</strong><br />This request requires immediate attention and approval.</td></tr></table>`;
+}
+
+/**
+ * Same-day check-in (Asia/Manila) — **subject line** prefix for ops-facing
+ * mail (GAF, Pet, Parking broadcast, **New Booking Request** notify to
+ * `EMAIL_REPLY_TO`). Guest-facing templates (acknowledgement, check-in details,
+ * SD refund form request subject, etc.) do not use this prefix on the subject.
+ */
+function urgentEmailSubjectPrefix(isUrgent: boolean): string {
+  return isUrgent ? '🚨 URGENT - ' : '';
+}
+
+export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array | null, isUpdate = false) {
   console.log(`Sending ${isUpdate ? 'update' : 'confirmation'} email...`);
   
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
@@ -59,56 +200,39 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
-  // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
 
   if (isUrgent) {
     console.log('🚨 URGENT BOOKING DETECTED - Same-day check-in!');
   }
 
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? `
-    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
-    </div>
-  ` : '';
+  const displayCheckInDate = formatDateForEmail(formData.checkInDate);
+  const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
+  const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
 
-  const emailContent = `
-    ${testWarning}
-    <h3>Monaco 2604 - GAF Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
-    <br>
-    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
-    <br>
-    <p>Good day,</p>
-    ${isUpdate ? `
-    <p>The Guest Authorization Form details for <strong>${formData.towerAndUnitNumber}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong> for your approval.</p>
-    <p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>
-    ` : `
-    <p>Kindly review the Guest Authorization Form request for <strong>${formData.towerAndUnitNumber}</strong>, dated from <strong>${formData.checkInDate} to ${formData.checkOutDate}</strong>, for your approval.</p>
-    `}
-    <p>Please let me know if you need any additional information.</p>
-    <p>Thank you for your assistance.</p>
-    <br>
-    <p>Best regards,</p>
-    <p>Arianna Perez</p>
-    <p>Unit Owner, Monaco 2604</p>
-  `
+  const bodyParagraphs = isUpdate
+    ? `<p>The Guest Advise Form (GAF) details for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> have been updated. Kindly review the revised GAF request for the dates <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong> for your approval.</p><p>Please disregard the previous GAF request email for the same dates and unit. The attached form contains the most current and accurate information.</p>`
+    : `<p>Kindly review the Guest Advise Form (GAF) request for <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong>, dated from <strong>${escapeHtml(displayCheckInDate)} to ${escapeHtml(displayCheckOutDate)}</strong>, for your approval.</p>`;
 
-  // Convert Uint8Array to base64 string efficiently
-  let base64PDF: string | null = null;
-  if (pdfBuffer) {
-    // Use TextEncoder to convert the buffer to base64 in chunks
-    const chunks: string[] = [];
-    const chunkSize = 32768; // Process 32KB chunks
-    
-    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
-      const chunk = pdfBuffer.slice(i, i + chunkSize);
-      chunks.push(String.fromCharCode.apply(null, chunk));
-    }
-    
-    base64PDF = btoa(chunks.join(''));
-  }
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const gafTpl = await loadEmailTemplate('gaf-request');
+  const emailContent = replacePlaceholders(
+    gafTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      updateSuffix: isUpdate ? ' (Updated)' : '',
+      urgentBlock,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      bodyParagraphs,
+    }),
+  );
+
+  const base64PDF = pdfBuffer ? toBase64(pdfBuffer) : null;
 
   const updatePrefix = isUpdate ? 'UPDATED - ' : '';
   
@@ -121,9 +245,9 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
     body: JSON.stringify({
       from: 'Monaco 2604 - GAF Request <mail@kamehomes.space>',
       to: [EMAIL_TO],
-      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      // Never CC the guest on the GAF request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       ...(base64PDF ? {
         attachments: [{
@@ -146,12 +270,11 @@ export async function sendEmail(formData: GuestFormData, pdfBuffer: Uint8Array |
 }
 
 export async function sendPetEmail(
-  formData: GuestFormData, 
+  formData: GuestFormData,
   pdfBuffer: Uint8Array | null,
   petImageUrl?: string,
   petVaccinationUrl?: string,
-  isTestingMode = false,
-  isUpdate = false
+  isUpdate = false,
 ) {
   console.log(`Sending pet ${isUpdate ? 'update' : 'request'} email...`);
   console.log('Pet Image URL:', petImageUrl);
@@ -176,201 +299,70 @@ export async function sendPetEmail(
     throw new Error('Missing EMAIL_REPLY_TO environment variable')
   }
 
-  // Test mode email warning
-  const testPrefix = isTestingMode ? '⚠️ TEST - ' : '';
-  const testWarning = isTestingMode ? `
-    <div style="background-color: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-bottom: 20px; border-radius: 5px;">
-      <strong>⚠️ TEST EMAIL:</strong> This is a test booking submission. Please disregard this email as it is for testing purposes only.
-    </div>
-  ` : '';
+  const displayCheckInDate = formatDateForEmail(formData.checkInDate);
+  const displayCheckOutDate = formatDateForEmail(formData.checkOutDate);
+  const displayPetVaccinationDate = formatDateForEmail(formData.petVaccinationDate || '');
 
-  // Check if booking is urgent (same-day check-in)
   const isUrgent = isUrgentBooking(formData.checkInDate);
-  const urgentPrefix = isUrgent ? '🚨 URGENT - ' : '';
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
 
   if (isUrgent) {
     console.log('🚨 URGENT PET BOOKING DETECTED - Same-day check-in!');
   }
 
-  const emailContent = `
-    ${testWarning}
-    <h3>Monaco 2604 - Pet Request${isUpdate ? ' (Updated)' : ''} (${formData.checkInDate} to ${formData.checkOutDate})</h3>
-    <br>
-    ${isUrgent ? '<p style="color: #dc3545; text-transform: uppercase;"><strong>🚨 This is a same-day check-in and requires immediate attention and approval.</strong></p>' : ''}
-    <br>
-    <p>Good day,</p>
-    ${isUpdate ? `
-    <p>The pet information for our guest at <strong>${formData.towerAndUnitNumber}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
-    <p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>
-    ` : `
-    <p>We are writing to request approval for our guest on bringing a pet to <strong>${formData.towerAndUnitNumber}</strong> during their stay from <strong>${formData.checkInDate}</strong> to <strong>${formData.checkOutDate}</strong>.</p>
-    `}
-    <br>
-    <p><strong>Pet Details:</strong></p>
-    <ul>
-      <li><strong>Pet Name:</strong> ${formData.petName || 'N/A'}</li>
-      <li><strong>Pet Type:</strong> ${formData.petType || 'N/A'}</li>
-      <li><strong>Pet Breed:</strong> ${formData.petBreed || 'N/A'}</li>
-      <li><strong>Pet Age:</strong> ${formData.petAge || 'N/A'}</li>
-      <li><strong>Vaccination Date:</strong> ${formData.petVaccinationDate || 'N/A'}</li>
-    </ul>
-    <br>
-    <p>Attached to this email are:</p>
-    <ul>
-      <li>Completed Pet Form with all required information</li>
-      <li>Pet vaccination records</li>
-      <li>Pet photograph</li>
-    </ul>
-    <br>
-    <br>
-    <p>Please let us know if you need any additional information or documentation.</p>
-    <br>
-    <p>Thank you for your consideration.</p>
-    <br>
-    <p>Best regards,</p>
-    <p>Arianna Perez</p>
-    <p>Unit Owner, Monaco 2604</p>
-  `
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+
+  const bodyParagraphs = isUpdate
+    ? `<p>The pet information for our guest at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> has been updated. We kindly request your approval for the revised pet request for their stay from <strong>${escapeHtml(displayCheckInDate)}</strong> to <strong>${escapeHtml(displayCheckOutDate)}</strong>.</p><p>Please disregard the previous pet request email for the same dates and unit. The attached documents contain the most current information.</p>`
+    : `<p>May we kindly request approval for our guest to bring a pet during their stay at <strong>${escapeHtml(formData.towerAndUnitNumber)}</strong> during their stay from <strong>${escapeHtml(displayCheckInDate)}</strong> to <strong>${escapeHtml(displayCheckOutDate)}</strong>.</p>`;
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const petTpl = await loadEmailTemplate('pet-request');
+  const emailContent = replacePlaceholders(
+    petTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      updateSuffix: isUpdate ? ' (Updated)' : '',
+      urgentBlock,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      bodyParagraphs,
+      petName: escapeHtml(formData.petName || 'N/A'),
+      petType: escapeHtml(formData.petType || 'N/A'),
+      petBreed: escapeHtml(formData.petBreed || 'N/A'),
+      petAge: escapeHtml(formData.petAge || 'N/A'),
+      petVaccinationDate: escapeHtml(displayPetVaccinationDate || 'N/A'),
+    }),
+  );
 
   // Prepare attachments array
   const attachments: any[] = []
 
   // Add Pet PDF if available
   if (pdfBuffer) {
-    const chunks: string[] = [];
-    const chunkSize = 32768;
-    
-    for (let i = 0; i < pdfBuffer.length; i += chunkSize) {
-      const chunk = pdfBuffer.slice(i, i + chunkSize);
-      chunks.push(String.fromCharCode.apply(null, chunk));
-    }
-    
-    const base64PDF = btoa(chunks.join(''));
     attachments.push({
       filename: `MONACO_2604_PET_FORM-${formData.checkInDate}.pdf`,
-      content: base64PDF,
-      encoding: 'base64'
-    })
-  }
-
-  // Initialize Supabase client for downloading files
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-  )
-
-  // Helper function to extract bucket and path from Supabase URL
-  const parseSupabaseUrl = (url: string): { bucket: string; path: string } | null => {
-    try {
-      // Skip placeholder values from dev/testing mode
-      if (url === 'dev-mode-skipped' || url === 'test-mode-skipped' || !url.startsWith('http')) {
-        console.log('  Skipping placeholder URL:', url);
-        return null;
-      }
-      
-      // URL format: https://{project}.supabase.co/storage/v1/object/public/{bucket}/{path}
-      const urlObj = new URL(url);
-      const pathParts = urlObj.pathname.split('/');
-      const publicIndex = pathParts.indexOf('public');
-      if (publicIndex !== -1 && publicIndex < pathParts.length - 2) {
-        const bucket = pathParts[publicIndex + 1];
-        const path = pathParts.slice(publicIndex + 2).join('/');
-        return { bucket, path };
-      }
-      return null;
-    } catch (error) {
-      console.error('Error parsing URL:', error);
-      return null;
-    }
+      content: toBase64(pdfBuffer),
+      encoding: 'base64',
+    });
   }
 
   // Download and attach pet image if URL is provided
-  if (petImageUrl && petImageUrl !== 'dev-mode-skipped' && petImageUrl !== 'test-mode-skipped') {
-    try {
-      console.log('Downloading pet image from:', petImageUrl);
-      const urlInfo = parseSupabaseUrl(petImageUrl);
-      
-      if (urlInfo) {
-        const { data: fileData, error: downloadError } = await supabase
-          .storage
-          .from(urlInfo.bucket)
-          .download(urlInfo.path);
-
-        if (downloadError) {
-          console.error('Error downloading pet image from storage:', downloadError);
-        } else if (fileData) {
-          const imageArray = new Uint8Array(await fileData.arrayBuffer());
-          
-          const chunks: string[] = [];
-          const chunkSize = 32768;
-          
-          for (let i = 0; i < imageArray.length; i += chunkSize) {
-            const chunk = imageArray.slice(i, i + chunkSize);
-            chunks.push(String.fromCharCode.apply(null, chunk));
-          }
-          
-          const base64Image = btoa(chunks.join(''));
-          
-          // Extract filename from path
-          const filename = urlInfo.path.split('/').pop() || `pet-image-${formData.checkInDate}.jpg`;
-          
-          attachments.push({
-            filename: filename,
-            content: base64Image,
-            encoding: 'base64'
-          })
-          console.log('Pet image attached successfully:', filename);
-        }
-      } else {
-        console.warn('Could not parse pet image URL');
-      }
-    } catch (error) {
-      console.error('Error downloading pet image:', error);
+  if (petImageUrl) {
+    const file = await downloadStorageFile(petImageUrl, `pet-image-${formData.checkInDate}.jpg`);
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('Pet image attached successfully:', file.filename);
     }
   }
 
   // Download and attach pet vaccination if URL is provided
-  if (petVaccinationUrl && petVaccinationUrl !== 'dev-mode-skipped' && petVaccinationUrl !== 'test-mode-skipped') {
-    try {
-      console.log('Downloading pet vaccination record from:', petVaccinationUrl);
-      const urlInfo = parseSupabaseUrl(petVaccinationUrl);
-      
-      if (urlInfo) {
-        const { data: fileData, error: downloadError } = await supabase
-          .storage
-          .from(urlInfo.bucket)
-          .download(urlInfo.path);
-
-        if (downloadError) {
-          console.error('Error downloading pet vaccination from storage:', downloadError);
-        } else if (fileData) {
-          const vaccinationArray = new Uint8Array(await fileData.arrayBuffer());
-          
-          const chunks: string[] = [];
-          const chunkSize = 32768;
-          
-          for (let i = 0; i < vaccinationArray.length; i += chunkSize) {
-            const chunk = vaccinationArray.slice(i, i + chunkSize);
-            chunks.push(String.fromCharCode.apply(null, chunk));
-          }
-          
-          const base64Vaccination = btoa(chunks.join(''));
-          
-          // Extract filename from path
-          const filename = urlInfo.path.split('/').pop() || `pet-vaccination-${formData.checkInDate}.jpg`;
-          
-          attachments.push({
-            filename: filename,
-            content: base64Vaccination,
-            encoding: 'base64'
-          })
-          console.log('Pet vaccination record attached successfully:', filename);
-        }
-      } else {
-        console.warn('Could not parse pet vaccination URL');
-      }
-    } catch (error) {
-      console.error('Error downloading pet vaccination record:', error);
+  if (petVaccinationUrl) {
+    const file = await downloadStorageFile(petVaccinationUrl, `pet-vaccination-${formData.checkInDate}.jpg`);
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('Pet vaccination record attached successfully:', file.filename);
     }
   }
 
@@ -390,9 +382,9 @@ export async function sendPetEmail(
     body: JSON.stringify({
       from: 'Monaco 2604 - Pet Request <mail@kamehomes.space>',
       to: [EMAIL_TO],
-      cc: [formData.guestEmail, EMAIL_REPLY_TO],
+      // Never CC the guest on the Pet request email — per booking-workflow.mdc §3
       reply_to: EMAIL_REPLY_TO,
-      subject: `${testPrefix}${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${formData.checkInDate} to ${formData.checkOutDate})`,
+      subject: `${urgentPrefix}${updatePrefix}Monaco 2604 - Pet Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
       attachments: attachments
     })
@@ -406,4 +398,607 @@ export async function sendPetEmail(
 
   console.log('Pet email sent successfully');
   return await res.json()
-} 
+}
+
+// ─── New Phase 3 emails ──────────────────────────────────────────────────────
+
+function getResendCredentials() {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const EMAIL_TO = Deno.env.get('EMAIL_TO');          // Azure / building admin
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO'); // kamehome.azurenorth
+
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY');
+  if (!EMAIL_TO) throw new Error('Missing EMAIL_TO');
+  if (!EMAIL_REPLY_TO) throw new Error('Missing EMAIL_REPLY_TO');
+
+  return { RESEND_API_KEY, EMAIL_TO, EMAIL_REPLY_TO };
+}
+
+function pesoFormat(amount: number | null | undefined): string {
+  if (amount == null) return '—';
+  return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function getResendNewBookingNotifyCredentials() {
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const EMAIL_REPLY_TO = Deno.env.get('EMAIL_REPLY_TO');
+  if (!RESEND_API_KEY) throw new Error('Missing RESEND_API_KEY');
+  if (!EMAIL_REPLY_TO) throw new Error('Missing EMAIL_REPLY_TO');
+  return { RESEND_API_KEY, EMAIL_REPLY_TO };
+}
+
+function formatBookingSourceLabelForNotify(raw: string | null | undefined): string {
+  const s = (raw ?? '').trim();
+  if (/^airbnb$/i.test(s)) return 'Airbnb';
+  if (/^facebook$/i.test(s)) return 'Facebook';
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : 'Facebook';
+}
+
+function yesNo(v: boolean | null | undefined): string {
+  return v ? 'Yes ‼️' : 'No';
+}
+
+function notifyDetailTableStyle(): string {
+  return [
+    'width:100%;table-layout:fixed;border:1px solid #e2e8f0;border-radius:16px;',
+    'border-collapse:separate;border-spacing:0;overflow:hidden;font-size:14px;',
+    "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;",
+    'margin:0 0 26px 0;',
+  ].join('');
+}
+
+function notifyRow(label: string, valueHtml: string, withBottomBorder: boolean): string {
+  const b = withBottomBorder ? 'border-bottom:1px solid #e2e8f0;' : '';
+  return `<tr>
+  <td class="tbl-label" style="padding:12px 16px;background-color:#f8fafc;${b}font-weight:600;color:#475569;vertical-align:top;width:38%;">${label}</td>
+  <td class="tbl-value" style="padding:12px 16px;background-color:#ffffff;${b}color:#333333;line-height:1.55;vertical-align:top;">${valueHtml}</td>
+</tr>`;
+}
+
+function notifySectionTitle(text: string): string {
+  return `<p class="section-label" style="margin:24px 0 10px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">${text}</p>`;
+}
+
+function buildNewBookingRequestEmailBodyMain(booking: GuestSubmission): string {
+  const nn = booking.number_of_nights;
+  const nights =
+    nn != null && Number.isFinite(Number(nn)) && Number(nn) >= 0
+      ? Number(nn)
+      : countStayNights(booking.check_in_date, booking.check_out_date);
+  const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const displayCheckIn = formatDateForEmail(booking.check_in_date);
+  const displayCheckOut = formatDateForEmail(booking.check_out_date);
+  const tblStyle = notifyDetailTableStyle();
+
+  const stayRows = [
+    notifyRow('Check-in', escapeHtml(displayCheckIn), true),
+    notifyRow('Check-out', escapeHtml(displayCheckOut), true),
+    notifyRow('Number of nights', escapeHtml(String(nights)), true),
+    notifyRow('Number of pax', escapeHtml(String(pax)), false),
+  ].join('');
+
+  const guestRows = [
+    notifyRow('Facebook Name', escapeHtml(booking.guest_facebook_name), true),
+    notifyRow('Primary Guest Name', escapeHtml(booking.primary_guest_name), true),
+    notifyRow('Address', escapeHtml(booking.guest_address), true),
+    notifyRow('Phone Number', escapeHtml(booking.guest_phone_number), true),
+    notifyRow('Email', escapeHtml(booking.guest_email), true),
+    notifyRow('Source', escapeHtml(formatBookingSourceLabelForNotify(booking.booking_source)), false),
+  ].join('');
+
+  const notableRows = [
+    notifyRow('Requires pay parking?', escapeHtml(yesNo(booking.need_parking)), true),
+    notifyRow('Requires pet approval', escapeHtml(yesNo(booking.has_pets)), true),
+    notifyRow('Requires surprise setup / room decor?', escapeHtml(yesNo(booking.guest_requests_surprise_decor)), false),
+  ].join('');
+
+  const bookingId = booking.id as string;
+  const adminUrl = `${guestAppOrigin()}/bookings/${encodeURIComponent(bookingId)}`;
+  const cta = `<div class="cta-wrap" style="margin:28px 0 8px 0;text-align:center;">
+  <a class="cta-btn" style="{{emailShellCtaBtnStyle}}" href="${escapeHtml(adminUrl)}" target="_blank" rel="noopener">View Booking Details</a>
+</div>`;
+
+  return [
+    notifySectionTitle('Stay details'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${stayRows}</table>`,
+    notifySectionTitle('Guest details'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${guestRows}</table>`,
+    notifySectionTitle('Notable information'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${notableRows}</table>`,
+    cta,
+  ].join('\n');
+}
+
+/**
+ * **Owner / ops notify** — sent only to `EMAIL_REPLY_TO` when a guest saves the public form (`submit-form`).
+ * Not a workflow transition email; failures are logged as non-fatal in `submit-form`.
+ */
+export async function sendNewBookingRequestNotify(booking: GuestSubmission) {
+  const bookingId = booking.id as string | undefined;
+  if (!bookingId) throw new Error('sendNewBookingRequestNotify: booking.id is required');
+
+  console.log('Sending new booking request notify email to EMAIL_REPLY_TO...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendNewBookingNotifyCredentials();
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+  const unitLabel = String(booking.tower_and_unit_number ?? '').trim() || 'Monaco 2604';
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — new booking request notify');
+  }
+
+  const emailBodyMainRaw = buildNewBookingRequestEmailBodyMain(booking);
+  const emailBodyMain = replacePlaceholders(emailBodyMainRaw, withEmailShellStyleVars({}));
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const tpl = await loadEmailTemplate('new-booking-request');
+  const html = replacePlaceholders(
+    tpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      /** Same string prepended to API `subject` and to `<title>` / `<h1>` in the template. */
+      newBookingTitlePrefix: urgentPrefix,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      towerAndUnitNumber: escapeHtml(unitLabel),
+      emailBodyMain,
+    }),
+  );
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [EMAIL_REPLY_TO],
+      reply_to: booking.guest_email,
+      subject: `${urgentPrefix}${unitLabel} - New Booking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send new booking request notify: ${JSON.stringify(err)}`);
+  }
+
+  const body = (await res.json()) as { id?: string };
+  console.log(
+    '[new-booking-notify] Resend accepted message; id:',
+    body?.id ?? '(no id in response)',
+    '| to: EMAIL_REPLY_TO from env (check spam / Resend dashboard if inbox empty)',
+  );
+  return body;
+}
+
+/**
+ * Booking acknowledgement — sent to the **guest** when moving PENDING_REVIEW → PENDING_GAF.
+ * Confirms we received the form and are processing their GAF.
+ */
+export async function sendBookingAcknowledgement(booking: GuestSubmission) {
+  console.log('Sending booking acknowledgement email to guest...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — booking acknowledgement');
+  }
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const ackTpl = await loadEmailTemplate('booking-acknowledgement');
+  const html = replacePlaceholders(
+    ackTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+    }),
+  );
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [booking.guest_email],
+      reply_to: EMAIL_REPLY_TO,
+      subject: `Monaco 2604 - Booking Acknowledgement (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send booking acknowledgement: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Booking acknowledgement email sent successfully');
+  return await res.json();
+}
+
+/**
+ * Ready for check-in — sent to the **guest** when transitioning to READY_FOR_CHECKIN.
+ * Includes payment breakdown, important reminders, and any relevant approved documents as attachments:
+ *   • Approved GAF PDF (always, if available)
+ *   • Approved Pet PDF (if has_pets and available)
+ *   • Parking endorsement (if need_parking and available)
+ */
+export async function sendReadyForCheckin(booking: GuestSubmission) {
+  console.log('Sending ready-for-check-in email to guest...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — ready for check-in email');
+  }
+
+  const balance = booking.balance ?? ((booking.booking_rate ?? 0) - (booking.down_payment ?? 0));
+  const balanceNum = Number(balance);
+  const additionalGuestFee = Number(booking.guest_additional_fee ?? 0) || 0;
+  const totalDueAtCheckin =
+    (Number.isFinite(balanceNum) ? balanceNum : 0) +
+    (Number(booking.security_deposit ?? 0) || 0) +
+    (booking.need_parking ? Number(booking.parking_rate_guest ?? 0) || 0 : 0) +
+    (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0) +
+    additionalGuestFee;
+  const totalBalanceDue = pesoFormat(totalDueAtCheckin);
+  const pax = (booking.number_of_adults || 0) + (booking.number_of_children || 0);
+  const displayCheckInTime = escapeHtml(booking.check_in_time || '2:00 PM');
+  const displayCheckOutTime = escapeHtml(booking.check_out_time || '12:00 PM');
+
+  const parkingPaymentRow = booking.need_parking ? `
+    <tr class="fee-addon-row">
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Guest parking fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.parking_rate_guest as number | null)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"><em class="italic-note">Non-refundable; no rescheduling</em></td>
+    </tr>
+  ` : '';
+
+  const petPaymentRow = booking.has_pets ? `
+    <tr class="fee-addon-row">
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Pet fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.pet_fee as number | null)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td>
+    </tr>
+  ` : '';
+
+  const additionalFeeRow =
+    additionalGuestFee > 0
+      ? `
+    <tr class="fee-addon-row">
+      <td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Additional fee</td>
+      <td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(additionalGuestFee)}</td>
+      <td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;">Early check-in, late check-out, surprise decor, etc.</td>
+    </tr>
+  `
+      : '';
+
+  const docReminderCardStyle =
+    'padding:18px 20px;background-color:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #5f954c;border-radius:16px;color:#334155;font-size:14px;line-height:1.55;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,\'Helvetica Neue\',Arial,sans-serif;';
+
+  const documentReminderBodies: string[] = [
+    '<strong style="color:#1e293b;font-weight:700;">Guest Advise Form (GAF)</strong> — Your GAF has been approved. No need to print it! Simply present it at the guard house upon arrival and to the lobby receptionist during registration.',
+  ];
+  if (booking.need_parking) {
+    documentReminderBodies.push(
+      '<strong style="color:#1e293b;font-weight:700;">Parking</strong> — Your parking slot is confirmed. The guest parking fee is <strong style="color:#1e293b;font-weight:700;">non-refundable</strong>, and once confirmed your parking dates <strong style="color:#1e293b;font-weight:700;">cannot be rescheduled</strong>.',
+    );
+  }
+  if (booking.has_pets) {
+    documentReminderBodies.push(
+      '<strong style="color:#1e293b;font-weight:700;">Pet</strong> — Your pet has been approved for this stay.',
+    );
+  }
+  const documentReminderLis = documentReminderBodies
+    .map((body, idx) => {
+      const isLast = idx === documentReminderBodies.length - 1;
+      const margin = isLast ? 'margin:0' : 'margin:0 0 12px 0';
+      return `<li class="doc-reminders-card__li" style="${margin};padding:0;color:#334155;">${body}</li>`;
+    })
+    .join('');
+
+  const documentRemindersSection = `
+<table role="presentation" class="doc-reminders-card" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:separate;border-spacing:0;margin:0;">
+  <tr>
+    <td class="doc-reminders-card__cell" style="${docReminderCardStyle}">
+      <ul class="doc-reminders-card__list" style="margin:0;padding:0 0 0 20px;list-style-type:disc;">
+        ${documentReminderLis}
+      </ul>
+    </td>
+  </tr>
+</table>`;
+
+  // TEMP: Skip `ready-for-checkin-house-rules` (Important reminders table) to keep
+  // final HTML under Gmail's ~102KB clip threshold. Re-enable by restoring the
+  // loadEmailTemplate + replacePlaceholders block and `{{houseRulesSection}}` in
+  // `ready-for-checkin.html`.
+  const houseRulesSection = '';
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const qrBytes = await loadBundledReadyForCheckinPaymentQr();
+  const paymentQrImageUrl = qrBytes && qrBytes.length > 0
+    ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
+    : escapeHtml(guestAppAssetUrl('/images/kame-home-gcash-qr-payment.jpg'));
+  const rfiTpl = await loadEmailTemplate('ready-for-checkin');
+  const html = replacePlaceholders(
+    rfiTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      documentRemindersSection,
+      pax: String(pax),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: displayCheckInTime,
+      checkOutTime: displayCheckOutTime,
+      bookingRate: pesoFormat(booking.booking_rate as number | null),
+      downPayment: pesoFormat(booking.down_payment as number | null),
+      balance: pesoFormat(balance as number),
+      securityDeposit: pesoFormat(booking.security_deposit as number | null),
+      totalBalanceDue,
+      parkingPaymentRow,
+      petPaymentRow,
+      additionalFeeRow,
+      paymentQrImageUrl,
+    }),
+  );
+
+  // ── Build attachments ─────────────────────────────────────────────────────────
+  const attachments: ResendAttachment[] = [];
+
+  if (qrBytes && qrBytes.length > 0) {
+    attachments.push({
+      filename: 'kame-home-gcash-qr-payment.jpg',
+      content: toBase64(qrBytes),
+      encoding: 'base64',
+      content_type: 'image/jpeg',
+      content_id: READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID,
+    });
+    console.log('[readyForCheckin] Inline payment QR (CID attachment, bundled asset)');
+  }
+
+  // Approved GAF PDF — always attach if available
+  if (booking.approved_gaf_pdf_url) {
+    console.log('[readyForCheckin] Downloading approved GAF PDF...');
+    const file = await downloadStorageFile(
+      booking.approved_gaf_pdf_url,
+      `approved-gaf-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached approved GAF PDF:', file.filename);
+    }
+  }
+
+  // Approved Pet PDF — attach if booking has pets
+  if (booking.has_pets && booking.approved_pet_pdf_url) {
+    console.log('[readyForCheckin] Downloading approved pet PDF...');
+    const file = await downloadStorageFile(
+      booking.approved_pet_pdf_url,
+      `approved-pet-form-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached approved pet PDF:', file.filename);
+    }
+  }
+
+  // Parking endorsement — attach if booking has parking
+  if (booking.need_parking && booking.parking_endorsement_url) {
+    console.log('[readyForCheckin] Downloading parking endorsement...');
+    const file = await downloadStorageFile(
+      booking.parking_endorsement_url,
+      `parking-endorsement-${booking.check_in_date}.pdf`,
+    );
+    if (file) {
+      attachments.push({ filename: file.filename, content: toBase64(file.bytes), encoding: 'base64' });
+      console.log('[readyForCheckin] Attached parking endorsement:', file.filename);
+    }
+  }
+
+  console.log(`[readyForCheckin] Sending email with ${attachments.length} attachment(s)...`);
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [booking.guest_email],
+      reply_to: EMAIL_REPLY_TO,
+      subject: `Monaco 2604 - Check-in Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+      ...(attachments.length > 0 ? { attachments } : {}),
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send ready-for-check-in email: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Ready-for-check-in email sent successfully');
+  return await res.json();
+}
+
+/**
+ * Parking broadcast — BCC to all addresses in PARKING_OWNER_EMAILS env var.
+ * Sent when transitioning PENDING_REVIEW → PENDING_GAF and `need_parking` is true.
+ */
+export async function sendParkingBroadcast(booking: GuestSubmission) {
+  console.log('Sending parking broadcast email...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+
+  const parkingOwnerEmailsRaw = Deno.env.get('PARKING_OWNER_EMAILS') ?? '';
+  const bccEmails = parkingOwnerEmailsRaw
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+  if (bccEmails.length === 0) {
+    console.warn('PARKING_OWNER_EMAILS is not set — skipping parking broadcast');
+    return null;
+  }
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentPrefix = urgentEmailSubjectPrefix(isUrgent);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — parking broadcast');
+  }
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const parkTpl = await loadEmailTemplate('parking-broadcast');
+  const html = replacePlaceholders(
+    parkTpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
+      checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
+      carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
+      carColor: escapeHtml(booking.car_color || 'N/A'),
+      carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
+    }),
+  );
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      // Use first email as primary TO, rest as BCC for privacy
+      to: [bccEmails[0]],
+      bcc: bccEmails.slice(1),
+      reply_to: EMAIL_REPLY_TO,
+      subject: `${urgentPrefix}Monaco 2604 - Parking Request (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send parking broadcast: ${JSON.stringify(err)}`);
+  }
+
+  console.log('Parking broadcast email sent successfully');
+  return await res.json();
+}
+
+function guestAppOrigin(): string {
+  const raw = (Deno.env.get('PUBLIC_GUEST_APP_ORIGIN') ?? '').trim();
+  return raw || 'https://kamehomes.space';
+}
+
+/** Absolute URL for a static file under the guest SPA (`ui/public/...`). */
+function guestAppAssetUrl(path: string): string {
+  const base = guestAppOrigin().replace(/\/+$/, '');
+  const p = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${p}`;
+}
+
+/**
+ * Check-out & SD Refund Details — email guest a link to `/sd-form` (security deposit refund stepper).
+ * Sent from `sd-refund-cron` when the pre-checkout **lead** window opens (independent of balance settlement),
+ * on `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` transitions when enabled, and via admin re-send.
+ */
+export async function sendSdRefundFormRequest(booking: GuestSubmission) {
+  console.log('Sending SD refund form request email to guest...');
+
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const displayCheckInDate = formatDateForEmail(booking.check_in_date);
+  const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
+  const unitLabel = String(booking.tower_and_unit_number ?? '').trim() ||
+    'Monaco 2604';
+
+  const isUrgent = isUrgentBooking(booking.check_in_date);
+  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
+  if (isUrgent) {
+    console.log('🚨 URGENT same-day check-in — SD refund form request');
+  }
+
+  const bookingId = booking.id as string;
+  if (!bookingId) throw new Error('sendSdRefundFormRequest: booking.id is required');
+
+  const sdFormUrl = `${guestAppOrigin()}/sd-form?bookingId=${encodeURIComponent(bookingId)}`;
+
+  const emailHeaderLogo = await emailHeaderLogoHtml();
+  const tpl = await loadEmailTemplate('sd-refund-form-request');
+  const html = replacePlaceholders(
+    tpl,
+    withEmailShellStyleVars({
+      emailHeaderLogo,
+      testWarning: '',
+      urgentBlock,
+      guestFacebookName: escapeHtml(booking.guest_facebook_name),
+      towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
+      checkInDate: escapeHtml(displayCheckInDate),
+      checkOutDate: escapeHtml(displayCheckOutDate),
+      sdFormUrl,
+      securityDepositFormatted: pesoFormat(booking.security_deposit as number | null),
+    }),
+  );
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'Monaco 2604 - Kame Home <mail@kamehomes.space>',
+      to: [booking.guest_email],
+      reply_to: EMAIL_REPLY_TO,
+      subject:
+        `${unitLabel} - Check-out & SD Refund Details (${displayCheckInDate} to ${displayCheckOutDate})`,
+      html,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Failed to send SD refund form request: ${JSON.stringify(err)}`);
+  }
+
+  console.log('SD refund form request email sent successfully');
+  return await res.json();
+}

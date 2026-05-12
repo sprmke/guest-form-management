@@ -1,11 +1,4 @@
--- Add status column to guest_submissions table
--- Default value is 'booked' for all existing and new bookings
-ALTER TABLE guest_submissions 
-ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'booked' NOT NULL;
-
--- Create an index on status for faster filtering
-CREATE INDEX IF NOT EXISTS idx_guest_submissions_status ON guest_submissions(status);
-
--- Add a comment to document the column
-COMMENT ON COLUMN guest_submissions.status IS 'Booking status: booked (active) or canceled';
-
+-- Legacy migration version kept for databases that already applied the original ALTER.
+-- Fresh installs: `guest_submissions` is created later; the real status DDL is in
+-- `20250213043909_add_booking_status.sql` (runs after `20250213043908_create_guest_submissions_table.sql`).
+SELECT 1;

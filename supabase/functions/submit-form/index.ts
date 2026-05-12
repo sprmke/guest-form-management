@@ -1,11 +1,12 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { corsHeaders } from '../_shared/cors.ts'
 import { DatabaseService } from '../_shared/databaseService.ts'
-import { generatePDF, generatePetPDF } from '../_shared/pdfService.ts'
-import { sendEmail, sendPetEmail } from '../_shared/emailService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
-import { extractRouteParam, compareFormData } from '../_shared/utils.ts'
+import { sendNewBookingRequestNotify } from '../_shared/emailService.ts'
+import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
+import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
+import type { GuestSubmission } from '../_shared/types.ts'
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -25,31 +26,26 @@ serve(async (req) => {
     const url = new URL(req.url)
     const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false' // Default to true for backward compatibility
     const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false' // Default to true for backward compatibility
-    const isPDFGenerationEnabled = url.searchParams.get('generatePdf') === 'true'
-    let isSendEmailEnabled = url.searchParams.get('sendEmail') === 'true'
     const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true'
     const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true'
-    const isTestingMode = url.searchParams.get('testing') === 'true'
-    
+    /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
+    const isSendEmailEnabled = url.searchParams.get('sendEmail') !== 'false'
+
     // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
     const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined
-    
-    // Force disable email sending in production when testing mode is enabled
-    if (isProduction && isTestingMode && isSendEmailEnabled) {
-      console.log('🚫 Email sending disabled: Cannot send emails in production with testing mode enabled');
-      isSendEmailEnabled = false
-    }
     
     // Log enabled features for debugging
     console.log('🎛️ API Action Flags:');
     console.log(`  Environment: ${isProduction ? '🌐 PRODUCTION' : '💻 DEVELOPMENT'}`);
     console.log(`  Save to Database: ${isSaveToDatabaseEnabled ? '✅' : '❌'}`);
     console.log(`  Save Images to Storage: ${isSaveImagesToStorageEnabled ? '✅' : '❌'}`);
-    console.log(`  Generate PDF: ${isPDFGenerationEnabled ? '✅' : '❌'}`);
-    console.log(`  Send Email: ${isSendEmailEnabled ? '✅' : '❌'}${isProduction && isTestingMode ? ' (forced off in prod testing)' : ''}`);
+    console.log('  Generate PDF: ❌ (filled GAF/pet PDFs run on admin PENDING_REVIEW → documents transition)');
+    console.log('  Send workflow emails: ❌ (GAF / ack / pet / parking only on admin transitions)');
+    console.log(
+      `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (query sendEmail, default on — only sent after a DB save with an id; not this flag alone)`,
+    );
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
-    console.log(`  Testing Mode: ${isTestingMode ? '🧪 ENABLED' : '❌'}`);
     console.log('---');
     
     // Get and process form data
@@ -98,26 +94,25 @@ serve(async (req) => {
     // Check if this is an update and compare data for changes (only if saving to database)
     let hasDataChanges = true;
     let existingData = null;
-    let isUpdate = false;
-    
+    let revertReadyForCheckinToPendingReview = false;
+
     if (isSaveToDatabaseEnabled && bookingId) {
       console.log('🔍 Checking for data changes...');
-      
-      // Fetch existing booking raw data (in database format)
+
       existingData = await DatabaseService.getRawData(bookingId);
-      
+
       if (existingData) {
-        // This is an update since booking exists
-        isUpdate = true;
-        
-        // Compare new form data with existing data
         const comparison = compareFormData(formData, existingData);
         hasDataChanges = comparison.hasChanges;
-        
+
         if (!hasDataChanges) {
           console.log('ℹ️ No changes detected, skipping processing and redirecting to success page');
-          
-          // Return success without processing
+          if (isSendEmailEnabled) {
+            console.log(
+              '[submit-form] New booking request notify skipped: no data changes (same booking update)',
+            );
+          }
+
           return new Response(
             JSON.stringify({
               success: true,
@@ -133,68 +128,60 @@ serve(async (req) => {
             }
           );
         }
-        
+
+        revertReadyForCheckinToPendingReview =
+          shouldRevertGuestFieldEditsToPendingReview(existingData.status) &&
+          shouldRevertReadyForCheckinToPendingReview(comparison.changedFields);
+
         console.log(`✅ Changes detected (${comparison.changedFields.length} fields), proceeding with update...`);
         console.log('Changed fields:', comparison.changedFields);
+        if (revertReadyForCheckinToPendingReview) {
+          console.log(
+            `↩️ ${existingData.status} + workflow-sensitive edits → status will revert to PENDING_REVIEW`,
+          );
+        }
       }
     } else if (!isSaveToDatabaseEnabled) {
       console.log('⚠️ Skipping change detection check (saveToDatabase=false)');
     }
-    
-    // Process form data and save to database
-    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } = await DatabaseService.processFormData(formData, isSaveToDatabaseEnabled, isSaveImagesToStorageEnabled, isTestingMode)
 
-    let pdfBuffer = null
-    // Generate PDF if enabled
-    if (isPDFGenerationEnabled) {
-      pdfBuffer = await generatePDF(data, isTestingMode)
-    }
+    const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } =
+      await DatabaseService.processFormData(
+        formData,
+        isSaveToDatabaseEnabled,
+        isSaveImagesToStorageEnabled,
+        revertReadyForCheckinToPendingReview,
+      );
 
-    // Send email if enabled
-    if (isSendEmailEnabled) {
-      await sendEmail(data, pdfBuffer, isTestingMode, isUpdate)
-    }
+    // Workflow emails (GAF, acknowledgement, pet, parking) are only sent by
+    // WorkflowOrchestrator on admin transitions. Optional **New Booking Request**
+    // notify (`sendEmail` query; default on) — non-fatal if it fails.
 
-    // Generate Pet PDF and send Pet email if guest has pets
-    const hasPets = data.hasPets === true || data.hasPets === 'true'
-    if (hasPets && data.petName && data.petType && data.petBreed && data.petAge && data.petVaccinationDate) {
-      console.log('🐾 Guest has pets, generating Pet PDF and sending Pet email...')
-      
-      let petPdfBuffer = null
-      
-      // Generate Pet PDF if enabled
-      if (isPDFGenerationEnabled) {
-        try {
-          petPdfBuffer = await generatePetPDF(data)
-          console.log('Pet PDF generated successfully')
-        } catch (error) {
-          console.error('Error generating Pet PDF:', error)
-          // Don't throw error, continue with email
-        }
+    if (isSendEmailEnabled && isSaveToDatabaseEnabled && submissionData?.id) {
+      try {
+        const notifyResult = await sendNewBookingRequestNotify(submissionData as GuestSubmission);
+        console.log(
+          '[submit-form] New booking request notify ok, Resend id:',
+          (notifyResult as { id?: string })?.id ?? JSON.stringify(notifyResult),
+        );
+      } catch (notifyErr) {
+        console.error('[submit-form] New booking request notify failed (non-fatal):', notifyErr);
       }
-
-      // Send Pet email if enabled
-      if (isSendEmailEnabled) {
-        try {
-          await sendPetEmail(data, petPdfBuffer, petImageUrl, petVaccinationUrl, isTestingMode, isUpdate)
-          console.log('Pet email sent successfully')
-        } catch (error) {
-          console.error('Error sending Pet email:', error)
-          // Don't throw error, continue with processing
-        }
-      }
-    } else if (hasPets) {
-      console.log('⚠️ Guest has pets but some pet information is missing, skipping Pet PDF and email')
+    } else if (isSendEmailEnabled) {
+      const reasons: string[] = [];
+      if (!isSaveToDatabaseEnabled) reasons.push('saveToDatabase=false');
+      if (!submissionData?.id) reasons.push('no submission id after save');
+      console.log(`[submit-form] New booking request notify skipped: ${reasons.join(', ')}`);
     }
 
     // Create or update calendar event if enabled
     if (isCalendarUpdateEnabled) {
-      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
+      await CalendarService.createOrUpdateCalendarEvent(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     // Append to Google Sheet if enabled
     if (isSheetsUpdateEnabled) {
-      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id, isTestingMode)
+      await SheetsService.appendToSheet(data, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl, submissionData.id)
     }
 
     console.log('Form submission process completed successfully')

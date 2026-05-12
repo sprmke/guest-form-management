@@ -182,6 +182,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     guest3Name,
     guest4Name,
     guestSpecialRequests: randomElement(requests),
+    guestRequestsSurpriseDecor: Math.random() > 0.75,
     findUs,
     findUsDetails,
     needParking,

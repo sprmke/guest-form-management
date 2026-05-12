@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
+import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
 import { Button } from '@/components/ui/button';
 import 'react-day-picker/dist/style.css';
 import {
@@ -19,14 +20,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import dayjs from 'dayjs';
 import { toCapitalCase, transformFieldValues } from '@/utils/formatters';
 import { generateRandomData, setDummyFile } from '@/utils/mockData';
 import {
   guestFormSchema,
   type GuestFormData,
 } from '@/features/guest-form/schemas/guestFormSchema';
-import { defaultFormValues } from '@/features/guest-form/constants/guestFormData';
+import {
+  defaultFormValues,
+  getGuestFormDefaultValuesFromSearchParams,
+} from '@/features/guest-form/constants/guestFormData';
+import {
+  bookingSourceFromUrlSearchParams,
+  stripLegacyFromQueryParam,
+} from '@/features/guest-form/lib/bookingSourceFromSearchParams';
 import {
   handleNameInputChange,
   validateImageFile,
@@ -52,9 +61,9 @@ import {
   FileText,
   Car,
   Settings,
-  Trash2,
   ClipboardPaste,
   XCircle,
+  PartyPopper,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -69,7 +78,6 @@ const apiUrl = import.meta.env.VITE_API_URL;
 export function GuestForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [isCancellingBooking, setIsCancellingBooking] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
   const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
@@ -92,30 +100,37 @@ export function GuestForm() {
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
 
-  // Check if testing & dev modes are enabled (via query parameter)
-  const isTestingMode = searchParams.get('testing') === 'true';
+  /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
+  const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
+  if (seededDefaultsRef.current === null) {
+    seededDefaultsRef.current =
+      getGuestFormDefaultValuesFromSearchParams(searchParams);
+  }
+
   const isDevMode = searchParams.get('dev') === 'true';
+
+  // `?source=airbnb` → Airbnb labels + DB `booking_source`
+  const bookingSource = bookingSourceFromUrlSearchParams(searchParams);
+  const isAirbnb = bookingSource === 'Airbnb';
 
   // Get pre-selected dates from URL params (from calendar page)
   const urlCheckInDate = searchParams.get('checkInDate');
   const urlCheckOutDate = searchParams.get('checkOutDate');
 
-  // Show dev controls in dev environment OR when testing=true in production
-  const showDevControls = !isProduction || isTestingMode || isDevMode;
+  const showDevControls = !isProduction || isDevMode;
 
-  // Dev/Testing API action controls (all unchecked by default in dev/testing mode)
+  // Dev API action controls — all on by default; uncheck to skip (matches admin dev-control UX).
   const [devApiControls, setDevApiControls] = useState({
-    saveToDatabase: isProduction && isDevMode,
-    saveImagesToStorage: isProduction && isDevMode,
-    generatePdf: isProduction && isDevMode,
-    sendEmail: isProduction && isDevMode,
-    updateCalendar: isProduction && isDevMode,
-    updateGoogleSheets: isProduction && isDevMode,
+    saveToDatabase: true,
+    saveImagesToStorage: true,
+    updateCalendar: true,
+    updateGoogleSheets: true,
+    sendEmail: true,
   });
 
   const form = useForm<GuestFormData>({
     resolver: zodResolver(guestFormSchema),
-    defaultValues: defaultFormValues,
+    defaultValues: seededDefaultsRef.current ?? defaultFormValues,
     mode: 'all',
   });
 
@@ -131,6 +146,16 @@ export function GuestForm() {
       setCurrentBookingId(cleanBookingId);
     }
   }, [bookingId]);
+
+  // Legacy `?from=airbnb` → `replace` with `?source=airbnb`; any other `from` is dropped only
+  useEffect(() => {
+    if (!searchParams.has('from')) return;
+    const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
+    if (searchParams.get('from')?.trim().toLowerCase() === 'airbnb') {
+      next.set('source', 'airbnb');
+    }
+    navigate({ pathname: '/form', search: next.toString() }, { replace: true });
+  }, [navigate, searchParams]);
 
   // Fetch booked dates function (extracted so it can be reused)
   const fetchBookedDates = async () => {
@@ -280,13 +305,6 @@ export function GuestForm() {
     fetchFormData();
   }, [bookingId]);
 
-  // Generate new random data on page load only when dev controls are shown and no bookingId
-  useEffect(() => {
-    if (showDevControls && !bookingId && !isLoading) {
-      handleGenerateNewData();
-    }
-  }, [isLoading, bookingId, showDevControls]);
-
   // Paste booking info from clipboard
   const handlePasteFromClipboard = async () => {
     if (!showDevControls) return;
@@ -299,7 +317,7 @@ export function GuestForm() {
         toast.error('Invalid Format', {
           description:
             'The clipboard does not contain valid booking information. Please copy the booking info from an error message first.',
-          duration: 5000,
+          duration: 7000,
         });
         return;
       }
@@ -315,108 +333,74 @@ export function GuestForm() {
       toast.success('Booking Info Loaded!', {
         description:
           'Form has been populated with the booking information from clipboard. Please review and update file attachments.',
-        duration: 5000,
+        duration: 7000,
       });
     } catch (error) {
       console.error('Failed to paste from clipboard:', error);
       toast.error('Paste Failed', {
         description:
           'Could not read from clipboard. Please ensure you have copied the booking information first.',
-        duration: 5000,
+        duration: 7000,
       });
     }
   };
 
   // Update file input when generating new data
-  const handleGenerateNewData = async () => {
-    if (!showDevControls) return;
+  const handleGenerateNewData = useCallback(
+    async (opts?: { preserveCalendarStayDates?: boolean }) => {
+      if (!showDevControls) return;
 
-    try {
-      const randomData = await generateRandomData();
-      form.reset(randomData);
+      try {
+        const randomData = await generateRandomData();
 
-      // Set the dummy files in the file inputs
-      if (randomData.paymentReceipt) {
-        setDummyFile(fileInputRef, randomData.paymentReceipt);
+        if (opts?.preserveCalendarStayDates) {
+          const rawIn = urlCheckInDate;
+          const rawOut = urlCheckOutDate;
+          if (rawIn && rawOut) {
+            const checkInDate = normalizeDateString(rawIn);
+            const checkOutDate = normalizeDateString(rawOut);
+            if (checkInDate && checkOutDate) {
+              randomData.checkInDate = checkInDate;
+              randomData.checkOutDate = checkOutDate;
+              randomData.numberOfNights = dayjs(checkOutDate).diff(
+                dayjs(checkInDate),
+                'day',
+              );
+            }
+          }
+        }
+
+        form.reset(randomData);
+
+        // Set the dummy files in the file inputs
+        if (randomData.paymentReceipt) {
+          setDummyFile(fileInputRef, randomData.paymentReceipt);
+        }
+        if (randomData.validId) {
+          setDummyFile(validIdInputRef, randomData.validId);
+        }
+        if (randomData.petVaccination) {
+          setDummyFile(petVaccinationInputRef, randomData.petVaccination);
+        }
+        if (randomData.petImage) {
+          setDummyFile(petImageInputRef, randomData.petImage);
+        }
+      } catch (error) {
+        toast.error('Failed to generate sample data', {
+          description:
+            error instanceof Error ? error.message : 'Unknown error occurred',
+        });
       }
-      if (randomData.validId) {
-        setDummyFile(validIdInputRef, randomData.validId);
-      }
-      if (randomData.petVaccination) {
-        setDummyFile(petVaccinationInputRef, randomData.petVaccination);
-      }
-      if (randomData.petImage) {
-        setDummyFile(petImageInputRef, randomData.petImage);
-      }
-    } catch (error) {
-      toast.error('Failed to generate test data', {
-        description:
-          error instanceof Error ? error.message : 'Unknown error occurred',
-      });
+    },
+    [showDevControls, urlCheckInDate, urlCheckOutDate, form.reset],
+  );
+
+  // Generate random sample payload on load in dev; calendar URL dates stay on the row above.
+  useEffect(() => {
+    if (showDevControls && !bookingId && !isLoading) {
+      void handleGenerateNewData({ preserveCalendarStayDates: true });
     }
-  };
-
-  const handleCleanupTestData = async () => {
-    if (!showDevControls) return;
-
-    // Confirmation dialog
-    if (
-      !window.confirm(
-        '⚠️ Are you sure you want to delete ALL test data?\n\n' +
-          'This will delete:\n' +
-          '• Database records with TEST_ files\n' +
-          '• Storage files starting with TEST_\n' +
-          '• Calendar events starting with [TEST]\n' +
-          '• Google Sheets rows starting with [TEST]\n\n' +
-          'This action cannot be undone!',
-      )
-    ) {
-      return;
-    }
-
-    setIsCleaningUp(true);
-
-    try {
-      const response = await fetch(`${apiUrl}/cleanup-test-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({ confirm: true }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Failed to cleanup test data');
-      }
-
-      const summary = result.summary?.totalDeleted || {};
-      const grandTotal = result.summary?.grandTotal || 0;
-
-      toast.success('Test data cleanup completed!', {
-        description: `Deleted: ${grandTotal} items (DB: ${
-          summary.database || 0
-        }, Storage: ${summary.storage || 0}, Calendar: ${
-          summary.calendar || 0
-        }, Sheets: ${summary.sheets || 0})`,
-        duration: 5000,
-      });
-
-      // Refresh booked dates after cleanup
-      await fetchBookedDates();
-    } catch (error) {
-      console.error('Cleanup error:', error);
-      toast.error('Failed to cleanup test data', {
-        description:
-          error instanceof Error ? error.message : 'Unknown error occurred',
-      });
-    } finally {
-      setIsCleaningUp(false);
-    }
-  };
+  }, [isLoading, bookingId, showDevControls, handleGenerateNewData]);
 
   const handleCancelBooking = async () => {
     if (!showDevControls || !bookingId) return;
@@ -464,14 +448,16 @@ export function GuestForm() {
         }, Calendar: ${summary.calendar || 0}, Sheets: ${
           summary.sheets || 0
         }). Dates are now available for new bookings.`,
-        duration: 5000,
+        duration: 7000,
       });
 
       // Refresh booked dates after cancellation
       await fetchBookedDates();
 
-      // Navigate back to the form without bookingId
-      navigate('/');
+      // Back to calendar; drop bookingId + legacy `from`; keep source=airbnb, dev, dates, etc.
+      const next = stripLegacyFromQueryParam(searchParams);
+      next.delete('bookingId');
+      navigate(next.toString() ? `/?${next.toString()}` : '/');
     } catch (error) {
       console.error('Cancel booking error:', error);
       toast.error('Failed to cancel booking', {
@@ -512,6 +498,7 @@ export function GuestForm() {
       formData.append('towerAndUnitNumber', 'Monaco 2604');
       formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
       formData.append('ownerContactNumber', '0962 541 2941');
+      formData.append('bookingSource', bookingSource);
 
       // Handle file uploads with standardized naming
       ['paymentReceipt', 'validId', 'petVaccination', 'petImage'].forEach(
@@ -534,7 +521,6 @@ export function GuestForm() {
       const queryParams = new URLSearchParams();
 
       if (showDevControls) {
-        // In dev/testing mode, use the control checkboxes
         queryParams.append(
           'saveToDatabase',
           devApiControls.saveToDatabase ? 'true' : 'false',
@@ -544,14 +530,6 @@ export function GuestForm() {
           devApiControls.saveImagesToStorage ? 'true' : 'false',
         );
         queryParams.append(
-          'generatePdf',
-          devApiControls.generatePdf ? 'true' : 'false',
-        );
-        queryParams.append(
-          'sendEmail',
-          devApiControls.sendEmail ? 'true' : 'false',
-        );
-        queryParams.append(
           'updateGoogleCalendar',
           devApiControls.updateCalendar ? 'true' : 'false',
         );
@@ -559,17 +537,15 @@ export function GuestForm() {
           'updateGoogleSheets',
           devApiControls.updateGoogleSheets ? 'true' : 'false',
         );
-        // Only add [TEST] prefix when ?testing=true is explicitly set
-        queryParams.append('testing', isTestingMode ? 'true' : 'false');
+        queryParams.append(
+          'sendEmail',
+          devApiControls.sendEmail ? 'true' : 'false',
+        );
       } else {
-        // In normal production mode, all actions are enabled by default
         queryParams.append('saveToDatabase', 'true');
         queryParams.append('saveImagesToStorage', 'true');
-        queryParams.append('generatePdf', 'true');
-        queryParams.append('sendEmail', 'true');
         queryParams.append('updateGoogleCalendar', 'true');
         queryParams.append('updateGoogleSheets', 'true');
-        queryParams.append('testing', isTestingMode ? 'true' : 'false');
       }
 
       const queryParamsString = queryParams.toString()
@@ -639,7 +615,7 @@ export function GuestForm() {
       }
 
       // Reset form and redirect to success page
-      // Only reset form in normal production mode (not dev or testing mode)
+      // Only reset form in normal production mode (not dev controls)
       if (!showDevControls) {
         form.reset(defaultFormValues);
         if (fileInputRef.current) {
@@ -699,9 +675,10 @@ export function GuestForm() {
           toast.dismiss();
 
           toast.success('Booking Info Copied!', {
-            description:
-              'You can now paste this information in our Facebook Messenger for assistance.',
-            duration: 5000,
+            description: isAirbnb
+              ? 'You can now share this information with your host for assistance.'
+              : 'You can now paste this information in our Facebook Messenger for assistance.',
+            duration: 7000,
           });
         } catch (clipboardError) {
           console.error('Failed to copy to clipboard:', clipboardError);
@@ -712,7 +689,7 @@ export function GuestForm() {
           toast.error('Failed to Copy', {
             description:
               'Could not copy to clipboard. Please try again or screenshot the form.',
-            duration: 5000,
+            duration: 7000,
           });
         }
       };
@@ -725,9 +702,10 @@ export function GuestForm() {
         // Show prominent warning toast for booking overlap
         toast.error('Dates Already Booked', {
           id: 'booking-error',
-          description:
-            'The selected dates are already reserved. Please select different dates or contact your host via Facebook for assistance.',
-          duration: Infinity, // Never auto-hide
+          description: isAirbnb
+            ? 'The selected dates are already reserved. Please select different dates or contact your host for assistance.'
+            : 'The selected dates are already reserved. Please select different dates or contact your host via Facebook for assistance.',
+          duration: 7000,
         });
       } else {
         // Show regular error toast for other errors
@@ -743,9 +721,9 @@ export function GuestForm() {
                 {cleanedMessage}
               </p>
               <p className="text-sm leading-relaxed opacity-90">
-                Click the button below to copy your form data and paste it on
-                our Facebook Messenger so we don't need to manually fill up all
-                information again. We really apologize for the inconvenience.
+                {isAirbnb
+                  ? "Click the button below to copy your form data and share it with your host so we don't need to manually fill up all information again. We really apologize for the inconvenience."
+                  : "Click the button below to copy your form data and paste it on our Facebook Messenger so we don't need to manually fill up all information again. We really apologize for the inconvenience."}
               </p>
               <button
                 onClick={handleCopyBookingInfo}
@@ -755,7 +733,7 @@ export function GuestForm() {
               </button>
             </div>
           ),
-          duration: Infinity, // Never auto-hide
+          duration: 7000,
         });
       }
     } finally {
@@ -798,7 +776,9 @@ export function GuestForm() {
               <p className="max-w-md text-muted-foreground">
                 The booking ID you provided is invalid or no guest form data
                 exists for this booking. Please screenshot this error message
-                and contact us on Facebook for further assistance.
+                and contact us{' '}
+                {isAirbnb ? 'via Airbnb messaging' : 'on Facebook'} for further
+                assistance.
               </p>
             </div>
             <div className="flex gap-2">
@@ -807,7 +787,11 @@ export function GuestForm() {
                 variant="outline"
                 onClick={() => {
                   setInvalidBookingId(false);
-                  navigate('/', { replace: true });
+                  const next = stripLegacyFromQueryParam(searchParams);
+                  next.delete('bookingId');
+                  navigate(next.toString() ? `/?${next.toString()}` : '/', {
+                    replace: true,
+                  });
                 }}
                 className="mt-4"
               >
@@ -826,16 +810,8 @@ export function GuestForm() {
             </div>
           </div>
         ) : (
-          <div className="pt-10 space-y-6 md:pt-14">
-            {/* logo here */}
-            <img
-              src="/images/logo.png"
-              alt="Kame Home"
-              className="absolute top-[-3.5rem] md:top-[-4.5rem] right-0 left-0 mx-auto w-[120px] md:w-[160px] border-4 border-white rounded-full"
-            />
-            <h2 className="text-2xl font-bold text-center md:text-3xl text-primary">
-              Guest Advise Form
-            </h2>
+          <div className="space-y-6">
+            <KameFormBrandHeader />
             {/* Guest Information Section */}
             <div className="form-section">
               <div className="form-section-header">
@@ -849,12 +825,12 @@ export function GuestForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      Facebook/Airbnb Name{' '}
+                      {isAirbnb ? 'Airbnb Name' : 'Facebook Name'}{' '}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Your exact full name in Facebook/Airbnb"
+                        placeholder={`Your exact full name in ${isAirbnb ? 'Airbnb' : 'Facebook'}`}
                         {...field}
                         onChange={(e) =>
                           handleNameInputChange(
@@ -1020,11 +996,7 @@ export function GuestForm() {
                     <FormItem className="min-w-0">
                       <FormLabel>Check-in Time</FormLabel>
                       <FormControl>
-                        <Input
-                          type="time"
-                          placeholder="02:00 pm"
-                          {...field}
-                        />
+                        <Input type="time" placeholder="02:00 pm" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1041,8 +1013,11 @@ export function GuestForm() {
                     <p className="text-sm font-medium">
                       Our standard check-in time is 2:00 PM. Early check-in
                       requests are subject to approval and may incur additional
-                      fees. Please message us on Facebook to arrange early
-                      check-in.
+                      fees. Please{' '}
+                      {isAirbnb
+                        ? 'message your host via Airbnb'
+                        : 'message us on Facebook'}{' '}
+                      to arrange early check-in.
                     </p>
                   </div>
                 )}
@@ -1114,11 +1089,7 @@ export function GuestForm() {
                     <FormItem className="min-w-0">
                       <FormLabel>Check-out Time</FormLabel>
                       <FormControl>
-                        <Input
-                          type="time"
-                          placeholder="11:00 am"
-                          {...field}
-                        />
+                        <Input type="time" placeholder="11:00 am" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -1135,8 +1106,11 @@ export function GuestForm() {
                     <p className="text-sm font-medium">
                       Our standard check-out time is 11:00 AM. Late check-out
                       requests are subject to approval and may incur additional
-                      fees. Please contact us on Facebook to arrange late
-                      check-out.
+                      fees. Please{' '}
+                      {isAirbnb
+                        ? 'contact your host via Airbnb'
+                        : 'contact us on Facebook'}{' '}
+                      to arrange late check-out.
                     </p>
                   </div>
                 )}
@@ -1290,8 +1264,11 @@ export function GuestForm() {
                     Azure North&apos;s official guest form is limited to 4
                     registered guests but our unit can host up to 4 adults and 2
                     children (total of 6 guests). Guests with more than 4 adults
-                    should message us on Facebook so we can coordinate
-                    arrangements with you.
+                    should{' '}
+                    {isAirbnb
+                      ? 'message your host via Airbnb'
+                      : 'message us on Facebook'}{' '}
+                    so we can coordinate arrangements with you.
                   </p>
                 </div>
               )}
@@ -1327,7 +1304,7 @@ export function GuestForm() {
                           htmlFor="sameAsFacebookName"
                           className="text-sm cursor-pointer text-muted-foreground"
                         >
-                          Same as Facebook/Airbnb Name
+                          Same as {isAirbnb ? 'Airbnb' : 'Facebook'} Name
                         </label>
                       </div>
                     </div>
@@ -1477,6 +1454,56 @@ export function GuestForm() {
                   )}
                 />
               )}
+
+              <FormField
+                control={form.control}
+                name="guestRequestsSurpriseDecor"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Has surprise decor / room setup?</FormLabel>
+                    <div className="flex items-start gap-3 min-h-[44px]">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="mt-1 w-4 h-4 shrink-0"
+                          aria-describedby="surprise-decor-hint"
+                        />
+                      </FormControl>
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <FormLabel className="!mt-0 text-sm font-medium leading-snug cursor-pointer">
+                          <span className="inline-flex items-center gap-1.5">
+                            Yes, I requested a surprise decor / room setup
+                            <PartyPopper
+                              className="size-4 shrink-0 text-violet-600"
+                              aria-hidden
+                            />
+                          </span>
+                        </FormLabel>
+                        {field.value ? (
+                          <div
+                            id="surprise-decor-hint"
+                            className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                            role="status"
+                          >
+                            <p className="text-sm text-slate-800 leading-relaxed">
+                              By checking this, you confirm you have already
+                              messaged us on{' '}
+                              <span className="font-semibold">
+                                {isAirbnb ? 'Airbnb' : 'Facebook'}
+                              </span>{' '}
+                              and agreed on the final theme and price for your
+                              surprise setup/decor before your stay.
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             {/* Parking Information Section */}
@@ -2104,7 +2131,7 @@ export function GuestForm() {
                 render={({ field: { onChange, value, ...field } }) => (
                   <FormItem>
                     <FormLabel>
-                      Payment Receipt{' '}
+                      Downpayment receipt{' '}
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
@@ -2116,7 +2143,7 @@ export function GuestForm() {
                                 paymentReceiptPreview ||
                                 (value && URL.createObjectURL(value))
                               }
-                              alt="Payment Receipt Preview"
+                              alt="Downpayment receipt preview"
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
@@ -2183,24 +2210,17 @@ export function GuestForm() {
               />
             </div>
 
-            {/* Dev/Testing API Controls Card */}
+            {/* Developer API Controls (non-production or ?dev=true) */}
             {showDevControls && (
               <div className="form-section">
                 <div className="form-section-header">
                   <Settings className="form-section-icon" />
-                  <h2 className="form-section-title">
-                    {isTestingMode
-                      ? 'Testing Controls (Testing Mode)'
-                      : 'Developer Controls (Dev Mode)'}
-                  </h2>
+                  <h2 className="form-section-title">Developer Controls</h2>
                 </div>
 
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Control which API actions are performed when submitting the
-                    form. All actions are{' '}
-                    <span className="font-semibold">disabled by default</span>{' '}
-                    in {isTestingMode ? 'testing' : 'development'} mode.
+                    Control which actions run upon form submission.
                   </p>
 
                   <div className="space-y-3">
@@ -2249,27 +2269,6 @@ export function GuestForm() {
                     <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
                       <input
                         type="checkbox"
-                        id="generatePdf"
-                        checked={devApiControls.generatePdf}
-                        onChange={(e) =>
-                          setDevApiControls({
-                            ...devApiControls,
-                            generatePdf: e.target.checked,
-                          })
-                        }
-                        className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
-                      />
-                      <label
-                        htmlFor="generatePdf"
-                        className="flex-1 text-sm font-medium cursor-pointer"
-                      >
-                        Generate PDF
-                      </label>
-                    </div>
-
-                    <div className="flex items-center p-3 space-x-3 rounded-lg transition-colors bg-muted/30 hover:bg-muted/50">
-                      <input
-                        type="checkbox"
                         id="sendEmail"
                         checked={devApiControls.sendEmail}
                         onChange={(e) =>
@@ -2282,9 +2281,10 @@ export function GuestForm() {
                       />
                       <label
                         htmlFor="sendEmail"
+                        title="New Booking Request email to owners (EMAIL_REPLY_TO)"
                         className="flex-1 text-sm font-medium cursor-pointer"
                       >
-                        Send email notification
+                        Send email
                       </label>
                     </div>
 
@@ -2355,43 +2355,16 @@ export function GuestForm() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={handleGenerateNewData}
+                        onClick={() => void handleGenerateNewData()}
                         className="w-full"
                       >
                         Generate New Data
                       </Button>
                       <p className="mt-2 text-xs text-center text-muted-foreground">
-                        Populate form with random test data
+                        Populate form with random sample data
                       </p>
                     </div>
                   )}
-
-                  {/* Cleanup Test Data Button */}
-                  <div className="pt-4 border-t">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCleanupTestData}
-                      disabled={isCleaningUp}
-                      className="w-full"
-                    >
-                      {isCleaningUp ? (
-                        <>
-                          <Loader2 className="mr-2 w-4 h-4 animate-spin" />
-                          Cleaning up test data...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="mr-2 w-4 h-4" />
-                          Clean Up All Test Data
-                        </>
-                      )}
-                    </Button>
-                    <p className="mt-2 text-xs text-center text-muted-foreground">
-                      Removes all test data from database, storage, calendar,
-                      and sheets
-                    </p>
-                  </div>
 
                   {/* Cancel Booking Button - Only show when viewing an existing booking */}
                   {bookingId && (

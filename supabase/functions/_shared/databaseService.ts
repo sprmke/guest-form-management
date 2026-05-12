@@ -1,5 +1,9 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-import { GuestFormData, transformFormToSubmission } from './types.ts'
+import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts'
+import {
+  pendingDocumentsClearPatchForGuestEditRevert,
+  shouldRevertGuestFieldEditsToPendingReview,
+} from './statusMachine.ts'
 import { UploadService } from './uploadService.ts'
 import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
 
@@ -99,6 +103,8 @@ export class DatabaseService {
         guestSpecialRequests: data.guest_special_requests || '',
         findUs: data.find_us || 'Facebook',
         findUsDetails: data.find_us_details || '',
+        bookingSource: data.booking_source || 'Facebook',
+        guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
         carPlateNumber: data.car_plate_number || '',
         carBrandModel: data.car_brand_model || '',
@@ -123,7 +129,12 @@ export class DatabaseService {
     }
   }
 
-  static async processFormData(formData: FormData, saveToDatabase = true, saveImagesToStorage = true, isTestingMode = false): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
+  static async processFormData(
+    formData: FormData,
+    saveToDatabase = true,
+    saveImagesToStorage = true,
+    revertReadyForCheckinToPendingReview = false,
+  ): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
     try {
       console.log('Processing form data...');
 
@@ -188,14 +199,11 @@ export class DatabaseService {
       const petImage = formData.get('petImage') as File;
       const hasPets = formData.get('hasPets') === 'true';
       
-      // Add TEST prefix to filenames if in testing mode (without brackets to avoid invalid storage keys)
-      const testPrefix = isTestingMode ? 'TEST_' : '';
-      
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
           const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
-          const prefixedFileName = `${testPrefix}${petVaccinationFileName}`;
+          const prefixedFileName = petVaccinationFileName;
           if (saveImagesToStorage) {
             petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, prefixedFileName);
           } else {
@@ -213,7 +221,7 @@ export class DatabaseService {
         // Handle pet image upload
         if (petImage) {
           const petImageFileName = formData.get('petImageFileName') as string;
-          const prefixedFileName = `${testPrefix}${petImageFileName}`;
+          const prefixedFileName = petImageFileName;
           if (saveImagesToStorage) {
             petImageUrl = await UploadService.uploadPetImage(petImage, prefixedFileName);
           } else {
@@ -229,15 +237,15 @@ export class DatabaseService {
         }
       }
 
-      // Get the payment receipt file
+      // Get the downpayment receipt file (FormData: paymentReceipt → payment_receipt_url)
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
-        const prefixedFileName = `${testPrefix}${paymentReceiptFileName}`;
+        const prefixedFileName = paymentReceiptFileName;
         if (saveImagesToStorage) {
           paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, prefixedFileName);
         } else {
-          console.log('⚠️ Skipping payment receipt upload (saveImagesToStorage=false)');
+          console.log('⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)');
           paymentReceiptUrl = 'dev-mode-skipped';
         }
       } else if (existingBooking) {
@@ -245,14 +253,14 @@ export class DatabaseService {
       } else if (!saveImagesToStorage) {
         paymentReceiptUrl = 'dev-mode-skipped';
       } else {
-        throw new Error('Payment receipt is required');
+        throw new Error('Downpayment receipt is required');
       }
 
       // Get the valid ID file
       const validId = formData.get('validId') as File;
       if (validId) {
         const validIdFileName = formData.get('validIdFileName') as string;
-        const prefixedFileName = `${testPrefix}${validIdFileName}`;
+        const prefixedFileName = validIdFileName;
         if (saveImagesToStorage) {
           validIdUrl = await UploadService.uploadValidId(validId, prefixedFileName);
         } else {
@@ -284,7 +292,7 @@ export class DatabaseService {
       
       // Transform data for database
       if (!paymentReceiptUrl) {
-        throw new Error('Failed to upload payment receipt');
+        throw new Error('Failed to upload downpayment receipt');
       }
       
       if (!validIdUrl) {
@@ -292,19 +300,27 @@ export class DatabaseService {
       }
       
       const dbData = transformFormToSubmission(
-        data, 
+        data,
         paymentReceiptUrl,
         validIdUrl,
         petVaccinationUrl,
         petImageUrl,
-        isTestingMode
       );
 
       // Save or update in database using the booking ID
       let submissionData;
       if (saveToDatabase) {
         if (existingBooking) {
-          submissionData = await this.updateGuestSubmission(bookingId, dbData);
+          const patch: GuestSubmission = { ...dbData };
+          if (
+            revertReadyForCheckinToPendingReview &&
+            shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
+          ) {
+            Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+            patch.status = 'PENDING_REVIEW';
+            patch.status_updated_at = new Date().toISOString();
+          }
+          submissionData = await this.updateGuestSubmission(bookingId, patch);
         } else {
           submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
         }
@@ -365,6 +381,209 @@ export class DatabaseService {
     return data;
   }
 
+  // ─── Phase 3 helpers ────────────────────────────────────────────────────────
+
+  /**
+   * Fetch a single booking row by ID (used by orchestrator + transition endpoint).
+   * Returns null when not found.
+   */
+  static async getBookingById(bookingId: string) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw new Error(`Failed to fetch booking ${bookingId}: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  /**
+   * Update `status` + `status_updated_at` for a booking.
+   * Only the orchestrator should call this — no side effects here.
+   */
+  static async updateBookingStatus(bookingId: string, status: string) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .update({ status, status_updated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update booking status: ${error.message}`);
+    return data;
+  }
+
+  /**
+   * Patch arbitrary workflow-phase fields onto a booking row (pricing, parking,
+   * SD refund fields, approved PDF URLs, etc.).  Called by the orchestrator after
+   * validating the transition.
+   */
+  static async setWorkflowFields(bookingId: string, fields: Record<string, unknown>) {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .update({ ...fields, updated_at: new Date().toISOString() })
+      .eq('id', bookingId)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to set workflow fields: ${error.message}`);
+    return data;
+  }
+
+  /**
+   * Paginated, filtered, sorted booking list for the admin `list-bookings` function.
+   *
+   * Dates in `check_in_date` are stored as `MM-DD-YYYY` text. To sort correctly
+   * across year boundaries we convert to `YYYY-MM-DD` via a Postgres expression
+   * in a `rpc` call — or fall back to `created_at` when the column isn't sortable.
+   *
+   * Sorting approach: we fetch the full result set for the current page using the
+   * PostgREST range API.  For `check_in_date` sorting we convert in JS (fast enough
+   * for admin pages with ≤1000 active rows).
+   */
+  static async listBookings(params: {
+    q?: string;
+    status?: string[];
+    from?: string | null;   // YYYY-MM-DD
+    to?: string | null;     // YYYY-MM-DD
+    hasPets?: boolean | null;
+    needParking?: boolean | null;
+    sort?: 'check_in_date:asc' | 'check_in_date:desc' | 'created_at:asc' | 'created_at:desc';
+    page?: number;
+    limit?: number;
+    /** When true, hide COMPLETED rows whose check_in_date < today (Manila). */
+    hideStaleCompleted?: boolean;
+  }) {
+    const {
+      q = '',
+      status = [],
+      from = null,
+      to = null,
+      hasPets = null,
+      needParking = null,
+      sort = 'check_in_date:asc',
+      page = 1,
+      limit = 25,
+      hideStaleCompleted = true,
+    } = params;
+
+    // Today in Asia/Manila (YYYY-MM-DD)
+    const todayManila = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })
+    ).toISOString().slice(0, 10);
+
+    let request = this.supabase
+      .from('guest_submissions')
+      .select('*', { count: 'exact' });
+
+    // --- Filters ---
+    // Free-text search now spans the full guest record:
+    //   • Primary guest fields  : facebook name, primary name, email, phone, address, nationality
+    //   • Additional guests     : guest2…guest5_name
+    //   • Pet                   : pet_name, pet_type, pet_breed
+    //   • Parking               : car_plate_number, car_brand_model, car_color
+    //   • Notes / source        : guest_special_requests, find_us_details
+    // PostgREST `or()` joins each clause as a comma-separated `<col>.ilike.<needle>`.
+    if (q.trim()) {
+      const needle = `%${q.trim()}%`;
+      request = request.or(
+        [
+          // Primary guest
+          `guest_facebook_name.ilike.${needle}`,
+          `primary_guest_name.ilike.${needle}`,
+          `guest_email.ilike.${needle}`,
+          `guest_phone_number.ilike.${needle}`,
+          `guest_address.ilike.${needle}`,
+          `nationality.ilike.${needle}`,
+          // Additional guests
+          `guest2_name.ilike.${needle}`,
+          `guest3_name.ilike.${needle}`,
+          `guest4_name.ilike.${needle}`,
+          `guest5_name.ilike.${needle}`,
+          // Pet
+          `pet_name.ilike.${needle}`,
+          `pet_type.ilike.${needle}`,
+          `pet_breed.ilike.${needle}`,
+          // Parking
+          `car_plate_number.ilike.${needle}`,
+          `car_brand_model.ilike.${needle}`,
+          `car_color.ilike.${needle}`,
+          // Free-text notes
+          `guest_special_requests.ilike.${needle}`,
+          `find_us_details.ilike.${needle}`,
+        ].join(','),
+      );
+    }
+
+    if (status.length > 0) {
+      request = request.in('status', status);
+    }
+
+    if (hasPets === true) request = request.eq('has_pets', true);
+    if (hasPets === false) request = request.eq('has_pets', false);
+
+    if (needParking === true) request = request.eq('need_parking', true);
+    if (needParking === false) request = request.eq('need_parking', false);
+
+    // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
+    // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).
+    const { data: allData, error, count } = await request.order('created_at', { ascending: false });
+
+    if (error) throw new Error(`listBookings query failed: ${error.message}`);
+
+    let rows = (allData ?? []) as any[];
+
+    // Helper: convert MM-DD-YYYY → YYYY-MM-DD for sorting
+    const toISO = (dateStr: string): string => {
+      if (!dateStr) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [m, d, y] = dateStr.split('-');
+        return `${y}-${m}-${d}`;
+      }
+      return dateStr;
+    };
+
+    // Date-range filter (check_in_date in YYYY-MM-DD)
+    if (from) {
+      rows = rows.filter((r) => toISO(r.check_in_date) >= from);
+    }
+    if (to) {
+      rows = rows.filter((r) => toISO(r.check_in_date) <= to);
+    }
+
+    // Hide stale COMPLETED rows (check_in_date strictly before today, Q5.1)
+    if (hideStaleCompleted) {
+      rows = rows.filter((r) => {
+        if (r.status !== 'COMPLETED') return true;
+        return toISO(r.check_in_date) >= todayManila;
+      });
+    }
+
+    // Sort
+    const [sortCol, sortDir] = sort.split(':') as [string, 'asc' | 'desc'];
+    rows.sort((a, b) => {
+      const aVal = sortCol === 'check_in_date' ? toISO(a.check_in_date) : a.created_at;
+      const bVal = sortCol === 'check_in_date' ? toISO(b.check_in_date) : b.created_at;
+      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
+
+    // Paginate
+    const total = rows.length;
+    const from_idx = (page - 1) * limit;
+    const paged = rows.slice(from_idx, from_idx + limit);
+
+    return { rows: paged, total };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   static async checkOverlappingBookings(checkInDate: string, checkOutDate: string, bookingId?: string) {
     console.log('Checking for overlapping bookings...');
     console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);
@@ -404,9 +623,13 @@ export class DatabaseService {
       // - New check-in === existing check-out
       // - New check-out === existing check-in
       
+      // Phase 2+: only CANCELLED bookings free dates — every other status blocks.
+      // We push the CANCELLED filter to the DB query for efficiency.
+      // Belt-and-suspenders: legacy 'canceled' is also excluded in JS below.
       let query = this.supabase
         .from('guest_submissions')
-        .select('*'); // Select all to include status column if it exists
+        .select('id, check_in_date, check_out_date, status, primary_guest_name')
+        .neq('status', 'CANCELLED');
 
       // Exclude the current booking if updating
       if (bookingId) {
@@ -420,10 +643,13 @@ export class DatabaseService {
         throw new Error('Failed to check for overlapping bookings');
       }
 
-      // Filter out canceled bookings first (status column may not exist yet)
-      const activeBookings = allBookings?.filter(booking => booking.status !== 'canceled') || [];
+      // Belt-and-suspenders: also filter legacy 'canceled' rows in case the
+      // Phase 2 migration hasn't been applied on a fresh local clone.
+      const activeBookings = allBookings?.filter(
+        booking => booking.status !== 'canceled' && booking.status !== 'CANCELLED'
+      ) || [];
 
-      console.log(`Found ${allBookings?.length || 0} total bookings, ${activeBookings.length} active (non-canceled) bookings to check`);
+      console.log(`Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`);
 
       // Filter overlapping bookings in memory
       const overlappingBookings = activeBookings?.filter(booking => {

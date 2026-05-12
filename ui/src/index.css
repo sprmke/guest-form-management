@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,8 +19,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 215 25% 20%;
 
-    /* Professional green primary color for booking/hospitality */
-    --primary: 142 76% 36%;
+    /* Primary matches sidebar primary green */
+    --primary: 168 65% 40%;
     --primary-foreground: 0 0% 100%;
 
     /* Subtle secondary for accents */
@@ -40,7 +42,7 @@
     /* Borders and inputs */
     --border: 215 20% 88%;
     --input: 215 20% 88%;
-    --ring: 142 76% 36%;
+    --ring: 168 65% 40%;
 
     /* Success color for confirmed bookings */
     --success: 142 76% 36%;
@@ -51,6 +53,17 @@
     --warning-foreground: 0 0% 100%;
 
     --radius: 0.75rem;
+
+    /* ── Admin Dashboard Sidebar Tokens (matches property-management design system) ── */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 224 71% 4%;
+    --sidebar-primary: 168 65% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 168 65% 96%;
+    --sidebar-accent-foreground: 168 65% 28%;
+    --sidebar-border: 220 13% 93%;
+    --sidebar-ring: 168 65% 40%;
+    --sidebar-muted: 220 9% 46%;
   }
 
   .dark {
@@ -63,7 +76,7 @@
     --popover: 215 25% 15%;
     --popover-foreground: 210 20% 98%;
 
-    --primary: 142 76% 40%;
+    --primary: 168 65% 45%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 215 25% 20%;
@@ -80,7 +93,18 @@
 
     --border: 215 25% 25%;
     --input: 215 25% 25%;
-    --ring: 142 76% 40%;
+    --ring: 168 65% 45%;
+
+    /* Sidebar dark tokens */
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 168 65% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 168 50% 12%;
+    --sidebar-accent-foreground: 168 65% 55%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 168 65% 45%;
+    --sidebar-muted: 0 0% 55%;
   }
 }
 
@@ -90,7 +114,10 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -106,29 +133,83 @@
   }
 }
 
-/* Professional Sonner Toast Customization */
+/* Sonner toasts: light card, status as accent (not full bleed background).
+   Do not set position here — Sonner uses position:absolute + translateY offsets;
+   forcing relative breaks stacking and creates huge gaps between toasts. */
 [data-sonner-toast] {
-  position: relative !important;
   border-radius: 0.75rem !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1),
+  background: hsl(0 0% 100%) !important;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--border)) !important;
+  border-left-width: 4px !important;
+  border-left-color: hsl(var(--border)) !important;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.dark [data-sonner-toast] {
+  background: hsl(var(--card)) !important;
+  color: hsl(var(--card-foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+[data-sonner-toast] [data-title] {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 500 !important;
 }
 
 [data-sonner-toast] [data-close-button] {
   position: absolute !important;
-  top: 20px !important;
-  right: 16px !important;
+  top: 50% !important;
+  right: 8px !important;
   left: auto !important;
+  transform: translateY(-50%) !important;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  border-radius: 9999px !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: hsl(215 16% 92%) !important;
+  color: hsl(215 25% 28%) !important;
+}
+
+[data-sonner-toast] [data-close-button]:focus-visible {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px !important;
+}
+
+.dark [data-sonner-toast] [data-close-button]:hover {
+  background: hsl(215 25% 22%) !important;
+  color: hsl(210 20% 92%) !important;
 }
 
 [data-sonner-toast][data-type='success'] {
-  background: hsl(142 76% 36%) !important;
-  color: white !important;
+  border-left-color: hsl(var(--success)) !important;
 }
 
 [data-sonner-toast][data-type='error'] {
-  background: hsl(0 72% 51%) !important;
-  color: white !important;
+  border-left-color: hsl(var(--destructive)) !important;
+}
+
+[data-sonner-toast][data-type='warning'] {
+  border-left-color: hsl(var(--warning)) !important;
+}
+
+[data-sonner-toast][data-type='loading'] {
+  border-left-color: hsl(var(--primary)) !important;
+}
+
+[data-sonner-toast][data-type='info'],
+[data-sonner-toast][data-type='default'] {
+  border-left-color: hsl(var(--primary)) !important;
 }
 
 /* Professional Calendar Styling */
@@ -252,10 +333,12 @@
 }
 
 /*
- * WebKit (iOS Safari, Chrome): native <input type="time"> uses a tall centered control
- * and ignores normal box sizing until appearance is reset (see Input `ui-native-time`).
+ * WebKit (iOS Safari, Chrome): native date/time inputs use tall centered controls and
+ * ignore normal box sizing until appearance is reset (see Input `ui-native-datetime`).
  */
-input.ui-native-time[type='time'] {
+input.ui-native-datetime[type='time'],
+input.ui-native-datetime[type='date'],
+input.ui-native-datetime[type='datetime-local'] {
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
@@ -271,12 +354,16 @@ input.ui-native-time[type='time'] {
   color-scheme: light;
 }
 
-input.ui-native-time[type='time']::-webkit-datetime-edit {
+input.ui-native-datetime[type='time']::-webkit-datetime-edit,
+input.ui-native-datetime[type='date']::-webkit-datetime-edit,
+input.ui-native-datetime[type='datetime-local']::-webkit-datetime-edit {
   margin: 0;
   padding: 0;
 }
 
-input.ui-native-time[type='time']::-webkit-datetime-edit-fields-wrapper {
+input.ui-native-datetime[type='time']::-webkit-datetime-edit-fields-wrapper,
+input.ui-native-datetime[type='date']::-webkit-datetime-edit-fields-wrapper,
+input.ui-native-datetime[type='datetime-local']::-webkit-datetime-edit-fields-wrapper {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -285,11 +372,15 @@ input.ui-native-time[type='time']::-webkit-datetime-edit-fields-wrapper {
   padding: 0;
 }
 
-input.ui-native-time[type='time']::-webkit-date-and-time-value {
+input.ui-native-datetime[type='time']::-webkit-date-and-time-value,
+input.ui-native-datetime[type='date']::-webkit-date-and-time-value,
+input.ui-native-datetime[type='datetime-local']::-webkit-date-and-time-value {
   text-align: left;
 }
 
-input.ui-native-time[type='time']::-webkit-calendar-picker-indicator {
+input.ui-native-datetime[type='time']::-webkit-calendar-picker-indicator,
+input.ui-native-datetime[type='date']::-webkit-calendar-picker-indicator,
+input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicator {
   flex-shrink: 0;
   margin-inline-start: 0.25rem;
   cursor: pointer;

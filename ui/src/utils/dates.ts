@@ -203,6 +203,37 @@ export const dateToString = (date: Date): string => {
   return dayjs(date).format('YYYY-MM-DD');
 };
 
+/** `guest_submissions.valid_dates` — stored as MM-DD-YYYY text. */
+export function toGuestSubmissionDate(text: string): string {
+  const s = (text ?? '').trim();
+  if (!s) return s;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return dayjs(s, 'YYYY-MM-DD', true).format('MM-DD-YYYY');
+  }
+  const normalized = normalizeDateString(s);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) {
+    return dayjs(normalized, 'YYYY-MM-DD', true).format('MM-DD-YYYY');
+  }
+  return s;
+}
+
+/** `guest_submissions.valid_times` — 12-hour with AM/PM (e.g. 2:00 PM). */
+export function toGuestSubmissionTime(text: string): string {
+  const s = (text ?? '').trim();
+  if (!s) return s;
+  if (/\s[AP]M$/i.test(s)) return s;
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (!m) return s;
+  let hour = Number(m[1]);
+  const minute = m[2].padStart(2, '0');
+  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return s;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour === 0) hour = 12;
+  return `${hour}:${minute} ${ampm}`;
+}
+
 // Create a disabled date matcher for react-day-picker (for check-in dates)
 export const createDisabledDateMatcher = (
   bookedDates: BookedDateRange[],

@@ -1,0 +1,2 @@
+-- Optional seed data for `supabase db reset`. Add INSERTs here if needed.
+-- Kept empty so `config.toml` `[db.seed]` does not warn on missing file.

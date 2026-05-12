@@ -1,3 +1,48 @@
+New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
+
+- ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `processed_emails`, `gmail_listener_state`, 4 new storage buckets; **`20260501000010`** adds request PDF URL columns. No Edge/UI behavior change from SQL alone. **Apply order:** **`docs/MIGRATION_RUNBOOK.md` §1** (`20260428120000_*` runs before the May 1 batch). Runbook: `docs/MIGRATION_RUNBOOK.md`. (The `is_test_booking` column was added in `20260501000004` and **removed** in `20260608120000_drop_is_test_booking.sql`.)
+- ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, 25/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
+- ✅ **Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.** Migration `20260502000000_widen_status_enum.sql` backfills `booked/canceled` rows to new enum, adds CHECK constraint + `DEFAULT 'PENDING_REVIEW'`. Created `_shared/statusMachine.ts` (server) + `ui/src/features/admin/lib/workflow.ts` (client mirror) with full transition graph, calendar meta, and sub-form requirements. Updated `get-booked-dates` and `databaseService.checkOverlappingBookings` to filter on `CANCELLED` only.
+  - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` default sort is now `check_in_date:asc`; stale past-COMPLETED rows hidden by default via `hide_stale_completed=true` in `list-bookings` endpoint.
+  - **Not in Phase 1–2:** `/bookings/:bookingId` detail + workflow panel — Phase 3.
+- ✅ **Phase 3 — `transition-booking` endpoint + admin transition UI + new guest emails.**
+  - Created `_shared/workflowOrchestrator.ts` — central side-effect fan-out for all transitions (DB, Calendar, Sheets, emails). All callers (UI, future cron, future Gmail listener) go through it.
+  - Created `list-bookings` edge function — paginated, server-side check-in sort (normalises MM-DD-YYYY → YYYY-MM-DD for correct year-boundary ordering), status/date/pet/parking filters, stale-COMPLETED hide per Q5.1.
+  - Created `transition-booking` edge function — validates transition via `statusMachine.canTransition`, delegates to orchestrator.
+  - Created `upload-booking-asset` edge function — admin uploads parking endorsements, approved PDFs, and refund receipts to Supabase Storage.
+  - Refactored `cancel-booking` to go through the orchestrator.
+  - All admin functions set `verify_jwt = false` in `config.toml` (Kong's HS256 gate rejects newer ES256 tokens; `verifyAdminJwt` in the handler is the sole security boundary — it validates via `supabase.auth.getUser` + ADMIN_ALLOWED_EMAILS allow-list).
+  - Added `sendBookingAcknowledgement`, `sendReadyForCheckin`, `sendParkingBroadcast` to `emailService.ts`; fixed CC on GAF/pet emails (guest no longer CC'd).
+  - Updated `calendarService.ts` with `updateCalendarEventStatus` and status→colorId/summary map.
+  - Frontend: `useBooking`, `useTransitionBooking`, `useCancelBooking` hooks; `WorkflowPanel`, `ReviewPricingForm`, `ParkingRequestForm`, `SdRefundForm` components; `/bookings/:bookingId` detail page (`BookingDetailPage`); route wired in admin routes.
+  - `useBookings` now calls `list-bookings` edge function (PostgREST fallback on auth failure); default sort changed to `check_in_date:asc` per Q5.1.
+  - Sort dropdown added to `BookingFilters`; `BookingTable` rows now link to `/bookings/:bookingId`.
+- ✅ **Phase 3.1 — Bookings UX upgrade.**
+  - **Date-range filter** ported from `property-management-app` (`week`/`month`/`year` presets + custom 2-month picker). `useDateNavigation` hook + `useSyncDateRangeWithQuery` keep state in URL `?from`/`?to`; styled with project tokens via `BookingDateRangeFilter`.
+  - **View toggle** (`?view=table\|card\|calendar`) using an icon-only segmented control (`BookingViewToggle`). Built `BookingCardGrid` (responsive 1/2/3/4-col grid) and `BookingCalendarView` (month grid + selected-day detail, multi-booking days handled). Pagination is suppressed in calendar view since the date range scopes results.
+  - **Avatars now render the guest's `valid_id_url`** when present, falling back to a single-color (sidebar-primary green) initial. New shared `GuestAvatar` component used by table, cards, and calendar detail.
+  - **Larger flag icons** (Car / Dog) — pill shape with tinted background; consistent across table + cards + calendar.
+  - **Whole-row click** on `BookingTable` (Enter/Space supported) plus whole-card click in `BookingCardGrid`; the trailing chevron is decorative-only and reveals on hover.
+  - **Search broadened**: `q` now matches across primary guest, additional guests (`guest2_name`…`guest5_name`), email, phone, address, nationality, pet name/type/breed, plate/brand/color, and free-text notes (`guest_special_requests`, `find_us_details`). Mirrored in both the `list-bookings` edge function and `useBookings` PostgREST fallback. Placeholder text updated.
+  - **WorkflowPanel pipeline stepper + Back navigation.** `WorkflowPanel` swapped its flat list of action buttons for a **vertical stepper** (`PipelineStepper`) that visualizes the booking's _applicable_ journey — completed steps render as emerald checkmarks, the current step gets a blue ring + "Since X ago" timestamp, upcoming steps are outlined dots, and parking / pet stages are filtered out when those flags are off. Actions collapsed to one primary "Proceed to {next}" CTA + one secondary "← Back to {previous}" recovery button + the existing "Cancel Booking", driven by new `bookingPipeline()` / `nextStep()` / `previousStep()` helpers in `workflow.ts`.
+  - **Backward overrides** added to `MANUAL_OVERRIDE_GRAPH` on both server (`statusMachine.ts`) and client mirror (`workflow.ts`): every non-terminal status can now step back one stage when the admin needs to redo a step. The graph is permissive; the UI narrows to a single back-button per booking via the pipeline helpers.
+  - **Email re-fire safety**: the workflow orchestrator sends ready-for-check-in only on forward transitions to `READY_FOR_CHECKIN` from `PENDING_DOCUMENTS` or legacy `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST` — not from e.g. `PENDING_SD_REFUND → READY_FOR_CHECKIN`. The dev control is relevant on those same pre-ready statuses.
+- ✅ **Phase 4 — Gmail listener + SD refund cron.**
+  - Created `gmail-listener` edge function — Gmail OAuth via `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON` (set by `npm run gmail-auth`), incremental `users.history.list` polling, `APPROVED GAF.pdf` attachment download + Storage upload, booking correlation by date range + status, ambiguous multi-match recorded as `skipped` (Q6.5), idempotency via `processed_emails` table + `gmail_listener_state` history cursor, transitions through `workflowOrchestrator`.
+  - Created `sd-refund-cron` edge function — scans `READY_FOR_CHECKIN` bookings using Manila check-out minus **`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`** (default 2h): sends **Check-out & SD Refund** guest email without waiting on balance settlement; auto-transitions to **`READY_FOR_CHECKOUT`** only when settlement is complete (orchestrator), not directly to `PENDING_SD_REFUND`.
+- ✅ **Phase 4b — Guest SD refund form (`READY_FOR_CHECKOUT`).**
+  - Status `READY_FOR_CHECKOUT` + DB columns (`sd_refund_*`, form timestamps); cron + manual `READY_FOR_CHECKIN → READY_FOR_CHECKOUT` with **`sendSdRefundFormEmail`** dev control and `sendSdRefundFormRequest` template.
+  - Public edge functions **`get-sd-form`** / **`submit-sd-form`**; admin **`send-sd-refund-form-email`** resend; UI **`/sd-form`** stepper (`ui/src/features/sd-form/**`) and admin **`WorkflowPanel`** resend + dev checkbox.
+  - After guest submit (or admin skip without `sd_refund_method`), booking moves to **`PENDING_SD_REFUND`** for settlement (`SdRefundForm` shows read-only guest refund block when present).
+  - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
+  - Gmail OAuth: legacy `npm run gmail-auth` → `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`, **or** in-app **Connect Gmail** on **`/settings`** (stores encrypted refresh token in `gmail_mail_integration`; requires `GMAIL_API_WEB_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — see `docs/PROJECT.md` §8 / §11).
+- ✅ **Phase 5 — `submit-form` cleanup + removal of test-booking pipeline.**
+  - ✅ `submit-form` no longer sends workflow emails; no `?testing=true`, no `is_test_booking`, no `cleanup-test-data`, no `[TEST]`/`TEST_` prefixes. Guest `/form` keeps optional **dev API toggles** when `!production` or `?dev=true` (save DB, storage, calendar, sheet) — no separate Test Submit.
+  - ✅ Parent status `PENDING_DOCUMENTS` added for parallel document work. `WorkflowPanel` shows sub-status progress (`PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST`) with "Mark as Complete" actions.
+- ⏳ Phase 6 — Calendar + Sheet backfill sync.
+
+---
+
 Todos
 
 - ✅ In dev env, if we enable google calendar & sheets, let's add [TEST] on title to easily determine that it's a test booking
@@ -40,33 +85,81 @@ Todos
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
 - ✅ Create separate email for pet information
-- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field
+- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in `docs/NEW_FLOW_PLAN.md` §6.2 **Q7.4** (placement/copy partial lock in §6.1).
 - Create separate email for parking information
   - add a admin fields & button to trigger email sending of parking information
   - we should have dropdown of email so we can easily send the parking information to parking owner & azure
-- Lets update the / root route to render the calendar page and create a new route called "/form" to render the guest form page. So that when user visit our sites, they are required to select dates first
+- ✅ Lets update the / root route to render the calendar page and create a new route called "/form" to render the guest form page. So that when user visit our sites, they are required to select dates first
 - Display carousel on the top background that auto slides to show different unit pictures/amenities
 - Use AI to analyze and validate guest uploaded assets
   - Analyze if receipt is valid receipt, id is id, etc
-- Persist dev or test query parameters on booking summary and booking detail pages on route change
-
-- Let's improve our booking process flow
-  - Now, when user fill up the form, we should automatically genreate the PDF
-  - BUT not auomatically send an email, create calendar event and add entry to google sheet
-  - Instead, the unit owner now needs to review the guest form details and will proceed to different steps/status. That's why our booking has status now:
-    - PENDING REVIEW - Guest completed filling up the form. The unit owner or admin needs to review the guest form details
-    - PENDING GAF - Guest form is reviewed and we already sent a GAF request and just waiting for approved GAF
-    - PENDING PARKING DETAILS - Parking is enabled and just waiting for approved parking details
-    - PENDING PET REQUEST - Has pets, pet form request email sent and just waiting for approval
-    - READY FOR CHECK-IN - Everything is good to go for guest for checkin
-    - PENDING FOR SD REFUND - Guest checkout already. On this step, let's provide new field for new expenses or profits. And make sure no damages and all payment are settled.
-    - COMPLETED - Booking is completed
-    - CANCELLED - Booking is canceled (Let's cleaning all data from different services)
-    - (Let's improve the different status names?. Upon thinking carefully, let's not delete this)
-  - The unit owner can review the booking when visiting the guest form with bookingId as route parameter and admin=true as query parameter
-  - When admin mode is enabled, the unit owner can review and update booking information (as it is now)
-  - Then, the unit owner/admin should enter the payment details before they can proceed to next step. We will need to create a new section for the payment details
-    - For payment details, we can enter the base rate, parking rate (if enabled), pet fee (if enabled).
-    - We should also provide new input with 2 types: profit or expense
-    - Then we should also provide or display a payment details summary or breakdown
-    - Then, then they review and submit the form again. The status will be updated from 'PENDING REVIEW' to 'PENDING GAF'. Then to the next steps from above
+- Persist dev query parameters on booking summary and booking detail pages on route change (optional polish)
+- Combine GAF request and pet request in one email when sending to Azure
+- ✅ Cleanup test-booking pipeline (`?testing=true`, `is_test_booking`, admin test filters, `[TEST]` prefixes, `cleanup-test-data`) — use local/staging Supabase instead
+- ✅ Improve the overall UI of our email templates which the same and consistent theme, font, shadows, spacing and colors. Make a research on popular and modern/stunning email templates to use as reference. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI.
+- ✅ Guest SD refund route **`/sd-form`** (UI stepper: Facebook review step → refund method: GCash same as on-file phone (number shown on the option card), other bank dropdown + name + account number, cash pickup with static policy copy only). Honesty-store purchase step skipped by design. **`READY_FOR_CHECKOUT`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
+- Improve email template house rules
+- Review edit booking info form
+- ✅ Improve and finalize update guest form flow
+  - Only revert booking status to `PENDING_REVIEW` when updates come from:
+    - Guest update from the public `/form` flow
+    - Admin update from the `/bookings/:bookingId` detail form
+  - AND ONLY IF one or more of the following fields changed:
+    - Facebook / Airbnb Name
+    - Primary Guest name
+    - Email
+    - Phone Number
+    - Additional Guest Names
+    - Check-in and Check-out Date
+    - Check-in and Check-out Time
+    - Parking Details
+    - Pet Details
+    - Downpayment receipt
+    - Valid ID
+    - Pet vaccination and pet photo
+  - If updates do not include the listed fields, do **not** reset status to `PENDING_REVIEW`
+  - Revert applies only while status is **pending documents** (`PENDING_DOCUMENTS` / `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST`) or **`READY_FOR_CHECKIN`** — not when already `PENDING_REVIEW`, in SD refund stages, `COMPLETED`, or `CANCELLED`
+- Update google calendar summary info with new guest form and processes
+- Review and improve form UI validation on workflow status forms
+- Review bucket policy to check public buckets and convert them to private?
+- On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
+- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
+- ✅ Remove PDF generation process when guest submits the guest form: 2026-04-29T20:21:44.178173637Z [Info] Generate PDF: ✅
+- ✅ Improve the mobile responsiveness and look of email templates on mobile
+- ? Only display Sensitive edit warning on edit booking detail page
+- ✅ Support 'Mark as incomplete' to sub booking status?
+- Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
+- We should add label for additional fee and update the ready for check-in email what's the additional fee is about
+- ✅ Update SD refund form UI (stepper, no feedback field, Facebook-first then Continue, optional `guestFeedback` on API)
+- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
+- ✅ Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
+- ✅ Update ready for check-in email to add generated Gcash QR or link for the total balance payment upon check-in
+- ✅ Update booking flow when guest is coming from Airbnb.
+  - ✅ Public guest form: `?source=airbnb` switches all "Facebook" labels/text to "Airbnb". Source saved to DB (`booking_source` column), Google Calendar description, and Google Sheets (new AL/BA column).
+  - ✅ Booking Detail page: `booking_source` shown in Other Information card with color-coded badge (blue=Facebook, orange=Airbnb). Airbnb bookings default Down Payment = 0, Security Deposit = 0 in the Review Pricing form.
+- ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
+- Update Review process to deduct P50-P100 pesos on SD?
+- Add settings page on dashboard to customized form values: Discount vouchers, etc
+- Rethink and plan how to mange parking request
+- ✅ Add total profits and expenses on booking detail pricing section
+- Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
+- ✅ Automatic run cron job functions (specify here) after page refresh
+- Update Check-in Details email to add check-in instructions
+- Add Gcash number and name to Check-in email
+- Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
+- Cleanup isDevMode. This is unnecessary since we have admin dashboard now
+- Update booking confirmed UI and display the complete booking details
+- Improve Other information section UI / cols
+- ✅ If booking date is already past on the date today and the booking status is still either PENDING_REVIEW, PENDING_DOCS and READY_FOR_CHECKIN, display a modal warning that says that the booking date is already passed every time we click the "Proceed to.." button. If they confirm, proceed to next step, if cancel, do not proceed.
+- Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
+- Update additional guests and ask if adult or child (below 5 years old) per field
+- Support slack and telegram notifications for important booking events
+  - New booking requests
+  - ?
+- Automate booking flow for cleaners/staff as well
+  - Telegram notification or Facebook page will chat cleaner messenger
+  - Every time there's a new booking, send a notification for upcoming bookings
+  - Each booking will contain important info for cleaners like no of pax, requires room decor, guest special requests
+  - Notification for guest check-out
+  - ?
