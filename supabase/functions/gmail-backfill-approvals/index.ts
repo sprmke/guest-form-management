@@ -329,7 +329,24 @@ serve(async (req) => {
       Math.min(body.maxMessagesPerKind ?? DEFAULT_MAX_MESSAGES_PER_KIND, 20),
     );
 
-    const { accessToken } = await getGmailAccessTokenUnified();
+    let accessToken: string;
+    try {
+      ({ accessToken } = await getGmailAccessTokenUnified());
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[gmail-backfill-approvals] Gmail OAuth failed:', msg);
+      const needsReAuth =
+        (e as { needsReAuth?: boolean })?.needsReAuth === true ||
+        msg.includes('invalid_grant') ||
+        msg.includes('Reconnect Gmail');
+      return new Response(
+        JSON.stringify({ success: false, error: msg, needsReAuth }),
+        {
+          status: 200,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        },
+      );
+    }
     const candidates = await loadCandidateBookings(limitBookings);
     const tasks = candidates.flatMap(buildTasksFromBooking);
 
