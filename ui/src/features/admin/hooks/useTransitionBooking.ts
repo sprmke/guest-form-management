@@ -255,6 +255,69 @@ export function useRunSdRefundCron(bookingId?: string) {
   });
 }
 
+/** One-shot Gmail approval backfill (`gmail-backfill-approvals`) — searches history for PDFs cron missed after listener init. */
+export type GmailApprovalBackfillInput = {
+  dryRun?: boolean;
+  lookbackDays?: number;
+  limitBookings?: number;
+  maxMessagesPerKind?: number;
+};
+
+export type GmailApprovalBackfillResult = {
+  success: boolean;
+  dryRun?: boolean;
+  settings?: {
+    lookbackDays: number;
+    limitBookings: number;
+    maxMessagesPerKind: number;
+  };
+  scannedBookings?: number;
+  tasks?: number;
+  applied?: number;
+  wouldApply?: number;
+  skipped?: number;
+  failed?: number;
+};
+
+export function useRunGmailApprovalBackfill() {
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (
+      input: GmailApprovalBackfillInput = {},
+    ): Promise<GmailApprovalBackfillResult> => {
+      const jwt = await getAdminJwt();
+
+      const res = await fetch(`${FUNCTIONS_URL}/gmail-backfill-approvals`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${jwt}`,
+        },
+        body: JSON.stringify(input),
+      });
+
+      const json = (await res.json()) as GmailApprovalBackfillResult & {
+        error?: string;
+        needsReAuth?: boolean;
+      };
+
+      if (json.needsReAuth) {
+        throw new Error(
+          'Gmail OAuth expired — use “Reconnect Gmail” on this page (or legacy env tokens).',
+        );
+      }
+      if (!res.ok || !json.success) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      return json;
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
+    },
+  });
+}
+
 /**
  * Re-send the guest Check-out & SD Refund Details email (READY_FOR_CHECKIN or READY_FOR_CHECKOUT).
  */
