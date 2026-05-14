@@ -187,7 +187,7 @@ export function ReviewPricingForm({
             type="number"
             min={0}
             step={0.01}
-            placeholder="300"
+            placeholder={booking.has_pets === true ? '300' : '0'}
             className={inputClass(!!errors.pet_fee)}
             {...register('pet_fee')}
           />
@@ -202,7 +202,7 @@ export function ReviewPricingForm({
             type="number"
             min={0}
             step={0.01}
-            placeholder="400"
+            placeholder={booking.need_parking === true ? '400' : '0'}
             className={inputClass(!!errors.parking_rate_guest)}
             {...register('parking_rate_guest')}
           />
@@ -303,6 +303,8 @@ function buildPricingDefaultValues(
   surpriseDecorRequested: boolean,
 ): DefaultValues<ReviewPricingFormValues> {
   const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
+  const hasPets = booking.has_pets === true;
+  const needParking = booking.need_parking === true;
   const storedAdditional = toNullableNumber(booking.guest_additional_fee);
   const defaultAdditional = surpriseDecorRequested
     ? (storedAdditional ?? undefined)
@@ -318,9 +320,11 @@ function buildPricingDefaultValues(
     security_deposit:
       toNullableNumber(booking.security_deposit) ??
       (isAirbnb ? 0 : DEFAULT_SECURITY_DEPOSIT),
-    pet_fee: toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE,
+    pet_fee:
+      toNullableNumber(booking.pet_fee) ?? (hasPets ? DEFAULT_PET_FEE : 0),
     parking_rate_guest:
-      toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE,
+      toNullableNumber(booking.parking_rate_guest) ??
+      (needParking ? DEFAULT_PARKING_FEE : 0),
     guest_additional_fee: defaultAdditional,
   };
   if (!initialDraft) return fromBooking;
