@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
   CalendarPlus,
   ChevronLeft,
@@ -29,6 +28,7 @@ import {
   type BookingsSort,
 } from '@/features/admin/lib/types';
 import { useGmailMailIntegrationStatus } from '@/features/admin/hooks/useGmailMailIntegration';
+import { showGmailDisconnectedToast } from '@/features/admin/components/GmailDisconnectedToast';
 const PAGE_SIZES = [25, 50, 100] as const;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
@@ -151,16 +151,7 @@ export function BookingsListPage() {
   useEffect(() => {
     if (!gmailIntegration.isSuccess) return;
     if (gmailIntegration.data.connected) return;
-    toast.warning('Gmail is not connected', {
-      id: 'admin-gmail-not-connected',
-      description:
-        'Connect Gmail under Settings so the scheduled listener can process Azure approval emails. Bookings still work; automations that need the mailbox will stall until Gmail is set up. If this deployment only uses legacy server tokens (npm run gmail-auth), you can ignore this.',
-      duration: 14_000,
-      action: {
-        label: 'Open Settings',
-        onClick: () => navigate('/settings'),
-      },
-    });
+    showGmailDisconnectedToast(() => navigate('/settings'));
   }, [gmailIntegration.isSuccess, gmailIntegration.data?.connected, navigate]);
 
   const patch = useCallback(

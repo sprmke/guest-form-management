@@ -203,6 +203,18 @@
   border-left-color: hsl(var(--warning)) !important;
 }
 
+/* Custom Gmail banner: inner card supplies border, shadow, and dismiss — strip outer chrome */
+[data-sonner-toast]:has([data-gmail-disconnected-toast]) {
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+[data-sonner-toast]:has([data-gmail-disconnected-toast]) [data-close-button] {
+  display: none !important;
+}
+
 [data-sonner-toast][data-type='loading'] {
   border-left-color: hsl(var(--primary)) !important;
 }
