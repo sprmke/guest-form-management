@@ -1,4 +1,4 @@
-import { Mail, Unplug } from 'lucide-react';
+import { History, Mail, Unplug } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -6,12 +6,14 @@ import {
   useGmailMailIntegrationStatus,
   useStartGmailMailOAuth,
 } from '@/features/admin/hooks/useGmailMailIntegration';
+import { useRunGmailApprovalBackfill } from '@/features/admin/hooks/useTransitionBooking';
 
 export function GmailMailIntegrationCard() {
   const { data, isLoading, isError, error, refetch } =
     useGmailMailIntegrationStatus();
   const startOAuth = useStartGmailMailOAuth();
   const disconnect = useDisconnectGmailMail();
+  const backfill = useRunGmailApprovalBackfill();
 
   const connected = data?.connected ?? false;
 
@@ -80,7 +82,9 @@ export function GmailMailIntegrationCard() {
         <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           <button
             type="button"
-            disabled={startOAuth.isPending || disconnect.isPending}
+            disabled={
+              startOAuth.isPending || disconnect.isPending || backfill.isPending
+            }
             onClick={() => {
               startOAuth.mutate(undefined, {
                 onError: (e) => toast.error((e as Error).message),
@@ -97,10 +101,78 @@ export function GmailMailIntegrationCard() {
             {connected ? 'Reconnect Gmail' : 'Connect Gmail'}
           </button>
 
+          <button
+            type="button"
+            disabled={
+              backfill.isPending ||
+              startOAuth.isPending ||
+              disconnect.isPending ||
+              isLoading
+            }
+            onClick={() => {
+              const runPreviewFirst = window.confirm(
+                'Run a preview first?\n\nOK — dry run only (shows what would match; no uploads or workflow changes).\nCancel — skip preview and decide whether to apply for real.',
+              );
+              let dryRun: boolean;
+              if (runPreviewFirst) {
+                dryRun = true;
+              } else {
+                if (
+                  !window.confirm(
+                    'Apply historical backfill for real? Matching approval PDFs are uploaded and workflow transitions run. Uses server defaults (e.g. 180-day Gmail lookback).\n\nOK to continue, Cancel to abort.',
+                  )
+                ) {
+                  return;
+                }
+                dryRun = false;
+              }
+
+              backfill.mutate(
+                { dryRun },
+                {
+                  onSuccess: (r) => {
+                    const summary = [
+                      r.dryRun ? `Dry run` : `Applied`,
+                      r.scannedBookings != null
+                        ? `${r.scannedBookings} bookings scanned`
+                        : null,
+                      r.tasks != null ? `${r.tasks} tasks` : null,
+                      r.applied != null ? `${r.applied} applied` : null,
+                      r.wouldApply != null
+                        ? `${r.wouldApply} would apply`
+                        : null,
+                      r.failed != null && r.failed > 0
+                        ? `${r.failed} failed`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ');
+                    toast.success(summary || 'Backfill finished');
+                  },
+                  onError: (e) => toast.error((e as Error).message),
+                },
+              );
+            }}
+            title="Search Gmail history for Azure approval PDFs missed after the listener was initialized"
+            className={cn(
+              'inline-flex items-center justify-center gap-2 rounded-lg min-h-[44px] px-3 sm:px-4',
+              'text-sm font-semibold border border-sidebar-border bg-background sm:text-[13px]',
+              'hover:bg-sidebar-accent/40 transition-colors',
+              'disabled:opacity-40 disabled:pointer-events-none',
+            )}
+          >
+            <History className="size-4 shrink-0" aria-hidden />
+            {backfill.isPending ? 'Backfill…' : 'Historical backfill'}
+          </button>
+
           {connected && (
             <button
               type="button"
-              disabled={disconnect.isPending || startOAuth.isPending}
+              disabled={
+                disconnect.isPending ||
+                startOAuth.isPending ||
+                backfill.isPending
+              }
               onClick={() => {
                 disconnect.mutate(undefined, {
                   onSuccess: () => {
