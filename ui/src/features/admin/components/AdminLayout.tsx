@@ -7,6 +7,7 @@ import {
   ChevronRight,
   LayoutDashboard,
   LogOut,
+  Megaphone,
   Menu,
   Settings,
   X,
@@ -32,6 +33,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Configure',
     items: [
       { label: 'Reports', href: null, Icon: LayoutDashboard, soon: true },
+      { label: 'Marketing', href: '/marketing', Icon: Megaphone },
       { label: 'Settings', href: '/settings', Icon: Settings },
     ],
   },

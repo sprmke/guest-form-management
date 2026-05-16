@@ -281,7 +281,7 @@ export function GmailMailIntegrationCard() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+        <div className="flex flex-col sm:flex-row flex-wrap items-center gap-2 sm:shrink-0">
           <button
             type="button"
             disabled={
@@ -296,7 +296,7 @@ export function GmailMailIntegrationCard() {
               'inline-flex items-center justify-center gap-2 rounded-lg min-h-[44px] px-4',
               'text-sm font-semibold text-white sm:text-[13px]',
               'bg-sidebar-primary hover:opacity-90 active:scale-[0.99] transition-all',
-              'disabled:opacity-40 disabled:pointer-events-none',
+              'disabled:opacity-40 disabled:pointer-events-none w-full sm:w-auto',
             )}
           >
             <Mail className="size-4 shrink-0" aria-hidden />
@@ -312,7 +312,7 @@ export function GmailMailIntegrationCard() {
               'inline-flex items-center justify-center gap-2 rounded-lg min-h-[44px] px-3 sm:px-4',
               'text-sm font-semibold border border-sidebar-border bg-background sm:text-[13px]',
               'hover:bg-sidebar-accent/40 transition-colors',
-              'disabled:opacity-40 disabled:pointer-events-none',
+              'disabled:opacity-40 disabled:pointer-events-none w-full sm:w-auto',
             )}
           >
             <History className="size-4 shrink-0" aria-hidden />
@@ -340,7 +340,7 @@ export function GmailMailIntegrationCard() {
                 'inline-flex items-center justify-center gap-2 rounded-lg min-h-[44px] px-3',
                 'text-sm font-semibold border border-sidebar-border bg-background sm:text-[13px]',
                 'hover:bg-sidebar-accent/40 transition-colors',
-                'disabled:opacity-40 disabled:pointer-events-none',
+                'disabled:opacity-40 disabled:pointer-events-none w-full sm:w-auto',
               )}
             >
               <Unplug className="size-4 shrink-0" aria-hidden />
