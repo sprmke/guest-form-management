@@ -41,8 +41,7 @@ export function AdminSettingsPage() {
             Integrations
           </h2>
           <p className="text-[13px] text-muted-foreground leading-relaxed">
-            Connect services used by automated workflows (Gmail approval
-            listener, scheduled jobs).
+            Connect services used by automated workflows
           </p>
         </section>
         <GmailMailIntegrationCard />
