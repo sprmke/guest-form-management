@@ -3,10 +3,20 @@ import { SignInPage } from '@/features/admin/pages/SignInPage';
 import { BookingsListPage } from '@/features/admin/pages/BookingsListPage';
 import { BookingDetailPage } from '@/features/admin/pages/BookingDetailPage';
 import { AdminSettingsPage } from '@/features/admin/pages/AdminSettingsPage';
+import { AdminMarketingPage } from '@/features/admin/pages/AdminMarketingPage';
 import { RequireAdmin } from '@/features/admin/components/RequireAdmin';
 
 export const adminRoutes = [
   <Route key="admin-sign-in" path="/sign-in" element={<SignInPage />} />,
+  <Route
+    key="admin-marketing"
+    path="/marketing"
+    element={
+      <RequireAdmin>
+        <AdminMarketingPage />
+      </RequireAdmin>
+    }
+  />,
   <Route
     key="admin-settings"
     path="/settings"

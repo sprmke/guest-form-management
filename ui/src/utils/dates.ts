@@ -71,6 +71,14 @@ export const getTodayDate = () => {
   return dayjs().format('YYYY-MM-DD');
 };
 
+/** Today in Asia/Manila as YYYY-MM-DD (for Manila-aligned date inputs). */
+export const getManilaYmdToday = () =>
+  dayjs().tz('Asia/Manila').format('YYYY-MM-DD');
+
+/** Next calendar day in Asia/Manila (YYYY-MM-DD). */
+export const getManilaYmdTomorrow = () =>
+  dayjs().tz('Asia/Manila').add(1, 'day').format('YYYY-MM-DD');
+
 // Helper to get next day's date in YYYY-MM-DD format
 export const getNextDay = (date: string) => {
   return dayjs(date).add(1, 'day').format('YYYY-MM-DD');
