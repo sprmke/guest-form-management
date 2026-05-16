@@ -7,21 +7,22 @@ Related canonical references:
 - `docs/NEW_FLOW_PLAN.md` — product intent, Phase 4 notes, Q6.6 manual triggers
 - `.cursor/rules/booking-workflow.mdc` — status machine and side-effect matrix
 - `supabase/config.toml` — `verify_jwt` and why `schedule` is not committed for local CLI
-- Implementations: `supabase/functions/gmail-listener/index.ts`, `supabase/functions/gmail-backfill-approvals/index.ts`, `supabase/functions/sd-refund-cron/index.ts`
+- Implementations: `supabase/functions/gmail-listener/index.ts`, `supabase/functions/gmail-backfill-approvals/index.ts`, `supabase/functions/sd-refund-cron/index.ts`, `supabase/functions/telegram-marketing-cron/index.ts`
 - Admin manual triggers: `ui/src/features/admin/hooks/useTransitionBooking.ts` (`useRunGmailPoll`, `useRunSdRefundCron`) and `ui/src/features/admin/components/WorkflowPanel.tsx`
 
 ---
 
 ## 1. What is scheduled in this project?
 
-There are **two** Edge Functions meant to run on a **recurring schedule** (every ~5 minutes in production):
+There are **three** Edge Functions meant to run on a **recurring schedule** in production (Gmail + SD refund run **every ~5 minutes**; Telegram marketing runs **3× per day** in Asia/Manila):
 
 | Job                         | Edge function    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Gmail approval listener** | `gmail-listener` | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**).                                                                                                                             |
 | **SD refund cron**          | `sd-refund-cron` | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose Manila check-out is within the **lead** window (**`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, default **120** min before check-out): sends the guest **Check-out & SD Refund** email if not already sent (**independent** of balance settlement). **Status** → **`READY_FOR_CHECKOUT`** only when **settlement** is complete (orchestrator). **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id. **Stale check-outs:** automated guest email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **21**; **`0`** = never suppress); transition + calendar + sheet still run when settlement is met. |
+| **Telegram marketing**      | `telegram-marketing-cron` | **Global** `POST` **`{}`**: sends **default** or **urgency** Telegram copy from **`telegram_marketing_settings`** using the same single-property availability model as marketing (see **`docs/reference/telegram-marketing-reminders.md`**). **Schedule:** Manila **10:00 / 15:00 / 21:00** → UTC cron **`0 2,7,13 * * *`**. Optional header **`X-Telegram-Cron-Secret`** when Edge secret **`TELEGRAM_CRON_SECRET`** is set. |
 
-Neither job reimplements workflow rules in isolation: both defer to **`WorkflowOrchestrator`** so calendar, sheet, and email behavior stay consistent with `transition-booking` and the status machine.
+The Gmail and SD jobs defer to **`WorkflowOrchestrator`**; Telegram does **not** touch booking state.
 
 ### 1.1 One-time historical approval backfill (`gmail-backfill-approvals`)
 
@@ -86,7 +87,7 @@ select net.http_post(
 );
 ```
 
-Repeat with `/functions/v1/gmail-listener` for the second job (either two `cron.schedule` names or one job that calls both sequentially—your choice).
+Repeat with `/functions/v1/gmail-listener` for the second job (either two `cron.schedule` names or one job that calls both sequentially—your choice). Add a third job for **`/functions/v1/telegram-marketing-cron`** on **`0 2,7,13 * * *`** (Manila 10:00 / 15:00 / 21:00); see **`supabase/snippets/telegram-marketing-cron.sql`** and **`docs/reference/telegram-marketing-reminders.md`**.
 
 **Important:** The HTTP call is a **normal** request to the **public** Functions URL. Security is layered as:
 
@@ -117,21 +118,22 @@ Reasons:
 
 ---
 
-## 4. Authentication and `verify_jwt` for these two functions
+## 4. Authentication and `verify_jwt` for scheduled + Telegram cron
 
 Current repo behavior:
 
-| Function         | `[functions.*] verify_jwt` in `config.toml` | Handler calls `verifyAdminJwt`?                                                                                                                                                      |
-| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `gmail-listener` | `false`                                     | **No**                                                                                                                                                                               |
-| `sd-refund-cron` | `false`                                     | **Only when** JSON body includes **`bookingId`** (admin “Run SD refund cron now” from `/bookings/:id`). **Global** scheduled runs omit `bookingId` and do **not** require admin JWT. |
+| Function                    | `[functions.*] verify_jwt` in `config.toml` | Handler calls `verifyAdminJwt`?                                                                                                                                                      |
+| --------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `gmail-listener`            | `false`                                     | **No**                                                                                                                                                                               |
+| `sd-refund-cron`           | `false`                                     | **Only when** JSON body includes **`bookingId`** (admin “Run SD refund cron now” from `/bookings/:id`). **Global** scheduled runs omit `bookingId` and do **not** require admin JWT. |
+| `telegram-marketing-cron`  | `false`                                     | **No** — optional shared secret: when **`TELEGRAM_CRON_SECRET`** is set, require header **`X-Telegram-Cron-Secret`** matching that value.                                            |
 
 Effects:
 
 - **Scheduled `pg_net` POST** can use the **`anon` JWT** in `Authorization` (as in Supabase’s scheduling doc) with **`body := '{}'::jsonb`** and still reach the handler for the **global** scan (no `bookingId`).
 - **Admin UI “Run SD refund cron now”** sends `{ "bookingId" }` plus the admin **`access_token`**; the function calls **`verifyAdminJwt`** so only allow-listed Google accounts can scope a run to one booking.
 
-**Operational implication:** Treat unscoped `sd-refund-cron` URLs like **semi-internal** APIs (cron + keys). Scoped calls are gated by **`verifyAdminJwt`**.
+**Operational implication:** Treat unscoped `sd-refund-cron` and **`telegram-marketing-cron`** URLs like **semi-internal** APIs (cron + keys). Scoped SD calls are gated by **`verifyAdminJwt`**. Prefer **`TELEGRAM_CRON_SECRET`** for Telegram cron in production.
 
 ---
 
@@ -144,7 +146,7 @@ Automatically provided in hosted Edge runtime (and in local serve when linked to
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Both jobs use the **service role** client inside the handler for DB + Storage (see `createClient` in each `index.ts`).
+Both jobs use the **service role** client inside the handler for DB + Storage (see `createClient` in each `index.ts`). **`telegram-marketing-cron`** uses the same service role for reads and Telegram HTTPS only.
 
 ### 5.2 `sd-refund-cron` only
 
@@ -166,6 +168,16 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 
 If tokens are missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3. Prefer **Reconnect Gmail** on **`/settings`** when using the web OAuth path.
 
+### 5.4 Telegram (`telegram-marketing-cron` + `submit-form` / `cancel-booking`)
+
+| Variable                 | Purpose                                                                                                                                        |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TELEGRAM_BOT_TOKEN`     | Bot API token from BotFather.                                                                                                                  |
+| `TELEGRAM_CHAT_ID`       | Destination chat (group supergroup id is usually negative).                                                                                    |
+| `TELEGRAM_CRON_SECRET`   | _(Optional)_ When set, **`telegram-marketing-cron`** rejects requests unless header **`X-Telegram-Cron-Secret`** matches (use with Vault + `pg_net`). |
+
+Full product behavior and deployment steps: **`docs/reference/telegram-marketing-reminders.md`**.
+
 ---
 
 ## 6. How local development runs these functions
@@ -184,7 +196,7 @@ http://127.0.0.1:54321/functions/v1
 
 (Use the same host your `ui/.env.development` `VITE_SUPABASE_URL` points at; it must end with `/functions/v1` for this project’s admin hooks.)
 
-**There is no local pg_cron** hitting these URLs unless you add one yourself—use **curl** or the **admin Workflow panel** buttons (“Run Gmail poll now”, “Run SD refund cron now”).
+**There is no local pg_cron** hitting these URLs unless you add one yourself—use **curl** or the **admin Workflow panel** buttons (“Run Gmail poll now”, “Run SD refund cron now”). For **`telegram-marketing-cron`**, use curl against **`/functions/v1/telegram-marketing-cron`** (see **`docs/reference/telegram-marketing-reminders.md`** §5).
 
 ---
 

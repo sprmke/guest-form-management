@@ -214,7 +214,14 @@ static_files = [
 # Cloud-only schedule:
 # schedule = "*/5 * * * *"   ← set this in Supabase dashboard, NOT here
 
+[functions.telegram-marketing-cron]
+verify_jwt = false
+
+[functions.telegram-marketing-settings]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"
 # schedule = "*/5 * * * *"
+# [functions.telegram-marketing-cron] Manila 10:00 / 15:00 / 21:00 → UTC cron: 0 2,7,13 * * *

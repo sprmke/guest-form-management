@@ -1,0 +1,158 @@
+# Telegram marketing reminders
+
+Marketing messages to a **Telegram** group (or channel) for **Kame Homes** guest-form ops: scheduled **3× daily** (Asia/Manila), plus **new booking** and **cancellation** triggers. Copy lives in Postgres (`telegram_marketing_settings`); admins edit templates under **Admin → Marketing** (`/marketing`).
+
+Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
+
+---
+
+## 1. Behavior summary
+
+| Trigger          | When                                                                                                        | Message source                                                                                                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scheduled**    | `pg_cron` calls **`telegram-marketing-cron`** at **10:00, 15:00, 21:00 Asia/Manila** (UTC `0 2,7,13 * * *`) | `daily_default_template` or, when the **nearest free check-in** is **fewer than** `urgency_days_threshold` **calendar days** away, `daily_urgency_template` with `{{available_dates}}` |
+| **New booking**  | First **insert** of a guest row from **`submit-form`** (predetermined UUID, no prior row)                   | `new_booking_template` with `{{month_name}}`, `{{dates_list}}` (up to `new_booking_dates_limit` days in the **current calendar month**), optional `{{available_dates}}`                |
+| **Cancellation** | After **`cancel-booking`** succeeds (`WorkflowOrchestrator` → `CANCELLED`)                                  | `cancellation_template` with `{{cancellation_dates}}` (freed stay window)                                                                                                              |
+
+**Availability model (single property):** each non-`CANCELLED` booking blocks overnight nights from **check-in** (inclusive) to **check-out** (exclusive), on **Asia/Manila** calendar dates. A **check-in** on day _D_ is "available" if night _D_ is not blocked. This matches the guest calendar mental model; it does not model minimum stay length.
+
+**Toggles** on the Marketing page: `enabled`, `notify_on_new_booking`, `notify_on_cancellation`. If **`TELEGRAM_BOT_TOKEN`** or **`TELEGRAM_CHAT_ID`** is unset, all sends are skipped (warning in Edge logs only).
+
+---
+
+## 2. Template placeholders
+
+Use **exact** token spelling (case-sensitive). Unknown tokens are left unchanged in the string.
+
+| Placeholder              | Used in                                                        |
+| ------------------------ | -------------------------------------------------------------- |
+| `{{available_dates}}`    | Daily urgency; new booking (optional) — e.g. `May 17, 18, 20`  |
+| `{{month_name}}`         | New booking — e.g. `May`                                       |
+| `{{dates_list}}`         | New booking — day numbers in that month, e.g. `16, 18, 19, 24` |
+| `{{cancellation_dates}}` | Cancellation — e.g. `May 14` or `May 14–16`                    |
+
+Default rows are seeded in migration **`20260614120000_telegram_marketing_settings.sql`**.
+
+---
+
+## 3. Edge Functions
+
+| Function                          | Auth                                       | Notes                                                                                                                                                                                                          |
+| --------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`telegram-marketing-cron`**     | `verify_jwt = false`                       | `POST` with `{}` body. If **`TELEGRAM_CRON_SECRET`** is set in Edge secrets, require header **`X-Telegram-Cron-Secret: <same>`**. Otherwise only the usual anon **`Authorization`** from `pg_net` is required. |
+| **`telegram-marketing-settings`** | `verify_jwt = false`; **`verifyAdminJwt`** | **GET** / **PATCH** as above. **POST** = manual Telegram tests from **Marketing** (`action` + optional body) — see §3.1.                                                                                       |
+
+### 3.1 Manual tests (`POST telegram-marketing-settings`)
+
+JSON body must include **`action`**. Scenario tests use **saved** DB templates and **ignore** `enabled` / `notify_*` so you can verify wiring without turning automation on.
+
+| `action`                              | Extra fields                                                                                                           | Behavior                                                                                                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `verify_telegram_env`                 | —                                                                                                                      | Calls Telegram **`getMe`** + **`getChat`** using normalized **`TELEGRAM_*`** from Edge env (admin diagnostics). |
+| `send_test_daily_reminder`            | —                                                                                                                      | Same decision path as **`telegram-marketing-cron`**.                                                            |
+| `send_test_new_booking`               | —                                                                                                                      | Same as real new-booking notify (`force`). Response may include `skip: no_dates`.                               |
+| `send_test_cancellation`              | Optional `checkInYmd`, `checkOutYmd` (`YYYY-MM-DD`) — **supply both** or **omit both** (single date alone returns 400) | Saved cancellation template. If both omitted, uses Manila **today → checkout +2 nights** as a demo.             |
+| `send_draft_with_sample_placeholders` | **`text`** (required, ≤4000)                                                                                           | Replaces known `{{placeholders}}` with fixed samples, sends result — for **unsaved** textarea copy in the UI.   |
+
+---
+
+## 4. Step-by-step deployment (Supabase Cloud)
+
+1. **Merge and migrate**
+   - Deploy migration **`20260614120000_telegram_marketing_settings.sql`** (`supabase db push` or Dashboard SQL from the migration file).
+
+2. **Deploy Edge Functions**
+
+   ```bash
+   supabase functions deploy telegram-marketing-cron
+   supabase functions deploy telegram-marketing-settings
+   ```
+
+   Redeploy **`submit-form`** and **`cancel-booking`** so they include `_shared/telegramMarketing.ts` and the new hooks.
+
+3. **Edge secrets (Dashboard → Edge Functions → Secrets)**
+   - **`TELEGRAM_BOT_TOKEN`** — from [@BotFather](https://t.me/BotFather).
+   - **`TELEGRAM_CHAT_ID`** — numeric group id (often negative for supergroups).
+   - **`TELEGRAM_CRON_SECRET`** _(recommended)_ — long random string; same value will be sent as **`X-Telegram-Cron-Secret`** from `pg_cron`.
+
+4. **Smoke test (curl)**
+   - Without cron secret:
+     ```bash
+     curl -sS -X POST "${SUPABASE_URL}/functions/v1/telegram-marketing-cron" \
+       -H "Authorization: Bearer ${ANON_KEY}" \
+       -H "Content-Type: application/json" \
+       -d '{}'
+     ```
+   - With cron secret:
+     ```bash
+     curl -sS -X POST "${SUPABASE_URL}/functions/v1/telegram-marketing-cron" \
+       -H "Authorization: Bearer ${ANON_KEY}" \
+       -H "Content-Type: application/json" \
+       -H "X-Telegram-Cron-Secret: ${TELEGRAM_CRON_SECRET}" \
+       -d '{}'
+     ```
+     Expect `{"success":true,"sent":true,"mode":"default"|"urgency",...}`. Check **Edge Logs** if `sent` is false.
+
+5. **Schedule `pg_cron`**
+   - Enable extensions **`pg_cron`** and **`pg_net`** if not already.
+   - Use **`supabase/snippets/telegram-marketing-cron.sql`** as a copy-paste reference: uncomment **Option A** or **Option B**, set Vault secrets **`project_url`**, **`anon_key`**, and optionally **`telegram_cron_secret`**, then run in **SQL Editor**.
+   - Cron expression **`0 2,7,13 * * *`** = **02:00, 07:00, 13:00 UTC** = **10:00, 15:00, 21:00 Manila** (no DST).
+
+6. **Admin UI**
+   - Sign in → **Marketing** — adjust copy and toggles; **Save settings** calls **`telegram-marketing-settings`** (**PATCH**).
+
+7. **Optional: Integrations → Cron**  
+   You can create the job in the Dashboard UI instead of raw SQL, as long as the HTTP target and headers match the snippet.
+
+---
+
+## 5. Local development
+
+- **`supabase functions serve`** exposes **`telegram-marketing-cron`** and **`telegram-marketing-settings`**. Add tokens to **`supabase/.env.local`** (same variable names as Edge secrets).
+- **No** `pg_cron` fire loop locally by default — invoke with **curl** as above (`SUPABASE_URL` = `http://127.0.0.1:54321`, anon key from `supabase status`).
+- **Marketing UI**: open **`http://localhost:5173/marketing`** while signed in as an allow-listed admin.
+
+---
+
+## 6. Security notes
+
+- **`telegram-marketing-cron`** is not gated by `verifyAdminJwt`; treat the URL as **semi-internal** (same pattern as `sd-refund-cron`). Prefer **`TELEGRAM_CRON_SECRET`** + Vault-backed header in production.
+- **`telegram-marketing-settings`** is **admin-only** via **`verifyAdminJwt`**.
+- Never commit **`TELEGRAM_BOT_TOKEN`** to git.
+
+---
+
+## 7. Related files
+
+| Area                 | Path                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared send + copy   | `supabase/functions/_shared/telegramMarketing.ts`                                                                                                       |
+| Manila calendar math | `supabase/functions/_shared/calendarAvailabilityManila.ts`                                                                                              |
+| DB helpers           | `supabase/functions/_shared/databaseService.ts` (`listBookingRangesForAvailability`, `getTelegramMarketingSettings`, `updateTelegramMarketingSettings`) |
+| Cron entrypoint      | `supabase/functions/telegram-marketing-cron/index.ts`                                                                                                   |
+| Settings API         | `supabase/functions/telegram-marketing-settings/index.ts`                                                                                               |
+| Marketing UI         | `ui/src/features/admin/pages/AdminMarketingPage.tsx`, `ui/src/features/admin/components/TelegramMarketingSettingsCard.tsx`                              |
+| Hooks                | `ui/src/features/admin/hooks/useTelegramMarketingSettings.ts`                                                                                           |
+| `config.toml`        | `[functions.telegram-marketing-cron]`, `[functions.telegram-marketing-settings]`                                                                        |
+
+---
+
+## 8. Operational FAQ
+
+**Q: Cron returns 401 Unauthorized.**  
+A: **`TELEGRAM_CRON_SECRET`** is set on Edge but **`pg_net`** is not sending **`X-Telegram-Cron-Secret`**, or values mismatch. Unset the Edge secret to match a simpler dev setup, or fix Vault + headers.
+
+**Q: No Telegram message but `success: true`.**  
+A: Check `mode: "disabled"` or `mode: "no_env"` — Marketing **`enabled`** off, or missing bot token / chat id.
+
+**Q: New booking message not sent.**  
+A: Only fires on **first insert** (no existing row for the submitted UUID). Edits to an existing booking do not fire. Also check **`notify_on_new_booking`**.
+
+**Q: Cancellation message not sent.**  
+A: Check **`notify_on_cancellation`** and **`enabled`**. Telegram runs **after** a successful orchestrator cancel.
+
+**Q: Telegram returns `Bad Request: chat not found` on test sends.**  
+A: The **`TELEGRAM_BOT_TOKEN`** and **`TELEGRAM_CHAT_ID`** in the Edge runtime must belong together: **`getChat`** for that id must succeed for **this** bot (add the bot to the group/channel, use the supergroup numeric id, restart **`functions serve`** after editing **`supabase/.env.local`**). On **Marketing**, **Verify bot** runs **`verify_telegram_env`** (`POST` with `action: verify_telegram_env`) and shows **`getMe` / `getChat`** results. **`TELEGRAM_CHAT_ID`** must be **digits only** (optional leading `-`); strip quotes, spaces, and `@` names — the server normalizes BOM/CR/wrapping quotes from env files.
+
+**Q: How do I test from Marketing without enabling automation?**  
+A: Use **Send test** for daily / new booking / cancellation, or **Send draft + samples** on each textarea. Those calls use **`POST`** with `action` and **ignore** `enabled` / `notify_*` for the send itself (see §3.1).

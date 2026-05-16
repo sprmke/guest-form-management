@@ -25,12 +25,14 @@ ui/src/features/admin/
     BookingsListPage.tsx           # /bookings
     BookingDetailPage.tsx          # /bookings/:bookingId
     AdminSettingsPage.tsx          # /settings (integrations, e.g. Gmail listener)
+    AdminMarketingPage.tsx         # /marketing (Telegram templates + tests)
   components/
     RequireAdmin.tsx               # session + allow-list guard
     BookingTable.tsx               # <BookingTable data={...} />
     BookingFilters.tsx             # search, status, date range, flags
     StatusBadge.tsx                # status → color dot + label
     GmailMailIntegrationCard.tsx   # Gmail listener OAuth (used on /settings)
+    TelegramMarketingSettingsCard.tsx  # Telegram copy + toggles (used on /marketing)
     WorkflowPanel.tsx              # right-hand rail on detail page
     WorkflowSubFormCard.tsx        # shared card shell for all rail sub-forms
     ReviewPricingForm.tsx          # PENDING_REVIEW pricing inputs

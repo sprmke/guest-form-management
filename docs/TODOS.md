@@ -162,4 +162,4 @@ Todos
   - Every time there's a new booking, send a notification for upcoming bookings
   - Each booking will contain important info for cleaners like no of pax, requires room decor, guest special requests
   - Notification for guest check-out
-  - ?
+  - Convert all env variable to settings page for other users to use our app
