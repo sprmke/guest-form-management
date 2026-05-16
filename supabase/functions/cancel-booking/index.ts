@@ -15,6 +15,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
+import { notifyTelegramCancellation } from '../_shared/telegramMarketing.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -73,6 +74,15 @@ serve(async (req) => {
       devControls,
       true,
     );
+
+    try {
+      await notifyTelegramCancellation(
+        booking.check_in_date as string,
+        booking.check_out_date as string,
+      );
+    } catch (tgErr) {
+      console.error('[cancel-booking] Telegram notify failed (non-fatal):', tgErr);
+    }
 
     return new Response(
       JSON.stringify({

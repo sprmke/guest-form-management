@@ -4,6 +4,7 @@ import { DatabaseService } from '../_shared/databaseService.ts'
 import { CalendarService } from '../_shared/calendarService.ts'
 import { SheetsService } from '../_shared/sheetsService.ts'
 import { sendNewBookingRequestNotify } from '../_shared/emailService.ts'
+import { notifyTelegramNewBookingRequest } from '../_shared/telegramMarketing.ts'
 import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
 import type { GuestSubmission } from '../_shared/types.ts'
@@ -145,6 +146,9 @@ serve(async (req) => {
       console.log('⚠️ Skipping change detection check (saveToDatabase=false)');
     }
 
+    const isNewGuestSubmission =
+      isSaveToDatabaseEnabled && !!bookingId && !existingData;
+
     const { data, submissionData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl } =
       await DatabaseService.processFormData(
         formData,
@@ -172,6 +176,14 @@ serve(async (req) => {
       if (!isSaveToDatabaseEnabled) reasons.push('saveToDatabase=false');
       if (!submissionData?.id) reasons.push('no submission id after save');
       console.log(`[submit-form] New booking request notify skipped: ${reasons.join(', ')}`);
+    }
+
+    if (isNewGuestSubmission && isSaveToDatabaseEnabled && submissionData?.id) {
+      try {
+        await notifyTelegramNewBookingRequest();
+      } catch (tgErr) {
+        console.error('[submit-form] Telegram new-booking notify failed (non-fatal):', tgErr);
+      }
     }
 
     // Create or update calendar event if enabled

@@ -691,4 +691,73 @@ export class DatabaseService {
       throw error;
     }
   }
+
+  /**
+   * All non-cancelled stays for calendar availability / Telegram marketing copy.
+   */
+  static async listBookingRangesForAvailability(): Promise<
+    { checkInYmd: string; checkOutYmd: string }[]
+  > {
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .select('check_in_date, check_out_date, status')
+      .neq('status', 'CANCELLED');
+
+    if (error) {
+      console.error('listBookingRangesForAvailability:', error);
+      throw new Error('Failed to load booking ranges');
+    }
+
+    const normalizeDate = (dateStr: string): string | null => {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      return null;
+    };
+
+    const rows = (data ?? []).filter(
+      (r) => r.status !== 'canceled' && r.status !== 'CANCELLED',
+    );
+
+    const out: { checkInYmd: string; checkOutYmd: string }[] = [];
+    for (const r of rows) {
+      const ci = normalizeDate(r.check_in_date);
+      const co = normalizeDate(r.check_out_date);
+      if (ci && co && ci < co) out.push({ checkInYmd: ci, checkOutYmd: co });
+    }
+    return out;
+  }
+
+  static async getTelegramMarketingSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_marketing_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramMarketingSettings:', error);
+      throw new Error('Failed to load Telegram marketing settings');
+    }
+    return data;
+  }
+
+  static async updateTelegramMarketingSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_marketing_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramMarketingSettings:', error);
+      throw new Error('Failed to update Telegram marketing settings');
+    }
+    return data;
+  }
 } 
