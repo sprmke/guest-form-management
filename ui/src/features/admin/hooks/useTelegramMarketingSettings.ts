@@ -3,12 +3,17 @@ import { supabase } from '@/lib/supabaseClient';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
+export type ManilaReminderSlot = { hour: number; minute: number };
+
 export type TelegramMarketingSettingsDto = {
   enabled: boolean;
   notifyOnNewBooking: boolean;
   notifyOnCancellation: boolean;
   urgencyDaysThreshold: number;
   newBookingDatesLimit: number;
+  dailyReminderTimesManila: ManilaReminderSlot[];
+  /** pg_cron daily expressions derived server-side (`minute hour * * *`, UTC). */
+  dailyReminderUtcCronPreview: string[];
   dailyDefaultTemplate: string;
   dailyUrgencyTemplate: string;
   newBookingTemplate: string;
@@ -24,6 +29,7 @@ export type TelegramMarketingSettingsPatch = Partial<
     | 'notifyOnCancellation'
     | 'urgencyDaysThreshold'
     | 'newBookingDatesLimit'
+    | 'dailyReminderTimesManila'
     | 'dailyDefaultTemplate'
     | 'dailyUrgencyTemplate'
     | 'newBookingTemplate'
@@ -72,6 +78,9 @@ export type TelegramEnvVerifyDto = {
     chatIdRawLength: number;
     normalizedChatId?: string;
     normalizeError?: string;
+    /** First codepoint of trimmed secret (before normalize). ASCII `-` = 45; U+2212 MINUS = 8722. */
+    rawLeadingCodePoint?: number;
+    normalizedStartsWithAsciiMinus?: boolean;
   };
   getMe: { ok: boolean; username?: string; error?: string };
   getChat: { ok: boolean; type?: string; title?: string; username?: string; error?: string };
@@ -113,10 +122,21 @@ export function useTelegramMarketingTestSend() {
   });
 }
 
+export type TelegramCronSyncResult = {
+  ok?: boolean;
+  error?: string;
+  scheduled?: number;
+  jobNamePrefix?: string;
+};
 export function useUpdateTelegramMarketingSettings() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (patch: TelegramMarketingSettingsPatch) => {
+    mutationFn: async (
+      patch: TelegramMarketingSettingsPatch,
+    ): Promise<{
+      data: TelegramMarketingSettingsDto;
+      cronSync?: TelegramCronSyncResult;
+    }> => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-marketing-settings`, {
         method: 'PATCH',
@@ -130,11 +150,12 @@ export function useUpdateTelegramMarketingSettings() {
         success?: boolean;
         error?: string;
         data?: TelegramMarketingSettingsDto;
+        cronSync?: TelegramCronSyncResult;
       };
       if (!json.success || !json.data) {
         throw new Error(json.error ?? 'Failed to save');
       }
-      return json.data;
+      return { data: json.data, cronSync: json.cronSync };
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: ['telegram-marketing-settings'] });
