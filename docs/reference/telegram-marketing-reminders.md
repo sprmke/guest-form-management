@@ -1,6 +1,6 @@
 # Telegram marketing reminders
 
-Marketing messages to a **Telegram** group (or channel) for **Kame Homes** guest-form ops: scheduled **3× daily** (Asia/Manila), plus **new booking** and **cancellation** triggers. Copy lives in Postgres (`telegram_marketing_settings`); admins edit templates under **Admin → Marketing** (`/marketing`).
+Marketing messages to a **Telegram** group (or channel) for **Kame Homes** guest-form ops: scheduled **daily** runs at configurable **Asia/Manila** times (default three slots), plus **new booking** and **cancellation** triggers. Copy lives in Postgres (`telegram_marketing_settings`); admins edit templates under **Admin → Marketing** (`/marketing`).
 
 Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
 
@@ -8,11 +8,11 @@ Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
 
 ## 1. Behavior summary
 
-| Trigger          | When                                                                                                        | Message source                                                                                                                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scheduled**    | `pg_cron` calls **`telegram-marketing-cron`** at **10:00, 15:00, 21:00 Asia/Manila** (UTC `0 2,7,13 * * *`) | `daily_default_template` or, when the **nearest free check-in** is **fewer than** `urgency_days_threshold` **calendar days** away, `daily_urgency_template` with `{{available_dates}}` |
-| **New booking**  | First **insert** of a guest row from **`submit-form`** (predetermined UUID, no prior row)                   | `new_booking_template` with `{{month_name}}`, `{{dates_list}}` (up to `new_booking_dates_limit` days in the **current calendar month**), optional `{{available_dates}}`                |
-| **Cancellation** | After **`cancel-booking`** succeeds (`WorkflowOrchestrator` → `CANCELLED`)                                  | `cancellation_template` with `{{cancellation_dates}}` (freed stay window)                                                                                                              |
+| Trigger          | When                                                                                                                                                                                                                                                                                            | Message source                                                                                                                                                                         |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scheduled**    | **`pg_cron`** runs **`telegram-marketing-cron`** at **daily times** configured in **`telegram_marketing_settings.daily_reminder_times_manila`** (Manila clock, default **10:00 / 15:00 / 21:00** — each mapped to UTC as `minute hour * * *`; jobs named **`telegram-marketing-daily-slot-*`**) | `daily_default_template` or, when the **nearest free check-in** is **fewer than** `urgency_days_threshold` **calendar days** away, `daily_urgency_template` with `{{available_dates}}` |
+| **New booking**  | First **insert** of a guest row from **`submit-form`** (predetermined UUID, no prior row)                                                                                                                                                                                                       | `new_booking_template` with `{{month_name}}`, `{{dates_list}}` (up to `new_booking_dates_limit` days in the **current calendar month**), optional `{{available_dates}}`                |
+| **Cancellation** | After **`cancel-booking`** succeeds (`WorkflowOrchestrator` → `CANCELLED`)                                                                                                                                                                                                                      | `cancellation_template` with `{{cancellation_dates}}` (freed stay window)                                                                                                              |
 
 **Availability model (single property):** each non-`CANCELLED` booking blocks overnight nights from **check-in** (inclusive) to **check-out** (exclusive), on **Asia/Manila** calendar dates. A **check-in** on day _D_ is "available" if night _D_ is not blocked. This matches the guest calendar mental model; it does not model minimum stay length.
 
@@ -31,16 +31,16 @@ Use **exact** token spelling (case-sensitive). Unknown tokens are left unchanged
 | `{{dates_list}}`         | New booking — day numbers in that month, e.g. `16, 18, 19, 24` |
 | `{{cancellation_dates}}` | Cancellation — e.g. `May 14` or `May 14–16`                    |
 
-Default rows are seeded in migration **`20260614120000_telegram_marketing_settings.sql`**.
+Default rows are seeded in migration **`20260614120000_telegram_marketing_settings.sql`**. Cron slot column + RPC **`20260615105000_telegram_marketing_cron_slots.sql`**.
 
 ---
 
 ## 3. Edge Functions
 
-| Function                          | Auth                                       | Notes                                                                                                                                                                                                          |
-| --------------------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`telegram-marketing-cron`**     | `verify_jwt = false`                       | `POST` with `{}` body. If **`TELEGRAM_CRON_SECRET`** is set in Edge secrets, require header **`X-Telegram-Cron-Secret: <same>`**. Otherwise only the usual anon **`Authorization`** from `pg_net` is required. |
-| **`telegram-marketing-settings`** | `verify_jwt = false`; **`verifyAdminJwt`** | **GET** / **PATCH** as above. **POST** = manual Telegram tests from **Marketing** (`action` + optional body) — see §3.1.                                                                                       |
+| Function                          | Auth                                       | Notes                                                                                                                                                                                                                                                                                     |
+| --------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`telegram-marketing-cron`**     | `verify_jwt = false`                       | `POST` with `{}` body. If **`TELEGRAM_CRON_SECRET`** is set in Edge secrets, require header **`X-Telegram-Cron-Secret: <same>`**. Otherwise only the usual anon **`Authorization`** from `pg_net` is required.                                                                            |
+| **`telegram-marketing-settings`** | `verify_jwt = false`; **`verifyAdminJwt`** | **GET** / **PATCH** as above. **PATCH** with **`dailyReminderTimesManila`** updates **`daily_reminder_times_manila`** and calls **`sync_telegram_marketing_daily_cron_jobs`** (drops legacy **`telegram-marketing-daily-manila`** when present). **POST** = manual Telegram tests — §3.1. |
 
 ### 3.1 Manual tests (`POST telegram-marketing-settings`)
 
@@ -59,7 +59,7 @@ JSON body must include **`action`**. Scenario tests use **saved** DB templates a
 ## 4. Step-by-step deployment (Supabase Cloud)
 
 1. **Merge and migrate**
-   - Deploy migration **`20260614120000_telegram_marketing_settings.sql`** (`supabase db push` or Dashboard SQL from the migration file).
+   - Deploy **`20260614120000_telegram_marketing_settings.sql`** then **`20260615105000_telegram_marketing_cron_slots.sql`** (`supabase db push` or Dashboard SQL).
 
 2. **Deploy Edge Functions**
 
@@ -93,16 +93,13 @@ JSON body must include **`action`**. Scenario tests use **saved** DB templates a
      ```
      Expect `{"success":true,"sent":true,"mode":"default"|"urgency",...}`. Check **Edge Logs** if `sent` is false.
 
-5. **Schedule `pg_cron`**
-   - Enable extensions **`pg_cron`** and **`pg_net`** if not already.
-   - Use **`supabase/snippets/telegram-marketing-cron.sql`** as a copy-paste reference: uncomment **Option A** or **Option B**, set Vault secrets **`project_url`**, **`anon_key`**, and optionally **`telegram_cron_secret`**, then run in **SQL Editor**.
-   - Cron expression **`0 2,7,13 * * *`** = **02:00, 07:00, 13:00 UTC** = **10:00, 15:00, 21:00 Manila** (no DST).
+5. **`pg_cron` — two paths**
+   - **Recommended:** Sign in → **Marketing** (**`/marketing`**), set **Daily reminder times** (Asia/Manila), templates, toggles → **Save** (**PATCH**). That persists **`daily_reminder_times_manila`** and invokes **`sync_telegram_marketing_daily_cron_jobs`** (requires migration **`20260615105000_…`**). Cron jobs **`telegram-marketing-daily-slot-0`** … **`slot-N`** appear in **Integrations → Cron**; **`telegram-marketing-daily-manila`** (old single-job name) is removed on save. If the toast warns that **`cronSync`** failed, fix Postgres / Vault (**`project_url`**, **`anon_key`**, optional **`telegram_cron_secret`**) then **Save** again — DB settings still apply.
+   - **Manual / disaster recovery:** Uncomment **Option A** or **Option B** in **`supabase/snippets/telegram-marketing-cron.sql`**, Vault secrets **`project_url`**, **`anon_key`**, optionally **`telegram_cron_secret`**, once in SQL. The Marketing **Save** path still works afterward and replaces **`telegram-marketing-daily-slot-*`**.
 
-6. **Admin UI**
-   - Sign in → **Marketing** — adjust copy and toggles; **Save settings** calls **`telegram-marketing-settings`** (**PATCH**).
+6. **Legacy note**
 
-7. **Optional: Integrations → Cron**  
-   You can create the job in the Dashboard UI instead of raw SQL, as long as the HTTP target and headers match the snippet.
+   The old single-expression **`0 2,7,13 * * *`** (**10 / 15 / 21 Manila**) is superseded once you run the slots migration and **Save** from Marketing (defaults recreate those wall-clock sends).
 
 ---
 
@@ -124,23 +121,29 @@ JSON body must include **`action`**. Scenario tests use **saved** DB templates a
 
 ## 7. Related files
 
-| Area                 | Path                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared send + copy   | `supabase/functions/_shared/telegramMarketing.ts`                                                                                                       |
-| Manila calendar math | `supabase/functions/_shared/calendarAvailabilityManila.ts`                                                                                              |
-| DB helpers           | `supabase/functions/_shared/databaseService.ts` (`listBookingRangesForAvailability`, `getTelegramMarketingSettings`, `updateTelegramMarketingSettings`) |
-| Cron entrypoint      | `supabase/functions/telegram-marketing-cron/index.ts`                                                                                                   |
-| Settings API         | `supabase/functions/telegram-marketing-settings/index.ts`                                                                                               |
-| Marketing UI         | `ui/src/features/admin/pages/AdminMarketingPage.tsx`, `ui/src/features/admin/components/TelegramMarketingSettingsCard.tsx`                              |
-| Hooks                | `ui/src/features/admin/hooks/useTelegramMarketingSettings.ts`                                                                                           |
-| `config.toml`        | `[functions.telegram-marketing-cron]`, `[functions.telegram-marketing-settings]`                                                                        |
+| Area                 | Path                                                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shared send + copy   | `supabase/functions/_shared/telegramMarketing.ts`, **`telegramMarketingCronSync.ts`**                                                                                                                                           |
+| Manila calendar math | `supabase/functions/_shared/calendarAvailabilityManila.ts`                                                                                                                                                                      |
+| DB helpers           | `supabase/functions/_shared/databaseService.ts` (**`syncTelegramMarketingDailyCronJobs`**, `getTelegramMarketingSettings`, `updateTelegramMarketingSettings`), migration **`20260615105000_telegram_marketing_cron_slots.sql`** |
+| Cron entrypoint      | `supabase/functions/telegram-marketing-cron/index.ts`                                                                                                                                                                           |
+| Settings API         | `supabase/functions/telegram-marketing-settings/index.ts`                                                                                                                                                                       |
+| Marketing UI         | `ui/src/features/admin/pages/AdminMarketingPage.tsx`, `ui/src/features/admin/components/TelegramMarketingSettingsCard.tsx`                                                                                                      |
+| Hooks                | `ui/src/features/admin/hooks/useTelegramMarketingSettings.ts`                                                                                                                                                                   |
+| `config.toml`        | `[functions.telegram-marketing-cron]`, `[functions.telegram-marketing-settings]`                                                                                                                                                |
 
 ---
 
 ## 8. Operational FAQ
 
+**Q: GET `/telegram-marketing-settings` returns 400 / `Failed to load Telegram marketing settings` in production.**  
+A: The Edge function reads table **`telegram_marketing_settings`**. If that migration never ran on the **hosted** project, PostgREST returns an error (often “relation does not exist”). Apply **`supabase/migrations/20260614120000_telegram_marketing_settings.sql`** via **Dashboard → SQL** or **`supabase link` + `supabase db push`**, then retry. Confirm **Edge secrets** **`SUPABASE_URL`** and **`SUPABASE_SERVICE_ROLE_KEY`** match this project (wrong project ref also breaks reads).
+
 **Q: Cron returns 401 Unauthorized.**  
 A: **`TELEGRAM_CRON_SECRET`** is set on Edge but **`pg_net`** is not sending **`X-Telegram-Cron-Secret`**, or values mismatch. Unset the Edge secret to match a simpler dev setup, or fix Vault + headers.
+
+**Q: I saved reminder times but Integrations → Cron did not update / toast says reschedule failed.**  
+A: **`sync_telegram_marketing_daily_cron_jobs`** must exist (migration **`20260615105000_telegram_marketing_cron_slots.sql`**). Cron needs **`pg_cron` + `pg_net`**; **`net.http_post`** command still reads Vault **`project_url`**, **`anon_key`**, optionally **`telegram_cron_secret`** (same as the snippet). Check Edge function **`telegram-marketing-settings`** logs for the **`cronSync`** error string.
 
 **Q: No Telegram message but `success: true`.**  
 A: Check `mode: "disabled"` or `mode: "no_env"` — Marketing **`enabled`** off, or missing bot token / chat id.
@@ -152,7 +155,7 @@ A: Only fires on **first insert** (no existing row for the submitted UUID). Edit
 A: Check **`notify_on_cancellation`** and **`enabled`**. Telegram runs **after** a successful orchestrator cancel.
 
 **Q: Telegram returns `Bad Request: chat not found` on test sends.**  
-A: The **`TELEGRAM_BOT_TOKEN`** and **`TELEGRAM_CHAT_ID`** in the Edge runtime must belong together: **`getChat`** for that id must succeed for **this** bot (add the bot to the group/channel, use the supergroup numeric id, restart **`functions serve`** after editing **`supabase/.env.local`**). On **Marketing**, **Verify bot** runs **`verify_telegram_env`** (`POST` with `action: verify_telegram_env`) and shows **`getMe` / `getChat`** results. **`TELEGRAM_CHAT_ID`** must be **digits only** (optional leading `-`); strip quotes, spaces, and `@` names — the server normalizes BOM/CR/wrapping quotes from env files.
+A: The **`TELEGRAM_BOT_TOKEN`** and **`TELEGRAM_CHAT_ID`** in the Edge runtime must belong together: **`getChat`** for that id must succeed for **this** bot (add the bot to the group/channel, use the supergroup numeric id, restart **`functions serve`** after editing **`supabase/.env.local`**). On **Marketing**, **Verify bot** runs **`verify_telegram_env`** (`POST` with `action: verify_telegram_env`) and shows **`getMe` / `getChat`** plus normalized **`chat_id`**, **first codepoint** of the secret’s first character (ASCII `-` is `45`; a Word/PDF “minus” is often **8722**, which the server maps to `-`), and whether the normalized id starts with ASCII `-`. **`TELEGRAM_CHAT_ID`** must be **digits only** (optional leading `-`); strip quotes, `@` names — the server normalizes BOM/CR/wrapping quotes, Unicode dash/minus glyphs, and whitespace.
 
 **Q: How do I test from Marketing without enabling automation?**  
 A: Use **Send test** for daily / new booking / cancellation, or **Send draft + samples** on each textarea. Those calls use **`POST`** with `action` and **ignore** `enabled` / `notify_*` for the send itself (see §3.1).
