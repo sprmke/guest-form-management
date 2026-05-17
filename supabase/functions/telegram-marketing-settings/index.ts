@@ -21,6 +21,7 @@ import {
   serializeTelegramSettings,
   verifyTelegramEnv,
 } from '../_shared/telegramMarketing.ts';
+import { parseManilaReminderSlots, type ManilaReminderSlot } from '../_shared/telegramMarketingCronSync.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -48,6 +49,7 @@ serve(async (req) => {
     if (req.method === 'PATCH') {
       const body = await req.json().catch(() => ({}));
       const patch: Record<string, unknown> = {};
+      let slotsParsed: ManilaReminderSlot[] | undefined;
 
       if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;
       if (typeof body.notifyOnNewBooking === 'boolean') {
@@ -77,6 +79,18 @@ serve(async (req) => {
         patch.cancellation_template = body.cancellationTemplate.slice(0, 4000);
       }
 
+      if (body.dailyReminderTimesManila !== undefined) {
+        try {
+          slotsParsed = parseManilaReminderSlots(body.dailyReminderTimesManila);
+        } catch (e) {
+          return new Response(JSON.stringify({ success: false, error: (e as Error).message }), {
+            status: 400,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          });
+        }
+        patch.daily_reminder_times_manila = slotsParsed;
+      }
+
       if (Object.keys(patch).length === 0) {
         return new Response(JSON.stringify({ success: false, error: 'No valid fields to update' }), {
           status: 400,
@@ -85,8 +99,19 @@ serve(async (req) => {
       }
 
       const updated = await DatabaseService.updateTelegramMarketingSettings(patch);
+      let cronSync:
+        | { ok: boolean; error?: string; scheduled?: number; jobNamePrefix?: string }
+        | undefined;
+      if (slotsParsed) {
+        cronSync = await DatabaseService.syncTelegramMarketingDailyCronJobs(slotsParsed);
+      }
+
       return new Response(
-        JSON.stringify({ success: true, data: serializeTelegramSettings(updated as never) }),
+        JSON.stringify({
+          success: true,
+          data: serializeTelegramSettings(updated as never),
+          ...(cronSync !== undefined ? { cronSync } : {}),
+        }),
         { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }

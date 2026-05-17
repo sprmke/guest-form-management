@@ -739,7 +739,12 @@ export class DatabaseService {
 
     if (error) {
       console.error('getTelegramMarketingSettings:', error);
-      throw new Error('Failed to load Telegram marketing settings');
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram marketing settings${pg ? `: ${pg}` : ''}. ` +
+          `On production this usually means the table is missing — run migration ` +
+          `20260614120000_telegram_marketing_settings.sql (or “supabase db push”) on this project.`,
+      );
     }
     return data;
   }
@@ -759,5 +764,21 @@ export class DatabaseService {
       throw new Error('Failed to update Telegram marketing settings');
     }
     return data;
+  }
+
+  static async syncTelegramMarketingDailyCronJobs(
+    slots: { hour: number; minute: number }[],
+  ): Promise<{ ok?: boolean; error?: string; scheduled?: number }> {
+    const { data, error } = await this.supabase.rpc('sync_telegram_marketing_daily_cron_jobs', {
+      p_slots: slots as never,
+    });
+    if (error) {
+      console.error('syncTelegramMarketingDailyCronJobs rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; scheduled?: number };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
   }
 } 

@@ -19,6 +19,13 @@ import {
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
 
+import {
+  DEFAULT_MANILA_REMINDER_SLOTS,
+  manilaSlotsToUtcCronPreview,
+  parseManilaReminderSlots,
+  type ManilaReminderSlot,
+} from './telegramMarketingCronSync.ts';
+
 export type TelegramMarketingSettings = {
   id: number;
   enabled: boolean;
@@ -30,6 +37,8 @@ export type TelegramMarketingSettings = {
   daily_urgency_template: string;
   new_booking_template: string;
   cancellation_template: string;
+  /** JSONB column; omitted on older deployments until migration applies. */
+  daily_reminder_times_manila?: unknown;
 };
 
 export function applyTemplatePlaceholders(
@@ -44,20 +53,27 @@ export function applyTemplatePlaceholders(
 }
 
 /**
+ * Hyphen/minus glyphs that paste as “looks like minus” but fail `/^-?[0-9]+$/`. Telegram expects ASCII `-`.
+ */
+const UNICODE_HYPHENS = /[\u2212\u2013\u2012\uFE63\uFF0D\u2014\u2015]/g;
+
+/**
  * Trim, strip BOM/CR, remove wrapping quotes. Telegram expects a numeric id for groups
  * (often negative, e.g. -100…). @username is not accepted here — use getUpdates / RawDataBot.
  */
 export function normalizeTelegramChatId(raw: string): { ok: true; chatId: string } | { ok: false; error: string } {
-  let s = raw.trim().replace(/\r/g, '').replace(/\uFEFF/g, '');
+  let s = raw.trim().replace(/\r/g, '').replace(/\uFEFF/g, '').replace(UNICODE_HYPHENS, '-');
   if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
-    s = s.slice(1, -1).trim().replace(/\r/g, '').replace(/\uFEFF/g, '');
+    s = s.slice(1, -1).trim().replace(/\r/g, '').replace(/\uFEFF/g, '').replace(UNICODE_HYPHENS, '-');
   }
+  // Allowed final form is -?[0-9]+ — remove stray spaces/NBSP (Slack/email: "- 100…")
+  s = s.replace(/\s+/g, '');
   if (!s) return { ok: false, error: 'TELEGRAM_CHAT_ID is empty after normalization' };
   if (!/^-?[0-9]+$/.test(s)) {
     return {
       ok: false,
       error:
-        'TELEGRAM_CHAT_ID must be a numeric id (e.g. -100… for supergroups). Remove @ prefixes, labels, and non-digits.',
+        'TELEGRAM_CHAT_ID must be a numeric id (e.g. -100… for supergroups). Use ASCII minus (-), not a Unicode dash from Word/PDF. Remove @ prefixes and non-digits.',
     };
   }
   return { ok: true, chatId: s };
@@ -85,6 +101,10 @@ export type TelegramEnvVerifyResult = {
     chatIdRawLength: number;
     normalizedChatId?: string;
     normalizeError?: string;
+    /** First Unicode codepoint of trimmed secret (before normalize). ASCII `-` = 45. “Typo minus” from Word is often 8722 (U+2212). */
+    rawLeadingCodePoint?: number;
+    /** True when normalized id starts with ASCII `-`. If you use a supergroup -100… id and this is false, check the dashboard secret. */
+    normalizedStartsWithAsciiMinus?: boolean;
   };
   getMe: { ok: boolean; username?: string; error?: string };
   getChat: { ok: boolean; type?: string; title?: string; username?: string; error?: string };
@@ -93,12 +113,18 @@ export type TelegramEnvVerifyResult = {
 /** Admin-only: getMe + getChat using the same env normalization as sends. */
 export async function verifyTelegramEnv(): Promise<TelegramEnvVerifyResult> {
   const rawChat = Deno.env.get('TELEGRAM_CHAT_ID') ?? '';
+  const trimmed = rawChat.trimStart();
+  const rawLeadingCodePoint =
+    trimmed.length > 0 ? (trimmed.codePointAt(0) ?? undefined) : undefined;
+
   const creds = resolveTelegramCredentials();
   const credentials = {
     tokenConfigured: !!Deno.env.get('TELEGRAM_BOT_TOKEN')?.trim(),
     chatIdRawLength: rawChat.length,
     normalizedChatId: creds.ok ? creds.chatId : undefined,
     normalizeError: creds.ok ? undefined : creds.error,
+    rawLeadingCodePoint,
+    normalizedStartsWithAsciiMinus: creds.ok ? creds.chatId.startsWith('-') : undefined,
   };
 
   if (!creds.ok) {
@@ -352,14 +378,26 @@ export function verifyTelegramCronSecret(req: Request): boolean {
   return got === expected;
 }
 
+function dailySlotsFromRow(row: TelegramMarketingSettings): ManilaReminderSlot[] {
+  const raw = row.daily_reminder_times_manila;
+  try {
+    return parseManilaReminderSlots(raw);
+  } catch {
+    return [...DEFAULT_MANILA_REMINDER_SLOTS];
+  }
+}
+
 /** Public shape for Settings GET (no secrets). */
 export function serializeTelegramSettings(row: TelegramMarketingSettings) {
+  const slots = dailySlotsFromRow(row);
   return {
     enabled: row.enabled,
     notifyOnNewBooking: row.notify_on_new_booking,
     notifyOnCancellation: row.notify_on_cancellation,
     urgencyDaysThreshold: row.urgency_days_threshold,
     newBookingDatesLimit: row.new_booking_dates_limit,
+    dailyReminderTimesManila: slots,
+    dailyReminderUtcCronPreview: manilaSlotsToUtcCronPreview(slots),
     dailyDefaultTemplate: row.daily_default_template,
     dailyUrgencyTemplate: row.daily_urgency_template,
     newBookingTemplate: row.new_booking_template,
@@ -380,10 +418,22 @@ export async function ensureTelegramSettingsRow(): Promise<void> {
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
   );
-  const { data } = await supabase.from('telegram_marketing_settings').select('id').eq('id', 1).maybeSingle();
+  const { data, error } = await supabase
+    .from('telegram_marketing_settings')
+    .select('id')
+    .eq('id', 1)
+    .maybeSingle();
+  if (error) {
+    console.error('ensureTelegramSettingsRow select:', error);
+    throw new Error(
+      `telegram_marketing_settings query failed (${error.code ?? 'no-code'}: ${error.message}). ` +
+        `Deploy migration 20260614120000_telegram_marketing_settings.sql to this database.`,
+    );
+  }
   if (data) return;
-  await supabase.from('telegram_marketing_settings').insert({
+  const { error: insertError } = await supabase.from('telegram_marketing_settings').insert({
     id: 1,
+    daily_reminder_times_manila: DEFAULT_MANILA_REMINDER_SLOTS,
     daily_default_template: 'Pa up and share po ka-uppers! Salamuch!',
     daily_urgency_template:
       'Available this {{available_dates}}. Book now and get huge last minute discount!',
@@ -392,4 +442,11 @@ export async function ensureTelegramSettingsRow(): Promise<void> {
     cancellation_template:
       'Available this {{cancellation_dates}} due to guest cancellation! Book now and get huge discount for this specific date/s!',
   });
+  if (insertError) {
+    console.error('ensureTelegramSettingsRow insert:', insertError);
+    throw new Error(
+      `Could not seed telegram_marketing_settings (${insertError.message}). ` +
+        `Apply migration 20260614120000_telegram_marketing_settings.sql first.`,
+    );
+  }
 }
