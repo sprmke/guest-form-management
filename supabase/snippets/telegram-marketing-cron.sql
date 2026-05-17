@@ -1,6 +1,8 @@
--- Reference: schedule `telegram-marketing-cron` on Supabase Cloud (pg_cron + pg_net).
--- Pick ONE block below. Requires extensions pg_cron + pg_net and Vault secrets
--- `project_url` + `anon_key` (same pattern as docs/SCHEDULED_JOBS_AND_TESTING.md).
+-- Reference: LEGACY ONE-SHOT `telegram-marketing-daily-manila` (single cron expression).
+-- Preferred: deploy migration **`20260615105000_telegram_marketing_cron_slots.sql`**, then use
+-- Admin → **Marketing** → **Daily reminder times** → **Save** — that invokes
+-- **`sync_telegram_marketing_daily_cron_jobs`** (jobs **`telegram-marketing-daily-slot-*`**).
+-- Use this snippet only when you still need manual SQL bootstrap or recovery.
 -- Cron times: 10:00 / 15:00 / 21:00 Asia/Manila = 02:00 / 07:00 / 13:00 UTC → `0 2,7,13 * * *`
 --
 -- Edge secrets (Dashboard → Edge Functions → Secrets):
