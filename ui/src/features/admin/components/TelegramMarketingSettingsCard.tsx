@@ -1,5 +1,13 @@
 import * as React from 'react';
-import { Activity, ChevronDown, Send, Zap } from 'lucide-react';
+import {
+  Activity,
+  ChevronDown,
+  Clock,
+  Plus,
+  Send,
+  Trash2,
+  Zap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -17,6 +25,7 @@ import {
   useUpdateTelegramMarketingSettings,
   type TelegramEnvVerifyDto,
   type TelegramMarketingSettingsDto,
+  type ManilaReminderSlot,
 } from '@/features/admin/hooks/useTelegramMarketingSettings';
 import { getManilaYmdToday, getManilaYmdTomorrow } from '@/utils/dates';
 
@@ -159,6 +168,53 @@ type NotifyTestResult = {
   telegramError?: string;
 };
 
+function slotSort(a: ManilaReminderSlot, b: ManilaReminderSlot): number {
+  return a.hour * 60 + a.minute - (b.hour * 60 + b.minute);
+}
+
+/** `type="time"` value (`HH:mm`, 24h). */
+function slotToTimeInputValue(slot: ManilaReminderSlot): string {
+  return `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
+}
+
+function timeInputValueToSlot(value: string): ManilaReminderSlot | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
+}
+
+function formatManilaTimeLabel(slot: ManilaReminderSlot): string {
+  const d = new Date(2000, 0, 1, slot.hour, slot.minute);
+  return d.toLocaleTimeString('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function sortedSlotLabels(slots: ManilaReminderSlot[]): string {
+  return [...slots].sort(slotSort).map(formatManilaTimeLabel).join(', ');
+}
+
+function sanitizeSlots(slots: ManilaReminderSlot[]): ManilaReminderSlot[] {
+  const mapped = slots.map((s) => ({
+    hour: Math.max(0, Math.min(23, Math.round(s.hour))),
+    minute: Math.max(0, Math.min(59, Math.round(s.minute))),
+  }));
+  const seen = new Set<number>();
+  const out: ManilaReminderSlot[] = [];
+  for (const s of [...mapped].sort(slotSort)) {
+    const k = s.hour * 60 + s.minute;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(s);
+  }
+  return out.length > 0 ? out : [{ hour: 10, minute: 0 }];
+}
+
 export function TelegramMarketingSettingsCard() {
   const { data, isLoading, isError, error } = useTelegramMarketingSettings();
   const update = useUpdateTelegramMarketingSettings();
@@ -187,13 +243,22 @@ export function TelegramMarketingSettingsCard() {
         notifyOnCancellation: draft.notifyOnCancellation,
         urgencyDaysThreshold: draft.urgencyDaysThreshold,
         newBookingDatesLimit: draft.newBookingDatesLimit,
+        dailyReminderTimesManila: sanitizeSlots(draft.dailyReminderTimesManila),
         dailyDefaultTemplate: draft.dailyDefaultTemplate,
         dailyUrgencyTemplate: draft.dailyUrgencyTemplate,
         newBookingTemplate: draft.newBookingTemplate,
         cancellationTemplate: draft.cancellationTemplate,
       },
       {
-        onSuccess: () => toast.success('Telegram marketing settings saved'),
+        onSuccess: ({ cronSync }) => {
+          toast.success('Telegram marketing settings saved');
+          if (cronSync && cronSync.ok !== true) {
+            toast.error(
+              cronSync.error ??
+                'Could not reschedule pg_cron jobs. Check Integrations → Cron and Edge logs (settings still saved).',
+            );
+          }
+        },
         onError: (e) => toast.error((e as Error).message),
       },
     );
@@ -259,7 +324,6 @@ export function TelegramMarketingSettingsCard() {
           <CollapsibleSection
             id="tg-tests"
             title="Test actions"
-            defaultOpen
             triggerTitle="Uses saved templates from Postgres. Ignores Enable / notify toggles."
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -282,8 +346,17 @@ export function TelegramMarketingSettingsCard() {
                         if (v.credentials.normalizeError) {
                           parts.push(v.credentials.normalizeError);
                         } else {
+                          const lead = v.credentials.rawLeadingCodePoint;
+                          const minusHint =
+                            v.credentials.normalizedStartsWithAsciiMinus ===
+                              false &&
+                            (v.credentials.normalizedChatId?.length ?? 0) > 3
+                              ? ' (supergroup ids often start -100; secret first char should be ASCII `-`, codepoint 45—not 8722)'
+                              : '';
                           parts.push(
-                            `chat_id=${v.credentials.normalizedChatId ?? 'n/a'} (raw chars: ${v.credentials.chatIdRawLength})`,
+                            `chat_id=${v.credentials.normalizedChatId ?? 'n/a'} (raw chars: ${v.credentials.chatIdRawLength}${
+                              lead != null ? `, first codepoint: ${lead}` : ''
+                            })${minusHint}`,
                           );
                         }
                         parts.push(
@@ -462,7 +535,7 @@ export function TelegramMarketingSettingsCard() {
             </ul>
           </CollapsibleSection>
 
-          <CollapsibleSection id="tg-auto" title="When to notify" defaultOpen>
+          <CollapsibleSection id="tg-auto" title="When to notify">
             <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-1">
               <CheckboxRow
                 id="tg-enabled"
@@ -494,6 +567,131 @@ export function TelegramMarketingSettingsCard() {
                   setDraft((d) => (d ? { ...d, notifyOnCancellation: v } : d))
                 }
               />
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3 sm:p-4">
+              <div className="flex gap-2.5">
+                <Clock
+                  className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                  aria-hidden
+                />
+                <div className="min-w-0 space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Daily reminder schedule
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-snug">
+                    When to send availability reminders. All times are{' '}
+                    <span className="font-medium text-foreground/90">
+                      Philippines (Manila)
+                    </span>
+                    . Saving updates the automated schedule (up to 8 per day).
+                  </p>
+                </div>
+              </div>
+
+              {draft.dailyReminderTimesManila.length > 0 ? (
+                <p
+                  className="rounded-md bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground"
+                  aria-live="polite"
+                >
+                  <span className="font-medium text-foreground">
+                    Schedule:{' '}
+                  </span>
+                  {sortedSlotLabels(draft.dailyReminderTimesManila)}
+                </p>
+              ) : null}
+
+              <ul className="space-y-2">
+                {draft.dailyReminderTimesManila.map((slot, idx) => (
+                  <li
+                    key={`${slot.hour}-${slot.minute}-${idx}`}
+                    className="flex items-center gap-2 sm:gap-3"
+                  >
+                    <Label
+                      htmlFor={`tg-slot-time-${idx}`}
+                      className="w-16 shrink-0 text-xs text-muted-foreground sm:w-20 sm:text-sm"
+                    >
+                      {draft.dailyReminderTimesManila.length === 1
+                        ? 'Time'
+                        : `#${idx + 1}`}
+                    </Label>
+                    <Input
+                      id={`tg-slot-time-${idx}`}
+                      type="time"
+                      disabled={busy}
+                      value={slotToTimeInputValue(slot)}
+                      className="h-10 min-h-[44px] min-w-0 flex-1 max-w-[11rem] text-base sm:text-sm"
+                      onChange={(e) => {
+                        const parsed = timeInputValueToSlot(e.target.value);
+                        if (!parsed) return;
+                        setDraft((d) => {
+                          if (!d) return d;
+                          const next = [...d.dailyReminderTimesManila];
+                          next[idx] = parsed;
+                          return {
+                            ...d,
+                            dailyReminderTimesManila: sanitizeSlots(next),
+                          };
+                        });
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={
+                        busy || draft.dailyReminderTimesManila.length <= 1
+                      }
+                      className="h-11 min-h-[44px] w-11 min-w-[44px] shrink-0 p-0 text-muted-foreground hover:text-destructive"
+                      aria-label={`Remove reminder ${idx + 1}`}
+                      onClick={() =>
+                        setDraft((d) => {
+                          if (!d || d.dailyReminderTimesManila.length <= 1)
+                            return d;
+                          const next = d.dailyReminderTimesManila.filter(
+                            (_, j) => j !== idx,
+                          );
+                          return {
+                            ...d,
+                            dailyReminderTimesManila: sanitizeSlots(next),
+                          };
+                        })
+                      }
+                    >
+                      <Trash2 className="size-4" aria-hidden />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy || draft.dailyReminderTimesManila.length >= 8}
+                className="min-h-[44px] w-full gap-2 sm:w-auto"
+                onClick={() =>
+                  setDraft((d) => {
+                    if (!d || d.dailyReminderTimesManila.length >= 8) return d;
+                    const sorted = [...d.dailyReminderTimesManila].sort(
+                      slotSort,
+                    );
+                    const last = sorted[sorted.length - 1];
+                    const nextSlot: ManilaReminderSlot = {
+                      hour: Math.min(23, (last?.hour ?? 9) + 1),
+                      minute: last?.minute ?? 0,
+                    };
+                    return {
+                      ...d,
+                      dailyReminderTimesManila: sanitizeSlots([
+                        ...d.dailyReminderTimesManila,
+                        nextSlot,
+                      ]),
+                    };
+                  })
+                }
+              >
+                <Plus className="size-4 shrink-0" aria-hidden />
+                Add another time
+              </Button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
