@@ -17,32 +17,32 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
 import { formatMoney } from '@/features/admin/lib/formatters';
+import {
+  optionalNonNegativeMoney,
+  requiredNonNegativeMoney,
+} from '@/features/admin/lib/moneyFieldSchema';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 function createReviewPricingSchema(surpriseDecorRequested: boolean) {
   const guestAdditionalFeeSchema = surpriseDecorRequested
-    ? z.preprocess(
-        (v) => {
-          if (v === '' || v === null || v === undefined) return undefined;
-          const n = Number(v);
-          return Number.isFinite(n) ? n : NaN;
-        },
-        z
-          .number({
-            required_error:
-              'Additional fee is required when the guest requested surprise decor',
-            invalid_type_error: 'Enter a valid amount',
-          })
-          .min(0, 'Must be ≥ 0'),
-      )
-    : z.coerce.number().min(0).optional();
+    ? requiredNonNegativeMoney({
+        requiredError:
+          'Additional fee is required when the guest requested surprise decor',
+      })
+    : optionalNonNegativeMoney();
 
   return z.object({
-    booking_rate: z.coerce.number().positive('Enter a positive rate'),
-    down_payment: z.coerce.number().min(0, 'Must be ≥ 0'),
-    security_deposit: z.coerce.number().min(0, 'Must be ≥ 0').default(1500),
-    pet_fee: z.coerce.number().min(0).optional(),
-    parking_rate_guest: z.coerce.number().min(0).optional(),
+    booking_rate: requiredNonNegativeMoney({
+      requiredError: 'Enter booking rate',
+    }),
+    down_payment: requiredNonNegativeMoney({
+      requiredError: 'Enter down payment',
+    }),
+    security_deposit: requiredNonNegativeMoney({
+      requiredError: 'Enter security deposit',
+    }),
+    pet_fee: optionalNonNegativeMoney(),
+    parking_rate_guest: optionalNonNegativeMoney(),
     guest_additional_fee: guestAdditionalFeeSchema,
   });
 }

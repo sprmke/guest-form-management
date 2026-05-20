@@ -36,10 +36,16 @@ function defaultPaidFromBooking(booking: BookingRow): number {
   const saved = booking.guest_balance_paid_amount;
   if (saved !== null && saved !== undefined && saved !== '') {
     const p = typeof saved === 'string' ? Number(saved) : saved;
-    // Treat 0 as unset (column default / never filled) so the input defaults to full balance.
-    if (!Number.isNaN(p) && p > 0) return Math.round(p * 100) / 100;
+    if (!Number.isNaN(p) && p >= 0) return Math.round(p * 100) / 100;
   }
   return Math.round(bal * 100) / 100;
+}
+
+function parsePaidInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  const n = Number(trimmed);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function GuestBalanceSettlementForm({
@@ -112,8 +118,8 @@ export function GuestBalanceSettlementForm({
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
     if (booking.status !== 'READY_FOR_CHECKIN') return;
-    const paidParsed = Number(paidInput);
-    if (Number.isNaN(paidParsed) || paidParsed < 0 || totalDue === null) return;
+    const paidParsed = parsePaidInput(paidInput);
+    if (paidParsed === null || paidParsed < 0 || totalDue === null) return;
     const paidCents = Math.round(paidParsed * 100);
     const balCents = Math.round(totalDue * 100);
     if (paidCents > balCents) return;
@@ -142,8 +148,8 @@ export function GuestBalanceSettlementForm({
       return;
     }
 
-    const paidParsed = Number(paidInput);
-    if (Number.isNaN(paidParsed) || paidParsed < 0) {
+    const paidParsed = parsePaidInput(paidInput);
+    if (paidParsed === null || paidParsed < 0) {
       onChange(null);
       return;
     }
@@ -171,7 +177,7 @@ export function GuestBalanceSettlementForm({
     });
   }, [totalDue, paidInput, receiptUrl, onChange]);
 
-  const paidUi = paidInput === '' ? NaN : Number(paidInput);
+  const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi =
     totalDue !== null && !Number.isNaN(paidUi)
       ? Math.round(paidUi * 100)

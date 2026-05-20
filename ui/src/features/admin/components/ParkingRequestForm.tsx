@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { requiredPositiveMoney } from '@/features/admin/lib/moneyFieldSchema';
 import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BookingRow } from '@/features/admin/lib/types';
@@ -22,18 +23,10 @@ import { cn } from '@/lib/utils';
 
 export const parkingRequestFormSchema = z.object({
   parking_owner: z.string().trim().min(1, 'Enter parking owner or agent name'),
-  /** Empty number inputs must not coerce to `0` (that wrongly passed `min(0)`). */
-  parking_rate_paid: z.preprocess(
-    (v) => {
-      if (v === '' || v === null || v === undefined) return undefined;
-      if (typeof v === 'string' && v.trim() === '') return undefined;
-      const n = typeof v === 'number' ? v : Number(String(v).trim());
-      return Number.isFinite(n) ? n : Number.NaN;
-    },
-    z
-      .number({ required_error: 'Enter paid parking rate' })
-      .min(0, 'Enter a rate ≥ 0'),
-  ),
+  parking_rate_paid: requiredPositiveMoney({
+    requiredError: 'Enter paid parking rate',
+    positiveError: 'Enter a rate greater than 0',
+  }),
   parking_endorsement_url: z
     .string()
     .url('Please upload a parking endorsement image'),
@@ -158,8 +151,8 @@ export function ParkingRequestForm({
       >
         <input
           type="number"
-          min={0}
-          step={0.01}
+          min={1}
+          step={10}
           placeholder="400"
           className={inputClass(!!errors.parking_rate_paid)}
           {...register('parking_rate_paid')}
