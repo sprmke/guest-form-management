@@ -33,6 +33,7 @@ import {
   CheckSquare,
   ChevronDown,
   ChevronRight,
+  History,
   Loader2,
   Mail,
   RefreshCw,
@@ -62,6 +63,7 @@ import {
   type GuestBalanceSettlementValues,
 } from '@/features/admin/components/GuestBalanceSettlementForm';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   applicableTransitions,
@@ -85,6 +87,10 @@ import {
   formatRelative,
 } from '@/features/admin/lib/formatters';
 import { shouldWarnPastBookingStayForProceed } from '@/features/admin/lib/bookingPastPipelineManila';
+import {
+  historicalBackfillDismissStorageKey,
+  shouldOfferHistoricalApprovalBackfill,
+} from '@/features/admin/lib/historicalBackfillEligibility';
 import {
   useTransitionBooking,
   useCancelBooking,
@@ -288,6 +294,8 @@ export function WorkflowPanel({ booking }: Props) {
   gmailPollMutRef.current = gmailPollMut;
   /** Dedupes React Strict Mode double-invoke; cleared when leaving PENDING_DOCUMENTS. */
   const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
+  const pendingDocsAutoBackfillModalRef = useRef<string | null>(null);
+  const [historicalBackfillOpen, setHistoricalBackfillOpen] = useState(false);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
@@ -296,6 +304,8 @@ export function WorkflowPanel({ booking }: Props) {
     status === 'PENDING_DOCUMENTS' ||
     status === 'PENDING_GAF' ||
     status === 'PENDING_PET_REQUEST';
+  const showHistoricalBackfill =
+    shouldOfferHistoricalApprovalBackfill(booking);
   const showSdCron = status === 'READY_FOR_CHECKIN';
   const showSdFormResend =
     status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
@@ -343,6 +353,7 @@ export function WorkflowPanel({ booking }: Props) {
   useEffect(() => {
     if (status !== 'PENDING_DOCUMENTS') {
       pendingDocsAutoGmailPollRef.current = null;
+      pendingDocsAutoBackfillModalRef.current = null;
       return;
     }
     const dedupeKey = `${booking.id}:PENDING_DOCUMENTS`;
@@ -365,6 +376,47 @@ export function WorkflowPanel({ booking }: Props) {
       cancelled = true;
     };
   }, [booking.id, status]);
+
+  useEffect(() => {
+    if (status !== 'PENDING_DOCUMENTS') {
+      pendingDocsAutoBackfillModalRef.current = null;
+      setHistoricalBackfillOpen(false);
+      return;
+    }
+    if (!shouldOfferHistoricalApprovalBackfill(booking)) return;
+
+    const dismissKey = historicalBackfillDismissStorageKey(booking.id);
+    try {
+      if (sessionStorage.getItem(dismissKey) === '1') return;
+    } catch {
+      /* sessionStorage unavailable */
+    }
+
+    const dedupeKey = `${booking.id}:backfill-modal`;
+    if (pendingDocsAutoBackfillModalRef.current === dedupeKey) return;
+    pendingDocsAutoBackfillModalRef.current = dedupeKey;
+    setHistoricalBackfillOpen(true);
+  }, [
+    booking.id,
+    booking.status,
+    booking.created_at,
+    booking.gaf_completed_at,
+    booking.approved_gaf_pdf_url,
+    booking.gaf_manual_incomplete,
+    status,
+  ]);
+
+  const dismissHistoricalBackfillModal = useCallback(() => {
+    setHistoricalBackfillOpen(false);
+    try {
+      sessionStorage.setItem(
+        historicalBackfillDismissStorageKey(booking.id),
+        '1',
+      );
+    } catch {
+      /* ignore */
+    }
+  }, [booking.id]);
 
   async function handleGmailPoll() {
     try {
@@ -631,7 +683,28 @@ export function WorkflowPanel({ booking }: Props) {
   );
 
   return (
-    <aside className="flex overflow-hidden flex-col gap-0 bg-white rounded-xl border shadow-sm border-slate-200">
+    <>
+      <HistoricalApprovalBackfillDialog
+        open={historicalBackfillOpen}
+        onOpenChange={setHistoricalBackfillOpen}
+        onDismiss={dismissHistoricalBackfillModal}
+        bookingId={booking.id}
+        variant="booking-detail"
+        onRunSuccess={() => {
+          pendingDocsAutoBackfillModalRef.current = null;
+          try {
+            sessionStorage.removeItem(
+              historicalBackfillDismissStorageKey(booking.id),
+            );
+          } catch {
+            /* ignore */
+          }
+          void queryClient.invalidateQueries({
+            queryKey: BOOKING_QUERY_KEY(booking.id),
+          });
+        }}
+      />
+      <aside className="flex overflow-hidden flex-col gap-0 bg-white rounded-xl border shadow-sm border-slate-200">
       {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
       {pipeline.length > 0 && status !== 'CANCELLED' ? (
         <div className="border-b border-slate-100 px-4 py-4">
@@ -943,6 +1016,26 @@ export function WorkflowPanel({ booking }: Props) {
                     Run Gmail poll now
                   </button>
                 )}
+                {showHistoricalBackfill && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pendingDocsAutoBackfillModalRef.current = null;
+                      try {
+                        sessionStorage.removeItem(
+                          historicalBackfillDismissStorageKey(booking.id),
+                        );
+                      } catch {
+                        /* ignore */
+                      }
+                      setHistoricalBackfillOpen(true);
+                    }}
+                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
+                  >
+                    <History className="size-3.5 shrink-0" aria-hidden />
+                    Historical approval backfill
+                  </button>
+                )}
                 {showSdCron && (
                   <button
                     type="button"
@@ -1203,6 +1296,7 @@ export function WorkflowPanel({ booking }: Props) {
         />
       )}
     </aside>
+    </>
   );
 }
 
