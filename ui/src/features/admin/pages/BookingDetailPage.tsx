@@ -5,6 +5,9 @@
  *   Left (flexible): all booking info cards + document previews
  *   Right (sticky 344px): WorkflowPanel
  *
+ * Mobile (<lg) when status ≠ PENDING_REVIEW: compact summary + expand control,
+ * Progress (WorkflowPanel) next, full detail cards in a collapsible block below.
+ *
  * Header card toggles **Edit** ↔ **Cancel**; booking status is shown on the
  * **Progress** card in `WorkflowPanel` (after `PendingReviewWorkflowGate` when
  * status is `PENDING_REVIEW`). **Cancel booking** stays in the workflow panel Actions.
@@ -47,11 +50,14 @@ import {
   Users,
   X,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { BookingDetailMobileSummary } from '@/features/admin/components/BookingDetailMobileSummary';
+import { BookingMetaCard } from '@/features/admin/components/BookingMetaCard';
 import { PendingReviewWorkflowGate } from '@/features/admin/components/PendingReviewWorkflowGate';
 import { WorkflowPanel } from '@/features/admin/components/WorkflowPanel';
 import { BookingEditForm } from '@/features/admin/components/BookingEditForm';
-import { InlineCopyIconButton } from '@/features/admin/components/SdRefundForm';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { useBooking } from '@/features/admin/hooks/useBooking';
 import {
   formatBookingDate,
@@ -84,6 +90,8 @@ export function BookingDetailPage() {
     type: 'image' | 'pdf' | 'file';
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const isBelowLg = useIsBelowLg();
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -94,6 +102,21 @@ export function BookingDetailPage() {
       toast.error('Could not copy to clipboard');
     }
   }, [bookingId]);
+
+  useEffect(() => {
+    setDetailsExpanded(false);
+    setEditMode(false);
+  }, [bookingId]);
+
+  useEffect(() => {
+    if (editMode) setDetailsExpanded(true);
+  }, [editMode]);
+
+  const isMobileWorkflowFirst =
+    isBelowLg && booking != null && booking.status !== 'PENDING_REVIEW';
+
+  const showMobileDetailCards =
+    !isMobileWorkflowFirst || detailsExpanded || editMode;
 
   const title =
     booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
@@ -149,17 +172,37 @@ export function BookingDetailPage() {
           {booking && (
             <>
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
-                {/* ── Left column ───────────────────────────────────────────── */}
-                <div className="flex-1 min-w-0 space-y-4">
-                  {/* Booking header */}
+                {isMobileWorkflowFirst && (
+                  <BookingDetailMobileSummary
+                    className="order-1 lg:hidden"
+                    booking={booking}
+                    editMode={editMode}
+                    detailsExpanded={detailsExpanded}
+                    onToggleDetails={() => setDetailsExpanded((v) => !v)}
+                    onEdit={() => setEditMode(true)}
+                    onCancelEdit={() => setEditMode(false)}
+                  />
+                )}
+
+                {/* ── Full booking details (collapsible on mobile) ───────────── */}
+                <div
+                  id="booking-detail-full-panel"
+                  className={cn(
+                    'flex-1 min-w-0 space-y-4',
+                    isMobileWorkflowFirst && 'order-3 lg:order-none',
+                    isMobileWorkflowFirst &&
+                      !showMobileDetailCards &&
+                      'hidden lg:block',
+                  )}
+                >
                   <BookingHeader
                     booking={booking}
                     editMode={editMode}
                     onEdit={() => setEditMode(true)}
                     onCancelEdit={() => setEditMode(false)}
+                    className={cn(isMobileWorkflowFirst && 'hidden lg:block')}
                   />
 
-                  {/* Edit mode */}
                   {editMode ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
                       <h2 className="mb-4 text-sm font-bold text-slate-800">
@@ -173,7 +216,6 @@ export function BookingDetailPage() {
                       />
                     </div>
                   ) : (
-                    /* View mode info cards */
                     <>
                       <GuestInfoCard
                         booking={booking}
@@ -201,41 +243,35 @@ export function BookingDetailPage() {
                       />
                     </>
                   )}
+
+                  {isMobileWorkflowFirst && (
+                    <BookingMetaCard
+                      booking={booking}
+                      onCopyBookingId={() => void copyBookingIdToClipboard()}
+                      className="lg:hidden"
+                    />
+                  )}
                 </div>
 
-                {/* ── Right column — WorkflowPanel ───────────────────────────── */}
-                <div className="w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]">
+                {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
+                <div
+                  className={cn(
+                    'w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]',
+                    isMobileWorkflowFirst && 'order-2 lg:order-none',
+                  )}
+                >
                   <PendingReviewWorkflowGate booking={booking}>
                     <WorkflowPanel key={booking.id} booking={booking} />
                   </PendingReviewWorkflowGate>
 
-                  {/* Booking meta */}
-                  <div className="mt-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-                      Booking Meta
-                    </p>
-                    <div className="space-y-1.5 text-xs">
-                      <MetaRow label="Booking ID">
-                        <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                          <span className="font-mono text-[11px] text-slate-600 break-all">
-                            {booking.id}
-                          </span>
-                          <InlineCopyIconButton
-                            aria-label="Copy booking ID to clipboard"
-                            onClick={() => void copyBookingIdToClipboard()}
-                          />
-                        </span>
-                      </MetaRow>
-                      <MetaRow label="Created">
-                        {formatRelative(booking.created_at)}
-                      </MetaRow>
-                      {booking.updated_at && (
-                        <MetaRow label="Updated">
-                          {formatRelative(booking.updated_at)}
-                        </MetaRow>
-                      )}
-                    </div>
-                  </div>
+                  <BookingMetaCard
+                    booking={booking}
+                    onCopyBookingId={() => void copyBookingIdToClipboard()}
+                    className={cn(
+                      'mt-3',
+                      isMobileWorkflowFirst && 'hidden lg:block',
+                    )}
+                  />
                 </div>
               </div>
             </>
@@ -260,11 +296,13 @@ function BookingHeader({
   editMode,
   onEdit,
   onCancelEdit,
+  className,
 }: {
   booking: BookingRow;
   editMode: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
+  className?: string;
 }) {
   const pax =
     (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
@@ -276,7 +314,12 @@ function BookingHeader({
   );
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <div
+      className={cn(
+        'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5',
+        className,
+      )}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -1442,21 +1485,6 @@ function InfoField({
         {icon}
         {String(value)}
       </span>
-    </div>
-  );
-}
-
-function MetaRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-2">
-      <span className="shrink-0 text-[11px] text-slate-400">{label}</span>
-      <span className="text-right text-[11px] text-slate-600">{children}</span>
     </div>
   );
 }
