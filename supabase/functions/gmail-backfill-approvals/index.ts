@@ -46,6 +46,8 @@ type BackfillRequest = {
   lookbackDays?: number;
   limitBookings?: number;
   maxMessagesPerKind?: number;
+  /** When set, only scan this booking (admin booking detail). */
+  bookingId?: string;
 };
 
 type CandidateBooking = {
@@ -270,13 +272,23 @@ async function uploadApprovedPdf(params: {
   return raw.startsWith('http') ? formatPublicUrl(raw) : raw;
 }
 
-async function loadCandidateBookings(limit: number): Promise<CandidateBooking[]> {
-  const { data, error } = await supabaseAdmin()
+async function loadCandidateBookings(
+  limit: number,
+  bookingId?: string,
+): Promise<CandidateBooking[]> {
+  let query = supabaseAdmin()
     .from('guest_submissions')
     .select('id,status,check_in_date,check_out_date,has_pets,approved_gaf_pdf_url,approved_pet_pdf_url')
-    .in('status', ['PENDING_DOCUMENTS', 'PENDING_GAF', 'PENDING_PET_REQUEST'])
-    .order('check_in_date', { ascending: true })
-    .limit(limit);
+    .in('status', ['PENDING_DOCUMENTS', 'PENDING_GAF', 'PENDING_PET_REQUEST']);
+
+  const scopedId = (bookingId ?? '').trim();
+  if (scopedId) {
+    query = query.eq('id', scopedId);
+  } else {
+    query = query.order('check_in_date', { ascending: true }).limit(limit);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw new Error(`Failed to load candidate bookings: ${error.message}`);
   return (data ?? []) as CandidateBooking[];
@@ -347,7 +359,11 @@ serve(async (req) => {
         },
       );
     }
-    const candidates = await loadCandidateBookings(limitBookings);
+    const scopedBookingId = (body.bookingId ?? '').trim() || undefined;
+    const candidates = await loadCandidateBookings(
+      scopedBookingId ? 1 : limitBookings,
+      scopedBookingId,
+    );
     const tasks = candidates.flatMap(buildTasksFromBooking);
 
     let applied = 0;
