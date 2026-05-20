@@ -9,21 +9,18 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  BOOKING_STATUSES,
-  LEGACY_BOOKING_STATUSES,
+  bookingsStatusFilterRows,
   statusLabel,
+  type AnyBookingStatus,
 } from '@/features/admin/lib/bookingStatus';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { BookingDateRangeFilter } from '@/features/admin/components/BookingDateRangeFilter';
 import type { DateNavigationState } from '@/lib/dateNavigation';
-import type { BookingsQuery, BookingsSort } from '@/features/admin/lib/types';
-
-const SORT_OPTIONS: { value: BookingsSort; label: string }[] = [
-  { value: 'check_in_date:asc', label: 'Check-in ↑ (earliest first)' },
-  { value: 'check_in_date:desc', label: 'Check-in ↓ (latest first)' },
-  { value: 'created_at:desc', label: 'Submitted ↓ (newest first)' },
-  { value: 'created_at:asc', label: 'Submitted ↑ (oldest first)' },
-];
+import {
+  BOOKINGS_SORT_OPTIONS,
+  bookingsSortButtonLabel,
+} from '@/features/admin/lib/bookingsSortOptions';
+import type { BookingsQuery } from '@/features/admin/lib/types';
 
 type Props = {
   query: BookingsQuery;
@@ -34,8 +31,6 @@ type Props = {
   /** Clear the date filter — sets `from`/`to` to null and resets preset. */
   onClearDate: () => void;
 };
-
-const ALL_STATUSES = [...BOOKING_STATUSES, ...LEGACY_BOOKING_STATUSES];
 
 // ─── Shared filter button ──────────────────────────────────
 function FilterBtn({
@@ -174,7 +169,7 @@ export function BookingFilters({
     query.status.length +
     (query.hasPets !== null ? 1 : 0) +
     (query.needParking !== null ? 1 : 0) +
-    (!query.hideStaleCompleted ? 1 : 0) +
+    (query.showPreviousBookings ? 1 : 0) +
     (isDateActive ? 1 : 0);
 
   const isDirty = totalActiveFilters > 0;
@@ -229,19 +224,13 @@ export function BookingFilters({
           {/* — Sort dropdown — */}
           <div className="relative shrink-0">
             <FilterBtn
-              label={
-                (SORT_OPTIONS.find((o) => o.value === query.sort)?.label.split(
-                  ' ',
-                )[0] ?? 'Sort') +
-                ' ' +
-                (query.sort.endsWith(':asc') ? '↑' : '↓')
-              }
+              label={bookingsSortButtonLabel(query.sort)}
               count={0}
               isOpen={openKey === 'sort'}
               onClick={() => toggle('sort')}
             />
             {openKey === 'sort' && (
-              <DropdownPanel width="w-64">
+              <DropdownPanel width="w-[min(90vw,20rem)] sm:w-80">
                 <div
                   className="px-3.5 py-2.5"
                   style={{ borderBottom: '1px solid #f1f5f9' }}
@@ -251,7 +240,7 @@ export function BookingFilters({
                   </span>
                 </div>
                 <div className="py-1">
-                  {SORT_OPTIONS.map((opt) => {
+                  {BOOKINGS_SORT_OPTIONS.map((opt) => {
                     const isSelected = opt.value === query.sort;
                     return (
                       <button
@@ -262,32 +251,39 @@ export function BookingFilters({
                           setOpenKey(null);
                         }}
                         className={cn(
-                          'flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition-colors',
+                          'flex items-start gap-2.5 w-full px-3.5 py-2.5 text-left transition-colors',
                           isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
                         )}
                       >
                         <ArrowUpDown
                           className={cn(
-                            'size-3.5 shrink-0',
+                            'size-3.5 shrink-0 mt-0.5',
                             isSelected
                               ? 'text-sidebar-primary'
                               : 'text-slate-300',
                           )}
                           aria-hidden
                         />
-                        <span
-                          className={cn(
-                            'text-[13px]',
-                            isSelected
-                              ? 'font-semibold text-slate-800'
-                              : 'font-medium text-slate-600',
-                          )}
-                        >
-                          {opt.label}
+                        <span className="flex-1 min-w-0">
+                          <span
+                            className={cn(
+                              'block text-[13px]',
+                              isSelected
+                                ? 'font-semibold text-slate-800'
+                                : 'font-medium text-slate-600',
+                            )}
+                          >
+                            {opt.label}
+                          </span>
+                          {opt.description ? (
+                            <span className="block mt-0.5 text-[11px] leading-snug text-slate-400">
+                              {opt.description}
+                            </span>
+                          ) : null}
                         </span>
                         {isSelected && (
                           <Check
-                            className="ml-auto size-3.5 text-sidebar-primary shrink-0"
+                            className="mt-0.5 ml-auto size-3.5 text-sidebar-primary shrink-0"
                             aria-hidden
                           />
                         )}
@@ -334,43 +330,26 @@ export function BookingFilters({
                     </button>
                   )}
                 </div>
-                {/* Status list */}
-                <div className="py-1 max-h-[280px] overflow-y-auto">
-                  {ALL_STATUSES.map((value) => {
-                    const isChecked = activeStatuses.has(value);
-                    return (
-                      <label
-                        key={value}
-                        className="flex items-center gap-3 px-3.5 py-2 cursor-pointer hover:bg-slate-50 transition-colors"
-                      >
-                        {/* Custom checkbox */}
-                        <span
-                          className={cn(
-                            'flex justify-center items-center rounded border-2 transition-all size-4 shrink-0',
-                            isChecked
-                              ? 'bg-sidebar-primary border-sidebar-primary'
-                              : 'bg-white border-sidebar-border',
-                          )}
-                          aria-hidden
-                        >
-                          {isChecked && (
-                            <Check
-                              className="size-2.5 text-white"
-                              strokeWidth={3}
-                            />
-                          )}
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="sr-only"
-                          checked={isChecked}
-                          onChange={() => toggleStatus(value)}
-                          aria-label={statusLabel(value)}
-                        />
-                        <StatusBadge status={value} />
-                      </label>
-                    );
-                  })}
+                {/* Status list — Pending Documents with nested sub-stages */}
+                <div className="py-1 max-h-[min(60vh,320px)] overflow-y-auto">
+                  {bookingsStatusFilterRows().map((row) =>
+                    row.type === 'group' ? (
+                      <PendingDocumentsStatusGroup
+                        key={row.parent}
+                        parent={row.parent}
+                        children={row.children}
+                        activeStatuses={activeStatuses}
+                        onToggle={toggleStatus}
+                      />
+                    ) : (
+                      <StatusFilterOption
+                        key={row.value}
+                        value={row.value}
+                        isChecked={activeStatuses.has(row.value)}
+                        onToggle={() => toggleStatus(row.value)}
+                      />
+                    ),
+                  )}
                 </div>
               </DropdownPanel>
             )}
@@ -430,30 +409,30 @@ export function BookingFilters({
             )}
           </div>
 
-          {/* — Past completed (show COMPLETED with check-in before today) — */}
+          {/* — Show previous bookings (check-in before today, any status) — */}
           <button
             type="button"
             role="switch"
-            aria-checked={!query.hideStaleCompleted}
-            aria-label="Show completed bookings whose check-in was before today"
-            title="Completed stays with check-in before today (Manila) are hidden by default. Turn on to list them."
+            aria-checked={query.showPreviousBookings}
+            aria-label="Show previous bookings with check-in before today"
+            title="Bookings whose check-in was before today (Manila) are hidden by default. Turn on to list them (any status)."
             onClick={() =>
               onChange({
-                hideStaleCompleted: !query.hideStaleCompleted,
+                showPreviousBookings: !query.showPreviousBookings,
                 page: 1,
               })
             }
             className={cn(
               'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold',
               'border transition-all duration-100 select-none shrink-0 min-h-[44px]',
-              !query.hideStaleCompleted
+              query.showPreviousBookings
                 ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
                 : 'bg-white text-sidebar-muted border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             )}
           >
             <History className="size-3.5 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Past completed</span>
-            <span className="sm:hidden">Past</span>
+            <span className="hidden sm:inline">Show previous bookings</span>
+            <span className="sm:hidden">Previous</span>
           </button>
 
           {/* — Reset — */}
@@ -540,5 +519,119 @@ function TriOptions({
         })}
       </div>
     </>
+  );
+}
+
+// ─── Status filter rows ───────────────────────────────────────
+
+function StatusFilterCheckbox({
+  checked,
+  indeterminate,
+}: {
+  checked: boolean;
+  indeterminate?: boolean;
+}) {
+  return (
+    <span
+      className={cn(
+        'flex justify-center items-center rounded border-2 transition-all size-4 shrink-0',
+        checked || indeterminate
+          ? 'bg-sidebar-primary border-sidebar-primary'
+          : 'bg-white border-sidebar-border',
+      )}
+      aria-hidden
+    >
+      {indeterminate && !checked ? (
+        <span className="w-2 h-0.5 rounded-full bg-white" />
+      ) : checked ? (
+        <Check className="size-2.5 text-white" strokeWidth={3} />
+      ) : null}
+    </span>
+  );
+}
+
+function StatusFilterOption({
+  value,
+  isChecked,
+  onToggle,
+  nested = false,
+  indeterminate = false,
+}: {
+  value: AnyBookingStatus;
+  isChecked: boolean;
+  onToggle: () => void;
+  nested?: boolean;
+  indeterminate?: boolean;
+}) {
+  return (
+    <label
+      className={cn(
+        'flex items-center gap-3 py-2.5 min-h-[44px] cursor-pointer hover:bg-slate-50 transition-colors',
+        nested ? 'pl-9 pr-3.5' : 'px-3.5',
+      )}
+    >
+      <StatusFilterCheckbox
+        checked={isChecked}
+        indeterminate={indeterminate}
+      />
+      <input
+        type="checkbox"
+        className="sr-only"
+        checked={isChecked}
+        onChange={onToggle}
+        aria-label={statusLabel(value)}
+      />
+      <StatusBadge status={value} />
+    </label>
+  );
+}
+
+function PendingDocumentsStatusGroup({
+  parent,
+  children: subStatuses,
+  activeStatuses,
+  onToggle,
+}: {
+  parent: 'PENDING_DOCUMENTS';
+  children: readonly AnyBookingStatus[];
+  activeStatuses: Set<string>;
+  onToggle: (value: string) => void;
+}) {
+  const parentChecked = activeStatuses.has(parent);
+  const checkedChildCount = subStatuses.filter((s) =>
+    activeStatuses.has(s),
+  ).length;
+  const allChildrenChecked = checkedChildCount === subStatuses.length;
+  const parentIndeterminate =
+    (parentChecked && !allChildrenChecked) ||
+    (!parentChecked && checkedChildCount > 0);
+
+  return (
+    <div className="py-0.5">
+      <StatusFilterOption
+        value={parent}
+        isChecked={parentChecked}
+        indeterminate={parentIndeterminate}
+        onToggle={() => onToggle(parent)}
+      />
+      <div
+        className="ml-5 mr-2 border-l-2 border-amber-200/70"
+        role="group"
+        aria-label="Pending Documents sub-stages"
+      >
+        <p className="pl-4 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          Sub-stages
+        </p>
+        {subStatuses.map((value) => (
+          <StatusFilterOption
+            key={value}
+            value={value}
+            isChecked={activeStatuses.has(value)}
+            onToggle={() => onToggle(value)}
+            nested
+          />
+        ))}
+      </div>
+    </div>
   );
 }

@@ -7,16 +7,18 @@ import {
   formatBookingDate,
   formatBookingDateShort,
   formatMoney,
-  formatRelative,
 } from '@/features/admin/lib/formatters';
 import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
-import type { BookingRow } from '@/features/admin/lib/types';
+import { BookingStaySortControl } from '@/features/admin/components/BookingStaySortControl';
+import type { BookingRow, BookingsSort } from '@/features/admin/lib/types';
 
 type Props = {
   rows: BookingRow[];
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
+  sort: BookingsSort;
+  onStaySortChange: (next: BookingsSort) => void;
   /** Shown under the default empty hint when the list has no rows. */
   emptyExtraHint?: string | null;
 };
@@ -26,6 +28,8 @@ export function BookingTable({
   isLoading,
   error,
   isRefreshing,
+  sort,
+  onStaySortChange,
   emptyExtraHint,
 }: Props) {
   const navigate = useNavigate();
@@ -101,7 +105,13 @@ export function BookingTable({
             >
               <Th className="pr-3 pl-4 sm:pl-5">Status</Th>
               <Th className="px-3 sm:px-4">Guest</Th>
-              <Th className="px-3 sm:px-4">Stay</Th>
+              <Th className="px-3 sm:px-4">
+                <BookingStaySortControl
+                  sort={sort}
+                  onChange={onStaySortChange}
+                  variant="header"
+                />
+              </Th>
               <Th className="hidden px-3 text-right sm:px-4 md:table-cell">
                 Pax
               </Th>
@@ -110,9 +120,6 @@ export function BookingTable({
               </Th>
               <Th className="hidden px-3 text-right sm:px-4 lg:table-cell">
                 Amount
-              </Th>
-              <Th className="hidden px-3 text-right sm:px-4 md:table-cell">
-                Added
               </Th>
               <Th className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
                 <span className="sr-only">View</span>
@@ -279,13 +286,6 @@ function BookingTableRow({
           )}
         >
           {formatMoney(row.booking_rate)}
-        </span>
-      </td>
-
-      {/* Created */}
-      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle md:table-cell whitespace-nowrap">
-        <span className="text-[12px] text-slate-400">
-          {formatRelative(row.created_at)}
         </span>
       </td>
 

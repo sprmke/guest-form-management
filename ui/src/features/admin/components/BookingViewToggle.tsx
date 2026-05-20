@@ -16,6 +16,8 @@ const VIEW_OPTIONS: {
 type Props = {
   value: BookingView;
   onChange: (next: BookingView) => void;
+  /** Hide table view (mobile layout — cards/calendar only). */
+  hideTableView?: boolean;
   className?: string;
 };
 
@@ -25,7 +27,16 @@ type Props = {
  * `property-management-app/apps/web/src/features/dashboard/property/payments/components/PaymentsToolbar.tsx`,
  * styled to match this project's `FilterBtn` look.
  */
-export function BookingViewToggle({ value, onChange, className }: Props) {
+export function BookingViewToggle({
+  value,
+  onChange,
+  hideTableView = false,
+  className,
+}: Props) {
+  const options = hideTableView
+    ? VIEW_OPTIONS.filter((o) => o.value !== 'table')
+    : VIEW_OPTIONS;
+
   return (
     <div
       role="group"
@@ -35,7 +46,7 @@ export function BookingViewToggle({ value, onChange, className }: Props) {
         className,
       )}
     >
-      {VIEW_OPTIONS.map(({ value: v, label, Icon }) => {
+      {options.map(({ value: v, label, Icon }) => {
         const active = v === value;
         return (
           <button
