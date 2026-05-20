@@ -23,6 +23,8 @@ type Props = DateNavigationState & {
   isActive: boolean;
   /** Clear the date filter (sets `from`/`to` to null in URL state). */
   onClear: () => void;
+  /** Stretch trigger across available width (mobile filter card). */
+  fullWidth?: boolean;
 };
 
 const PRESET_OPTIONS: {
@@ -56,6 +58,7 @@ export function BookingDateRangeFilter({
   goToToday,
   isActive,
   onClear,
+  fullWidth = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -117,7 +120,13 @@ export function BookingDateRangeFilter({
     : 'Date';
 
   return (
-    <div ref={containerRef} className="flex items-center gap-1 shrink-0">
+    <div
+      ref={containerRef}
+      className={cn(
+        'flex items-center gap-1',
+        fullWidth ? 'w-full' : 'shrink-0',
+      )}
+    >
       {/* ← Prev period (preset modes only) */}
       {canNavigate && (
         <button
@@ -125,7 +134,7 @@ export function BookingDateRangeFilter({
           onClick={() => navigatePeriod('prev')}
           aria-label="Previous period"
           className={cn(
-            'inline-flex items-center justify-center rounded-lg min-w-[36px] min-h-[44px]',
+            'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
             'border bg-white text-sidebar-muted border-sidebar-border',
             'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             'transition-all duration-100',
@@ -136,7 +145,7 @@ export function BookingDateRangeFilter({
       )}
 
       {/* Trigger button + popover */}
-      <div className="relative">
+      <div className={cn('relative min-w-0', fullWidth && 'flex-1')}>
         <button
           type="button"
           onClick={() =>
@@ -147,8 +156,9 @@ export function BookingDateRangeFilter({
           aria-expanded={open || calendarOpen}
           aria-haspopup="dialog"
           className={cn(
-            'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold',
-            'border transition-all duration-100 whitespace-nowrap select-none min-h-[44px]',
+            'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2.5 text-[13px] font-semibold',
+            'border transition-all duration-100 select-none',
+            fullWidth ? 'w-full justify-center' : 'whitespace-nowrap',
             isActive || open || calendarOpen
               ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
               : 'bg-white text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
@@ -163,7 +173,14 @@ export function BookingDateRangeFilter({
             )}
             aria-hidden
           />
-          <span className="max-w-[180px] truncate">{triggerLabel}</span>
+          <span
+            className={cn(
+              'truncate',
+              fullWidth ? 'max-w-[min(100%,14rem)]' : 'max-w-[180px]',
+            )}
+          >
+            {triggerLabel}
+          </span>
           <ChevronDown
             className={cn(
               'size-3.5 shrink-0 transition-transform duration-150',
@@ -386,7 +403,7 @@ export function BookingDateRangeFilter({
           onClick={() => navigatePeriod('next')}
           aria-label="Next period"
           className={cn(
-            'inline-flex items-center justify-center rounded-lg min-w-[36px] min-h-[44px]',
+            'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
             'border bg-white text-sidebar-muted border-sidebar-border',
             'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             'transition-all duration-100',

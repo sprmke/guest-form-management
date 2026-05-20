@@ -52,11 +52,6 @@ export function BookingStaySortControl({
       >
         <Icon className="size-3.5 shrink-0" aria-hidden />
         Stay
-        {active && (
-          <span className="text-[11px] font-bold opacity-90">
-            {direction === 'asc' ? '↑' : '↓'}
-          </span>
-        )}
       </button>
     );
   }

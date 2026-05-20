@@ -1,12 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  ArrowUpDown,
-  Check,
-  ChevronDown,
-  History,
-  Search,
-  X,
-} from 'lucide-react';
+import { Check, ChevronDown, History, Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   bookingsStatusFilterRows,
@@ -16,16 +9,15 @@ import {
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { BookingDateRangeFilter } from '@/features/admin/components/BookingDateRangeFilter';
 import type { DateNavigationState } from '@/lib/dateNavigation';
-import {
-  BOOKINGS_SORT_OPTIONS,
-  bookingsSortButtonLabel,
-} from '@/features/admin/lib/bookingsSortOptions';
-import type { BookingsQuery } from '@/features/admin/lib/types';
+import { BookingsSortMenu } from '@/features/admin/components/BookingsSortMenu';
+import type { BookingsQuery, BookingsSort } from '@/features/admin/lib/types';
 
 type Props = {
   query: BookingsQuery;
   onChange: (patch: Partial<BookingsQuery>) => void;
   onReset: () => void;
+  sort: BookingsSort;
+  onSortChange: (sort: BookingsSort) => void;
   /** Date navigation state (presets + custom range) shared with parent. */
   dateNav: DateNavigationState;
   /** Clear the date filter — sets `from`/`to` to null and resets preset. */
@@ -38,11 +30,13 @@ function FilterBtn({
   count = 0,
   isOpen,
   onClick,
+  fullWidth = false,
 }: {
   label: string;
   count?: number;
   isOpen: boolean;
   onClick: () => void;
+  fullWidth?: boolean;
 }) {
   const active = count > 0;
   return (
@@ -52,8 +46,9 @@ function FilterBtn({
       aria-expanded={isOpen}
       aria-haspopup="listbox"
       className={cn(
-        'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold',
-        'border transition-all duration-100 whitespace-nowrap select-none min-h-[44px]',
+        'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
+        'min-h-[44px] select-none whitespace-nowrap transition-all duration-100',
+        fullWidth && 'w-full justify-center',
         active || isOpen
           ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
           : 'bg-white text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
@@ -113,6 +108,8 @@ export function BookingFilters({
   query,
   onChange,
   onReset,
+  sort,
+  onSortChange,
   dateNav,
   onClearDate,
 }: Props) {
@@ -174,288 +171,306 @@ export function BookingFilters({
 
   const isDirty = totalActiveFilters > 0;
 
+  const searchInput = (
+    placeholder: string,
+    inputClassName: string,
+    clearBtnClassName: string,
+  ) => (
+    <div className="relative min-w-0 flex-1">
+      <Search
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+        aria-hidden
+      />
+      <input
+        type="text"
+        role="searchbox"
+        inputMode="search"
+        enterKeyHint="search"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        placeholder={placeholder}
+        aria-label="Search bookings"
+        className={inputClassName}
+      />
+      {draft && (
+        <button
+          type="button"
+          onClick={() => setDraft('')}
+          className={clearBtnClassName}
+          aria-label="Clear search"
+        >
+          <X className="size-3.5" aria-hidden />
+        </button>
+      )}
+    </div>
+  );
+
+  const filterChips = (
+    <BookingFilterChips
+      query={query}
+      openKey={openKey}
+      activeStatuses={activeStatuses}
+      onToggle={toggle}
+      onChange={onChange}
+      onToggleStatus={toggleStatus}
+      onCloseDropdown={() => setOpenKey(null)}
+      previousLabel="full"
+    />
+  );
+
+  const cardStyle = {
+    border: '1px solid rgba(0,0,0,0.08)',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+  } as const;
+
   return (
-    <div
-      ref={containerRef}
-      className="bg-white rounded-xl"
-      style={{
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      }}
-    >
-      <div className="flex flex-col sm:flex-row gap-2 px-3 py-2.5">
-        {/* ── Search ──────────────────────────────────── */}
-        <div className="relative flex-1 min-w-0">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none size-4 text-slate-400"
-            aria-hidden
-          />
-          <input
-            type="text"
-            role="searchbox"
-            inputMode="search"
-            enterKeyHint="search"
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Search guests, email, phone, plate, pet, notes…"
-            aria-label="Search bookings"
-            className={cn(
-              'pl-9 w-full rounded-lg py-[7px] text-[13px] text-slate-700',
+    <div ref={containerRef}>
+      {/* Desktop — compact single-row toolbar (unchanged from pre-mobile-redesign) */}
+      <div className="hidden lg:block rounded-xl bg-white" style={cardStyle}>
+        <div className="flex gap-2 px-3 py-2.5">
+          {searchInput(
+            'Search guests, email, phone, plate, pet, notes…',
+            cn(
+              'w-full rounded-lg border border-slate-200 bg-slate-50 py-[7px] pl-9 text-[13px] text-slate-700',
               draft ? 'pr-10' : 'pr-3',
-              'border bg-slate-50 border-slate-200',
               'placeholder:text-slate-400',
-              'focus:outline-none focus:border-sidebar-primary focus:ring-2 focus:ring-sidebar-ring/20 focus:bg-white',
               'transition-all duration-150',
+              'focus:border-sidebar-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
+            ),
+            'absolute right-1.5 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600',
+          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            <div className="mx-0.5 h-5 w-px shrink-0 bg-slate-200" />
+            <BookingsSortMenu sort={sort} onChange={onSortChange} />
+            <BookingDateRangeFilter
+              {...dateNav}
+              isActive={isDateActive}
+              onClear={onClearDate}
+            />
+            {filterChips}
+            {isDirty && (
+              <>
+                <div className="mx-0.5 h-5 w-px shrink-0 bg-slate-200" />
+                <button
+                  type="button"
+                  onClick={onReset}
+                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2.5 py-2.5 text-[13px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="size-3.5" aria-hidden />
+                  Reset
+                </button>
+              </>
             )}
-          />
-          {draft && (
-            <button
-              type="button"
-              onClick={() => setDraft('')}
-              className="absolute right-1.5 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600"
-              aria-label="Clear search"
-            >
-              <X className="size-3.5" aria-hidden />
-            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile — labeled sections, full-width date, scrollable filter strip */}
+      <div
+        className="space-y-3 rounded-xl bg-white p-3 lg:hidden"
+        style={cardStyle}
+      >
+        <div>
+          {searchInput(
+            'Guests, email, phone, plate, pet…',
+            cn(
+              'h-10 min-h-[44px] w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 text-[13px] text-slate-700',
+              draft ? 'pr-11' : 'pr-3',
+              'placeholder:text-slate-400',
+              'transition-all duration-150',
+              'focus:border-sidebar-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
+            ),
+            'absolute right-1 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600',
           )}
         </div>
 
-        {/* ── Filter buttons — wrap on mobile to avoid overflow-x clipping dropdowns ── */}
-        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-          {/* Divider (desktop only) */}
-          <div className="hidden sm:block w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
-
-          {/* — Sort dropdown — */}
-          <div className="relative shrink-0">
-            <FilterBtn
-              label={bookingsSortButtonLabel(query.sort)}
-              count={0}
-              isOpen={openKey === 'sort'}
-              onClick={() => toggle('sort')}
-            />
-            {openKey === 'sort' && (
-              <DropdownPanel width="w-[min(90vw,20rem)] sm:w-80">
-                <div
-                  className="px-3.5 py-2.5"
-                  style={{ borderBottom: '1px solid #f1f5f9' }}
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Sort by
-                  </span>
-                </div>
-                <div className="py-1">
-                  {BOOKINGS_SORT_OPTIONS.map((opt) => {
-                    const isSelected = opt.value === query.sort;
-                    return (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => {
-                          onChange({ sort: opt.value, page: 1 });
-                          setOpenKey(null);
-                        }}
-                        className={cn(
-                          'flex items-start gap-2.5 w-full px-3.5 py-2.5 text-left transition-colors',
-                          isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
-                        )}
-                      >
-                        <ArrowUpDown
-                          className={cn(
-                            'size-3.5 shrink-0 mt-0.5',
-                            isSelected
-                              ? 'text-sidebar-primary'
-                              : 'text-slate-300',
-                          )}
-                          aria-hidden
-                        />
-                        <span className="flex-1 min-w-0">
-                          <span
-                            className={cn(
-                              'block text-[13px]',
-                              isSelected
-                                ? 'font-semibold text-slate-800'
-                                : 'font-medium text-slate-600',
-                            )}
-                          >
-                            {opt.label}
-                          </span>
-                          {opt.description ? (
-                            <span className="block mt-0.5 text-[11px] leading-snug text-slate-400">
-                              {opt.description}
-                            </span>
-                          ) : null}
-                        </span>
-                        {isSelected && (
-                          <Check
-                            className="mt-0.5 ml-auto size-3.5 text-sidebar-primary shrink-0"
-                            aria-hidden
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </DropdownPanel>
-            )}
-          </div>
-
-          {/* — Date range — presets (week/month/year) + custom calendar — */}
+        <div>
           <BookingDateRangeFilter
             {...dateNav}
             isActive={isDateActive}
             onClear={onClearDate}
+            fullWidth
           />
+        </div>
 
-          {/* — Status dropdown — */}
-          <div className="relative shrink-0">
-            <FilterBtn
-              label="Status"
-              count={query.status.length}
-              isOpen={openKey === 'status'}
-              onClick={() => toggle('status')}
-            />
-            {openKey === 'status' && (
-              <DropdownPanel width="w-72">
-                {/* Header */}
-                <div
-                  className="flex items-center justify-between px-3.5 py-2.5"
-                  style={{ borderBottom: '1px solid #f1f5f9' }}
-                >
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                    Filter by status
-                  </span>
-                  {activeStatuses.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => onChange({ status: [], page: 1 })}
-                      className="text-[12px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {/* Status list — Pending Documents with nested sub-stages */}
-                <div className="py-1 max-h-[min(60vh,320px)] overflow-y-auto">
-                  {bookingsStatusFilterRows().map((row) =>
-                    row.type === 'group' ? (
-                      <PendingDocumentsStatusGroup
-                        key={row.parent}
-                        parent={row.parent}
-                        children={row.children}
-                        activeStatuses={activeStatuses}
-                        onToggle={toggleStatus}
-                      />
-                    ) : (
-                      <StatusFilterOption
-                        key={row.value}
-                        value={row.value}
-                        isChecked={activeStatuses.has(row.value)}
-                        onToggle={() => toggleStatus(row.value)}
-                      />
-                    ),
-                  )}
-                </div>
-              </DropdownPanel>
-            )}
-          </div>
-
-          {/* — Pets dropdown — */}
-          <div className="relative shrink-0">
-            <FilterBtn
-              label="Pets"
-              count={query.hasPets !== null ? 1 : 0}
-              isOpen={openKey === 'pets'}
-              onClick={() => toggle('pets')}
-            />
-            {openKey === 'pets' && (
-              <DropdownPanel width="w-44">
-                <TriOptions
-                  label="Has pets"
-                  value={query.hasPets}
-                  options={[
-                    { label: 'Any', value: null },
-                    { label: 'With pets', value: true },
-                    { label: 'No pets', value: false },
-                  ]}
-                  onChange={(v) => {
-                    onChange({ hasPets: v, page: 1 });
-                    setOpenKey(null);
-                  }}
-                />
-              </DropdownPanel>
-            )}
-          </div>
-
-          {/* — Parking dropdown — */}
-          <div className="relative shrink-0">
-            <FilterBtn
-              label="Parking"
-              count={query.needParking !== null ? 1 : 0}
-              isOpen={openKey === 'parking'}
-              onClick={() => toggle('parking')}
-            />
-            {openKey === 'parking' && (
-              <DropdownPanel width="w-48">
-                <TriOptions
-                  label="Needs parking"
-                  value={query.needParking}
-                  options={[
-                    { label: 'Any', value: null },
-                    { label: 'Needs parking', value: true },
-                    { label: 'No parking needed', value: false },
-                  ]}
-                  onChange={(v) => {
-                    onChange({ needParking: v, page: 1 });
-                    setOpenKey(null);
-                  }}
-                />
-              </DropdownPanel>
-            )}
-          </div>
-
-          {/* — Show previous bookings (check-in before today, any status) — */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={query.showPreviousBookings}
-            aria-label="Show previous bookings with check-in before today"
-            title="By default, cancelled bookings and stays with check-in before today (Manila) are hidden. Turn on to include them."
-            onClick={() =>
-              onChange({
-                showPreviousBookings: !query.showPreviousBookings,
-                page: 1,
-              })
-            }
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold',
-              'border transition-all duration-100 select-none shrink-0 min-h-[44px]',
-              query.showPreviousBookings
-                ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
-                : 'bg-white text-sidebar-muted border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
-            )}
-          >
-            <History className="size-3.5 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Show previous bookings</span>
-            <span className="sm:hidden">Previous</span>
-          </button>
-
-          {/* — Reset — */}
-          {isDirty && (
-            <>
-              <div className="w-px h-5 bg-slate-200 shrink-0 mx-0.5" />
-              <button
-                type="button"
-                onClick={onReset}
-                className="inline-flex items-center gap-1 px-2.5 py-2.5 rounded-lg text-[13px] font-semibold text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0 min-h-[44px]"
-              >
-                <X className="size-3.5" aria-hidden />
-                Reset
-              </button>
-            </>
-          )}
+        <div className="grid w-full grid-cols-4 gap-2">
+          <BookingFilterChips
+            query={query}
+            openKey={openKey}
+            activeStatuses={activeStatuses}
+            onToggle={toggle}
+            onChange={onChange}
+            onToggleStatus={toggleStatus}
+            onCloseDropdown={() => setOpenKey(null)}
+            previousLabel="short"
+            fillWidth
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Shared filter chips (status / pets / parking / previous) ─
+function BookingFilterChips({
+  query,
+  openKey,
+  activeStatuses,
+  onToggle,
+  onChange,
+  onToggleStatus,
+  onCloseDropdown,
+  previousLabel,
+  fillWidth = false,
+}: {
+  query: BookingsQuery;
+  openKey: string | null;
+  activeStatuses: Set<string>;
+  onToggle: (key: string) => void;
+  onChange: (patch: Partial<BookingsQuery>) => void;
+  onToggleStatus: (v: string) => void;
+  onCloseDropdown: () => void;
+  previousLabel: 'full' | 'short';
+  fillWidth?: boolean;
+}) {
+  const chipWrap = fillWidth ? 'relative min-w-0' : 'relative shrink-0';
+
+  return (
+    <>
+      <div className={chipWrap}>
+        <FilterBtn
+          label="Status"
+          count={query.status.length}
+          isOpen={openKey === 'status'}
+          onClick={() => onToggle('status')}
+          fullWidth={fillWidth}
+        />
+        {openKey === 'status' && (
+          <DropdownPanel width="w-72">
+            <div
+              className="flex items-center justify-between px-3.5 py-2.5"
+              style={{ borderBottom: '1px solid #f1f5f9' }}
+            >
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                Filter by status
+              </span>
+              {activeStatuses.size > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onChange({ status: [], page: 1 })}
+                  className="text-[12px] font-semibold text-slate-400 transition-colors hover:text-slate-700"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <div className="max-h-[min(60vh,320px)] overflow-y-auto py-1">
+              {bookingsStatusFilterRows().map((row) =>
+                row.type === 'group' ? (
+                  <PendingDocumentsStatusGroup
+                    key={row.parent}
+                    parent={row.parent}
+                    children={row.children}
+                    activeStatuses={activeStatuses}
+                    onToggle={onToggleStatus}
+                  />
+                ) : (
+                  <StatusFilterOption
+                    key={row.value}
+                    value={row.value}
+                    isChecked={activeStatuses.has(row.value)}
+                    onToggle={() => onToggleStatus(row.value)}
+                  />
+                ),
+              )}
+            </div>
+          </DropdownPanel>
+        )}
+      </div>
+
+      <div className={chipWrap}>
+        <FilterBtn
+          label="Pets"
+          count={query.hasPets !== null ? 1 : 0}
+          isOpen={openKey === 'pets'}
+          onClick={() => onToggle('pets')}
+          fullWidth={fillWidth}
+        />
+        {openKey === 'pets' && (
+          <DropdownPanel width="w-44">
+            <TriOptions
+              label="Has pets"
+              value={query.hasPets}
+              options={[
+                { label: 'Any', value: null },
+                { label: 'With pets', value: true },
+                { label: 'No pets', value: false },
+              ]}
+              onChange={(v) => {
+                onChange({ hasPets: v, page: 1 });
+                onCloseDropdown();
+              }}
+            />
+          </DropdownPanel>
+        )}
+      </div>
+
+      <div className={chipWrap}>
+        <FilterBtn
+          label="Parking"
+          count={query.needParking !== null ? 1 : 0}
+          isOpen={openKey === 'parking'}
+          onClick={() => onToggle('parking')}
+          fullWidth={fillWidth}
+        />
+        {openKey === 'parking' && (
+          <DropdownPanel width="w-48">
+            <TriOptions
+              label="Needs parking"
+              value={query.needParking}
+              options={[
+                { label: 'Any', value: null },
+                { label: 'Needs parking', value: true },
+                { label: 'No parking needed', value: false },
+              ]}
+              onChange={(v) => {
+                onChange({ needParking: v, page: 1 });
+                onCloseDropdown();
+              }}
+            />
+          </DropdownPanel>
+        )}
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={query.showPreviousBookings}
+        aria-label="Show previous bookings with check-in before today"
+        title="By default, cancelled bookings and stays with check-in before today (Manila) are hidden. Turn on to include them."
+        onClick={() =>
+          onChange({
+            showPreviousBookings: !query.showPreviousBookings,
+            page: 1,
+          })
+        }
+        className={cn(
+          'inline-flex min-h-[44px] select-none items-center rounded-lg border text-[13px] font-semibold transition-all duration-100',
+          fillWidth ? 'w-full justify-center px-2.5 py-2.5' : 'shrink-0',
+          !fillWidth &&
+            (previousLabel === 'full'
+              ? 'gap-1.5 px-3 py-2.5'
+              : 'min-w-[44px] justify-center px-2.5 py-2.5'),
+          fillWidth && previousLabel === 'full' && 'gap-1.5 px-3 py-2.5',
+          query.showPreviousBookings
+            ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
+            : 'border-sidebar-border bg-white text-sidebar-muted hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+        )}
+      >
+        <History className="size-4 shrink-0" aria-hidden />
+        {previousLabel === 'full' && 'Show previous bookings'}
+      </button>
+    </>
   );
 }
 

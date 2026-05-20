@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import {
-  CalendarPlus,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-} from 'lucide-react';
+import { CalendarPlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { useBookings } from '@/features/admin/hooks/useBookings';
@@ -15,6 +10,11 @@ import {
 } from '@/features/admin/hooks/useDateNavigation';
 import { fromIsoDate } from '@/lib/dateNavigation';
 import { BookingFilters } from '@/features/admin/components/BookingFilters';
+import {
+  BookingsListControls,
+  BookingsListPagination,
+  BookingsListSummary,
+} from '@/features/admin/components/BookingsListControls';
 import { BookingTable } from '@/features/admin/components/BookingTable';
 import { BookingCardGrid } from '@/features/admin/components/BookingCardGrid';
 import { BookingCalendarView } from '@/features/admin/components/BookingCalendarView';
@@ -22,7 +22,6 @@ import {
   BookingViewToggle,
   type BookingView,
 } from '@/features/admin/components/BookingViewToggle';
-import { BookingStaySortControl } from '@/features/admin/components/BookingStaySortControl';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import {
   DEFAULT_BOOKINGS_QUERY,
@@ -255,6 +254,16 @@ export function BookingsListPage() {
     [patch],
   );
 
+  const listSummaryProps = {
+    isLoading,
+    isFetching,
+    total,
+    startIdx,
+    endIdx,
+    rowsLength: rows.length,
+    view,
+  };
+
   return (
     <AdminLayout
       title="Bookings"
@@ -297,54 +306,20 @@ export function BookingsListPage() {
           query={query}
           onChange={patch}
           onReset={resetFilters}
+          sort={query.sort}
+          onSortChange={handleStaySortChange}
           dateNav={dateNav}
           onClearDate={handleClearDate}
         />
 
-        {/* Meta bar — count + view toggle + page size */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
-          <p className="text-[13px] text-slate-500">
-            {isLoading ? (
-              <span className="inline-block w-28 h-3 rounded-full bg-slate-200 animate-pulse" />
-            ) : total === 0 ? (
-              'No bookings found'
-            ) : view === 'calendar' ? (
-              <>
-                <span className="font-bold text-slate-700">
-                  {rows.length.toLocaleString()}
-                </span>
-                <span className="ml-1.5 text-slate-400">
-                  {rows.length === 1 ? 'booking' : 'bookings'} in view
-                </span>
-                {total > rows.length && (
-                  <span className="ml-1.5 text-slate-300">
-                    of {total.toLocaleString()}
-                  </span>
-                )}
-                {isFetching && !isLoading && (
-                  <span className="ml-2 text-slate-300">· updating…</span>
-                )}
-              </>
-            ) : (
-              <>
-                <span className="font-bold text-slate-700">
-                  {startIdx.toLocaleString()}
-                </span>
-                <span className="mx-1 text-slate-300">–</span>
-                <span className="font-bold text-slate-700">
-                  {endIdx.toLocaleString()}
-                </span>
-                <span className="mx-1.5 text-slate-400">of</span>
-                <span className="font-bold text-slate-700">
-                  {total.toLocaleString()}
-                </span>
-                <span className="ml-1.5 text-slate-400">bookings</span>
-                {isFetching && !isLoading && (
-                  <span className="ml-2 text-slate-300">· updating…</span>
-                )}
-              </>
-            )}
-          </p>
+        {/* Mobile — booking count directly under filters */}
+        <div className="px-0.5 lg:hidden">
+          <BookingsListSummary {...listSummaryProps} />
+        </div>
+
+        {/* Desktop — count + view + per page */}
+        <div className="hidden flex-wrap items-center justify-between gap-2 px-0.5 lg:flex">
+          <BookingsListSummary {...listSummaryProps} />
 
           <div className="flex items-center gap-2 sm:gap-3">
             <BookingViewToggle
@@ -352,17 +327,15 @@ export function BookingsListPage() {
               onChange={setView}
               hideTableView={isMobileLayout}
             />
-
             {view !== 'calendar' && (
               <label className="flex items-center gap-2 text-[12px] text-slate-500">
-                <span className="hidden sm:inline">Per page</span>
                 <select
                   value={query.limit}
                   onChange={(e) =>
                     patch({ limit: Number(e.target.value), page: 1 })
                   }
                   aria-label="Items per page"
-                  className="h-9 rounded-lg border border-sidebar-border bg-white px-2 text-[12px] font-semibold text-sidebar-foreground focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20 focus:border-sidebar-primary"
+                  className="h-9 rounded-lg border border-sidebar-border bg-white px-2 text-[12px] font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
                 >
                   {PAGE_SIZES.map((n) => (
                     <option key={n} value={n}>
@@ -373,6 +346,20 @@ export function BookingsListPage() {
               </label>
             )}
           </div>
+        </div>
+
+        {/* Mobile — sort, view, per page */}
+        <div className="lg:hidden">
+          <BookingsListControls
+            view={view}
+            onViewChange={setView}
+            hideTableView={isMobileLayout}
+            sort={query.sort}
+            onSortChange={handleStaySortChange}
+            limit={query.limit}
+            onLimitChange={(limit) => patch({ limit, page: 1 })}
+            showPerPage={view !== 'calendar'}
+          />
         </div>
 
         {/* Active view */}
@@ -388,22 +375,13 @@ export function BookingsListPage() {
           />
         )}
         {view === 'card' && (
-          <div className="space-y-3">
-            <div className="flex justify-end px-0.5">
-              <BookingStaySortControl
-                sort={query.sort}
-                onChange={handleStaySortChange}
-                variant="bar"
-              />
-            </div>
-            <BookingCardGrid
-              rows={rows}
-              isLoading={isLoading}
-              error={error ? (error as Error).message : null}
-              isRefreshing={isFetching}
-              emptyExtraHint={listEmptyExtraHint}
-            />
-          </div>
+          <BookingCardGrid
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+            emptyExtraHint={listEmptyExtraHint}
+          />
         )}
         {view === 'calendar' && (
           <BookingCalendarView
@@ -417,99 +395,15 @@ export function BookingsListPage() {
 
         {/* Pagination — hidden in calendar view (range already filters scope) */}
         {showPagination && (
-          <div className="flex items-center justify-center gap-1 pt-1">
-            <PaginationBtn
-              onClick={() => patch({ page: Math.max(1, query.page - 1) })}
-              disabled={query.page <= 1 || isLoading}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="size-3.5" aria-hidden />
-              <span className="hidden sm:inline">Prev</span>
-            </PaginationBtn>
-
-            <div className="flex items-center gap-0.5">
-              {pageItems.map((item, idx) =>
-                item === 'ellipsis' ? (
-                  <span
-                    key={`dots-${idx}`}
-                    className="w-8 text-center text-[12px] text-slate-400 select-none"
-                  >
-                    …
-                  </span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => patch({ page: item })}
-                    aria-label={`Go to page ${item}`}
-                    aria-current={item === query.page ? 'page' : undefined}
-                    className={cn(
-                      'size-8 rounded-lg text-[13px] font-semibold transition-all duration-100',
-                      item === query.page
-                        ? 'text-sidebar-primary-foreground'
-                        : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    )}
-                    style={
-                      item === query.page
-                        ? {
-                            background: 'hsl(var(--sidebar-primary))',
-                            boxShadow:
-                              '0 1px 4px hsl(var(--sidebar-primary) / 0.3)',
-                          }
-                        : undefined
-                    }
-                  >
-                    {item}
-                  </button>
-                ),
-              )}
-            </div>
-
-            <PaginationBtn
-              onClick={() =>
-                patch({ page: Math.min(pageCount, query.page + 1) })
-              }
-              disabled={query.page >= pageCount || isLoading}
-              aria-label="Next page"
-            >
-              <span className="hidden sm:inline">Next</span>
-              <ChevronRight className="size-3.5" aria-hidden />
-            </PaginationBtn>
-          </div>
+          <BookingsListPagination
+            page={query.page}
+            pageCount={pageCount}
+            pageItems={pageItems}
+            isLoading={isLoading}
+            onPageChange={(page) => patch({ page })}
+          />
         )}
       </div>
     </AdminLayout>
-  );
-}
-
-// ─── Shared pagination button ────────────────────────────────
-
-function PaginationBtn({
-  children,
-  onClick,
-  disabled,
-  'aria-label': ariaLabel,
-}: {
-  children: React.ReactNode;
-  onClick: () => void;
-  disabled?: boolean;
-  'aria-label': string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={ariaLabel}
-      className={cn(
-        'inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold',
-        'border border-sidebar-border bg-white text-sidebar-muted',
-        'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground hover:border-sidebar-primary/30',
-        'transition-all duration-100',
-        'disabled:opacity-40 disabled:pointer-events-none',
-      )}
-    >
-      {children}
-    </button>
   );
 }

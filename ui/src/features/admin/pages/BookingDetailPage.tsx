@@ -23,7 +23,7 @@
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -91,7 +91,20 @@ export function BookingDetailPage() {
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const detailsPanelRef = useRef<HTMLDivElement>(null);
   const isBelowLg = useIsBelowLg();
+
+  const scrollDetailsIntoView = useCallback(() => {
+    // Wait for panel to un-hide and re-order in the layout before scrolling.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        detailsPanelRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    });
+  }, []);
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -117,6 +130,27 @@ export function BookingDetailPage() {
 
   const showMobileDetailCards =
     !isMobileWorkflowFirst || detailsExpanded || editMode;
+
+  /** Expanded details sit between summary and Progress on mobile (not below the fold). */
+  const mobileDetailsBeforeWorkflow =
+    isMobileWorkflowFirst && showMobileDetailCards;
+
+  useEffect(() => {
+    if (!isMobileWorkflowFirst || !showMobileDetailCards) return;
+    scrollDetailsIntoView();
+  }, [
+    isMobileWorkflowFirst,
+    showMobileDetailCards,
+    scrollDetailsIntoView,
+  ]);
+
+  const handleToggleDetails = useCallback(() => {
+    setDetailsExpanded((was) => !was);
+  }, []);
+
+  const handleStartEdit = useCallback(() => {
+    setEditMode(true);
+  }, []);
 
   const title =
     booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
@@ -178,18 +212,21 @@ export function BookingDetailPage() {
                     booking={booking}
                     editMode={editMode}
                     detailsExpanded={detailsExpanded}
-                    onToggleDetails={() => setDetailsExpanded((v) => !v)}
-                    onEdit={() => setEditMode(true)}
+                    onToggleDetails={handleToggleDetails}
+                    onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
                   />
                 )}
 
                 {/* ── Full booking details (collapsible on mobile) ───────────── */}
                 <div
+                  ref={detailsPanelRef}
                   id="booking-detail-full-panel"
                   className={cn(
                     'flex-1 min-w-0 space-y-4',
-                    isMobileWorkflowFirst && 'order-3 lg:order-none',
+                    isMobileWorkflowFirst &&
+                      (mobileDetailsBeforeWorkflow ? 'order-2' : 'order-3'),
+                    isMobileWorkflowFirst && 'lg:order-none',
                     isMobileWorkflowFirst &&
                       !showMobileDetailCards &&
                       'hidden lg:block',
@@ -198,7 +235,7 @@ export function BookingDetailPage() {
                   <BookingHeader
                     booking={booking}
                     editMode={editMode}
-                    onEdit={() => setEditMode(true)}
+                    onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
                     className={cn(isMobileWorkflowFirst && 'hidden lg:block')}
                   />
@@ -257,7 +294,9 @@ export function BookingDetailPage() {
                 <div
                   className={cn(
                     'w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]',
-                    isMobileWorkflowFirst && 'order-2 lg:order-none',
+                    isMobileWorkflowFirst &&
+                      (mobileDetailsBeforeWorkflow ? 'order-3' : 'order-2'),
+                    isMobileWorkflowFirst && 'lg:order-none',
                   )}
                 >
                   <PendingReviewWorkflowGate booking={booking}>

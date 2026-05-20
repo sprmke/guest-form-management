@@ -134,25 +134,30 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Top row: guest + status (card is the link — no arrow affordance) */}
-      <div className="flex items-start justify-between gap-2 p-4 pb-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <GuestAvatar
-            name={name}
-            validIdUrl={row.valid_id_url}
-            size="lg"
-            className="shrink-0"
-          />
-          <div className="min-w-0">
-            <p className="text-[14px] font-bold text-slate-800 leading-tight truncate">
-              {name}
-            </p>
-            <p className="mt-[2px] text-[11px] text-slate-400 leading-tight truncate">
-              {row.guest_email}
-            </p>
+      {/* Top: mobile = status beside guest; sm+ = status above avatar + name */}
+      <div className="space-y-4 p-4 pb-3">
+        <StatusBadge
+          status={row.status}
+          className="w-fit max-w-full"
+        />
+        <div className="flex items-start justify-between gap-2 sm:justify-start">
+          <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-initial">
+            <GuestAvatar
+              name={name}
+              validIdUrl={row.valid_id_url}
+              size="lg"
+              className="shrink-0"
+            />
+            <div className="min-w-0">
+              <p className="text-[14px] font-bold leading-tight text-slate-800 truncate">
+                {name}
+              </p>
+              <p className="mt-[2px] text-[11px] leading-tight text-slate-400 truncate">
+                {row.guest_email}
+              </p>
+            </div>
           </div>
         </div>
-        <StatusBadge status={row.status} className="shrink-0" />
       </div>
 
       {/* Body: stay */}

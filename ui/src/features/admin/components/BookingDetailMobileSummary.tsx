@@ -9,7 +9,6 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { formatBookingDate } from '@/features/admin/lib/formatters';
 import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
@@ -64,9 +63,6 @@ export function BookingDetailMobileSummary({
               {primary}
             </p>
           )}
-          <div className="mt-2">
-            <StatusBadge status={booking.status} />
-          </div>
         </div>
         {editMode ? (
           <button
