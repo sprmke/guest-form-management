@@ -261,6 +261,8 @@ export type GmailApprovalBackfillInput = {
   lookbackDays?: number;
   limitBookings?: number;
   maxMessagesPerKind?: number;
+  /** When set, only process this booking (booking detail historical backfill). */
+  bookingId?: string;
 };
 
 export type GmailApprovalBackfillResult = {
@@ -279,7 +281,7 @@ export type GmailApprovalBackfillResult = {
   failed?: number;
 };
 
-export function useRunGmailApprovalBackfill() {
+export function useRunGmailApprovalBackfill(invalidateBookingId?: string) {
   const qc = useQueryClient();
 
   return useMutation({
@@ -312,7 +314,13 @@ export function useRunGmailApprovalBackfill() {
       }
       return json;
     },
-    onSuccess: async () => {
+    onSuccess: async (_data, variables) => {
+      const bookingId = variables.bookingId ?? invalidateBookingId;
+      if (bookingId) {
+        await qc.invalidateQueries({
+          queryKey: BOOKING_QUERY_KEY(bookingId),
+        });
+      }
       await qc.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY });
     },
   });
