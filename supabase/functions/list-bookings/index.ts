@@ -6,8 +6,8 @@
  * - Status multi-filter
  * - Date-range filter on check_in_date (converted from MM-DD-YYYY for correct sort)
  * - has_pets / need_parking boolean filters
- * - Default sort: check_in_date ASC (Q5.1)
- * - Default filter: hide stale COMPLETED (Q5.1)
+ * - Default sort: status_priority ASC (workflow order), then check-in proximity for review/docs
+ * - Default filter: hide check-in before today (any status); `show_previous_bookings=true` to include
  *
  * Trigger:  GET /functions/v1/list-bookings
  * Auth:     verify_jwt = true (admin only)
@@ -38,8 +38,11 @@ serve(async (req) => {
       p.get('has_pets') === 'true' ? true : p.get('has_pets') === 'false' ? false : null;
     const needParking =
       p.get('need_parking') === 'true' ? true : p.get('need_parking') === 'false' ? false : null;
-    const hideStaleCompleted = p.get('hide_stale_completed') !== 'false'; // default true
-    const sort = (p.get('sort') ?? 'check_in_date:asc') as
+    const showPreviousBookings =
+      p.get('show_previous_bookings') === 'true' ||
+      p.get('hide_stale_completed') === 'false'; // legacy alias
+    const sort = (p.get('sort') ?? 'status_priority:asc') as
+      | 'status_priority:asc'
       | 'check_in_date:asc'
       | 'check_in_date:desc'
       | 'created_at:asc'
@@ -57,7 +60,7 @@ serve(async (req) => {
       sort,
       page,
       limit,
-      hideStaleCompleted,
+      showPreviousBookings,
     });
 
     return new Response(

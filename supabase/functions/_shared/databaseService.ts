@@ -6,6 +6,12 @@ import {
 } from './statusMachine.ts'
 import { UploadService } from './uploadService.ts'
 import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
+import {
+  checkInDateToIso,
+  compareBookingsForListSort,
+  manilaTodayIso,
+  type BookingsListSort,
+} from './bookingsListSort.ts'
 
 export class DatabaseService {
   private static supabase = createClient(
@@ -453,11 +459,16 @@ export class DatabaseService {
     to?: string | null;     // YYYY-MM-DD
     hasPets?: boolean | null;
     needParking?: boolean | null;
-    sort?: 'check_in_date:asc' | 'check_in_date:desc' | 'created_at:asc' | 'created_at:desc';
+    sort?:
+      | 'status_priority:asc'
+      | 'check_in_date:asc'
+      | 'check_in_date:desc'
+      | 'created_at:asc'
+      | 'created_at:desc';
     page?: number;
     limit?: number;
-    /** When true, hide COMPLETED rows whose check_in_date < today (Manila). */
-    hideStaleCompleted?: boolean;
+    /** When true, include rows whose check_in_date < today (Manila), any status. */
+    showPreviousBookings?: boolean;
   }) {
     const {
       q = '',
@@ -466,16 +477,13 @@ export class DatabaseService {
       to = null,
       hasPets = null,
       needParking = null,
-      sort = 'check_in_date:asc',
+      sort = 'status_priority:asc',
       page = 1,
       limit = 25,
-      hideStaleCompleted = true,
+      showPreviousBookings = false,
     } = params;
 
-    // Today in Asia/Manila (YYYY-MM-DD)
-    const todayManila = new Date(
-      new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })
-    ).toISOString().slice(0, 10);
+    const todayManila = manilaTodayIso();
 
     let request = this.supabase
       .from('guest_submissions')
@@ -538,41 +546,25 @@ export class DatabaseService {
 
     let rows = (allData ?? []) as any[];
 
-    // Helper: convert MM-DD-YYYY → YYYY-MM-DD for sorting
-    const toISO = (dateStr: string): string => {
-      if (!dateStr) return '';
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-        const [m, d, y] = dateStr.split('-');
-        return `${y}-${m}-${d}`;
-      }
-      return dateStr;
-    };
-
     // Date-range filter (check_in_date in YYYY-MM-DD)
     if (from) {
-      rows = rows.filter((r) => toISO(r.check_in_date) >= from);
+      rows = rows.filter((r) => checkInDateToIso(r.check_in_date) >= from);
     }
     if (to) {
-      rows = rows.filter((r) => toISO(r.check_in_date) <= to);
+      rows = rows.filter((r) => checkInDateToIso(r.check_in_date) <= to);
     }
 
-    // Hide stale COMPLETED rows (check_in_date strictly before today, Q5.1)
-    if (hideStaleCompleted) {
-      rows = rows.filter((r) => {
-        if (r.status !== 'COMPLETED') return true;
-        return toISO(r.check_in_date) >= todayManila;
-      });
+    // Hide past stays (check-in strictly before today) unless explicitly included
+    if (!showPreviousBookings) {
+      rows = rows.filter(
+        (r) => checkInDateToIso(r.check_in_date) >= todayManila,
+      );
     }
 
-    // Sort
-    const [sortCol, sortDir] = sort.split(':') as [string, 'asc' | 'desc'];
-    rows.sort((a, b) => {
-      const aVal = sortCol === 'check_in_date' ? toISO(a.check_in_date) : a.created_at;
-      const bVal = sortCol === 'check_in_date' ? toISO(b.check_in_date) : b.created_at;
-      const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
+    const listSort = sort as BookingsListSort;
+    rows.sort((a, b) =>
+      compareBookingsForListSort(a, b, listSort, todayManila)
+    );
 
     // Paginate
     const total = rows.length;
