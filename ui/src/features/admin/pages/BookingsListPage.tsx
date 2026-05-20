@@ -22,6 +22,8 @@ import {
   BookingViewToggle,
   type BookingView,
 } from '@/features/admin/components/BookingViewToggle';
+import { BookingStaySortControl } from '@/features/admin/components/BookingStaySortControl';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import {
   DEFAULT_BOOKINGS_QUERY,
   type BookingsQuery,
@@ -46,6 +48,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
   const sortParam = (sp.get('sort') ??
     DEFAULT_BOOKINGS_QUERY.sort) as BookingsSort;
   const VALID_SORTS: BookingsSort[] = [
+    'status_priority:asc',
     'check_in_date:asc',
     'check_in_date:desc',
     'created_at:asc',
@@ -61,7 +64,9 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
-    hideStaleCompleted: sp.get('hideStaleCompleted') !== 'false',
+    showPreviousBookings:
+      sp.get('showPreviousBookings') === 'true' ||
+      sp.get('hideStaleCompleted') === 'false',
     sort,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
     limit: (PAGE_SIZES as ReadonlyArray<number>).includes(limit)
@@ -70,9 +75,16 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
   };
 }
 
-function parseViewFromParams(sp: URLSearchParams): BookingView {
+function parseViewFromParams(
+  sp: URLSearchParams,
+  isMobileLayout: boolean,
+): BookingView {
   const v = sp.get('view') as BookingView | null;
-  return v && VIEWS.includes(v) ? v : 'table';
+  if (v && VIEWS.includes(v)) {
+    if (isMobileLayout && v === 'table') return 'card';
+    return v;
+  }
+  return isMobileLayout ? 'card' : 'table';
 }
 
 function writeQueryToParams(
@@ -90,7 +102,10 @@ function writeQueryToParams(
   set('to', q.to);
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
-  set('hideStaleCompleted', q.hideStaleCompleted === false ? 'false' : null);
+  set(
+    'showPreviousBookings',
+    q.showPreviousBookings ? 'true' : null,
+  );
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
   set(
@@ -126,11 +141,29 @@ function buildPageItems(current: number, total: number): PageItem[] {
 export function BookingsListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobileLayout = useIsBelowLg();
   const query = useMemo(
     () => parseQueryFromParams(searchParams),
     [searchParams],
   );
-  const view = useMemo(() => parseViewFromParams(searchParams), [searchParams]);
+  const view = useMemo(
+    () => parseViewFromParams(searchParams, isMobileLayout),
+    [searchParams, isMobileLayout],
+  );
+
+  // Table is desktop-only; switch away live when the viewport narrows.
+  useEffect(() => {
+    if (!isMobileLayout || view !== 'table') return;
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        sp.set('view', 'card');
+        sp.delete('page');
+        return sp;
+      },
+      { replace: true },
+    );
+  }, [isMobileLayout, view, setSearchParams]);
 
   // Hydrate date navigation from URL `from`/`to` (if present).
   // The hook then emits ISO strings back via `useSyncDateRangeWithQuery`
@@ -211,9 +244,16 @@ export function BookingsListPage() {
   const showPagination = view !== 'calendar' && pageCount > 1;
 
   const listEmptyExtraHint =
-    query.hideStaleCompleted && !isLoading && total === 0
-      ? 'Tip: turn on “Past completed” to include finished stays whose check-in was before today (Asia/Manila). Also confirm the date range includes that stay’s check-in month.'
+    !query.showPreviousBookings && !isLoading && total === 0
+      ? 'Tip: turn on “Show previous bookings” to include stays whose check-in was before today (Asia/Manila), any status. Also confirm the date range includes that stay’s check-in month.'
       : null;
+
+  const showTableView = view === 'table' && !isMobileLayout;
+
+  const handleStaySortChange = useCallback(
+    (next: BookingsSort) => patch({ sort: next, page: 1 }),
+    [patch],
+  );
 
   return (
     <AdminLayout
@@ -307,7 +347,11 @@ export function BookingsListPage() {
           </p>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <BookingViewToggle value={view} onChange={setView} />
+            <BookingViewToggle
+              value={view}
+              onChange={setView}
+              hideTableView={isMobileLayout}
+            />
 
             {view !== 'calendar' && (
               <label className="flex items-center gap-2 text-[12px] text-slate-500">
@@ -332,23 +376,34 @@ export function BookingsListPage() {
         </div>
 
         {/* Active view */}
-        {view === 'table' && (
+        {showTableView && (
           <BookingTable
             rows={rows}
             isLoading={isLoading}
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
+            sort={query.sort}
+            onStaySortChange={handleStaySortChange}
             emptyExtraHint={listEmptyExtraHint}
           />
         )}
         {view === 'card' && (
-          <BookingCardGrid
-            rows={rows}
-            isLoading={isLoading}
-            error={error ? (error as Error).message : null}
-            isRefreshing={isFetching}
-            emptyExtraHint={listEmptyExtraHint}
-          />
+          <div className="space-y-3">
+            <div className="flex justify-end px-0.5">
+              <BookingStaySortControl
+                sort={query.sort}
+                onChange={handleStaySortChange}
+                variant="bar"
+              />
+            </div>
+            <BookingCardGrid
+              rows={rows}
+              isLoading={isLoading}
+              error={error ? (error as Error).message : null}
+              isRefreshing={isFetching}
+              emptyExtraHint={listEmptyExtraHint}
+            />
+          </div>
         )}
         {view === 'calendar' && (
           <BookingCalendarView
