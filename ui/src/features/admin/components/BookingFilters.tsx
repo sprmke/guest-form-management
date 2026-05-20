@@ -191,13 +191,17 @@ export function BookingFilters({
             aria-hidden
           />
           <input
-            type="search"
+            type="text"
+            role="searchbox"
+            inputMode="search"
+            enterKeyHint="search"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder="Search guests, email, phone, plate, pet, notes…"
             aria-label="Search bookings"
             className={cn(
-              'pr-8 pl-9 w-full rounded-lg py-[7px] text-[13px] text-slate-700',
+              'pl-9 w-full rounded-lg py-[7px] text-[13px] text-slate-700',
+              draft ? 'pr-10' : 'pr-3',
               'border bg-slate-50 border-slate-200',
               'placeholder:text-slate-400',
               'focus:outline-none focus:border-sidebar-primary focus:ring-2 focus:ring-sidebar-ring/20 focus:bg-white',
@@ -208,10 +212,10 @@ export function BookingFilters({
             <button
               type="button"
               onClick={() => setDraft('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-slate-400 hover:text-slate-600 transition-colors"
+              className="absolute right-1.5 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600"
               aria-label="Clear search"
             >
-              <X className="size-3.5" />
+              <X className="size-3.5" aria-hidden />
             </button>
           )}
         </div>
@@ -415,7 +419,7 @@ export function BookingFilters({
             role="switch"
             aria-checked={query.showPreviousBookings}
             aria-label="Show previous bookings with check-in before today"
-            title="Bookings whose check-in was before today (Manila) are hidden by default. Turn on to list them (any status)."
+            title="By default, cancelled bookings and stays with check-in before today (Manila) are hidden. Turn on to include them."
             onClick={() =>
               onChange({
                 showPreviousBookings: !query.showPreviousBookings,
@@ -619,9 +623,6 @@ function PendingDocumentsStatusGroup({
         role="group"
         aria-label="Pending Documents sub-stages"
       >
-        <p className="pl-4 pt-1 pb-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-          Sub-stages
-        </p>
         {subStatuses.map((value) => (
           <StatusFilterOption
             key={value}

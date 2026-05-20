@@ -41,6 +41,17 @@ export function checkInDateToIso(dateStr: string | null | undefined): string {
   return dateStr;
 }
 
+const CANCELLED_STATUSES = new Set(['CANCELLED', 'canceled']);
+
+/** Default `/bookings` list visibility when **Show previous bookings** is off. */
+export function matchesDefaultBookingsListVisibility(
+  row: { status: string; check_in_date: string },
+  todayManila: string,
+): boolean {
+  if (CANCELLED_STATUSES.has(row.status)) return false;
+  return checkInDateToIso(row.check_in_date) >= todayManila;
+}
+
 export function manilaTodayIso(): string {
   return new Date(
     new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }),

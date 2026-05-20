@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
+import { Car, Dog, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
@@ -7,7 +7,6 @@ import {
   formatBookingDate,
   formatBookingDateShort,
   formatMoney,
-  formatRelative,
 } from '@/features/admin/lib/formatters';
 import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
@@ -135,9 +134,9 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
         boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
       }}
     >
-      {/* Top row: avatar + status */}
-      <div className="flex items-start justify-between gap-3 p-4 pb-3">
-        <div className="flex items-center gap-3 min-w-0">
+      {/* Top row: guest + status (card is the link — no arrow affordance) */}
+      <div className="flex items-start justify-between gap-2 p-4 pb-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <GuestAvatar
             name={name}
             validIdUrl={row.valid_id_url}
@@ -153,24 +152,11 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
             </p>
           </div>
         </div>
-        <span
-          aria-hidden
-          className={cn(
-            'inline-flex items-center justify-center rounded-lg size-8',
-            'text-slate-400 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-visible:opacity-100',
-            'transition-opacity duration-150',
-          )}
-        >
-          <ArrowUpRight className="size-4" />
-        </span>
+        <StatusBadge status={row.status} className="shrink-0" />
       </div>
 
-      {/* Body: status + stay */}
-      <div className="px-4 pb-3 space-y-2.5">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <StatusBadge status={row.status} />
-        </div>
-
+      {/* Body: stay */}
+      <div className="px-4 pb-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
             Stay
@@ -189,12 +175,12 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
         </div>
       </div>
 
-      {/* Footer: flags + amount + relative time */}
+      {/* Footer: flags + amount */}
       <div
         className="flex items-center justify-between gap-2 px-4 py-3"
         style={{ borderTop: '1px solid #f8fafc', background: '#fcfcfd' }}
       >
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           {row.need_parking ? (
             <span
               title="Needs parking"
@@ -229,16 +215,11 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
           )}
         </div>
 
-        <div className="flex items-center gap-2.5 min-w-0">
-          {row.booking_rate != null && (
-            <span className="text-[12px] font-bold text-slate-700 tabular-nums">
-              {formatMoney(row.booking_rate)}
-            </span>
-          )}
-          <span className="text-[11px] text-slate-400 truncate">
-            {formatRelative(row.created_at)}
+        {row.booking_rate != null && (
+          <span className="shrink-0 text-[12px] font-bold text-slate-700 tabular-nums">
+            {formatMoney(row.booking_rate)}
           </span>
-        </div>
+        )}
       </div>
     </div>
   );

@@ -10,6 +10,7 @@ import {
   checkInDateToIso,
   compareBookingsForListSort,
   manilaTodayIso,
+  matchesDefaultBookingsListVisibility,
   type BookingsListSort,
 } from './bookingsListSort.ts'
 
@@ -554,10 +555,10 @@ export class DatabaseService {
       rows = rows.filter((r) => checkInDateToIso(r.check_in_date) <= to);
     }
 
-    // Hide past stays (check-in strictly before today) unless explicitly included
+    // Default list: hide cancelled + check-in before today (Manila)
     if (!showPreviousBookings) {
-      rows = rows.filter(
-        (r) => checkInDateToIso(r.check_in_date) >= todayManila,
+      rows = rows.filter((r) =>
+        matchesDefaultBookingsListVisibility(r, todayManila)
       );
     }
 

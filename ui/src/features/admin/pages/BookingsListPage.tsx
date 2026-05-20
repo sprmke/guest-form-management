@@ -245,7 +245,7 @@ export function BookingsListPage() {
 
   const listEmptyExtraHint =
     !query.showPreviousBookings && !isLoading && total === 0
-      ? 'Tip: turn on “Show previous bookings” to include stays whose check-in was before today (Asia/Manila), any status. Also confirm the date range includes that stay’s check-in month.'
+      ? 'Tip: turn on “Show previous bookings” to include cancelled stays and check-ins before today (Asia/Manila). Also confirm the date range includes that stay’s check-in month.'
       : null;
 
   const showTableView = view === 'table' && !isMobileLayout;

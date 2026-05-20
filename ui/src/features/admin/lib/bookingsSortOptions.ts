@@ -13,7 +13,7 @@ export const BOOKINGS_SORT_OPTIONS: BookingsSortOption[] = [
     value: 'status_priority:asc',
     label: 'Priority',
     description:
-      'SD refund → review → docs → checkout → check-in → completed → cancelled. Review & docs: nearest check-in first.',
+      'SD refund → review → docs → checkout → check-in → completed → cancelled',
   },
   { value: 'check_in_date:asc', label: 'Check-in ↑ (earliest first)' },
   { value: 'check_in_date:desc', label: 'Check-in ↓ (latest first)' },

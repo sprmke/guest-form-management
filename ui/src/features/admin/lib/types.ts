@@ -133,8 +133,8 @@ export type BookingsQuery = {
   hasPets: boolean | null;
   needParking: boolean | null;
   /**
-   * When true, list includes rows whose check-in is strictly before today
-   * (Asia/Manila), regardless of status. Default false hides those stays.
+   * When true, list includes cancelled rows and stays whose check-in is strictly
+   * before today (Asia/Manila). Default false hides both.
    */
   showPreviousBookings: boolean;
   sort: BookingsSort;

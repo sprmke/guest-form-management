@@ -17,6 +17,7 @@ import {
   checkInDateToIso,
   compareBookingsForListSort,
   manilaTodayIso,
+  matchesDefaultBookingsListVisibility,
 } from '@/features/admin/lib/bookingsListSort';
 import type { BookingRow, BookingsQuery } from '@/features/admin/lib/types';
 
@@ -138,8 +139,8 @@ export function useBookings(query: BookingsQuery) {
         }
 
         if (!query.showPreviousBookings) {
-          rows = rows.filter(
-            (r) => checkInDateToIso(r.check_in_date) >= today,
+          rows = rows.filter((r) =>
+            matchesDefaultBookingsListVisibility(r, today),
           );
         }
 

@@ -7,7 +7,7 @@
  * - Date-range filter on check_in_date (converted from MM-DD-YYYY for correct sort)
  * - has_pets / need_parking boolean filters
  * - Default sort: status_priority ASC (workflow order), then check-in proximity for review/docs
- * - Default filter: hide check-in before today (any status); `show_previous_bookings=true` to include
+ * - Default filter: hide cancelled + check-in before today; `show_previous_bookings=true` to include
  *
  * Trigger:  GET /functions/v1/list-bookings
  * Auth:     verify_jwt = true (admin only)
