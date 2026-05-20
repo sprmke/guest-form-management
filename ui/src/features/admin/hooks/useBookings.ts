@@ -13,6 +13,11 @@
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
+import {
+  checkInDateToIso,
+  compareBookingsForListSort,
+  manilaTodayIso,
+} from '@/features/admin/lib/bookingsListSort';
 import type { BookingRow, BookingsQuery } from '@/features/admin/lib/types';
 
 export const BOOKINGS_QUERY_KEY = ['bookings'] as const;
@@ -23,25 +28,6 @@ type BookingsResult = {
 };
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
-
-/** Manila calendar date YYYY-MM-DD (matches server listBookings). */
-function manilaTodayIso(): string {
-  return new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
-  )
-    .toISOString()
-    .slice(0, 10);
-}
-
-function checkInToIso(dateStr: string | null | undefined): string {
-  if (!dateStr) return '';
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-    const [m, d, y] = dateStr.split('-');
-    return `${y}-${m}-${d}`;
-  }
-  return dateStr;
-}
 
 const GENERIC_BOOKINGS_ERROR =
   'We could not load bookings. Please try again in a moment.';
@@ -61,10 +47,9 @@ async function fetchBookingsFromEdgeFunction(query: BookingsQuery): Promise<Book
   params.set('sort', query.sort);
   params.set('page', String(query.page));
   params.set('limit', String(query.limit));
-  params.set(
-    'hide_stale_completed',
-    query.hideStaleCompleted ? 'true' : 'false',
-  );
+  if (query.showPreviousBookings) {
+    params.set('show_previous_bookings', 'true');
+  }
 
   const res = await fetch(`${FUNCTIONS_URL}/list-bookings?${params.toString()}`, {
     headers: {
@@ -89,13 +74,8 @@ export function useBookings(query: BookingsQuery) {
       } catch (err) {
         console.error('[useBookings] Edge function failed, falling back to PostgREST:', err);
 
-        // PostgREST fallback (Phase 1 path — no JWT verification, no check_in_date sort)
-        const from = (query.page - 1) * query.limit;
-        const to = from + query.limit - 1;
-
-        let request = supabase
-          .from('guest_submissions')
-          .select('*', { count: 'exact' });
+        // PostgREST fallback — fetch matches, sort in JS (mirrors list-bookings).
+        let request = supabase.from('guest_submissions').select('*');
 
         if (query.q.trim()) {
           // Mirror the broadened search in `_shared/databaseService.ts#listBookings`.
@@ -135,27 +115,43 @@ export function useBookings(query: BookingsQuery) {
         if (query.needParking === true) request = request.eq('need_parking', true);
         if (query.needParking === false) request = request.eq('need_parking', false);
 
-        // Fallback sort — only supports created_at
-        request = request
-          .order('created_at', { ascending: false })
-          .range(from, to);
+        request = request.order('created_at', { ascending: false });
 
-        const { data, error, count } = await request;
+        const { data, error } = await request;
         if (error) {
           console.error('[useBookings] PostgREST fallback error', error);
           throw new Error(GENERIC_BOOKINGS_ERROR);
         }
 
+        const today = manilaTodayIso();
         let rows = (data ?? []) as BookingRow[];
-        if (query.hideStaleCompleted) {
-          const today = manilaTodayIso();
-          rows = rows.filter((r) => {
-            if (r.status !== 'COMPLETED') return true;
-            return checkInToIso(r.check_in_date) >= today;
-          });
+
+        if (query.from) {
+          rows = rows.filter(
+            (r) => checkInDateToIso(r.check_in_date) >= query.from!,
+          );
+        }
+        if (query.to) {
+          rows = rows.filter(
+            (r) => checkInDateToIso(r.check_in_date) <= query.to!,
+          );
         }
 
-        return { rows, total: count ?? 0 };
+        if (!query.showPreviousBookings) {
+          rows = rows.filter(
+            (r) => checkInDateToIso(r.check_in_date) >= today,
+          );
+        }
+
+        rows.sort((a, b) =>
+          compareBookingsForListSort(a, b, query.sort, today),
+        );
+
+        const total = rows.length;
+        const fromIdx = (query.page - 1) * query.limit;
+        const paged = rows.slice(fromIdx, fromIdx + query.limit);
+
+        return { rows: paged, total };
       }
     },
     placeholderData: keepPreviousData,

@@ -134,6 +134,43 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
   };
 }
 
+/** Legacy single-status GAF / parking / pet stages — nested under Pending Documents in admin filters. */
+export const PENDING_DOCUMENTS_SUB_STATUSES = [
+  'PENDING_GAF',
+  'PENDING_PARKING_REQUEST',
+  'PENDING_PET_REQUEST',
+] as const satisfies readonly BookingStatus[];
+
+const PENDING_DOCS_SUB_SET = new Set<string>(PENDING_DOCUMENTS_SUB_STATUSES);
+
+export type BookingsStatusFilterRow =
+  | { type: 'status'; value: AnyBookingStatus }
+  | {
+      type: 'group';
+      parent: 'PENDING_DOCUMENTS';
+      children: typeof PENDING_DOCUMENTS_SUB_STATUSES;
+    };
+
+/** Order for `/bookings` status filter (parent → indented sub-stages). */
+export function bookingsStatusFilterRows(): BookingsStatusFilterRow[] {
+  const rows: BookingsStatusFilterRow[] = [];
+  const all = [...BOOKING_STATUSES, ...LEGACY_BOOKING_STATUSES] as AnyBookingStatus[];
+
+  for (const value of all) {
+    if (PENDING_DOCS_SUB_SET.has(value)) continue;
+    if (value === 'PENDING_DOCUMENTS') {
+      rows.push({
+        type: 'group',
+        parent: 'PENDING_DOCUMENTS',
+        children: PENDING_DOCUMENTS_SUB_STATUSES,
+      });
+      continue;
+    }
+    rows.push({ type: 'status', value });
+  }
+  return rows;
+}
+
 export function statusLabel(value: string): string {
   return STATUS_LABELS[value as AnyBookingStatus] ?? value;
 }
