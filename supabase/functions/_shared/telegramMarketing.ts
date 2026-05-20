@@ -41,6 +41,28 @@ export type TelegramMarketingSettings = {
   daily_reminder_times_manila?: unknown;
 };
 
+export const TELEGRAM_KNOWN_PLACEHOLDERS = [
+  'available_dates',
+  'month_name',
+  'dates_list',
+  'cancellation_dates',
+] as const;
+
+export type TelegramKnownPlaceholder = (typeof TELEGRAM_KNOWN_PLACEHOLDERS)[number];
+
+export function listTemplatePlaceholderKeys(template: string): TelegramKnownPlaceholder[] {
+  const keys = new Set<TelegramKnownPlaceholder>();
+  const re = /\{\{(\w+)\}\}/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(template)) !== null) {
+    const k = m[1] as TelegramKnownPlaceholder;
+    if ((TELEGRAM_KNOWN_PLACEHOLDERS as readonly string[]).includes(k)) {
+      keys.add(k);
+    }
+  }
+  return [...keys];
+}
+
 export function applyTemplatePlaceholders(
   template: string,
   vars: Record<string, string>,
@@ -50,6 +72,115 @@ export function applyTemplatePlaceholders(
     out = out.split(`{{${k}}}`).join(v);
   }
   return out;
+}
+
+export class TelegramTemplateError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TelegramTemplateError';
+  }
+}
+
+/** Live values from the booking calendar (Manila). Throws if a token in the template cannot be filled. */
+export async function resolveTemplatePlaceholderVars(
+  template: string,
+  settings: TelegramMarketingSettings,
+  opts?: { checkInYmd?: string; checkOutYmd?: string },
+): Promise<Record<string, string>> {
+  const keys = listTemplatePlaceholderKeys(template);
+  if (keys.length === 0) return {};
+
+  const unknown = [...template.matchAll(/\{\{(\w+)\}\}/g)]
+    .map((m) => m[1])
+    .filter((k) => !(TELEGRAM_KNOWN_PLACEHOLDERS as readonly string[]).includes(k));
+  if (unknown.length > 0) {
+    throw new TelegramTemplateError(
+      `Unknown placeholders: ${unknown.map((k) => `{{${k}}}`).join(', ')}`,
+    );
+  }
+
+  const blocked = await buildBlockedSet();
+  const todayYmd = manilaTodayYmd();
+  const keySet = new Set(keys);
+  const vars: Record<string, string> = {};
+
+  const needsNewBookingBundle = keySet.has('month_name') || keySet.has('dates_list');
+  const needsUrgencyAvailable =
+    keySet.has('available_dates') && !needsNewBookingBundle;
+
+  if (needsNewBookingBundle) {
+    const anchorMonth = todayYmd.slice(0, 7);
+    const monthStart = `${anchorMonth}-01`;
+    const candidates = listAvailableCheckIns(blocked, todayYmd, 60).filter((ymd) =>
+      ymd.startsWith(anchorMonth),
+    );
+    const picked = candidates.slice(0, settings.new_booking_dates_limit);
+    if (picked.length === 0) {
+      throw new TelegramTemplateError(
+        'No free check-in dates left this month for {{month_name}} / {{dates_list}}.',
+      );
+    }
+    if (keySet.has('month_name')) {
+      vars.month_name = formatMonthName(monthStart);
+    }
+    if (keySet.has('dates_list')) {
+      vars.dates_list = formatDatesListForMonth(picked, monthStart);
+    }
+    if (keySet.has('available_dates')) {
+      vars.available_dates = formatAvailableDatesHuman(picked);
+    }
+  }
+
+  if (needsUrgencyAvailable) {
+    const freeCheckIns = listAvailableCheckIns(blocked, todayYmd, 12);
+    const v = formatAvailableDatesHuman(freeCheckIns);
+    if (!v.trim()) {
+      throw new TelegramTemplateError(
+        'No available check-in dates in the calendar for {{available_dates}}.',
+      );
+    }
+    vars.available_dates = v;
+  }
+
+  if (keySet.has('cancellation_dates')) {
+    const ci = opts?.checkInYmd?.trim();
+    const co = opts?.checkOutYmd?.trim();
+    if (!ci || !co) {
+      throw new TelegramTemplateError(
+        'Check-in and check-out are required for {{cancellation_dates}} — set them in the cancellation date fields above.',
+      );
+    }
+    vars.cancellation_dates = formatCancellationDatesHuman(
+      normalizeBookingDateToYmd(ci) ?? ci,
+      normalizeBookingDateToYmd(co) ?? co,
+    );
+  }
+
+  return vars;
+}
+
+export function renderTelegramTemplate(
+  template: string,
+  vars: Record<string, string>,
+): string {
+  const text = applyTemplatePlaceholders(template, vars);
+  const unresolved = text.match(/\{\{[^}]+\}\}/g);
+  if (unresolved?.length) {
+    throw new TelegramTemplateError(
+      `Unresolved placeholders after render: ${unresolved.join(', ')}`,
+    );
+  }
+  return text;
+}
+
+/** Resolve live calendar data and substitute; throws TelegramTemplateError on missing data. */
+export async function prepareTelegramTemplateMessage(
+  template: string,
+  settings: TelegramMarketingSettings,
+  opts?: { checkInYmd?: string; checkOutYmd?: string },
+): Promise<string> {
+  const vars = await resolveTemplatePlaceholderVars(template, settings, opts);
+  return renderTelegramTemplate(template, vars);
 }
 
 /**
@@ -216,18 +347,6 @@ function buildBlockedSet(): Promise<Set<string>> {
   );
 }
 
-/** Sample values for Settings “send test” on draft templates (placeholders only). */
-export const TELEGRAM_PLACEHOLDER_SAMPLES: Record<string, string> = {
-  available_dates: 'May 17, 18, 20',
-  month_name: 'May',
-  dates_list: '16, 18, 19, 24',
-  cancellation_dates: 'May 14–15',
-};
-
-export function applySamplePlaceholdersToTemplate(template: string): string {
-  return applyTemplatePlaceholders(template, { ...TELEGRAM_PLACEHOLDER_SAMPLES });
-}
-
 /** Send arbitrary text (admin tests); ignores `telegram_marketing_settings.enabled`. */
 export async function sendTelegramAdminPreview(text: string): Promise<{ ok: boolean; error?: string }> {
   const trimmed = text.trim();
@@ -235,12 +354,24 @@ export async function sendTelegramAdminPreview(text: string): Promise<{ ok: bool
   return sendTelegramMessage(trimmed.slice(0, 4096));
 }
 
-/** Scheduled 3×/day: default vs urgency copy. */
-export async function runTelegramDailyReminder(opts?: { force?: boolean }): Promise<{
+export type TelegramDailyReminderResult = {
   sent: boolean;
-  mode: 'skipped' | 'default' | 'urgency' | 'disabled' | 'no_env';
+  /** Primary outcome for callers; `both` = default + urgency sent. */
+  mode: 'skipped' | 'default' | 'urgency' | 'both' | 'disabled' | 'no_env';
   detail?: string;
-}> {
+  defaultSent?: boolean;
+  urgencySent?: boolean;
+  /** Manila calendar days until earliest free check-in; omitted when none found. */
+  daysOut?: number;
+  urgencyThreshold?: number;
+  earliestCheckInYmd?: string | null;
+  telegramErrors?: string[];
+};
+
+/** Scheduled N×/day: always send daily default; also send urgency when calendar is tight. */
+export async function runTelegramDailyReminder(opts?: {
+  force?: boolean;
+}): Promise<TelegramDailyReminderResult> {
   const settings = await loadSettings();
   if (!settings) {
     return { sent: false, mode: 'skipped', detail: 'no_settings_row' };
@@ -257,31 +388,84 @@ export async function runTelegramDailyReminder(opts?: { force?: boolean }): Prom
     };
   }
 
+  const telegramErrors: string[] = [];
+  let defaultSent = false;
+  let urgencySent = false;
+
+  const sendDefault = async (): Promise<void> => {
+    const text = await prepareTelegramTemplateMessage(
+      settings.daily_default_template,
+      settings,
+    );
+    const r = await sendTelegramMessage(text);
+    defaultSent = r.ok;
+    if (!r.ok && r.error) telegramErrors.push(`default: ${r.error}`);
+  };
+
+  const sendUrgency = async (): Promise<void> => {
+    const text = await prepareTelegramTemplateMessage(
+      settings.daily_urgency_template,
+      settings,
+    );
+    const r = await sendTelegramMessage(text);
+    urgencySent = r.ok;
+    if (!r.ok && r.error) telegramErrors.push(`urgency: ${r.error}`);
+  };
+
+  try {
+    await sendDefault();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    telegramErrors.push(`default: ${msg}`);
+  }
+
   const todayYmd = manilaTodayYmd();
   const blocked = await buildBlockedSet();
   const earliest = earliestAvailableCheckInYmd(blocked, todayYmd);
+  const threshold = settings.urgency_days_threshold;
+
   if (!earliest) {
-    const text = settings.daily_default_template;
-    const r = await sendTelegramMessage(text);
-    return { sent: r.ok, mode: 'default', detail: 'no_availability_found' };
+    return {
+      sent: defaultSent,
+      mode: defaultSent ? 'default' : 'skipped',
+      defaultSent,
+      urgencySent: false,
+      earliestCheckInYmd: null,
+      urgencyThreshold: threshold,
+      detail: telegramErrors[0] ?? (!defaultSent ? 'no_availability_found' : undefined),
+      telegramErrors: telegramErrors.length ? telegramErrors : undefined,
+    };
   }
 
   const daysOut = calendarDaysBetween(todayYmd, earliest);
-  const threshold = settings.urgency_days_threshold;
+  const useUrgency = daysOut < threshold;
 
-  if (daysOut < threshold) {
-    const sample = listAvailableCheckIns(blocked, todayYmd, 12);
-    const availText = formatAvailableDatesHuman(sample);
-    const text = applyTemplatePlaceholders(settings.daily_urgency_template, {
-      available_dates: availText,
-    });
-    const r = await sendTelegramMessage(text);
-    return { sent: r.ok, mode: 'urgency' };
+  if (useUrgency) {
+    try {
+      await sendUrgency();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      telegramErrors.push(`urgency: ${msg}`);
+    }
   }
 
-  const text = settings.daily_default_template;
-  const r = await sendTelegramMessage(text);
-  return { sent: r.ok, mode: 'default' };
+  const sent = defaultSent || urgencySent;
+  let mode: TelegramDailyReminderResult['mode'] = 'skipped';
+  if (defaultSent && urgencySent) mode = 'both';
+  else if (defaultSent) mode = 'default';
+  else if (urgencySent) mode = 'urgency';
+
+  return {
+    sent,
+    mode,
+    defaultSent,
+    urgencySent,
+    daysOut,
+    urgencyThreshold: threshold,
+    earliestCheckInYmd: earliest,
+    detail: telegramErrors.length ? telegramErrors.join('; ') : undefined,
+    telegramErrors: telegramErrors.length ? telegramErrors : undefined,
+  };
 }
 
 export type TelegramNotifySkip =
@@ -319,13 +503,14 @@ export async function notifyTelegramNewBookingRequest(opts?: {
     return { sent: false, skip: 'no_dates' };
   }
 
-  const monthName = formatMonthName(monthStart);
-  const datesList = formatDatesListForMonth(picked, monthStart);
-  const text = applyTemplatePlaceholders(settings.new_booking_template, {
-    month_name: monthName,
-    dates_list: datesList,
-    available_dates: formatAvailableDatesHuman(picked),
-  });
+  let text: string;
+  try {
+    text = await prepareTelegramTemplateMessage(settings.new_booking_template, settings);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[telegram] new booking template:', msg);
+    return { sent: false, skip: 'no_dates', telegramError: msg };
+  }
   const r = await sendTelegramMessage(text);
   if (!r.ok) {
     console.error('[telegram] new booking notify failed');
@@ -354,10 +539,17 @@ export async function notifyTelegramCancellation(
 
   const ci = normalizeBookingDateToYmd(checkInYmd) ?? checkInYmd;
   const co = normalizeBookingDateToYmd(checkOutYmd) ?? checkOutYmd;
-  const cancellationDates = formatCancellationDatesHuman(ci, co);
-  const text = applyTemplatePlaceholders(settings.cancellation_template, {
-    cancellation_dates: cancellationDates,
-  });
+  let text: string;
+  try {
+    text = await prepareTelegramTemplateMessage(settings.cancellation_template, settings, {
+      checkInYmd: ci,
+      checkOutYmd: co,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error('[telegram] cancellation template:', msg);
+    return { sent: false, skip: 'send_failed', telegramError: msg };
+  }
   const r = await sendTelegramMessage(text);
   if (!r.ok) {
     console.error('[telegram] cancellation notify failed');
@@ -403,11 +595,10 @@ export function serializeTelegramSettings(row: TelegramMarketingSettings) {
     newBookingTemplate: row.new_booking_template,
     cancellationTemplate: row.cancellation_template,
     placeholdersReference: [
-      '{{available_dates}} — urgency / optional (human-readable date list)',
-      '{{month_name}} — calendar month name (new booking)',
-      '{{dates_list}} — day numbers or short dates for the month (new booking)',
-      '{{cancellation_dates}} — freed stay window (cancellation)',
-      'Manual “Send draft + sample data” replaces only known placeholders; unknown {{tokens}} stay literal.',
+      '{{available_dates}} — human-readable list of free check-ins from the live booking calendar (urgency: next dates; new booking: same dates as {{dates_list}})',
+      '{{month_name}} — current calendar month name from the booking calendar',
+      '{{dates_list}} — free check-in day numbers for this month from the booking calendar',
+      '{{cancellation_dates}} — freed stay window from the cancellation check-in / check-out fields (not from the calendar)',
     ],
   };
 }

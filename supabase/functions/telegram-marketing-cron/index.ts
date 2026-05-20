@@ -28,6 +28,7 @@ serve(async (req) => {
     }
 
     const result = await runTelegramDailyReminder();
+    console.log('[telegram-marketing-cron]', JSON.stringify(result));
     return new Response(JSON.stringify({ success: true, ...result }), {
       headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
     });

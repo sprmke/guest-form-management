@@ -70,7 +70,7 @@ export type TelegramMarketingTestAction =
   | 'send_test_daily_reminder'
   | 'send_test_new_booking'
   | 'send_test_cancellation'
-  | 'send_draft_with_sample_placeholders';
+  | 'send_draft_preview';
 
 export type TelegramEnvVerifyDto = {
   credentials: {

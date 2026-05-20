@@ -1,4 +1,10 @@
-import { formatPublicUrl, formatDateTime, isDevelopment } from './utils.ts';
+import {
+  buildGoogleCalendarDateTime,
+  DEFAULT_CHECK_IN_TIME,
+  formatDateTime,
+  formatPublicUrl,
+  isDevelopment,
+} from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
@@ -284,26 +290,27 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
   ) {
     const description = this.buildGoogleCalendarDescriptionFromDbBooking(booking, nights);
 
-    // Build start/end datetimes from MM-DD-YYYY
-    const checkInDate = dayjs(booking.check_in_date, 'MM-DD-YYYY');
-    const endDate = checkInDate.add(nights - 1, 'day');
-
-    const toISO = (date: typeof dayjs.prototype, time?: string): string => {
-      const t = time ?? '14:00';
-      const [h, m] = t.split(':');
-      return date
-        .hour(parseInt(h ?? '14', 10))
-        .minute(parseInt(m ?? '0', 10))
-        .second(0)
-        .toISOString()
-        .replace(/Z$/, '+08:00');
-    };
+    // DB stores MM-DD-YYYY dates and 12-hour times (e.g. "2:00 PM") — use formatTime via buildGoogleCalendarDateTime
+    const checkInDateMdy = String(booking.check_in_date ?? '');
+    const endDateMdy = dayjs(checkInDateMdy, 'MM-DD-YYYY')
+      .add(nights - 1, 'day')
+      .format('MM-DD-YYYY');
 
     return {
       summary,
       description,
-      start: { dateTime: toISO(checkInDate, booking.check_in_time), timeZone: 'Asia/Manila' },
-      end: { dateTime: toISO(endDate, booking.check_out_time ?? '23:59'), timeZone: 'Asia/Manila' },
+      start: {
+        dateTime: buildGoogleCalendarDateTime(
+          checkInDateMdy,
+          booking.check_in_time,
+          DEFAULT_CHECK_IN_TIME,
+        ),
+        timeZone: 'Asia/Manila',
+      },
+      end: {
+        dateTime: buildGoogleCalendarDateTime(endDateMdy, booking.check_out_time, '23:59'),
+        timeZone: 'Asia/Manila',
+      },
       colorId: STATUS_CALENDAR_META[status].colorId,
       reminders: {
         useDefault: false,

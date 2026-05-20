@@ -8,11 +8,11 @@ Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
 
 ## 1. Behavior summary
 
-| Trigger          | When                                                                                                                                                                                                                                                                                            | Message source                                                                                                                                                                         |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Scheduled**    | **`pg_cron`** runs **`telegram-marketing-cron`** at **daily times** configured in **`telegram_marketing_settings.daily_reminder_times_manila`** (Manila clock, default **10:00 / 15:00 / 21:00** — each mapped to UTC as `minute hour * * *`; jobs named **`telegram-marketing-daily-slot-*`**) | `daily_default_template` or, when the **nearest free check-in** is **fewer than** `urgency_days_threshold` **calendar days** away, `daily_urgency_template` with `{{available_dates}}` |
-| **New booking**  | First **insert** of a guest row from **`submit-form`** (predetermined UUID, no prior row)                                                                                                                                                                                                       | `new_booking_template` with `{{month_name}}`, `{{dates_list}}` (up to `new_booking_dates_limit` days in the **current calendar month**), optional `{{available_dates}}`                |
-| **Cancellation** | After **`cancel-booking`** succeeds (`WorkflowOrchestrator` → `CANCELLED`)                                                                                                                                                                                                                      | `cancellation_template` with `{{cancellation_dates}}` (freed stay window)                                                                                                              |
+| Trigger          | When                                                                                                                                                                                                                                                                                            | Message source                                                                                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Scheduled**    | **`pg_cron`** runs **`telegram-marketing-cron`** at **daily times** configured in **`telegram_marketing_settings.daily_reminder_times_manila`** (Manila clock, default **10:00 / 15:00 / 21:00** — each mapped to UTC as `minute hour * * *`; jobs named **`telegram-marketing-daily-slot-*`**) | **Always** `daily_default_template`. **Additionally**, when the **nearest free check-in** is **fewer than** `urgency_days_threshold` **calendar days** away, also sends `daily_urgency_template` with `{{available_dates}}` (two messages that run). |
+| **New booking**  | First **insert** of a guest row from **`submit-form`** (predetermined UUID, no prior row)                                                                                                                                                                                                       | `new_booking_template` with `{{month_name}}`, `{{dates_list}}` (up to `new_booking_dates_limit` days in the **current calendar month**), optional `{{available_dates}}`                                                                              |
+| **Cancellation** | After **`cancel-booking`** succeeds (`WorkflowOrchestrator` → `CANCELLED`)                                                                                                                                                                                                                      | `cancellation_template` with `{{cancellation_dates}}` (freed stay window)                                                                                                                                                                            |
 
 **Availability model (single property):** each non-`CANCELLED` booking blocks overnight nights from **check-in** (inclusive) to **check-out** (exclusive), on **Asia/Manila** calendar dates. A **check-in** on day _D_ is "available" if night _D_ is not blocked. This matches the guest calendar mental model; it does not model minimum stay length.
 
@@ -22,14 +22,14 @@ Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
 
 ## 2. Template placeholders
 
-Use **exact** token spelling (case-sensitive). Unknown tokens are left unchanged in the string.
+Use **exact** token spelling (case-sensitive). Values come from the **live booking calendar** (non-`CANCELLED` stays, Manila dates). If data cannot be resolved, sends fail with an error (no fake/sample dates).
 
-| Placeholder              | Used in                                                        |
-| ------------------------ | -------------------------------------------------------------- |
-| `{{available_dates}}`    | Daily urgency; new booking (optional) — e.g. `May 17, 18, 20`  |
-| `{{month_name}}`         | New booking — e.g. `May`                                       |
-| `{{dates_list}}`         | New booking — day numbers in that month, e.g. `16, 18, 19, 24` |
-| `{{cancellation_dates}}` | Cancellation — e.g. `May 14` or `May 14–16`                    |
+| Placeholder              | Used in                                                     |
+| ------------------------ | ----------------------------------------------------------- |
+| `{{available_dates}}`    | Daily urgency; new booking (optional) — next free check-ins |
+| `{{month_name}}`         | New booking — current calendar month name                   |
+| `{{dates_list}}`         | New booking — day numbers for free dates this month         |
+| `{{cancellation_dates}}` | Cancellation — freed stay window from check-in / check-out  |
 
 Default rows are seeded in migration **`20260614120000_telegram_marketing_settings.sql`**. Cron slot column + RPC **`20260615105000_telegram_marketing_cron_slots.sql`**.
 
@@ -46,13 +46,13 @@ Default rows are seeded in migration **`20260614120000_telegram_marketing_settin
 
 JSON body must include **`action`**. Scenario tests use **saved** DB templates and **ignore** `enabled` / `notify_*` so you can verify wiring without turning automation on.
 
-| `action`                              | Extra fields                                                                                                           | Behavior                                                                                                        |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `verify_telegram_env`                 | —                                                                                                                      | Calls Telegram **`getMe`** + **`getChat`** using normalized **`TELEGRAM_*`** from Edge env (admin diagnostics). |
-| `send_test_daily_reminder`            | —                                                                                                                      | Same decision path as **`telegram-marketing-cron`**.                                                            |
-| `send_test_new_booking`               | —                                                                                                                      | Same as real new-booking notify (`force`). Response may include `skip: no_dates`.                               |
-| `send_test_cancellation`              | Optional `checkInYmd`, `checkOutYmd` (`YYYY-MM-DD`) — **supply both** or **omit both** (single date alone returns 400) | Saved cancellation template. If both omitted, uses Manila **today → checkout +2 nights** as a demo.             |
-| `send_draft_with_sample_placeholders` | **`text`** (required, ≤4000)                                                                                           | Replaces known `{{placeholders}}` with fixed samples, sends result — for **unsaved** textarea copy in the UI.   |
+| `action`                                                            | Extra fields                                                                                                           | Behavior                                                                                                                    |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `verify_telegram_env`                                               | —                                                                                                                      | Calls Telegram **`getMe`** + **`getChat`** using normalized **`TELEGRAM_*`** from Edge env (admin diagnostics).             |
+| `send_test_daily_reminder`                                          | —                                                                                                                      | Same decision path as **`telegram-marketing-cron`**.                                                                        |
+| `send_test_new_booking`                                             | —                                                                                                                      | Same as real new-booking notify (`force`). Response may include `skip: no_dates`.                                           |
+| `send_test_cancellation`                                            | Optional `checkInYmd`, `checkOutYmd` (`YYYY-MM-DD`) — **supply both** or **omit both** (single date alone returns 400) | Saved cancellation template. If both omitted, uses Manila **today → checkout +2 nights** as a demo.                         |
+| `send_draft_preview` (alias: `send_draft_with_sample_placeholders`) | **`text`** (required, ≤4000); optional **`checkInYmd` / `checkOutYmd`** for `{{cancellation_dates}}`                   | Resolves `{{placeholders}}` from the **live booking calendar** (Manila); **400** if data is missing — no sample/fake dates. |
 
 ---
 
@@ -154,8 +154,11 @@ A: Only fires on **first insert** (no existing row for the submitted UUID). Edit
 **Q: Cancellation message not sent.**  
 A: Check **`notify_on_cancellation`** and **`enabled`**. Telegram runs **after** a successful orchestrator cancel.
 
+**Q: Cron jobs show “Succeeded” but I never see “Pa up and share…” (daily default) in the group.**  
+A: (1) **Event vs schedule** — “Available next dates: …” and “…due to guest cancellation” come from **new booking** / **cancel**, not the daily cron. (2) **Old behavior** — cron used to send **only** urgency when the next free check-in was within `urgency_days_threshold` days, so the default line could disappear for weeks; current code sends **default every run** plus urgency when tight. (3) **`TELEGRAM_CRON_SECRET`** — if set on Edge but Vault `telegram_cron_secret` does not match, `pg_cron` still “succeeds” while the function returns **401** and nothing is posted. Align secrets or unset Edge `TELEGRAM_CRON_SECRET`. (4) Check **Edge → `telegram-marketing-cron` logs** after a slot run for JSON `{ sent, mode, defaultSent, urgencySent, … }`.
+
 **Q: Telegram returns `Bad Request: chat not found` on test sends.**  
 A: The **`TELEGRAM_BOT_TOKEN`** and **`TELEGRAM_CHAT_ID`** in the Edge runtime must belong together: **`getChat`** for that id must succeed for **this** bot (add the bot to the group/channel, use the supergroup numeric id, restart **`functions serve`** after editing **`supabase/.env.local`**). On **Marketing**, **Verify bot** runs **`verify_telegram_env`** (`POST` with `action: verify_telegram_env`) and shows **`getMe` / `getChat`** plus normalized **`chat_id`**, **first codepoint** of the secret’s first character (ASCII `-` is `45`; a Word/PDF “minus” is often **8722**, which the server maps to `-`), and whether the normalized id starts with ASCII `-`. **`TELEGRAM_CHAT_ID`** must be **digits only** (optional leading `-`); strip quotes, `@` names — the server normalizes BOM/CR/wrapping quotes, Unicode dash/minus glyphs, and whitespace.
 
 **Q: How do I test from Marketing without enabling automation?**  
-A: Use **Send test** for daily / new booking / cancellation, or **Send draft + samples** on each textarea. Those calls use **`POST`** with `action` and **ignore** `enabled` / `notify_*` for the send itself (see §3.1).
+A: Use **Send test** for daily / new booking / cancellation, or **Send preview** on each template. Placeholders use the **live calendar** (or cancellation date fields for `{{cancellation_dates}}`). Those calls use **`POST`** with `action` and **ignore** `enabled` / `notify_*` (see §3.1).

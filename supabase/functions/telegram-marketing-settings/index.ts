@@ -8,17 +8,14 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
-  addDaysYmd,
-  manilaTodayYmd,
-} from '../_shared/calendarAvailabilityManila.ts';
-import {
-  applySamplePlaceholdersToTemplate,
   ensureTelegramSettingsRow,
   notifyTelegramCancellation,
   notifyTelegramNewBookingRequest,
+  prepareTelegramTemplateMessage,
   runTelegramDailyReminder,
   sendTelegramAdminPreview,
   serializeTelegramSettings,
+  TelegramTemplateError,
   verifyTelegramEnv,
 } from '../_shared/telegramMarketing.ts';
 import { parseManilaReminderSlots, type ManilaReminderSlot } from '../_shared/telegramMarketingCronSync.ts';
@@ -136,21 +133,26 @@ serve(async (req) => {
       }
 
       if (action === 'send_test_cancellation') {
-        const todayYmd = manilaTodayYmd();
-        let ci = typeof body.checkInYmd === 'string' ? body.checkInYmd.trim() : '';
-        let co = typeof body.checkOutYmd === 'string' ? body.checkOutYmd.trim() : '';
-        if ((ci && !co) || (!ci && co)) {
+        const ci = typeof body.checkInYmd === 'string' ? body.checkInYmd.trim() : '';
+        const co = typeof body.checkOutYmd === 'string' ? body.checkOutYmd.trim() : '';
+        if (!ci || !co) {
           return new Response(
             JSON.stringify({
               success: false,
-              error: 'Provide both checkInYmd and checkOutYmd (YYYY-MM-DD), or leave both empty for the demo range.',
+              error:
+                'Both checkInYmd and checkOutYmd (YYYY-MM-DD) are required for cancellation tests.',
             }),
             { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
           );
         }
-        if (!ci || !co) {
-          ci = todayYmd;
-          co = addDaysYmd(todayYmd, 2);
+        if (ci >= co) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: 'Check-out must be after check-in.',
+            }),
+            { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+          );
         }
         const result = await notifyTelegramCancellation(ci, co, { force: true });
         return new Response(JSON.stringify({ success: true, result, usedDates: { checkInYmd: ci, checkOutYmd: co } }), {
@@ -165,7 +167,10 @@ serve(async (req) => {
         });
       }
 
-      if (action === 'send_draft_with_sample_placeholders') {
+      if (
+        action === 'send_draft_preview' ||
+        action === 'send_draft_with_sample_placeholders'
+      ) {
         const text = typeof body.text === 'string' ? body.text : '';
         if (!text.trim()) {
           return new Response(JSON.stringify({ success: false, error: 'text is required' }), {
@@ -173,26 +178,48 @@ serve(async (req) => {
             headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
           });
         }
-        const filled = applySamplePlaceholdersToTemplate(text.slice(0, 4000));
-        const r = await sendTelegramAdminPreview(filled);
-        return new Response(
-          JSON.stringify({
-            success: r.ok,
-            sent: r.ok,
-            error: r.error,
-            messageCharCount: filled.length,
-          }),
-          {
-            status: r.ok ? 200 : 400,
+        const row = await DatabaseService.getTelegramMarketingSettings();
+        if (!row) {
+          return new Response(JSON.stringify({ success: false, error: 'Settings row missing' }), {
+            status: 500,
             headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          },
-        );
+          });
+        }
+        const ci = typeof body.checkInYmd === 'string' ? body.checkInYmd.trim() : '';
+        const co = typeof body.checkOutYmd === 'string' ? body.checkOutYmd.trim() : '';
+        try {
+          const filled = await prepareTelegramTemplateMessage(text.slice(0, 4000), row as never, {
+            checkInYmd: ci || undefined,
+            checkOutYmd: co || undefined,
+          });
+          const r = await sendTelegramAdminPreview(filled);
+          return new Response(
+            JSON.stringify({
+              success: r.ok,
+              sent: r.ok,
+              error: r.error,
+              messageCharCount: filled.length,
+            }),
+            {
+              status: r.ok ? 200 : 400,
+              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            },
+          );
+        } catch (e) {
+          const message = e instanceof TelegramTemplateError || e instanceof Error
+            ? e.message
+            : String(e);
+          return new Response(JSON.stringify({ success: false, error: message }), {
+            status: 400,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          });
+        }
       }
 
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Unknown action: ${action || '(missing)'}. Use verify_telegram_env | send_test_daily_reminder | send_test_new_booking | send_test_cancellation | send_draft_with_sample_placeholders`,
+          error: `Unknown action: ${action || '(missing)'}. Use verify_telegram_env | send_test_daily_reminder | send_test_new_booking | send_test_cancellation | send_draft_preview`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );

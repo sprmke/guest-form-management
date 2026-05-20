@@ -153,6 +153,7 @@ function TemplateField({
         size="sm"
         disabled={disabled}
         className="min-h-[44px] w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:h-9 sm:w-auto sm:min-h-9 sm:shrink-0 sm:justify-self-end sm:self-center"
+        title="Sends to Telegram using live booking-calendar data for any {{placeholders}} in the text."
         onClick={() => onSendDraft()}
       >
         Send preview
@@ -161,7 +162,15 @@ function TemplateField({
   );
 }
 
-type DailyTestResult = { sent?: boolean; mode?: string; detail?: string };
+type DailyTestResult = {
+  sent?: boolean;
+  mode?: string;
+  detail?: string;
+  defaultSent?: boolean;
+  urgencySent?: boolean;
+  daysOut?: number;
+  earliestCheckInYmd?: string | null;
+};
 type NotifyTestResult = {
   sent?: boolean;
   skip?: string;
@@ -264,13 +273,30 @@ export function TelegramMarketingSettingsCard() {
     );
   };
 
-  const runDraftSample = (text: string, label: string) => {
+  const runDraftPreview = (text: string, label: string) => {
+    if (/\{\{cancellation_dates\}\}/.test(text)) {
+      if (!testCancelCheckIn || !testCancelCheckOut) {
+        toast.error(
+          'Set check-in and check-out in the cancellation date fields (Test actions).',
+        );
+        return;
+      }
+      if (testCancelCheckIn >= testCancelCheckOut) {
+        toast.error('Check-out must be after check-in.');
+        return;
+      }
+    }
     testSend.mutate(
-      { action: 'send_draft_with_sample_placeholders', text },
+      {
+        action: 'send_draft_preview',
+        text,
+        checkInYmd: testCancelCheckIn,
+        checkOutYmd: testCancelCheckOut,
+      },
       {
         onSuccess: (j) => {
           toast.success(
-            `${label}: sent (${j.messageCharCount ?? '?'} characters)`,
+            `${label}: sent with live calendar data (${j.messageCharCount ?? '?'} characters)`,
           );
         },
         onError: (e) => toast.error((e as Error).message),
@@ -394,17 +420,21 @@ export function TelegramMarketingSettingsCard() {
                       onSuccess: (j) => {
                         const r = j.result as DailyTestResult | undefined;
                         if (r?.sent) {
+                          const parts = [
+                            `mode=${r.mode ?? '?'}`,
+                            r.defaultSent ? 'default ✓' : 'default ✗',
+                            r.urgencySent ? 'urgency ✓' : 'urgency ✗',
+                          ];
+                          if (r.daysOut != null) {
+                            parts.push(`next free check-in in ${r.daysOut}d`);
+                          }
                           toast.success(
-                            `Daily reminder sent (${r.mode ?? '?'})`,
+                            `Daily reminder sent (${parts.join(', ')})`,
                           );
                         } else {
-                          toast.message(
-                            `Daily reminder not sent (${r?.mode ?? 'unknown'})`,
-                            {
-                              description:
-                                r?.detail ??
-                                'Check Edge logs and TELEGRAM_* secrets.',
-                            },
+                          toast.error(
+                            r?.detail ??
+                              `Daily reminder not sent (${r?.mode ?? 'unknown'}). Check Edge logs, TELEGRAM_* secrets, and TELEGRAM_CRON_SECRET vs Vault telegram_cron_secret.`,
                           );
                         }
                       },
@@ -426,7 +456,7 @@ export function TelegramMarketingSettingsCard() {
                     {
                       onSuccess: (j) => {
                         const r = j.result as NotifyTestResult | undefined;
-                        if (r?.sent) toast.success('New booking sample sent');
+                        if (r?.sent) toast.success('New booking test sent');
                         else if (r?.skip === 'no_dates') {
                           toast.error(
                             'No free check-in dates left this month.',
@@ -454,9 +484,17 @@ export function TelegramMarketingSettingsCard() {
                   aria-hidden
                 />
                 <p className="text-xs font-semibold text-foreground">
-                  Cancellation sample
+                  Cancellation dates
                 </p>
               </div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                Used for{' '}
+                <span className="font-mono text-[11px]">
+                  {'{{cancellation_dates}}'}
+                </span>{' '}
+                on Send preview and Send cancellation. Other placeholders use
+                the live booking calendar.
+              </p>
               <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                 <div className="min-w-0 space-y-1">
                   <Label htmlFor="tg-test-ci" className="text-xs">
@@ -489,14 +527,22 @@ export function TelegramMarketingSettingsCard() {
                 type="button"
                 variant="secondary"
                 disabled={busy}
-                title="Manila calendar. Defaults: today / tomorrow. Clear both dates for the server’s 3-night demo window."
+                title="Requires check-in and check-out (Manila). Defaults: today / tomorrow."
                 className="min-h-[44px] w-full sm:w-auto"
-                onClick={() =>
+                onClick={() => {
+                  if (!testCancelCheckIn || !testCancelCheckOut) {
+                    toast.error('Set check-in and check-out dates.');
+                    return;
+                  }
+                  if (testCancelCheckIn >= testCancelCheckOut) {
+                    toast.error('Check-out must be after check-in.');
+                    return;
+                  }
                   testSend.mutate(
                     {
                       action: 'send_test_cancellation',
-                      checkInYmd: testCancelCheckIn || undefined,
-                      checkOutYmd: testCancelCheckOut || undefined,
+                      checkInYmd: testCancelCheckIn,
+                      checkOutYmd: testCancelCheckOut,
                     },
                     {
                       onSuccess: (j) => {
@@ -517,8 +563,8 @@ export function TelegramMarketingSettingsCard() {
                       },
                       onError: (e) => toast.error((e as Error).message),
                     },
-                  )
-                }
+                  );
+                }}
               >
                 Send cancellation
               </Button>
@@ -580,11 +626,24 @@ export function TelegramMarketingSettingsCard() {
                     Daily reminder schedule
                   </p>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    When to send availability reminders. All times are{' '}
+                    When the cron job posts to Telegram. All times are{' '}
                     <span className="font-medium text-foreground/90">
                       Philippines (Manila)
                     </span>
-                    . Saving updates the automated schedule (up to 8 per day).
+                    . Each run always sends the{' '}
+                    <span className="font-medium text-foreground/90">
+                      Daily default
+                    </span>{' '}
+                    template; if the next free check-in is within the urgency
+                    threshold, it also sends{' '}
+                    <span className="font-medium text-foreground/90">
+                      Daily urgency
+                    </span>
+                    . Saving updates{' '}
+                    <span className="font-medium text-foreground/90">
+                      telegram-marketing-daily-slot-*
+                    </span>{' '}
+                    jobs (up to 8 per day).
                   </p>
                 </div>
               </div>
@@ -717,8 +776,16 @@ export function TelegramMarketingSettingsCard() {
                   }
                 />
                 <p className="text-[11px] text-muted-foreground sm:text-xs">
-                  If the next free check-in (Manila) is sooner than this, the
-                  urgency template is used.
+                  When the next free check-in (Manila) is fewer than this many
+                  days away, the scheduled run sends{' '}
+                  <span className="font-medium text-foreground/90">
+                    Daily urgency
+                  </span>{' '}
+                  in addition to{' '}
+                  <span className="font-medium text-foreground/90">
+                    Daily default
+                  </span>
+                  .
                 </p>
               </div>
               <div className="space-y-2 min-w-0">
@@ -764,7 +831,7 @@ export function TelegramMarketingSettingsCard() {
                   setDraft((d) => (d ? { ...d, dailyDefaultTemplate: v } : d))
                 }
                 onSendDraft={() =>
-                  runDraftSample(draft.dailyDefaultTemplate, 'Daily default')
+                  runDraftPreview(draft.dailyDefaultTemplate, 'Daily default')
                 }
               />
               <TemplateField
@@ -776,7 +843,7 @@ export function TelegramMarketingSettingsCard() {
                   setDraft((d) => (d ? { ...d, dailyUrgencyTemplate: v } : d))
                 }
                 onSendDraft={() =>
-                  runDraftSample(draft.dailyUrgencyTemplate, 'Daily urgency')
+                  runDraftPreview(draft.dailyUrgencyTemplate, 'Daily urgency')
                 }
               />
               <TemplateField
@@ -788,7 +855,7 @@ export function TelegramMarketingSettingsCard() {
                   setDraft((d) => (d ? { ...d, newBookingTemplate: v } : d))
                 }
                 onSendDraft={() =>
-                  runDraftSample(draft.newBookingTemplate, 'New booking')
+                  runDraftPreview(draft.newBookingTemplate, 'New booking')
                 }
               />
               <TemplateField
@@ -800,7 +867,7 @@ export function TelegramMarketingSettingsCard() {
                   setDraft((d) => (d ? { ...d, cancellationTemplate: v } : d))
                 }
                 onSendDraft={() =>
-                  runDraftSample(draft.cancellationTemplate, 'Cancellation')
+                  runDraftPreview(draft.cancellationTemplate, 'Cancellation')
                 }
               />
             </div>
