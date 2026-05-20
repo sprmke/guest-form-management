@@ -68,6 +68,7 @@ import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   applicableTransitions,
   arePendingDocumentsComplete,
+  bookingNeedsGmailListenerPoll,
   bookingPipeline,
   isSubStatusCompleted,
   isSubStatusCompletedInStepper,
@@ -356,6 +357,10 @@ export function WorkflowPanel({ booking }: Props) {
       pendingDocsAutoBackfillModalRef.current = null;
       return;
     }
+    if (!bookingNeedsGmailListenerPoll(booking)) {
+      pendingDocsAutoGmailPollRef.current = null;
+      return;
+    }
     const dedupeKey = `${booking.id}:PENDING_DOCUMENTS`;
     if (pendingDocsAutoGmailPollRef.current === dedupeKey) return;
     pendingDocsAutoGmailPollRef.current = dedupeKey;
@@ -375,7 +380,18 @@ export function WorkflowPanel({ booking }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [booking.id, status]);
+  }, [
+    booking.id,
+    booking.status,
+    booking.gaf_completed_at,
+    booking.approved_gaf_pdf_url,
+    booking.gaf_manual_incomplete,
+    booking.pet_completed_at,
+    booking.approved_pet_pdf_url,
+    booking.pet_manual_incomplete,
+    booking.has_pets,
+    status,
+  ]);
 
   useEffect(() => {
     if (status !== 'PENDING_DOCUMENTS') {

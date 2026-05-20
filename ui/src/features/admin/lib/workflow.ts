@@ -178,6 +178,23 @@ export function arePendingDocumentsComplete(booking: ApplicabilityFlags): boolea
 }
 
 /**
+ * Whether an automatic `gmail-listener` poll on page load could still apply
+ * inbox approvals (GAF / pet). Parking is admin-only — not Gmail-driven.
+ */
+export function bookingNeedsGmailListenerPoll(
+  booking: ApplicabilityFlags,
+): boolean {
+  if (!isSubStatusCompleted('PENDING_GAF', booking)) return true;
+  if (
+    isSubStatusRequired('PENDING_PET_REQUEST', booking) &&
+    !isSubStatusCompleted('PENDING_PET_REQUEST', booking)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * Whether a graph-legal transition should actually be shown for this booking.
  * Filters out steps that don't apply based on guest data:
  *   - Hides parking step when `need_parking` is false.
