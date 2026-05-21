@@ -10,7 +10,9 @@
  */
 
 import { DatabaseService } from './databaseService.ts';
-import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
+import {
+  checkGuestBalanceSettlement,
+} from './totalGuestBalance.ts';
 import { CalendarService } from './calendarService.ts';
 import { SheetsService } from './sheetsService.ts';
 import { generatePDF, generatePetPDF } from './pdfService.ts';
@@ -326,41 +328,33 @@ export class WorkflowOrchestrator {
       workflowFields.settled_at = new Date().toISOString();
     }
 
-    // READY_FOR_CHECKIN → READY_FOR_CHECKOUT: require paid amount (= total guest balance) + receipt URL.
+    // READY_FOR_CHECKIN → READY_FOR_CHECKOUT: paid = total; receipt required only when total > 0.
     if (fromStatus === 'READY_FOR_CHECKIN' && toStatus === 'READY_FOR_CHECKOUT') {
-      const totalDue = computeTotalGuestBalanceFromBooking(booking as Record<string, unknown>);
-      if (totalDue === null) {
-        throw new Error(
-          'Total guest balance cannot be computed. Complete pricing (booking rate and related fields) before this step.',
-        );
+      const settlement = checkGuestBalanceSettlement(
+        booking as Record<string, unknown>,
+        {
+          paidAmount: payload.guest_balance_paid_amount,
+          receiptUrl: payload.guest_balance_payment_receipt_url,
+        },
+      );
+      if (!settlement.ok) {
+        const messages: Record<string, string> = {
+          missing_total_guest_balance:
+            'Total guest balance cannot be computed. Complete pricing (booking rate and related fields) before this step.',
+          missing_guest_balance_paid_amount: 'guest_balance_paid_amount is required',
+          invalid_guest_balance_paid_amount:
+            'guest_balance_paid_amount must be a valid non-negative number',
+          guest_balance_paid_exceeds_balance:
+            'Amount paid cannot exceed total guest balance',
+          guest_balance_not_fully_paid:
+            'Amount paid must equal total guest balance before advancing to ready for check-out',
+          missing_guest_balance_payment_receipt:
+            'guest_balance_payment_receipt_url is required',
+        };
+        throw new Error(messages[settlement.reason] ?? settlement.reason);
       }
-      const paidRaw = payload.guest_balance_paid_amount;
-      if (paidRaw === null || paidRaw === undefined || paidRaw === '') {
-        throw new Error('guest_balance_paid_amount is required');
-      }
-      const paidNum = Number(paidRaw);
-      if (Number.isNaN(paidNum) || paidNum < 0) {
-        throw new Error('guest_balance_paid_amount must be a valid non-negative number');
-      }
-      const balCents = Math.round(totalDue * 100);
-      const paidCents = Math.round(paidNum * 100);
-      if (paidCents > balCents) {
-        throw new Error('Amount paid cannot exceed total guest balance');
-      }
-      if (paidCents !== balCents) {
-        throw new Error(
-          'Amount paid must equal total guest balance before advancing to ready for check-out',
-        );
-      }
-      const receipt =
-        typeof payload.guest_balance_payment_receipt_url === 'string'
-          ? payload.guest_balance_payment_receipt_url.trim()
-          : '';
-      if (!receipt) {
-        throw new Error('guest_balance_payment_receipt_url is required');
-      }
-      workflowFields.guest_balance_paid_amount = paidNum;
-      workflowFields.guest_balance_payment_receipt_url = receipt;
+      workflowFields.guest_balance_paid_amount = settlement.paidAmount;
+      workflowFields.guest_balance_payment_receipt_url = settlement.receiptUrl;
     }
 
     // 5. Persist workflow fields + update status

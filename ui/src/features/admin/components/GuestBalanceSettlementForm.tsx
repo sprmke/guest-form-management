@@ -2,7 +2,9 @@
  * GuestBalanceSettlementForm — Shown when advancing READY_FOR_CHECKIN →
  * READY_FOR_CHECKOUT. Requires **balance amount paid** to **equal** total
  * guest balance (same formula as pricing: rate − down + SD + pet + parking guest
- * + additional) plus a payment balance receipt before Proceed is enabled.
+ * + additional). Payment balance receipt is required only when total > ₱0
+ * (free stays may proceed with paid = 0 and no receipt; sd-refund-cron uses the
+ * same rules server-side).
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -13,7 +15,10 @@ import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
-import { computeTotalGuestBalance } from '@/features/admin/lib/totalGuestBalance';
+import {
+  computeTotalGuestBalance,
+  guestBalancePaymentReceiptRequired,
+} from '@/features/admin/lib/totalGuestBalance';
 import { resolveAssetUrlForBrowser } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
@@ -21,6 +26,7 @@ import { cn } from '@/lib/utils';
 
 export type GuestBalanceSettlementValues = {
   guest_balance_paid_amount: number;
+  /** Empty when total guest balance is ₱0 and no receipt was uploaded. */
   guest_balance_payment_receipt_url: string;
 };
 
@@ -74,6 +80,8 @@ export function GuestBalanceSettlementForm({
   });
 
   const totalDue = computeTotalGuestBalance(booking);
+  const receiptRequired =
+    totalDue !== null && guestBalancePaymentReceiptRequired(totalDue);
   const [paidInput, setPaidInput] = useState(() => {
     if (initialDraft) return String(initialDraft.guest_balance_paid_amount);
     const b = computeTotalGuestBalance(booking);
@@ -148,13 +156,20 @@ export function GuestBalanceSettlementForm({
       return;
     }
 
-    const paidParsed = parsePaidInput(paidInput);
-    if (paidParsed === null || paidParsed < 0) {
+    const balCents = Math.round(totalDue * 100);
+    let paidParsed = parsePaidInput(paidInput);
+    if (paidParsed === null) {
+      if (balCents === 0) paidParsed = 0;
+      else {
+        onChange(null);
+        return;
+      }
+    }
+    if (paidParsed < 0) {
       onChange(null);
       return;
     }
 
-    const balCents = Math.round(totalDue * 100);
     const paidCents = Math.round(paidParsed * 100);
     if (paidCents > balCents) {
       onChange(null);
@@ -166,7 +181,7 @@ export function GuestBalanceSettlementForm({
     }
 
     const receipt = receiptUrl.trim();
-    if (!receipt) {
+    if (receiptRequired && !receipt) {
       onChange(null);
       return;
     }
@@ -175,7 +190,7 @@ export function GuestBalanceSettlementForm({
       guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
       guest_balance_payment_receipt_url: receipt,
     });
-  }, [totalDue, paidInput, receiptUrl, onChange]);
+  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange]);
 
   const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi =
@@ -266,8 +281,19 @@ export function GuestBalanceSettlementForm({
 
       <div className="space-y-1">
         <span className="block text-xs text-slate-600">
-          Payment balance receipt <span className="text-red-600">*</span>
+          Payment balance receipt
+          {receiptRequired ? (
+            <>
+              {' '}
+              <span className="text-red-600">*</span>
+            </>
+          ) : null}
         </span>
+        {!receiptRequired && totalDue !== null ? (
+          <p className="text-[10.5px] leading-snug text-slate-500">
+            Not required when total guest balance is {formatMoney(totalDue)}.
+          </p>
+        ) : null}
         <div className="space-y-2">
           {receiptUrl ? (
             <a

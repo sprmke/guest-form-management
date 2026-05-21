@@ -13,6 +13,11 @@ function toMoneyNumber(value: number | string | null | undefined): number {
  * `guest_submissions.balance` is the recorded “balance” line item only; this sum
  * is what admins mean by **Total guest balance** for settlement.
  */
+/** Payment receipt is required only when the guest owes a positive balance. */
+export function guestBalancePaymentReceiptRequired(totalDue: number): boolean {
+  return Math.round(totalDue * 100) !== 0;
+}
+
 export function computeTotalGuestBalance(booking: BookingRow): number | null {
   if (booking.booking_rate == null || booking.booking_rate === '') return null;
   const rate = toMoneyNumber(booking.booking_rate);

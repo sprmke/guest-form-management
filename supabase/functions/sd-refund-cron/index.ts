@@ -6,7 +6,7 @@
  *           **Check-out & SD Refund Details email** to the guest runs on that schedule **without** requiring
  *           final guest-balance settlement (idempotent via `sd_refund_form_emailed_at`).
  *           **Status** `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` still runs **only** when settlement is complete
- *           (paid = total guest balance + receipt URL), via `WorkflowOrchestrator` (calendar/sheet; SD email on
+ *           (paid = total guest balance; receipt URL when total > ₱0), via `WorkflowOrchestrator` (calendar/sheet; SD email on
  *           transition is skipped if the guest was already emailed in this phase).
  *
  * Trigger:  Supabase cron — every 5 minutes (POST with empty or `{}` body — processes all candidates).
@@ -40,7 +40,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
-import { computeTotalGuestBalanceFromBooking } from '../_shared/totalGuestBalance.ts';
+import { checkGuestBalanceSettlement } from '../_shared/totalGuestBalance.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
 
@@ -119,40 +119,12 @@ function defaultCheckoutTime(): string {
   return '11:00 AM';
 }
 
-/** Same rules as WorkflowOrchestrator for RFCI → READY_FOR_CHECKOUT payload (paid = total). */
+/** Same rules as WorkflowOrchestrator for RFCI → READY_FOR_CHECKOUT (paid = total; receipt if total > 0). */
 function canAutoTransitionWithSettlement(row: Record<string, unknown>): {
   ok: true;
 } | { ok: false; reason: string } {
-  const totalDue = computeTotalGuestBalanceFromBooking(row);
-  if (totalDue === null) {
-    return { ok: false, reason: 'missing_total_guest_balance' };
-  }
-
-  const paidRaw = row.guest_balance_paid_amount;
-  if (paidRaw === null || paidRaw === undefined || paidRaw === '') {
-    return { ok: false, reason: 'missing_guest_balance_paid_amount' };
-  }
-  const paidNum = Number(paidRaw);
-  if (Number.isNaN(paidNum) || paidNum < 0) {
-    return { ok: false, reason: 'invalid_guest_balance_paid_amount' };
-  }
-  const balCents = Math.round(totalDue * 100);
-  const paidCents = Math.round(paidNum * 100);
-  if (paidCents > balCents) {
-    return { ok: false, reason: 'guest_balance_paid_exceeds_balance' };
-  }
-  if (paidCents !== balCents) {
-    return { ok: false, reason: 'guest_balance_not_fully_paid' };
-  }
-
-  const receipt =
-    typeof row.guest_balance_payment_receipt_url === 'string'
-      ? row.guest_balance_payment_receipt_url.trim()
-      : '';
-  if (!receipt) {
-    return { ok: false, reason: 'missing_guest_balance_payment_receipt' };
-  }
-
+  const result = checkGuestBalanceSettlement(row);
+  if (!result.ok) return result;
   return { ok: true };
 }
 
