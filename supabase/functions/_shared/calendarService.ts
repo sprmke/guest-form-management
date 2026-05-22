@@ -8,6 +8,7 @@ import {
 } from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
+import type { CalendarEventSnapshot } from './calendarRepair.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
@@ -100,14 +101,38 @@ export class CalendarService {
     booking?: unknown,
     access?: { calendarId: string; accessToken: string },
   ): Promise<string | null> {
+    const ids = await this.findAllEventIdsForBooking(bookingId, booking, access);
+    return ids[0] ?? null;
+  }
+
+  /** All calendar events tied to this booking (extended property, admin link, or date window). */
+  static async findAllEventIdsForBooking(
+    bookingId: string,
+    booking?: unknown,
+    access?: { calendarId: string; accessToken: string },
+  ): Promise<string[]> {
     const ctx = access ?? await this.obtainCalendarAccess();
-    if (!ctx) return null;
-    return await this.findExistingEventId(
+    if (!ctx) return [];
+    return await this.collectAllEventIds(
       { calendarId: ctx.calendarId },
       ctx.accessToken,
       bookingId,
       booking,
     );
+  }
+
+  static async getCalendarEventSnapshot(
+    eventId: string,
+    access: { calendarId: string; accessToken: string },
+  ): Promise<CalendarEventSnapshot | null> {
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(access.calendarId)}/events/${encodeURIComponent(eventId)}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${access.accessToken}` } },
+    );
+    if (!response.ok) return null;
+    const ev = await response.json();
+    const startDateTime = String(ev.start?.dateTime ?? ev.start?.date ?? '');
+    return { summary: String(ev.summary ?? ''), startDateTime };
   }
 
   private static async deleteCalendarEvent(credentials: any, eventId: string): Promise<boolean> {
@@ -169,7 +194,7 @@ export class CalendarService {
       }
 
       const accessToken = await this.getAccessToken(credentials.serviceAccount);
-      const existingEventId = await this.findExistingEventId(
+      const eventIds = await this.collectAllEventIds(
         { calendarId: credentials.calendarId },
         accessToken,
         bookingId,
@@ -179,7 +204,7 @@ export class CalendarService {
       const meta = STATUS_CALENDAR_META[status];
       const summary = buildCalendarSummary(status, pax, nights, guestName, booking);
 
-      if (!existingEventId) {
+      if (eventIds.length === 0) {
         if (!booking) {
           console.log(`No calendar event found for booking ${bookingId} (no booking data to create one)`);
           return { success: true, updated: 0 };
@@ -228,25 +253,29 @@ export class CalendarService {
         patchBody.end = eventData.end;
       }
 
-      const response = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId!)}/events/${existingEventId}`,
-        {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
+      let patched = 0;
+      for (const eventId of eventIds) {
+        const response = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId!)}/events/${eventId}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(patchBody),
           },
-          body: JSON.stringify(patchBody),
-        },
-      );
+        );
 
-      if (!response.ok) {
-        const err = await response.text();
-        throw new Error(`Failed to patch calendar event: ${response.status} ${err}`);
+        if (!response.ok) {
+          const err = await response.text();
+          throw new Error(`Failed to patch calendar event ${eventId}: ${response.status} ${err}`);
+        }
+        patched++;
       }
 
-      console.log(`Calendar event updated: "${summary}" colorId=${meta.colorId}`);
-      return { success: true, updated: 1 };
+      console.log(`Calendar event(s) updated (${patched}): "${summary}" colorId=${meta.colorId}`);
+      return { success: true, updated: patched };
     } catch (error) {
       console.error('Error updating calendar event status:', error);
       return { success: false, updated: 0 };
@@ -377,6 +406,38 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     return desc.includes(bookingId) || desc.includes(`/bookings/${bookingId}`);
   }
 
+  /** Fallback for legacy events missing extendedProperties (guest name + check-in in body). */
+  private static eventMatchesBookingHeuristic(
+    item: { summary?: string; description?: string },
+    booking?: { guest_facebook_name?: string; check_in_date?: string },
+  ): boolean {
+    if (!booking) return false;
+    const name = String(booking.guest_facebook_name ?? '').trim();
+    const checkIn = String(booking.check_in_date ?? '').trim();
+    if (!name) return false;
+    const summary = item.summary ?? '';
+    if (!summary.includes(name)) return false;
+    if (!checkIn) return true;
+    const desc = item.description ?? '';
+    return desc.includes(checkIn) || summary.includes(checkIn);
+  }
+
+  private static eventMatchesBooking(
+    item: {
+      summary?: string;
+      description?: string;
+      extendedProperties?: { private?: { bookingId?: string } };
+    },
+    bookingId: string,
+    booking?: unknown,
+  ): boolean {
+    if (this.eventMatchesBookingId(item, bookingId)) return true;
+    return this.eventMatchesBookingHeuristic(
+      item,
+      booking as { guest_facebook_name?: string; check_in_date?: string } | undefined,
+    );
+  }
+
   private static async listCalendarEvents(
     calendarId: string,
     accessToken: string,
@@ -398,16 +459,38 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     bookingId: string,
     booking?: unknown,
   ): Promise<string | null> {
+    const ids = await this.collectAllEventIds(credentials, accessToken, bookingId, booking);
+    return ids[0] ?? null;
+  }
+
+  private static async collectAllEventIds(
+    credentials: { calendarId: string },
+    accessToken: string,
+    bookingId: string,
+    booking?: unknown,
+  ): Promise<string[]> {
     const calendarId = credentials.calendarId;
     const row = booking as { check_in_date?: string; number_of_nights?: number } | undefined;
+    const ids = new Set<string>();
+
+    const addMatches = (
+      items: Array<{
+        id?: string;
+        summary?: string;
+        description?: string;
+        extendedProperties?: { private?: { bookingId?: string } };
+      }>,
+    ) => {
+      for (const item of items) {
+        if (item.id && this.eventMatchesBooking(item, bookingId, booking)) ids.add(item.id);
+      }
+    };
 
     for (const params of [
       { privateExtendedProperty: `bookingId=${bookingId}`, singleEvents: 'true', orderBy: 'startTime' },
       { q: bookingId, singleEvents: 'true', orderBy: 'startTime' },
     ]) {
-      const items = await this.listCalendarEvents(calendarId, accessToken, params);
-      const match = items.find((item) => this.eventMatchesBookingId(item, bookingId));
-      if (match?.id) return match.id;
+      addMatches(await this.listCalendarEvents(calendarId, accessToken, params));
     }
 
     const checkInYmd = row?.check_in_date
@@ -417,16 +500,15 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
       const nights = Math.max(1, Number(row?.number_of_nights) || 1);
       const timeMin = dayjs(checkInYmd, 'YYYY-MM-DD', true).subtract(1, 'day').startOf('day').toISOString();
       const timeMax = dayjs(checkInYmd, 'YYYY-MM-DD', true).add(nights + 2, 'day').endOf('day').toISOString();
-      const items = await this.listCalendarEvents(calendarId, accessToken, {
+      addMatches(await this.listCalendarEvents(calendarId, accessToken, {
         timeMin,
         timeMax,
         singleEvents: 'true',
         orderBy: 'startTime',
-      });
-      const match = items.find((item) => this.eventMatchesBookingId(item, bookingId));
-      if (match?.id) return match.id;
+        maxResults: '50',
+      }));
     }
-    return null;
+    return [...ids];
   }
 
   /**

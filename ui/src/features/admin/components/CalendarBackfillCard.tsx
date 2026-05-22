@@ -21,11 +21,11 @@ export function CalendarBackfillCard() {
           const s = data.summary;
           if (dryRun) {
             toast.message(
-              `Preview: ${s.wouldSync ?? 0} to sync, ${s.notFound ?? 0} missing (${s.scanned} since May 12, 2026).`,
+              `Preview: ${s.needsRepair ?? 0} need repair, ${s.alreadyOk ?? 0} OK, ${s.notFound ?? 0} missing (${s.scanned} scanned).`,
             );
           } else {
             toast.success(
-              `Done: ${s.synced ?? 0} synced, ${s.notFound ?? 0} missing, ${s.failed ?? 0} failed.`,
+              `Done: ${s.synced ?? 0} repaired, ${s.skippedOk ?? 0} already OK, ${s.notFound ?? 0} missing, ${s.failed ?? 0} failed.`,
             );
           }
         },
@@ -44,7 +44,7 @@ export function CalendarBackfillCard() {
           <div>
             <h2 className="text-sm font-bold">Calendar &amp; sheet repair</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Stays with check-in on or after May 12, 2026 only.
+              Stays with check-in on or after May 12, 2026. Preview flags wrong times (e.g. 2am vs 2pm) or stale titles; Apply fixes only rows that need repair.
             </p>
           </div>
           <label className="flex min-h-[44px] items-center gap-2 text-xs cursor-pointer">

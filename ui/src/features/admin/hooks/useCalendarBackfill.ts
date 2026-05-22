@@ -28,9 +28,11 @@ export function useCalendarBackfill() {
         dryRun: boolean;
         summary: {
           scanned: number;
-          wouldSync?: number;
-          synced?: number;
+          needsRepair?: number;
+          alreadyOk?: number;
           notFound?: number;
+          synced?: number;
+          skippedOk?: number;
           failed?: number;
         };
       };
