@@ -111,11 +111,11 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
     pax: String(totalPax),
     primary_guest_name: String(booking.primary_guest_name ?? 'N/A'),
     guest_phone: String(booking.guest_phone_number ?? 'N/A'),
-    decor_status: hasDecor ? 'Has Decor' : 'No Decor',
-    pet_status: hasPets ? 'Has Pets' : 'No Pets',
+    decor_status: hasDecor ? 'Yes' : 'No',
+    pet_status: hasPets ? 'Yes' : 'No',
     special_requests: specialReqs || 'None',
     total_guest_balance: formatCurrency(balance),
-    booking_link: `View Booking Details: \n${APP_BASE_URL}/bookings/${booking.id}`,
+    booking_link: `View Booking Details: ${APP_BASE_URL}/bookings/${booking.id}`,
   };
 }
 
@@ -459,8 +459,8 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       '{{pax}} — number of guests',
       '{{primary_guest_name}} — primary guest full name',
       '{{guest_phone}} — guest phone number',
-      '{{decor_status}} — "Has Decor" or "No Decor"',
-      '{{pet_status}} — "Has Pets" or "No Pets"',
+      '{{decor_status}} — "Yes" or "No"',
+      '{{pet_status}} — "Yes" or "No"',
       '{{special_requests}} — guest special requests or "None"',
       '{{total_guest_balance}} — total amount due from guest (₱ formatted)',
       '{{next_bookings}} — next 3 days booking summary',
