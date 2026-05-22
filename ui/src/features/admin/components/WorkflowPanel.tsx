@@ -6,8 +6,7 @@
  * - Stage-specific sub-form (ReviewPricingForm + SurpriseDecorAckCard when applicable,
  *   ParkingRequestForm / SdRefundForm),
  *   plus **READY_FOR_CHECKOUT** guest `/sd-form` link + copy + **Recheck** (refetch booking)
- * - Dev-control checkboxes (collapsible, default collapsed; only relevant controls
- *   are shown based on the current booking status)
+ * - Dev-control checkboxes on Proceed/Back/Cancel confirm modals (session-persisted)
  * - Automation triggers (collapsible help + manual run buttons when expanded)
  * - Available transition buttons (from canTransition / canManualForceTransition)
  * - Cancel booking (non-terminal; dev-control flags apply)
@@ -30,7 +29,6 @@ import {
   AlertTriangle,
   ArrowLeft,
   Check,
-  CheckSquare,
   ChevronDown,
   ChevronRight,
   History,
@@ -38,11 +36,10 @@ import {
   Mail,
   RefreshCw,
   RotateCcw,
-  Settings2,
   Timer,
-  Square,
   X,
 } from 'lucide-react';
+import { WorkflowDevControlsChecklist } from '@/features/admin/components/WorkflowDevControlsChecklist';
 import {
   ReviewPricingForm,
   type ReviewPricingFormValues,
@@ -89,6 +86,14 @@ import {
 } from '@/features/admin/lib/formatters';
 import { shouldWarnPastBookingStayForProceed } from '@/features/admin/lib/bookingPastPipelineManila';
 import {
+  loadPersistedWorkflowDevControls,
+  mergeWorkflowDevControlsWithDefaults,
+  persistWorkflowDevControls,
+  workflowDevControlsForCancel,
+  workflowDevControlsForTransition,
+  type WorkflowDevControlDef,
+} from '@/features/admin/lib/workflowDevControls';
+import {
   historicalBackfillDismissStorageKey,
   shouldOfferHistoricalApprovalBackfill,
 } from '@/features/admin/lib/historicalBackfillEligibility';
@@ -129,98 +134,6 @@ function buildGmailPollSuccessMessage(result: {
   return `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed${recSuffix}`;
 }
 
-// ─── Dev-control config (status-aware) ───────────────────────────────────────
-
-type DevControlDef = {
-  key: keyof DevControlFlags;
-  label: string;
-  description: string;
-  /** Returns true when this checkbox is relevant for the current booking state. */
-  isRelevant: (
-    status: BookingStatus,
-    transitions: BookingStatus[],
-    booking: BookingRow,
-  ) => boolean;
-};
-
-const DEV_CONTROLS: DevControlDef[] = [
-  {
-    key: 'saveToDatabase',
-    label: 'Save to Database',
-    description: 'Persist status and workflow fields',
-    isRelevant: () => true,
-  },
-  {
-    key: 'updateGoogleCalendar',
-    label: 'Update Google Calendar',
-    description: 'Update event color and title',
-    isRelevant: () => true,
-  },
-  {
-    key: 'updateGoogleSheets',
-    label: 'Update Google Sheets',
-    description: 'Update status and workflow columns',
-    isRelevant: () => true,
-  },
-  {
-    key: 'generatePdf',
-    label: 'Generate GAF / pet request PDFs',
-    description:
-      'Build filled PDFs for Azure (GAF + pet if applicable), attach to request emails, and save URLs when DB save is on',
-    isRelevant: (status) => status === 'PENDING_REVIEW',
-  },
-  {
-    key: 'sendGafRequestEmail',
-    label: 'Send GAF Request Email',
-    description: 'Email Azure North with GAF request',
-    // Only fired during PENDING_REVIEW → PENDING_DOCUMENTS
-    isRelevant: (status) => status === 'PENDING_REVIEW',
-  },
-  {
-    key: 'sendBookingAcknowledgementEmail',
-    label: 'Send Acknowledgement Email',
-    description: 'Email guest with booking confirmation',
-    // Only fired during PENDING_REVIEW → PENDING_DOCUMENTS
-    isRelevant: (status) => status === 'PENDING_REVIEW',
-  },
-  {
-    key: 'sendParkingBroadcastEmail',
-    label: 'Send Parking Broadcast',
-    description: 'BCC parking owners about this booking',
-    // Only relevant when transitioning from PENDING_REVIEW and booking has parking
-    isRelevant: (status, _, b) =>
-      status === 'PENDING_REVIEW' && !!b.need_parking,
-  },
-  {
-    key: 'sendPetRequestEmail',
-    label: 'Send Pet Request Email',
-    description: 'Email Azure North with pet request',
-    // Only relevant when transitioning from PENDING_REVIEW and booking has pets
-    isRelevant: (status, _, b) => status === 'PENDING_REVIEW' && !!b.has_pets,
-  },
-  {
-    key: 'sendReadyForCheckinEmail',
-    label: 'Send Ready-for-Check-in Email',
-    description: 'Notify guest they are cleared for check-in',
-    // Only relevant on FORWARD transitions to READY_FOR_CHECKIN. The server
-    // gates this too — backward transitions (e.g. PENDING_SD_REFUND →
-    // READY_FOR_CHECKIN) never fire the ready email regardless of this flag.
-    isRelevant: (status) =>
-      status === 'PENDING_DOCUMENTS' ||
-      status === 'PENDING_GAF' ||
-      status === 'PENDING_PARKING_REQUEST' ||
-      status === 'PENDING_PET_REQUEST',
-  },
-  {
-    key: 'sendSdRefundFormEmail',
-    label: 'Send SD Refund Form Email',
-    description:
-      'Email guest the /sd-form link (security deposit refund) when moving to check-out',
-    // READY_FOR_CHECKIN → READY_FOR_CHECKOUT (cron uses the same flag).
-    isRelevant: (status) => status === 'READY_FOR_CHECKIN',
-  },
-];
-
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
 
 type ConfirmState = {
@@ -241,22 +154,35 @@ export function WorkflowPanel({ booking }: Props) {
   const status = booking.status as BookingStatus;
   const isTerminal = TERMINAL_STATUSES.has(status);
 
-  // Dev controls — collapsed by default. All toggles start CHECKED so the
-  // booking takes the full happy path (DB write + Calendar + Sheet + the
-  // emails that apply to this transition); admins uncheck just the side
-  // effects they want to skip. The server's `flag()` helper also treats
-  // undefined as `true`, so this UI default mirrors the server default.
-  const [devOpen, setDevOpen] = useState(false);
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
-  const [devControls, setDevControls] = useState<DevControlFlags>(() =>
-    DEV_CONTROLS.reduce<DevControlFlags>(
-      (acc, c) => ({ ...acc, [c.key]: true }),
-      {},
-    ),
+
+  // Dev controls — session-persisted per booking; defaults all checked.
+  const [sessionDevControls, setSessionDevControls] = useState<DevControlFlags>(
+    () =>
+      mergeWorkflowDevControlsWithDefaults(
+        loadPersistedWorkflowDevControls(booking.id),
+      ),
   );
-  const toggleControl = (key: keyof DevControlFlags) => {
-    setDevControls((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  const [modalDevControls, setModalDevControls] =
+    useState<DevControlFlags>(sessionDevControls);
+
+  useEffect(() => {
+    setSessionDevControls(
+      mergeWorkflowDevControlsWithDefaults(
+        loadPersistedWorkflowDevControls(booking.id),
+      ),
+    );
+  }, [booking.id]);
+
+  const commitModalDevControls = useCallback((): DevControlFlags => {
+    persistWorkflowDevControls(booking.id, modalDevControls);
+    setSessionDevControls(modalDevControls);
+    return modalDevControls;
+  }, [booking.id, modalDevControls]);
+
+  const toggleModalDevControl = useCallback((key: keyof DevControlFlags) => {
+    setModalDevControls((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   // Sub-form state
   const [pricingValues, setPricingValues] =
@@ -287,6 +213,11 @@ export function WorkflowPanel({ booking }: Props) {
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
   const [cancelConfirm, setCancelConfirm] = useState(false);
+
+  useEffect(() => {
+    if (!confirm && !cancelConfirm) return;
+    setModalDevControls(sessionDevControls);
+  }, [confirm, cancelConfirm, sessionDevControls]);
 
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
@@ -523,13 +454,10 @@ export function WorkflowPanel({ booking }: Props) {
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
 
-  // Relevant dev controls for this booking + status
-  const relevantControls = DEV_CONTROLS.filter((c) =>
-    c.isRelevant(status, transitions, booking),
-  );
-  const checkedCount = relevantControls.filter(
-    (c) => !!devControls[c.key],
-  ).length;
+  const transitionConfirmDevControls = confirm
+    ? workflowDevControlsForTransition(status, confirm.toStatus, booking)
+    : [];
+  const cancelConfirmDevControls = workflowDevControlsForCancel();
 
   // ─── Sub-form helpers ────────────────────────────────────────────────────
 
@@ -608,13 +536,14 @@ export function WorkflowPanel({ booking }: Props) {
   }
 
   async function handleTransition(toStatus: BookingStatus) {
+    const flags = commitModalDevControls();
     setConfirm(null);
     try {
       await transitionMut.mutateAsync({
         bookingId: booking.id,
         toStatus,
         payload: buildPayload(toStatus),
-        devControls,
+        devControls: flags,
         manual: true,
       });
       toast.success(`Booking moved to: ${statusLabel(toStatus)}`);
@@ -644,7 +573,7 @@ export function WorkflowPanel({ booking }: Props) {
         bookingId: booking.id,
         toStatus: 'PENDING_DOCUMENTS',
         payload,
-        devControls,
+        devControls: sessionDevControls,
         manual: true,
       });
       toast.success(`Marked ${statusLabel(subStatus)} as complete`);
@@ -661,7 +590,7 @@ export function WorkflowPanel({ booking }: Props) {
         bookingId: booking.id,
         toStatus: 'PENDING_DOCUMENTS',
         payload: { document_completion_clear_target: subStatus },
-        devControls,
+        devControls: sessionDevControls,
         manual: true,
       });
       toast.success(`Marked ${statusLabel(subStatus)} as incomplete`);
@@ -671,9 +600,10 @@ export function WorkflowPanel({ booking }: Props) {
   }
 
   async function handleCancel() {
+    const flags = commitModalDevControls();
     setCancelConfirm(false);
     try {
-      await cancelMut.mutateAsync({ bookingId: booking.id, devControls });
+      await cancelMut.mutateAsync({ bookingId: booking.id, devControls: flags });
       toast.success('Booking cancelled');
     } catch (err: any) {
       toast.error(err?.message ?? 'Cancel failed');
@@ -842,71 +772,6 @@ export function WorkflowPanel({ booking }: Props) {
               initialDraft={sdRefundValues}
               onChange={setSdRefundValues}
             />
-          )}
-        </div>
-      )}
-
-      {/* ── Dev controls (collapsible) ────────────────────────────────────── */}
-      {!isTerminal && relevantControls.length > 0 && (
-        <div className="border-b border-slate-100">
-          <button
-            type="button"
-            onClick={() => setDevOpen((o) => !o)}
-            className="flex justify-between items-center px-4 py-3 w-full text-left transition-colors hover:bg-slate-50"
-          >
-            <span className="flex gap-2 items-center">
-              <Settings2 className="size-3.5 text-slate-400" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Dev Controls
-              </span>
-              {checkedCount > 0 && (
-                <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold text-blue-700">
-                  {checkedCount}
-                </span>
-              )}
-            </span>
-            {devOpen ? (
-              <ChevronDown className="size-3.5 text-slate-400" />
-            ) : (
-              <ChevronRight className="size-3.5 text-slate-400" />
-            )}
-          </button>
-
-          {devOpen && (
-            <div className="space-y-0.5 px-4 pb-3">
-              {relevantControls.map(({ key, label, description }) => {
-                const checked = !!devControls[key];
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => toggleControl(key)}
-                    className="flex w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-slate-50 transition-colors"
-                  >
-                    <span className="mt-0.5 shrink-0">
-                      {checked ? (
-                        <CheckSquare className="size-3.5 text-blue-600" />
-                      ) : (
-                        <Square className="size-3.5 text-slate-300" />
-                      )}
-                    </span>
-                    <span className="flex flex-col">
-                      <span
-                        className={cn(
-                          'text-xs font-medium leading-snug',
-                          checked ? 'text-slate-800' : 'text-slate-600',
-                        )}
-                      >
-                        {label}
-                      </span>
-                      <span className="text-[10.5px] leading-tight text-slate-400">
-                        {description}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           )}
         </div>
       )}
@@ -1293,7 +1158,10 @@ export function WorkflowPanel({ booking }: Props) {
               </div>
             ) : null
           }
-          description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Checked dev-control side effects will fire.`}
+          description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck any side effect you want to skip for this action.`}
+          devControls={transitionConfirmDevControls}
+          devControlValues={modalDevControls}
+          onDevControlToggle={toggleModalDevControl}
           onConfirm={() => handleTransition(confirm.toStatus)}
           onCancel={() => setConfirm(null)}
           isLoading={transitionMut.isPending}
@@ -1304,7 +1172,10 @@ export function WorkflowPanel({ booking }: Props) {
         <ConfirmModal
           title="Cancel Booking"
           secondaryLabel="Keep booking"
-          description="This will mark the booking as CANCELLED, update the Calendar (purple) and Sheet. All guest data is preserved. This cannot be undone."
+          description="This will mark the booking as CANCELLED. Uncheck any integration you want to skip. Guest data is preserved. This cannot be undone."
+          devControls={cancelConfirmDevControls}
+          devControlValues={modalDevControls}
+          onDevControlToggle={toggleModalDevControl}
           onConfirm={handleCancel}
           onCancel={() => setCancelConfirm(false)}
           isLoading={cancelMut.isPending}
@@ -1515,6 +1386,9 @@ function ConfirmModal({
   title,
   description,
   banner,
+  devControls = [],
+  devControlValues,
+  onDevControlToggle,
   secondaryLabel = 'Back',
   onConfirm,
   onCancel,
@@ -1524,6 +1398,9 @@ function ConfirmModal({
   title: string;
   description: string;
   banner?: ReactNode;
+  devControls?: WorkflowDevControlDef[];
+  devControlValues?: DevControlFlags;
+  onDevControlToggle?: (key: keyof DevControlFlags) => void;
   /** Dismiss control (e.g. `Cancel` for transitions, `Keep booking` when cancelling a booking). */
   secondaryLabel?: string;
   onConfirm: () => void;
@@ -1533,24 +1410,37 @@ function ConfirmModal({
 }) {
   if (typeof document === 'undefined') return null;
 
+  const showDevControls =
+    devControls.length > 0 && devControlValues && onDevControlToggle;
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-[2px]">
-      <div className="p-5 w-full max-w-md bg-white rounded-2xl shadow-2xl">
-        <div className="flex gap-3 items-start">
-          {destructive && (
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
-              <AlertTriangle className="text-red-600 size-4" />
+      <div className="flex max-h-[min(90vh,calc(100vh-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white p-5 shadow-2xl">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="flex gap-3 items-start">
+            {destructive && (
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
+                <AlertTriangle className="text-red-600 size-4" />
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+              {banner ? <div className="mt-3">{banner}</div> : null}
+              <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                {description}
+              </p>
+              {showDevControls ? (
+                <WorkflowDevControlsChecklist
+                  controls={devControls}
+                  values={devControlValues}
+                  onToggle={onDevControlToggle}
+                  disabled={isLoading}
+                />
+              ) : null}
             </div>
-          )}
-          <div className="flex-1">
-            <h3 className="text-base font-semibold text-slate-900">{title}</h3>
-            {banner ? <div className="mt-3">{banner}</div> : null}
-            <p className="mt-1 text-sm leading-relaxed text-slate-500">
-              {description}
-            </p>
           </div>
         </div>
-        <div className="flex gap-2 justify-end mt-5">
+        <div className="flex shrink-0 gap-2 justify-end mt-5 border-t border-slate-100 pt-4">
           <button
             type="button"
             onClick={onCancel}
