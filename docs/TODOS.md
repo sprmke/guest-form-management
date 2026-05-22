@@ -164,4 +164,4 @@ Todos
   - ✅ Configurable template with `{{placeholder}}` tokens on `/staff` admin page (`TelegramStaffSettingsCard`)
   - ✅ Enable/disable toggle + time picker + test sends
   - Notification for guest check-out
-  - Convert all env variable to settings page for other users to use our app
+- Convert all env variable to settings page for other users to use our app

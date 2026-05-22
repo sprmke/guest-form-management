@@ -140,6 +140,9 @@ static_files = [
 [functions.sync-booking-integrations]
 verify_jwt = false
 
+[functions.calendar-backfill-from-db]
+verify_jwt = false
+
 [functions.upload-booking-asset]
 verify_jwt = false
 
