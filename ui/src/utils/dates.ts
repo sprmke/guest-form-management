@@ -226,20 +226,24 @@ export function toGuestSubmissionDate(text: string): string {
   return s;
 }
 
-/** `guest_submissions.valid_times` — 12-hour with AM/PM (e.g. 2:00 PM). */
+/** Normalize to 24-hour HH:mm for guest_submissions. */
 export function toGuestSubmissionTime(text: string): string {
   const s = (text ?? '').trim();
   if (!s) return s;
-  if (/\s[AP]M$/i.test(s)) return s;
-  const m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  if (!m) return s;
-  let hour = Number(m[1]);
-  const minute = m[2].padStart(2, '0');
-  if (!Number.isFinite(hour) || hour < 0 || hour > 23) return s;
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12;
-  if (hour === 0) hour = 12;
-  return `${hour}:${minute} ${ampm}`;
+  if (/^\d{2}:\d{2}$/.test(s)) return s;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+  const ampm = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i);
+  if (ampm) {
+    let h = Number(ampm[1]);
+    const m = ampm[2];
+    const mer = ampm[3].toUpperCase();
+    if (mer === 'AM' && h === 12) h = 0;
+    else if (mer === 'PM' && h !== 12) h += 12;
+    return `${String(h).padStart(2, '0')}:${m}`;
+  }
+  const short = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (short) return `${short[1].padStart(2, '0')}:${short[2]}`;
+  return s;
 }
 
 // Create a disabled date matcher for react-day-picker (for check-in dates)

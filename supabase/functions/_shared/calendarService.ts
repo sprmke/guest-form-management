@@ -4,6 +4,7 @@ import {
   formatDateTime,
   formatPublicUrl,
   isDevelopment,
+  normalizeDateToYYYYMMDD,
 } from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
@@ -19,7 +20,10 @@ export class CalendarService {
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
-        const existingEventId = await this.findExistingEvent(credentials, bookingId);
+        const existingEventId = await this.findExistingEvent(credentials, bookingId, {
+          check_in_date: formData.checkInDate,
+          number_of_nights: formData.numberOfNights,
+        });
         if (existingEventId) {
           await this.deleteCalendarEvent(credentials, existingEventId);
         }
@@ -59,14 +63,51 @@ export class CalendarService {
     }
   }
 
-  private static async findExistingEvent(credentials: any, bookingId: string): Promise<string | null> {
+  private static async findExistingEvent(
+    credentials: { calendarId: string; serviceAccount: unknown },
+    bookingId: string,
+    booking?: { check_in_date?: string; number_of_nights?: number },
+  ): Promise<string | null> {
     try {
       const accessToken = await this.getAccessToken(credentials.serviceAccount);
-      return await this.findExistingEventId(credentials, accessToken, bookingId);
+      return await this.findExistingEventId(
+        { calendarId: credentials.calendarId },
+        accessToken,
+        bookingId,
+        booking,
+      );
     } catch (error) {
       console.error('Error finding existing event:', error);
       return null;
     }
+  }
+
+  static isConfigured(): boolean {
+    return this.getCredentialsSafe() !== null;
+  }
+
+  static async obtainCalendarAccess(): Promise<
+    { calendarId: string; accessToken: string } | null
+  > {
+    const credentials = this.getCredentialsSafe();
+    if (!credentials) return null;
+    const accessToken = await this.getAccessToken(credentials.serviceAccount);
+    return { calendarId: credentials.calendarId, accessToken };
+  }
+
+  static async findEventIdForBooking(
+    bookingId: string,
+    booking?: unknown,
+    access?: { calendarId: string; accessToken: string },
+  ): Promise<string | null> {
+    const ctx = access ?? await this.obtainCalendarAccess();
+    if (!ctx) return null;
+    return await this.findExistingEventId(
+      { calendarId: ctx.calendarId },
+      ctx.accessToken,
+      bookingId,
+      booking,
+    );
   }
 
   private static async deleteCalendarEvent(credentials: any, eventId: string): Promise<boolean> {
@@ -132,6 +173,7 @@ export class CalendarService {
         { calendarId: credentials.calendarId },
         accessToken,
         bookingId,
+        booking,
       );
 
       const meta = STATUS_CALENDAR_META[status];
@@ -174,7 +216,11 @@ export class CalendarService {
       // Patch the existing event: summary/color, full description, and stay
       // window (start/end) when we have the DB row — keeps Google in sync after
       // admin edits to dates, guest block, or surprise decor without a transition.
-      const patchBody: Record<string, unknown> = { summary, colorId: meta.colorId };
+      const patchBody: Record<string, unknown> = {
+        summary,
+        colorId: meta.colorId,
+        extendedProperties: { private: { bookingId } },
+      };
       if (booking) {
         const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
         patchBody.description = eventData.description;
@@ -322,19 +368,65 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     };
   }
 
-  /** Finds the Google Calendar event ID for a booking, or null if not found. */
+  private static eventMatchesBookingId(
+    item: { description?: string; extendedProperties?: { private?: { bookingId?: string } } },
+    bookingId: string,
+  ): boolean {
+    if (item.extendedProperties?.private?.bookingId === bookingId) return true;
+    const desc = item.description ?? '';
+    return desc.includes(bookingId) || desc.includes(`/bookings/${bookingId}`);
+  }
+
+  private static async listCalendarEvents(
+    calendarId: string,
+    accessToken: string,
+    params: Record<string, string>,
+  ): Promise<Array<{ id?: string; description?: string; extendedProperties?: { private?: { bookingId?: string } } }>> {
+    const qs = new URLSearchParams({ maxResults: '25', ...params });
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${qs}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) return [];
+    const data = await response.json();
+    return data.items ?? [];
+  }
+
   private static async findExistingEventId(
-    credentials: any,
+    credentials: { calendarId: string },
     accessToken: string,
     bookingId: string,
+    booking?: unknown,
   ): Promise<string | null> {
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events?privateExtendedProperty=bookingId=${bookingId}`,
-      { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } },
-    );
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.items?.[0]?.id ?? null;
+    const calendarId = credentials.calendarId;
+    const row = booking as { check_in_date?: string; number_of_nights?: number } | undefined;
+
+    for (const params of [
+      { privateExtendedProperty: `bookingId=${bookingId}`, singleEvents: 'true', orderBy: 'startTime' },
+      { q: bookingId, singleEvents: 'true', orderBy: 'startTime' },
+    ]) {
+      const items = await this.listCalendarEvents(calendarId, accessToken, params);
+      const match = items.find((item) => this.eventMatchesBookingId(item, bookingId));
+      if (match?.id) return match.id;
+    }
+
+    const checkInYmd = row?.check_in_date
+      ? normalizeDateToYYYYMMDD(String(row.check_in_date))
+      : '';
+    if (checkInYmd) {
+      const nights = Math.max(1, Number(row?.number_of_nights) || 1);
+      const timeMin = dayjs(checkInYmd, 'YYYY-MM-DD', true).subtract(1, 'day').startOf('day').toISOString();
+      const timeMax = dayjs(checkInYmd, 'YYYY-MM-DD', true).add(nights + 2, 'day').endOf('day').toISOString();
+      const items = await this.listCalendarEvents(calendarId, accessToken, {
+        timeMin,
+        timeMax,
+        singleEvents: 'true',
+        orderBy: 'startTime',
+      });
+      const match = items.find((item) => this.eventMatchesBookingId(item, bookingId));
+      if (match?.id) return match.id;
+    }
+    return null;
   }
 
   /**

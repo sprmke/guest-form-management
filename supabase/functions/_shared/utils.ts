@@ -77,34 +77,26 @@ export function countStayNights(checkInDate: string, checkOutDate: string): numb
   return Math.max(0, d);
 }
 
-/**
- * Formats a time string to 24-hour HH:mm format
- * @param timeStr - The time string to format
- * @returns Formatted time string or empty string if invalid
- */
+/** Formats a time string to 24-hour HH:mm (parses 12-hour AM/PM before bare H:mm). */
 export const formatTime = (timeStr: string | null | undefined): string => {
   if (!timeStr) return '';
-  
-  // Try parsing with various formats
-  const formats = [
-    'HH:mm:ss', // Postgres / ISO time with seconds
-    'HH:mm',    // 24-hour format
-    'H:mm',     // 24-hour format without leading zero
-    'hh:mm A',  // 12-hour format with AM/PM
-    'h:mm A',   // 12-hour format without leading zero
-    'hh:mm a',  // 12-hour format with am/pm
-    'h:mm a',   // 12-hour format without leading zero
-    'hA',       // Just hours with AM/PM
-    'ha',       // Just hours with am/pm
-  ];
+  const s = timeStr.trim();
+  if (!s) return '';
 
-  for (const format of formats) {
-    const parsed = dayjs(timeStr, format, true); // strict parsing
-    if (parsed.isValid()) {
-      return parsed.format('HH:mm');
-    }
+  const ampm = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
+  if (ampm) {
+    let h = Number(ampm[1]);
+    const m = ampm[2];
+    const meridiem = ampm[4].toUpperCase();
+    if (meridiem === 'AM' && h === 12) h = 0;
+    else if (meridiem === 'PM' && h !== 12) h += 12;
+    return `${String(h).padStart(2, '0')}:${m}`;
   }
 
+  for (const format of ['HH:mm:ss', 'HH:mm', 'H:mm'] as const) {
+    const parsed = dayjs(s, format, true);
+    if (parsed.isValid()) return parsed.format('HH:mm');
+  }
   return '';
 };
 
