@@ -30,22 +30,54 @@ cd "$ROOT"
 
 DUMP_FILE="${DUMP_FILE:-$ROOT/supabase/.temp/prod_public_data.sql}"
 CONTAINER="${LOCAL_DB_CONTAINER:-supabase_db_guest-form-management}"
+RESTORE_ONLY="${RESTORE_ONLY:-0}"
 
-if [[ -z "${PROD_DB_URL:-}" ]]; then
-  echo "ERROR: Set PROD_DB_URL to your prod Postgres URI (Settings → Database → URI)."
-  echo "Example: postgresql://postgres:secret@db.abcdefgh.supabase.co:5432/postgres"
-  exit 1
+# Optional: PROD_DB_URL= in supabase/.env.local (gitignored) — read one line only (safe for multiline secrets).
+if [[ -z "${PROD_DB_URL:-}" && -f "$ROOT/supabase/.env.local" ]]; then
+  _prod_line="$(grep -E '^[[:space:]]*PROD_DB_URL=' "$ROOT/supabase/.env.local" | head -1 || true)"
+  if [[ -n "$_prod_line" ]]; then
+    PROD_DB_URL="${_prod_line#PROD_DB_URL=}"
+    PROD_DB_URL="${PROD_DB_URL#"${PROD_DB_URL%%[![:space:]]*}"}"
+    PROD_DB_URL="${PROD_DB_URL%"${PROD_DB_URL##*[![:space:]]}"}"
+    PROD_DB_URL="${PROD_DB_URL#\"}"
+    PROD_DB_URL="${PROD_DB_URL%\"}"
+    PROD_DB_URL="${PROD_DB_URL#\'}"
+    PROD_DB_URL="${PROD_DB_URL%\'}"
+    export PROD_DB_URL
+  fi
+  unset _prod_line
 fi
 
-if [[ "${PROD_DB_URL}" == *$'\n'* ]] || [[ "${PROD_DB_URL}" == *$'\r'* ]]; then
+if [[ "$RESTORE_ONLY" == "1" ]]; then
+  if [[ ! -s "$DUMP_FILE" ]]; then
+    echo "ERROR: RESTORE_ONLY=1 but dump is missing or empty: $DUMP_FILE"
+    echo "Run a full sync first (with PROD_DB_URL set), or set DUMP_FILE to an existing dump."
+    exit 1
+  fi
+  echo "==> RESTORE_ONLY=1: skipping prod dump; using $DUMP_FILE"
+else
+  if [[ -z "${PROD_DB_URL:-}" ]]; then
+    echo "ERROR: Set PROD_DB_URL to your prod Postgres URI (Dashboard → Connect → Session pooler)."
+    echo "Example: export PROD_DB_URL='postgresql://postgres.[REF]:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres'"
+    echo "Or add PROD_DB_URL=... to supabase/.env.local (gitignored)."
+    if [[ -s "$DUMP_FILE" ]]; then
+      echo "To re-apply the last local dump without prod access: RESTORE_ONLY=1 ./scripts/sync-prod-public-data-to-local.sh"
+    fi
+    exit 1
+  fi
+fi
+
+if [[ "$RESTORE_ONLY" != "1" && ( "${PROD_DB_URL}" == *$'\n'* || "${PROD_DB_URL}" == *$'\r'* ) ]]; then
   echo "ERROR: PROD_DB_URL must be a single line (your shell broke the URL across lines)."
   echo "Use: export PROD_DB_URL='postgresql://postgres:PASSWORD@host:5432/postgres'"
   exit 1
 fi
 
-if [[ "${PROD_DB_URL}" != postgresql://* ]] && [[ "${PROD_DB_URL}" != postgres://* ]]; then
-  echo "ERROR: PROD_DB_URL should start with postgresql:// or postgres://"
-  exit 1
+if [[ "$RESTORE_ONLY" != "1" ]]; then
+  if [[ "${PROD_DB_URL}" != postgresql://* ]] && [[ "${PROD_DB_URL}" != postgres://* ]]; then
+    echo "ERROR: PROD_DB_URL should start with postgresql:// or postgres://"
+    exit 1
+  fi
 fi
 
 mkdir -p "$(dirname "$DUMP_FILE")"
@@ -179,22 +211,24 @@ run_dump() {
   fi
 }
 
-echo "==> Dumping production public schema (data only) → $DUMP_FILE"
-DUMP_LOG="$(mktemp)"
-trap 'rm -f "$DUMP_LOG"' EXIT
+if [[ "$RESTORE_ONLY" != "1" ]]; then
+  echo "==> Dumping production public schema (data only) → $DUMP_FILE"
+  DUMP_LOG="$(mktemp)"
+  trap 'rm -f "$DUMP_LOG"' EXIT
 
-if [[ "${PROD_DB_FORCE_IPV4:-}" == "1" ]]; then
-  echo "==> PROD_DB_FORCE_IPV4=1: using IPv4 hostaddr"
-  IPV4_URL="$(prod_db_url_with_ipv4 "$PROD_DB_URL")"
-  run_dump "$IPV4_URL"
-else
-  if ! run_dump "$PROD_DB_URL" 2> >(tee "$DUMP_LOG" >&2); then
-    if grep -qE 'Connection refused|Network is unreachable' "$DUMP_LOG" 2>/dev/null && command -v python3 >/dev/null 2>&1; then
-      echo "==> Retrying dump with IPv4 hostaddr (IPv6/pg_dump in Docker often fails on some networks)..."
-      IPV4_URL="$(prod_db_url_with_ipv4 "$PROD_DB_URL")"
-      run_dump "$IPV4_URL"
-    else
-      exit 1
+  if [[ "${PROD_DB_FORCE_IPV4:-}" == "1" ]]; then
+    echo "==> PROD_DB_FORCE_IPV4=1: using IPv4 hostaddr"
+    IPV4_URL="$(prod_db_url_with_ipv4 "$PROD_DB_URL")"
+    run_dump "$IPV4_URL"
+  else
+    if ! run_dump "$PROD_DB_URL" 2> >(tee "$DUMP_LOG" >&2); then
+      if grep -qE 'Connection refused|Network is unreachable' "$DUMP_LOG" 2>/dev/null && command -v python3 >/dev/null 2>&1; then
+        echo "==> Retrying dump with IPv4 hostaddr (IPv6/pg_dump in Docker often fails on some networks)..."
+        IPV4_URL="$(prod_db_url_with_ipv4 "$PROD_DB_URL")"
+        run_dump "$IPV4_URL"
+      else
+        exit 1
+      fi
     fi
   fi
 fi

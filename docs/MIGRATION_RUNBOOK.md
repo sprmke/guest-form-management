@@ -164,8 +164,10 @@ Script: [`scripts/sync-prod-public-data-to-local.sh`](../scripts/sync-prod-publi
 
    ```bash
    export PROD_DB_URL='postgresql://postgres.<ref>:PASSWORD@aws-0-REGION.pooler.supabase.com:5432/postgres'
-   ./scripts/sync-prod-public-data-to-local.sh
+   npm run sync:prod-data
    ```
+
+   Or add `PROD_DB_URL=…` to `supabase/.env.local` (see `supabase/.env.example`). After `db:reset`, re-apply a cached dump without prod access: **`npm run sync:prod-data:restore`** (`RESTORE_ONLY=1`, uses `supabase/.temp/prod_public_data.sql`).
 
 This dumps **`public` data only** into `supabase/.temp/` (gitignored). It does **not** copy Storage objects — file URLs in rows may still point at production buckets.
 
@@ -177,7 +179,7 @@ Treat the dump as **PII**; delete it when finished.
 
 1. **`npm run start:supabase`** or **`./dev.sh`** (loads `ui/.env.development` for `GOOGLE_*` and runs **`npx supabase@latest start`**). Avoid a global `supabase start` if your installed CLI is old (see `storage.buckets` row). For a clean DB only: `npm run db:reset`.
 2. Update `ui/.env.development` and `supabase/.env.local` as above.
-3. Optional: `./scripts/sync-prod-public-data-to-local.sh` with `PROD_DB_URL`.
+3. Optional: `npm run sync:prod-data` (or `sync:prod-data:restore` after a prior dump).
 4. From repo root: `./dev.sh` **or** `./scripts/run-with-ui-dev-env.sh supabase start` then `cd ui && npm run dev`. Avoid running **`supabase functions serve`** at the same time as `supabase start` (duplicate edge-runtime container / name conflict). If you use `functions serve` alone for hot reload, add `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` to `supabase/.env.local` (see `supabase/.env.example`).
 
 ### 3.5.5 Troubleshooting `supabase start` (local Postgres unhealthy)

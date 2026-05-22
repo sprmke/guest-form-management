@@ -774,4 +774,56 @@ export class DatabaseService {
     }
     return { ok: false, error: 'unexpected rpc response' };
   }
+
+  static async getTelegramStaffSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_staff_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramStaffSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram staff settings${pg ? `: ${pg}` : ''}. ` +
+          `On production this usually means the table is missing — run migration ` +
+          `20260622120000_telegram_staff_settings.sql (or "supabase db push") on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramStaffSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_staff_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramStaffSettings:', error);
+      throw new Error('Failed to update Telegram staff settings');
+    }
+    return data;
+  }
+
+  static async syncTelegramStaffDailyCronJob(
+    slot: { hour: number; minute: number },
+  ): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
+    const { data, error } = await this.supabase.rpc('sync_telegram_staff_daily_cron_job', {
+      p_slot: slot as never,
+    });
+    if (error) {
+      console.error('syncTelegramStaffDailyCronJob rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; cronExpr?: string };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
+  }
 } 

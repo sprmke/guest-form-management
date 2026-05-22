@@ -1,7 +1,7 @@
 -- Run after importing production `public` data into a local DB that already applied
--- `20260502000000_widen_status_enum.sql`. Production may still use legacy status
--- literals (`booked`, `canceled`); this mirrors that migration’s backfill + CHECK.
--- Keep in sync with supabase/migrations/20260502000000_widen_status_enum.sql.
+-- workflow migrations. Production may still use legacy status literals (`booked`,
+-- `canceled`, `PENDING_SD_REFUND_DETAILS`); this mirrors backfill + CHECK.
+-- Keep in sync with supabase/migrations/20260605120000_rename_status_to_ready_for_checkout.sql.
 
 BEGIN;
 
@@ -34,6 +34,10 @@ SET
   status_updated_at = COALESCE(status_updated_at, updated_at, created_at, NOW())
 WHERE status = 'booked';
 
+UPDATE guest_submissions
+SET status = 'READY_FOR_CHECKOUT'
+WHERE status = 'PENDING_SD_REFUND_DETAILS';
+
 ALTER TABLE guest_submissions
   DROP CONSTRAINT IF EXISTS guest_submissions_status_check;
 
@@ -41,10 +45,12 @@ ALTER TABLE guest_submissions
   ADD CONSTRAINT guest_submissions_status_check
   CHECK (status IN (
     'PENDING_REVIEW',
+    'PENDING_DOCUMENTS',
     'PENDING_GAF',
     'PENDING_PARKING_REQUEST',
     'PENDING_PET_REQUEST',
     'READY_FOR_CHECKIN',
+    'READY_FOR_CHECKOUT',
     'PENDING_SD_REFUND',
     'COMPLETED',
     'CANCELLED'
@@ -54,10 +60,10 @@ ALTER TABLE guest_submissions
   ALTER COLUMN status SET DEFAULT 'PENDING_REVIEW';
 
 COMMENT ON COLUMN guest_submissions.status IS
-  'Workflow status per docs/NEW_FLOW_PLAN.md state machine. '
-  'Values: PENDING_REVIEW | PENDING_GAF | PENDING_PARKING_REQUEST | '
-  'PENDING_PET_REQUEST | READY_FOR_CHECKIN | PENDING_SD_REFUND | '
-  'COMPLETED | CANCELLED. Driven exclusively by workflowOrchestrator.';
+  'Workflow status. Values: PENDING_REVIEW | PENDING_DOCUMENTS | PENDING_GAF | '
+  'PENDING_PARKING_REQUEST | PENDING_PET_REQUEST | READY_FOR_CHECKIN | '
+  'READY_FOR_CHECKOUT | PENDING_SD_REFUND | COMPLETED | CANCELLED. '
+  'Driven exclusively by workflowOrchestrator.';
 
 -- Match 20250213043908_create_guest_submissions_table.sql. Production can contain rows
 -- that fail these checks (e.g. check-out before check-in). NOT VALID = existing rows
