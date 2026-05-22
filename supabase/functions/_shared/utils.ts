@@ -78,36 +78,28 @@ export function countStayNights(checkInDate: string, checkOutDate: string): numb
 }
 
 /**
- * Formats a time string to 24-hour HH:mm format.
- *
- * Uses a manual regex for 12-hour AM/PM values first (critical path — the DB
- * default was "02:00 PM" and dayjs's `H:mm` format can silently match "2:00 PM"
- * as 02:00 before the AM/PM formats are tried, producing 2 AM instead of 2 PM).
+ * Formats a time string to 24-hour HH:mm format
+ * @param timeStr - The time string to format
+ * @returns Formatted time string or empty string if invalid
  */
 export const formatTime = (timeStr: string | null | undefined): string => {
   if (!timeStr) return '';
-  const s = timeStr.trim();
-  if (!s) return '';
-
-  // ── Manual 12-hour AM/PM conversion (avoids dayjs strict-mode edge cases) ──
-  const ampm = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
-  if (ampm) {
-    let h = Number(ampm[1]);
-    const m = ampm[2];
-    const meridiem = ampm[4].toUpperCase();
-    if (meridiem === 'AM' && h === 12) h = 0;
-    else if (meridiem === 'PM' && h !== 12) h += 12;
-    return `${String(h).padStart(2, '0')}:${m}`;
-  }
-
-  // ── 24-hour formats via dayjs (strict) ──
-  const formats24 = [
-    'HH:mm:ss',
-    'HH:mm',
-    'H:mm',
+  
+  // Try parsing with various formats
+  const formats = [
+    'HH:mm:ss', // Postgres / ISO time with seconds
+    'HH:mm',    // 24-hour format
+    'H:mm',     // 24-hour format without leading zero
+    'hh:mm A',  // 12-hour format with AM/PM
+    'h:mm A',   // 12-hour format without leading zero
+    'hh:mm a',  // 12-hour format with am/pm
+    'h:mm a',   // 12-hour format without leading zero
+    'hA',       // Just hours with AM/PM
+    'ha',       // Just hours with am/pm
   ];
-  for (const format of formats24) {
-    const parsed = dayjs(s, format, true);
+
+  for (const format of formats) {
+    const parsed = dayjs(timeStr, format, true); // strict parsing
     if (parsed.isValid()) {
       return parsed.format('HH:mm');
     }

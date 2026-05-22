@@ -107,7 +107,6 @@ import {
   type TransitionPayload,
 } from '@/features/admin/hooks/useTransitionBooking';
 import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
-import { useSyncBookingIntegrations } from '@/features/admin/hooks/useSyncBookingIntegrations';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -231,7 +230,6 @@ export function WorkflowPanel({ booking }: Props) {
   const [historicalBackfillOpen, setHistoricalBackfillOpen] = useState(false);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
-  const syncIntegrationsMut = useSyncBookingIntegrations(booking.id);
 
   // Which automation triggers are relevant for this status (Q6.6)
   const showGmailPoll =
@@ -775,32 +773,6 @@ export function WorkflowPanel({ booking }: Props) {
               onChange={setSdRefundValues}
             />
           )}
-        </div>
-      )}
-
-      {/* ── Google Calendar / Sheet refresh (e.g. stale title after transitions) ─ */}
-      {status !== 'CANCELLED' && (
-        <div className="border-b border-slate-100 px-4 py-3">
-          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-            Integrations
-          </p>
-          <button
-            type="button"
-            disabled={syncIntegrationsMut.isPending}
-            onClick={() => syncIntegrationsMut.mutate()}
-            className="flex min-h-[44px] w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:opacity-50"
-          >
-            {syncIntegrationsMut.isPending ? (
-              <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
-            ) : (
-              <RefreshCw className="size-3.5 shrink-0" aria-hidden />
-            )}
-            Refresh Google Calendar &amp; Sheet
-          </button>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
-            Updates the calendar event title, color, and times to match this
-            booking&apos;s current status.
-          </p>
         </div>
       )}
 

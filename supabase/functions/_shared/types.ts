@@ -1,5 +1,4 @@
 import dayjs from 'https://esm.sh/dayjs@1.11.10'
-import { formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts'
 
 // ─── Booking status enum ──────────────────────────────────────────────────────
 // Canonical values must match the CHECK constraint in Phase 2 migration and
@@ -217,8 +216,8 @@ export const transformFormToSubmission = (
     guest_address: formData.guestAddress,
     check_in_date: formatDate(formData.checkInDate),
     check_out_date: formatDate(formData.checkOutDate),
-    check_in_time: formatTime(formData.checkInTime) || DEFAULT_CHECK_IN_TIME,
-    check_out_time: formatTime(formData.checkOutTime) || DEFAULT_CHECK_OUT_TIME,
+    check_in_time: formData.checkInTime,
+    check_out_time: formData.checkOutTime,
     nationality: formData.nationality,
     number_of_adults: toNumber(formData.numberOfAdults),
     number_of_children: toNumber(formData.numberOfChildren),

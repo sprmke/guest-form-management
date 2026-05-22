@@ -4,7 +4,6 @@ import {
   formatDateTime,
   formatPublicUrl,
   isDevelopment,
-  normalizeDateToYYYYMMDD,
 } from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
@@ -20,10 +19,7 @@ export class CalendarService {
 
       // If bookingId exists, try to find and delete existing calendar event
       if (bookingId) {
-        const existingEventId = await this.findExistingEvent(credentials, bookingId, {
-          check_in_date: formData.checkInDate,
-          number_of_nights: formData.numberOfNights,
-        });
+        const existingEventId = await this.findExistingEvent(credentials, bookingId);
         if (existingEventId) {
           await this.deleteCalendarEvent(credentials, existingEventId);
         }
@@ -63,19 +59,10 @@ export class CalendarService {
     }
   }
 
-  private static async findExistingEvent(
-    credentials: { calendarId: string; serviceAccount: unknown },
-    bookingId: string,
-    booking?: { check_in_date?: string; number_of_nights?: number },
-  ): Promise<string | null> {
+  private static async findExistingEvent(credentials: any, bookingId: string): Promise<string | null> {
     try {
       const accessToken = await this.getAccessToken(credentials.serviceAccount);
-      return await this.findExistingEventId(
-        { calendarId: credentials.calendarId },
-        accessToken,
-        bookingId,
-        booking,
-      );
+      return await this.findExistingEventId(credentials, accessToken, bookingId);
     } catch (error) {
       console.error('Error finding existing event:', error);
       return null;
@@ -106,50 +93,6 @@ export class CalendarService {
       console.error('Error deleting calendar event:', error);
       return false;
     }
-  }
-
-  /** True when `GOOGLE_SERVICE_ACCOUNT` and `GOOGLE_CALENDAR_ID` are set. */
-  static isConfigured(): boolean {
-    return this.getCredentialsSafe() !== null;
-  }
-
-  /**
-   * Locate an existing Google Calendar event for a booking (extended property,
-   * description UUID search, or stay date window). Public for admin backfill / dry-run.
-   */
-  static async findEventIdForBooking(
-    bookingId: string,
-    booking?: any,
-  ): Promise<string | null> {
-    const credentials = this.getCredentialsSafe();
-    if (!credentials) return null;
-    const accessToken = await this.getAccessToken(credentials.serviceAccount);
-    return await this.findExistingEventId(
-      { calendarId: credentials.calendarId },
-      accessToken,
-      bookingId,
-      booking,
-    );
-  }
-
-  /** Read current summary + start dateTime from an event (for backfill preview). */
-  static async getCalendarEventSnapshot(
-    eventId: string,
-  ): Promise<{ summary: string; startDateTime: string } | null> {
-    const credentials = this.getCredentialsSafe();
-    if (!credentials) return null;
-    const accessToken = await this.getAccessToken(credentials.serviceAccount);
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${eventId}`,
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!response.ok) return null;
-    const data = await response.json();
-    const start = data.start?.dateTime ?? data.start?.date ?? '';
-    return {
-      summary: String(data.summary ?? ''),
-      startDateTime: String(start),
-    };
   }
 
   /**
@@ -189,7 +132,6 @@ export class CalendarService {
         { calendarId: credentials.calendarId },
         accessToken,
         bookingId,
-        booking,
       );
 
       const meta = STATUS_CALENDAR_META[status];
@@ -232,11 +174,7 @@ export class CalendarService {
       // Patch the existing event: summary/color, full description, and stay
       // window (start/end) when we have the DB row — keeps Google in sync after
       // admin edits to dates, guest block, or surprise decor without a transition.
-      const patchBody: Record<string, unknown> = {
-        summary,
-        colorId: meta.colorId,
-        extendedProperties: { private: { bookingId } },
-      };
+      const patchBody: Record<string, unknown> = { summary, colorId: meta.colorId };
       if (booking) {
         const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
         patchBody.description = eventData.description;
@@ -384,91 +322,19 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     };
   }
 
-  /** True when the event description or private metadata references this booking. */
-  private static eventMatchesBookingId(item: { description?: string; extendedProperties?: { private?: { bookingId?: string } } }, bookingId: string): boolean {
-    if (item.extendedProperties?.private?.bookingId === bookingId) return true;
-    const desc = item.description ?? '';
-    return desc.includes(bookingId) || desc.includes(`/bookings/${bookingId}`);
-  }
-
-  private static async listCalendarEvents(
-    calendarId: string,
-    accessToken: string,
-    params: Record<string, string>,
-  ): Promise<Array<{ id?: string; description?: string; extendedProperties?: { private?: { bookingId?: string } } }>> {
-    const qs = new URLSearchParams({ maxResults: '25', ...params });
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${qs}`,
-      { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` } },
-    );
-    if (!response.ok) {
-      const err = await response.text();
-      console.warn('[calendar] events.list failed:', response.status, err);
-      return [];
-    }
-    const data = await response.json();
-    return data.items ?? [];
-  }
-
-  /**
-   * Finds the Google Calendar event ID for a booking.
-   *
-   * Lookup order:
-   * 1. `privateExtendedProperty=bookingId=…` (canonical for new events)
-   * 2. Free-text search (`q`) — matches admin link UUID in description
-   * 3. Stay date window — scans events around check-in for the same UUID
-   *
-   * Older events were often created without extended properties; without fallbacks
-   * later transitions PATCH a new duplicate while the visible event stays stale.
-   */
+  /** Finds the Google Calendar event ID for a booking, or null if not found. */
   private static async findExistingEventId(
-    credentials: { calendarId: string },
+    credentials: any,
     accessToken: string,
     bookingId: string,
-    booking?: any,
   ): Promise<string | null> {
-    const calendarId = credentials.calendarId;
-
-    const fromExtended = await this.listCalendarEvents(calendarId, accessToken, {
-      privateExtendedProperty: `bookingId=${bookingId}`,
-      singleEvents: 'true',
-      orderBy: 'startTime',
-    });
-    const extMatch = fromExtended.find((item) => this.eventMatchesBookingId(item, bookingId));
-    if (extMatch?.id) return extMatch.id;
-
-    const fromQuery = await this.listCalendarEvents(calendarId, accessToken, {
-      q: bookingId,
-      singleEvents: 'true',
-      orderBy: 'startTime',
-    });
-    const qMatch = fromQuery.find((item) => this.eventMatchesBookingId(item, bookingId));
-    if (qMatch?.id) {
-      console.log(`[calendar] Found event ${qMatch.id} for ${bookingId} via text search (no extended property)`);
-      return qMatch.id;
-    }
-
-    const checkInYmd = booking?.check_in_date
-      ? normalizeDateToYYYYMMDD(String(booking.check_in_date))
-      : '';
-    if (checkInYmd) {
-      const nights = Math.max(1, Number(booking?.number_of_nights) || 1);
-      const timeMin = dayjs(checkInYmd, 'YYYY-MM-DD', true).subtract(1, 'day').startOf('day').toISOString();
-      const timeMax = dayjs(checkInYmd, 'YYYY-MM-DD', true).add(nights + 2, 'day').endOf('day').toISOString();
-      const fromWindow = await this.listCalendarEvents(calendarId, accessToken, {
-        timeMin,
-        timeMax,
-        singleEvents: 'true',
-        orderBy: 'startTime',
-      });
-      const winMatch = fromWindow.find((item) => this.eventMatchesBookingId(item, bookingId));
-      if (winMatch?.id) {
-        console.log(`[calendar] Found event ${winMatch.id} for ${bookingId} via stay window search`);
-        return winMatch.id;
-      }
-    }
-
-    return null;
+    const response = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events?privateExtendedProperty=bookingId=${bookingId}`,
+      { method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` } },
+    );
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.items?.[0]?.id ?? null;
   }
 
   /**
