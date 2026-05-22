@@ -33,6 +33,7 @@ export function useCalendarBackfill() {
           notFound?: number;
           synced?: number;
           skippedOk?: number;
+          repairFailed?: number;
           failed?: number;
         };
       };

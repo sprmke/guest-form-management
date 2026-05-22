@@ -42,12 +42,13 @@ type RowResult = {
     | 'not_found'
     | 'synced'
     | 'skipped_ok'
+    | 'repair_failed'
     | 'unsupported_status'
     | 'failed';
   eventCount?: number;
   reasons?: string[];
   error?: string;
-  calendar?: { success: boolean; updated: number; created?: boolean };
+  calendar?: { success: boolean; updated: number; created?: boolean; error?: string };
   sheet?: boolean;
 };
 
@@ -200,6 +201,10 @@ serve(async (req) => {
           nights,
           guestName,
           booking,
+          {
+            eventIds: assessment.eventIds.length > 0 ? assessment.eventIds : undefined,
+            access,
+          },
         );
         const sheet = await SheetsService.syncFullRowFromDbBooking(
           booking,
@@ -210,9 +215,21 @@ serve(async (req) => {
           return { bookingId, action: 'not_found', calendar: cal, sheet: sheet.success };
         }
 
+        if (!cal.success || (cal.updated === 0 && !cal.created)) {
+          return {
+            bookingId,
+            action: 'repair_failed',
+            eventCount: assessment.eventIds.length,
+            reasons: assessment.reasons,
+            error: cal.error ?? 'Calendar patch returned no updates',
+            calendar: cal,
+            sheet: sheet.success,
+          };
+        }
+
         return {
           bookingId,
-          action: cal.updated > 0 || cal.created ? 'synced' : 'not_found',
+          action: 'synced',
           eventCount: assessment.eventIds.length,
           reasons: assessment.reasons,
           calendar: cal,
@@ -234,6 +251,7 @@ serve(async (req) => {
       notFound: results.filter((r) => r.action === 'not_found').length,
       synced: results.filter((r) => r.action === 'synced').length,
       skippedOk: results.filter((r) => r.action === 'skipped_ok').length,
+      repairFailed: results.filter((r) => r.action === 'repair_failed').length,
       failed: results.filter((r) => r.action === 'failed').length,
     };
 

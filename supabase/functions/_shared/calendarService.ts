@@ -183,7 +183,12 @@ export class CalendarService {
     nights: number,
     guestName: string,
     booking?: any,
-  ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean }> {
+    options?: {
+      /** When set (e.g. from backfill assessment), patch these IDs directly. */
+      eventIds?: string[];
+      access?: { calendarId: string; accessToken: string };
+    },
+  ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean; error?: string }> {
     try {
       console.log(`Updating calendar event status → ${status} for booking: ${bookingId}`);
 
@@ -193,13 +198,18 @@ export class CalendarService {
         return { success: true, updated: 0, skipped: true };
       }
 
-      const accessToken = await this.getAccessToken(credentials.serviceAccount);
-      const eventIds = await this.collectAllEventIds(
-        { calendarId: credentials.calendarId },
-        accessToken,
-        bookingId,
-        booking,
-      );
+      const calendarId = options?.access?.calendarId ?? credentials.calendarId;
+      const accessToken = options?.access?.accessToken
+        ?? await this.getAccessToken(credentials.serviceAccount);
+
+      const eventIds = options?.eventIds?.length
+        ? options.eventIds
+        : await this.collectAllEventIds(
+          { calendarId },
+          accessToken,
+          bookingId,
+          booking,
+        );
 
       const meta = STATUS_CALENDAR_META[status];
       const summary = buildCalendarSummary(status, pax, nights, guestName, booking);
@@ -215,7 +225,7 @@ export class CalendarService {
         const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
 
         const createRes = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
           {
             method: 'POST',
             headers: {
@@ -256,7 +266,7 @@ export class CalendarService {
       let patched = 0;
       for (const eventId of eventIds) {
         const response = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId!)}/events/${eventId}`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
           {
             method: 'PATCH',
             headers: {
@@ -277,8 +287,9 @@ export class CalendarService {
       console.log(`Calendar event(s) updated (${patched}): "${summary}" colorId=${meta.colorId}`);
       return { success: true, updated: patched };
     } catch (error) {
-      console.error('Error updating calendar event status:', error);
-      return { success: false, updated: 0 };
+      const message = error instanceof Error ? error.message : String(error);
+      console.error('Error updating calendar event status:', message);
+      return { success: false, updated: 0, error: message };
     }
   }
 
@@ -365,11 +376,11 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
   ) {
     const description = this.buildGoogleCalendarDescriptionFromDbBooking(booking, nights);
 
-    // DB stores MM-DD-YYYY dates and 12-hour times (e.g. "2:00 PM") — use formatTime via buildGoogleCalendarDateTime
+    // DB stores MM-DD-YYYY dates; prefer check_out_date so 1-night stays end on checkout day (not check-in day).
     const checkInDateMdy = String(booking.check_in_date ?? '');
-    const endDateMdy = dayjs(checkInDateMdy, 'MM-DD-YYYY')
-      .add(nights - 1, 'day')
-      .format('MM-DD-YYYY');
+    const checkoutRaw = String(booking.check_out_date ?? '').trim();
+    const endDateMdy = checkoutRaw
+      || dayjs(checkInDateMdy, 'MM-DD-YYYY', true).add(Math.max(1, nights), 'day').format('MM-DD-YYYY');
 
     return {
       summary,

@@ -25,7 +25,7 @@ export function CalendarBackfillCard() {
             );
           } else {
             toast.success(
-              `Done: ${s.synced ?? 0} repaired, ${s.skippedOk ?? 0} already OK, ${s.notFound ?? 0} missing, ${s.failed ?? 0} failed.`,
+              `Done: ${s.synced ?? 0} repaired, ${s.repairFailed ?? 0} failed to patch, ${s.skippedOk ?? 0} already OK, ${s.notFound ?? 0} missing.`,
             );
           }
         },
