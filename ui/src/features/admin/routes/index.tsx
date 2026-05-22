@@ -4,6 +4,7 @@ import { BookingsListPage } from '@/features/admin/pages/BookingsListPage';
 import { BookingDetailPage } from '@/features/admin/pages/BookingDetailPage';
 import { AdminSettingsPage } from '@/features/admin/pages/AdminSettingsPage';
 import { AdminMarketingPage } from '@/features/admin/pages/AdminMarketingPage';
+import { AdminStaffPage } from '@/features/admin/pages/AdminStaffPage';
 import { RequireAdmin } from '@/features/admin/components/RequireAdmin';
 
 export const adminRoutes = [
@@ -14,6 +15,15 @@ export const adminRoutes = [
     element={
       <RequireAdmin>
         <AdminMarketingPage />
+      </RequireAdmin>
+    }
+  />,
+  <Route
+    key="admin-staff"
+    path="/staff"
+    element={
+      <RequireAdmin>
+        <AdminStaffPage />
       </RequireAdmin>
     }
   />,
