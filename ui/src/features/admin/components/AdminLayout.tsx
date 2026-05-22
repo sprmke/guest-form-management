@@ -5,6 +5,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  HardHat,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -34,6 +35,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Reports', href: null, Icon: LayoutDashboard, soon: true },
       { label: 'Marketing', href: '/marketing', Icon: Megaphone },
+      { label: 'Staff', href: '/staff', Icon: HardHat },
       { label: 'Settings', href: '/settings', Icon: Settings },
     ],
   },
