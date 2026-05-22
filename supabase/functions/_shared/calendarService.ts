@@ -1,14 +1,13 @@
 import {
   buildGoogleCalendarDateTime,
   DEFAULT_CHECK_IN_TIME,
-  formatDateTime,
+  DEFAULT_CHECK_OUT_TIME,
   formatPublicUrl,
   isDevelopment,
   normalizeDateToYYYYMMDD,
 } from './utils.ts';
 import { GuestFormData } from './types.ts';
 import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
-import type { CalendarEventSnapshot } from './calendarRepair.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
@@ -19,14 +18,21 @@ export class CalendarService {
       const credentials = await this.getCredentials();
       const eventData = this.createEventData(bookingId, formData, validIdUrl, paymentReceiptUrl, petVaccinationUrl, petImageUrl);
 
-      // If bookingId exists, try to find and delete existing calendar event
+      // If bookingId exists, remove all matching events before creating a fresh one
       if (bookingId) {
-        const existingEventId = await this.findExistingEvent(credentials, bookingId, {
-          check_in_date: formData.checkInDate,
-          number_of_nights: formData.numberOfNights,
-        });
-        if (existingEventId) {
-          await this.deleteCalendarEvent(credentials, existingEventId);
+        const accessToken = await this.getAccessToken(credentials.serviceAccount);
+        const existingIds = await this.collectAllEventIds(
+          { calendarId: credentials.calendarId },
+          accessToken,
+          bookingId,
+          {
+            check_in_date: formData.checkInDate,
+            number_of_nights: formData.numberOfNights,
+            guest_facebook_name: formData.guestFacebookName,
+          },
+        );
+        for (const eventId of existingIds) {
+          await this.deleteCalendarEvent(credentials, eventId);
         }
       }
 
@@ -62,77 +68,6 @@ export class CalendarService {
       console.error('Error with calendar event:', error);
       throw new Error('Failed to create calendar event');
     }
-  }
-
-  private static async findExistingEvent(
-    credentials: { calendarId: string; serviceAccount: unknown },
-    bookingId: string,
-    booking?: { check_in_date?: string; number_of_nights?: number },
-  ): Promise<string | null> {
-    try {
-      const accessToken = await this.getAccessToken(credentials.serviceAccount);
-      return await this.findExistingEventId(
-        { calendarId: credentials.calendarId },
-        accessToken,
-        bookingId,
-        booking,
-      );
-    } catch (error) {
-      console.error('Error finding existing event:', error);
-      return null;
-    }
-  }
-
-  static isConfigured(): boolean {
-    return this.getCredentialsSafe() !== null;
-  }
-
-  static async obtainCalendarAccess(): Promise<
-    { calendarId: string; accessToken: string } | null
-  > {
-    const credentials = this.getCredentialsSafe();
-    if (!credentials) return null;
-    const accessToken = await this.getAccessToken(credentials.serviceAccount);
-    return { calendarId: credentials.calendarId, accessToken };
-  }
-
-  static async findEventIdForBooking(
-    bookingId: string,
-    booking?: unknown,
-    access?: { calendarId: string; accessToken: string },
-  ): Promise<string | null> {
-    const ids = await this.findAllEventIdsForBooking(bookingId, booking, access);
-    return ids[0] ?? null;
-  }
-
-  /** All calendar events tied to this booking (extended property, admin link, or date window). */
-  static async findAllEventIdsForBooking(
-    bookingId: string,
-    booking?: unknown,
-    access?: { calendarId: string; accessToken: string },
-  ): Promise<string[]> {
-    const ctx = access ?? await this.obtainCalendarAccess();
-    if (!ctx) return [];
-    return await this.collectAllEventIds(
-      { calendarId: ctx.calendarId },
-      ctx.accessToken,
-      bookingId,
-      booking,
-    );
-  }
-
-  static async getCalendarEventSnapshot(
-    eventId: string,
-    access: { calendarId: string; accessToken: string },
-  ): Promise<CalendarEventSnapshot | null> {
-    const response = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(access.calendarId)}/events/${encodeURIComponent(eventId)}`,
-      { method: 'GET', headers: { Authorization: `Bearer ${access.accessToken}` } },
-    );
-    if (!response.ok) return null;
-    const ev = await response.json();
-    const startDateTime = String(ev.start?.dateTime ?? ev.start?.date ?? '');
-    return { summary: String(ev.summary ?? ''), startDateTime };
   }
 
   private static async deleteCalendarEvent(credentials: any, eventId: string): Promise<boolean> {
@@ -183,12 +118,7 @@ export class CalendarService {
     nights: number,
     guestName: string,
     booking?: any,
-    options?: {
-      /** When set (e.g. from backfill assessment), patch these IDs directly. */
-      eventIds?: string[];
-      access?: { calendarId: string; accessToken: string };
-    },
-  ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean; error?: string }> {
+  ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean }> {
     try {
       console.log(`Updating calendar event status → ${status} for booking: ${bookingId}`);
 
@@ -198,18 +128,13 @@ export class CalendarService {
         return { success: true, updated: 0, skipped: true };
       }
 
-      const calendarId = options?.access?.calendarId ?? credentials.calendarId;
-      const accessToken = options?.access?.accessToken
-        ?? await this.getAccessToken(credentials.serviceAccount);
-
-      const eventIds = options?.eventIds?.length
-        ? options.eventIds
-        : await this.collectAllEventIds(
-          { calendarId },
-          accessToken,
-          bookingId,
-          booking,
-        );
+      const accessToken = await this.getAccessToken(credentials.serviceAccount);
+      const eventIds = await this.collectAllEventIds(
+        { calendarId: credentials.calendarId },
+        accessToken,
+        bookingId,
+        booking,
+      );
 
       const meta = STATUS_CALENDAR_META[status];
       const summary = buildCalendarSummary(status, pax, nights, guestName, booking);
@@ -225,7 +150,7 @@ export class CalendarService {
         const eventData = this.buildEventDataFromDbRow(booking, status, pax, nights, summary);
 
         const createRes = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events`,
           {
             method: 'POST',
             headers: {
@@ -266,7 +191,7 @@ export class CalendarService {
       let patched = 0;
       for (const eventId of eventIds) {
         const response = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${eventId}`,
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(credentials.calendarId)}/events/${eventId}`,
           {
             method: 'PATCH',
             headers: {
@@ -287,9 +212,8 @@ export class CalendarService {
       console.log(`Calendar event(s) updated (${patched}): "${summary}" colorId=${meta.colorId}`);
       return { success: true, updated: patched };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error('Error updating calendar event status:', message);
-      return { success: false, updated: 0, error: message };
+      console.error('Error updating calendar event status:', error);
+      return { success: false, updated: 0 };
     }
   }
 
@@ -464,16 +388,6 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     return data.items ?? [];
   }
 
-  private static async findExistingEventId(
-    credentials: { calendarId: string },
-    accessToken: string,
-    bookingId: string,
-    booking?: unknown,
-  ): Promise<string | null> {
-    const ids = await this.collectAllEventIds(credentials, accessToken, bookingId, booking);
-    return ids[0] ?? null;
-  }
-
   private static async collectAllEventIds(
     credentials: { calendarId: string },
     accessToken: string,
@@ -596,12 +510,21 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
 <a href="${validIdUrl}">Valid ID</a>
     `.trim();
 
-    const checkInDateTime = formatDateTime(formData.checkInDate, formData.checkInTime);
-    
-    // Calculate the end date based on number of nights
-    const checkInDate = dayjs(formData.checkInDate);
-    const endDate = checkInDate.add(formData.numberOfNights - 1, 'day');
-    const endDateTime = formatDateTime(endDate.format('MM-DD-YYYY'), '23:59');
+    const checkInDateTime = buildGoogleCalendarDateTime(
+      formData.checkInDate,
+      formData.checkInTime,
+      DEFAULT_CHECK_IN_TIME,
+    );
+
+    const checkoutDateMdy = formData.checkOutDate?.trim()
+      || dayjs(formData.checkInDate, 'MM-DD-YYYY', true)
+        .add(Math.max(1, formData.numberOfNights || 1), 'day')
+        .format('MM-DD-YYYY');
+    const endDateTime = buildGoogleCalendarDateTime(
+      checkoutDateMdy,
+      formData.checkOutTime,
+      DEFAULT_CHECK_OUT_TIME,
+    );
 
     return {
       summary,

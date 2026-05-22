@@ -39,7 +39,7 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 - ✅ **Phase 5 — `submit-form` cleanup + removal of test-booking pipeline.**
   - ✅ `submit-form` no longer sends workflow emails; no `?testing=true`, no `is_test_booking`, no `cleanup-test-data`, no `[TEST]`/`TEST_` prefixes. Guest `/form` keeps optional **dev API toggles** when `!production` or `?dev=true` (save DB, storage, calendar, sheet) — no separate Test Submit.
   - ✅ Parent status `PENDING_DOCUMENTS` added for parallel document work. `WorkflowPanel` shows sub-status progress (`PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST`) with "Mark as Complete" actions.
-- ⏳ Phase 6 — Calendar + Sheet backfill sync.
+- ✅ **Calendar time + sync prevention** — `guest_submissions.check_*_time` stored as 24h `HH:mm` (migration `20260623120000_normalize_time_columns_to_24h.sql`); `formatTime` / `buildGoogleCalendarDateTime` parse AM/PM safely; workflow + edit-save calendar patches use `check_out_date` for event end and update all matched Google events.
 
 ---
 

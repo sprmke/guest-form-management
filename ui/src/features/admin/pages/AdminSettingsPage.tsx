@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
-import { CalendarBackfillCard } from '@/features/admin/components/CalendarBackfillCard';
 import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
 
 /**
@@ -46,7 +45,6 @@ export function AdminSettingsPage() {
           </p>
         </section>
         <GmailMailIntegrationCard />
-        <CalendarBackfillCard />
       </div>
     </AdminLayout>
   );
