@@ -157,9 +157,11 @@ Todos
 - Support slack and telegram notifications for important booking events
   - New booking requests
   - ?
-- Automate booking flow for cleaners/staff as well
-  - Telegram notification or Facebook page will chat cleaner messenger
-  - Every time there's a new booking, send a notification for upcoming bookings
-  - Each booking will contain important info for cleaners like no of pax, requires room decor, guest special requests
+- ✅ Automate booking flow for cleaners/staff as well
+  - ✅ Telegram notification to staff/cleaner group — daily booking summary at configurable time (default 8:00 AM Manila) via `telegram-staff-cron` + `pg_cron`
+  - ✅ Each booking contains check-in/out dates+times, pax, primary guest name+phone, decor/pet status, special requests, total guest balance, booking link
+  - ✅ Includes next 3 days booking summary
+  - ✅ Configurable template with `{{placeholder}}` tokens on `/staff` admin page (`TelegramStaffSettingsCard`)
+  - ✅ Enable/disable toggle + time picker + test sends
   - Notification for guest check-out
   - Convert all env variable to settings page for other users to use our app
