@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import { formatTimeToAMPM } from '@/utils/dates';
 
 dayjs.extend(customParseFormat);
 dayjs.extend(relativeTime);
@@ -41,6 +42,27 @@ export function formatBookingDateShort(mmddyyyy: string | null | undefined): str
   const d = dayjs(mmddyyyy, 'MM-DD-YYYY');
   if (!d.isValid()) return mmddyyyy;
   return d.format('MMM D');
+}
+
+/** 12-hour display for `guest_submissions.check_*_time` (DB stores 24h `HH:mm`). */
+export function formatBookingTime(
+  time: string | null | undefined,
+  isCheckIn = false,
+): string {
+  if (!time?.trim()) return '';
+  return formatTimeToAMPM(time, isCheckIn);
+}
+
+/** e.g. `Jun 1, 2026 at 2:00 PM` */
+export function formatBookingDateTime(
+  date: string | null | undefined,
+  time: string | null | undefined,
+  isCheckIn = false,
+): string {
+  const datePart = formatBookingDate(date);
+  const timePart = formatBookingTime(time, isCheckIn);
+  if (!timePart) return datePart;
+  return `${datePart} at ${timePart}`;
 }
 
 export function formatRelative(iso: string | null | undefined): string {

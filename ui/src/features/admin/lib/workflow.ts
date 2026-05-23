@@ -136,6 +136,35 @@ function flagTrue(v: unknown): boolean {
   return v === true || v === 'true';
 }
 
+/** Statuses at or after Ready for Check-in (parent Pending Documents is behind). */
+export const POST_PENDING_DOCUMENTS_STATUSES: readonly BookingStatus[] = [
+  'READY_FOR_CHECKIN',
+  'READY_FOR_CHECKOUT',
+  'PENDING_SD_REFUND',
+  'COMPLETED',
+] as const;
+
+export function isPostPendingDocumentsStatus(
+  status: string,
+): status is BookingStatus {
+  return (POST_PENDING_DOCUMENTS_STATUSES as readonly string[]).includes(status);
+}
+
+/**
+ * Pending Parking Request stays clickable in the stepper when parking is still
+ * incomplete — including after pay parking is added at Ready for Check-in+.
+ * Completed parking substeps are not navigatable (handled by callers).
+ */
+export function canNavigatePendingParkingSubStep(
+  booking: ApplicabilityFlags,
+  currentStatus: string,
+): boolean {
+  if (!isSubStatusRequired('PENDING_PARKING_REQUEST', booking)) return false;
+  if (isSubStatusCompleted('PENDING_PARKING_REQUEST', booking)) return false;
+  if (currentStatus === 'PENDING_DOCUMENTS') return true;
+  return isPostPendingDocumentsStatus(currentStatus);
+}
+
 export function isSubStatusCompleted(
   subStatus: PendingDocumentSubStatus,
   booking: ApplicabilityFlags,

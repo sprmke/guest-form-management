@@ -1,5 +1,5 @@
-import type { SdBank } from '@/features/sd-form/lib/sdFormSchema';
-import type { AnyBookingStatus } from './bookingStatus';
+import type { SdBank } from "@/features/sd-form/lib/sdFormSchema";
+import type { AnyBookingStatus } from "./bookingStatus";
 
 /** One labeled amount row in the admin SD settlement form (JSONB on `guest_submissions`). */
 export type SdSettlementLineItem = { label: string; amount: number };
@@ -29,8 +29,8 @@ export type BookingRow = {
   guest5_name: string | null;
 
   // ── Stay details ──────────────────────────────────────────────────────────
-  check_in_date: string;   // MM-DD-YYYY
-  check_out_date: string;  // MM-DD-YYYY
+  check_in_date: string; // MM-DD-YYYY
+  check_out_date: string; // MM-DD-YYYY
   check_in_time: string | null;
   check_out_time: string | null;
   number_of_adults: number;
@@ -78,6 +78,8 @@ export type BookingRow = {
   security_deposit?: number | string | null;
   parking_rate_guest?: number | string | null;
   parking_rate_paid?: number | string | null;
+  parking_check_in_date?: string | null;
+  parking_check_out_date?: string | null;
   parking_owner?: string | null;
   pet_fee?: number | string | null;
   guest_additional_fee?: number | string | null;
@@ -99,7 +101,7 @@ export type BookingRow = {
   guest_balance_paid_amount?: number | string | null;
   guest_balance_payment_receipt_url?: string | null;
   sd_refund_guest_feedback?: string | null;
-  sd_refund_method?: 'same_phone' | 'other_bank' | 'cash' | null;
+  sd_refund_method?: "same_phone" | "other_bank" | "cash" | null;
   sd_refund_phone_confirmed?: boolean | null;
   sd_refund_bank?: SdBank | null;
   sd_refund_account_name?: string | null;
@@ -116,11 +118,11 @@ export type BookingRow = {
 };
 
 export type BookingsSort =
-  | 'status_priority:asc'
-  | 'check_in_date:asc'
-  | 'check_in_date:desc'
-  | 'created_at:desc'
-  | 'created_at:asc';
+  | "status_priority:asc"
+  | "check_in_date:asc"
+  | "check_in_date:desc"
+  | "created_at:desc"
+  | "created_at:asc";
 
 export type BookingsQuery = {
   /** Free-text search (ilike across guest name + email). */
@@ -138,19 +140,19 @@ export type BookingsQuery = {
    */
   showPreviousBookings: boolean;
   sort: BookingsSort;
-  page: number;  // 1-indexed
+  page: number; // 1-indexed
   limit: number;
 };
 
 export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
-  q: '',
+  q: "",
   status: [],
   from: null,
   to: null,
   hasPets: null,
   needParking: null,
   showPreviousBookings: false,
-  sort: 'status_priority:asc',
+  sort: "status_priority:asc",
   page: 1,
   limit: 25,
 };

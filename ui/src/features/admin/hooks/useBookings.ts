@@ -14,10 +14,10 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import {
-  checkInDateToIso,
   compareBookingsForListSort,
   manilaTodayIso,
   matchesDefaultBookingsListVisibility,
+  passesListCheckInDateRangeFilter,
 } from '@/features/admin/lib/bookingsListSort';
 import type { BookingRow, BookingsQuery } from '@/features/admin/lib/types';
 
@@ -127,14 +127,9 @@ export function useBookings(query: BookingsQuery) {
         const today = manilaTodayIso();
         let rows = (data ?? []) as BookingRow[];
 
-        if (query.from) {
-          rows = rows.filter(
-            (r) => checkInDateToIso(r.check_in_date) >= query.from!,
-          );
-        }
-        if (query.to) {
-          rows = rows.filter(
-            (r) => checkInDateToIso(r.check_in_date) <= query.to!,
+        if (query.from || query.to) {
+          rows = rows.filter((r) =>
+            passesListCheckInDateRangeFilter(r, query.from, query.to),
           );
         }
 
