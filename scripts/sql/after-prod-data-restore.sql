@@ -88,8 +88,8 @@ ALTER TABLE guest_submissions
 ALTER TABLE guest_submissions DROP CONSTRAINT IF EXISTS valid_times;
 ALTER TABLE guest_submissions
   ADD CONSTRAINT valid_times CHECK (
-    check_in_time ~ '^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$' AND
-    check_out_time ~ '^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$'
+    check_in_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' AND
+    check_out_time ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
   ) NOT VALID;
 
 COMMIT;

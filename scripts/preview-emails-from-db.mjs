@@ -62,6 +62,17 @@ function replacePlaceholders(template, vars) {
   return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
 }
 
+function buildParkingBroadcastCopyText(input) {
+  return [
+    `Unit: ${input.unit}`,
+    `Guest Name: ${input.guestName}`,
+    `Check-in: ${input.checkInDate}`,
+    `Check-out: ${input.checkOutDate}`,
+    `Vehicle: ${input.carBrandModel} (${input.carColor})`,
+    `Plate: ${input.carPlate}`,
+  ].join('\n');
+}
+
 /** Keep in sync with `supabase/functions/_shared/renderEmailHtml.ts` `EMAIL_SHELL_STYLE_VARS`. */
 const EMAIL_SHELL_STYLE_VARS = {
   emailShellBodyStyle:
@@ -131,6 +142,35 @@ function loadTemplate(name) {
 function pesoFormat(amount) {
   if (amount == null || Number.isNaN(Number(amount))) return '—';
   return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function parseTimeTo24h(timeStr) {
+  const raw = String(timeStr ?? '').trim();
+  if (!raw) return '';
+  const ampm = raw.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*([AP]M)$/i);
+  if (ampm) {
+    let h = Number(ampm[1]);
+    const m = ampm[2];
+    const mer = ampm[3].toUpperCase();
+    if (mer === 'AM' && h === 12) h = 0;
+    else if (mer === 'PM' && h !== 12) h += 12;
+    return `${String(h).padStart(2, '0')}:${m}`;
+  }
+  const hm = raw.match(/^(\d{1,2}):(\d{2})/);
+  if (hm) return `${hm[1].padStart(2, '0')}:${hm[2]}`;
+  return '';
+}
+
+/** User-facing 12-hour time; DB stores 24h HH:mm. */
+function formatTimeForDisplay(timeStr, fallback = '') {
+  const hm24 = parseTimeTo24h(timeStr);
+  if (!hm24) return fallback;
+  const [hStr, m] = hm24.split(':');
+  let h = Number(hStr);
+  const mer = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${m} ${mer}`;
 }
 
 function formatDateForEmail(dateStr) {
@@ -623,6 +663,12 @@ function renderAll(booking, meta, emailLogoUrl) {
   );
 
   const parkTpl = loadTemplate('parking-broadcast');
+  const unitLabel = String(booking.tower_and_unit_number ?? '').trim() ||
+    'Monaco 2604';
+  const guestName = String(booking.primary_guest_name ?? '').trim() || 'N/A';
+  const carBrandModel = String(booking.car_brand_model ?? '').trim() || 'N/A';
+  const carColor = String(booking.car_color ?? '').trim() || 'N/A';
+  const carPlate = String(booking.car_plate_number ?? '').trim() || 'N/A';
   const parkHtml = replacePlaceholders(
     parkTpl,
     withEmailShellStyleVars({
@@ -631,11 +677,27 @@ function renderAll(booking, meta, emailLogoUrl) {
       checkInDate: escapeHtml(displayCheckInDate),
       checkOutDate: escapeHtml(displayCheckOutDate),
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
-      checkInTime: escapeHtml(booking.check_in_time || '2:00 PM'),
-      checkOutTime: escapeHtml(booking.check_out_time || '12:00 PM'),
-      carBrandModel: escapeHtml(booking.car_brand_model || 'N/A'),
-      carColor: escapeHtml(booking.car_color || 'N/A'),
-      carPlate: escapeHtml(booking.car_plate_number || 'N/A'),
+      checkInTime: escapeHtml(
+        formatTimeForDisplay(booking.check_in_time, '2:00 PM'),
+      ),
+      checkOutTime: escapeHtml(
+        formatTimeForDisplay(booking.check_out_time, '11:00 AM'),
+      ),
+      carBrandModel: escapeHtml(carBrandModel),
+      carColor: escapeHtml(carColor),
+      carPlate: escapeHtml(carPlate),
+      primaryGuestName: escapeHtml(guestName),
+      bookingVehicleCopyText: escapeHtml(
+        buildParkingBroadcastCopyText({
+          unit: unitLabel,
+          checkInDate: displayCheckInDate,
+          checkOutDate: displayCheckOutDate,
+          guestName,
+          carBrandModel,
+          carColor,
+          carPlate,
+        }),
+      ),
     }),
   );
   fs.writeFileSync(
@@ -652,8 +714,12 @@ function renderAll(booking, meta, emailLogoUrl) {
       ? Number(booking.balance)
       : (Number(booking.booking_rate) || 0) -
         (Number(booking.down_payment) || 0);
-  const displayCheckInTime = escapeHtml(booking.check_in_time || '2:00 PM');
-  const displayCheckOutTime = escapeHtml(booking.check_out_time || '12:00 PM');
+  const displayCheckInTime = escapeHtml(
+    formatTimeForDisplay(booking.check_in_time, '2:00 PM'),
+  );
+  const displayCheckOutTime = escapeHtml(
+    formatTimeForDisplay(booking.check_out_time, '11:00 AM'),
+  );
 
   const houseRulesTpl = loadTemplate('ready-for-checkin-house-rules');
   const houseRulesSection = replacePlaceholders(houseRulesTpl, {
