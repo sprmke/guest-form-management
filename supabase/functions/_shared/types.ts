@@ -1,19 +1,23 @@
-import dayjs from 'https://esm.sh/dayjs@1.11.10'
-import { formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts'
+import dayjs from "https://esm.sh/dayjs@1.11.10";
+import {
+  formatTime,
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+} from "./utils.ts";
 
 // ─── Booking status enum ──────────────────────────────────────────────────────
 // Canonical values must match the CHECK constraint in Phase 2 migration and
 // statusMachine.ts. Mirror kept in ui/src/features/admin/lib/workflow.ts.
 
 export const BOOKING_STATUSES = [
-  'PENDING_REVIEW',
-  'PENDING_GAF',
-  'PENDING_PARKING_REQUEST',
-  'PENDING_PET_REQUEST',
-  'READY_FOR_CHECKIN',
-  'PENDING_SD_REFUND',
-  'COMPLETED',
-  'CANCELLED',
+  "PENDING_REVIEW",
+  "PENDING_GAF",
+  "PENDING_PARKING_REQUEST",
+  "PENDING_PET_REQUEST",
+  "READY_FOR_CHECKIN",
+  "PENDING_SD_REFUND",
+  "COMPLETED",
+  "CANCELLED",
 ] as const;
 
 export type BookingStatus = (typeof BOOKING_STATUSES)[number];
@@ -30,14 +34,14 @@ export interface GuestFormData {
   checkOutDate: string;
   findUs: string;
   bookingSource?: string;
-  
+
   // Required fields with defaults
   checkInTime: string;
   checkOutTime: string;
   nationality: string;
   numberOfAdults: number;
   numberOfChildren: number;
-  
+
   // Optional fields
   guest2Name?: string;
   guest3Name?: string;
@@ -46,16 +50,19 @@ export interface GuestFormData {
   guestSpecialRequests?: string;
   findUsDetails?: string;
   numberOfNights?: number;
-  
+
   /** Guest wants a surprise decor / setup (discussed theme + price with host separately). */
   guestRequestsSurpriseDecor: boolean;
 
   // Parking related fields
   needParking: boolean;
+  parkingSameAsBookingDuration?: boolean;
+  parkingCheckInDate?: string;
+  parkingCheckOutDate?: string;
   carPlateNumber?: string;
   carBrandModel?: string;
   carColor?: string;
-  
+
   // Pet related fields
   hasPets: boolean;
   petName?: string;
@@ -69,7 +76,7 @@ export interface GuestFormData {
   petImage?: File;
   petImageUrl?: string;
   petImageFileName?: string;
-  
+
   // Downpayment receipt (`payment_receipt_url`) fields
   paymentReceipt?: File;
   paymentReceiptUrl?: string;
@@ -79,7 +86,7 @@ export interface GuestFormData {
   validId?: File;
   validIdUrl?: string;
   validIdFileName?: string;
-  
+
   // Unit and owner information
   unitOwner: string;
   towerAndUnitNumber: string;
@@ -136,18 +143,20 @@ export interface GuestSubmission {
   owner_contact_number: string;
 
   // ── Workflow status (Phase 2) ─────────────────────────────────────────────
-  status?: BookingStatus | string;         // TEXT + CHECK — canonical enum after Phase 2 migration
-  status_updated_at?: string | null;       // Timestamp of last transition (orchestrator-only write)
+  status?: BookingStatus | string; // TEXT + CHECK — canonical enum after Phase 2 migration
+  status_updated_at?: string | null; // Timestamp of last transition (orchestrator-only write)
 
   // ── Pricing fields (Phase 0 additive, entered at PENDING_REVIEW) ──────────
-  booking_rate?: number | null;            // NUMERIC(12,2)
+  booking_rate?: number | null; // NUMERIC(12,2)
   down_payment?: number | null;
-  balance?: number | null;                 // Auto-computed: booking_rate - down_payment
-  security_deposit?: number | null;        // Separate from balance; default ₱1500
+  balance?: number | null; // Auto-computed: booking_rate - down_payment
+  security_deposit?: number | null; // Separate from balance; default ₱1500
 
   // ── Parking fields (shown at PENDING_PARKING_REQUEST) ────────────────────
-  parking_rate_guest?: number | null;      // UI label: "Guest Parking Rate"
-  parking_rate_paid?: number | null;       // UI label: "Paid Parking Rate"
+  parking_rate_guest?: number | null; // UI label: "Guest Parking Rate"
+  parking_rate_paid?: number | null; // UI label: "Paid Parking Rate"
+  parking_check_in_date?: string | null; // MM-DD-YYYY — guest-paid parking window start
+  parking_check_out_date?: string | null; // MM-DD-YYYY — guest-paid parking window end
   parking_endorsement_url?: string | null;
   parking_owner_email?: string | null;
   parking_owner?: string | null;
@@ -164,25 +173,27 @@ export interface GuestSubmission {
   pet_request_pdf_url?: string | null;
 
   // ── SD refund stage fields (PENDING_SD_REFUND) ────────────────────────────
-  sd_additional_expenses?: number[] | null;  // NUMERIC(12,2)[]
+  sd_additional_expenses?: number[] | null; // NUMERIC(12,2)[]
   sd_additional_profits?: number[] | null;
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
-  settled_at?: string | null;              // Timestamp when moved to COMPLETED
+  settled_at?: string | null; // Timestamp when moved to COMPLETED
 }
 
 // Helper function to convert string to boolean
-const toBoolean = (value: string | boolean | undefined): boolean | undefined => {
-  if (typeof value === 'boolean') return value;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
+const toBoolean = (
+  value: string | boolean | undefined,
+): boolean | undefined => {
+  if (typeof value === "boolean") return value;
+  if (value === "true") return true;
+  if (value === "false") return false;
   return undefined;
 };
 
 // Helper function to convert string to number
 const toNumber = (value: string | number | undefined): number | undefined => {
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
     const num = Number(value);
     return isNaN(num) ? undefined : num;
   }
@@ -191,7 +202,7 @@ const toNumber = (value: string | number | undefined): number | undefined => {
 
 // Helper function to format date to MM-DD-YYYY
 const formatDate = (dateStr: string): string => {
-  return dayjs(dateStr).format('MM-DD-YYYY');
+  return dayjs(dateStr).format("MM-DD-YYYY");
 };
 
 // Helper function to validate guest name
@@ -230,25 +241,35 @@ export const transformFormToSubmission = (
     guest_special_requests: formData.guestSpecialRequests,
     find_us: formData.findUs,
     find_us_details: formData.findUsDetails,
-    booking_source: formData.bookingSource || 'Facebook',
-    guest_requests_surprise_decor: toBoolean(formData.guestRequestsSurpriseDecor) ?? false,
+    booking_source: formData.bookingSource || "Facebook",
+    guest_requests_surprise_decor:
+      toBoolean(formData.guestRequestsSurpriseDecor) ?? false,
     need_parking: toBoolean(formData.needParking),
     car_plate_number: formData.carPlateNumber,
     car_brand_model: formData.carBrandModel,
     car_color: formData.carColor,
+    parking_check_in_date: formData.needParking && formData.parkingCheckInDate
+      ? formatDate(formData.parkingCheckInDate)
+      : undefined,
+    parking_check_out_date: formData.needParking && formData.parkingCheckOutDate
+      ? formatDate(formData.parkingCheckOutDate)
+      : undefined,
     has_pets: toBoolean(formData.hasPets),
     pet_name: formData.petName,
     pet_type: formData.petType,
     pet_breed: formData.petBreed,
     pet_age: formData.petAge,
-    pet_vaccination_date: formData.petVaccinationDate ? formatDate(formData.petVaccinationDate) : undefined,
+    pet_vaccination_date: formData.petVaccinationDate
+      ? formatDate(formData.petVaccinationDate)
+      : undefined,
     pet_vaccination_url: petVaccinationUrl,
     pet_image_url: petImageUrl,
     payment_receipt_url: paymentReceiptUrl,
     valid_id_url: validIdUrl,
-    unit_owner: formData.unitOwner || 'Arianna Perez',
-    tower_and_unit_number: formData.towerAndUnitNumber || 'Monaco 2604',
-    owner_onsite_contact_person: formData.ownerOnsiteContactPerson || 'Arianna Perez',
-    owner_contact_number: formData.ownerContactNumber || '0962 541 2941'
+    unit_owner: formData.unitOwner || "Arianna Perez",
+    tower_and_unit_number: formData.towerAndUnitNumber || "Monaco 2604",
+    owner_onsite_contact_person:
+      formData.ownerOnsiteContactPerson || "Arianna Perez",
+    owner_contact_number: formData.ownerContactNumber || "0962 541 2941",
   };
 };

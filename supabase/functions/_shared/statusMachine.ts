@@ -34,6 +34,34 @@ export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }
 
+/** Statuses at or after Ready for Check-in (parent Pending Documents is behind). */
+export const POST_PENDING_DOCUMENTS_STATUSES: readonly BookingStatus[] = [
+  'READY_FOR_CHECKIN',
+  'READY_FOR_CHECKOUT',
+  'PENDING_SD_REFUND',
+  'COMPLETED',
+] as const;
+
+export function isPostPendingDocumentsStatus(status: string): boolean {
+  return (POST_PENDING_DOCUMENTS_STATUSES as readonly string[]).includes(status);
+}
+
+/** Same-status manual parking document completion/clear at RFCI+ (no status revert). */
+export function isLatePendingParkingDocumentTransition(
+  from: BookingStatus,
+  to: BookingStatus,
+  payload: {
+    document_completion_target?: string;
+    document_completion_clear_target?: string;
+  },
+  manual: boolean,
+): boolean {
+  if (!manual || from !== to || !isPostPendingDocumentsStatus(from)) return false;
+  const target =
+    payload.document_completion_target ?? payload.document_completion_clear_target;
+  return target === 'PENDING_PARKING_REQUEST';
+}
+
 /**
  * While status is in this set, guest or admin edits to workflow-sensitive booking
  * fields (or guest-doc uploads) reset `status` → `PENDING_REVIEW`.

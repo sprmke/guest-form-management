@@ -100,6 +100,17 @@ export const formatTime = (timeStr: string | null | undefined): string => {
   return '';
 };
 
+/** User-facing 12-hour time (e.g. `2:00 PM`). DB stores 24h `HH:mm`. */
+export const formatTimeForDisplay = (
+  timeStr: string | null | undefined,
+  fallback = '',
+): string => {
+  const hm24 = formatTime(timeStr);
+  if (!hm24) return fallback;
+  const parsed = dayjs(`2000-01-01 ${hm24}`, 'HH:mm', true);
+  return parsed.isValid() ? parsed.format('h:mm A') : fallback;
+};
+
 /**
  * Default check-in time (14:00 / 2 PM)
  */
@@ -202,6 +213,8 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
     { form: 'carPlateNumber', db: 'car_plate_number' },
     { form: 'carBrandModel', db: 'car_brand_model' },
     { form: 'carColor', db: 'car_color' },
+    { form: 'parkingCheckInDate', db: 'parking_check_in_date', isDate: true },
+    { form: 'parkingCheckOutDate', db: 'parking_check_out_date', isDate: true },
     { form: 'hasPets', db: 'has_pets', isBoolean: true },
     { form: 'petName', db: 'pet_name' },
     { form: 'petType', db: 'pet_type' },

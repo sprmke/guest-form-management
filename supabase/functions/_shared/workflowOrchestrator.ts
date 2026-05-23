@@ -29,6 +29,8 @@ import {
   BookingStatus,
   canTransition,
   getPendingDocumentsNestedCompletion,
+  isLatePendingParkingDocumentTransition,
+  isPostPendingDocumentsStatus,
   pendingDocumentsClearPatchForGuestEditRevert,
   STATUS_HUMAN_LABEL,
 } from './statusMachine.ts';
@@ -165,8 +167,14 @@ export class WorkflowOrchestrator {
 
     const fromStatus = booking.status as BookingStatus;
 
-    // 2. Validate transition
-    if (!canTransition(fromStatus, toStatus, { manual })) {
+    // 2. Validate transition (late parking doc actions stay on current status at RFCI+)
+    const isLateParkingDocAction = isLatePendingParkingDocumentTransition(
+      fromStatus,
+      toStatus,
+      payload,
+      manual,
+    );
+    if (!isLateParkingDocAction && !canTransition(fromStatus, toStatus, { manual })) {
       throw new Error(
         `Transition ${fromStatus} → ${toStatus} is not allowed (manual=${manual})`,
       );
@@ -249,7 +257,15 @@ export class WorkflowOrchestrator {
       );
     }
     if (docClear) {
-      if (!manual || fromStatus !== 'PENDING_DOCUMENTS' || toStatus !== 'PENDING_DOCUMENTS') {
+      const isLateParkingClear =
+        manual &&
+        fromStatus === toStatus &&
+        isPostPendingDocumentsStatus(fromStatus) &&
+        docClear === 'PENDING_PARKING_REQUEST';
+      if (
+        !isLateParkingClear &&
+        (!manual || fromStatus !== 'PENDING_DOCUMENTS' || toStatus !== 'PENDING_DOCUMENTS')
+      ) {
         throw new Error(
           'document_completion_clear_target requires manual=true and PENDING_DOCUMENTS → PENDING_DOCUMENTS',
         );
@@ -257,42 +273,62 @@ export class WorkflowOrchestrator {
     }
 
     // Admin "Mark … as incomplete" under Pending Documents (manual only).
-    if (
-      manual &&
-      fromStatus === 'PENDING_DOCUMENTS' &&
-      toStatus === 'PENDING_DOCUMENTS' &&
-      docClear
-    ) {
-      if (docClear === 'PENDING_GAF') {
-        workflowFields.gaf_completed_at = null;
-        workflowFields.gaf_manual_incomplete = true;
-      } else if (docClear === 'PENDING_PARKING_REQUEST') {
+    if (manual && docClear) {
+      const lateParkingClear =
+        fromStatus === toStatus &&
+        isPostPendingDocumentsStatus(fromStatus) &&
+        docClear === 'PENDING_PARKING_REQUEST';
+
+      if (
+        fromStatus === 'PENDING_DOCUMENTS' &&
+        toStatus === 'PENDING_DOCUMENTS'
+      ) {
+        if (docClear === 'PENDING_GAF') {
+          workflowFields.gaf_completed_at = null;
+          workflowFields.gaf_manual_incomplete = true;
+        } else if (docClear === 'PENDING_PARKING_REQUEST') {
+          workflowFields.parking_completed_at = null;
+        } else if (docClear === 'PENDING_PET_REQUEST') {
+          workflowFields.pet_completed_at = null;
+          workflowFields.pet_manual_incomplete = true;
+        }
+      } else if (lateParkingClear) {
         workflowFields.parking_completed_at = null;
-      } else if (docClear === 'PENDING_PET_REQUEST') {
-        workflowFields.pet_completed_at = null;
-        workflowFields.pet_manual_incomplete = true;
       }
     }
 
     // Admin "Mark … as complete" under Pending Documents (no PDF): persist *_completed_at.
-    if (
-      fromStatus === 'PENDING_DOCUMENTS' &&
-      toStatus === 'PENDING_DOCUMENTS' &&
-      docComplete
-    ) {
+  // Parking may also be completed late at RFCI+ without changing parent status.
+    if (docComplete) {
       const now = new Date().toISOString();
-      if (docComplete === 'PENDING_GAF') {
-        workflowFields.gaf_completed_at = now;
-        workflowFields.gaf_manual_incomplete = false;
-      } else if (docComplete === 'PENDING_PARKING_REQUEST') {
+      const lateParkingComplete =
+        manual &&
+        fromStatus === toStatus &&
+        isPostPendingDocumentsStatus(fromStatus) &&
+        docComplete === 'PENDING_PARKING_REQUEST';
+
+      if (
+        fromStatus === 'PENDING_DOCUMENTS' &&
+        toStatus === 'PENDING_DOCUMENTS'
+      ) {
+        if (docComplete === 'PENDING_GAF') {
+          workflowFields.gaf_completed_at = now;
+          workflowFields.gaf_manual_incomplete = false;
+        } else if (docComplete === 'PENDING_PARKING_REQUEST') {
+          workflowFields.parking_completed_at = now;
+        } else if (docComplete === 'PENDING_PET_REQUEST') {
+          workflowFields.pet_completed_at = now;
+          workflowFields.pet_manual_incomplete = false;
+        }
+      } else if (lateParkingComplete) {
         workflowFields.parking_completed_at = now;
-      } else if (docComplete === 'PENDING_PET_REQUEST') {
-        workflowFields.pet_completed_at = now;
-        workflowFields.pet_manual_incomplete = false;
       }
     }
 
-    if (fromStatus === 'PENDING_PARKING_REQUEST') {
+    if (
+      fromStatus === 'PENDING_PARKING_REQUEST' ||
+      (docComplete === 'PENDING_PARKING_REQUEST' && manual)
+    ) {
       if (payload.parking_rate_paid != null) workflowFields.parking_rate_paid = payload.parking_rate_paid;
       if (payload.parking_owner_email) workflowFields.parking_owner_email = payload.parking_owner_email;
       if (payload.parking_owner !== undefined) {
@@ -362,11 +398,18 @@ export class WorkflowOrchestrator {
       if (Object.keys(workflowFields).length > 0) {
         await DatabaseService.setWorkflowFields(bookingId, workflowFields);
       }
-      await DatabaseService.updateBookingStatus(bookingId, toStatus);
+      if (fromStatus !== toStatus) {
+        await DatabaseService.updateBookingStatus(bookingId, toStatus);
+      }
     }
 
     // Re-fetch to get latest row (needed for email content)
-    const updatedBooking = await DatabaseService.getBookingById(bookingId) ?? { ...booking, ...workflowFields, status: toStatus };
+    const persistedStatus = fromStatus !== toStatus ? toStatus : fromStatus;
+    const updatedBooking = await DatabaseService.getBookingById(bookingId) ?? {
+      ...booking,
+      ...workflowFields,
+      status: persistedStatus,
+    };
 
     // ── Auto-advance: PENDING_DOCUMENTS → READY_FOR_CHECKIN ──────────────────
     // When a sub-step is marked complete (document_completion_target) and every

@@ -3,6 +3,7 @@ import {
   DEFAULT_CHECK_IN_TIME,
   DEFAULT_CHECK_OUT_TIME,
   formatPublicUrl,
+  formatTimeForDisplay,
   isDevelopment,
   normalizeDateToYYYYMMDD,
 } from './utils.ts';
@@ -263,8 +264,8 @@ ${[booking.guest2_name, booking.guest3_name, booking.guest4_name, booking.guest5
 <strong>Stay Details</strong>
 Check-in Date: ${booking.check_in_date ?? ''}
 Check-out Date: ${booking.check_out_date ?? ''}
-Check-in Time: ${booking.check_in_time ?? ''}
-Check-out Time: ${booking.check_out_time ?? ''}
+Check-in Time: ${formatTimeForDisplay(booking.check_in_time)}
+Check-out Time: ${formatTimeForDisplay(booking.check_out_time)}
 Number of Nights: ${nights}
 Number of Adults: ${booking.number_of_adults ?? ''}
 Number of Children: ${booking.number_of_children ?? 0}
@@ -477,8 +478,8 @@ ${!formData.guest2Name && !formData.guest3Name && !formData.guest4Name && !formD
 <strong>Stay Details</strong>
 Check-in Date: ${formData.checkInDate}
 Check-out Date: ${formData.checkOutDate}
-Check-in Time: ${formData.checkInTime}
-Check-out Time: ${formData.checkOutTime}
+Check-in Time: ${formatTimeForDisplay(formData.checkInTime)}
+Check-out Time: ${formatTimeForDisplay(formData.checkOutTime)}
 Number of Nights: ${formData.numberOfNights}
 Number of Adults: ${formData.numberOfAdults}
 Number of Children: ${formData.numberOfChildren}

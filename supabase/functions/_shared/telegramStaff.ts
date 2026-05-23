@@ -10,6 +10,7 @@ import {
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
 import { normalizeTelegramChatId } from './telegramMarketing.ts';
+import { formatTimeForDisplay } from './utils.ts';
 
 export type TelegramStaffSettings = {
   id: number;
@@ -105,8 +106,8 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
   return {
     check_in_date: formatDateHumanFull(ciYmd),
     check_out_date: formatDateHumanFull(coYmd),
-    check_in_time: String(booking.check_in_time ?? 'N/A'),
-    check_out_time: String(booking.check_out_time ?? 'N/A'),
+    check_in_time: formatTimeForDisplay(booking.check_in_time) || 'N/A',
+    check_out_time: formatTimeForDisplay(booking.check_out_time) || 'N/A',
     nights: String(booking.number_of_nights ?? '1'),
     pax: String(totalPax),
     primary_guest_name: String(booking.primary_guest_name ?? 'N/A'),
@@ -123,8 +124,8 @@ function buildNextBookingLine(booking: BookingRow): string {
   const ciRaw = String(booking.check_in_date ?? '');
   const ciYmd = normalizeBookingDateToYmd(ciRaw) ?? ciRaw;
 
-  const ciTime = String(booking.check_in_time ?? '');
-  const coTime = String(booking.check_out_time ?? '');
+  const ciTime = formatTimeForDisplay(booking.check_in_time);
+  const coTime = formatTimeForDisplay(booking.check_out_time);
   const adults = Number(booking.number_of_adults ?? 1) || 1;
   const children = Number(booking.number_of_children ?? 0) || 0;
   const pax = String(adults + children);

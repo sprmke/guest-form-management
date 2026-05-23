@@ -7,10 +7,10 @@ import {
 import { UploadService } from './uploadService.ts'
 import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
 import {
-  checkInDateToIso,
   compareBookingsForListSort,
   manilaTodayIso,
   matchesDefaultBookingsListVisibility,
+  passesListCheckInDateRangeFilter,
   type BookingsListSort,
 } from './bookingsListSort.ts'
 
@@ -86,6 +86,13 @@ export class DatabaseService {
       // Format dates and times
       const checkInDate = formatDate(data.check_in_date);
       const checkOutDate = formatDate(data.check_out_date);
+      const parkingCheckInDate =
+        formatDate(data.parking_check_in_date) || checkInDate;
+      const parkingCheckOutDate =
+        formatDate(data.parking_check_out_date) || checkOutDate;
+      const parkingSameAsBookingDuration =
+        parkingCheckInDate === checkInDate &&
+        parkingCheckOutDate === checkOutDate;
 
       const checkInTime = formatTime(data.check_in_time) || DEFAULT_CHECK_IN_TIME;
       const checkOutTime = formatTime(data.check_out_time) || DEFAULT_CHECK_OUT_TIME;
@@ -113,6 +120,9 @@ export class DatabaseService {
         bookingSource: data.booking_source || 'Facebook',
         guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
+        parkingSameAsBookingDuration,
+        parkingCheckInDate,
+        parkingCheckOutDate,
         carPlateNumber: data.car_plate_number || '',
         carBrandModel: data.car_brand_model || '',
         carColor: data.car_color || '',
@@ -547,12 +557,11 @@ export class DatabaseService {
 
     let rows = (allData ?? []) as any[];
 
-    // Date-range filter (check_in_date in YYYY-MM-DD)
-    if (from) {
-      rows = rows.filter((r) => checkInDateToIso(r.check_in_date) >= from);
-    }
-    if (to) {
-      rows = rows.filter((r) => checkInDateToIso(r.check_in_date) <= to);
+    // Date-range filter — PENDING_REVIEW always included (see passesListCheckInDateRangeFilter)
+    if (from || to) {
+      rows = rows.filter((r) =>
+        passesListCheckInDateRangeFilter(r, from, to)
+      );
     }
 
     // Default list: hide cancelled + check-in before today (Manila)
