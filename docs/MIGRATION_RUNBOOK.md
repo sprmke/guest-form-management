@@ -171,7 +171,7 @@ Script: [`scripts/sync-prod-public-data-to-local.sh`](../scripts/sync-prod-publi
 
 This dumps **`public` data only** into `supabase/.temp/` (gitignored). It does **not** copy Storage objects — file URLs in rows may still point at production buckets.
 
-The script **drops `guest_submissions` CHECK constraints** that prod data may violate (`guest_submissions_status_check`, `valid_dates`, `valid_times`), loads the dump, then runs [`scripts/sql/after-prod-data-restore.sql`](../scripts/sql/after-prod-data-restore.sql): legacy `booked`/`canceled` → new status enum, then re-adds the status CHECK. `valid_dates` / `valid_times` are re-added **`NOT VALID`** so historical bad rows (e.g. check-out before check-in) still load; new/updated rows must pass.
+The script **drops `guest_submissions` CHECK constraints** that prod data may violate (`guest_submissions_status_check`, `valid_dates`, `valid_times`), loads the dump, then runs [`scripts/sql/after-prod-data-restore.sql`](../scripts/sql/after-prod-data-restore.sql): legacy `booked`/`canceled` → new status enum, then re-adds the status CHECK. `valid_dates` / `valid_times` are re-added **`NOT VALID`** so historical bad rows (e.g. check-out before check-in) still load; new/updated rows must pass. After migration `20260623120000_normalize_time_columns_to_24h`, `valid_times` expects **24-hour `HH:MM`** (e.g. `14:00`), not AM/PM — see `20260625130000_valid_times_24h_constraint.sql`.
 
 Treat the dump as **PII**; delete it when finished.
 

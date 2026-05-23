@@ -165,3 +165,12 @@ Todos
   - ✅ Enable/disable toggle + time picker + test sends
   - Notification for guest check-out
   - Convert all env variable to settings page for other users to use our app
+
+====
+IMPROVED PAY PARKING FLOW — ✅ shipped
+
+- ✅ Public **`/bookings/:bookingId/parking`** (`PayParkingPage`) — booking summary + vehicle fields; **`get-pay-parking`** / **`submit-pay-parking`**
+- ✅ **`/bookings/:bookingId`** header **Add pay parking** / **View pay parking** + **`PayParkingModal`** (rate, copy URL, enter details)
+- # ✅ Submit runs **`sendParkingBroadcast`** (same as workflow parking broadcast)
+
+PAY PARKING -> PARKING OWNERS -> OUR GUESTS
