@@ -23,9 +23,9 @@
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { toast } from 'sonner';
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Banknote,
@@ -49,45 +49,54 @@ import {
   User,
   Users,
   X,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { AdminLayout } from '@/features/admin/components/AdminLayout';
-import { BookingDetailMobileSummary } from '@/features/admin/components/BookingDetailMobileSummary';
-import { BookingMetaCard } from '@/features/admin/components/BookingMetaCard';
-import { PendingReviewWorkflowGate } from '@/features/admin/components/PendingReviewWorkflowGate';
-import { WorkflowPanel } from '@/features/admin/components/WorkflowPanel';
-import { BookingEditForm } from '@/features/admin/components/BookingEditForm';
-import { useIsBelowLg } from '@/hooks/useMediaQuery';
-import { useBooking } from '@/features/admin/hooks/useBooking';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { AdminLayout } from "@/features/admin/components/AdminLayout";
+import { BookingDetailMobileSummary } from "@/features/admin/components/BookingDetailMobileSummary";
+import { BookingMetaCard } from "@/features/admin/components/BookingMetaCard";
+import { PendingReviewWorkflowGate } from "@/features/admin/components/PendingReviewWorkflowGate";
+import { WorkflowPanel } from "@/features/admin/components/WorkflowPanel";
+import { BookingEditForm } from "@/features/admin/components/BookingEditForm";
+import { useIsBelowLg } from "@/hooks/useMediaQuery";
+import { useBooking } from "@/features/admin/hooks/useBooking";
 import {
   formatBookingDate,
+  formatBookingDateTime,
   formatMoney,
   formatRelative,
-} from '@/features/admin/lib/formatters';
+} from "@/features/admin/lib/formatters";
 import type {
   BookingRow,
   SdSettlementLineItem,
-} from '@/features/admin/lib/types';
+} from "@/features/admin/lib/types";
 import {
   normalizeStoragePublicUrl,
   parseStorageUrl,
   PRIVATE_STORAGE_BUCKETS,
   resolveAssetUrlForBrowser,
-} from '@/features/admin/lib/storageUrls';
+} from "@/features/admin/lib/storageUrls";
 import {
   computeCompletedStayProfitLoss,
   computeTotalGuestBalance,
   guestBalancePaidRecorded,
-} from '@/features/admin/lib/totalGuestBalance';
+} from "@/features/admin/lib/totalGuestBalance";
+import {
+  PayParkingHeaderButton,
+  PayParkingModal,
+} from "@/features/admin/components/PayParkingModal";
+import { buildPayParkingPath } from "@/features/pay-parking/lib/api";
+import { hasPayParkingAvailed } from "@/features/pay-parking/lib/payParkingHelpers";
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
+  const navigate = useNavigate();
   const { data: booking, isLoading, error } = useBooking(bookingId);
   const [editMode, setEditMode] = useState(false);
+  const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<{
     label: string;
     url: string;
-    type: 'image' | 'pdf' | 'file';
+    type: "image" | "pdf" | "file";
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -99,8 +108,8 @@ export function BookingDetailPage() {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         detailsPanelRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
+          behavior: "smooth",
+          block: "start",
         });
       });
     });
@@ -112,7 +121,7 @@ export function BookingDetailPage() {
     try {
       await navigator.clipboard.writeText(id);
     } catch {
-      toast.error('Could not copy to clipboard');
+      toast.error("Could not copy to clipboard");
     }
   }, [bookingId]);
 
@@ -126,7 +135,7 @@ export function BookingDetailPage() {
   }, [editMode]);
 
   const isMobileWorkflowFirst =
-    isBelowLg && booking != null && booking.status !== 'PENDING_REVIEW';
+    isBelowLg && booking != null && booking.status !== "PENDING_REVIEW";
 
   const showMobileDetailCards =
     !isMobileWorkflowFirst || detailsExpanded || editMode;
@@ -138,11 +147,7 @@ export function BookingDetailPage() {
   useEffect(() => {
     if (!isMobileWorkflowFirst || !showMobileDetailCards) return;
     scrollDetailsIntoView();
-  }, [
-    isMobileWorkflowFirst,
-    showMobileDetailCards,
-    scrollDetailsIntoView,
-  ]);
+  }, [isMobileWorkflowFirst, showMobileDetailCards, scrollDetailsIntoView]);
 
   const handleToggleDetails = useCallback(() => {
     setDetailsExpanded((was) => !was);
@@ -152,8 +157,17 @@ export function BookingDetailPage() {
     setEditMode(true);
   }, []);
 
+  const handleOpenPayParking = useCallback(() => {
+    if (!booking) return;
+    if (hasPayParkingAvailed(booking)) {
+      navigate(buildPayParkingPath(booking.id, { admin: true }));
+      return;
+    }
+    setPayParkingModalOpen(true);
+  }, [booking, navigate]);
+
   const title =
-    booking?.primary_guest_name ?? (isLoading ? 'Loading…' : 'Booking');
+    booking?.primary_guest_name ?? (isLoading ? "Loading…" : "Booking");
 
   const handlePreview = async (label: string, rawUrl: string) => {
     setPreviewLoading(true);
@@ -166,7 +180,7 @@ export function BookingDetailPage() {
       });
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to open document',
+        err instanceof Error ? err.message : "Failed to open document",
       );
     } finally {
       setPreviewLoading(false);
@@ -215,6 +229,7 @@ export function BookingDetailPage() {
                     onToggleDetails={handleToggleDetails}
                     onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
+                    onPayParking={handleOpenPayParking}
                   />
                 )}
 
@@ -223,13 +238,13 @@ export function BookingDetailPage() {
                   ref={detailsPanelRef}
                   id="booking-detail-full-panel"
                   className={cn(
-                    'flex-1 min-w-0 space-y-4',
+                    "flex-1 min-w-0 space-y-5",
                     isMobileWorkflowFirst &&
-                      (mobileDetailsBeforeWorkflow ? 'order-2' : 'order-3'),
-                    isMobileWorkflowFirst && 'lg:order-none',
+                      (mobileDetailsBeforeWorkflow ? "order-2" : "order-3"),
+                    isMobileWorkflowFirst && "lg:order-none",
                     isMobileWorkflowFirst &&
                       !showMobileDetailCards &&
-                      'hidden lg:block',
+                      "hidden lg:block",
                   )}
                 >
                   <BookingHeader
@@ -237,7 +252,8 @@ export function BookingDetailPage() {
                     editMode={editMode}
                     onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
-                    className={cn(isMobileWorkflowFirst && 'hidden lg:block')}
+                    onPayParking={handleOpenPayParking}
+                    className={cn(isMobileWorkflowFirst && "hidden lg:block")}
                   />
 
                   {editMode ? (
@@ -293,10 +309,10 @@ export function BookingDetailPage() {
                 {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
                 <div
                   className={cn(
-                    'w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]',
+                    "w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]",
                     isMobileWorkflowFirst &&
-                      (mobileDetailsBeforeWorkflow ? 'order-3' : 'order-2'),
-                    isMobileWorkflowFirst && 'lg:order-none',
+                      (mobileDetailsBeforeWorkflow ? "order-3" : "order-2"),
+                    isMobileWorkflowFirst && "lg:order-none",
                   )}
                 >
                   <PendingReviewWorkflowGate booking={booking}>
@@ -307,8 +323,8 @@ export function BookingDetailPage() {
                     booking={booking}
                     onCopyBookingId={() => void copyBookingIdToClipboard()}
                     className={cn(
-                      'mt-3',
-                      isMobileWorkflowFirst && 'hidden lg:block',
+                      "mt-3",
+                      isMobileWorkflowFirst && "hidden lg:block",
                     )}
                   />
                 </div>
@@ -324,6 +340,13 @@ export function BookingDetailPage() {
           if (!previewLoading) setPreviewAsset(null);
         }}
       />
+      {booking && (
+        <PayParkingModal
+          booking={booking}
+          open={payParkingModalOpen}
+          onOpenChange={setPayParkingModalOpen}
+        />
+      )}
     </AdminLayout>
   );
 }
@@ -335,19 +358,21 @@ function BookingHeader({
   editMode,
   onEdit,
   onCancelEdit,
+  onPayParking,
   className,
 }: {
   booking: BookingRow;
   editMode: boolean;
   onEdit: () => void;
   onCancelEdit: () => void;
+  onPayParking: () => void;
   className?: string;
 }) {
   const pax =
     (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
-  const fb = booking.guest_facebook_name?.trim() ?? '';
-  const primary = booking.primary_guest_name?.trim() ?? '';
-  const heading = fb || primary || 'Booking';
+  const fb = booking.guest_facebook_name?.trim() ?? "";
+  const primary = booking.primary_guest_name?.trim() ?? "";
+  const heading = fb || primary || "Booking";
   const showPrimarySubtitle = Boolean(
     fb && primary && fb.toLowerCase() !== primary.toLowerCase(),
   );
@@ -355,7 +380,7 @@ function BookingHeader({
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5',
+        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6",
         className,
       )}
     >
@@ -368,7 +393,7 @@ function BookingHeader({
           </div>
           {showPrimarySubtitle && (
             <p className="text-xs font-medium text-slate-500 sm:text-[13px]">
-              <span className="text-slate-400">Primary guest</span>{' '}
+              <span className="text-slate-400">Primary guest</span>{" "}
               <span className="text-slate-600">{primary}</span>
             </p>
           )}
@@ -379,7 +404,7 @@ function BookingHeader({
                 aria-hidden
               />
               <span>
-                {formatBookingDate(booking.check_in_date)} →{' '}
+                {formatBookingDate(booking.check_in_date)} →{" "}
                 {formatBookingDate(booking.check_out_date)}
               </span>
             </span>
@@ -387,12 +412,19 @@ function BookingHeader({
               <Users className="size-3.5 shrink-0 text-slate-400" aria-hidden />
               <span>
                 {pax} pax · {booking.number_of_nights} night
-                {booking.number_of_nights !== 1 ? 's' : ''}
+                {booking.number_of_nights !== 1 ? "s" : ""}
               </span>
             </span>
           </div>
         </div>
         <div className="flex w-full shrink-0 flex-wrap items-start justify-stretch gap-2 sm:w-auto sm:justify-end">
+          {!editMode && (
+            <PayParkingHeaderButton
+              booking={booking}
+              onOpenModal={onPayParking}
+              onViewParking={onPayParking}
+            />
+          )}
           {editMode ? (
             <button
               type="button"
@@ -508,19 +540,27 @@ function StayDetailsCard({ booking }: { booking: BookingRow }) {
       <Grid2>
         <InfoField
           label="Check-in"
-          value={`${formatBookingDate(booking.check_in_date)}${booking.check_in_time ? ` at ${booking.check_in_time}` : ''}`}
+          value={formatBookingDateTime(
+            booking.check_in_date,
+            booking.check_in_time,
+            true,
+          )}
         />
         <InfoField
           label="Check-out"
-          value={`${formatBookingDate(booking.check_out_date)}${booking.check_out_time ? ` at ${booking.check_out_time}` : ''}`}
+          value={formatBookingDateTime(
+            booking.check_out_date,
+            booking.check_out_time,
+            false,
+          )}
         />
         <InfoField
           label="Duration"
-          value={`${booking.number_of_nights} night${booking.number_of_nights !== 1 ? 's' : ''}`}
+          value={`${booking.number_of_nights} night${booking.number_of_nights !== 1 ? "s" : ""}`}
         />
         <InfoField
           label="Guests"
-          value={`${booking.number_of_adults ?? 0} adult${(booking.number_of_adults ?? 0) !== 1 ? 's' : ''}${booking.number_of_children ? `, ${booking.number_of_children} child${booking.number_of_children !== 1 ? 'ren' : ''}` : ''} (${pax} pax)`}
+          value={`${booking.number_of_adults ?? 0} adult${(booking.number_of_adults ?? 0) !== 1 ? "s" : ""}${booking.number_of_children ? `, ${booking.number_of_children} child${booking.number_of_children !== 1 ? "ren" : ""}` : ""} (${pax} pax)`}
         />
       </Grid2>
     </Card>
@@ -542,7 +582,7 @@ function ParkingCard({
           label="Vehicle"
           value={[booking.car_brand_model, booking.car_color]
             .filter(Boolean)
-            .join(' · ')}
+            .join(" · ")}
         />
         {booking.parking_owner?.trim() ? (
           <InfoField
@@ -633,8 +673,8 @@ function PetsCard({
 }
 
 function OtherInfoCard({ booking }: { booking: BookingRow }) {
-  const source = booking.booking_source || 'Facebook';
-  const isAirbnb = source === 'Airbnb';
+  const source = booking.booking_source || "Facebook";
+  const isAirbnb = source === "Airbnb";
   return (
     <Card title="Other Information" icon={<Info className="size-3.5" />}>
       {/* Booking Source */}
@@ -645,8 +685,8 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
             isAirbnb
-              ? 'border-orange-200 bg-orange-50 text-orange-700'
-              : 'border-blue-200 bg-blue-50 text-blue-700'
+              ? "border-orange-200 bg-orange-50 text-orange-700"
+              : "border-blue-200 bg-blue-50 text-blue-700"
           }`}
         >
           {source}
@@ -660,13 +700,13 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
         <span
           className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
             booking.guest_requests_surprise_decor
-              ? 'border-violet-200 bg-violet-50 text-violet-800'
-              : 'border-slate-200 bg-slate-50 text-slate-600'
+              ? "border-violet-200 bg-violet-50 text-violet-800"
+              : "border-slate-200 bg-slate-50 text-slate-600"
           }`}
         >
           {booking.guest_requests_surprise_decor
-            ? 'Requested'
-            : 'Not requested'}
+            ? "Requested"
+            : "Not requested"}
         </span>
       </div>
 
@@ -706,16 +746,16 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
 }
 
 const SD_REFUND_METHOD_LABELS: Record<string, string> = {
-  same_phone: 'Refund to same phone (GCash)',
-  other_bank: 'Bank transfer',
-  cash: 'Cash pickup',
+  same_phone: "Refund to same phone (GCash)",
+  other_bank: "Bank transfer",
+  cash: "Cash pickup",
 };
 
 function parseSdNumberArray(raw: unknown): number[] {
   if (Array.isArray(raw)) {
     return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
   }
-  if (typeof raw === 'string' && raw.trim()) {
+  if (typeof raw === "string" && raw.trim()) {
     try {
       const parsed = JSON.parse(raw) as unknown;
       return Array.isArray(parsed)
@@ -730,7 +770,7 @@ function parseSdNumberArray(raw: unknown): number[] {
 
 function parseSdLineItemsFromBooking(raw: unknown): SdSettlementLineItem[] {
   let arr: unknown = raw;
-  if (typeof raw === 'string' && raw.trim()) {
+  if (typeof raw === "string" && raw.trim()) {
     try {
       arr = JSON.parse(raw) as unknown;
     } catch {
@@ -739,11 +779,11 @@ function parseSdLineItemsFromBooking(raw: unknown): SdSettlementLineItem[] {
   }
   if (!Array.isArray(arr) || arr.length === 0) return [];
   return arr.map((row) => {
-    if (typeof row !== 'object' || row === null) {
-      return { label: '', amount: 0 };
+    if (typeof row !== "object" || row === null) {
+      return { label: "", amount: 0 };
     }
     const r = row as Record<string, unknown>;
-    const label = typeof r.label === 'string' ? r.label : '';
+    const label = typeof r.label === "string" ? r.label : "";
     const n = Number(r.amount);
     return { label, amount: Number.isNaN(n) ? 0 : n };
   });
@@ -788,9 +828,9 @@ function PricingSummaryCard({
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
 }) {
-  if (booking.status === 'PENDING_REVIEW') return null;
+  if (booking.status === "PENDING_REVIEW") return null;
 
-  const isCompleted = booking.status === 'COMPLETED';
+  const isCompleted = booking.status === "COMPLETED";
   const totalGuestBalance = computeTotalGuestBalance(booking);
   const paidTowardBalance = guestBalancePaidRecorded(booking);
   const unpaidCents =
@@ -864,7 +904,7 @@ function PricingSummaryCard({
             <MiniRow
               label="Balance paid"
               value={
-                paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : '—'
+                paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : "—"
               }
             />
             <MiniRow label="Unpaid">
@@ -878,7 +918,7 @@ function PricingSummaryCard({
                 </span>
               ) : (
                 <span className="text-[13px] font-semibold tabular-nums text-amber-800">
-                  {unpaidCents != null ? formatMoney(unpaidCents / 100) : '—'}
+                  {unpaidCents != null ? formatMoney(unpaidCents / 100) : "—"}
                 </span>
               )}
             </MiniRow>
@@ -895,7 +935,7 @@ function PricingSummaryCard({
                   label="Profit"
                   value={formatMoney(totalProfit)}
                   valueClass={
-                    totalProfit >= 0 ? 'text-emerald-700' : 'text-red-600'
+                    totalProfit >= 0 ? "text-emerald-700" : "text-red-600"
                   }
                 />
                 <MiniRow label="Expenses" value={formatMoney(totalExpenses)} />
@@ -905,10 +945,10 @@ function PricingSummaryCard({
                   value={formatMoney(totalNet)}
                   valueClass={
                     totalNet > 0
-                      ? 'text-emerald-700'
+                      ? "text-emerald-700"
                       : totalNet < 0
-                        ? 'text-red-600'
-                        : 'text-slate-900'
+                        ? "text-red-600"
+                        : "text-slate-900"
                   }
                 />
               </div>
@@ -986,9 +1026,9 @@ function PricingSummaryCard({
               label="Phone confirmed for refund"
               value={
                 booking.sd_refund_phone_confirmed === true
-                  ? 'Yes'
+                  ? "Yes"
                   : booking.sd_refund_phone_confirmed === false
-                    ? 'No'
+                    ? "No"
                     : undefined
               }
             />
@@ -1098,7 +1138,7 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
   const amount =
     amountRaw == null
       ? null
-      : typeof amountRaw === 'string'
+      : typeof amountRaw === "string"
         ? Number(amountRaw)
         : amountRaw;
   const awardedAt = booking.next_stay_voucher_awarded_at;
@@ -1122,10 +1162,10 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
               {code}
             </p>
             <p className="mt-0.5 text-[11px] text-slate-500">
-              {amount != null ? formatMoney(amount) : '—'} off the next booking
+              {amount != null ? formatMoney(amount) : "—"} off the next booking
               {awardedAt && (
                 <>
-                  {' · '}
+                  {" · "}
                   <span title={awardedAt}>
                     awarded {formatRelative(awardedAt)}
                   </span>
@@ -1146,7 +1186,7 @@ function DocumentsCard({
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
 }) {
-  const docs = [{ label: 'Booking PDF', url: booking.pdf_url }].filter(
+  const docs = [{ label: "Booking PDF", url: booking.pdf_url }].filter(
     (d): d is { label: string; url: string } => !!d.url,
   );
 
@@ -1170,15 +1210,15 @@ function DocumentsCard({
 
 // ─── Document preview ─────────────────────────────────────────────────────────
 
-function getDocType(url: string): 'image' | 'pdf' | 'file' {
-  const path = url.split('?')[0].toLowerCase();
-  if (/\.(jpg|jpeg|png|webp|gif|heic|heif)$/.test(path)) return 'image';
-  if (/\.pdf$/.test(path)) return 'pdf';
-  return 'file';
+function getDocType(url: string): "image" | "pdf" | "file" {
+  const path = url.split("?")[0].toLowerCase();
+  if (/\.(jpg|jpeg|png|webp|gif|heic|heif)$/.test(path)) return "image";
+  if (/\.pdf$/.test(path)) return "pdf";
+  return "file";
 }
 
 function docPreviewOuterWidth() {
-  return 'min-w-0 w-full max-w-full lg:max-w-[255px]';
+  return "min-w-0 w-full max-w-full lg:max-w-[255px]";
 }
 
 function DocPreview({
@@ -1198,7 +1238,7 @@ function DocPreview({
   const layoutType = getDocType(normalized);
   /** Private objects may omit a recognizable extension; still resolve a signed URL. */
   const needsResolve =
-    inPrivateBucket || layoutType === 'image' || layoutType === 'pdf';
+    inPrivateBucket || layoutType === "image" || layoutType === "pdf";
   const [displayUrl, setDisplayUrl] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
 
@@ -1207,7 +1247,7 @@ function DocPreview({
     const loc = parseStorageUrl(n);
     const priv = Boolean(loc && PRIVATE_STORAGE_BUCKETS.has(loc.bucket));
     const t = getDocType(n);
-    if (!priv && t === 'file') {
+    if (!priv && t === "file") {
       setDisplayUrl(n);
       setImgError(false);
       return;
@@ -1246,7 +1286,7 @@ function DocPreview({
     );
   }
 
-  if (layoutType === 'image' && imgError) {
+  if (layoutType === "image" && imgError) {
     return (
       <a
         href={hrefForOpen}
@@ -1266,7 +1306,7 @@ function DocPreview({
     );
   }
 
-  if (layoutType === 'image' && !imgError) {
+  if (layoutType === "image" && !imgError) {
     return (
       <a
         href={hrefForOpen}
@@ -1300,7 +1340,7 @@ function DocPreview({
     );
   }
 
-  if (layoutType === 'pdf') {
+  if (layoutType === "pdf") {
     return (
       <a
         href={hrefForOpen}
@@ -1355,7 +1395,7 @@ function AssetPreviewModal({
   loading,
   onClose,
 }: {
-  asset: { label: string; url: string; type: 'image' | 'pdf' | 'file' } | null;
+  asset: { label: string; url: string; type: "image" | "pdf" | "file" } | null;
   loading: boolean;
   onClose: () => void;
 }) {
@@ -1366,7 +1406,7 @@ function AssetPreviewModal({
       className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-[1px] p-2 sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-label={asset ? `Preview ${asset.label}` : 'Loading preview'}
+      aria-label={asset ? `Preview ${asset.label}` : "Loading preview"}
       onClick={onClose}
     >
       <div
@@ -1376,7 +1416,7 @@ function AssetPreviewModal({
         <div className="flex min-h-[52px] items-center justify-between border-b border-slate-200 px-2.5 sm:min-h-[56px] sm:px-4">
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
-              {asset?.label ?? 'Loading preview...'}
+              {asset?.label ?? "Loading preview..."}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -1408,7 +1448,7 @@ function AssetPreviewModal({
             </div>
           )}
 
-          {!loading && asset?.type === 'image' && (
+          {!loading && asset?.type === "image" && (
             <div className="flex h-full items-center justify-center overflow-auto rounded-lg bg-white">
               <img
                 src={asset.url}
@@ -1418,7 +1458,7 @@ function AssetPreviewModal({
             </div>
           )}
 
-          {!loading && asset?.type !== 'image' && asset && (
+          {!loading && asset?.type !== "image" && asset && (
             <iframe
               title={asset.label}
               src={asset.url}
@@ -1443,8 +1483,8 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-center gap-1.5">
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-4 flex items-center gap-1.5">
         {icon && <span className="text-slate-400">{icon}</span>}
         <h2 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
           {title}
@@ -1472,13 +1512,13 @@ function MiniRow({
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-2">
       <span
-        className={`text-[11px] uppercase tracking-wider ${bold ? 'font-bold text-slate-700' : 'font-medium text-slate-500'}`}
+        className={`text-[11px] uppercase tracking-wider ${bold ? "font-bold text-slate-700" : "font-medium text-slate-500"}`}
       >
         {label}
       </span>
       {children ?? (
         <span
-          className={`text-[13px] tabular-nums ${bold ? 'font-bold' : 'font-semibold'} ${valueClass ?? 'text-slate-900'}`}
+          className={`text-[13px] tabular-nums ${bold ? "font-bold" : "font-semibold"} ${valueClass ?? "text-slate-900"}`}
         >
           {value}
         </span>
@@ -1513,7 +1553,7 @@ function InfoField({
   value: string | number | null | undefined;
   icon?: React.ReactNode;
 }) {
-  if (value === null || value === undefined || value === '' || value === '—')
+  if (value === null || value === undefined || value === "" || value === "—")
     return null;
   return (
     <div className="flex flex-col gap-0.5">

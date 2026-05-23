@@ -24,6 +24,7 @@ export const defaultFormValues: Partial<GuestFormData> = {
     guestRequestsSurpriseDecor: false,
     findUs: 'Facebook',
     needParking: false,
+    parkingSameAsBookingDuration: true,
     hasPets: false,
     petType: 'Dog',
   };

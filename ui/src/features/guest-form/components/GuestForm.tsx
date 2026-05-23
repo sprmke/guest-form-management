@@ -71,6 +71,7 @@ import {
   formatBookingInfoForClipboard,
   parseBookingInfoFromClipboard,
 } from '@/utils/bookingFormatter';
+import { GuestFormParkingDates } from '@/features/guest-form/components/GuestFormParkingDates';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
@@ -1638,6 +1639,8 @@ export function GuestForm() {
                       </FormItem>
                     )}
                   />
+
+                  <GuestFormParkingDates form={form} />
                 </div>
               )}
             </div>

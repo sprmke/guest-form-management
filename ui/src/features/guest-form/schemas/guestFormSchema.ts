@@ -77,6 +77,9 @@ export const guestFormSchema = z.object({
   
   // Parking related fields
   needParking: z.boolean().default(false),
+  parkingSameAsBookingDuration: z.boolean().default(true),
+  parkingCheckInDate: z.string().optional(),
+  parkingCheckOutDate: z.string().optional(),
   carPlateNumber: z.string().optional(),
   carBrandModel: z.string().optional(),
   carColor: z.string().optional(),
@@ -146,6 +149,41 @@ export const guestFormSchema = z.object({
         code: z.ZodIssueCode.custom,
         message: "Car color is required when parking is needed",
         path: ["carColor"]
+      });
+    }
+
+    const stayNights = Math.max(
+      0,
+      Math.ceil(
+        (new Date(data.checkOutDate).getTime() -
+          new Date(data.checkInDate).getTime()) /
+          (1000 * 60 * 60 * 24),
+      ),
+    );
+    const useStayDates =
+      stayNights <= 1 || data.parkingSameAsBookingDuration !== false;
+    const parkIn = useStayDates ? data.checkInDate : data.parkingCheckInDate;
+    const parkOut = useStayDates ? data.checkOutDate : data.parkingCheckOutDate;
+
+    if (!parkIn?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select parking check-in date",
+        path: ["parkingCheckInDate"],
+      });
+    }
+    if (!parkOut?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Please select parking check-out date",
+        path: ["parkingCheckOutDate"],
+      });
+    }
+    if (parkIn && parkOut && parkOut <= parkIn) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Parking check-out must be after check-in",
+        path: ["parkingCheckOutDate"],
       });
     }
   }

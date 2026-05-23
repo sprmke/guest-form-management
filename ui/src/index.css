@@ -329,7 +329,7 @@
 }
 
 .form-section-header {
-  @apply flex items-center gap-3 pb-4 mb-6 border-b-2 border-primary/10;
+  @apply flex items-center gap-3 pb-3 mb-4 border-b-2 border-primary/10;
 }
 
 .form-section-title {
