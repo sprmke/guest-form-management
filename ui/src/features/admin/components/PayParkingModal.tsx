@@ -335,10 +335,12 @@ export function PayParkingHeaderButton({
     <button
       type="button"
       onClick={viewMode ? onViewParking : onOpenModal}
-      className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex-initial sm:px-4"
+      className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:inline-flex sm:w-auto sm:min-w-[44px] sm:flex-initial sm:justify-center sm:gap-1.5"
     >
       <Car className="size-3.5 shrink-0" aria-hidden />
-      {viewMode ? 'View pay parking' : 'Add pay parking'}
+      <span className="min-w-0 text-left">
+        {viewMode ? 'View pay parking' : 'Add pay parking'}
+      </span>
     </button>
   );
 }
