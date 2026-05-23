@@ -67,6 +67,7 @@ import {
   arePendingDocumentsComplete,
   bookingNeedsGmailListenerPoll,
   bookingPipeline,
+  canNavigatePendingParkingSubStep,
   isSubStatusCompleted,
   isSubStatusCompletedInStepper,
   isSubStatusRequired,
@@ -143,6 +144,9 @@ type ConfirmState = {
   pastStayWarning?: boolean;
 } | null;
 
+/** Which workflow panel content is shown — current status vs a nested doc sub-step. */
+type WorkflowPanelFocus = 'pipeline' | 'pending-doc-sub';
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 type Props = {
@@ -204,11 +208,33 @@ export function WorkflowPanel({ booking }: Props) {
   const [activePendingDocSubStatus, setActivePendingDocSubStatus] =
     useState<PendingDocumentSubStatus>('PENDING_GAF');
 
+  const [panelFocus, setPanelFocus] = useState<WorkflowPanelFocus>(() =>
+    status === 'PENDING_DOCUMENTS' ? 'pending-doc-sub' : 'pipeline',
+  );
+
   useEffect(() => {
     setActivePendingDocSubStatus((current) =>
       isSubStatusRequired(current, booking) ? current : 'PENDING_GAF',
     );
   }, [booking.id, booking.need_parking, booking.has_pets]);
+
+  useEffect(() => {
+    setPanelFocus(
+      status === 'PENDING_DOCUMENTS' ? 'pending-doc-sub' : 'pipeline',
+    );
+  }, [booking.id, status]);
+
+  const focusPipelineView = useCallback(() => {
+    setPanelFocus('pipeline');
+  }, []);
+
+  const focusPendingDocSubView = useCallback(
+    (sub: PendingDocumentSubStatus) => {
+      setActivePendingDocSubStatus(sub);
+      setPanelFocus('pending-doc-sub');
+    },
+    [],
+  );
 
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -236,8 +262,7 @@ export function WorkflowPanel({ booking }: Props) {
     status === 'PENDING_DOCUMENTS' ||
     status === 'PENDING_GAF' ||
     status === 'PENDING_PET_REQUEST';
-  const showHistoricalBackfill =
-    shouldOfferHistoricalApprovalBackfill(booking);
+  const showHistoricalBackfill = shouldOfferHistoricalApprovalBackfill(booking);
   const showSdCron = status === 'READY_FOR_CHECKIN';
   const showSdFormResend =
     status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
@@ -453,6 +478,17 @@ export function WorkflowPanel({ booking }: Props) {
       isParkingRequestDraftComplete(parkingValues));
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
+  const viewingPipelineStatus = panelFocus === 'pipeline';
+  const viewingPendingDocSub = panelFocus === 'pending-doc-sub';
+
+  const canShowLateParkingForm =
+    viewingPendingDocSub &&
+    activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
+    !inPendingDocuments &&
+    canNavigatePendingParkingSubStep(booking, status);
+  const showLateParkingActions = canShowLateParkingForm;
+  const showProceedToReadyForCheckin =
+    inPendingDocuments && viewingPendingDocSub;
 
   const transitionConfirmDevControls = confirm
     ? workflowDevControlsForTransition(status, confirm.toStatus, booking)
@@ -571,12 +607,15 @@ export function WorkflowPanel({ booking }: Props) {
       }
       await transitionMut.mutateAsync({
         bookingId: booking.id,
-        toStatus: 'PENDING_DOCUMENTS',
+        toStatus: inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload,
         devControls: sessionDevControls,
         manual: true,
       });
       toast.success(`Marked ${statusLabel(subStatus)} as complete`);
+      if (!inPendingDocuments) {
+        focusPipelineView();
+      }
     } catch (err: any) {
       toast.error(err?.message ?? 'Failed to mark sub-status complete');
     }
@@ -588,7 +627,7 @@ export function WorkflowPanel({ booking }: Props) {
     try {
       await transitionMut.mutateAsync({
         bookingId: booking.id,
-        toStatus: 'PENDING_DOCUMENTS',
+        toStatus: inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload: { document_completion_clear_target: subStatus },
         devControls: sessionDevControls,
         manual: true,
@@ -603,7 +642,10 @@ export function WorkflowPanel({ booking }: Props) {
     const flags = commitModalDevControls();
     setCancelConfirm(false);
     try {
-      await cancelMut.mutateAsync({ bookingId: booking.id, devControls: flags });
+      await cancelMut.mutateAsync({
+        bookingId: booking.id,
+        devControls: flags,
+      });
       toast.success('Booking cancelled');
     } catch (err: any) {
       toast.error(err?.message ?? 'Cancel failed');
@@ -613,20 +655,24 @@ export function WorkflowPanel({ booking }: Props) {
   // ─── Sub-form visibility ─────────────────────────────────────────────────
 
   const needsPricing =
+    viewingPipelineStatus &&
     !inPendingDocuments &&
     transitions.some((t) => requiredSubForm(status, t) === 'pricing');
   const needsParking =
-    (inPendingDocuments &&
-      activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
-      isSubStatusRequired('PENDING_PARKING_REQUEST', booking) &&
-      !isSubStatusCompleted('PENDING_PARKING_REQUEST', booking)) ||
-    transitions.some((t) => requiredSubForm(status, t) === 'parking');
-  const needsSdRefund = transitions.some(
-    (t) => requiredSubForm(status, t) === 'sd_refund',
-  );
-  const needsGuestBalance = transitions.some(
-    (t) => requiredSubForm(status, t) === 'guest_balance',
-  );
+    viewingPendingDocSub &&
+    activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
+    isSubStatusRequired('PENDING_PARKING_REQUEST', booking) &&
+    (inPendingDocuments
+      ? !isSubStatusCompleted('PENDING_PARKING_REQUEST', booking)
+      : canNavigatePendingParkingSubStep(booking, status));
+  const needsSdRefund =
+    viewingPipelineStatus &&
+    transitions.some((t) => requiredSubForm(status, t) === 'sd_refund');
+  const needsGuestBalance =
+    viewingPipelineStatus &&
+    transitions.some((t) => requiredSubForm(status, t) === 'guest_balance');
+  const showSdGuestInfoCard =
+    viewingPipelineStatus && showReadyForCheckoutSdGuestInfo;
 
   return (
     <>
@@ -651,538 +697,592 @@ export function WorkflowPanel({ booking }: Props) {
         }}
       />
       <aside className="flex overflow-hidden flex-col gap-0 bg-white rounded-xl border shadow-sm border-slate-200">
-      {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
-      {pipeline.length > 0 && status !== 'CANCELLED' ? (
-        <div className="border-b border-slate-100 px-4 py-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-              Progress
-            </p>
-            <StatusBadge status={booking.status} />
-          </div>
-          <PipelineStepper
-            pipeline={pipeline}
-            currentStatus={status}
-            statusUpdatedAt={booking.status_updated_at}
-            booking={booking}
-            activePendingDocSubStatus={activePendingDocSubStatus}
-            onSelectPendingDocSubStatus={setActivePendingDocSubStatus}
-            transitionPending={transitionMut.isPending}
-          />
-        </div>
-      ) : status === 'CANCELLED' ? (
-        <div className="border-b border-slate-100 px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-              Status
-            </p>
-            <StatusBadge status={booking.status} />
-          </div>
-        </div>
-      ) : null}
-
-      {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
-      {(needsPricing ||
-        needsParking ||
-        needsSdRefund ||
-        needsGuestBalance ||
-        showReadyForCheckoutSdGuestInfo) && (
-        <div className="px-4 py-4 border-b border-slate-100 space-y-6">
-          {showReadyForCheckoutSdGuestInfo && (
-            <WorkflowSubFormCard title="Guest SD refund form">
-              <p className="text-[11.5px] leading-relaxed text-slate-600">
-                We are just waiting for the guest to fill out the SD Refund
-                form. Once they submit it, this booking will automatically move
-                to{' '}
-                <span className="font-medium text-slate-800">
-                  Pending SD Refund
-                </span>{' '}
-                status.
+        {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
+        {pipeline.length > 0 && status !== 'CANCELLED' ? (
+          <div className="px-4 py-4 border-b border-slate-100">
+            <div className="flex flex-wrap gap-2 justify-between items-center mb-3">
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+                Progress
               </p>
-              <div>
-                <span className="inline-flex max-w-full flex-wrap items-center gap-x-1 gap-y-1">
-                  <a
-                    href={sdGuestFormUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-blue-700 underline decoration-blue-700/30 underline-offset-2 hover:text-blue-800 sm:text-[13px] sm:font-normal"
-                  >
-                    SD Refund Link
-                  </a>
-                  <InlineCopyIconButton
-                    aria-label="Copy SD refund form link to clipboard"
-                    onClick={() => void copySdGuestFormUrl()}
-                  />
-                </span>
-              </div>
+              <StatusBadge status={booking.status} />
+            </div>
+            <PipelineStepper
+              pipeline={pipeline}
+              currentStatus={status}
+              statusUpdatedAt={booking.status_updated_at}
+              booking={booking}
+              panelFocus={panelFocus}
+              activePendingDocSubStatus={activePendingDocSubStatus}
+              onFocusPipeline={focusPipelineView}
+              onSelectPendingDocSubStatus={focusPendingDocSubView}
+              transitionPending={transitionMut.isPending}
+            />
+          </div>
+        ) : status === 'CANCELLED' ? (
+          <div className="px-4 py-4 border-b border-slate-100">
+            <div className="flex flex-wrap gap-2 justify-between items-center">
+              <p className="text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+                Status
+              </p>
+              <StatusBadge status={booking.status} />
+            </div>
+          </div>
+        ) : null}
+
+        {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
+        {(needsPricing ||
+          needsParking ||
+          needsSdRefund ||
+          needsGuestBalance ||
+          showSdGuestInfoCard) && (
+          <div className="px-4 py-4 space-y-6 border-b border-slate-100">
+            {viewingPendingDocSub && !inPendingDocuments && (
               <button
                 type="button"
-                disabled={recheckSdGuestSubmitPending}
-                onClick={() => void recheckGuestSdSubmission()}
-                className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[13px]"
+                disabled={transitionMut.isPending}
+                onClick={focusPipelineView}
+                className="flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50"
               >
-                {recheckSdGuestSubmitPending ? (
-                  <Loader2
-                    className="size-3.5 shrink-0 animate-spin text-slate-500"
-                    aria-hidden
-                  />
-                ) : (
-                  <RefreshCw
-                    className="size-3.5 shrink-0 text-slate-500"
-                    aria-hidden
-                  />
-                )}
-                Check for guest submission
+                <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                Back to {statusLabel(status)}
               </button>
-            </WorkflowSubFormCard>
-          )}
-          {needsPricing && (
-            <>
-              <ReviewPricingForm
-                key={`${booking.id}-pricing-sd-${booking.guest_requests_surprise_decor ? 1 : 0}`}
-                booking={booking}
-                initialDraft={pricingValues}
-                onChange={setPricingValues}
-              />
-              {booking.guest_requests_surprise_decor ? (
-                <SurpriseDecorAckCard
-                  acknowledged={surpriseDecorStaffAck}
-                  onAcknowledgedChange={setSurpriseDecorStaffAck}
+            )}
+            {showSdGuestInfoCard && (
+              <WorkflowSubFormCard title="Guest SD refund form">
+                <p className="text-[11.5px] leading-relaxed text-slate-600">
+                  We are just waiting for the guest to fill out the SD Refund
+                  form. Once they submit it, this booking will automatically
+                  move to{' '}
+                  <span className="font-medium text-slate-800">
+                    Pending SD Refund
+                  </span>{' '}
+                  status.
+                </p>
+                <div>
+                  <span className="inline-flex flex-wrap gap-x-1 gap-y-1 items-center max-w-full">
+                    <a
+                      href={sdGuestFormUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-blue-700 underline decoration-blue-700/30 underline-offset-2 hover:text-blue-800 sm:text-[13px] sm:font-normal"
+                    >
+                      SD Refund Link
+                    </a>
+                    <InlineCopyIconButton
+                      aria-label="Copy SD refund form link to clipboard"
+                      onClick={() => void copySdGuestFormUrl()}
+                    />
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  disabled={recheckSdGuestSubmitPending}
+                  onClick={() => void recheckGuestSdSubmission()}
+                  className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 sm:text-[13px]"
+                >
+                  {recheckSdGuestSubmitPending ? (
+                    <Loader2
+                      className="size-3.5 shrink-0 animate-spin text-slate-500"
+                      aria-hidden
+                    />
+                  ) : (
+                    <RefreshCw
+                      className="size-3.5 shrink-0 text-slate-500"
+                      aria-hidden
+                    />
+                  )}
+                  Check for guest submission
+                </button>
+              </WorkflowSubFormCard>
+            )}
+            {needsPricing && (
+              <>
+                <ReviewPricingForm
+                  key={`${booking.id}-pricing-sd-${booking.guest_requests_surprise_decor ? 1 : 0}`}
+                  booking={booking}
+                  initialDraft={pricingValues}
+                  onChange={setPricingValues}
                 />
-              ) : null}
-            </>
-          )}
-          {needsParking && (
-            <ParkingRequestForm
-              booking={booking}
-              initialDraft={parkingValues}
-              onChange={setParkingValues}
-            />
-          )}
-          {needsGuestBalance && (
-            <GuestBalanceSettlementForm
-              booking={booking}
-              initialDraft={guestBalanceValues}
-              onChange={setGuestBalanceValues}
-            />
-          )}
-          {needsSdRefund && (
-            <SdRefundForm
-              booking={booking}
-              initialDraft={sdRefundValues}
-              onChange={setSdRefundValues}
-            />
-          )}
-        </div>
-      )}
-
-      {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
-      {(showGmailPoll || showSdCron || showSdFormResend) && (
-        <div className="border-b border-slate-100">
-          <button
-            type="button"
-            aria-expanded={automationHelpOpen}
-            onClick={() => setAutomationHelpOpen((o) => !o)}
-            className="flex min-h-[44px] w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
-          >
-            <span className="flex min-w-0 flex-1 items-center gap-2">
-              <Timer className="size-3.5 shrink-0 text-slate-400" aria-hidden />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Automation Triggers
-              </span>
-            </span>
-            {automationHelpOpen ? (
-              <ChevronDown
-                className="size-3.5 shrink-0 text-slate-400"
-                aria-hidden
-              />
-            ) : (
-              <ChevronRight
-                className="size-3.5 shrink-0 text-slate-400"
-                aria-hidden
+                {booking.guest_requests_surprise_decor ? (
+                  <SurpriseDecorAckCard
+                    acknowledged={surpriseDecorStaffAck}
+                    onAcknowledgedChange={setSurpriseDecorStaffAck}
+                  />
+                ) : null}
+              </>
+            )}
+            {needsParking && (
+              <ParkingRequestForm
+                booking={booking}
+                initialDraft={parkingValues}
+                onChange={setParkingValues}
               />
             )}
-          </button>
+            {needsGuestBalance && (
+              <GuestBalanceSettlementForm
+                booking={booking}
+                initialDraft={guestBalanceValues}
+                onChange={setGuestBalanceValues}
+              />
+            )}
+            {needsSdRefund && (
+              <SdRefundForm
+                booking={booking}
+                initialDraft={sdRefundValues}
+                onChange={setSdRefundValues}
+              />
+            )}
+          </div>
+        )}
 
-          {automationHelpOpen && (
-            <div className="space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed text-slate-500">
-              {showSdCron ? (
-                <>
-                  <p className="text-slate-500">
-                    Two hours before the check-out time, we will send an email
-                    to the guest regarding the{' '}
-                    <span className="font-medium text-slate-600">
-                      Check-out and Security-deposit refund details
-                    </span>
-                    . That email will still send even we haven&apos;t settle the
-                    guest balance but is required to move the booking to{' '}
-                    <span className="font-medium text-slate-600">
-                      Ready for check-out
-                    </span>{' '}
-                    status .
-                  </p>
-                  <p className="text-slate-500">
-                    <span className="font-medium text-slate-600">
-                      Run SD refund cron
-                    </span>{' '}
-                    runs the checks for{' '}
-                    <span className="font-medium text-slate-600">
-                      this booking only
-                    </span>
-                    . The same checks also run automatically in the background
-                    for{' '}
-                    <span className="font-medium text-slate-600">
-                      other bookings
-                    </span>{' '}
-                    that's still at 'Ready for Check-in' status.
-                  </p>
-                  <p className="text-slate-500">
-                    <span className="font-medium text-slate-600">
-                      Send SD refund form email
-                    </span>{' '}
-                    only sends the email again in case the guest didn't receive
-                    it. This does{' '}
-                    <span className="font-medium text-slate-600">not</span>{' '}
-                    change booking status automatically.
-                  </p>
-                </>
-              ) : showGmailPoll ? (
-                <>
-                  <p className="text-slate-500">
-                    Use this if approval emails from the inbox look stuck. Shown
-                    while this booking is waiting on documents from the
-                    pipeline.
-                  </p>
-                  <ol className="list-decimal space-y-1.5 pl-4 marker:text-slate-400">
-                    <li>
-                      <span className="font-medium text-slate-600">
-                        Run Gmail poll now
-                      </span>{' '}
-                      — checks the inbox for{' '}
-                      <strong className="font-semibold text-slate-600">
-                        every
-                      </strong>{' '}
-                      booking that might be waiting on that kind of reply, not
-                      just this one. Safe to run more than once.
-                    </li>
-                  </ol>
-                </>
+        {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
+        {(showGmailPoll || showSdCron || showSdFormResend) && (
+          <div className="border-b border-slate-100">
+            <button
+              type="button"
+              aria-expanded={automationHelpOpen}
+              onClick={() => setAutomationHelpOpen((o) => !o)}
+              className="flex min-h-[44px] w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-slate-50"
+            >
+              <span className="flex flex-1 gap-2 items-center min-w-0">
+                <Timer
+                  className="size-3.5 shrink-0 text-slate-400"
+                  aria-hidden
+                />
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  Automation Triggers
+                </span>
+              </span>
+              {automationHelpOpen ? (
+                <ChevronDown
+                  className="size-3.5 shrink-0 text-slate-400"
+                  aria-hidden
+                />
               ) : (
-                <>
-                  <p className="text-slate-500">
-                    <span className="font-medium text-slate-600">
-                      Send SD refund form email
-                    </span>{' '}
-                    mails the check-out and security-deposit link to the guest
-                    again—for example they missed it or you need a manual
-                    resend. It does not move the booking to the next step; it
-                    only sends the message.
-                  </p>
-                </>
+                <ChevronRight
+                  className="size-3.5 shrink-0 text-slate-400"
+                  aria-hidden
+                />
               )}
+            </button>
 
-              <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
-                {showGmailPoll && (
-                  <button
-                    type="button"
-                    disabled={gmailPollMut.isPending}
-                    onClick={handleGmailPoll}
-                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    {gmailPollMut.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin shrink-0" />
-                    ) : (
-                      <Mail className="size-3.5 shrink-0" />
-                    )}
-                    Run Gmail poll now
-                  </button>
+            {automationHelpOpen && (
+              <div className="space-y-2 px-4 pb-3 text-[11.5px] leading-relaxed text-slate-500">
+                {showSdCron ? (
+                  <>
+                    <p className="text-slate-500">
+                      Two hours before the check-out time, we will send an email
+                      to the guest regarding the{' '}
+                      <span className="font-medium text-slate-600">
+                        Check-out and Security-deposit refund details
+                      </span>
+                      . That email will still send even we haven&apos;t settle
+                      the guest balance but is required to move the booking to{' '}
+                      <span className="font-medium text-slate-600">
+                        Ready for check-out
+                      </span>{' '}
+                      status .
+                    </p>
+                    <p className="text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        Run SD refund cron
+                      </span>{' '}
+                      runs the checks for{' '}
+                      <span className="font-medium text-slate-600">
+                        this booking only
+                      </span>
+                      . The same checks also run automatically in the background
+                      for{' '}
+                      <span className="font-medium text-slate-600">
+                        other bookings
+                      </span>{' '}
+                      that's still at 'Ready for Check-in' status.
+                    </p>
+                    <p className="text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        Send SD refund form email
+                      </span>{' '}
+                      only sends the email again in case the guest didn't
+                      receive it. This does{' '}
+                      <span className="font-medium text-slate-600">not</span>{' '}
+                      change booking status automatically.
+                    </p>
+                  </>
+                ) : showGmailPoll ? (
+                  <>
+                    <p className="text-slate-500">
+                      Use this if approval emails from the inbox look stuck.
+                      Shown while this booking is waiting on documents from the
+                      pipeline.
+                    </p>
+                    <ol className="list-decimal space-y-1.5 pl-4 marker:text-slate-400">
+                      <li>
+                        <span className="font-medium text-slate-600">
+                          Run Gmail poll now
+                        </span>{' '}
+                        — checks the inbox for{' '}
+                        <strong className="font-semibold text-slate-600">
+                          every
+                        </strong>{' '}
+                        booking that might be waiting on that kind of reply, not
+                        just this one. Safe to run more than once.
+                      </li>
+                    </ol>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-slate-500">
+                      <span className="font-medium text-slate-600">
+                        Send SD refund form email
+                      </span>{' '}
+                      mails the check-out and security-deposit link to the guest
+                      again—for example they missed it or you need a manual
+                      resend. It does not move the booking to the next step; it
+                      only sends the message.
+                    </p>
+                  </>
                 )}
-                {showHistoricalBackfill && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pendingDocsAutoBackfillModalRef.current = null;
-                      try {
-                        sessionStorage.removeItem(
-                          historicalBackfillDismissStorageKey(booking.id),
-                        );
-                      } catch {
-                        /* ignore */
-                      }
-                      setHistoricalBackfillOpen(true);
-                    }}
-                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
-                  >
-                    <History className="size-3.5 shrink-0" aria-hidden />
-                    Historical approval backfill
-                  </button>
-                )}
-                {showSdCron && (
-                  <button
-                    type="button"
-                    disabled={sdCronMut.isPending}
-                    onClick={handleSdCron}
-                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    {sdCronMut.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin shrink-0" />
-                    ) : (
-                      <RefreshCw className="size-3.5 shrink-0" />
-                    )}
-                    Run SD refund cron
-                  </button>
-                )}
-                {showSdFormResend && (
-                  <button
-                    type="button"
-                    disabled={resendSdFormMut.isPending}
-                    onClick={handleResendSdFormEmail}
-                    className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
-                  >
-                    {resendSdFormMut.isPending ? (
-                      <Loader2 className="size-3.5 animate-spin shrink-0" />
-                    ) : (
-                      <Mail className="size-3.5 shrink-0" />
-                    )}
-                    Send SD refund form email
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ── Transition actions ────────────────────────────────────────────── */}
-      {!isTerminal && (
-        <div className="px-4 py-4">
-          <p className="mb-2.5 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
-            Actions
-          </p>
-          <div className="flex flex-col gap-4">
-            {inPendingDocuments && (
-              <>
-                {prev && (
-                  <button
-                    disabled={transitionMut.isPending}
-                    onClick={() =>
-                      setConfirm({
-                        toStatus: prev,
-                        label: `Back to ${statusLabel(prev)}`,
-                      })
-                    }
-                    className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
-                  >
-                    <span className="flex gap-2 items-center">
-                      <span>Back to {statusLabel(prev)}</span>
-                      {transitionMut.isPending ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin" />
-                      ) : (
-                        <ArrowLeft className="size-4 shrink-0" />
-                      )}
-                    </span>
-                  </button>
-                )}
-                <div className="flex flex-col gap-2">
-                  {selectedPendingDocCanMarkIncomplete ? (
+                <div className="flex flex-col gap-1.5 border-t border-slate-100 pt-3">
+                  {showGmailPoll && (
                     <button
                       type="button"
+                      disabled={gmailPollMut.isPending}
+                      onClick={handleGmailPoll}
+                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      {gmailPollMut.isPending ? (
+                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                      ) : (
+                        <Mail className="size-3.5 shrink-0" />
+                      )}
+                      Run Gmail poll now
+                    </button>
+                  )}
+                  {showHistoricalBackfill && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        pendingDocsAutoBackfillModalRef.current = null;
+                        try {
+                          sessionStorage.removeItem(
+                            historicalBackfillDismissStorageKey(booking.id),
+                          );
+                        } catch {
+                          /* ignore */
+                        }
+                        setHistoricalBackfillOpen(true);
+                      }}
+                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
+                    >
+                      <History className="size-3.5 shrink-0" aria-hidden />
+                      Historical approval backfill
+                    </button>
+                  )}
+                  {showSdCron && (
+                    <button
+                      type="button"
+                      disabled={sdCronMut.isPending}
+                      onClick={handleSdCron}
+                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      {sdCronMut.isPending ? (
+                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                      ) : (
+                        <RefreshCw className="size-3.5 shrink-0" />
+                      )}
+                      Run SD refund cron
+                    </button>
+                  )}
+                  {showSdFormResend && (
+                    <button
+                      type="button"
+                      disabled={resendSdFormMut.isPending}
+                      onClick={handleResendSdFormEmail}
+                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                    >
+                      {resendSdFormMut.isPending ? (
+                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                      ) : (
+                        <Mail className="size-3.5 shrink-0" />
+                      )}
+                      Send SD refund form email
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Transition actions ────────────────────────────────────────────── */}
+        {!isTerminal && (
+          <div className="px-4 py-4">
+            <p className="mb-2.5 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+              Actions
+            </p>
+            <div className="flex flex-col gap-4">
+              {inPendingDocuments && viewingPendingDocSub && (
+                <>
+                  {prev && (
+                    <button
                       disabled={transitionMut.isPending}
                       onClick={() =>
-                        handleMarkPendingDocSubStatusIncomplete(
-                          activePendingDocSubStatus,
-                        )
+                        setConfirm({
+                          toStatus: prev,
+                          label: `Back to ${statusLabel(prev)}`,
+                        })
                       }
-                      className="flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 bg-amber-50 hover:bg-amber-100/90 hover:ring-amber-300/80 transition-colors disabled:opacity-50"
+                      className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
                     >
-                      <span>
-                        Mark as Incomplete -{' '}
-                        {statusLabel(activePendingDocSubStatus)}
+                      <span className="flex gap-2 items-center">
+                        <span>Back to {statusLabel(prev)}</span>
+                        {transitionMut.isPending ? (
+                          <Loader2 className="animate-spin size-4 shrink-0" />
+                        ) : (
+                          <ArrowLeft className="size-4 shrink-0" />
+                        )}
                       </span>
-                      {transitionMut.isPending ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin text-amber-700" />
-                      ) : (
-                        <RotateCcw
-                          className="size-4 shrink-0 text-amber-700"
-                          aria-hidden
-                        />
-                      )}
                     </button>
-                  ) : !selectedPendingDocRequired ? (
-                    <p className="flex min-h-[44px] items-center rounded-lg px-3.5 py-2.5 text-sm text-slate-500 bg-slate-50 ring-1 ring-slate-200">
-                      {statusLabel(activePendingDocSubStatus)} is not required
-                      for this booking.
-                    </p>
-                  ) : (
+                  )}
+                  <div className="flex flex-col gap-2">
+                    {selectedPendingDocCanMarkIncomplete ? (
+                      <button
+                        type="button"
+                        disabled={transitionMut.isPending}
+                        onClick={() =>
+                          handleMarkPendingDocSubStatusIncomplete(
+                            activePendingDocSubStatus,
+                          )
+                        }
+                        className="flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 bg-amber-50 hover:bg-amber-100/90 hover:ring-amber-300/80 transition-colors disabled:opacity-50"
+                      >
+                        <span>
+                          Mark as Incomplete -{' '}
+                          {statusLabel(activePendingDocSubStatus)}
+                        </span>
+                        {transitionMut.isPending ? (
+                          <Loader2 className="text-amber-700 animate-spin size-4 shrink-0" />
+                        ) : (
+                          <RotateCcw
+                            className="text-amber-700 size-4 shrink-0"
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    ) : !selectedPendingDocRequired ? (
+                      <p className="flex min-h-[44px] items-center rounded-lg px-3.5 py-2.5 text-sm text-slate-500 bg-slate-50 ring-1 ring-slate-200">
+                        {statusLabel(activePendingDocSubStatus)} is not required
+                        for this booking.
+                      </p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={
+                          !selectedPendingDocCanMarkComplete ||
+                          transitionMut.isPending
+                        }
+                        onClick={() =>
+                          handleMarkPendingDocSubStatusComplete(
+                            activePendingDocSubStatus,
+                          )
+                        }
+                        className={cn(
+                          'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                          selectedPendingDocCanMarkComplete &&
+                            !transitionMut.isPending
+                            ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
+                            : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                        )}
+                      >
+                        <span>
+                          Mark as Complete -{' '}
+                          {statusLabel(activePendingDocSubStatus)}
+                        </span>
+                        {transitionMut.isPending ? (
+                          <Loader2 className="animate-spin size-4 shrink-0" />
+                        ) : (
+                          <ChevronRight className="size-4 shrink-0" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                  {showProceedToReadyForCheckin && (
                     <button
-                      type="button"
                       disabled={
-                        !selectedPendingDocCanMarkComplete ||
-                        transitionMut.isPending
+                        !pendingDocumentsComplete || transitionMut.isPending
                       }
                       onClick={() =>
-                        handleMarkPendingDocSubStatusComplete(
-                          activePendingDocSubStatus,
+                        openForwardProceedConfirm(
+                          'READY_FOR_CHECKIN',
+                          'Proceed to Ready for Check-in',
                         )
                       }
                       className={cn(
-                        'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
-                        selectedPendingDocCanMarkComplete &&
-                          !transitionMut.isPending
-                          ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
+                        'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                        pendingDocumentsComplete && !transitionMut.isPending
+                          ? 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm'
                           : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
                       )}
                     >
-                      <span>
-                        Mark as Complete -{' '}
-                        {statusLabel(activePendingDocSubStatus)}
-                      </span>
+                      <span>Proceed to Ready for Check-in</span>
                       {transitionMut.isPending ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                        <Loader2 className="animate-spin size-4 shrink-0" />
                       ) : (
                         <ChevronRight className="size-4 shrink-0" />
                       )}
                     </button>
                   )}
+                </>
+              )}
+
+              {showLateParkingActions && (
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    disabled={
+                      !selectedPendingDocCanMarkComplete ||
+                      transitionMut.isPending
+                    }
+                    onClick={() =>
+                      handleMarkPendingDocSubStatusComplete(
+                        'PENDING_PARKING_REQUEST',
+                      )
+                    }
+                    className={cn(
+                      'flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                      selectedPendingDocCanMarkComplete &&
+                        !transitionMut.isPending
+                        ? 'bg-blue-600 text-white ring-blue-600 hover:bg-blue-700 hover:ring-blue-700 shadow-sm'
+                        : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                    )}
+                  >
+                    <span>
+                      Mark as Complete -{' '}
+                      {statusLabel('PENDING_PARKING_REQUEST')}
+                    </span>
+                    {transitionMut.isPending ? (
+                      <Loader2 className="animate-spin size-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="size-4 shrink-0" />
+                    )}
+                  </button>
                 </div>
+              )}
+
+              {/* Backward — secondary recovery action. */}
+              {viewingPipelineStatus && !inPendingDocuments && prev && (
+                <button
+                  disabled={transitionMut.isPending}
+                  onClick={() =>
+                    setConfirm({
+                      toStatus: prev,
+                      label: `Back to ${statusLabel(prev)}`,
+                    })
+                  }
+                  className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
+                >
+                  <span className="flex gap-2 items-center">
+                    {transitionMut.isPending ? (
+                      <Loader2 className="animate-spin size-4 shrink-0" />
+                    ) : (
+                      <ArrowLeft className="size-4 shrink-0" />
+                    )}
+                    <span>Back to {statusLabel(prev)}</span>
+                  </span>
+                </button>
+              )}
+
+              {/* Forward — primary CTA. */}
+              {viewingPipelineStatus && !inPendingDocuments && next && (
                 <button
                   disabled={
-                    !pendingDocumentsComplete || transitionMut.isPending
+                    isTransitionDisabled(next) || transitionMut.isPending
                   }
                   onClick={() =>
                     openForwardProceedConfirm(
-                      'READY_FOR_CHECKIN',
-                      'Proceed to Ready for Check-in',
+                      next,
+                      `Proceed to ${statusLabel(next)}`,
                     )
                   }
                   className={cn(
                     'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
-                    pendingDocumentsComplete && !transitionMut.isPending
-                      ? 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm'
-                      : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
+                    isTransitionDisabled(next) || transitionMut.isPending
+                      ? 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200'
+                      : 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm',
                   )}
                 >
-                  <span>Proceed to Ready for Check-in</span>
+                  <span>Proceed to {statusLabel(next)}</span>
                   {transitionMut.isPending ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" />
+                    <Loader2 className="animate-spin size-4 shrink-0" />
                   ) : (
                     <ChevronRight className="size-4 shrink-0" />
                   )}
                 </button>
-              </>
-            )}
+              )}
 
-            {/* Backward — secondary recovery action. */}
-            {!inPendingDocuments && prev && (
               <button
-                disabled={transitionMut.isPending}
-                onClick={() =>
-                  setConfirm({
-                    toStatus: prev,
-                    label: `Back to ${statusLabel(prev)}`,
-                  })
-                }
-                className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
+                disabled={cancelMut.isPending}
+                onClick={() => setCancelConfirm(true)}
+                className="flex items-center justify-between rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-all disabled:opacity-50"
               >
-                <span className="flex gap-2 items-center">
-                  {transitionMut.isPending ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" />
-                  ) : (
-                    <ArrowLeft className="size-4 shrink-0" />
-                  )}
-                  <span>Back to {statusLabel(prev)}</span>
-                </span>
+                <span>Cancel Booking</span>
+                <X className="size-4 shrink-0" />
               </button>
-            )}
 
-            {/* Forward — primary CTA. */}
-            {!inPendingDocuments && next && (
-              <button
-                disabled={isTransitionDisabled(next) || transitionMut.isPending}
-                onClick={() =>
-                  openForwardProceedConfirm(
-                    next,
-                    `Proceed to ${statusLabel(next)}`,
-                  )
-                }
-                className={cn(
-                  'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
-                  isTransitionDisabled(next) || transitionMut.isPending
-                    ? 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200'
-                    : 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm',
-                )}
-              >
-                <span>Proceed to {statusLabel(next)}</span>
-                {transitionMut.isPending ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin" />
-                ) : (
-                  <ChevronRight className="size-4 shrink-0" />
-                )}
-              </button>
-            )}
-
-            <button
-              disabled={cancelMut.isPending}
-              onClick={() => setCancelConfirm(true)}
-              className="flex items-center justify-between rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-all disabled:opacity-50"
-            >
-              <span>Cancel Booking</span>
-              <X className="size-4 shrink-0" />
-            </button>
-
-            {!inPendingDocuments && !next && !prev && (
-              <p className="text-[11px] text-slate-400">
-                No further pipeline steps are available for this booking.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Confirm transition modal ─────────────────────────────────────── */}
-      {confirm && (
-        <ConfirmModal
-          title={confirm.label}
-          secondaryLabel="Cancel"
-          banner={
-            confirm.pastStayWarning ? (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                <p className="font-semibold">Stay dates are in the past</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-900/95">
-                  At least one of check-in (
-                  {formatBookingDate(booking.check_in_date)}) or check-out (
-                  {formatBookingDate(booking.check_out_date)}) is before today’s
-                  calendar date in Asia/Manila. Only continue if you still
-                  intend to advance this booking.
+              {!inPendingDocuments && !next && !prev && (
+                <p className="text-[11px] text-slate-400">
+                  No further pipeline steps are available for this booking.
                 </p>
-              </div>
-            ) : null
-          }
-          description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck any side effect you want to skip for this action.`}
-          devControls={transitionConfirmDevControls}
-          devControlValues={modalDevControls}
-          onDevControlToggle={toggleModalDevControl}
-          onConfirm={() => handleTransition(confirm.toStatus)}
-          onCancel={() => setConfirm(null)}
-          isLoading={transitionMut.isPending}
-        />
-      )}
+              )}
+            </div>
+          </div>
+        )}
 
-      {cancelConfirm && (
-        <ConfirmModal
-          title="Cancel Booking"
-          secondaryLabel="Keep booking"
-          description="This will mark the booking as CANCELLED. Uncheck any integration you want to skip. Guest data is preserved. This cannot be undone."
-          devControls={cancelConfirmDevControls}
-          devControlValues={modalDevControls}
-          onDevControlToggle={toggleModalDevControl}
-          onConfirm={handleCancel}
-          onCancel={() => setCancelConfirm(false)}
-          isLoading={cancelMut.isPending}
-          destructive
-        />
-      )}
-    </aside>
+        {/* ── Confirm transition modal ─────────────────────────────────────── */}
+        {confirm && (
+          <ConfirmModal
+            title={confirm.label}
+            secondaryLabel="Cancel"
+            banner={
+              confirm.pastStayWarning ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                  <p className="font-semibold">Stay dates are in the past</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-900/95">
+                    At least one of check-in (
+                    {formatBookingDate(booking.check_in_date)}) or check-out (
+                    {formatBookingDate(booking.check_out_date)}) is before
+                    today’s calendar date in Asia/Manila. Only continue if you
+                    still intend to advance this booking.
+                  </p>
+                </div>
+              ) : null
+            }
+            description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck any side effect you want to skip for this action.`}
+            devControls={transitionConfirmDevControls}
+            devControlValues={modalDevControls}
+            onDevControlToggle={toggleModalDevControl}
+            onConfirm={() => handleTransition(confirm.toStatus)}
+            onCancel={() => setConfirm(null)}
+            isLoading={transitionMut.isPending}
+          />
+        )}
+
+        {cancelConfirm && (
+          <ConfirmModal
+            title="Cancel Booking"
+            secondaryLabel="Keep booking"
+            description="This will mark the booking as CANCELLED. Uncheck any integration you want to skip. Guest data is preserved. This cannot be undone."
+            devControls={cancelConfirmDevControls}
+            devControlValues={modalDevControls}
+            onDevControlToggle={toggleModalDevControl}
+            onConfirm={handleCancel}
+            onCancel={() => setCancelConfirm(false)}
+            isLoading={cancelMut.isPending}
+            destructive
+          />
+        )}
+      </aside>
     </>
   );
 }
@@ -1201,7 +1301,9 @@ function PipelineStepper({
   currentStatus,
   statusUpdatedAt,
   booking,
+  panelFocus,
   activePendingDocSubStatus,
+  onFocusPipeline,
   onSelectPendingDocSubStatus,
   transitionPending,
 }: {
@@ -1209,7 +1311,9 @@ function PipelineStepper({
   currentStatus: BookingStatus;
   statusUpdatedAt?: string | null;
   booking: BookingRow;
+  panelFocus: WorkflowPanelFocus;
   activePendingDocSubStatus: PendingDocumentSubStatus;
+  onFocusPipeline: () => void;
   onSelectPendingDocSubStatus: (status: PendingDocumentSubStatus) => void;
   transitionPending: boolean;
 }) {
@@ -1252,25 +1356,49 @@ function PipelineStepper({
 
             {/* Label column */}
             <div className={cn('flex-1 -mt-0.5', isLast ? 'pb-0' : 'pb-3')}>
-              <div
-                className={cn(
-                  'text-[12.5px] leading-tight transition-colors',
-                  isCurrent
-                    ? 'font-semibold text-blue-700'
-                    : isCompleted
-                      ? 'font-medium text-slate-700'
-                      : 'font-medium text-slate-400',
-                )}
-              >
-                {statusLabel(step)}
-              </div>
+              {isCurrent && currentStatus !== 'PENDING_DOCUMENTS' ? (
+                <button
+                  type="button"
+                  disabled={!!transitionPending}
+                  onClick={() => {
+                    if (!transitionPending) onFocusPipeline();
+                  }}
+                  className={cn(
+                    'min-h-[35px] text-left text-[12.5px] leading-tight transition-colors',
+                    transitionPending
+                      ? 'cursor-not-allowed text-slate-400'
+                      : panelFocus === 'pipeline'
+                        ? 'font-semibold text-blue-700'
+                        : 'font-medium text-slate-600 hover:text-blue-700',
+                  )}
+                  aria-label={`View ${statusLabel(step)}`}
+                  aria-current={panelFocus === 'pipeline' ? 'step' : undefined}
+                >
+                  {statusLabel(step)}
+                </button>
+              ) : (
+                <div
+                  className={cn(
+                    'text-[12.5px] leading-tight transition-colors',
+                    isCurrent
+                      ? 'font-semibold text-blue-700'
+                      : isCompleted
+                        ? 'font-medium text-slate-700'
+                        : 'font-medium text-slate-400',
+                  )}
+                >
+                  {statusLabel(step)}
+                </div>
+              )}
               {step === 'PENDING_DOCUMENTS' && (
                 <PendingDocumentsSubTree
                   booking={booking}
                   className="mt-4"
+                  panelFocus={panelFocus}
                   activeStatus={activePendingDocSubStatus}
                   onSelect={onSelectPendingDocSubStatus}
                   transitionPending={transitionPending}
+                  currentStatus={currentStatus}
                   isInteractive={currentStatus === 'PENDING_DOCUMENTS'}
                 />
               )}
@@ -1290,16 +1418,20 @@ function PipelineStepper({
 function PendingDocumentsSubTree({
   booking,
   className,
+  panelFocus,
   activeStatus,
   onSelect,
   transitionPending,
+  currentStatus,
   isInteractive = false,
 }: {
   booking: BookingRow;
   className?: string;
+  panelFocus: WorkflowPanelFocus;
   activeStatus?: PendingDocumentSubStatus;
   onSelect?: (status: PendingDocumentSubStatus) => void;
   transitionPending?: boolean;
+  currentStatus: BookingStatus;
   isInteractive?: boolean;
 }) {
   /** Canonical order: GAF → parking → pet (matches server / booking pipeline). */
@@ -1311,20 +1443,33 @@ function PendingDocumentsSubTree({
 
   const statuses = allStatuses.filter((s) => isSubStatusRequired(s, booking));
 
+  function isSubStepInteractive(sub: PendingDocumentSubStatus): boolean {
+    if (isInteractive) return true;
+    if (
+      sub === 'PENDING_PARKING_REQUEST' &&
+      canNavigatePendingParkingSubStep(booking, currentStatus)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
   return (
     <div className={cn('space-y-1.5 pl-2', className)}>
       {statuses.map((sub, index) => {
         const completed = isSubStatusCompletedInStepper(booking, sub);
         const isLast = index === statuses.length - 1;
-        const isActive = activeStatus === sub;
+        const isActive =
+          panelFocus === 'pending-doc-sub' && activeStatus === sub;
+        const subInteractive = isSubStepInteractive(sub);
         return (
-          <div key={sub} className="flex items-start gap-2">
+          <div key={sub} className="flex gap-2 items-start">
             <div className="flex flex-col items-center">
               <div
                 className={cn(
-                  'mt-[2px] flex h-4 w-4 items-center justify-center rounded-full',
+                  'flex justify-center items-center w-4 h-4 rounded-full mt-[2px]',
                   completed
-                    ? 'bg-emerald-500 text-white'
+                    ? 'text-white bg-emerald-500'
                     : 'bg-white ring-1 ring-slate-300',
                 )}
               >
@@ -1334,7 +1479,7 @@ function PendingDocumentsSubTree({
               </div>
               {!isLast && <div className="mt-0.5 h-4 w-px bg-slate-200" />}
             </div>
-            {isInteractive ? (
+            {subInteractive ? (
               <div className="flex min-h-[35px] flex-1 items-start justify-between pt-[1px]">
                 <button
                   type="button"
@@ -1343,7 +1488,7 @@ function PendingDocumentsSubTree({
                   }}
                   disabled={!!transitionPending}
                   className={cn(
-                    'text-left text-[11px] leading-4 transition-colors',
+                    'leading-4 text-left transition-colors text-[11px]',
                     transitionPending
                       ? 'cursor-not-allowed text-slate-400'
                       : isActive
@@ -1366,7 +1511,7 @@ function PendingDocumentsSubTree({
             ) : (
               <div
                 className={cn(
-                  'text-[11px] leading-4',
+                  'leading-4 text-[11px]',
                   completed ? 'font-medium text-emerald-700' : 'text-slate-400',
                 )}
               >
@@ -1416,17 +1561,19 @@ function ConfirmModal({
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-[2px]">
       <div className="flex max-h-[min(90vh,calc(100vh-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white p-5 shadow-2xl">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="overflow-y-auto flex-1 min-h-0">
           <div className="flex gap-3 items-start">
             {destructive && (
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-100">
                 <AlertTriangle className="text-red-600 size-4" />
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <h3 className="text-base font-semibold text-slate-900">{title}</h3>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-slate-900 sm:text-xl">
+                {title}
+              </h3>
               {banner ? <div className="mt-3">{banner}</div> : null}
-              <p className="mt-1 text-sm leading-relaxed text-slate-500">
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
                 {description}
               </p>
               {showDevControls ? (
@@ -1440,7 +1587,7 @@ function ConfirmModal({
             </div>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2 justify-end mt-5 border-t border-slate-100 pt-4">
+        <div className="flex gap-2 justify-end pt-4 mt-5 border-t shrink-0 border-slate-100">
           <button
             type="button"
             onClick={onCancel}
@@ -1454,7 +1601,7 @@ function ConfirmModal({
             onClick={onConfirm}
             disabled={isLoading}
             className={cn(
-              'min-h-[44px] px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors disabled:opacity-50',
+              'px-5 py-2 text-sm font-bold text-white rounded-lg transition-colors min-h-[44px] disabled:opacity-50',
               destructive
                 ? 'bg-red-600 hover:bg-red-700'
                 : 'bg-blue-600 hover:bg-blue-700',

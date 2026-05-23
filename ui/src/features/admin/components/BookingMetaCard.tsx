@@ -17,7 +17,7 @@ export function BookingMetaCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm',
+        'rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6',
         className,
       )}
     >

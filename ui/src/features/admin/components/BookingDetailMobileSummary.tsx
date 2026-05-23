@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/features/admin/lib/formatters';
 import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { PayParkingHeaderButton } from '@/features/admin/components/PayParkingModal';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
   onToggleDetails: () => void;
   onEdit: () => void;
   onCancelEdit: () => void;
+  onPayParking: () => void;
   className?: string;
 };
 
@@ -34,6 +36,7 @@ export function BookingDetailMobileSummary({
   onToggleDetails,
   onEdit,
   onCancelEdit,
+  onPayParking,
   className,
 }: Props) {
   const pax =
@@ -124,6 +127,16 @@ export function BookingDetailMobileSummary({
         </div>
       )}
 
+      {!editMode && (
+        <div className="mt-3">
+          <PayParkingHeaderButton
+            booking={booking}
+            onOpenModal={onPayParking}
+            onViewParking={onPayParking}
+          />
+        </div>
+      )}
+
       <button
         type="button"
         onClick={onToggleDetails}
@@ -137,7 +150,9 @@ export function BookingDetailMobileSummary({
         )}
       >
         <span>
-          {detailsExpanded ? 'Hide full booking details' : 'View full booking details'}
+          {detailsExpanded
+            ? 'Hide full booking details'
+            : 'View full booking details'}
         </span>
         <ChevronDown
           className={cn(

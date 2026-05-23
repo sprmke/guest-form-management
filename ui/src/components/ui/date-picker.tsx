@@ -1,6 +1,7 @@
 import * as React from "react"
-import { format } from "date-fns"
+import { format, startOfDay } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
+import type { Matcher } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -16,8 +17,29 @@ interface DatePickerProps {
   disabled?: (date: Date) => boolean
   placeholder?: string
   minDate?: Date
+  maxDate?: Date
   className?: string
   rangeEnd?: Date // For showing the range visually
+}
+
+function buildDisabledMatchers(
+  minDate?: Date,
+  maxDate?: Date,
+  disabled?: (date: Date) => boolean,
+): Matcher | Matcher[] | undefined {
+  const matchers: Matcher[] = []
+  if (minDate) {
+    matchers.push({ before: startOfDay(minDate) })
+  }
+  if (maxDate) {
+    matchers.push({ after: startOfDay(maxDate) })
+  }
+  if (disabled) {
+    matchers.push(disabled)
+  }
+  if (matchers.length === 0) return undefined
+  if (matchers.length === 1) return matchers[0]
+  return matchers
 }
 
 export function DatePicker({
@@ -26,10 +48,15 @@ export function DatePicker({
   disabled,
   placeholder = "Pick a date",
   minDate,
+  maxDate,
   className,
   rangeEnd,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
+  const disabledMatchers = React.useMemo(
+    () => buildDisabledMatchers(minDate, maxDate, disabled),
+    [minDate, maxDate, disabled],
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -60,8 +87,9 @@ export function DatePicker({
             onSelect?.(newDate)
             setOpen(false)
           }}
-          disabled={disabled}
+          disabled={disabledMatchers}
           fromDate={minDate}
+          toDate={maxDate}
           initialFocus
           modifiers={{
             range_middle: (day) => {

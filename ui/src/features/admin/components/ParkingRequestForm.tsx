@@ -3,7 +3,7 @@
  * from PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | READY_FOR_CHECKIN.
  *
  * Captures: parking_owner (owner/agent name), parking_rate_paid (Paid Parking Rate),
- * and parking_endorsement_url.
+ * and parking_endorsement_url. Displays read-only `parking_rate_guest` (Parking Rate).
  * Parking endorsement is uploaded directly from this form.
  *
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q4.4, Q4.5
@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { requiredPositiveMoney } from '@/features/admin/lib/moneyFieldSchema';
 import { ExternalLink, FileImage, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
@@ -144,6 +145,20 @@ export function ParkingRequestForm({
       </Field>
 
       <Field
+        label="Parking Rate"
+        description="Exact parking amount guest paid"
+      >
+        <input
+          type="text"
+          readOnly
+          tabIndex={-1}
+          value={formatMoney(booking.parking_rate_guest)}
+          className={readOnlyInputClass()}
+          aria-readonly="true"
+        />
+      </Field>
+
+      <Field
         label="Paid Parking Rate"
         required
         description="Exact parking amount paid to parking owner"
@@ -243,6 +258,13 @@ function inputClass(hasError: boolean) {
     'h-10 w-full rounded-md border px-3 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
     hasError ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white',
+  ].join(' ');
+}
+
+function readOnlyInputClass() {
+  return [
+    'h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700',
+    'cursor-default focus:outline-none',
   ].join(' ');
 }
 
