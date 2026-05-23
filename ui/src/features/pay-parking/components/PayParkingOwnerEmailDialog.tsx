@@ -18,6 +18,8 @@ const ownerEmailSchema = z.string().email('Enter a valid email address');
 type Props = {
   open: boolean;
   pending: boolean;
+  /** Primary action label on the send button. */
+  submitLabel?: string;
   onOpenChange: (open: boolean) => void;
   onSubmit: (email: string) => void;
   onGoBack: () => void;
@@ -26,6 +28,7 @@ type Props = {
 export function PayParkingOwnerEmailDialog({
   open,
   pending,
+  submitLabel = 'Update & send email',
   onOpenChange,
   onSubmit,
   onGoBack,
@@ -108,7 +111,7 @@ export function PayParkingOwnerEmailDialog({
             ) : (
               <Mail className="size-4 shrink-0" aria-hidden />
             )}
-            Update &amp; send email
+            {submitLabel}
           </Button>
           <Button
             type="button"

@@ -10,23 +10,57 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
+export type PayParkingEmailChoiceVariant = 'submit' | 'update';
+
 type Props = {
   open: boolean;
   pending: boolean;
+  variant: PayParkingEmailChoiceVariant;
   onOpenChange: (open: boolean) => void;
-  onUpdateWithBroadcast: () => void;
-  onUpdateWithOwnerEmail: () => void;
-  onUpdateOnly: () => void;
+  onSaveWithBroadcast: () => void;
+  onSaveWithOwnerEmail: () => void;
+  onSaveOnly: () => void;
+};
+
+const COPY: Record<
+  PayParkingEmailChoiceVariant,
+  {
+    title: string;
+    description: string;
+    broadcast: string;
+    owner: string;
+    only: string;
+  }
+> = {
+  submit: {
+    title: 'Submit parking request',
+    description:
+      'Choose how to notify Azure North parking owners, or save vehicle details without sending email.',
+    broadcast: 'Save and send broadcast email',
+    owner: 'Save and send to parking owner email',
+    only: 'Save details only',
+  },
+  update: {
+    title: 'Update parking details',
+    description:
+      'Choose whether to notify Azure North parking owners again with a broadcast email, or save the changes without sending email.',
+    broadcast: 'Update and send broadcast email',
+    owner: 'Update and send to parking owner email',
+    only: 'Update details only',
+  },
 };
 
 export function PayParkingUpdateBroadcastDialog({
   open,
   pending,
+  variant,
   onOpenChange,
-  onUpdateWithBroadcast,
-  onUpdateWithOwnerEmail,
-  onUpdateOnly,
+  onSaveWithBroadcast,
+  onSaveWithOwnerEmail,
+  onSaveOnly,
 }: Props) {
+  const copy = COPY[variant];
+
   return (
     <Dialog
       open={open}
@@ -37,11 +71,8 @@ export function PayParkingUpdateBroadcastDialog({
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Update parking details</DialogTitle>
-          <DialogDescription>
-            Choose whether to notify Azure North parking owners again with a
-            broadcast email, or save the changes without sending email.
-          </DialogDescription>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
@@ -50,41 +81,41 @@ export function PayParkingUpdateBroadcastDialog({
             variant="outline"
             className="min-h-[44px] w-full gap-2"
             disabled={pending}
-            onClick={onUpdateWithBroadcast}
+            onClick={onSaveWithBroadcast}
           >
             {pending ? (
               <Loader2 className="animate-spin size-4 shrink-0" aria-hidden />
             ) : (
               <Mail className="size-4 shrink-0" aria-hidden />
             )}
-            Update and send broadcast email
+            {copy.broadcast}
           </Button>
           <Button
             type="button"
             className="min-h-[44px] w-full gap-2"
             disabled={pending}
-            onClick={onUpdateWithOwnerEmail}
+            onClick={onSaveWithOwnerEmail}
           >
             {pending ? (
               <Loader2 className="animate-spin size-4 shrink-0" aria-hidden />
             ) : (
               <UserRound className="size-4 shrink-0" aria-hidden />
             )}
-            Update and send to parking owner email
+            {copy.owner}
           </Button>
           <Button
             type="button"
             variant="outline"
             className="min-h-[44px] w-full gap-2"
             disabled={pending}
-            onClick={onUpdateOnly}
+            onClick={onSaveOnly}
           >
             {pending ? (
               <Loader2 className="animate-spin size-4 shrink-0" aria-hidden />
             ) : (
               <Save className="size-4 shrink-0" aria-hidden />
             )}
-            Update details only
+            {copy.only}
           </Button>
         </DialogFooter>
       </DialogContent>

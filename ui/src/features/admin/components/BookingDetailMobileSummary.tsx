@@ -48,6 +48,10 @@ export function BookingDetailMobileSummary({
     booking.guest_requests_surprise_decor,
   );
 
+  /** Compact control aligned to title line; negative margin preserves ~44px touch target. */
+  const headerActionButtonClass =
+    'mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 -m-2';
+
   return (
     <section
       className={cn(
@@ -58,7 +62,7 @@ export function BookingDetailMobileSummary({
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold leading-snug text-slate-900 break-words">
+          <h1 className="text-base font-bold leading-tight text-slate-900 break-words">
             {heading}
           </h1>
           {fb && primary && fb.toLowerCase() !== primary.toLowerCase() && (
@@ -72,18 +76,18 @@ export function BookingDetailMobileSummary({
             type="button"
             onClick={onCancelEdit}
             aria-label="Cancel editing"
-            className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+            className={headerActionButtonClass}
           >
-            <X className="size-4" aria-hidden />
+            <X className="size-3.5" aria-hidden />
           </button>
         ) : (
           <button
             type="button"
             onClick={onEdit}
             aria-label="Edit booking"
-            className="inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
+            className={headerActionButtonClass}
           >
-            <Edit2 className="size-4" aria-hidden />
+            <Edit2 className="size-3.5" aria-hidden />
           </button>
         )}
       </div>

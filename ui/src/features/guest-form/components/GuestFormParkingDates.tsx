@@ -114,7 +114,8 @@ export function GuestFormParkingDates({ form }: Props) {
             </FormControl>
             <div className="space-y-1 !mt-[-3px]">
               <FormLabel className="text-base">
-                Parking Duration (same as booking duration)
+                Parking Duration{' '}
+                {sameAsBookingDuration ? '(same as booking duration)' : ''}
               </FormLabel>
               {(field.value ?? true) && checkInDate && checkOutDate ? (
                 <p className="text-sm font-medium text-foreground">

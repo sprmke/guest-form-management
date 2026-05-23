@@ -115,7 +115,7 @@ export function PayParkingPage() {
   }
 
   function handleFormSubmit(values: PayParkingVehicleValues) {
-    if (isAdminMode && query.data?.already_submitted) {
+    if (isAdminMode) {
       setPendingSubmit(values);
       setUpdateDialogOpen(true);
       return;
@@ -201,6 +201,7 @@ export function PayParkingPage() {
   }
 
   const data = query.data;
+  const emailChoiceVariant = data.already_submitted ? 'update' : 'submit';
   const showLastMinuteParkingWarning = isLastMinutePayParkingRequest(
     data.parking_check_in_date,
   );
@@ -385,20 +386,21 @@ export function PayParkingPage() {
         <PayParkingUpdateBroadcastDialog
           open={updateDialogOpen}
           pending={submitMut.isPending}
+          variant={emailChoiceVariant}
           onOpenChange={(open) => {
             if (submitMut.isPending) return;
             setUpdateDialogOpen(open);
             if (!open) setPendingSubmit(null);
           }}
-          onUpdateWithBroadcast={() => {
+          onSaveWithBroadcast={() => {
             if (!pendingSubmit) return;
             runSubmit(pendingSubmit, { sendParkingBroadcast: true });
           }}
-          onUpdateWithOwnerEmail={() => {
+          onSaveWithOwnerEmail={() => {
             setUpdateDialogOpen(false);
             setOwnerEmailDialogOpen(true);
           }}
-          onUpdateOnly={() => {
+          onSaveOnly={() => {
             if (!pendingSubmit) return;
             runSubmit(pendingSubmit, { sendParkingBroadcast: false });
           }}
@@ -407,6 +409,11 @@ export function PayParkingPage() {
         <PayParkingOwnerEmailDialog
           open={ownerEmailDialogOpen}
           pending={submitMut.isPending}
+          submitLabel={
+            emailChoiceVariant === 'submit'
+              ? 'Save & send email'
+              : 'Update & send email'
+          }
           onOpenChange={(open) => {
             if (submitMut.isPending) return;
             setOwnerEmailDialogOpen(open);
