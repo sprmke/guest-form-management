@@ -4,7 +4,7 @@
  * Replaces Phase 1's direct PostgREST access from the UI.  Handles:
  * - Free-text search (guest name / email)
  * - Status multi-filter
- * - Date-range filter on check_in_date (converted from MM-DD-YYYY for correct sort)
+ * - Date-range filter on check_in_date; PENDING_REVIEW always included (any month)
  * - has_pets / need_parking boolean filters
  * - Default sort: status_priority ASC (workflow order), then check-in proximity for review/docs
  * - Default filter: hide cancelled + check-in before today; `show_previous_bookings=true` to include
