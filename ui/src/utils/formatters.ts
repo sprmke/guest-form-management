@@ -21,6 +21,10 @@ export const transformFieldValues = (values: GuestFormData) => {
   const checkIn = dayjs(values.checkInDate);
   const checkOut = dayjs(values.checkOutDate);
   const numberOfNights = Math.ceil((checkOut.valueOf() - checkIn.valueOf()) / (1000 * 60 * 60 * 24));
+  const useStayParkingDates =
+    !values.needParking ||
+    numberOfNights <= 1 ||
+    values.parkingSameAsBookingDuration !== false;
 
   return {
     ...values,
@@ -59,6 +63,20 @@ export const transformFieldValues = (values: GuestFormData) => {
     carPlateNumber: values.needParking ? handleEmptyString(values.carPlateNumber) : undefined,
     carBrandModel: values.needParking ? handleEmptyString(values.carBrandModel ? toCapitalCase(values.carBrandModel) : undefined) : undefined,
     carColor: values.needParking ? handleEmptyString(values.carColor ? toCapitalCase(values.carColor) : undefined) : undefined,
+    parkingCheckInDate: values.needParking
+      ? formatDateToMMDDYYYY(
+          useStayParkingDates
+            ? values.checkInDate
+            : (values.parkingCheckInDate ?? values.checkInDate),
+        )
+      : undefined,
+    parkingCheckOutDate: values.needParking
+      ? formatDateToMMDDYYYY(
+          useStayParkingDates
+            ? values.checkOutDate
+            : (values.parkingCheckOutDate ?? values.checkOutDate),
+        )
+      : undefined,
     
     // Pet Information
     petName: values.hasPets ? handleEmptyString(values.petName ? toCapitalCase(values.petName) : undefined) : undefined,

@@ -186,6 +186,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     findUs,
     findUsDetails,
     needParking,
+    parkingSameAsBookingDuration: true,
     carPlateNumber: needParking ? generateRandomPlate() : undefined,
     carBrandModel: needParking ? randomElement(carBrands) : undefined,
     carColor: needParking ? randomElement(carColors) : undefined,

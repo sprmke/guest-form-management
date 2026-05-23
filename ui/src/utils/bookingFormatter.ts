@@ -1,4 +1,5 @@
 import { GuestFormData } from '@/features/guest-form/schemas/guestFormSchema';
+import { formatTimeToAMPM } from '@/utils/dates';
 
 /**
  * Formats booking data into a human-readable and parseable string format
@@ -31,9 +32,13 @@ export function formatBookingInfoForClipboard(
   lines.push('');
   lines.push('--- Booking Details ---');
   lines.push(`Check-in Date: ${formData.checkInDate || ''}`);
-  lines.push(`Check-in Time: ${formData.checkInTime || ''}`);
+  lines.push(
+    `Check-in Time: ${formData.checkInTime ? formatTimeToAMPM(formData.checkInTime, true) : ''}`,
+  );
   lines.push(`Check-out Date: ${formData.checkOutDate || ''}`);
-  lines.push(`Check-out Time: ${formData.checkOutTime || ''}`);
+  lines.push(
+    `Check-out Time: ${formData.checkOutTime ? formatTimeToAMPM(formData.checkOutTime, false) : ''}`,
+  );
   lines.push(`Number of Adults: ${formData.numberOfAdults || 0}`);
   lines.push(`Number of Children: ${formData.numberOfChildren || 0}`);
 

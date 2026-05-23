@@ -41,19 +41,26 @@ export const formatDateToLongFormat = (dateString: string): string => {
   }
 };
 
+/** User-facing 12-hour time (e.g. `2:00 PM`). Accepts DB `HH:mm` or legacy `h:mm A`. */
 export const formatTimeToAMPM = (time: string, isCheckIn: boolean = false): string => {
+  const fallback = isCheckIn ? '2:00 PM' : '11:00 AM';
   try {
-    // Handle empty or invalid input
-    if (!time) {
-      return isCheckIn ? "02:00 PM" : "11:00 AM"
+    const s = (time ?? '').trim();
+    if (!s) return fallback;
+
+    const hm24 = toGuestSubmissionTime(s);
+    if (/^\d{2}:\d{2}$/.test(hm24)) {
+      const parsed = dayjs(`2000-01-01T${hm24}`);
+      if (parsed.isValid()) return parsed.format('h:mm A');
     }
-    
-    return dayjs(`2000-01-01 ${time}`).format('hh:mm A');
+
+    const loose = dayjs(`2000-01-01 ${s}`);
+    return loose.isValid() ? loose.format('h:mm A') : fallback;
   } catch (error) {
-    console.error('Error formatting time:', error)
-    return isCheckIn ? "02:00 PM" : "11:00 AM"
+    console.error('Error formatting time:', error);
+    return fallback;
   }
-} 
+}; 
 
 // Get today and tomorrow dates
 export const getDefaultDates = () => {
