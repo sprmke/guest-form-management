@@ -81,7 +81,7 @@ const EMAIL_SHELL_STYLE_VARS = {
     'width:100%;border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt;background-color:#f3f4f6;',
   emailShellTdShellPadStyle: 'padding:32px 16px 44px 16px;',
   emailShellTableWrapperStyle:
-    'width:600px;max-width:100%;margin:0 auto;border-collapse:separate;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;',
+    'width:100%;max-width:600px;margin:0 auto;border-collapse:separate;border-spacing:0;mso-table-lspace:0pt;mso-table-rspace:0pt;',
   emailShellTdAccentStyle:
     'height:5px;line-height:5px;font-size:0;background-color:#5f954c;',
   emailShellTdCardShellStyle: 'padding:0;vertical-align:top;',
