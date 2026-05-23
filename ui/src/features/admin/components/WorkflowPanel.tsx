@@ -741,10 +741,10 @@ export function WorkflowPanel({ booking }: Props) {
                 type="button"
                 disabled={transitionMut.isPending}
                 onClick={focusPipelineView}
-                className="flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50"
+                className="flex min-h-[44px] w-full items-center justify-between text-sm font-medium text-blue-700 transition-colors hover:text-blue-800 disabled:opacity-50"
               >
+                <span>Back to {statusLabel(status)}</span>
                 <ArrowLeft className="size-4 shrink-0" aria-hidden />
-                Back to {statusLabel(status)}
               </button>
             )}
             {showSdGuestInfoCard && (
@@ -949,14 +949,14 @@ export function WorkflowPanel({ booking }: Props) {
                       type="button"
                       disabled={gmailPollMut.isPending}
                       onClick={handleGmailPoll}
-                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                      className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                     >
+                      <span>Run Gmail poll now</span>
                       {gmailPollMut.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                        <Loader2 className="size-3.5 shrink-0 animate-spin" />
                       ) : (
-                        <Mail className="size-3.5 shrink-0" />
+                        <Mail className="size-3.5 shrink-0" aria-hidden />
                       )}
-                      Run Gmail poll now
                     </button>
                   )}
                   {showHistoricalBackfill && (
@@ -973,10 +973,10 @@ export function WorkflowPanel({ booking }: Props) {
                         }
                         setHistoricalBackfillOpen(true);
                       }}
-                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
+                      className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
                     >
+                      <span>Historical approval backfill</span>
                       <History className="size-3.5 shrink-0" aria-hidden />
-                      Historical approval backfill
                     </button>
                   )}
                   {showSdCron && (
@@ -984,14 +984,14 @@ export function WorkflowPanel({ booking }: Props) {
                       type="button"
                       disabled={sdCronMut.isPending}
                       onClick={handleSdCron}
-                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                      className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                     >
+                      <span>Run SD refund cron</span>
                       {sdCronMut.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                        <Loader2 className="size-3.5 shrink-0 animate-spin" />
                       ) : (
-                        <RefreshCw className="size-3.5 shrink-0" />
+                        <RefreshCw className="size-3.5 shrink-0" aria-hidden />
                       )}
-                      Run SD refund cron
                     </button>
                   )}
                   {showSdFormResend && (
@@ -999,14 +999,14 @@ export function WorkflowPanel({ booking }: Props) {
                       type="button"
                       disabled={resendSdFormMut.isPending}
                       onClick={handleResendSdFormEmail}
-                      className="flex gap-2 items-center min-h-[44px] px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
+                      className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 disabled:opacity-50"
                     >
+                      <span>Send SD refund form email</span>
                       {resendSdFormMut.isPending ? (
-                        <Loader2 className="size-3.5 animate-spin shrink-0" />
+                        <Loader2 className="size-3.5 shrink-0 animate-spin" />
                       ) : (
-                        <Mail className="size-3.5 shrink-0" />
+                        <Mail className="size-3.5 shrink-0" aria-hidden />
                       )}
-                      Send SD refund form email
                     </button>
                   )}
                 </div>
@@ -1033,16 +1033,16 @@ export function WorkflowPanel({ booking }: Props) {
                           label: `Back to ${statusLabel(prev)}`,
                         })
                       }
-                      className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
+                      className="flex min-h-[44px] w-full items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
                     >
-                      <span className="flex gap-2 items-center">
-                        <span>Back to {statusLabel(prev)}</span>
-                        {transitionMut.isPending ? (
-                          <Loader2 className="animate-spin size-4 shrink-0" />
-                        ) : (
-                          <ArrowLeft className="size-4 shrink-0" />
-                        )}
+                      <span className="min-w-0 pr-2 text-left">
+                        Back to {statusLabel(prev)}
                       </span>
+                      {transitionMut.isPending ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                      ) : (
+                        <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                      )}
                     </button>
                   )}
                   <div className="flex flex-col gap-2">
@@ -1057,7 +1057,7 @@ export function WorkflowPanel({ booking }: Props) {
                         }
                         className="flex min-h-[44px] items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-200/80 bg-amber-50 hover:bg-amber-100/90 hover:ring-amber-300/80 transition-colors disabled:opacity-50"
                       >
-                        <span>
+                        <span className="min-w-0 pr-2 text-left">
                           Mark as Incomplete -{' '}
                           {statusLabel(activePendingDocSubStatus)}
                         </span>
@@ -1095,7 +1095,7 @@ export function WorkflowPanel({ booking }: Props) {
                             : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
                         )}
                       >
-                        <span>
+                        <span className="min-w-0 pr-2 text-left">
                           Mark as Complete -{' '}
                           {statusLabel(activePendingDocSubStatus)}
                         </span>
@@ -1119,17 +1119,19 @@ export function WorkflowPanel({ booking }: Props) {
                         )
                       }
                       className={cn(
-                        'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                        'flex min-h-[44px] w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
                         pendingDocumentsComplete && !transitionMut.isPending
                           ? 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm'
                           : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
                       )}
                     >
-                      <span>Proceed to Ready for Check-in</span>
+                      <span className="min-w-0 pr-2 text-left">
+                        Proceed to Ready for Check-in
+                      </span>
                       {transitionMut.isPending ? (
-                        <Loader2 className="animate-spin size-4 shrink-0" />
+                        <Loader2 className="size-4 shrink-0 animate-spin" />
                       ) : (
-                        <ChevronRight className="size-4 shrink-0" />
+                        <ChevronRight className="size-4 shrink-0" aria-hidden />
                       )}
                     </button>
                   )}
@@ -1157,7 +1159,7 @@ export function WorkflowPanel({ booking }: Props) {
                         : 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200',
                     )}
                   >
-                    <span>
+                    <span className="min-w-0 pr-2 text-left">
                       Mark as Complete -{' '}
                       {statusLabel('PENDING_PARKING_REQUEST')}
                     </span>
@@ -1180,16 +1182,16 @@ export function WorkflowPanel({ booking }: Props) {
                       label: `Back to ${statusLabel(prev)}`,
                     })
                   }
-                  className="flex items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
+                  className="flex min-h-[44px] w-full items-center justify-between rounded-lg bg-white px-3.5 py-2.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-700 hover:ring-slate-300 transition-all disabled:opacity-50"
                 >
-                  <span className="flex gap-2 items-center">
-                    {transitionMut.isPending ? (
-                      <Loader2 className="animate-spin size-4 shrink-0" />
-                    ) : (
-                      <ArrowLeft className="size-4 shrink-0" />
-                    )}
-                    <span>Back to {statusLabel(prev)}</span>
+                  <span className="min-w-0 pr-2 text-left">
+                    Back to {statusLabel(prev)}
                   </span>
+                  {transitionMut.isPending ? (
+                    <Loader2 className="size-4 shrink-0 animate-spin" />
+                  ) : (
+                    <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                  )}
                 </button>
               )}
 
@@ -1206,17 +1208,19 @@ export function WorkflowPanel({ booking }: Props) {
                     )
                   }
                   className={cn(
-                    'flex items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
+                    'flex min-h-[44px] w-full items-center justify-between rounded-lg px-3.5 py-2.5 text-sm font-semibold ring-1 transition-all',
                     isTransitionDisabled(next) || transitionMut.isPending
                       ? 'cursor-not-allowed bg-slate-50 text-slate-400 ring-slate-200'
                       : 'bg-primary text-primary-foreground ring-primary hover:bg-primary/90 hover:ring-primary/90 shadow-sm',
                   )}
                 >
-                  <span>Proceed to {statusLabel(next)}</span>
+                  <span className="min-w-0 pr-2 text-left">
+                    Proceed to {statusLabel(next)}
+                  </span>
                   {transitionMut.isPending ? (
-                    <Loader2 className="animate-spin size-4 shrink-0" />
+                    <Loader2 className="size-4 shrink-0 animate-spin" />
                   ) : (
-                    <ChevronRight className="size-4 shrink-0" />
+                    <ChevronRight className="size-4 shrink-0" aria-hidden />
                   )}
                 </button>
               )}
@@ -1224,10 +1228,10 @@ export function WorkflowPanel({ booking }: Props) {
               <button
                 disabled={cancelMut.isPending}
                 onClick={() => setCancelConfirm(true)}
-                className="flex items-center justify-between rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-all disabled:opacity-50"
+                className="flex min-h-[44px] w-full items-center justify-between rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-medium text-red-700 ring-1 ring-red-200 hover:bg-red-100 hover:ring-red-300 transition-all disabled:opacity-50"
               >
-                <span>Cancel Booking</span>
-                <X className="size-4 shrink-0" />
+                <span className="min-w-0 pr-2 text-left">Cancel Booking</span>
+                <X className="size-4 shrink-0" aria-hidden />
               </button>
 
               {!inPendingDocuments && !next && !prev && (
@@ -1559,8 +1563,8 @@ function ConfirmModal({
     devControls.length > 0 && devControlValues && onDevControlToggle;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center bg-black/40 backdrop-blur-[2px]">
-      <div className="flex max-h-[min(90vh,calc(100vh-2rem))] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white p-5 shadow-2xl">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/40 backdrop-blur-[2px]">
+      <div className="flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),28rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-2xl">
         <div className="overflow-y-auto flex-1 min-h-0">
           <div className="flex gap-3 items-start">
             {destructive && (

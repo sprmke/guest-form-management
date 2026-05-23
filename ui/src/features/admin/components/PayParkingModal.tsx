@@ -176,7 +176,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md sm:w-full">
         <DialogHeader>
           <DialogTitle className="flex gap-2 items-center">
             <Car className="w-7 h-8 size-4 shrink-0 text-primary" aria-hidden />

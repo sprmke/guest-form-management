@@ -1403,14 +1403,14 @@ function AssetPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] bg-slate-900/70 backdrop-blur-[1px] p-2 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/70 backdrop-blur-[1px] p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={asset ? `Preview ${asset.label}` : "Loading preview"}
       onClick={onClose}
     >
       <div
-        className="mx-auto flex h-[calc(100vh-1rem)] w-full max-w-4xl flex-col rounded-lg border border-slate-200 bg-white shadow-2xl sm:h-[calc(100vh-2rem)] sm:max-w-5xl sm:rounded-xl"
+        className="mx-auto flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex min-h-[52px] items-center justify-between border-b border-slate-200 px-2.5 sm:min-h-[56px] sm:px-4">

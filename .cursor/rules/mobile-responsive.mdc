@@ -130,7 +130,7 @@ Never use `px-6` or larger without a mobile fallback like `px-4`.
 
 ## 9. Modals and dropdowns
 
-- Modals: full-screen on mobile (`fixed inset-0`) → centered card on `sm:` (`sm:inset-auto sm:rounded-xl`).
+- Modals: centered card at all breakpoints (`max-w-[min(calc(100vw-1.5rem),28rem)]`, `max-h-[min(90dvh,…)]`, rounded, scrollable). Avoid `fixed inset-0` full-screen sheets unless the modal is intentionally a full-page flow.
 - Dropdowns: on mobile, dropdown panels must never overflow the viewport. Apply `max-w-[calc(100vw-24px)]` as a safety net.
 - Use `z-50` for overlays, `z-40` for sticky headers.
 
