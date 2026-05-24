@@ -87,6 +87,8 @@ export function useTelegramStaffTestSend() {
         result?: unknown;
         sent?: boolean;
         messageCharCount?: number;
+        previewGuestName?: string;
+        todayBookingCount?: number;
         verify?: StaffEnvVerifyDto;
       };
       if (!res.ok || json.success === false) {

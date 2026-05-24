@@ -10,7 +10,7 @@ import {
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
 import { normalizeTelegramChatId } from './telegramMarketing.ts';
-import { formatTimeForDisplay } from './utils.ts';
+import { formatTimeForDisplay, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts';
 
 export type TelegramStaffSettings = {
   id: number;
@@ -33,6 +33,10 @@ export const STAFF_KNOWN_PLACEHOLDERS = [
   'guest_phone',
   'decor_status',
   'pet_status',
+  'has_decor',
+  'has_pets',
+  'decor_flag',
+  'pet_flag',
   'special_requests',
   'total_guest_balance',
   'next_bookings',
@@ -88,6 +92,22 @@ function bookingFlagTrue(val: unknown): boolean {
   return false;
 }
 
+function bookingTimeRaw(time: unknown): string {
+  if (typeof time !== 'string') return '';
+  return time.trim();
+}
+
+/** Display time for staff Telegram; falls back to standard check-in/out defaults. */
+function displayStaffBookingTime(
+  time: unknown,
+  default24h: string,
+): string {
+  const raw = bookingTimeRaw(time);
+  const fallback = formatTimeForDisplay(default24h, 'N/A');
+  if (!raw) return fallback;
+  return formatTimeForDisplay(raw, fallback);
+}
+
 function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
   const ciRaw = String(booking.check_in_date ?? '');
   const coRaw = String(booking.check_out_date ?? '');
@@ -106,14 +126,25 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
   return {
     check_in_date: formatDateHumanFull(ciYmd),
     check_out_date: formatDateHumanFull(coYmd),
-    check_in_time: formatTimeForDisplay(booking.check_in_time) || 'N/A',
-    check_out_time: formatTimeForDisplay(booking.check_out_time) || 'N/A',
+    check_in_time: displayStaffBookingTime(
+      booking.check_in_time,
+      DEFAULT_CHECK_IN_TIME,
+    ),
+    check_out_time: displayStaffBookingTime(
+      booking.check_out_time,
+      DEFAULT_CHECK_OUT_TIME,
+    ),
     nights: String(booking.number_of_nights ?? '1'),
     pax: String(totalPax),
     primary_guest_name: String(booking.primary_guest_name ?? 'N/A'),
     guest_phone: String(booking.guest_phone_number ?? 'N/A'),
-    decor_status: hasDecor ? 'Yes' : 'No',
-    pet_status: hasPets ? 'Yes' : 'No',
+    decor_status: hasDecor ? '🎉 Yes' : 'No',
+    pet_status: hasPets ? '🐶 Yes' : 'No',
+    has_decor: hasDecor ? 'Yes' : 'No',
+    has_pets: hasPets ? 'Yes' : 'No',
+    /** Empty when false — optional in custom templates for one-line flags. */
+    decor_flag: hasDecor ? '🎉 Has decor' : '',
+    pet_flag: hasPets ? '🐶 Has pets' : '',
     special_requests: specialReqs || 'None',
     total_guest_balance: formatCurrency(balance),
     booking_link: `View Booking Details: ${APP_BASE_URL}/bookings/${booking.id}`,
@@ -124,8 +155,14 @@ function buildNextBookingLine(booking: BookingRow): string {
   const ciRaw = String(booking.check_in_date ?? '');
   const ciYmd = normalizeBookingDateToYmd(ciRaw) ?? ciRaw;
 
-  const ciTime = formatTimeForDisplay(booking.check_in_time);
-  const coTime = formatTimeForDisplay(booking.check_out_time);
+  const ciTime = displayStaffBookingTime(
+    booking.check_in_time,
+    DEFAULT_CHECK_IN_TIME,
+  );
+  const coTime = displayStaffBookingTime(
+    booking.check_out_time,
+    DEFAULT_CHECK_OUT_TIME,
+  );
   const adults = Number(booking.number_of_adults ?? 1) || 1;
   const children = Number(booking.number_of_children ?? 0) || 0;
   const pax = String(adults + children);
@@ -134,9 +171,13 @@ function buildNextBookingLine(booking: BookingRow): string {
   if (ciTime && coTime) parts.push(`${ciTime}-${coTime}`);
   parts.push(`${pax}pax`);
 
-  if (bookingFlagTrue(booking.guest_requests_surprise_decor)) parts.push('Has decor');
-  if (bookingFlagTrue(booking.has_pets)) parts.push('Has pets');
-  if (bookingFlagTrue(booking.need_parking)) parts.push('Has parking');
+  // Next-days summary: decor + pets only.
+  if (bookingFlagTrue(booking.guest_requests_surprise_decor)) {
+    parts.push('🎉 Has decor');
+  }
+  if (bookingFlagTrue(booking.has_pets)) {
+    parts.push('🐶 Has pets');
+  }
 
   return `${formatDateHuman(ciYmd)}: ${parts.join(', ')}`;
 }
@@ -276,6 +317,54 @@ export async function sendStaffAdminPreview(text: string): Promise<{ ok: boolean
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: 'empty_message' };
   return sendStaffTelegramMessage(trimmed.slice(0, 4096));
+}
+
+export type StaffDraftPreviewResult = {
+  sent: boolean;
+  messageCharCount?: number;
+  previewGuestName?: string;
+  todayBookingCount?: number;
+  error?: string;
+};
+
+/** Admin preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
+export async function sendStaffDraftPreview(template: string): Promise<StaffDraftPreviewResult> {
+  const trimmed = template.trim();
+  if (!trimmed) return { sent: false, error: 'empty_message' };
+
+  const todayYmd = manilaTodayYmd();
+  const todayBookings = await queryTodayBookings(todayYmd);
+  if (todayBookings.length === 0) {
+    return {
+      sent: false,
+      error:
+        'No bookings checking in today. Preview needs at least one today check-in (same data source as the daily cron).',
+    };
+  }
+
+  const nextBookings = await queryNextDaysBookings(todayYmd, 3);
+  const nextBookingsText = buildNextBookingsText(nextBookings);
+  const booking = todayBookings[0]!;
+  const vars = buildBookingPlaceholders(booking);
+  vars.next_bookings = nextBookingsText;
+
+  const filled = applyPlaceholders(trimmed, vars);
+  const unresolved = filled.match(/\{\{[^}]+\}\}/g);
+  if (unresolved?.length) {
+    console.warn('[telegram-staff] draft preview unresolved:', unresolved.join(', '));
+  }
+
+  const r = await sendStaffAdminPreview(filled);
+  if (!r.ok) {
+    return { sent: false, error: r.error ?? 'send_failed' };
+  }
+
+  return {
+    sent: true,
+    messageCharCount: filled.length,
+    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
+    todayBookingCount: todayBookings.length,
+  };
 }
 
 async function loadStaffSettings(): Promise<TelegramStaffSettings | null> {
@@ -460,11 +549,15 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       '{{pax}} — number of guests',
       '{{primary_guest_name}} — primary guest full name',
       '{{guest_phone}} — guest phone number',
-      '{{decor_status}} — "Yes" or "No"',
-      '{{pet_status}} — "Yes" or "No"',
+      '{{decor_status}} — "🎉 Yes" or "No" (surprise decor)',
+      '{{pet_status}} — "🐶 Yes" or "No"',
+      '{{has_decor}} — "Yes" or "No" (plain, for "Has Decor:" labels)',
+      '{{has_pets}} — "Yes" or "No" (plain, for "Has Pets:" labels)',
+      '{{decor_flag}} — "🎉 Has decor" when requested, else empty',
+      '{{pet_flag}} — "🐶 Has pets" when applicable, else empty',
       '{{special_requests}} — guest special requests or "None"',
       '{{total_guest_balance}} — total amount due from guest (₱ formatted)',
-      '{{next_bookings}} — next 3 days booking summary',
+      '{{next_bookings}} — next 3 days; only 🎉 decor + 🐶 pets flags (no parking)',
       '{{booking_link}} — link to booking details in admin dashboard',
     ],
   };
@@ -492,7 +585,7 @@ export async function ensureStaffSettingsRow(): Promise<void> {
     '📋 Today\'s Booking\n\n' +
     'Booking Details\n{{check_in_date}} - {{check_out_date}}\n{{check_in_time}} - {{check_out_time}}\n{{nights}} night/s, {{pax}} pax\n\n' +
     'Guest Details\n{{primary_guest_name}}, {{guest_phone}}\n\n' +
-    'Additional Details\n{{decor_status}}, {{pet_status}}\nSpecial Requests: {{special_requests}}\nTotal guest balance: {{total_guest_balance}}\n\n' +
+    'Additional Details\nHas decor: {{decor_status}}\nHas pets: {{pet_status}}\nSpecial Requests: {{special_requests}}\nTotal guest balance: {{total_guest_balance}}\n\n' +
     'Next Bookings\n{{next_bookings}}\n\n{{booking_link}}';
 
   const { error: insertError } = await supabase.from('telegram_staff_settings').insert({

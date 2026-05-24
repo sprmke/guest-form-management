@@ -68,6 +68,7 @@ export function useTelegramMarketingSettings() {
 export type TelegramMarketingTestAction =
   | 'verify_telegram_env'
   | 'send_test_daily_reminder'
+  | 'send_test_daily_urgency'
   | 'send_test_new_booking'
   | 'send_test_cancellation'
   | 'send_draft_preview';

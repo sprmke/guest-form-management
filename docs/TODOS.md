@@ -174,3 +174,8 @@ IMPROVED PAY PARKING FLOW — ✅ shipped
 - # ✅ Submit runs **`sendParkingBroadcast`** (same as workflow parking broadcast)
 
 PAY PARKING -> PARKING OWNERS -> OUR GUESTS
+
+- Improve public guest form
+- Convert .env.local to settings
+- Add ability to multi-select when doing broadcast email on update and add? parking
+-

@@ -10,7 +10,7 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   ensureStaffSettingsRow,
   runStaffDailySummary,
-  sendStaffAdminPreview,
+  sendStaffDraftPreview,
   serializeStaffSettings,
   verifyStaffTelegramEnv,
   type TelegramStaffSettings,
@@ -115,16 +115,18 @@ serve(async (req) => {
             headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
           });
         }
-        const r = await sendStaffAdminPreview(text.slice(0, 4096));
+        const preview = await sendStaffDraftPreview(text.slice(0, 8000));
         return new Response(
           JSON.stringify({
-            success: r.ok,
-            sent: r.ok,
-            error: r.error,
-            messageCharCount: text.length,
+            success: preview.sent,
+            sent: preview.sent,
+            error: preview.error,
+            messageCharCount: preview.messageCharCount,
+            previewGuestName: preview.previewGuestName,
+            todayBookingCount: preview.todayBookingCount,
           }),
           {
-            status: r.ok ? 200 : 400,
+            status: preview.sent ? 200 : 400,
             headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
           },
         );

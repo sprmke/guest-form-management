@@ -80,7 +80,7 @@ export function countStayNights(checkInDate: string, checkOutDate: string): numb
 /** Formats a time string to 24-hour HH:mm (parses 12-hour AM/PM before bare H:mm). */
 export const formatTime = (timeStr: string | null | undefined): string => {
   if (!timeStr) return '';
-  const s = timeStr.trim();
+  let s = timeStr.trim();
   if (!s) return '';
 
   const ampm = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp][Mm])$/);
@@ -92,6 +92,9 @@ export const formatTime = (timeStr: string | null | undefined): string => {
     else if (meridiem === 'PM' && h !== 12) h += 12;
     return `${String(h).padStart(2, '0')}:${m}`;
   }
+
+  // Postgres TIME may include fractional seconds or a trailing offset.
+  s = s.replace(/\.\d+(?=[\s+-]|Z|$)/i, '').replace(/[+-]\d{2}(?::?\d{2})?\s*$|Z\s*$/i, '').trim();
 
   for (const format of ['HH:mm:ss', 'HH:mm', 'H:mm'] as const) {
     const parsed = dayjs(s, format, true);
@@ -107,7 +110,8 @@ export const formatTimeForDisplay = (
 ): string => {
   const hm24 = formatTime(timeStr);
   if (!hm24) return fallback;
-  const parsed = dayjs(`2000-01-01 ${hm24}`, 'HH:mm', true);
+  // Match UI `formatTimeToAMPM`: anchor on a fixed date; do not parse with `HH:mm` only.
+  const parsed = dayjs(`2000-01-01T${hm24}`);
   return parsed.isValid() ? parsed.format('h:mm A') : fallback;
 };
 

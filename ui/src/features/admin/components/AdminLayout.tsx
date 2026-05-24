@@ -4,7 +4,6 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,
   ChevronLeft,
-  ChevronRight,
   HardHat,
   LayoutDashboard,
   LogOut,
@@ -53,7 +52,7 @@ type Props = {
  * Design mirrors property-management-app: white sidebar, teal-green primary,
  * Plus Jakarta Sans, rounded-xl nav pills, h-16 topbar with frosted glass.
  */
-export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
+export function AdminLayout({ title, actions, children }: Props) {
   const location = useLocation();
   const { email, name, signOut } = useAdminSession();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -295,9 +294,8 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
           className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b px-4 md:px-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
           style={{ borderColor: 'hsl(220 13% 91%)' }}
         >
-          {/* Left: hamburger (mobile) + breadcrumb (desktop) + title */}
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Mobile hamburger */}
+          <h1 className="sr-only">{title}</h1>
+          <div className="flex items-center gap-3 min-w-0 lg:hidden">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
@@ -306,41 +304,9 @@ export function AdminLayout({ title, breadcrumb, actions, children }: Props) {
             >
               <Menu className="h-5 w-5" />
             </button>
-
-            {/* Desktop breadcrumb */}
-            <nav
-              className="hidden lg:flex items-center gap-1.5 text-[13px] min-w-0"
-              aria-label="Breadcrumb"
-            >
-              <span className="font-medium text-sidebar-muted">Admin</span>
-              <ChevronRight
-                className="h-3.5 w-3.5 text-sidebar-muted shrink-0"
-                aria-hidden
-              />
-              {breadcrumb && (
-                <>
-                  <span className="font-medium text-sidebar-muted">
-                    {breadcrumb}
-                  </span>
-                  <ChevronRight
-                    className="h-3.5 w-3.5 text-sidebar-muted shrink-0"
-                    aria-hidden
-                  />
-                </>
-              )}
-              <h1 className="text-[13px] font-semibold text-sidebar-foreground truncate">
-                {title}
-              </h1>
-            </nav>
-
-            {/* Mobile title */}
-            <h1 className="lg:hidden text-[14px] font-bold text-sidebar-foreground truncate">
-              {title}
-            </h1>
           </div>
 
-          {/* Right: injected page actions + mobile sign-out */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             {actions}
             <button
               type="button"

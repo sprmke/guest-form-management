@@ -468,6 +468,61 @@ export async function runTelegramDailyReminder(opts?: {
   };
 }
 
+/** Admin test: send only the daily urgency template (ignores threshold and enabled toggle). */
+export async function runTelegramDailyUrgencyTest(opts?: {
+  force?: boolean;
+}): Promise<TelegramDailyReminderResult> {
+  const settings = await loadSettings();
+  if (!settings) {
+    return { sent: false, mode: 'skipped', detail: 'no_settings_row' };
+  }
+  if (!opts?.force && !settings.enabled) {
+    return { sent: false, mode: 'disabled' };
+  }
+  const creds = resolveTelegramCredentials();
+  if (!creds.ok) {
+    return {
+      sent: false,
+      mode: 'no_env',
+      detail: creds.code === 'invalid_chat_id' ? creds.error : undefined,
+    };
+  }
+
+  const telegramErrors: string[] = [];
+  let urgencySent = false;
+
+  try {
+    const text = await prepareTelegramTemplateMessage(
+      settings.daily_urgency_template,
+      settings,
+    );
+    const r = await sendTelegramMessage(text);
+    urgencySent = r.ok;
+    if (!r.ok && r.error) telegramErrors.push(r.error);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    telegramErrors.push(msg);
+  }
+
+  const todayYmd = manilaTodayYmd();
+  const blocked = await buildBlockedSet();
+  const earliest = earliestAvailableCheckInYmd(blocked, todayYmd);
+  const threshold = settings.urgency_days_threshold;
+  const daysOut = earliest ? calendarDaysBetween(todayYmd, earliest) : undefined;
+
+  return {
+    sent: urgencySent,
+    mode: urgencySent ? 'urgency' : 'skipped',
+    defaultSent: false,
+    urgencySent,
+    daysOut,
+    urgencyThreshold: threshold,
+    earliestCheckInYmd: earliest,
+    detail: telegramErrors[0] ?? (!urgencySent ? 'send_failed' : undefined),
+    telegramErrors: telegramErrors.length ? telegramErrors : undefined,
+  };
+}
+
 export type TelegramNotifySkip =
   | 'disabled'
   | 'notify_off'

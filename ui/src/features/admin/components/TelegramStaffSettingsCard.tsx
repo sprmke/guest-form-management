@@ -189,11 +189,19 @@ export function TelegramStaffSettingsCard() {
       {
         onSuccess: (j) => {
           if (j.sent) {
+            const guest = j.previewGuestName as string | undefined;
+            const count = j.todayBookingCount as number | undefined;
+            const suffix =
+              guest && count && count > 1
+                ? ` for ${guest} (first of ${count} today)`
+                : guest
+                  ? ` for ${guest}`
+                  : '';
             toast.success(
-              `Draft sent to staff group (${j.messageCharCount ?? '?'} characters)`,
+              `Preview sent with live booking data${suffix} (${j.messageCharCount ?? '?'} characters)`,
             );
           } else {
-            toast.error(j.error ?? 'Failed to send draft');
+            toast.error(j.error ?? 'Failed to send preview');
           }
         },
         onError: (e) => toast.error((e as Error).message),
@@ -251,6 +259,7 @@ export function TelegramStaffSettingsCard() {
           <CollapsibleSection
             id="staff-tests"
             title="Test actions"
+            defaultOpen
             triggerTitle="Test the staff Telegram bot and send a test daily summary."
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -420,11 +429,7 @@ export function TelegramStaffSettingsCard() {
           </CollapsibleSection>
 
           {/* Message template */}
-          <CollapsibleSection
-            id="staff-template"
-            title="Message template"
-            defaultOpen
-          >
+          <CollapsibleSection id="staff-template" title="Message template">
             <div className="space-y-3 sm:space-y-4">
               <div className="grid grid-cols-1 gap-2 rounded-md border border-border/80 bg-background/80 p-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3 sm:gap-y-2 sm:p-3 sm:items-start">
                 <Label
@@ -453,7 +458,7 @@ export function TelegramStaffSettingsCard() {
                   size="sm"
                   disabled={busy}
                   className="min-h-[44px] w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:h-9 sm:w-auto sm:min-h-9 sm:shrink-0 sm:justify-self-end sm:self-center"
-                  title="Sends the raw template text to the staff Telegram group (placeholders shown as-is)."
+                  title="Sends to Telegram with live data from today's check-in(s) and next 3 days — same placeholders as the daily cron."
                   onClick={onSendDraftPreview}
                 >
                   Send preview

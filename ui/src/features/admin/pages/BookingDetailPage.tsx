@@ -1390,6 +1390,10 @@ function DocPreview({
   );
 }
 
+/** Preview body height — PDF iframes need an explicit min-height; images fill naturally. */
+const ASSET_PREVIEW_BODY_MIN_H =
+  "min-h-[min(78dvh,calc(100dvh-8.5rem))]";
+
 function AssetPreviewModal({
   asset,
   loading,
@@ -1440,16 +1444,26 @@ function AssetPreviewModal({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 bg-slate-100 p-1.5 sm:p-3">
+        <div
+          className={cn(
+            "flex-1 bg-slate-100 p-1.5 sm:p-3",
+            ASSET_PREVIEW_BODY_MIN_H,
+          )}
+        >
           {loading && (
-            <div className="flex h-full items-center justify-center gap-2 text-slate-600">
+            <div className="flex h-full min-h-[inherit] items-center justify-center gap-2 text-slate-600">
               <Loader2 className="size-5 animate-spin" />
               <span className="text-sm">Loading preview...</span>
             </div>
           )}
 
           {!loading && asset?.type === "image" && (
-            <div className="flex h-full items-center justify-center overflow-auto rounded-lg bg-white">
+            <div
+              className={cn(
+                "flex h-full items-center justify-center overflow-auto rounded-lg bg-white",
+                ASSET_PREVIEW_BODY_MIN_H,
+              )}
+            >
               <img
                 src={asset.url}
                 alt={asset.label}
@@ -1462,7 +1476,10 @@ function AssetPreviewModal({
             <iframe
               title={asset.label}
               src={asset.url}
-              className="h-full w-full rounded-lg bg-white"
+              className={cn(
+                "h-full w-full rounded-lg bg-white",
+                ASSET_PREVIEW_BODY_MIN_H,
+              )}
             />
           )}
         </div>

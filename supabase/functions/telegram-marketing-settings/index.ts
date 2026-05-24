@@ -13,6 +13,7 @@ import {
   notifyTelegramNewBookingRequest,
   prepareTelegramTemplateMessage,
   runTelegramDailyReminder,
+  runTelegramDailyUrgencyTest,
   sendTelegramAdminPreview,
   serializeTelegramSettings,
   TelegramTemplateError,
@@ -125,6 +126,13 @@ serve(async (req) => {
         });
       }
 
+      if (action === 'send_test_daily_urgency') {
+        const result = await runTelegramDailyUrgencyTest({ force: true });
+        return new Response(JSON.stringify({ success: true, result }), {
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
+
       if (action === 'send_test_new_booking') {
         const result = await notifyTelegramNewBookingRequest({ force: true });
         return new Response(JSON.stringify({ success: true, result }), {
@@ -219,7 +227,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `Unknown action: ${action || '(missing)'}. Use verify_telegram_env | send_test_daily_reminder | send_test_new_booking | send_test_cancellation | send_draft_preview`,
+          error: `Unknown action: ${action || '(missing)'}. Use verify_telegram_env | send_test_daily_reminder | send_test_daily_urgency | send_test_new_booking | send_test_cancellation | send_draft_preview`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );

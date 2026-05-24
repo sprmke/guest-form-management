@@ -350,6 +350,7 @@ export function TelegramMarketingSettingsCard() {
           <CollapsibleSection
             id="tg-tests"
             title="Test actions"
+            defaultOpen
             triggerTitle="Uses saved templates from Postgres. Ignores Enable / notify toggles."
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
@@ -444,6 +445,39 @@ export function TelegramMarketingSettingsCard() {
                 }
               >
                 Daily reminder
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                className="min-h-[44px] w-full sm:w-auto"
+                onClick={() =>
+                  testSend.mutate(
+                    { action: 'send_test_daily_urgency' },
+                    {
+                      onSuccess: (j) => {
+                        const r = j.result as DailyTestResult | undefined;
+                        if (r?.sent) {
+                          const parts = ['Daily urgency sent'];
+                          if (r.daysOut != null) {
+                            parts.push(
+                              `next free check-in in ${r.daysOut}d (threshold ${r.urgencyThreshold ?? '?'})`,
+                            );
+                          }
+                          toast.success(parts.join(' · '));
+                        } else {
+                          toast.error(
+                            r?.detail ??
+                              `Daily urgency not sent (${r?.mode ?? 'unknown'}). Check Edge logs and TELEGRAM_* secrets.`,
+                          );
+                        }
+                      },
+                      onError: (e) => toast.error((e as Error).message),
+                    },
+                  )
+                }
+              >
+                Daily urgency
               </Button>
               <Button
                 type="button"
@@ -816,11 +850,7 @@ export function TelegramMarketingSettingsCard() {
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection
-            id="tg-templates"
-            title="Message templates"
-            defaultOpen
-          >
+          <CollapsibleSection id="tg-templates" title="Message templates">
             <div className="space-y-3 sm:space-y-4">
               <TemplateField
                 id="tpl-daily-default"
