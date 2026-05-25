@@ -118,7 +118,7 @@ Condensed checklist (duplicate detail in **`MIGRATION_RUNBOOK.md` §11.5**):
 | Admin gate           | **`ADMIN_ALLOWED_EMAILS`** · **`PARKING_OWNER_EMAILS`**                                                                                                                                                  |
 | Resend               | **`RESEND_API_KEY`**, **`EMAIL_TO`**, **`EMAIL_REPLY_TO`** ( **`EMAIL_REPLY_TO`** = **New Booking Request** target from **`submit-form`**)                                                               |
 | Calendar / Sheets SA | **`GOOGLE_SERVICE_ACCOUNT`**, **`GOOGLE_CALENDAR_ID`**, **`GOOGLE_SPREADSHEET_ID`**                                                                                                                      |
-| Gmail                | **`PERMIT_APPROVER_EMAIL`** + **either** (**`GMAIL_API_WEB_CLIENT_JSON`** + **`GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`** + **`GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`**) **or** legacy **`GMAIL_OAUTH_*`** secrets |
+| Gmail                | **`EMAIL_TO`** (Documents Approver; Gmail approval **From** allow-list) + **either** (**`GMAIL_API_WEB_CLIENT_JSON`** + **`GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`** + **`GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`**) **or** legacy **`GMAIL_OAUTH_*`** secrets |
 | SD cron knobs        | **`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (omit → defaults apply)                                                                                              |
 
 **Omit** **`ENVIRONMENT=development`** style env in prod so Edge softening stays off.

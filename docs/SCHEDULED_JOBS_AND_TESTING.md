@@ -164,7 +164,7 @@ Both jobs use the **service role** client inside the handler for DB + Storage (s
 | `GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS` | _(Web OAuth path)_ Comma-separated SPA origins for `google-mail-oauth-start` (defaults include local Vite).                                                                            |
 | `GMAIL_OAUTH_CLIENT_JSON`            | _(Legacy)_ OAuth client JSON (`installed` or `web`). Produced by `npm run gmail-auth` → typically written into `supabase/.env.local`.                                                  |
 | `GMAIL_OAUTH_TOKEN_JSON`             | _(Legacy)_ Token JSON including **`refresh_token`**. Same script flow. Used when no DB-stored refresh exists for `GMAIL_API_WEB_CLIENT_JSON`.                                          |
-| `PERMIT_APPROVER_EMAIL`              | Comma-separated sender allow-list for permit approvers. `gmail-listener` skips approvals when message `From` is not in this list.                                                      |
+| `EMAIL_TO`                           | Documents Approver address. `gmail-listener` skips approvals when message `From` does not match (when set).                                                                               |
 
 If tokens are missing or `refresh_token` is revoked, the listener returns JSON with `needsReAuth: true` (and logs); see §7.3. Prefer **Reconnect Gmail** on **`/settings`** when using the web OAuth path.
 
@@ -274,7 +274,7 @@ This path is **longer** because it touches **Gmail OAuth**, **Gmail history IDs*
 ### 8.1 Preconditions
 
 - `GMAIL_OAUTH_CLIENT_JSON` and `GMAIL_OAUTH_TOKEN_JSON` set in **`supabase/.env.local`** (from `npm run gmail-auth` per `admin-auth.mdc`).
-- `PERMIT_APPROVER_EMAIL` set to the permit approver sender address (or comma-separated addresses) expected in the Gmail `From` header.
+- **`EMAIL_TO`** set to the address that appears in the Gmail **`From`** header on Azure approval replies (same as Documents Approver in Settings).
 - Migrations applied so tables exist: **`gmail_listener_state`**, **`processed_emails`** (see project migrations).
 - Storage bucket **`approved-gafs`** / **`approved-pet-forms`** available (declared in `config.toml` + migrations).
 - A booking row in **`PENDING_GAF`** (for GAF approval) or **`PENDING_PET_REQUEST`** (for pet approval) with **`check_in_date` / `check_out_date`** matching the **subject line** you will use in the test email.
@@ -295,7 +295,7 @@ Attachment filename matching is case-insensitive and tolerant to spaces/undersco
 - GAF approvals accept `APPROVED GAF.pdf` variants (e.g. `APPROVED_GAF.pdf`, `approved-gaf.pdf`).
 - Pet approvals accept `APPROVED PET.pdf` / `APPROVED PET FORM.pdf` variants, and also allow `APPROVED GAF.pdf` for backward compatibility with existing approver behavior.
 
-Sender `From` must match one of the addresses in **`PERMIT_APPROVER_EMAIL`** (when configured). If not, listener records `sender_not_allowed:<email>` and skips.
+Sender **`From`** must match **`EMAIL_TO`** (when configured). If not, listener records `sender_not_allowed:<email>` and skips.
 
 If multiple bookings match the same dates + expected status, the listener **skips** and records **`ambiguous_multiple_bookings`** (per Q6.5).
 

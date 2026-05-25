@@ -52,7 +52,6 @@ Todos
 - ✅ Handle and send different email when we updated the form details. The email content would be something like this: "The GAF details has been updated. Please disregard the previous GAF Request email for the same dates for our unit". Please improve our text message
 - ✅ On the success page, let's add a info box that has the "Next steps" text. We should say that "We now send your Guest Advise Form (GAF) to Azure and we just need to wait for the approved form. Please check your email about this after a day or two. If there's still no reply on approved GAF, please reach out to our Facebook page so that we can manually follow up and call Azure for it. Thank you chuchuchu.."
 - ✅ In dev env ONLY, instead of relying on query parameter on what action should be done on API, can we display a card with multiple checkboxes if we will save the data on the db, save image assets on supabase storage, generate pdf, send email, update calendar or update google sheet. By the default, all of these are uncheck on DEV env
-- Optimize and reduce size of image before uploading to supabase storage
 - ✅ In prod, let's add 'testing=true' query parameter to determine that this is a TEST booking submission
 - ✅ When booking is more than 1 night, we should update the title of the email title to <CheckIn Date> - <CheckOut Date>
 - ✅ On checkout date calendar, we don't have the highlight for multiple nights
@@ -82,24 +81,16 @@ Todos
 - ✅ Use kamehome.spaces on calendar summary link
 - ✅ Add "Cancel Booking" action on dev tools. When user clicks this, we should remove all information from database, assets from supabase storage, google calendars & sheets. Basically, cleanup all booking data that's related to it.
 - ✅ We have this weird issue where if I select Jan 20 as check-in date, the Jan14, 15 and 17 which are already booked enabled which is very incorrect!
-- Remove dev=true query parameter on google calendar event to prevent any issues
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
 - ✅ Create separate email for pet information
-- Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in `docs/NEW_FLOW_PLAN.md` §6.2 **Q7.4** (placement/copy partial lock in §6.1).
-- Create separate email for parking information
+- ✅ Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in `docs/NEW_FLOW_PLAN.md` §6.2 **Q7.4** (placement/copy partial lock in §6.1).
+- ✅ Create separate email for parking information
   - add a admin fields & button to trigger email sending of parking information
   - we should have dropdown of email so we can easily send the parking information to parking owner & azure
 - ✅ Lets update the / root route to render the calendar page and create a new route called "/form" to render the guest form page. So that when user visit our sites, they are required to select dates first
-- Display carousel on the top background that auto slides to show different unit pictures/amenities
-- Use AI to analyze and validate guest uploaded assets
-  - Analyze if receipt is valid receipt, id is id, etc
-- Persist dev query parameters on booking summary and booking detail pages on route change (optional polish)
-- Combine GAF request and pet request in one email when sending to Azure
 - ✅ Cleanup test-booking pipeline (`?testing=true`, `is_test_booking`, admin test filters, `[TEST]` prefixes, `cleanup-test-data`) — use local/staging Supabase instead
 - ✅ Improve the overall UI of our email templates which the same and consistent theme, font, shadows, spacing and colors. Make a research on popular and modern/stunning email templates to use as reference. Make it a very elegant, stunning, modern and eye-catching email templates that supports different browser/email platforms. Make sure we don't break anything and dynamic values should still populate. Just improve the overall email templates UI.
 - ✅ Guest SD refund route **`/sd-form`** (UI stepper: Facebook review step → refund method: GCash same as on-file phone (number shown on the option card), other bank dropdown + name + account number, cash pickup with static policy copy only). Honesty-store purchase step skipped by design. **`READY_FOR_CHECKOUT`** status, cron → details, guest **`submit-sd-form`** → **`PENDING_SD_REFUND`** via orchestrator (no DB triggers).
-- Improve email template house rules
-- Review edit booking info form
 - ✅ Improve and finalize update guest form flow
   - Only revert booking status to `PENDING_REVIEW` when updates come from:
     - Guest update from the public `/form` flow
@@ -119,18 +110,9 @@ Todos
     - Pet vaccination and pet photo
   - If updates do not include the listed fields, do **not** reset status to `PENDING_REVIEW`
   - Revert applies only while status is **pending documents** (`PENDING_DOCUMENTS` / `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST`) or **`READY_FOR_CHECKIN`** — not when already `PENDING_REVIEW`, in SD refund stages, `COMPLETED`, or `CANCELLED`
-- Update google calendar summary info with new guest form and processes
-- Review and improve form UI validation on workflow status forms
-- Review bucket policy to check public buckets and convert them to private?
-- On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
-- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
-- Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
 - ✅ Remove PDF generation process when guest submits the guest form: 2026-04-29T20:21:44.178173637Z [Info] Generate PDF: ✅
 - ✅ Improve the mobile responsiveness and look of email templates on mobile
-- ? Only display Sensitive edit warning on edit booking detail page
 - ✅ Support 'Mark as incomplete' to sub booking status?
-- Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
-- We should add label for additional fee and update the ready for check-in email what's the additional fee is about
 - ✅ Update SD refund form UI (stepper, no feedback field, Facebook-first then Continue, optional `guestFeedback` on API)
 - ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
 - ✅ Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
@@ -139,24 +121,11 @@ Todos
   - ✅ Public guest form: `?source=airbnb` switches all "Facebook" labels/text to "Airbnb". Source saved to DB (`booking_source` column), Google Calendar description, and Google Sheets (new AL/BA column).
   - ✅ Booking Detail page: `booking_source` shown in Other Information card with color-coded badge (blue=Facebook, orange=Airbnb). Airbnb bookings default Down Payment = 0, Security Deposit = 0 in the Review Pricing form.
 - ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
-- Update Review process to deduct P50-P100 pesos on SD?
-- Add settings page on dashboard to customized form values: Discount vouchers, etc
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
 - Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
 - ✅ Automatic run cron job functions (specify here) after page refresh
-- Update Check-in Details email to add check-in instructions
-- Add Gcash number and name to Check-in email
-- Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
-- Cleanup isDevMode. This is unnecessary since we have admin dashboard now
-- Update booking confirmed UI and display the complete booking details
-- Improve Other information section UI / cols
 - ✅ If booking date is already past on the date today and the booking status is still either PENDING_REVIEW, PENDING_DOCS and READY_FOR_CHECKIN, display a modal warning that says that the booking date is already passed every time we click the "Proceed to.." button. If they confirm, proceed to next step, if cancel, do not proceed.
-- Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
-- Update additional guests and ask if adult or child (below 5 years old) per field
-- Support slack and telegram notifications for important booking events
-  - New booking requests
-  - ?
 - ✅ Automate booking flow for cleaners/staff as well
   - ✅ Telegram notification to staff/cleaner group — daily booking summary at configurable time (default 8:00 AM Manila) via `telegram-staff-cron` + `pg_cron`
   - ✅ Each booking contains check-in/out dates+times, pax, primary guest name+phone, decor/pet status, special requests, total guest balance, booking link
@@ -164,11 +133,7 @@ Todos
   - ✅ Configurable template with `{{placeholder}}` tokens on `/staff` admin page (`TelegramStaffSettingsCard`)
   - ✅ Enable/disable toggle + time picker + test sends
   - Notification for guest check-out
-  - Convert all env variable to settings page for other users to use our app
-
-====
-IMPROVED PAY PARKING FLOW — ✅ shipped
-
+    ✅ IMPROVED PAY PARKING FLOW
 - ✅ Public **`/bookings/:bookingId/parking`** (`PayParkingPage`) — booking summary + vehicle fields; **`get-pay-parking`** / **`submit-pay-parking`**
 - ✅ **`/bookings/:bookingId`** header **Add pay parking** / **View pay parking** + **`PayParkingModal`** (rate, copy URL, enter details)
 - # ✅ Submit runs **`sendParkingBroadcast`** (same as workflow parking broadcast)
@@ -176,6 +141,38 @@ IMPROVED PAY PARKING FLOW — ✅ shipped
 PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 
 - Improve public guest form
-- Convert .env.local to settings
+- ✅ **`app_settings` + Admin → Settings** — email routing, automation knobs, guest URLs, default parking rate (DB + env fallback; secrets stay in Supabase/Vercel env)
 - Add ability to multi-select when doing broadcast email on update and add? parking
--
+- Notification for guest check-out
+
+- Display carousel on the top background that auto slides to show different unit pictures/amenities
+- Use AI to analyze and validate guest uploaded assets
+  - Analyze if receipt is valid receipt, id is id, etc
+- Persist dev query parameters on booking summary and booking detail pages on route change (optional polish)
+- Combine GAF request and pet request in one email when sending to Azure
+- Optimize and reduce size of image before uploading to supabase storage
+- Improve email template house rules
+- Review edit booking info form
+
+- Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
+- - Update google calendar summary info with new guest form and processes
+- Review and improve form UI validation on workflow status forms
+- Review bucket policy to check public buckets and convert them to private?
+- On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
+- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
+- Remove dev=true query parameter on google calendar event to prevent any issues
+- ? Only display Sensitive edit warning on edit booking detail page
+- We should add label for additional fee and update the ready for check-in email what's the additional fee is about
+- Update Review process to deduct P50-P100 pesos on SD?
+- Add settings page on dashboard to customized form values: Discount vouchers, etc
+- Update Check-in Details email to add check-in instructions
+- Add Gcash number and name to Check-in email
+- Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
+- Cleanup isDevMode. This is unnecessary since we have admin dashboard now
+- Update booking confirmed UI and display the complete booking details
+- Improve Other information section UI / cols
+- Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
+- Update additional guests and ask if adult or child (below 5 years old) per field
+- Support slack and telegram notifications for important booking events
+  - New booking requests
