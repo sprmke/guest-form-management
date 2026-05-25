@@ -153,7 +153,7 @@ function TemplateField({
         size="sm"
         disabled={disabled}
         className="min-h-[44px] w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:h-9 sm:w-auto sm:min-h-9 sm:shrink-0 sm:justify-self-end sm:self-center"
-        title="Sends to Telegram using live booking-calendar data for any {{placeholders}} in the text."
+        title="Sends a test message with live calendar data."
         onClick={() => onSendDraft()}
       >
         Send preview
@@ -260,11 +260,11 @@ export function TelegramMarketingSettingsCard() {
       },
       {
         onSuccess: ({ cronSync }) => {
-          toast.success('Telegram marketing settings saved');
+          toast.success('Marketing settings saved');
           if (cronSync && cronSync.ok !== true) {
             toast.error(
               cronSync.error ??
-                'Could not reschedule pg_cron jobs. Check Integrations → Cron and Edge logs (settings still saved).',
+                'Schedule could not be updated. Settings were still saved.',
             );
           }
         },
@@ -340,18 +340,22 @@ export function TelegramMarketingSettingsCard() {
         <div className="space-y-1">
           <h2
             id="telegram-marketing-heading"
-            className="text-base font-bold text-foreground sm:text-[14px]"
+            className="text-sm font-bold text-sidebar-foreground sm:text-[13px]"
           >
-            Telegram Notifications
+            Marketing
           </h2>
+          <p className="text-xs text-muted-foreground leading-snug max-w-prose">
+            Telegram reminders for your marketing group. Save when you&apos;re
+            done editing.
+          </p>
         </div>
 
         <div className="space-y-3">
           <CollapsibleSection
             id="tg-tests"
-            title="Test actions"
+            title="Test Sends"
             defaultOpen
-            triggerTitle="Uses saved templates from Postgres. Ignores Enable / notify toggles."
+            triggerTitle="Test messages. On/off toggles are ignored."
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
@@ -518,16 +522,16 @@ export function TelegramMarketingSettingsCard() {
                   aria-hidden
                 />
                 <p className="text-xs font-semibold text-foreground">
-                  Cancellation dates
+                  Cancellation test dates
                 </p>
               </div>
               <p className="text-xs text-muted-foreground leading-snug">
-                Used for{' '}
+                For{' '}
                 <span className="font-mono text-[11px]">
                   {'{{cancellation_dates}}'}
                 </span>{' '}
-                on Send preview and Send cancellation. Other placeholders use
-                the live booking calendar.
+                on preview and cancellation tests. Other placeholders use live
+                calendar data.
               </p>
               <div className="grid gap-2 sm:grid-cols-2 sm:gap-3">
                 <div className="min-w-0 space-y-1">
@@ -600,12 +604,12 @@ export function TelegramMarketingSettingsCard() {
                   );
                 }}
               >
-                Send cancellation
+                Send Cancellation
               </Button>
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="tg-placeholders" title="Placeholder tokens">
+          <CollapsibleSection id="tg-placeholders" title="Placeholders">
             <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 sm:text-[13px]">
               {draft.placeholdersReference.map((line) => (
                 <li key={line} className="break-words">
@@ -615,12 +619,12 @@ export function TelegramMarketingSettingsCard() {
             </ul>
           </CollapsibleSection>
 
-          <CollapsibleSection id="tg-auto" title="When to notify">
+          <CollapsibleSection id="tg-auto" title="Schedule & Alerts">
             <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-1">
               <CheckboxRow
                 id="tg-enabled"
                 label="Enable Telegram sends"
-                description="Off: cron and booking events skip Telegram."
+                description="Off skips scheduled and booking alerts."
                 checked={draft.enabled}
                 disabled={busy}
                 onChange={(v) =>
@@ -629,8 +633,8 @@ export function TelegramMarketingSettingsCard() {
               />
               <CheckboxRow
                 id="tg-new"
-                label="New booking request"
-                description="First save of a new guest row only."
+                label="New Booking Request"
+                description="When a guest submits a new booking."
                 checked={draft.notifyOnNewBooking}
                 disabled={busy || !draft.enabled}
                 onChange={(v) =>
@@ -640,7 +644,7 @@ export function TelegramMarketingSettingsCard() {
               <CheckboxRow
                 id="tg-cancel"
                 label="Cancellation"
-                description="When an admin cancels from the workflow."
+                description="When a booking is cancelled in admin."
                 checked={draft.notifyOnCancellation}
                 disabled={busy || !draft.enabled}
                 onChange={(v) =>
@@ -657,27 +661,12 @@ export function TelegramMarketingSettingsCard() {
                 />
                 <div className="min-w-0 space-y-1">
                   <p className="text-sm font-medium text-foreground">
-                    Daily reminder schedule
+                    Daily reminder times
                   </p>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    When the cron job posts to Telegram. All times are{' '}
-                    <span className="font-medium text-foreground/90">
-                      Philippines (Manila)
-                    </span>
-                    . Each run always sends the{' '}
-                    <span className="font-medium text-foreground/90">
-                      Daily default
-                    </span>{' '}
-                    template; if the next free check-in is within the urgency
-                    threshold, it also sends{' '}
-                    <span className="font-medium text-foreground/90">
-                      Daily urgency
-                    </span>
-                    . Saving updates{' '}
-                    <span className="font-medium text-foreground/90">
-                      telegram-marketing-daily-slot-*
-                    </span>{' '}
-                    jobs (up to 8 per day).
+                    When posts go to Telegram (Manila time). Each run sends the
+                    daily default message; urgent stays also send the urgency
+                    template. Saving updates the schedule.
                   </p>
                 </div>
               </div>
@@ -783,13 +772,13 @@ export function TelegramMarketingSettingsCard() {
                 }
               >
                 <Plus className="size-4 shrink-0" aria-hidden />
-                Add another time
+                Add Time
               </Button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 min-w-0">
-                <Label htmlFor="urgency-days">Urgency threshold (days)</Label>
+                <Label htmlFor="urgency-days">Urgency Threshold (days)</Label>
                 <Input
                   id="urgency-days"
                   type="number"
@@ -810,20 +799,12 @@ export function TelegramMarketingSettingsCard() {
                   }
                 />
                 <p className="text-[11px] text-muted-foreground sm:text-xs">
-                  When the next free check-in (Manila) is fewer than this many
-                  days away, the scheduled run sends{' '}
-                  <span className="font-medium text-foreground/90">
-                    Daily urgency
-                  </span>{' '}
-                  in addition to{' '}
-                  <span className="font-medium text-foreground/90">
-                    Daily default
-                  </span>
-                  .
+                  Also send the urgency template when the next free check-in is
+                  within this many days.
                 </p>
               </div>
               <div className="space-y-2 min-w-0">
-                <Label htmlFor="dates-limit">New-booking date cap</Label>
+                <Label htmlFor="dates-limit">New Booking Date Limit</Label>
                 <Input
                   id="dates-limit"
                   type="number"
@@ -844,17 +825,17 @@ export function TelegramMarketingSettingsCard() {
                   }
                 />
                 <p className="text-[11px] text-muted-foreground sm:text-xs">
-                  Max upcoming check-in dates listed for the current month.
+                  Max upcoming dates listed in new booking messages.
                 </p>
               </div>
             </div>
           </CollapsibleSection>
 
-          <CollapsibleSection id="tg-templates" title="Message templates">
+          <CollapsibleSection id="tg-templates" title="Message Templates">
             <div className="space-y-3 sm:space-y-4">
               <TemplateField
                 id="tpl-daily-default"
-                label="Daily default"
+                label="Daily Default"
                 value={draft.dailyDefaultTemplate}
                 disabled={busy}
                 onChange={(v) =>
@@ -866,7 +847,7 @@ export function TelegramMarketingSettingsCard() {
               />
               <TemplateField
                 id="tpl-daily-urgency"
-                label="Daily urgency"
+                label="Daily Urgency"
                 value={draft.dailyUrgencyTemplate}
                 disabled={busy}
                 onChange={(v) =>
@@ -878,7 +859,7 @@ export function TelegramMarketingSettingsCard() {
               />
               <TemplateField
                 id="tpl-new"
-                label="New booking"
+                label="New Booking"
                 value={draft.newBookingTemplate}
                 disabled={busy}
                 onChange={(v) =>

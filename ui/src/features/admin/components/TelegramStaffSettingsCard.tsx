@@ -166,11 +166,11 @@ export function TelegramStaffSettingsCard() {
       },
       {
         onSuccess: ({ cronSync }) => {
-          toast.success('Staff notification settings saved');
+          toast.success('Staff settings saved');
           if (cronSync && cronSync.ok !== true) {
             toast.error(
               cronSync.error ??
-                'Could not reschedule pg_cron job. Check Integrations → Cron and Edge logs (settings still saved).',
+                'Schedule could not be updated. Settings were still saved.',
             );
           }
         },
@@ -245,12 +245,13 @@ export function TelegramStaffSettingsCard() {
         <div className="space-y-1">
           <h2
             id="staff-heading"
-            className="text-base font-bold text-foreground sm:text-[14px]"
+            className="text-sm font-bold text-sidebar-foreground sm:text-[13px]"
           >
-            Staff / Cleaner Notifications
+            Staff
           </h2>
-          <p className="text-xs text-muted-foreground leading-snug">
-            Daily booking summary sent to your staff/cleaner Telegram group.
+          <p className="text-xs text-muted-foreground leading-snug max-w-prose">
+            Daily booking summary for your staff group. Save when you&apos;re
+            done editing.
           </p>
         </div>
 
@@ -258,9 +259,9 @@ export function TelegramStaffSettingsCard() {
           {/* Test actions */}
           <CollapsibleSection
             id="staff-tests"
-            title="Test actions"
+            title="Test Sends"
             defaultOpen
-            triggerTitle="Test the staff Telegram bot and send a test daily summary."
+            triggerTitle="Test the bot and send a sample daily summary."
           >
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               <Button
@@ -342,7 +343,7 @@ export function TelegramStaffSettingsCard() {
           </CollapsibleSection>
 
           {/* Placeholder tokens */}
-          <CollapsibleSection id="staff-placeholders" title="Placeholder tokens">
+          <CollapsibleSection id="staff-placeholders" title="Placeholders">
             <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 sm:text-[13px]">
               {draft.placeholdersReference.map((line) => (
                 <li key={line} className="break-words">
@@ -353,12 +354,12 @@ export function TelegramStaffSettingsCard() {
           </CollapsibleSection>
 
           {/* Settings */}
-          <CollapsibleSection id="staff-config" title="When to notify">
+          <CollapsibleSection id="staff-config" title="Schedule & Alerts">
             <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-1">
               <CheckboxRow
                 id="staff-enabled"
-                label="Enable daily staff summary"
-                description="Off: daily cron skips the staff Telegram group."
+                label="Enable Daily Summary"
+                description="Off skips the scheduled staff message."
                 checked={draft.enabled}
                 disabled={busy}
                 onChange={(v) =>
@@ -378,15 +379,8 @@ export function TelegramStaffSettingsCard() {
                     Daily summary time
                   </p>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    When the cron job sends the booking summary. Time is{' '}
-                    <span className="font-medium text-foreground/90">
-                      Philippines (Manila)
-                    </span>
-                    . Saving updates the{' '}
-                    <span className="font-medium text-foreground/90">
-                      telegram-staff-daily
-                    </span>{' '}
-                    cron job.
+                    When the summary is sent (Manila time). Saving updates the
+                    schedule.
                   </p>
                 </div>
               </div>
@@ -429,14 +423,14 @@ export function TelegramStaffSettingsCard() {
           </CollapsibleSection>
 
           {/* Message template */}
-          <CollapsibleSection id="staff-template" title="Message template">
+          <CollapsibleSection id="staff-template" title="Message Template">
             <div className="space-y-3 sm:space-y-4">
               <div className="grid grid-cols-1 gap-2 rounded-md border border-border/80 bg-background/80 p-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3 sm:gap-y-2 sm:p-3 sm:items-start">
                 <Label
                   htmlFor="staff-template-textarea"
                   className="min-w-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-start-1 sm:row-start-1 sm:self-center sm:text-[11px]"
                 >
-                  Daily summary
+                  Daily Summary
                 </Label>
                 <Textarea
                   id="staff-template-textarea"
@@ -458,7 +452,7 @@ export function TelegramStaffSettingsCard() {
                   size="sm"
                   disabled={busy}
                   className="min-h-[44px] w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:h-9 sm:w-auto sm:min-h-9 sm:shrink-0 sm:justify-self-end sm:self-center"
-                  title="Sends to Telegram with live data from today's check-in(s) and next 3 days — same placeholders as the daily cron."
+                  title="Sends a test message with live booking data."
                   onClick={onSendDraftPreview}
                 >
                   Send preview
