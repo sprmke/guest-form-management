@@ -19,8 +19,7 @@
  *   A) Web OAuth (in-app Connect Gmail): GMAIL_API_WEB_CLIENT_JSON, GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY,
  *      refresh token in `gmail_mail_integration` (written by google-mail-oauth-callback).
  *   B) Legacy: GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON (`npm run gmail-auth`).
- *   PERMIT_APPROVER_EMAIL      — Permit approver sender email(s) allowed for
- *                                GAF/Pet approval replies. Comma-separated.
+ *   EMAIL_REPLY_TO             — When set, Gmail only accepts GAF/pet approval replies from this sender.
  *   SUPABASE_URL               — set automatically by Supabase
  *   SUPABASE_SERVICE_ROLE_KEY  — set automatically by Supabase
  *
@@ -35,6 +34,7 @@ import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
+import { getGmailApprovalSenderAllowList } from '../_shared/appSettings.ts';
 
 // Gmail OAuth: DB-stored web refresh token (GMAIL_API_WEB_CLIENT_JSON) preferred;
 // else legacy GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON env blobs (`npm run gmail-auth`).
@@ -161,15 +161,6 @@ function extractEmailAddress(fromHeader: string): string {
   const bracketMatch = fromHeader.match(/<([^>]+)>/);
   if (bracketMatch?.[1]) return bracketMatch[1].trim().toLowerCase();
   return fromHeader.trim().toLowerCase();
-}
-
-function permitApproverAllowList(): string[] {
-  const raw = (Deno.env.get('PERMIT_APPROVER_EMAIL') ?? '').trim();
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 type AttachmentInfo = {
@@ -412,7 +403,7 @@ async function uploadApprovedPdf(params: {
 
 // ─── Message processing ────────────────────────────────────────────────────────
 
-async function processMessage(messageId: string, accessToken: string): Promise<{
+async function processMessage(messageId: string, accessToken: string, allowedApprovers: string[]): Promise<{
   action: 'applied' | 'skipped' | 'failed';
   reason?: string;
   bookingId?: string;
@@ -446,12 +437,11 @@ async function processMessage(messageId: string, accessToken: string): Promise<{
     return { action: 'skipped', reason: 'subject_no_match', kind: 'gaf' };
   }
 
-  // 2b. Enforce sender allow-list for permit approvers when configured.
-  // If env is empty, listener remains permissive for backwards compatibility.
-  const allowedApprovers = permitApproverAllowList();
+  // 2b. Enforce sender allow-list (Team Email / EMAIL_REPLY_TO) when configured.
+  // If empty, listener remains permissive for backwards compatibility.
   if (allowedApprovers.length > 0 && !allowedApprovers.includes(senderEmail)) {
     console.warn(
-      `[gmail-listener] Sender not in PERMIT_APPROVER_EMAIL allow-list: ` +
+      `[gmail-listener] Sender not in EMAIL_REPLY_TO allow-list: ` +
       `"${senderEmail || fromHeader || 'unknown'}"`,
     );
     return { action: 'skipped', reason: `sender_not_allowed:${senderEmail || 'unknown'}`, kind: parsed.kind };
@@ -717,6 +707,7 @@ serve(async (req) => {
     let skipped = 0;
     let failed = 0;
     const results: Array<{ messageId: string; action: string; reason?: string; bookingId?: string }> = [];
+    const allowedApprovers = await getGmailApprovalSenderAllowList();
 
     for (const messageId of addedMessageIds) {
       // Durable dedupe: check DB first
@@ -732,7 +723,7 @@ serve(async (req) => {
       let kind: ApprovalKind = 'gaf'; // best-effort default for unresolvable messages
 
       try {
-        const result = await processMessage(messageId, accessToken);
+        const result = await processMessage(messageId, accessToken, allowedApprovers);
         action = result.action;
         reason = result.reason;
         bookingId = result.bookingId;

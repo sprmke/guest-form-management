@@ -1,7 +1,6 @@
 import { GuestFormData, GuestSubmission } from "./types.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  DEFAULT_EMAIL_LOGO_URL,
   buildParkingBroadcastCopyText,
   escapeHtml,
   loadEmailTemplate,
@@ -13,14 +12,14 @@ import {
   formatDateForEmail,
   formatTimeForDisplay,
 } from "./utils.ts";
+import { resolveAppSettings } from "./appSettings.ts";
 
 async function emailHeaderLogoHtml(): Promise<string> {
-  const raw =
-    (Deno.env.get("EMAIL_LOGO_URL") ?? "").trim() || DEFAULT_EMAIL_LOGO_URL;
+  const settings = await resolveAppSettings();
   const frag = await loadEmailTemplate("fragments/email-header-logo");
   return replacePlaceholders(
     frag,
-    withEmailShellStyleVars({ logoUrl: escapeHtml(raw) }),
+    withEmailShellStyleVars({ logoUrl: escapeHtml(settings.emailLogoUrl) }),
   );
 }
 
@@ -215,8 +214,9 @@ export async function sendEmail(
   console.log(`Sending ${isUpdate ? "update" : "confirmation"} email...`);
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const EMAIL_TO = Deno.env.get("EMAIL_TO");
-  const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO");
+  const settings = await resolveAppSettings();
+  const EMAIL_TO = settings.emailTo;
+  const EMAIL_REPLY_TO = settings.emailReplyTo;
 
   if (!RESEND_API_KEY) {
     console.error(" Missing RESEND_API_KEY environment variable");
@@ -320,8 +320,9 @@ export async function sendPetEmail(
   console.log("Pet Vaccination URL:", petVaccinationUrl);
 
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const EMAIL_TO = Deno.env.get("EMAIL_TO");
-  const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO");
+  const settings = await resolveAppSettings();
+  const EMAIL_TO = settings.emailTo;
+  const EMAIL_REPLY_TO = settings.emailReplyTo;
 
   if (!RESEND_API_KEY) {
     console.error("Missing RESEND_API_KEY environment variable");
@@ -462,10 +463,11 @@ export async function sendPetEmail(
 
 // ─── New Phase 3 emails ──────────────────────────────────────────────────────
 
-function getResendCredentials() {
+async function getResendCredentials() {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const EMAIL_TO = Deno.env.get("EMAIL_TO"); // Azure / building admin
-  const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO"); // kamehome.azurenorth
+  const settings = await resolveAppSettings();
+  const EMAIL_TO = settings.emailTo;
+  const EMAIL_REPLY_TO = settings.emailReplyTo;
 
   if (!RESEND_API_KEY) throw new Error("Missing RESEND_API_KEY");
   if (!EMAIL_TO) throw new Error("Missing EMAIL_TO");
@@ -479,9 +481,10 @@ function pesoFormat(amount: number | null | undefined): string {
   return `₱${amount.toLocaleString("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function getResendNewBookingNotifyCredentials() {
+async function getResendNewBookingNotifyCredentials() {
   const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-  const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO");
+  const settings = await resolveAppSettings();
+  const EMAIL_REPLY_TO = settings.emailReplyTo;
   if (!RESEND_API_KEY) throw new Error("Missing RESEND_API_KEY");
   if (!EMAIL_REPLY_TO) throw new Error("Missing EMAIL_REPLY_TO");
   return { RESEND_API_KEY, EMAIL_REPLY_TO };
@@ -525,7 +528,10 @@ function notifySectionTitle(text: string): string {
   return `<p class="section-label" style="margin:24px 0 10px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">${text}</p>`;
 }
 
-function buildNewBookingRequestEmailBodyMain(booking: GuestSubmission): string {
+function buildNewBookingRequestEmailBodyMain(
+  booking: GuestSubmission,
+  appOrigin: string,
+): string {
   const nn = booking.number_of_nights;
   const nights =
     nn != null && Number.isFinite(Number(nn)) && Number(nn) >= 0
@@ -580,7 +586,8 @@ function buildNewBookingRequestEmailBodyMain(booking: GuestSubmission): string {
   ].join("");
 
   const bookingId = booking.id as string;
-  const adminUrl = `${guestAppOrigin()}/bookings/${encodeURIComponent(bookingId)}`;
+  const base = appOrigin.replace(/\/+$/, "");
+  const adminUrl = `${base}/bookings/${encodeURIComponent(bookingId)}`;
   const cta = `<div class="cta-wrap" style="margin:28px 0 8px 0;text-align:center;">
   <a class="cta-btn" style="{{emailShellCtaBtnStyle}}" href="${escapeHtml(adminUrl)}" target="_blank" rel="noopener">View Booking Details</a>
 </div>`;
@@ -608,7 +615,8 @@ export async function sendNewBookingRequestNotify(booking: GuestSubmission) {
   console.log("Sending new booking request notify email to EMAIL_REPLY_TO...");
 
   const { RESEND_API_KEY, EMAIL_REPLY_TO } =
-    getResendNewBookingNotifyCredentials();
+    await getResendNewBookingNotifyCredentials();
+  const settings = await resolveAppSettings();
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
   const unitLabel =
@@ -621,7 +629,10 @@ export async function sendNewBookingRequestNotify(booking: GuestSubmission) {
     console.log("🚨 URGENT same-day check-in — new booking request notify");
   }
 
-  const emailBodyMainRaw = buildNewBookingRequestEmailBodyMain(booking);
+  const emailBodyMainRaw = buildNewBookingRequestEmailBodyMain(
+    booking,
+    settings.publicGuestAppOrigin,
+  );
   const emailBodyMain = replacePlaceholders(
     emailBodyMainRaw,
     withEmailShellStyleVars({}),
@@ -682,7 +693,7 @@ export async function sendNewBookingRequestNotify(booking: GuestSubmission) {
 export async function sendBookingAcknowledgement(booking: GuestSubmission) {
   console.log("Sending booking acknowledgement email to guest...");
 
-  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = await getResendCredentials();
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
@@ -743,7 +754,7 @@ export async function sendBookingAcknowledgement(booking: GuestSubmission) {
 export async function sendReadyForCheckin(booking: GuestSubmission) {
   console.log("Sending ready-for-check-in email to guest...");
 
-  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = await getResendCredentials();
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
@@ -847,11 +858,13 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const houseRulesSection = "";
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
+  const settings = await resolveAppSettings();
   const qrBytes = await loadBundledReadyForCheckinPaymentQr();
+  const paymentQrBase = settings.publicGuestAppOrigin.replace(/\/+$/, "");
   const paymentQrImageUrl =
     qrBytes && qrBytes.length > 0
       ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
-      : escapeHtml(guestAppAssetUrl("/images/kame-home-gcash-qr-payment.jpg"));
+      : escapeHtml(`${paymentQrBase}/images/kame-home-gcash-qr-payment.jpg`);
   const rfiTpl = await loadEmailTemplate("ready-for-checkin");
   const html = replacePlaceholders(
     rfiTpl,
@@ -997,14 +1010,11 @@ export async function sendParkingBroadcast(
 ) {
   console.log("Sending parking broadcast email...");
 
-  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = await getResendCredentials();
+  const settings = await resolveAppSettings();
 
   const singleTo = (options?.to ?? "").trim();
-  const parkingOwnerEmailsRaw = Deno.env.get("PARKING_OWNER_EMAILS") ?? "";
-  const bccEmails = parkingOwnerEmailsRaw
-    .split(",")
-    .map((e) => e.trim())
-    .filter(Boolean);
+  const bccEmails = settings.parkingOwnerEmails;
 
   let toRecipients: string[];
   let bccRecipients: string[] | undefined;
@@ -1109,18 +1119,6 @@ export async function sendParkingBroadcast(
   return await res.json();
 }
 
-function guestAppOrigin(): string {
-  const raw = (Deno.env.get("PUBLIC_GUEST_APP_ORIGIN") ?? "").trim();
-  return raw || "https://kamehomes.space";
-}
-
-/** Absolute URL for a static file under the guest SPA (`ui/public/...`). */
-function guestAppAssetUrl(path: string): string {
-  const base = guestAppOrigin().replace(/\/+$/, "");
-  const p = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${p}`;
-}
-
 /**
  * Check-out & SD Refund Details — email guest a link to `/sd-form` (security deposit refund stepper).
  * Sent from `sd-refund-cron` when the pre-checkout **lead** window opens (independent of balance settlement),
@@ -1129,7 +1127,8 @@ function guestAppAssetUrl(path: string): string {
 export async function sendSdRefundFormRequest(booking: GuestSubmission) {
   console.log("Sending SD refund form request email to guest...");
 
-  const { RESEND_API_KEY, EMAIL_REPLY_TO } = getResendCredentials();
+  const { RESEND_API_KEY, EMAIL_REPLY_TO } = await getResendCredentials();
+  const settings = await resolveAppSettings();
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
   const unitLabel =
@@ -1145,7 +1144,7 @@ export async function sendSdRefundFormRequest(booking: GuestSubmission) {
   if (!bookingId)
     throw new Error("sendSdRefundFormRequest: booking.id is required");
 
-  const sdFormUrl = `${guestAppOrigin()}/sd-form?bookingId=${encodeURIComponent(bookingId)}`;
+  const sdFormUrl = `${settings.publicGuestAppOrigin.replace(/\/+$/, "")}/sd-form?bookingId=${encodeURIComponent(bookingId)}`;
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const tpl = await loadEmailTemplate("sd-refund-form-request");

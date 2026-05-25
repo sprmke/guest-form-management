@@ -768,6 +768,40 @@ export class DatabaseService {
     return data;
   }
 
+  static async getAppSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('app_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getAppSettings:', error);
+      throw new Error(
+        `Failed to load app settings: ${error.message}. ` +
+          `Run migration 20260701120000_app_settings.sql on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateAppSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('app_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateAppSettings:', error);
+      throw new Error('Failed to update app settings');
+    }
+    return data;
+  }
+
   static async syncTelegramMarketingDailyCronJobs(
     slots: { hour: number; minute: number }[],
   ): Promise<{ ok?: boolean; error?: string; scheduled?: number }> {

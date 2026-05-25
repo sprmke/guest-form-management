@@ -21,6 +21,7 @@ import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
+import { getGmailApprovalSenderAllowList } from '../_shared/appSettings.ts';
 
 const GMAIL_BASE = 'https://www.googleapis.com/gmail/v1/users/me';
 const DEFAULT_LOOKBACK_DAYS = 180;
@@ -131,15 +132,6 @@ function extractEmailAddress(fromHeader: string): string {
   const bracketMatch = fromHeader.match(/<([^>]+)>/);
   if (bracketMatch?.[1]) return bracketMatch[1].trim().toLowerCase();
   return fromHeader.trim().toLowerCase();
-}
-
-function permitApproverAllowList(): string[] {
-  const raw = (Deno.env.get('PERMIT_APPROVER_EMAIL') ?? '').trim();
-  if (!raw) return [];
-  return raw
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 type AttachmentInfo = {
@@ -371,7 +363,7 @@ serve(async (req) => {
     let skipped = 0;
     let failed = 0;
     const results: Array<Record<string, unknown>> = [];
-    const allowedApprovers = permitApproverAllowList();
+    const allowedApprovers = await getGmailApprovalSenderAllowList();
 
     for (const task of tasks) {
       const query = buildGmailSearchQuery(task, lookbackDays);

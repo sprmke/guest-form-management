@@ -91,7 +91,7 @@ serve(async (req) => {
     if (result === null) {
       // sendParkingBroadcast returns null when PARKING_OWNER_EMAILS is not set
       return new Response(
-        JSON.stringify({ success: false, error: 'PARKING_OWNER_EMAILS is not configured' }),
+        JSON.stringify({ success: false, error: 'Parking owner emails are not configured (Settings or PARKING_OWNER_EMAILS)' }),
         { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
     }

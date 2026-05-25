@@ -11,6 +11,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
+import { resolveAppSettings } from '../_shared/appSettings.ts';
 
 const NOT_FOUND = {
   success: false,
@@ -59,9 +60,8 @@ serve(async (req) => {
       });
     }
 
-    const facebookReviewsUrl =
-      (Deno.env.get('FACEBOOK_REVIEWS_URL') ?? '').trim() ||
-      'https://www.facebook.com';
+    const settings = await resolveAppSettings();
+    const facebookReviewsUrl = settings.facebookReviewsUrl;
 
     const sd = row.security_deposit != null ? Number(row.security_deposit) : 1500;
 

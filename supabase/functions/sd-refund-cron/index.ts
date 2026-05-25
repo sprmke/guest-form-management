@@ -38,6 +38,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
+import { resolveAppSettings } from '../_shared/appSettings.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { checkGuestBalanceSettlement } from '../_shared/totalGuestBalance.ts';
@@ -172,18 +173,15 @@ serve(async (req) => {
   console.log('[sd-refund-cron] Run started at', runStarted);
 
   try {
-    const leadRaw = Deno.env.get('SD_REFUND_CRON_EMAIL_LEAD_MINUTES');
-    let leadMinutes = leadRaw != null && leadRaw !== '' ? parseInt(leadRaw, 10) : 120;
+    const settings = await resolveAppSettings();
+    let leadMinutes = settings.sdRefundCronEmailLeadMinutes;
     if (Number.isNaN(leadMinutes) || leadMinutes < 0) {
       console.warn(
-        '[sd-refund-cron] Invalid SD_REFUND_CRON_EMAIL_LEAD_MINUTES; falling back to 120',
+        '[sd-refund-cron] Invalid SD refund email lead minutes; falling back to 120',
       );
       leadMinutes = 120;
     }
-    const maxCheckoutAgeDays = parseInt(
-      Deno.env.get('SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS') ?? '21',
-      10,
-    );
+    const maxCheckoutAgeDays = settings.sdRefundCronMaxCheckoutAgeDays;
     const nowMs = nowManila().getTime();
 
     console.log(`[sd-refund-cron] Now (Manila): ${nowManila().toISOString()}, email lead: ${leadMinutes}min before checkout`);

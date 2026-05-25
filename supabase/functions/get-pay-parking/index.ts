@@ -10,6 +10,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders } from "../_shared/cors.ts";
 import { DatabaseService } from "../_shared/databaseService.ts";
 import { countStayNights } from "../_shared/utils.ts";
+import { resolveAppSettings } from "../_shared/appSettings.ts";
 
 const NOT_FOUND = {
   success: false,
@@ -18,13 +19,16 @@ const NOT_FOUND = {
     "This form is not available. Please use the link from your host or contact us on Facebook.",
 };
 
-function defaultParkingRate(row: Record<string, unknown>): number {
+function defaultParkingRate(
+  row: Record<string, unknown>,
+  fallbackRate: number,
+): number {
   const raw = row.parking_rate_guest;
   if (raw != null && raw !== "") {
     const n = Number(raw);
     if (!Number.isNaN(n) && n > 0) return n;
   }
-  return 400;
+  return fallbackRate;
 }
 
 function hasSubmittedParking(row: Record<string, unknown>): boolean {
@@ -80,6 +84,8 @@ serve(async (req) => {
       Number(row.number_of_nights) ||
       1;
 
+    const settings = await resolveAppSettings();
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -98,6 +104,7 @@ serve(async (req) => {
           pax,
           parking_rate_guest: defaultParkingRate(
             row as Record<string, unknown>,
+            settings.defaultParkingRateGuest,
           ),
           parking_check_in_date: parkingCheckIn,
           parking_check_out_date: parkingCheckOut,
