@@ -24,7 +24,7 @@ function CollapsibleSection({
   id,
   title,
   icon,
-  defaultOpen = true,
+  defaultOpen = false,
   children,
 }: {
   id: string;
