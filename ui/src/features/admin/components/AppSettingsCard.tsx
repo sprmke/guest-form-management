@@ -220,37 +220,13 @@ export function AppSettingsCard() {
       )}
       aria-labelledby="app-settings-heading"
     >
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <h2
-            id="app-settings-heading"
-            className="text-sm font-bold text-sidebar-foreground sm:text-[13px]"
-          >
-            General
-          </h2>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug max-w-prose">
-            Email addresses, automation timing, and guest links. Save when
-            you&apos;re done editing.
-          </p>
-          {data?.updatedAt ? (
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Last saved{' '}
-              {new Date(data.updatedAt).toLocaleString('en-PH', {
-                timeZone: 'Asia/Manila',
-                dateStyle: 'medium',
-                timeStyle: 'short',
-              })}
-            </p>
-          ) : null}
-        </div>
-        <Button
-          type="button"
-          disabled={busy || !draft}
-          onClick={handleSave}
-          className="min-h-[44px] shrink-0 w-full sm:w-auto"
+      <div className="min-w-0 space-y-1.5">
+        <h2
+          id="app-settings-heading"
+          className="text-base font-bold tracking-tight text-sidebar-foreground sm:text-lg"
         >
-          {update.isPending ? 'Saving…' : 'Save settings'}
-        </Button>
+          General settings
+        </h2>
       </div>
 
       {isLoading && (
@@ -455,7 +431,7 @@ export function AppSettingsCard() {
 
           <CollapsibleSection
             id="env-secrets"
-            title="Server Setup"
+            title="Integrations"
             icon={<Shield className="size-4" aria-hidden />}
             defaultOpen={false}
           >
@@ -466,6 +442,19 @@ export function AppSettingsCard() {
           </CollapsibleSection>
         </div>
       )}
+
+      {!isError ? (
+        <div className="flex flex-col gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            disabled={busy || !draft}
+            onClick={handleSave}
+            className="min-h-[44px] w-full sm:w-auto"
+          >
+            {update.isPending ? 'Saving…' : 'Save settings'}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }
