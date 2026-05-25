@@ -240,7 +240,7 @@ fi
 
 echo "==> Truncating local public app tables (CASCADE also clears processed_emails → guest_submissions)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
-  "TRUNCATE TABLE guest_submissions_backup_20260501, gmail_listener_state, gmail_mail_integration, telegram_marketing_settings, telegram_staff_settings, guest_submissions RESTART IDENTITY CASCADE;"
+  "TRUNCATE TABLE guest_submissions_backup_20260501, gmail_listener_state, gmail_mail_integration, app_settings, telegram_marketing_settings, telegram_staff_settings, guest_submissions RESTART IDENTITY CASCADE;"
 
 echo "==> Drop CHECK constraints that prod rows may violate (legacy status, bad date order, etc.)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
