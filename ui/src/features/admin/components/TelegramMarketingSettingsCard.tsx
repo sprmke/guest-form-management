@@ -169,6 +169,7 @@ type DailyTestResult = {
   defaultSent?: boolean;
   urgencySent?: boolean;
   daysOut?: number;
+  urgencyThreshold?: number;
   earliestCheckInYmd?: string | null;
 };
 type NotifyTestResult = {

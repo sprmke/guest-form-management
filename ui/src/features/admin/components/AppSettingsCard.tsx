@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { Check, ChevronDown, Globe, Mail, Shield, Timer } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
