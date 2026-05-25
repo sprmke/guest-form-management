@@ -1,0 +1,325 @@
+/**
+ * Resolved operator settings: DB (`app_settings`) with env fallbacks.
+ * Secrets (API keys, service accounts) are never stored here.
+ */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
+
+export type AppSettingsRow = {
+  id: number;
+  updated_at: string;
+  email_to: string | null;
+  email_reply_to: string | null;
+  parking_owner_emails: string | null;
+  sd_refund_cron_email_lead_minutes: number | null;
+  sd_refund_cron_max_checkout_age_days: number | null;
+  public_guest_app_origin: string | null;
+  facebook_reviews_url: string | null;
+  email_logo_url: string | null;
+  default_parking_rate_guest: number | null;
+};
+
+export type AppSettingsResolved = {
+  emailTo: string;
+  emailReplyTo: string;
+  parkingOwnerEmails: string[];
+  sdRefundCronEmailLeadMinutes: number;
+  sdRefundCronMaxCheckoutAgeDays: number;
+  publicGuestAppOrigin: string;
+  facebookReviewsUrl: string;
+  emailLogoUrl: string;
+  defaultParkingRateGuest: number;
+};
+
+export type AppSettingsFieldSource = 'db' | 'env' | 'default';
+
+export type AppSettingsDto = AppSettingsResolved & {
+  updatedAt: string | null;
+  fieldSources: Record<keyof AppSettingsResolved, AppSettingsFieldSource>;
+  secretsStatus: {
+    resendApiKeyConfigured: boolean;
+    googleServiceAccountConfigured: boolean;
+    googleCalendarIdConfigured: boolean;
+    googleSpreadsheetIdConfigured: boolean;
+    telegramBotTokenConfigured: boolean;
+    telegramChatIdConfigured: boolean;
+    telegramStaffChatIdConfigured: boolean;
+    gmailEncryptionKeyConfigured: boolean;
+    gmailWebClientConfigured: boolean;
+  };
+};
+
+const CACHE_TTL_MS = 30_000;
+let cache: { at: number; row: AppSettingsRow | null } | null = null;
+
+export function invalidateAppSettingsCache(): void {
+  cache = null;
+}
+
+function supabaseAdmin() {
+  return createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+}
+
+async function loadSettingsRow(): Promise<AppSettingsRow | null> {
+  const now = Date.now();
+  if (cache && now - cache.at < CACHE_TTL_MS) {
+    return cache.row;
+  }
+
+  const { data, error } = await supabaseAdmin()
+    .from('app_settings')
+    .select('*')
+    .eq('id', 1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[appSettings] load failed, using env only:', error.message);
+    cache = { at: now, row: null };
+    return null;
+  }
+
+  cache = { at: now, row: data as AppSettingsRow | null };
+  return cache.row;
+}
+
+function trimOrEmpty(v: string | null | undefined): string {
+  return (v ?? '').trim();
+}
+
+function pickString(
+  dbVal: string | null | undefined,
+  envKey: string,
+): { value: string; source: AppSettingsFieldSource } {
+  const fromDb = trimOrEmpty(dbVal);
+  if (fromDb) return { value: fromDb, source: 'db' };
+  const fromEnv = trimOrEmpty(Deno.env.get(envKey));
+  if (fromEnv) return { value: fromEnv, source: 'env' };
+  return { value: '', source: 'default' };
+}
+
+function pickInt(
+  dbVal: number | null | undefined,
+  envKey: string,
+  fallback: number,
+  min: number,
+  max: number,
+): { value: number; source: AppSettingsFieldSource } {
+  if (dbVal != null && Number.isFinite(Number(dbVal))) {
+    const n = Math.floor(Number(dbVal));
+    if (n >= min && n <= max) {
+      return { value: n, source: 'db' };
+    }
+  }
+  const raw = trimOrEmpty(Deno.env.get(envKey));
+  if (raw) {
+    const n = parseInt(raw, 10);
+    if (!Number.isNaN(n) && n >= min && n <= max) {
+      return { value: n, source: 'env' };
+    }
+  }
+  return { value: fallback, source: 'default' };
+}
+
+function pickMoney(
+  dbVal: number | null | undefined,
+  fallback: number,
+): { value: number; source: AppSettingsFieldSource } {
+  if (dbVal != null) {
+    const n = Number(dbVal);
+    if (Number.isFinite(n) && n > 0) {
+      return { value: n, source: 'db' };
+    }
+  }
+  return { value: fallback, source: 'default' };
+}
+
+export function parseCommaSeparatedEmails(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((e) => e.trim())
+    .filter(Boolean);
+}
+
+export function parseCommaSeparatedEmailsLower(raw: string): string[] {
+  return parseCommaSeparatedEmails(raw).map((e) => e.toLowerCase());
+}
+
+export async function resolveAppSettings(): Promise<AppSettingsResolved> {
+  const row = await loadSettingsRow();
+
+  const emailTo = pickString(row?.email_to, 'EMAIL_TO');
+  const emailReplyTo = pickString(row?.email_reply_to, 'EMAIL_REPLY_TO');
+  const parkingRaw = pickString(row?.parking_owner_emails, 'PARKING_OWNER_EMAILS');
+  const lead = pickInt(
+    row?.sd_refund_cron_email_lead_minutes,
+    'SD_REFUND_CRON_EMAIL_LEAD_MINUTES',
+    120,
+    0,
+    10080,
+  );
+  const maxAge = pickInt(
+    row?.sd_refund_cron_max_checkout_age_days,
+    'SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS',
+    21,
+    0,
+    365,
+  );
+  const origin = pickString(row?.public_guest_app_origin, 'PUBLIC_GUEST_APP_ORIGIN');
+  const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
+  const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
+  const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
+
+  return {
+    emailTo: emailTo.value,
+    emailReplyTo: emailReplyTo.value,
+    parkingOwnerEmails: parseCommaSeparatedEmails(parkingRaw.value),
+    sdRefundCronEmailLeadMinutes: lead.value,
+    sdRefundCronMaxCheckoutAgeDays: maxAge.value,
+    publicGuestAppOrigin: origin.value || 'https://kamehomes.space',
+    facebookReviewsUrl: facebook.value || 'https://www.facebook.com',
+    emailLogoUrl: logo.value || DEFAULT_EMAIL_LOGO_URL,
+    defaultParkingRateGuest: parkingRate.value,
+  };
+}
+
+/** Gmail GAF/pet approval replies must match Team Email (`EMAIL_REPLY_TO`) when set. */
+export async function getGmailApprovalSenderAllowList(): Promise<string[]> {
+  const s = await resolveAppSettings();
+  return parseCommaSeparatedEmailsLower(s.emailReplyTo);
+}
+
+export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
+  const row = await loadSettingsRow();
+  const resolved = await resolveAppSettings();
+
+  const emailTo = pickString(row?.email_to, 'EMAIL_TO');
+  const emailReplyTo = pickString(row?.email_reply_to, 'EMAIL_REPLY_TO');
+  const parkingRaw = pickString(row?.parking_owner_emails, 'PARKING_OWNER_EMAILS');
+  const lead = pickInt(
+    row?.sd_refund_cron_email_lead_minutes,
+    'SD_REFUND_CRON_EMAIL_LEAD_MINUTES',
+    120,
+    0,
+    10080,
+  );
+  const maxAge = pickInt(
+    row?.sd_refund_cron_max_checkout_age_days,
+    'SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS',
+    21,
+    0,
+    365,
+  );
+  const origin = pickString(row?.public_guest_app_origin, 'PUBLIC_GUEST_APP_ORIGIN');
+  const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
+  const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
+  const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
+
+  const listSource = (
+    items: string[],
+    rawPick: { source: AppSettingsFieldSource },
+  ): AppSettingsFieldSource => {
+    if (items.length === 0) return 'default';
+    return rawPick.source === 'default' ? 'env' : rawPick.source;
+  };
+
+  const urlSource = (
+    pick: { value: string; source: AppSettingsFieldSource },
+    resolvedDefault: string,
+    resolved: string,
+  ): AppSettingsFieldSource => {
+    if (pick.source === 'db') return 'db';
+    if (pick.source === 'env') return 'env';
+    if (resolved !== resolvedDefault) return 'default';
+    return 'default';
+  };
+
+  return {
+    ...resolved,
+    updatedAt: row?.updated_at ?? null,
+    fieldSources: {
+      emailTo: resolved.emailTo ? (emailTo.source === 'default' ? 'env' : emailTo.source) : 'default',
+      emailReplyTo: resolved.emailReplyTo
+        ? (emailReplyTo.source === 'default' ? 'env' : emailReplyTo.source)
+        : 'default',
+      parkingOwnerEmails: listSource(resolved.parkingOwnerEmails, parkingRaw),
+      sdRefundCronEmailLeadMinutes: lead.source,
+      sdRefundCronMaxCheckoutAgeDays: maxAge.source,
+      publicGuestAppOrigin: urlSource(
+        origin,
+        'https://kamehomes.space',
+        resolved.publicGuestAppOrigin,
+      ),
+      facebookReviewsUrl: urlSource(
+        facebook,
+        'https://www.facebook.com',
+        resolved.facebookReviewsUrl,
+      ),
+      emailLogoUrl: urlSource(logo, DEFAULT_EMAIL_LOGO_URL, resolved.emailLogoUrl),
+      defaultParkingRateGuest: parkingRate.source,
+    },
+    secretsStatus: {
+      resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),
+      googleServiceAccountConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_SERVICE_ACCOUNT')),
+      googleCalendarIdConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_CALENDAR_ID')),
+      googleSpreadsheetIdConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_SPREADSHEET_ID')),
+      telegramBotTokenConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_BOT_TOKEN')),
+      telegramChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_CHAT_ID')),
+      telegramStaffChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_STAFF_CHAT_ID')),
+      gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
+      gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
+    },
+  };
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function validateEmailList(raw: string, label: string): string | null {
+  const parts = parseCommaSeparatedEmails(raw);
+  if (parts.length === 0) return null;
+  for (const e of parts) {
+    if (!EMAIL_RE.test(e)) return `Invalid ${label} address: ${e}`;
+  }
+  return null;
+}
+
+export function validateOptionalEmail(raw: string, label: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (!EMAIL_RE.test(v)) return `Invalid ${label}`;
+  return null;
+}
+
+export function validateOptionalUrl(raw: string, label: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+      return `${label} must use http or https`;
+    }
+  } catch {
+    return `Invalid ${label} URL`;
+  }
+  return null;
+}
+
+export function validateOptionalOrigin(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  try {
+    const u = new URL(v);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+      return 'Guest app origin must use http or https';
+    }
+    if (u.pathname !== '/' || u.search || u.hash) {
+      return 'Guest app origin should be scheme + host only (no path)';
+    }
+  } catch {
+    return 'Invalid guest app origin URL';
+  }
+  return null;
+}
