@@ -71,6 +71,8 @@ export function ReviewPricingForm({
   onChange,
 }: Props) {
   const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
+  const needParking = booking.need_parking === true;
+  const hasPets = booking.has_pets === true;
   const schema = useMemo(
     () => createReviewPricingSchema(surpriseDecorRequested),
     [surpriseDecorRequested],
@@ -99,8 +101,10 @@ export function ReviewPricingForm({
   const bookingRate = toNullableNumber(watch('booking_rate')) ?? 0;
   const downPayment = toNullableNumber(watch('down_payment')) ?? 0;
   const securityDeposit = toNullableNumber(watch('security_deposit')) ?? 0;
-  const petFee = toNullableNumber(watch('pet_fee')) ?? 0;
-  const parkingFee = toNullableNumber(watch('parking_rate_guest')) ?? 0;
+  const petFee = hasPets ? (toNullableNumber(watch('pet_fee')) ?? 0) : 0;
+  const parkingFee = needParking
+    ? (toNullableNumber(watch('parking_rate_guest')) ?? 0)
+    : 0;
   const additionalFee = toNullableNumber(watch('guest_additional_fee')) ?? 0;
   const totalGuestBalance =
     bookingRate -
@@ -187,12 +191,14 @@ export function ReviewPricingForm({
             type="number"
             min={0}
             step={0.01}
-            placeholder={booking.has_pets === true ? '300' : '0'}
-            className={inputClass(!!errors.pet_fee)}
+            placeholder={hasPets ? '300' : '0'}
+            disabled={!hasPets}
+            className={inputClass(!!errors.pet_fee, !hasPets)}
             {...register('pet_fee')}
           />
         </Field>
 
+        {needParking ? (
         <Field
           label="Parking Fee"
           helpText="Amount charged to the guest for parking"
@@ -202,11 +208,12 @@ export function ReviewPricingForm({
             type="number"
             min={0}
             step={0.01}
-            placeholder={booking.need_parking === true ? '400' : '0'}
+            placeholder="400"
             className={inputClass(!!errors.parking_rate_guest)}
             {...register('parking_rate_guest')}
           />
         </Field>
+        ) : null}
 
         <Field
           label="Additional fee"
@@ -253,11 +260,15 @@ export function ReviewPricingForm({
 
 // ─── Tiny helpers ──────────────────────────────────────────────────────────────
 
-function inputClass(hasError: boolean) {
+function inputClass(hasError: boolean, disabled = false) {
   return [
     'w-full rounded-md border px-3 py-1.5 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-    hasError ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white',
+    disabled
+      ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
+      : hasError
+        ? 'border-red-400 bg-red-50'
+        : 'border-slate-300 bg-white',
   ].join(' ');
 }
 
@@ -320,11 +331,12 @@ function buildPricingDefaultValues(
     security_deposit:
       toNullableNumber(booking.security_deposit) ??
       (isAirbnb ? 0 : DEFAULT_SECURITY_DEPOSIT),
-    pet_fee:
-      toNullableNumber(booking.pet_fee) ?? (hasPets ? DEFAULT_PET_FEE : 0),
-    parking_rate_guest:
-      toNullableNumber(booking.parking_rate_guest) ??
-      (needParking ? DEFAULT_PARKING_FEE : 0),
+    pet_fee: hasPets
+      ? (toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE)
+      : 0,
+    parking_rate_guest: needParking
+      ? (toNullableNumber(booking.parking_rate_guest) ?? DEFAULT_PARKING_FEE)
+      : 0,
     guest_additional_fee: defaultAdditional,
   };
   if (!initialDraft) return fromBooking;

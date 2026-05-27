@@ -504,8 +504,9 @@ export function WorkflowPanel({ booking }: Props) {
         booking_rate: pricingValues.booking_rate,
         down_payment: pricingValues.down_payment,
         security_deposit: pricingValues.security_deposit,
-        pet_fee: pricingValues.pet_fee,
-        parking_rate_guest: pricingValues.parking_rate_guest,
+        pet_fee: booking.has_pets === true ? pricingValues.pet_fee : 0,
+        parking_rate_guest:
+          booking.need_parking === true ? pricingValues.parking_rate_guest : 0,
         guest_additional_fee: pricingValues.guest_additional_fee,
       };
       if (booking.guest_requests_surprise_decor && surpriseDecorStaffAck) {

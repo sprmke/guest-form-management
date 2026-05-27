@@ -56,12 +56,18 @@ function toMoneyNumber(value: unknown): number {
 function computeTotalGuestBalance(booking: BookingRow): number | null {
   if (booking.booking_rate == null || booking.booking_rate === '') return null;
   const rate = toMoneyNumber(booking.booking_rate);
+  const petFee = bookingFlagTrue(booking.has_pets)
+    ? toMoneyNumber(booking.pet_fee)
+    : 0;
+  const parkingFee = bookingFlagTrue(booking.need_parking)
+    ? toMoneyNumber(booking.parking_rate_guest)
+    : 0;
   return (
     rate -
     toMoneyNumber(booking.down_payment) +
     toMoneyNumber(booking.security_deposit) +
-    toMoneyNumber(booking.pet_fee) +
-    toMoneyNumber(booking.parking_rate_guest) +
+    petFee +
+    parkingFee +
     toMoneyNumber(booking.guest_additional_fee)
   );
 }

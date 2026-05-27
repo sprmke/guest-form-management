@@ -1,12 +1,27 @@
 /**
  * Same formula as the admin UI `computeTotalGuestBalance`:
- * booking_rate − down_payment + security_deposit + pet_fee + parking_rate_guest + guest_additional_fee.
+ * booking_rate − down_payment + security_deposit
+ * + (pet_fee when has_pets) + (parking_rate_guest when need_parking) + guest_additional_fee.
  */
 
 function num(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
   const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : Number(v);
   return Number.isNaN(n) ? 0 : n;
+}
+
+function bookingFlagTrue(v: unknown): boolean {
+  return v === true || v === 'true';
+}
+
+function petFeeForGuestBalance(booking: Record<string, unknown>): number {
+  return bookingFlagTrue(booking.has_pets) ? num(booking.pet_fee) : 0;
+}
+
+function parkingFeeForGuestBalance(booking: Record<string, unknown>): number {
+  return bookingFlagTrue(booking.need_parking)
+    ? num(booking.parking_rate_guest)
+    : 0;
 }
 
 export function computeTotalGuestBalanceFromBooking(
@@ -19,8 +34,8 @@ export function computeTotalGuestBalanceFromBooking(
     rate -
     num(booking.down_payment) +
     num(booking.security_deposit) +
-    num(booking.pet_fee) +
-    num(booking.parking_rate_guest) +
+    petFeeForGuestBalance(booking) +
+    parkingFeeForGuestBalance(booking) +
     num(booking.guest_additional_fee)
   );
 }

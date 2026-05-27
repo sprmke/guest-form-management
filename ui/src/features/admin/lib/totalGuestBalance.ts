@@ -6,6 +6,24 @@ function toMoneyNumber(value: number | string | null | undefined): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+function bookingFlagTrue(value: boolean | string | null | undefined): boolean {
+  return value === true || value === 'true';
+}
+
+/** Pet fee counts toward guest balance only when the guest is bringing pets. */
+export function petFeeForGuestBalance(booking: BookingRow): number {
+  return bookingFlagTrue(booking.has_pets)
+    ? toMoneyNumber(booking.pet_fee)
+    : 0;
+}
+
+/** Parking fee counts toward guest balance only when the guest needs parking. */
+export function parkingFeeForGuestBalance(booking: BookingRow): number {
+  return bookingFlagTrue(booking.need_parking)
+    ? toMoneyNumber(booking.parking_rate_guest)
+    : 0;
+}
+
 /**
  * Total amount due from the guest before check-in (matches `ReviewPricingForm`
  * live total and `PricingSummaryCard` on the booking detail page).
@@ -25,8 +43,8 @@ export function computeTotalGuestBalance(booking: BookingRow): number | null {
     rate -
     toMoneyNumber(booking.down_payment) +
     toMoneyNumber(booking.security_deposit) +
-    toMoneyNumber(booking.pet_fee) +
-    toMoneyNumber(booking.parking_rate_guest) +
+    petFeeForGuestBalance(booking) +
+    parkingFeeForGuestBalance(booking) +
     toMoneyNumber(booking.guest_additional_fee)
   );
 }

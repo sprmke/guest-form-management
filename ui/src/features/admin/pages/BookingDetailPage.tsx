@@ -874,11 +874,19 @@ function PricingSummaryCard({
         />
         <InfoField
           label="Pet fee"
-          value={formatMoney(booking.pet_fee as number)}
+          value={
+            booking.has_pets === true
+              ? formatMoney(booking.pet_fee as number)
+              : '—'
+          }
         />
         <InfoField
           label="Parking fee (guest)"
-          value={formatMoney(booking.parking_rate_guest as number)}
+          value={
+            booking.need_parking === true
+              ? formatMoney(booking.parking_rate_guest as number)
+              : '—'
+          }
         />
         <InfoField
           label="Parking rate (paid)"

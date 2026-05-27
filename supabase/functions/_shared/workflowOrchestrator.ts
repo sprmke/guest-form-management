@@ -212,9 +212,18 @@ export class WorkflowOrchestrator {
       if (payload.down_payment != null) workflowFields.down_payment = payload.down_payment;
       if (balance != null) workflowFields.balance = balance;
       if (payload.security_deposit != null) workflowFields.security_deposit = payload.security_deposit;
-      if (payload.pet_fee != null && booking.has_pets) workflowFields.pet_fee = payload.pet_fee;
-      if (payload.parking_rate_guest != null && booking.need_parking) {
+      if (payload.pet_fee != null && bookingFlagTrue(booking.has_pets)) {
+        workflowFields.pet_fee = payload.pet_fee;
+      } else if (!bookingFlagTrue(booking.has_pets)) {
+        workflowFields.pet_fee = null;
+      }
+      if (
+        payload.parking_rate_guest != null &&
+        bookingFlagTrue(booking.need_parking)
+      ) {
         workflowFields.parking_rate_guest = payload.parking_rate_guest;
+      } else if (!bookingFlagTrue(booking.need_parking)) {
+        workflowFields.parking_rate_guest = null;
       }
       if (payload.guest_additional_fee != null) {
         workflowFields.guest_additional_fee = payload.guest_additional_fee;
@@ -711,4 +720,8 @@ function buildGuestFormData(booking: any): any {
     ownerOnsiteContactPerson: booking.owner_onsite_contact_person,
     ownerContactNumber: booking.owner_contact_number,
   };
+}
+
+function bookingFlagTrue(v: unknown): boolean {
+  return v === true || v === 'true';
 }
