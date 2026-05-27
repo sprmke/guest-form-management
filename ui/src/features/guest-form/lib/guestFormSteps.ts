@@ -18,6 +18,7 @@ export type GuestFormStepConfig = {
   id: GuestFormStepId;
   short: string;
   label: string;
+  hint: string;
   icon: LucideIcon;
 };
 
@@ -26,30 +27,35 @@ export const GUEST_FORM_STEPS: GuestFormStepConfig[] = [
     id: 1,
     short: 'Guest',
     label: 'Primary Guest Info',
+    hint: 'How we can reach you',
     icon: User,
   },
   {
     id: 2,
     short: 'Stay',
     label: 'Booking details',
+    hint: 'Dates, guests & requests',
     icon: CalendarDays,
   },
   {
     id: 3,
     short: 'Parking',
     label: 'Parking',
+    hint: 'Optional paid parking inside Azure',
     icon: Car,
   },
   {
     id: 4,
     short: 'Pets',
     label: 'Pet information',
+    hint: 'Only if you are bringing pets',
     icon: PawPrint,
   },
   {
     id: 5,
     short: 'Docs',
     label: 'Required documents',
+    hint: 'Downpayment receipt & valid ID',
     icon: FileText,
   },
 ];
