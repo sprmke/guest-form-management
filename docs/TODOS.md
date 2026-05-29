@@ -176,3 +176,4 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update additional guests and ask if adult or child (below 5 years old) per field
 - Support slack and telegram notifications for important booking events
   - New booking requests
+- If we received a same day booking, notify on Staff telegram group

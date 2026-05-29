@@ -10,6 +10,7 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   ensureStaffSettingsRow,
   runStaffDailySummary,
+  sanitizeStaffDailySummaryTemplate,
   sendStaffDraftPreview,
   serializeStaffSettings,
   verifyStaffTelegramEnv,
@@ -47,7 +48,9 @@ serve(async (req) => {
       if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;
 
       if (typeof body.dailySummaryTemplate === 'string') {
-        patch.daily_summary_template = body.dailySummaryTemplate.slice(0, 8000);
+        patch.daily_summary_template = sanitizeStaffDailySummaryTemplate(
+          body.dailySummaryTemplate.slice(0, 8000),
+        );
       }
 
       if (body.dailySummaryTimeManila !== undefined) {

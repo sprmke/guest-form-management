@@ -192,6 +192,16 @@ function applyPlaceholders(template: string, vars: Record<string, string>): stri
   return out;
 }
 
+/** Legacy staff templates included admin booking URLs; strip on send/save. */
+export function sanitizeStaffDailySummaryTemplate(template: string): string {
+  let out = template;
+  out = out.replace(/\r?\n*View Booking Details:\s*\r?\n*/gi, '\n');
+  out = out.replace(/\r?\n*\{\{booking_link\}\}\s*\r?\n*/g, '\n');
+  out = out.replace(/\r?\n*https?:\/\/[^\s]*\/bookings\/[0-9a-f-]+\s*\r?\n*/gi, '\n');
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out.trim();
+}
+
 export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -350,7 +360,7 @@ export async function sendStaffDraftPreview(template: string): Promise<StaffDraf
   const vars = buildBookingPlaceholders(booking);
   vars.next_bookings = nextBookingsText;
 
-  const filled = applyPlaceholders(trimmed, vars);
+  const filled = applyPlaceholders(sanitizeStaffDailySummaryTemplate(trimmed), vars);
   const unresolved = filled.match(/\{\{[^}]+\}\}/g);
   if (unresolved?.length) {
     console.warn('[telegram-staff] draft preview unresolved:', unresolved.join(', '));
@@ -431,7 +441,10 @@ export async function runStaffDailySummary(opts?: {
     const vars = buildBookingPlaceholders(booking);
     vars.next_bookings = nextBookingsText;
 
-    const text = applyPlaceholders(settings.daily_summary_template, vars);
+    const text = applyPlaceholders(
+      sanitizeStaffDailySummaryTemplate(settings.daily_summary_template),
+      vars,
+    );
 
     const unresolved = text.match(/\{\{[^}]+\}\}/g);
     if (unresolved?.length) {
