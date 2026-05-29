@@ -410,7 +410,7 @@ export function TelegramStaffSettingsCard() {
               <CheckboxRow
                 id="staff-same-day"
                 label="Same-day check-in alert"
-                description={`Instant one-time message when a guest submits a booking checking in today at or after ${draft.sameDayCheckinAfterHourManila}:00 AM Manila.`}
+                description={`Instant one-time message when a guest submits a booking checking in today at or after ${formatManilaTimeLabel(draft.dailySummaryTimeManila)} (same as daily summary time).`}
                 checked={draft.notifyOnSameDayCheckin}
                 disabled={busy}
                 onChange={(v) =>
@@ -430,8 +430,8 @@ export function TelegramStaffSettingsCard() {
                     Daily summary time
                   </p>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    When the summary is sent (Manila time). Saving updates the
-                    schedule.
+                    When the summary is sent (Manila time). Same-day check-in
+                    alerts also start from this time. Saving updates the schedule.
                   </p>
                 </div>
               </div>

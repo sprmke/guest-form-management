@@ -132,7 +132,7 @@ Todos
   - ✅ Includes next 3 days booking summary
   - ✅ Configurable template with `{{placeholder}}` tokens on `/staff` admin page (`TelegramStaffSettingsCard`)
   - ✅ Enable/disable toggle + time picker + test sends
-  - ✅ Instant same-day check-in alert to staff group when guest submits after 9:00 AM Manila (one-time per booking)
+  - ✅ Instant same-day check-in alert to staff group when guest submits at or after the daily summary time (one-time per booking)
   - Notification for guest check-out
     ✅ IMPROVED PAY PARKING FLOW
 - ✅ Public **`/bookings/:bookingId/parking`** (`PayParkingPage`) — booking summary + vehicle fields; **`get-pay-parking`** / **`submit-pay-parking`**
@@ -177,4 +177,4 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update additional guests and ask if adult or child (below 5 years old) per field
 - Support slack and telegram notifications for important booking events
   - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
-- If we received a same day booking, notify on Staff telegram group — ✅ instant alert after 9:00 AM Manila on guest submit (`notifyTelegramStaffSameDayCheckIn`)
+- If we received a same day booking, notify on Staff telegram group — ✅ instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)

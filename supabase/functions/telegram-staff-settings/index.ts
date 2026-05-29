@@ -11,6 +11,7 @@ import {
   bookingQualifiesForSameDayCheckinStaffAlert,
   ensureStaffSettingsRow,
   notifyTelegramStaffSameDayCheckIn,
+  parseStaffSlot,
   queryTodayBookings,
   runStaffDailySummary,
   sanitizeStaffDailySummaryTemplate,
@@ -166,9 +167,11 @@ serve(async (req) => {
             });
           }
         } else {
+          const settingsRow = await DatabaseService.getTelegramStaffSettings();
+          const cutoff = parseStaffSlot(settingsRow?.daily_summary_time_manila);
           const today = await queryTodayBookings(manilaTodayYmd());
           row =
-            today.find((b) => bookingQualifiesForSameDayCheckinStaffAlert(b)) ??
+            today.find((b) => bookingQualifiesForSameDayCheckinStaffAlert(b, cutoff)) ??
             today[0] ??
             null;
           if (!row) {

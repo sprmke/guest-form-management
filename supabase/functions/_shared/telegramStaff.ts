@@ -22,8 +22,7 @@ export type TelegramStaffSettings = {
   updated_at: string;
 };
 
-/** Same-day check-in instant alerts fire at or after this Manila clock time. */
-export const STAFF_SAME_DAY_CHECKIN_AFTER_HOUR = 9;
+export type StaffManilaTimeSlot = { hour: number; minute: number };
 
 export const STAFF_KNOWN_PLACEHOLDERS = [
   'check_in_date',
@@ -63,13 +62,35 @@ function manilaClockParts(now = new Date()): { hour: number; minute: number } {
   return { hour, minute };
 }
 
-function isManilaTimeAtOrAfterHour(
+function isManilaTimeAtOrAfter(
   targetHour: number,
-  targetMinute = 0,
+  targetMinute: number,
   now = new Date(),
 ): boolean {
   const { hour, minute } = manilaClockParts(now);
   return hour > targetHour || (hour === targetHour && minute >= targetMinute);
+}
+
+export function parseStaffSlot(raw: unknown): StaffManilaTimeSlot {
+  if (raw && typeof raw === 'object' && raw !== null) {
+    const o = raw as Record<string, unknown>;
+    const h = typeof o.hour === 'number' ? o.hour : 8;
+    const m = typeof o.minute === 'number' ? o.minute : 0;
+    return {
+      hour: Math.max(0, Math.min(23, Math.round(h))),
+      minute: Math.max(0, Math.min(59, Math.round(m))),
+    };
+  }
+  return { hour: 8, minute: 0 };
+}
+
+export function formatStaffManilaTimeLabel(slot: StaffManilaTimeSlot): string {
+  const d = new Date(2000, 0, 1, slot.hour, slot.minute);
+  return d.toLocaleTimeString('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }
 
 function isCancelledStatus(status: unknown): boolean {
@@ -77,16 +98,16 @@ function isCancelledStatus(status: unknown): boolean {
   return s === 'CANCELLED' || s === 'canceled';
 }
 
-/** Check-in is today (Manila) and submission time is at/after the 9:00 AM cutoff. */
+/** Check-in is today (Manila) and submission time is at/after the daily summary time. */
 export function bookingQualifiesForSameDayCheckinStaffAlert(
   booking: BookingRow,
-  cutoffHour = STAFF_SAME_DAY_CHECKIN_AFTER_HOUR,
+  cutoff: StaffManilaTimeSlot,
   now = new Date(),
 ): boolean {
   if (isCancelledStatus(booking.status)) return false;
   const ciYmd = normalizeBookingDateToYmd(String(booking.check_in_date ?? ''));
   if (!ciYmd || ciYmd !== manilaTodayYmd()) return false;
-  return isManilaTimeAtOrAfterHour(cutoffHour, 0, now);
+  return isManilaTimeAtOrAfter(cutoff.hour, cutoff.minute, now);
 }
 
 function toMoneyNumber(value: unknown): number {
@@ -276,7 +297,7 @@ export type StaffNotifySkip =
   | 'not_qualified'
   | 'already_sent';
 
-/** Instant one-time alert when a same-day check-in is received after 9:00 AM Manila. */
+/** Instant one-time alert when a same-day check-in is received after the daily summary time. */
 export async function notifyTelegramStaffSameDayCheckIn(
   booking: BookingRow,
   opts?: { force?: boolean },
@@ -286,7 +307,8 @@ export async function notifyTelegramStaffSameDayCheckIn(
   if (!opts?.force && !settings.notify_on_same_day_checkin) {
     return { sent: false, skip: 'notify_off' };
   }
-  if (!opts?.force && !bookingQualifiesForSameDayCheckinStaffAlert(booking)) {
+  const cutoff = parseStaffSlot(settings.daily_summary_time_manila);
+  if (!opts?.force && !bookingQualifiesForSameDayCheckinStaffAlert(booking, cutoff)) {
     return { sent: false, skip: 'not_qualified' };
   }
   const creds = resolveStaffTelegramCredentials();
@@ -454,14 +476,20 @@ export async function sendStaffSameDayCheckinDraftPreview(
   const trimmed = template.trim();
   if (!trimmed) return { sent: false, error: 'empty_message' };
 
+  const settings = await loadStaffSettings();
+  if (!settings) return { sent: false, error: 'no_settings_row' };
+
   const todayYmd = manilaTodayYmd();
   const todayBookings = await queryTodayBookings(todayYmd);
-  const booking = todayBookings.find((b) => bookingQualifiesForSameDayCheckinStaffAlert(b));
+  const cutoff = parseStaffSlot(settings.daily_summary_time_manila);
+  const booking = todayBookings.find((b) =>
+    bookingQualifiesForSameDayCheckinStaffAlert(b, cutoff),
+  );
   if (!booking) {
     return {
       sent: false,
       error:
-        'No same-day check-in booking qualifies for preview (needs check-in today; use live data after 9:00 AM Manila or send test with force).',
+        `No same-day check-in booking qualifies for preview (needs check-in today after ${formatStaffManilaTimeLabel(cutoff)} Manila, or use test send with force).`,
     };
   }
 
@@ -675,16 +703,6 @@ export async function verifyStaffTelegramEnv(): Promise<{
   };
 }
 
-function parseStaffSlot(raw: unknown): { hour: number; minute: number } {
-  if (raw && typeof raw === 'object' && raw !== null) {
-    const o = raw as Record<string, unknown>;
-    const h = typeof o.hour === 'number' ? o.hour : 8;
-    const m = typeof o.minute === 'number' ? o.minute : 0;
-    return { hour: Math.max(0, Math.min(23, Math.round(h))), minute: Math.max(0, Math.min(59, Math.round(m))) };
-  }
-  return { hour: 8, minute: 0 };
-}
-
 export function serializeStaffSettings(row: TelegramStaffSettings) {
   const slot = parseStaffSlot(row.daily_summary_time_manila);
   const utcTotal = (slot.hour * 60 + slot.minute - 480 + 2880) % 1440;
@@ -698,7 +716,6 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
     sameDayCheckinTemplate: row.same_day_checkin_template,
     dailySummaryTimeManila: slot,
     dailySummaryUtcCronPreview: `${utcM} ${utcH} * * *`,
-    sameDayCheckinAfterHourManila: STAFF_SAME_DAY_CHECKIN_AFTER_HOUR,
     placeholdersReference: [
       '{{check_in_date}} — check-in date (e.g. May 23, 2026)',
       '{{check_out_date}} — check-out date (e.g. May 25, 2026)',
@@ -728,7 +745,8 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       {
         id: 'same_day_checkin',
         label: 'Same-day check-in alert',
-        trigger: `Instant once when a guest submits a booking checking in today at or after ${STAFF_SAME_DAY_CHECKIN_AFTER_HOUR}:00 AM Manila`,
+        trigger:
+          `Instant once when a guest submits a booking checking in today at or after the daily summary time (${formatStaffManilaTimeLabel(slot)} Manila)`,
         type: 'event',
       },
     ],

@@ -19,7 +19,6 @@ export type TelegramStaffSettingsDto = {
   sameDayCheckinTemplate: string;
   dailySummaryTimeManila: StaffTimeSlot;
   dailySummaryUtcCronPreview: string;
-  sameDayCheckinAfterHourManila: number;
   placeholdersReference: string[];
   scenarios: StaffScenarioMeta[];
 };

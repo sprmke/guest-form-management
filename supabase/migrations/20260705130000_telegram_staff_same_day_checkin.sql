@@ -1,4 +1,4 @@
--- Staff instant alert when a same-day check-in booking is received after 9:00 AM Manila.
+-- Staff instant alert when a same-day check-in booking is received after the daily summary time (Manila).
 
 ALTER TABLE public.telegram_staff_settings
   ADD COLUMN IF NOT EXISTS notify_on_same_day_checkin BOOLEAN NOT NULL DEFAULT TRUE;
