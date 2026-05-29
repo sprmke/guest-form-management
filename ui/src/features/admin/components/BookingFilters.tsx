@@ -50,16 +50,16 @@ function FilterBtn({
         'min-h-[44px] select-none whitespace-nowrap transition-all duration-100',
         fullWidth && 'w-full justify-center',
         active || isOpen
-          ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
-          : 'bg-white text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+          ? 'gradient-primary border-primary text-primary-foreground shadow-soft'
+          : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60',
       )}
     >
       {label}
       {active && (
         <span
           className={cn(
-            'inline-flex justify-center items-center px-1 font-black rounded-full min-w-[18px] h-[18px] text-[10px]',
-            'text-white bg-white/20',
+            'inline-flex justify-center items-center px-1 font-black rounded-full min-w-[18px] h-[18px] text-[11px]',
+            'text-white bg-card/20',
           )}
         >
           {count}
@@ -87,16 +87,9 @@ function DropdownPanel({
   return (
     <div
       className={cn(
-        // max-w-[calc(100vw-24px)] prevents the panel from overflowing the viewport on mobile.
-        // The panel anchors left-0 and won't extend past the screen edge.
-        'absolute top-full left-0 mt-1.5 z-50 bg-white rounded-xl overflow-hidden',
-        'max-w-[calc(100vw-24px)]',
+        'absolute top-full left-0 z-50 mt-1.5 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-border/60 bg-popover shadow-elevated-lg',
         width,
       )}
-      style={{
-        border: '1px solid rgba(0,0,0,0.09)',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-      }}
     >
       {children}
     </div>
@@ -178,7 +171,7 @@ export function BookingFilters({
   ) => (
     <div className="relative min-w-0 flex-1">
       <Search
-        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400"
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
         aria-hidden
       />
       <input
@@ -218,29 +211,26 @@ export function BookingFilters({
     />
   );
 
-  const cardStyle = {
-    border: '1px solid rgba(0,0,0,0.08)',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-  } as const;
+  const cardClassName = 'surface-card hidden overflow-visible lg:block';
 
   return (
     <div ref={containerRef}>
-      {/* Desktop — compact single-row toolbar (unchanged from pre-mobile-redesign) */}
-      <div className="hidden lg:block rounded-xl bg-white" style={cardStyle}>
-        <div className="flex gap-2 px-3 py-2.5">
+      {/* Desktop — compact single-row toolbar */}
+      <div className={cardClassName}>
+        <div className="flex gap-2 overflow-visible px-3 py-2.5">
           {searchInput(
             'Search guests, email, phone, plate, pet, notes…',
             cn(
-              'w-full rounded-lg border border-slate-200 bg-slate-50 py-[7px] pl-9 text-[13px] text-slate-700',
+              'w-full rounded-lg border border-border bg-muted/50 py-[7px] pl-9 text-[13px] text-foreground',
               draft ? 'pr-10' : 'pr-3',
-              'placeholder:text-slate-400',
+              'placeholder:text-muted-foreground',
               'transition-all duration-150',
-              'focus:border-sidebar-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
+              'focus:border-sidebar-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
             ),
-            'absolute right-1.5 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600',
+            'absolute right-1.5 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-muted-foreground',
           )}
           <div className="flex shrink-0 flex-wrap items-center gap-1.5">
-            <div className="mx-0.5 h-5 w-px shrink-0 bg-slate-200" />
+            <div className="mx-0.5 h-5 w-px shrink-0 bg-muted" />
             <BookingsSortMenu sort={sort} onChange={onSortChange} />
             <BookingDateRangeFilter
               {...dateNav}
@@ -250,11 +240,11 @@ export function BookingFilters({
             {filterChips}
             {isDirty && (
               <>
-                <div className="mx-0.5 h-5 w-px shrink-0 bg-slate-200" />
+                <div className="mx-0.5 h-5 w-px shrink-0 bg-muted" />
                 <button
                   type="button"
                   onClick={onReset}
-                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2.5 py-2.5 text-[13px] font-semibold text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                  className="inline-flex min-h-[44px] shrink-0 items-center gap-1 rounded-lg px-2.5 py-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 >
                   <X className="size-3.5" aria-hidden />
                   Reset
@@ -266,21 +256,18 @@ export function BookingFilters({
       </div>
 
       {/* Mobile — labeled sections, full-width date, scrollable filter strip */}
-      <div
-        className="space-y-3 rounded-xl bg-white p-3 lg:hidden"
-        style={cardStyle}
-      >
+      <div className="surface-card space-y-3 overflow-visible p-3 lg:hidden">
         <div>
           {searchInput(
             'Guests, email, phone, plate, pet…',
             cn(
-              'h-10 min-h-[44px] w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 text-[13px] text-slate-700',
+              'h-10 min-h-[44px] w-full rounded-lg border border-border bg-muted/50 pl-9 text-[13px] text-foreground',
               draft ? 'pr-11' : 'pr-3',
-              'placeholder:text-slate-400',
+              'placeholder:text-muted-foreground',
               'transition-all duration-150',
-              'focus:border-sidebar-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
+              'focus:border-sidebar-primary focus:bg-card focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20',
             ),
-            'absolute right-1 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition-colors hover:text-slate-600',
+            'absolute right-1 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-muted-foreground',
           )}
         </div>
 
@@ -351,14 +338,14 @@ function BookingFilterChips({
               className="flex items-center justify-between px-3.5 py-2.5"
               style={{ borderBottom: '1px solid #f1f5f9' }}
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Filter by status
               </span>
               {activeStatuses.size > 0 && (
                 <button
                   type="button"
                   onClick={() => onChange({ status: [], page: 1 })}
-                  className="text-[12px] font-semibold text-slate-400 transition-colors hover:text-slate-700"
+                  className="text-[12px] font-semibold text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Clear
                 </button>
@@ -464,7 +451,7 @@ function BookingFilterChips({
           fillWidth && previousLabel === 'full' && 'gap-1.5 px-3 py-2.5',
           query.showPreviousBookings
             ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
-            : 'border-sidebar-border bg-white text-sidebar-muted hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+            : 'border-sidebar-border bg-card text-sidebar-muted hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
         )}
       >
         <History className="size-4 shrink-0" aria-hidden />
@@ -492,7 +479,7 @@ function TriOptions({
         className="px-3.5 py-2.5"
         style={{ borderBottom: '1px solid #f1f5f9' }}
       >
-        <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
       </div>
@@ -506,7 +493,7 @@ function TriOptions({
               onClick={() => onChange(opt.value)}
               className={cn(
                 'flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition-colors',
-                isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
+                isSelected ? 'bg-muted/50' : 'hover:bg-muted/50',
               )}
             >
               {/* Radio dot */}
@@ -515,20 +502,20 @@ function TriOptions({
                   'flex justify-center items-center rounded-full border-2 transition-all size-4 shrink-0',
                   isSelected
                     ? 'border-sidebar-primary bg-sidebar-primary'
-                    : 'bg-white border-sidebar-border',
+                    : 'bg-card border-sidebar-border',
                 )}
                 aria-hidden
               >
                 {isSelected && (
-                  <span className="size-1.5 rounded-full bg-white" />
+                  <span className="size-1.5 rounded-full bg-card" />
                 )}
               </span>
               <span
                 className={cn(
                   'text-[13px]',
                   isSelected
-                    ? 'font-semibold text-slate-800'
-                    : 'font-medium text-slate-600',
+                    ? 'font-semibold text-foreground'
+                    : 'font-medium text-muted-foreground',
                 )}
               >
                 {opt.label}
@@ -556,12 +543,12 @@ function StatusFilterCheckbox({
         'flex justify-center items-center rounded border-2 transition-all size-4 shrink-0',
         checked || indeterminate
           ? 'bg-sidebar-primary border-sidebar-primary'
-          : 'bg-white border-sidebar-border',
+          : 'bg-card border-sidebar-border',
       )}
       aria-hidden
     >
       {indeterminate && !checked ? (
-        <span className="w-2 h-0.5 rounded-full bg-white" />
+        <span className="w-2 h-0.5 rounded-full bg-card" />
       ) : checked ? (
         <Check className="size-2.5 text-white" strokeWidth={3} />
       ) : null}
@@ -585,7 +572,7 @@ function StatusFilterOption({
   return (
     <label
       className={cn(
-        'flex items-center gap-3 py-2.5 min-h-[44px] cursor-pointer hover:bg-slate-50 transition-colors',
+        'flex items-center gap-3 py-2.5 min-h-[44px] cursor-pointer hover:bg-muted/50 transition-colors',
         nested ? 'pl-9 pr-3.5' : 'px-3.5',
       )}
     >

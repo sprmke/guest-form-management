@@ -24,7 +24,10 @@ import {
   PartyPopper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
+import {
+  StatusBadge,
+  statusToneStyle,
+} from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
 import {
   formatBookingDate,
@@ -99,7 +102,7 @@ export function BookingCalendarView({
   if (error) {
     return (
       <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
+        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl"
         style={{ border: '1px solid rgba(0,0,0,0.08)' }}
       >
         <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
@@ -108,10 +111,10 @@ export function BookingCalendarView({
           </span>
         </div>
         <div>
-          <p className="text-[14px] font-bold text-slate-800">
+          <p className="text-[14px] font-bold text-foreground">
             Could not load bookings
           </p>
-          <p className="mt-1 text-[12px] text-slate-400 max-w-xs">{error}</p>
+          <p className="mt-1 text-[12px] text-muted-foreground max-w-xs">{error}</p>
         </div>
       </div>
     );
@@ -126,7 +129,7 @@ export function BookingCalendarView({
     >
       {/* ── Month grid (2/3) ────────────────────────────────────── */}
       <div
-        className="bg-white rounded-xl overflow-hidden lg:col-span-2"
+        className="bg-card rounded-xl overflow-hidden lg:col-span-2"
         style={{
           border: '1px solid rgba(0,0,0,0.08)',
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -137,7 +140,7 @@ export function BookingCalendarView({
           className="flex items-center justify-between px-3 sm:px-4 py-3"
           style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
         >
-          <h2 className="text-[14px] font-bold text-slate-800">
+          <h2 className="text-[14px] font-bold text-foreground">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
           <div className="flex items-center gap-1">
@@ -147,7 +150,7 @@ export function BookingCalendarView({
               aria-label="Previous month"
               className={cn(
                 'inline-flex items-center justify-center rounded-lg min-w-[36px] min-h-[36px]',
-                'border bg-white text-sidebar-muted border-sidebar-border',
+                'border bg-card text-sidebar-muted border-sidebar-border',
                 'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
                 'transition-all duration-100',
               )}
@@ -162,7 +165,7 @@ export function BookingCalendarView({
               }}
               className={cn(
                 'inline-flex items-center justify-center rounded-lg px-2.5 min-h-[36px] text-[12px] font-semibold',
-                'border bg-white text-sidebar-muted border-sidebar-border',
+                'border bg-card text-sidebar-muted border-sidebar-border',
                 'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100',
               )}
             >
@@ -174,7 +177,7 @@ export function BookingCalendarView({
               aria-label="Next month"
               className={cn(
                 'inline-flex items-center justify-center rounded-lg min-w-[36px] min-h-[36px]',
-                'border bg-white text-sidebar-muted border-sidebar-border',
+                'border bg-card text-sidebar-muted border-sidebar-border',
                 'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
                 'transition-all duration-100',
               )}
@@ -189,7 +192,7 @@ export function BookingCalendarView({
           {WEEKDAYS.map((day) => (
             <div
               key={day}
-              className="text-center text-[10px] font-bold uppercase tracking-wider text-slate-400 py-1"
+              className="text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground py-1"
             >
               {day}
             </div>
@@ -206,7 +209,7 @@ export function BookingCalendarView({
             ? calendarGrid.days.map((day) => (
                 <div
                   key={format(day, 'yyyy-MM-dd')}
-                  className="rounded-lg bg-slate-50 animate-pulse aspect-square sm:min-h-[88px]"
+                  className="rounded-lg bg-muted/50 animate-pulse aspect-square sm:min-h-[88px]"
                 />
               ))
             : calendarGrid.days.map((day) => {
@@ -230,7 +233,7 @@ export function BookingCalendarView({
                     className={cn(
                       'relative flex flex-col items-stretch justify-start rounded-lg p-1.5 transition-all duration-100',
                       'aspect-square sm:aspect-auto sm:min-h-[88px] outline-none',
-                      'hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
+                      'hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
                       isSelected &&
                         'ring-2 ring-sidebar-primary/60 bg-sidebar-accent/30',
                       !isCurrentMonth && 'opacity-35',
@@ -243,13 +246,13 @@ export function BookingCalendarView({
                           'text-[12px] font-semibold leading-none',
                           todayFlag
                             ? 'inline-flex items-center justify-center size-5 rounded-full bg-sidebar-primary text-sidebar-primary-foreground'
-                            : 'text-slate-700 px-1',
+                            : 'text-foreground px-1',
                         )}
                       >
                         {format(day, 'd')}
                       </span>
                       {hasBookings && (
-                        <span className="text-[9px] font-black tabular-nums text-slate-400">
+                        <span className="text-[9px] font-black tabular-nums text-muted-foreground">
                           {dayBookings.length}
                         </span>
                       )}
@@ -262,20 +265,26 @@ export function BookingCalendarView({
                           <BookingPill key={b.id} row={b} />
                         ))}
                         {dayBookings.length > 2 && (
-                          <span className="text-[9px] font-bold text-slate-400 px-1 mt-0.5">
+                          <span className="text-[9px] font-bold text-muted-foreground px-1 mt-0.5">
                             +{dayBookings.length - 2} more
                           </span>
                         )}
                       </div>
                     )}
 
-                    {/* Mobile dot indicator */}
+                    {/* Mobile status dots (one per booking, up to 4) */}
                     {hasBookings && (
-                      <div className="sm:hidden mt-auto flex justify-center pb-0.5">
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{ background: 'hsl(var(--sidebar-primary))' }}
-                        />
+                      <div className="sm:hidden mt-auto flex justify-center gap-0.5 pb-0.5">
+                        {dayBookings.slice(0, 4).map((b) => (
+                          <span
+                            key={b.id}
+                            aria-hidden
+                            className={cn(
+                              'size-1.5 shrink-0 rounded-full',
+                              statusToneStyle(b.status).dot,
+                            )}
+                          />
+                        ))}
                       </div>
                     )}
                   </button>
@@ -286,7 +295,7 @@ export function BookingCalendarView({
 
       {/* ── Selected day detail (1/3) ─────────────────────────────── */}
       <div
-        className="bg-white rounded-xl overflow-hidden"
+        className="bg-card rounded-xl overflow-hidden"
         style={{
           border: '1px solid rgba(0,0,0,0.08)',
           boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
@@ -296,13 +305,13 @@ export function BookingCalendarView({
           className="px-4 py-3"
           style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
         >
-          <h3 className="text-[12px] font-bold uppercase tracking-wider text-slate-500">
+          <h3 className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground">
             {selectedDay
               ? format(selectedDay, 'EEEE, MMMM d, yyyy')
               : 'Day details'}
           </h3>
           {selectedDay && (
-            <p className="mt-0.5 text-[11px] text-slate-400">
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
               {selectedDayBookings.length === 0
                 ? 'No bookings on this day'
                 : `${selectedDayBookings.length} booking${selectedDayBookings.length === 1 ? '' : 's'}`}
@@ -381,18 +390,23 @@ function BookingPill({ row }: { row: BookingRow }) {
     row.primary_guest_name?.split(' ')[0] ||
     row.guest_facebook_name?.split(' ')[0] ||
     'Guest';
+  const tone = statusToneStyle(row.status);
   return (
     <div
-      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 truncate"
-      style={{
-        background: 'hsl(var(--sidebar-accent) / 0.5)',
-        border: '1px solid hsl(var(--sidebar-border))',
-      }}
+      className={cn(
+        'flex min-w-0 items-center gap-1 truncate rounded-md border px-1.5 py-0.5',
+        'text-[10px] font-semibold leading-tight',
+        tone.badge,
+      )}
       title={`${row.primary_guest_name || row.guest_facebook_name || 'Guest'} · ${statusLabel(row.status)}`}
     >
       <span
-        className="size-1.5 rounded-full shrink-0"
-        style={{ background: 'hsl(var(--sidebar-primary))' }}
+        aria-hidden
+        className={cn(
+          'size-1.5 shrink-0 rounded-full',
+          tone.dot,
+          tone.pulse && 'motion-safe:animate-pulse',
+        )}
       />
       <span className="truncate">{name}</span>
     </div>
@@ -419,7 +433,7 @@ function DayBookingItem({
       aria-label={`Open booking for ${name}`}
       className={cn(
         'group w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-colors',
-        'hover:bg-slate-50 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
+        'hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
       )}
       style={{ border: '1px solid rgba(0,0,0,0.06)' }}
     >
@@ -431,11 +445,11 @@ function DayBookingItem({
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-[13px] font-bold text-slate-800 truncate">
+          <p className="text-[13px] font-bold text-foreground truncate">
             {name}
           </p>
           <ArrowUpRight
-            className="size-3.5 text-slate-300 shrink-0 group-hover:text-slate-500 transition-colors"
+            className="size-3.5 text-muted-foreground/50 shrink-0 group-hover:text-muted-foreground transition-colors"
             aria-hidden
           />
         </div>
@@ -466,18 +480,18 @@ function DayBookingItem({
             </span>
           )}
         </div>
-        <p className="mt-1.5 text-[11px] text-slate-400 truncate">
+        <p className="mt-1.5 text-[11px] text-muted-foreground truncate">
           {formatBookingDate(row.check_in_date)}
-          <span className="mx-1.5 text-slate-300">→</span>
+          <span className="mx-1.5 text-muted-foreground/50">→</span>
           {formatBookingDate(row.check_out_date)}
         </p>
-        <p className="mt-0.5 text-[11px] text-slate-400">
+        <p className="mt-0.5 text-[11px] text-muted-foreground">
           {row.number_of_nights}{' '}
           {row.number_of_nights === 1 ? 'night' : 'nights'}
           {row.booking_rate != null && (
             <>
-              <span className="mx-1.5 text-slate-300">·</span>
-              <span className="font-semibold text-slate-600">
+              <span className="mx-1.5 text-muted-foreground/50">·</span>
+              <span className="font-semibold text-muted-foreground">
                 {formatMoney(row.booking_rate)}
               </span>
             </>
@@ -491,10 +505,10 @@ function DayBookingItem({
 function EmptyDetail({ title, caption }: { title: string; caption: string }) {
   return (
     <div className="flex flex-col gap-2 items-center justify-center py-10 text-center">
-      <CalendarCheck className="size-9 text-slate-200" aria-hidden />
+      <CalendarCheck className="size-9 text-muted-foreground/40" aria-hidden />
       <div>
-        <p className="text-[13px] font-semibold text-slate-600">{title}</p>
-        <p className="mt-0.5 text-[11px] text-slate-400">{caption}</p>
+        <p className="text-[13px] font-semibold text-muted-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] text-muted-foreground">{caption}</p>
       </div>
     </div>
   );

@@ -36,20 +36,17 @@ export function BookingTable({
 
   if (error) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
-          <span className="text-base font-black leading-none text-red-500">
+      <div className="surface-card flex flex-col items-center justify-center gap-3 py-20 text-center">
+        <div className="flex size-9 items-center justify-center rounded-full bg-destructive/10">
+          <span className="text-base font-black leading-none text-destructive">
             !
           </span>
         </div>
         <div>
-          <p className="text-[14px] font-bold text-slate-800">
+          <p className="text-section-title font-bold text-foreground">
             Could not load bookings
           </p>
-          <p className="mt-1 text-[12px] text-slate-400 max-w-xs">{error}</p>
+          <p className="mt-1 max-w-xs text-caption">{error}</p>
         </div>
       </div>
     );
@@ -59,22 +56,19 @@ export function BookingTable({
 
   if (rows.length === 0) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center rounded-full size-9 bg-slate-100">
-          <span className="text-lg leading-none text-slate-400">∅</span>
+      <div className="surface-card flex flex-col items-center justify-center gap-3 py-20 text-center">
+        <div className="flex size-9 items-center justify-center rounded-full bg-muted">
+          <span className="text-lg leading-none text-muted-foreground">∅</span>
         </div>
         <div>
-          <p className="text-[14px] font-bold text-slate-700">
+          <p className="text-section-title font-bold text-foreground">
             No bookings found
           </p>
-          <p className="mt-1 text-[12px] text-slate-400">
+          <p className="mt-1 text-caption">
             Adjust your filters or clear the search.
           </p>
           {emptyExtraHint ? (
-            <p className="mt-2 text-[12px] text-slate-500 max-w-sm">
+            <p className="mt-2 max-w-sm text-caption">
               {emptyExtraHint}
             </p>
           ) : null}
@@ -86,23 +80,14 @@ export function BookingTable({
   return (
     <div
       className={cn(
-        'bg-white rounded-xl overflow-hidden transition-opacity duration-300',
+        'surface-card overflow-hidden transition-opacity duration-300',
         isRefreshing && 'opacity-60',
       )}
-      style={{
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      }}
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <thead>
-            <tr
-              style={{
-                borderBottom: '1px solid #f1f5f9',
-                background: '#fafafa',
-              }}
-            >
+            <tr className="border-b border-border/60 bg-muted/40">
               <Th className="pr-3 pl-4 sm:pl-5">Status</Th>
               <Th className="px-3 sm:px-4">Guest</Th>
               <Th className="px-3 sm:px-4">
@@ -153,7 +138,7 @@ function Th({
     <th
       scope="col"
       className={cn(
-        'py-[11px] text-left text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400',
+        'py-3 text-left text-table-head',
         className,
       )}
     >
@@ -196,8 +181,8 @@ function BookingTableRow({
         'group cursor-pointer transition-colors duration-100 outline-none',
         'hover:bg-sidebar-accent/30 focus-visible:bg-sidebar-accent/40',
         'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-primary/40',
+        index > 0 && 'border-t border-border/40',
       )}
-      style={{ borderTop: index === 0 ? undefined : '1px solid #f8fafc' }}
     >
       {/* Status */}
       <td className="pl-4 sm:pl-5 pr-3 py-3 sm:py-3.5 align-middle">
@@ -211,10 +196,10 @@ function BookingTableRow({
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-[140px] sm:min-w-[160px]">
           <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="md" />
           <div className="min-w-0">
-            <p className="text-[13px] font-bold text-slate-800 leading-tight truncate">
+            <p className="text-data-primary font-bold leading-tight truncate">
               {name}
             </p>
-            <p className="mt-[2px] text-[11px] text-slate-400 leading-tight truncate">
+            <p className="mt-0.5 text-data-secondary truncate">
               {row.guest_email}
             </p>
           </div>
@@ -223,12 +208,12 @@ function BookingTableRow({
 
       {/* Stay */}
       <td className="px-3 sm:px-4 py-3 sm:py-3.5 align-middle whitespace-nowrap">
-        <p className="text-[13px] font-semibold text-slate-700">
+        <p className="text-data-primary">
           {formatBookingDateShort(row.check_in_date)}
-          <span className="mx-1.5 text-slate-300 font-light">→</span>
+          <span className="mx-1.5 font-light text-muted-foreground/50">→</span>
           {formatBookingDate(row.check_out_date)}
         </p>
-        <p className="mt-[2px] text-[11px] text-slate-400">
+        <p className="mt-0.5 text-data-secondary">
           {row.number_of_nights}{' '}
           {row.number_of_nights === 1 ? 'night' : 'nights'}
         </p>
@@ -236,7 +221,7 @@ function BookingTableRow({
 
       {/* Pax */}
       <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle tabular-nums md:table-cell">
-        <span className="text-[13px] font-semibold text-slate-600">{pax}</span>
+        <span className="text-data-primary text-muted-foreground">{pax}</span>
       </td>
 
       {/* Flags — bigger, more legible icons */}
@@ -272,17 +257,17 @@ function BookingTableRow({
           {!row.need_parking &&
             !row.has_pets &&
             !bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
-            <span className="text-slate-200 text-[14px] leading-none">—</span>
+            <span className="text-muted-foreground/40 text-[14px] leading-none">—</span>
           )}
         </div>
       </td>
 
       {/* Amount */}
-      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle lg:table-cell tabular-nums">
+      <td className="hidden px-3 sm:px-4 py-3.5 text-right align-middle lg:table-cell">
         <span
           className={cn(
-            'text-[13px] font-semibold',
-            row.booking_rate == null ? 'text-slate-300' : 'text-slate-700',
+            'text-table-amount',
+            row.booking_rate == null && 'text-muted-foreground/50',
           )}
         >
           {formatMoney(row.booking_rate)}
@@ -295,7 +280,7 @@ function BookingTableRow({
           aria-hidden
           className={cn(
             'inline-flex items-center justify-center rounded-lg',
-            'min-w-[44px] min-h-[44px] text-slate-400',
+            'min-w-[44px] min-h-[44px] text-muted-foreground',
             'sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-visible:opacity-100',
             'transition-opacity duration-150',
           )}
@@ -309,18 +294,12 @@ function BookingTableRow({
 
 function TableSkeleton() {
   return (
-    <div
-      className="overflow-hidden bg-white rounded-xl"
-      style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-    >
-      <div
-        className="flex gap-6 items-center px-5 py-[11px]"
-        style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
-      >
+    <div className="surface-card overflow-hidden">
+      <div className="flex items-center gap-6 border-b border-border/60 bg-muted/40 px-5 py-[11px]">
         {[72, 120, 150, 48, 60, 72].map((w, i) => (
           <div
             key={i}
-            className="h-2.5 rounded-full bg-slate-200 animate-pulse shrink-0"
+            className="h-2.5 rounded-full bg-muted animate-pulse shrink-0"
             style={{ width: w, opacity: 0.6 }}
           />
         ))}
@@ -328,22 +307,22 @@ function TableSkeleton() {
       {Array.from({ length: 7 }).map((_, i) => (
         <div
           key={i}
-          className="flex gap-4 items-center px-5 py-4"
-          style={{
-            borderTop: i === 0 ? undefined : '1px solid #f8fafc',
-            opacity: 1 - i * 0.1,
-          }}
+          className={cn(
+            'flex items-center gap-4 px-5 py-4',
+            i > 0 && 'border-t border-border/40',
+          )}
+          style={{ opacity: 1 - i * 0.1 }}
         >
-          <div className="w-24 h-5 rounded-md animate-pulse bg-slate-100" />
+          <div className="w-24 h-5 rounded-md animate-pulse bg-muted" />
           <div className="flex flex-1 gap-3 items-center">
-            <div className="rounded-full animate-pulse size-9 bg-slate-100 shrink-0" />
+            <div className="rounded-full animate-pulse size-9 bg-muted shrink-0" />
             <div className="space-y-1.5 flex-1">
-              <div className="w-32 h-3 rounded-full animate-pulse bg-slate-100" />
-              <div className="h-2.5 rounded-full bg-slate-100/70 animate-pulse w-40" />
+              <div className="w-32 h-3 rounded-full animate-pulse bg-muted" />
+              <div className="h-2.5 rounded-full bg-muted/70 animate-pulse w-40" />
             </div>
           </div>
-          <div className="hidden w-36 h-3 rounded-full animate-pulse md:block bg-slate-100" />
-          <div className="ml-auto w-14 h-7 rounded-lg animate-pulse bg-slate-100" />
+          <div className="hidden w-36 h-3 rounded-full animate-pulse md:block bg-muted" />
+          <div className="ml-auto w-14 h-7 rounded-lg animate-pulse bg-muted" />
         </div>
       ))}
     </div>

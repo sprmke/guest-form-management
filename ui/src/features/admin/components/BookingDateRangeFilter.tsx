@@ -135,7 +135,7 @@ export function BookingDateRangeFilter({
           aria-label="Previous period"
           className={cn(
             'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
-            'border bg-white text-sidebar-muted border-sidebar-border',
+            'border bg-card text-sidebar-muted border-sidebar-border',
             'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             'transition-all duration-100',
           )}
@@ -161,7 +161,7 @@ export function BookingDateRangeFilter({
             fullWidth ? 'w-full justify-center' : 'whitespace-nowrap',
             isActive || open || calendarOpen
               ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
-              : 'bg-white text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+              : 'bg-card text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
           )}
         >
           <CalendarDays
@@ -169,7 +169,7 @@ export function BookingDateRangeFilter({
               'size-3.5 shrink-0',
               isActive || open || calendarOpen
                 ? 'text-sidebar-primary-foreground/90'
-                : 'text-slate-400',
+                : 'text-muted-foreground',
             )}
             aria-hidden
           />
@@ -194,7 +194,7 @@ export function BookingDateRangeFilter({
         {open && (
           <div
             className={cn(
-              'absolute top-full left-0 mt-1.5 z-50 bg-white rounded-xl overflow-hidden w-72',
+              'absolute top-full left-0 mt-1.5 z-50 bg-card rounded-xl overflow-hidden w-72',
               'max-w-[calc(100vw-24px)]',
             )}
             style={{
@@ -207,7 +207,7 @@ export function BookingDateRangeFilter({
               className="flex items-center justify-between px-3.5 py-2.5"
               style={{ borderBottom: '1px solid #f1f5f9' }}
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 View by
               </span>
               {isActive && !isCurrent && datePreset !== 'custom' && (
@@ -235,13 +235,13 @@ export function BookingDateRangeFilter({
                     onClick={() => handlePresetChange(opt.value)}
                     className={cn(
                       'flex items-center gap-2.5 w-full px-3.5 py-2 text-left transition-colors',
-                      isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
+                      isSelected ? 'bg-muted/50' : 'hover:bg-muted/50',
                     )}
                   >
                     <Icon
                       className={cn(
                         'size-3.5 shrink-0',
-                        isSelected ? 'text-sidebar-primary' : 'text-slate-300',
+                        isSelected ? 'text-sidebar-primary' : 'text-muted-foreground/50',
                       )}
                       aria-hidden
                     />
@@ -250,13 +250,13 @@ export function BookingDateRangeFilter({
                         className={cn(
                           'text-[13px] leading-tight',
                           isSelected
-                            ? 'font-semibold text-slate-800'
-                            : 'font-medium text-slate-600',
+                            ? 'font-semibold text-foreground'
+                            : 'font-medium text-muted-foreground',
                         )}
                       >
                         {opt.label}
                       </p>
-                      <p className="mt-[2px] text-[11px] text-slate-400 leading-tight">
+                      <p className="mt-[2px] text-[11px] text-muted-foreground leading-tight">
                         {opt.description}
                       </p>
                     </div>
@@ -281,7 +281,7 @@ export function BookingDateRangeFilter({
                     onClear();
                     setOpen(false);
                   }}
-                  className="text-[12px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                  className="text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Clear date filter
                 </button>
@@ -294,7 +294,7 @@ export function BookingDateRangeFilter({
         {calendarOpen && (
           <div
             className={cn(
-              'absolute top-full left-0 mt-1.5 z-50 bg-white rounded-xl overflow-hidden',
+              'absolute top-full left-0 mt-1.5 z-50 bg-card rounded-xl overflow-hidden',
               'max-w-[calc(100vw-24px)]',
             )}
             style={{
@@ -307,7 +307,7 @@ export function BookingDateRangeFilter({
               className="flex items-center justify-between gap-4 px-3.5 py-2.5"
               style={{ borderBottom: '1px solid #f1f5f9' }}
             >
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Select date range
               </span>
               <button
@@ -316,7 +316,7 @@ export function BookingDateRangeFilter({
                   setDatePreset('month');
                   setCalendarOpen(false);
                 }}
-                className="text-[12px] font-semibold text-slate-400 hover:text-slate-700 transition-colors"
+                className="text-[12px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
                 Back to presets
               </button>
@@ -340,25 +340,25 @@ export function BookingDateRangeFilter({
               className="flex items-center justify-between gap-2 px-3.5 py-2.5"
               style={{ borderTop: '1px solid #f1f5f9' }}
             >
-              <div className="text-[12px] text-slate-500 min-w-0">
+              <div className="min-w-0 text-[12px] text-muted-foreground">
                 {localRange?.from ? (
                   <>
-                    <span className="font-semibold text-slate-700">
+                    <span className="font-semibold text-foreground">
                       {format(localRange.from, 'MMM d, yyyy')}
                     </span>
                     {localRange.to ? (
                       <>
-                        <span className="mx-1.5 text-slate-300">→</span>
-                        <span className="font-semibold text-slate-700">
+                        <span className="mx-1.5 text-muted-foreground/50">→</span>
+                        <span className="font-semibold text-foreground">
                           {format(localRange.to, 'MMM d, yyyy')}
                         </span>
                       </>
                     ) : (
-                      <span className="text-slate-400"> · select end date</span>
+                      <span className="text-muted-foreground"> · select end date</span>
                     )}
                   </>
                 ) : (
-                  <span className="text-slate-400">Select start date</span>
+                  <span className="text-muted-foreground">Select start date</span>
                 )}
               </div>
               <div className="flex gap-1.5 shrink-0">
@@ -367,7 +367,7 @@ export function BookingDateRangeFilter({
                   onClick={() => setCalendarOpen(false)}
                   className={cn(
                     'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-                    'border bg-white text-sidebar-muted border-sidebar-border',
+                    'border bg-card text-sidebar-muted border-sidebar-border',
                     'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100',
                   )}
                 >
@@ -404,7 +404,7 @@ export function BookingDateRangeFilter({
           aria-label="Next period"
           className={cn(
             'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
-            'border bg-white text-sidebar-muted border-sidebar-border',
+            'border bg-card text-sidebar-muted border-sidebar-border',
             'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
             'transition-all duration-100',
           )}
@@ -421,24 +421,24 @@ const CALENDAR_CLASSNAMES = {
   months: 'flex flex-col sm:flex-row gap-4',
   month: 'space-y-2',
   month_caption: 'flex justify-center pt-1 relative items-center h-8',
-  caption_label: 'text-[13px] font-bold text-slate-700',
+  caption_label: 'text-[13px] font-bold text-foreground',
   nav: 'space-x-1 flex items-center',
   button_previous: cn(
     'absolute left-1 inline-flex items-center justify-center rounded-md size-7 p-0',
-    'border border-sidebar-border bg-white text-slate-500',
+    'border border-sidebar-border bg-card text-muted-foreground',
     'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
     'transition-colors duration-100',
   ),
   button_next: cn(
     'absolute right-1 inline-flex items-center justify-center rounded-md size-7 p-0',
-    'border border-sidebar-border bg-white text-slate-500',
+    'border border-sidebar-border bg-card text-muted-foreground',
     'hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
     'transition-colors duration-100',
   ),
   month_grid: 'w-full border-collapse',
   weekdays: 'flex',
   weekday:
-    'text-slate-400 rounded-md w-9 font-semibold text-[10px] uppercase tracking-wider',
+    'text-muted-foreground rounded-md w-9 font-semibold text-[10px] uppercase tracking-wider',
   week: 'flex w-full mt-1',
   day: cn(
     'size-9 text-center text-[12px] font-medium p-0 relative',
@@ -449,7 +449,7 @@ const CALENDAR_CLASSNAMES = {
   ),
   day_button: cn(
     'inline-flex items-center justify-center rounded-md size-9 p-0 text-[12px] font-medium',
-    'text-slate-700 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+    'text-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
     'aria-selected:opacity-100 transition-colors duration-100',
   ),
   range_start: 'day-range-start',
@@ -461,8 +461,8 @@ const CALENDAR_CLASSNAMES = {
   ),
   today: 'font-bold [&_button]:ring-2 [&_button]:ring-sidebar-primary/40',
   outside:
-    'day-outside text-slate-300 aria-selected:bg-sidebar-accent/30 aria-selected:text-slate-400',
-  disabled: 'text-slate-300 opacity-50 pointer-events-none',
+    'day-outside text-muted-foreground/50 aria-selected:bg-sidebar-accent/30 aria-selected:text-muted-foreground',
+  disabled: 'text-muted-foreground/50 opacity-50 pointer-events-none',
   range_middle:
     'aria-selected:bg-sidebar-accent/60 aria-selected:text-sidebar-accent-foreground',
   hidden: 'invisible',
