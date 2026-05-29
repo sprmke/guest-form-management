@@ -3,6 +3,7 @@ import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer } from 'lucide
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -57,7 +58,7 @@ function CollapsibleSection({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className="px-3 pt-3 pb-4 space-y-4 border-t border-border/70"
+          className="px-3 pt-3 pb-4 space-y-4 border-t border-separator"
         >
           {children}
         </div>
@@ -217,6 +218,10 @@ export function AppSettingsCard() {
     });
   };
 
+  if (isLoading) {
+    return <AppSettingsCardSkeleton />;
+  }
+
   return (
     <section
       className={cn(
@@ -232,16 +237,13 @@ export function AppSettingsCard() {
         icon={Settings}
       />
 
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading settings…</p>
-      )}
       {isError && (
         <p className="text-sm text-destructive">
           {(error as Error)?.message ?? 'Could not load settings'}
         </p>
       )}
 
-      {draft && data && !isLoading && (
+      {draft && data && (
         <div className="space-y-3">
           <CollapsibleSection
             id="email-routing"
@@ -447,7 +449,7 @@ export function AppSettingsCard() {
       )}
 
       {!isError ? (
-        <div className="flex flex-col gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
+        <div className="flex flex-col gap-2 border-t border-separator pt-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             disabled={busy || !draft}

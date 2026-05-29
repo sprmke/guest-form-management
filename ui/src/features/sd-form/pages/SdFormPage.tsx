@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Check, ExternalLink, Loader2, Wallet } from 'lucide-react';
 
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { MainLayout } from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -276,13 +277,7 @@ export function SdFormPage() {
   if (query.isLoading) {
     return (
       <MainLayout>
-        <div className="relative space-y-8 p-4 sm:p-6 lg:p-8">
-          <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} />
-          <div className="flex flex-col items-center justify-center gap-3 py-6 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-            <p className="text-sm">Loading your form…</p>
-          </div>
-        </div>
+        <SdFormPageSkeleton title={SD_FORM_BRAND_TITLE} />
       </MainLayout>
     );
   }
@@ -355,7 +350,7 @@ export function SdFormPage() {
         <SdFormStepper activeStep={step === 1 ? 1 : 2} />
 
         {showGreeting && (
-          <header className="space-y-4 border-b border-border/60 px-5 pb-5">
+          <header className="space-y-4 border-b border-separator px-5 pb-5">
             <h1 className="text-base font-bold text-foreground sm:text-lg">
               Hi {data.primary_guest_name},
             </h1>

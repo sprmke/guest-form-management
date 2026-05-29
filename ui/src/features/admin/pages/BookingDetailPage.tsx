@@ -24,7 +24,8 @@
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -53,6 +54,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
+import { BookingDetailPageSkeleton } from "@/components/skeletons/AdminSkeletons";
 import { BookingDetailMobileSummary } from "@/features/admin/components/BookingDetailMobileSummary";
 import { BookingMetaCard } from "@/features/admin/components/BookingMetaCard";
 import { PendingReviewWorkflowGate } from "@/features/admin/components/PendingReviewWorkflowGate";
@@ -105,20 +107,7 @@ export function BookingDetailPage() {
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const detailsPanelRef = useRef<HTMLDivElement>(null);
   const isBelowLg = useIsBelowLg();
-
-  const scrollDetailsIntoView = useCallback(() => {
-    // Wait for panel to un-hide and re-order in the layout before scrolling.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        detailsPanelRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      });
-    });
-  }, []);
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -148,12 +137,6 @@ export function BookingDetailPage() {
   /** Expanded details sit between summary and Progress on mobile (not below the fold). */
   const mobileDetailsBeforeWorkflow =
     isMobileWorkflowFirst && showMobileDetailCards;
-
-  useEffect(() => {
-    if (!isMobileWorkflowFirst || !showMobileDetailCards) return;
-    const timer = window.setTimeout(() => scrollDetailsIntoView(), 400);
-    return () => window.clearTimeout(timer);
-  }, [isMobileWorkflowFirst, showMobileDetailCards, scrollDetailsIntoView]);
 
   const handleToggleDetails = useCallback(() => {
     setDetailsExpanded((was) => !was);
@@ -203,7 +186,7 @@ export function BookingDetailPage() {
           </Link>
 
           {/* Loading */}
-          {isLoading && <LoadingSkeleton />}
+          {isLoading && <BookingDetailPageSkeleton />}
 
           {/* Error */}
           {error && (
@@ -229,6 +212,9 @@ export function BookingDetailPage() {
                     detailsExpanded={detailsExpanded}
                     onToggleDetails={handleToggleDetails}
                     onPayParking={handleOpenPayParking}
+                    editMode={editMode}
+                    onEdit={handleStartEdit}
+                    onCancelEdit={() => setEditMode(false)}
                   />
                 )}
 
@@ -248,7 +234,6 @@ export function BookingDetailPage() {
                   )}
                 >
                   <CollapsibleContent
-                    ref={detailsPanelRef}
                     id="booking-detail-full-panel"
                     className={cn(
                       "space-y-5 overflow-hidden",
@@ -263,6 +248,7 @@ export function BookingDetailPage() {
                     onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
                     onPayParking={handleOpenPayParking}
+                    className={cn(isMobileWorkflowFirst && "hidden lg:block")}
                   />
 
                   {editMode ? (
@@ -913,7 +899,7 @@ function PricingSummaryCard({
           <p className="bg-muted/50 px-4 py-1.5 text-overline">
             Guest settlement
           </p>
-          <div className="divide-y divide-slate-100 bg-card">
+          <div className="divide-y divide-separator bg-card">
             <MiniRow
               label="Total guest balance"
               value={formatMoney(totalGuestBalance)}
@@ -943,11 +929,11 @@ function PricingSummaryCard({
 
           {/* P&L — COMPLETED only */}
           {isCompleted && (
-            <div className="border-t border-border">
+            <div className="border-t border-separator">
               <p className="bg-muted/50 px-4 py-1.5 text-overline">
                 Profit &amp; loss
               </p>
-              <div className="divide-y divide-slate-100 bg-card">
+              <div className="divide-y divide-separator bg-card">
                 <MiniRow
                   label="Profit"
                   value={formatMoney(totalProfit)}
@@ -973,7 +959,7 @@ function PricingSummaryCard({
           )}
 
           {unpaidCents !== null && unpaidCents < 0 && (
-            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
+            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
               Overpaid by {formatMoney(Math.abs(unpaidCents) / 100)}
             </p>
           )}
@@ -1009,7 +995,7 @@ function PricingSummaryCard({
       )}
 
       {isCompleted && (
-        <div className="mt-4 border-t border-border/60 pt-4">
+        <div className="mt-4 border-t border-separator pt-4">
           <p className="mb-2 text-overline">
             Security deposit refund
           </p>
@@ -1161,7 +1147,7 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
   const awardedAt = booking.next_stay_voucher_awarded_at;
 
   return (
-    <div className="mt-4 border-t border-border/60 pt-4">
+    <div className="mt-4 border-t border-separator pt-4">
       <p className="mb-2 text-overline">
         Next-stay voucher
       </p>
@@ -1420,11 +1406,22 @@ function AssetPreviewModal({
   loading: boolean;
   onClose: () => void;
 }) {
-  if (!asset && !loading) return null;
+  const open = Boolean(asset || loading);
 
-  return (
+  useEffect(() => {
+    if (!open || typeof document === "undefined") return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open]);
+
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-[1px] p-3 sm:p-4"
+      className="fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-background/80 backdrop-blur-[1px] p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={asset ? `Preview ${asset.label}` : "Loading preview"}
@@ -1434,7 +1431,7 @@ function AssetPreviewModal({
         className="mx-auto flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex min-h-[52px] items-center justify-between border-b border-border px-2.5 sm:min-h-[56px] sm:px-4">
+        <div className="flex min-h-[52px] items-center justify-between border-b border-separator px-2.5 sm:min-h-[56px] sm:px-4">
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {asset?.label ?? "Loading preview..."}
@@ -1501,7 +1498,8 @@ function AssetPreviewModal({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -1598,22 +1596,6 @@ function InfoField({
         {icon}
         {String(value)}
       </span>
-    </div>
-  );
-}
-
-function LoadingSkeleton() {
-  return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-24 rounded-xl bg-muted" />
-      <div className="flex gap-4">
-        <div className="flex-1 space-y-4">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 rounded-xl bg-muted" />
-          ))}
-        </div>
-        <div className="hidden lg:block w-80 h-64 rounded-xl bg-muted" />
-      </div>
     </div>
   );
 }

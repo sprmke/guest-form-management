@@ -194,19 +194,11 @@ export function BookingDateRangeFilter({
         {open && (
           <div
             className={cn(
-              'absolute top-full left-0 mt-1.5 z-50 bg-card rounded-xl overflow-hidden w-72',
+              'absolute top-full left-0 z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
               'max-w-[calc(100vw-24px)]',
             )}
-            style={{
-              border: '1px solid rgba(0,0,0,0.09)',
-              boxShadow:
-                '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-            }}
           >
-            <div
-              className="flex items-center justify-between px-3.5 py-2.5"
-              style={{ borderBottom: '1px solid #f1f5f9' }}
-            >
+            <div className="flex items-center justify-between border-b border-separator px-3.5 py-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 View by
               </span>
@@ -241,7 +233,7 @@ export function BookingDateRangeFilter({
                     <Icon
                       className={cn(
                         'size-3.5 shrink-0',
-                        isSelected ? 'text-sidebar-primary' : 'text-muted-foreground/50',
+                        isSelected ? 'text-sidebar-primary' : 'text-muted-foreground',
                       )}
                       aria-hidden
                     />
@@ -251,7 +243,7 @@ export function BookingDateRangeFilter({
                           'text-[13px] leading-tight',
                           isSelected
                             ? 'font-semibold text-foreground'
-                            : 'font-medium text-muted-foreground',
+                            : 'font-medium text-foreground/75',
                         )}
                       >
                         {opt.label}
@@ -271,10 +263,7 @@ export function BookingDateRangeFilter({
               })}
             </div>
             {isActive && (
-              <div
-                className="px-3.5 py-2 flex justify-end"
-                style={{ borderTop: '1px solid #f1f5f9' }}
-              >
+              <div className="flex justify-end border-t border-separator px-3.5 py-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -294,19 +283,11 @@ export function BookingDateRangeFilter({
         {calendarOpen && (
           <div
             className={cn(
-              'absolute top-full left-0 mt-1.5 z-50 bg-card rounded-xl overflow-hidden',
+              'absolute top-full left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
               'max-w-[calc(100vw-24px)]',
             )}
-            style={{
-              border: '1px solid rgba(0,0,0,0.09)',
-              boxShadow:
-                '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-            }}
           >
-            <div
-              className="flex items-center justify-between gap-4 px-3.5 py-2.5"
-              style={{ borderBottom: '1px solid #f1f5f9' }}
-            >
+            <div className="flex items-center justify-between gap-4 border-b border-separator px-3.5 py-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Select date range
               </span>
@@ -336,10 +317,7 @@ export function BookingDateRangeFilter({
                 classNames={CALENDAR_CLASSNAMES}
               />
             </div>
-            <div
-              className="flex items-center justify-between gap-2 px-3.5 py-2.5"
-              style={{ borderTop: '1px solid #f1f5f9' }}
-            >
+            <div className="flex items-center justify-between gap-2 border-t border-separator px-3.5 py-2.5">
               <div className="min-w-0 text-[12px] text-muted-foreground">
                 {localRange?.from ? (
                   <>

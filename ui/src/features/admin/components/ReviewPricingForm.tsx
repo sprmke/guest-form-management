@@ -249,7 +249,7 @@ export function ReviewPricingForm({
           </span>
         </span>
         <span
-          className={`text-xl font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
+          className={`text-lg font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
         >
           {formatMoney(totalGuestBalance)}
         </span>

@@ -28,8 +28,8 @@ export function GuestFormStepNavigation({
     <div
       className={
         isFirst
-          ? 'flex justify-end border-t border-border/60 pt-5'
-          : 'flex flex-col-reverse gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between'
+          ? 'flex justify-end border-t border-separator pt-5'
+          : 'flex flex-col-reverse gap-2 border-t border-separator pt-5 sm:flex-row sm:items-center sm:justify-between'
       }
     >
       {!isFirst ? (

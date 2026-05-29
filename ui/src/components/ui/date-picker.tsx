@@ -62,20 +62,25 @@ export function DatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
-          variant={"outline"}
+          variant="outline"
           type="button"
           className={cn(
-            "w-full justify-start text-left font-normal h-10 px-3 py-2 border-gray-300 hover:bg-gray-50",
-            !date && "text-gray-400",
-            date && "text-gray-900",
-            className
+            'h-10 w-full justify-start rounded-2xl px-3 py-2 text-left font-normal',
+            !date ? 'text-muted-foreground' : 'text-foreground',
+            className,
           )}
         >
-          <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+          <CalendarIcon
+            className={cn(
+              'mr-2 h-4 w-4 flex-shrink-0',
+              !date ? 'text-muted-foreground' : 'text-foreground',
+            )}
+            aria-hidden
+          />
           {date ? (
-            <span className="truncate">{format(date, "MMM-dd-yyyy")}</span>
+            <span className="truncate">{format(date, 'MMM-dd-yyyy')}</span>
           ) : (
-            <span className="text-gray-400">{placeholder}</span>
+            <span className="truncate">{placeholder}</span>
           )}
         </Button>
       </PopoverTrigger>

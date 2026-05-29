@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Car, Dog, PartyPopper } from 'lucide-react';
+import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
@@ -8,7 +9,7 @@ import {
   formatBookingDateShort,
   formatMoney,
 } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { bookingRequestsSurpriseDecor, bookingFlagIconChipClass } from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
@@ -34,11 +35,8 @@ export function BookingCardGrid({
 
   if (error) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
+      <div className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl border border-border/50">
+        <div className="flex justify-center items-center bg-red-50 dark:bg-red-500/15 rounded-full size-9">
           <span className="text-base font-black leading-none text-red-500">
             !
           </span>
@@ -53,14 +51,11 @@ export function BookingCardGrid({
     );
   }
 
-  if (isLoading) return <CardGridSkeleton />;
+  if (isLoading) return <BookingsCardGridSkeleton />;
 
   if (rows.length === 0) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
+      <div className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl border border-border/50">
         <div className="flex justify-center items-center rounded-full size-9 bg-muted">
           <span className="text-lg leading-none text-muted-foreground">∅</span>
         </div>
@@ -119,13 +114,10 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
       aria-label={`Open booking for ${name}`}
       className={cn(
         'group relative bg-card rounded-xl overflow-hidden cursor-pointer transition-all duration-200',
+        'border border-border/50 shadow-sm dark:shadow-none',
         'hover:-translate-y-0.5 outline-none',
         'focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
       )}
-      style={{
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      }}
     >
       {/* Top: mobile = status beside guest; sm+ = status above avatar + name */}
       <div className="space-y-4 p-4 pb-3">
@@ -174,16 +166,13 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
       </div>
 
       {/* Footer: flags + amount */}
-      <div
-        className="flex items-center justify-between gap-2 px-4 py-3"
-        style={{ borderTop: '1px solid #f8fafc', background: '#fcfcfd' }}
-      >
+      <div className="flex items-center justify-between gap-2 border-t border-separator bg-muted/20 px-4 py-3 dark:bg-muted/30">
         <div className="flex items-center gap-1.5 min-w-0">
           {row.need_parking ? (
             <span
               title="Needs parking"
               aria-label="Needs parking"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.parking)}
             >
               <Car className="size-4" aria-hidden />
             </span>
@@ -192,7 +181,7 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
             <span
               title="Has pets"
               aria-label="Has pets"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.pet)}
             >
               <Dog className="size-4" aria-hidden />
             </span>
@@ -201,7 +190,7 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
             <span
               title="Surprise decor setup"
               aria-label="Surprise decor setup"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.decor)}
             >
               <PartyPopper className="size-4" aria-hidden />
             </span>
@@ -219,46 +208,6 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-function CardGridSkeleton() {
-  return (
-    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-card rounded-xl overflow-hidden"
-          style={{
-            border: '1px solid rgba(0,0,0,0.08)',
-            opacity: 1 - i * 0.06,
-          }}
-        >
-          <div className="flex items-center gap-3 p-4 pb-3">
-            <div className="rounded-full size-12 animate-pulse bg-muted shrink-0" />
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="h-3 rounded-full bg-muted animate-pulse w-2/3" />
-              <div className="h-2.5 rounded-full bg-muted/70 animate-pulse w-3/4" />
-            </div>
-          </div>
-          <div className="px-4 pb-3 space-y-2">
-            <div className="w-24 h-5 rounded-md animate-pulse bg-muted" />
-            <div className="w-3/4 h-3 rounded-full animate-pulse bg-muted" />
-            <div className="w-1/2 h-2.5 rounded-full bg-muted/70 animate-pulse" />
-          </div>
-          <div
-            className="flex items-center justify-between px-4 py-3"
-            style={{ borderTop: '1px solid #f8fafc', background: '#fcfcfd' }}
-          >
-            <div className="flex gap-1.5">
-              <div className="rounded-md size-7 animate-pulse bg-muted" />
-              <div className="rounded-md size-7 animate-pulse bg-muted" />
-            </div>
-            <div className="w-16 h-3 rounded-full animate-pulse bg-muted" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

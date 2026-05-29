@@ -3,12 +3,14 @@ import {
   Car,
   ChevronDown,
   Dog,
+  Edit2,
   PartyPopper,
   Users,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { bookingRequestsSurpriseDecor, bookingFlagLabelChipClass } from '@/features/admin/lib/bookingFlags';
 import { PayParkingHeaderButton } from '@/features/admin/components/PayParkingModal';
 import type { BookingRow } from '@/features/admin/lib/types';
 
@@ -17,18 +19,25 @@ type Props = {
   detailsExpanded: boolean;
   onToggleDetails: () => void;
   onPayParking: () => void;
+  editMode?: boolean;
+  onEdit?: () => void;
+  onCancelEdit?: () => void;
   className?: string;
 };
 
 /**
  * Compact booking strip for mobile detail.
- * Keeps workflow (Progress) above the fold; full cards + Edit live in the collapsible below.
+ * Keeps workflow (Progress) above the fold; expanded panel shows detail cards only
+ * (header actions live here — desktop uses BookingHeader inside the panel).
  */
 export function BookingDetailMobileSummary({
   booking,
   detailsExpanded,
   onToggleDetails,
   onPayParking,
+  editMode = false,
+  onEdit,
+  onCancelEdit,
   className,
 }: Props) {
   const pax =
@@ -78,19 +87,19 @@ export function BookingDetailMobileSummary({
       {(booking.need_parking || booking.has_pets || hasDecor) && (
         <div className="mt-2 flex flex-wrap gap-1.5">
           {booking.need_parking && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200/80">
+            <span className={bookingFlagLabelChipClass.parking}>
               <Car className="size-3" aria-hidden />
               Parking
             </span>
           )}
           {booking.has_pets && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-inset ring-amber-200/80">
+            <span className={bookingFlagLabelChipClass.pet}>
               <Dog className="size-3" aria-hidden />
               Pets
             </span>
           )}
           {hasDecor && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-fuchsia-50 px-2 py-0.5 text-[10px] font-semibold text-fuchsia-800 ring-1 ring-inset ring-fuchsia-200/80">
+            <span className={bookingFlagLabelChipClass.decor}>
               <PartyPopper className="size-3" aria-hidden />
               Decor
             </span>
@@ -98,39 +107,70 @@ export function BookingDetailMobileSummary({
         </div>
       )}
 
-      <div className="mt-3">
-        <PayParkingHeaderButton
-          booking={booking}
-          onOpenModal={onPayParking}
-          onViewParking={onPayParking}
-        />
-      </div>
+      {!editMode && (
+        <div className="mt-3">
+          <PayParkingHeaderButton
+            booking={booking}
+            onOpenModal={onPayParking}
+            onViewParking={onPayParking}
+          />
+        </div>
+      )}
 
-      <button
-        type="button"
-        onClick={onToggleDetails}
-        aria-expanded={detailsExpanded}
-        aria-controls="booking-detail-full-panel"
+      <div
         className={cn(
-          'mt-3 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200',
-          detailsExpanded
-            ? 'border border-border bg-muted/50 text-foreground hover:bg-muted'
-            : 'border border-sidebar-primary/30 bg-sidebar-primary/5 text-sidebar-primary hover:bg-sidebar-primary/10',
+          'mt-3 flex flex-col gap-2',
+          detailsExpanded && 'sm:flex-row sm:items-stretch',
         )}
       >
-        <span>
-          {detailsExpanded
-            ? 'Hide full booking details'
-            : 'View full booking details'}
-        </span>
-        <ChevronDown
+        <button
+          type="button"
+          onClick={onToggleDetails}
+          aria-expanded={detailsExpanded}
+          aria-controls="booking-detail-full-panel"
           className={cn(
-            'size-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none',
-            detailsExpanded && 'rotate-180',
+            'flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200',
+            detailsExpanded
+              ? 'border border-border bg-muted/50 text-foreground hover:bg-muted'
+              : 'border border-sidebar-primary/30 bg-sidebar-primary/5 text-sidebar-primary hover:bg-sidebar-primary/10',
           )}
-          aria-hidden
-        />
-      </button>
+        >
+          <span>
+            {detailsExpanded
+              ? 'Hide full booking details'
+              : 'View full booking details'}
+          </span>
+          <ChevronDown
+            className={cn(
+              'size-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none',
+              detailsExpanded && 'rotate-180',
+            )}
+            aria-hidden
+          />
+        </button>
+
+        {detailsExpanded &&
+          (editMode ? (
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              aria-label="Cancel and close the form"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-4 text-[13px] font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
+            >
+              <X className="size-4 shrink-0" aria-hidden />
+              Cancel
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-4 text-[13px] font-semibold text-muted-foreground shadow-sm transition-colors hover:bg-muted/50"
+            >
+              <Edit2 className="size-4 shrink-0" aria-hidden />
+              Edit
+            </button>
+          ))}
+      </div>
     </section>
   );
 }

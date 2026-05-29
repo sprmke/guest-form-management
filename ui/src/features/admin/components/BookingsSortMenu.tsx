@@ -65,19 +65,11 @@ export function BookingsSortMenu({
       {open && (
         <div
           className={cn(
-            'absolute top-full left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl bg-card sm:left-0 sm:right-auto sm:w-80',
+            'absolute top-full left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg sm:left-0 sm:right-auto sm:w-80',
             'max-w-[calc(100vw-24px)]',
           )}
-          style={{
-            border: '1px solid rgba(0,0,0,0.09)',
-            boxShadow:
-              '0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)',
-          }}
         >
-          <div
-            className="px-3.5 py-2.5"
-            style={{ borderBottom: '1px solid #f1f5f9' }}
-          >
+          <div className="border-b border-separator px-3.5 py-2.5">
             <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Sort by
             </span>
@@ -101,7 +93,7 @@ export function BookingsSortMenu({
                   <ArrowUpDown
                     className={cn(
                       'mt-0.5 size-3.5 shrink-0',
-                      isSelected ? 'text-sidebar-primary' : 'text-muted-foreground/50',
+                      isSelected ? 'text-sidebar-primary' : 'text-muted-foreground',
                     )}
                     aria-hidden
                   />
@@ -111,7 +103,7 @@ export function BookingsSortMenu({
                         'block text-[13px]',
                         isSelected
                           ? 'font-semibold text-foreground'
-                          : 'font-medium text-muted-foreground',
+                          : 'font-medium text-foreground/75',
                       )}
                     >
                       {opt.label}

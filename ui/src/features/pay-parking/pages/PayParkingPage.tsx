@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Check, Loader2 } from 'lucide-react';
 
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { PayParkingPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { MainLayout } from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -167,13 +168,7 @@ export function PayParkingPage() {
   if (query.isLoading) {
     return (
       <MainLayout>
-        <div className={PAY_PARKING_SHELL}>
-          <KameFormBrandHeader title={PAY_PARKING_BRAND_TITLE} />
-          <div className="flex flex-col gap-3 justify-center items-center py-6 text-muted-foreground">
-            <Loader2 className="animate-spin size-8 text-primary" aria-hidden />
-            <p className="text-sm">Loading your form…</p>
-          </div>
-        </div>
+        <PayParkingPageSkeleton title={PAY_PARKING_BRAND_TITLE} />
       </MainLayout>
     );
   }

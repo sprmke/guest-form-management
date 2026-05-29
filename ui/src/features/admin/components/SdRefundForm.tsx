@@ -157,7 +157,7 @@ export function InlineCopyIconButton({
         'relative top-px inline-flex shrink-0 items-center justify-center rounded border p-0 align-middle transition-colors ml-1',
         disabled
           ? 'cursor-not-allowed border-border bg-muted/50 text-muted-foreground/50'
-          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100',
+          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20',
       )}
       style={{ width: 18, height: 18, padding: 0 }}
       aria-label={ariaLabel}
@@ -376,12 +376,12 @@ export function SdRefundForm({
     >
       {guestMethod && (
         <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-slate-950/[0.04]">
-          <div className="border-b border-border/60 bg-muted/50/80 px-4 py-3.5 sm:px-5">
+          <div className="border-b border-separator bg-muted/50/80 px-4 py-3.5 sm:px-5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Guest refund details
             </h3>
           </div>
-          <dl className="min-w-0 divide-y divide-slate-100 px-4 sm:px-5">
+          <dl className="min-w-0 divide-y divide-separator px-4 sm:px-5">
             <RefundSummaryRow label="Method">
               {methodLabel(guestMethod)}
             </RefundSummaryRow>

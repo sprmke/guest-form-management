@@ -3,6 +3,7 @@ import { History, Mail, Unplug } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
+import { GmailMailIntegrationCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import {
   useDisconnectGmailMail,
   useGmailMailIntegrationStatus,
@@ -19,6 +20,19 @@ export function GmailMailIntegrationCard() {
   const [backfillModalOpen, setBackfillModalOpen] = React.useState(false);
 
   const busy = startOAuth.isPending || disconnect.isPending || isLoading;
+
+  if (isLoading) {
+    return (
+      <>
+        <GmailMailIntegrationCardSkeleton />
+        <HistoricalApprovalBackfillDialog
+          open={backfillModalOpen}
+          onOpenChange={setBackfillModalOpen}
+          variant="settings"
+        />
+      </>
+    );
+  }
 
   return (
     <section
@@ -57,23 +71,19 @@ export function GmailMailIntegrationCard() {
               Connect the inbox that receives Azure approval replies. Approved
               GAF and pet PDFs are picked up automatically.
             </p>
-            {isLoading && (
-              <p className="mt-1 text-xs text-muted-foreground">Loading status…</p>
-            )}
             {isError && (
               <p className="mt-1 text-xs text-destructive">
                 {String((error as Error)?.message ?? error)}
               </p>
             )}
-            {!isLoading &&
-              !isError &&
+            {!isError &&
               connected &&
               data?.googleAccountEmail && (
                 <p className="text-xs text-emerald-800 mt-1.5 font-medium sm:text-[11px]">
                   Connected as {data.googleAccountEmail}
                 </p>
               )}
-            {!isLoading && !isError && !connected && (
+            {!isError && !connected && (
               <p className="text-xs text-amber-800/90 mt-1.5 sm:text-[11px]">
                 Not connected — connect to process approvals automatically.
               </p>

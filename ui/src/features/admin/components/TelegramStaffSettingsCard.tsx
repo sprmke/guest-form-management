@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { TelegramStaffSettingsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -103,7 +104,7 @@ function CollapsibleSection({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className="space-y-3 border-t border-border/70 px-3 pb-3 pt-3 sm:space-y-4"
+          className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4"
         >
           {children}
         </div>
@@ -225,15 +226,7 @@ export function TelegramStaffSettingsCard() {
   }
 
   if (isLoading || !draft) {
-    return (
-      <section
-        className="w-full surface-card px-3 py-3 sm:px-4 sm:py-3.5 animate-pulse"
-        aria-labelledby="staff-heading"
-      >
-        <div className="h-4 w-40 rounded bg-muted" />
-        <div className="mt-3 h-24 rounded bg-muted" />
-      </section>
-    );
+    return <TelegramStaffSettingsSkeleton />;
   }
 
   return (
@@ -457,7 +450,7 @@ export function TelegramStaffSettingsCard() {
         </div>
 
         {/* Save / Reset */}
-        <div className="flex flex-col-reverse gap-2 border-t border-border pt-3 sm:flex-row sm:justify-end">
+        <div className="flex flex-col-reverse gap-2 border-t border-separator pt-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="secondary"

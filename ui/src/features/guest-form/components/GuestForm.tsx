@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import type { GuestNavState } from '@/layouts/guestNavState';
 import { Button } from '@/components/ui/button';
 import {
@@ -817,10 +818,7 @@ export function GuestForm() {
         className="relative space-y-6 p-4 sm:p-6 lg:p-8 guest-inner-enter"
       >
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-            <p className="text-sm">Loading your form…</p>
-          </div>
+          <GuestFormPageSkeleton />
         ) : invalidBookingId ? (
           <div className="flex flex-col justify-center items-center py-20 space-y-4">
             <div className="text-center">
@@ -876,7 +874,7 @@ export function GuestForm() {
               className="space-y-5 rounded-xl border border-border/80 bg-card px-4 py-5 shadow-sm outline-none sm:px-6 sm:py-6"
               aria-labelledby="guest-form-step-heading"
             >
-              <header className="flex items-center gap-3 border-b border-border/60 pb-4">
+              <header className="flex items-center gap-3 border-b border-separator pb-4">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
                   <StepIcon className="size-5" aria-hidden />
                 </div>
@@ -1078,7 +1076,7 @@ export function GuestForm() {
               {form.watch('checkInTime') &&
                 form.watch('checkInTime') < '14:00' && (
                   <div
-                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                     role="alert"
                   >
                     <p className="text-sm font-medium">
@@ -1171,7 +1169,7 @@ export function GuestForm() {
               {form.watch('checkOutTime') &&
                 form.watch('checkOutTime') > '11:00' && (
                   <div
-                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                     role="alert"
                   >
                     <p className="text-sm font-medium">
@@ -1328,7 +1326,7 @@ export function GuestForm() {
 
               {totalGuests >= 4 && (
                 <div
-                  className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                  className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                   role="alert"
                 >
                   <p className="text-sm font-medium">
@@ -1555,7 +1553,7 @@ export function GuestForm() {
                         {field.value ? (
                           <div
                             id="surprise-decor-hint"
-                            className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                            className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                             role="status"
                           >
                             <p className="text-sm text-foreground leading-relaxed">
@@ -2204,7 +2202,7 @@ export function GuestForm() {
             {/* Developer API Controls (non-production or ?dev=true) */}
             {showDevControls && currentStep === 5 && (
               <div className="space-y-4 rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-4">
-                <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <div className="flex items-center gap-3 border-b border-separator pb-3">
                   <Settings className="size-5 text-primary" aria-hidden />
                   <h3 className="text-sm font-semibold text-foreground">
                     Developer controls

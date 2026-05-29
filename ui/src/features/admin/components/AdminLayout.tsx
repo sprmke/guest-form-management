@@ -59,7 +59,7 @@ export function AdminLayout({ children }: Props) {
   const mobileDrawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handler = (e: MouseEvent) => {
+    const handler = (e: PointerEvent) => {
       if (
         profileRef.current &&
         !profileRef.current.contains(e.target as Node)
@@ -67,12 +67,13 @@ export function AdminLayout({ children }: Props) {
         setProfileOpen(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
   }, []);
 
   useEffect(() => {
     setMobileMenuOpen(false);
+    setProfileOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export function AdminLayout({ children }: Props) {
     <div className="flex h-full flex-col">
       <div
         className={cn(
-          'relative flex h-16 shrink-0 items-center border-b border-border/50',
+          'relative flex h-16 shrink-0 items-center border-b border-separator',
           collapsed ? 'justify-center px-2' : 'justify-between px-4',
         )}
       >
@@ -236,9 +237,9 @@ export function AdminLayout({ children }: Props) {
       </nav>
 
       <div
-        ref={onClose ? undefined : profileRef}
+        ref={profileRef}
         className={cn(
-          'relative shrink-0 space-y-2 border-t border-border/50',
+          'relative shrink-0 space-y-2 border-t border-separator',
           collapsed ? 'p-2' : 'p-3',
         )}
       >
@@ -251,7 +252,7 @@ export function AdminLayout({ children }: Props) {
           </div>
         )}
 
-        {profileOpen && !onClose && (
+        {profileOpen && (
           <div
             className={cn(
               'absolute z-50 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-elevated-lg',
@@ -260,7 +261,7 @@ export function AdminLayout({ children }: Props) {
                 : 'bottom-full left-3 right-3 mb-1.5',
             )}
           >
-            <div className="border-b border-border/50 bg-muted/40 px-3.5 py-3">
+            <div className="border-b border-separator bg-muted/40 px-3.5 py-3">
               <div className="flex items-center gap-2.5">
                 <div className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-primary-foreground">
                   {initial}
@@ -293,14 +294,14 @@ export function AdminLayout({ children }: Props) {
 
         <button
           type="button"
-          onClick={() => !onClose && setProfileOpen((o) => !o)}
-          aria-haspopup={!onClose ? 'true' : undefined}
-          aria-expanded={!onClose ? profileOpen : undefined}
+          onClick={() => setProfileOpen((o) => !o)}
+          aria-haspopup="true"
+          aria-expanded={profileOpen}
           aria-label="Account menu"
           className={cn(
-            'flex w-full items-center rounded-2xl transition-all duration-150 hover:bg-muted/70',
+            'flex w-full min-h-[44px] items-center rounded-2xl transition-all duration-150 hover:bg-muted/70',
             collapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-2.5 py-2',
-            profileOpen && !onClose && 'bg-muted/70',
+            profileOpen && 'bg-muted/70',
           )}
         >
           <div className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-primary-foreground">
@@ -316,7 +317,7 @@ export function AdminLayout({ children }: Props) {
                   {email}
                 </p>
               </div>
-              {!onClose && (
+              {!collapsed && (
                 <ChevronLeft
                   className={cn(
                     'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
@@ -358,7 +359,10 @@ export function AdminLayout({ children }: Props) {
               ? 'pointer-events-auto opacity-100'
               : 'pointer-events-none opacity-0',
           )}
-          onClick={() => setMobileMenuOpen(false)}
+          onClick={() => {
+            setMobileMenuOpen(false);
+            setProfileOpen(false);
+          }}
           aria-hidden={!mobileMenuOpen}
         />
         <aside
@@ -372,7 +376,12 @@ export function AdminLayout({ children }: Props) {
           aria-label="Admin navigation"
           aria-hidden={!mobileMenuOpen}
         >
-          <SidebarContent onClose={() => setMobileMenuOpen(false)} />
+          <SidebarContent
+            onClose={() => {
+              setMobileMenuOpen(false);
+              setProfileOpen(false);
+            }}
+          />
         </aside>
       </div>
 
@@ -385,7 +394,7 @@ export function AdminLayout({ children }: Props) {
             : 'lg:ml-[calc(17rem+2rem)]',
         )}
       >
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border/50 bg-background/90 px-3 backdrop-blur-md sm:px-4 lg:hidden">
+        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-separator bg-background/90 px-3 backdrop-blur-md sm:px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}

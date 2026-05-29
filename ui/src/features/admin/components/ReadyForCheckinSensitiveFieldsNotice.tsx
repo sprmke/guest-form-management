@@ -24,15 +24,15 @@ export function ReadyForCheckinSensitiveFieldsNotice({
     <div
       role="alert"
       className={cn(
-        'flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3',
+        'flex gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-500/30 dark:bg-amber-500/10 sm:gap-3 sm:px-4 sm:py-3',
         className,
       )}
     >
       <AlertTriangle
-        className="mt-0.5 size-4 shrink-0 text-amber-600 sm:size-[18px]"
+        className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400 sm:size-[18px]"
         aria-hidden
       />
-      <p className="min-w-0 text-[13px] leading-snug text-amber-950 sm:text-sm">
+      <p className="min-w-0 text-[13px] leading-snug text-amber-950 dark:text-amber-100 sm:text-sm">
         Saving this will return this booking to{' '}
         <span className="font-semibold">Pending Review</span> status. You
         changed an information that requires approval.

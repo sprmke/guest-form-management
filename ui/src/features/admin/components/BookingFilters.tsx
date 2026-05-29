@@ -87,7 +87,7 @@ function DropdownPanel({
   return (
     <div
       className={cn(
-        'absolute top-full left-0 z-50 mt-1.5 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-border/60 bg-popover shadow-elevated-lg',
+        'absolute top-full left-0 z-50 mt-1.5 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
         width,
       )}
     >
@@ -334,10 +334,7 @@ function BookingFilterChips({
         />
         {openKey === 'status' && (
           <DropdownPanel width="w-72">
-            <div
-              className="flex items-center justify-between px-3.5 py-2.5"
-              style={{ borderBottom: '1px solid #f1f5f9' }}
-            >
+            <div className="flex items-center justify-between border-b border-separator px-3.5 py-2.5">
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Filter by status
               </span>
@@ -475,10 +472,7 @@ function TriOptions({
 }) {
   return (
     <>
-      <div
-        className="px-3.5 py-2.5"
-        style={{ borderBottom: '1px solid #f1f5f9' }}
-      >
+      <div className="border-b border-separator px-3.5 py-2.5">
         <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           {label}
         </span>
@@ -502,12 +496,12 @@ function TriOptions({
                   'flex justify-center items-center rounded-full border-2 transition-all size-4 shrink-0',
                   isSelected
                     ? 'border-sidebar-primary bg-sidebar-primary'
-                    : 'bg-card border-sidebar-border',
+                    : 'border-muted-foreground/45 bg-transparent',
                 )}
                 aria-hidden
               >
                 {isSelected && (
-                  <span className="size-1.5 rounded-full bg-card" />
+                  <span className="size-1.5 rounded-full bg-primary-foreground" />
                 )}
               </span>
               <span
@@ -515,7 +509,7 @@ function TriOptions({
                   'text-[13px]',
                   isSelected
                     ? 'font-semibold text-foreground'
-                    : 'font-medium text-muted-foreground',
+                    : 'font-medium text-foreground/75',
                 )}
               >
                 {opt.label}
@@ -543,7 +537,7 @@ function StatusFilterCheckbox({
         'flex justify-center items-center rounded border-2 transition-all size-4 shrink-0',
         checked || indeterminate
           ? 'bg-sidebar-primary border-sidebar-primary'
-          : 'bg-card border-sidebar-border',
+          : 'border-muted-foreground/45 bg-transparent',
       )}
       aria-hidden
     >
@@ -621,7 +615,7 @@ function PendingDocumentsStatusGroup({
         onToggle={() => onToggle(parent)}
       />
       <div
-        className="ml-5 mr-2 border-l-2 border-amber-200/70"
+        className="ml-5 mr-2 border-l-2 border-amber-200/70 dark:border-amber-500/35"
         role="group"
         aria-label="Pending Documents sub-stages"
       >

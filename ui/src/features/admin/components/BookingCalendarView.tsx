@@ -23,6 +23,7 @@ import {
   Dog,
   PartyPopper,
 } from 'lucide-react';
+import { BookingsCalendarSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 import {
   StatusBadge,
@@ -33,7 +34,7 @@ import {
   formatBookingDate,
   formatMoney,
 } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { bookingRequestsSurpriseDecor, bookingFlagIconChipClass } from '@/features/admin/lib/bookingFlags';
 import { statusLabel } from '@/features/admin/lib/bookingStatus';
 import type { BookingRow } from '@/features/admin/lib/types';
 
@@ -101,11 +102,8 @@ export function BookingCalendarView({
 
   if (error) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
+      <div className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl border border-border/50">
+        <div className="flex justify-center items-center bg-red-50 dark:bg-red-500/15 rounded-full size-9">
           <span className="text-base font-black leading-none text-red-500">
             !
           </span>
@@ -120,6 +118,19 @@ export function BookingCalendarView({
     );
   }
 
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          'transition-opacity duration-300',
+          isRefreshing && 'opacity-60',
+        )}
+      >
+        <BookingsCalendarSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -128,18 +139,9 @@ export function BookingCalendarView({
       )}
     >
       {/* ── Month grid (2/3) ────────────────────────────────────── */}
-      <div
-        className="bg-card rounded-xl overflow-hidden lg:col-span-2"
-        style={{
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        }}
-      >
+      <div className="bg-card rounded-xl overflow-hidden lg:col-span-2 border border-border/50 shadow-sm dark:shadow-none">
         {/* Header */}
-        <div
-          className="flex items-center justify-between px-3 sm:px-4 py-3"
-          style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
-        >
+        <div className="flex items-center justify-between border-b border-separator bg-muted/30 px-3 py-3 sm:px-4">
           <h2 className="text-[14px] font-bold text-foreground">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
@@ -205,14 +207,7 @@ export function BookingCalendarView({
             <div key={`pad-${idx}`} className="aspect-square sm:min-h-[88px]" />
           ))}
 
-          {isLoading
-            ? calendarGrid.days.map((day) => (
-                <div
-                  key={format(day, 'yyyy-MM-dd')}
-                  className="rounded-lg bg-muted/50 animate-pulse aspect-square sm:min-h-[88px]"
-                />
-              ))
-            : calendarGrid.days.map((day) => {
+          {calendarGrid.days.map((day) => {
                 const key = format(day, 'yyyy-MM-dd');
                 const dayBookings = bookingsByDay.get(key) ?? [];
                 const isSelected = selectedDay && isSameDay(day, selectedDay);
@@ -294,17 +289,8 @@ export function BookingCalendarView({
       </div>
 
       {/* ── Selected day detail (1/3) ─────────────────────────────── */}
-      <div
-        className="bg-card rounded-xl overflow-hidden"
-        style={{
-          border: '1px solid rgba(0,0,0,0.08)',
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-        }}
-      >
-        <div
-          className="px-4 py-3"
-          style={{ borderBottom: '1px solid #f1f5f9', background: '#fafafa' }}
-        >
+      <div className="bg-card rounded-xl overflow-hidden border border-border/50 shadow-sm dark:shadow-none">
+        <div className="border-b border-separator bg-muted/30 px-4 py-3">
           <h3 className="text-[12px] font-bold uppercase tracking-wider text-muted-foreground">
             {selectedDay
               ? format(selectedDay, 'EEEE, MMMM d, yyyy')
@@ -433,9 +419,9 @@ function DayBookingItem({
       aria-label={`Open booking for ${name}`}
       className={cn(
         'group w-full flex items-start gap-3 p-2.5 rounded-lg text-left transition-colors',
+        'border border-border/50',
         'hover:bg-muted/50 outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
       )}
-      style={{ border: '1px solid rgba(0,0,0,0.06)' }}
     >
       <GuestAvatar
         name={name}
@@ -458,7 +444,7 @@ function DayBookingItem({
           {row.need_parking && (
             <span
               title="Needs parking"
-              className="inline-flex items-center justify-center size-5 rounded bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70"
+              className={cn('size-5 rounded', bookingFlagIconChipClass.parking)}
             >
               <Car className="size-3" aria-hidden />
             </span>
@@ -466,7 +452,7 @@ function DayBookingItem({
           {row.has_pets && (
             <span
               title="Has pets"
-              className="inline-flex items-center justify-center size-5 rounded bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
+              className={cn('size-5 rounded', bookingFlagIconChipClass.pet)}
             >
               <Dog className="size-3" aria-hidden />
             </span>
@@ -474,7 +460,7 @@ function DayBookingItem({
           {bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
             <span
               title="Surprise decor setup"
-              className="inline-flex items-center justify-center size-5 rounded bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+              className={cn('size-5 rounded', bookingFlagIconChipClass.decor)}
             >
               <PartyPopper className="size-3" aria-hidden />
             </span>

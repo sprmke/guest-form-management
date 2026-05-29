@@ -106,7 +106,7 @@ export function SignInPage() {
         {/* Footer */}
         <div className="relative z-10">
           <p className="text-[11px] text-white/30">
-            © {new Date().getFullYear()} Kame Home. All rights reserved.
+            © 2024 Kame Home. All rights reserved.
           </p>
         </div>
       </div>

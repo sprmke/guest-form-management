@@ -12,6 +12,7 @@ import {
   type BookedDateRange,
 } from '@/utils/dates';
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { CalendarPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { CalendarCheck, ArrowRight, CalendarX, Info } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -210,6 +211,10 @@ export function CalendarPage() {
 
   const canProceed = Boolean(checkInDate && checkOutDate);
 
+  if (isLoading) {
+    return <CalendarPageSkeleton />;
+  }
+
   return (
     <div className="relative min-w-0 space-y-6 p-4 guest-inner-enter sm:space-y-8 sm:p-6 lg:p-8">
         <KameFormBrandHeader title="Check Availability" />
@@ -217,30 +222,24 @@ export function CalendarPage() {
         {/* Calendar Container */}
         <div className="flex w-full justify-center">
           <div className="availability-calendar">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-80">
-                <div className="w-8 h-8 border-4 rounded-full animate-spin border-primary border-t-transparent" />
-              </div>
-            ) : (
-              <Calendar
-                mode="single"
-                selected={checkInDate}
-                onSelect={handleDateSelect}
-                disabled={isDateDisabled}
-                numberOfMonths={1}
-                modifiers={rangeModifiers}
-                modifiersClassNames={{
-                  range_start: 'rdp-range_start',
-                  range_end: 'rdp-range_end',
-                  range_middle: 'rdp-range_middle',
-                }}
-                fromDate={new Date()}
-                className={cn(
-                  'calendar-availability',
-                  checkOutDate && 'calendar-range-active',
-                )}
-              />
-            )}
+            <Calendar
+              mode="single"
+              selected={checkInDate}
+              onSelect={handleDateSelect}
+              disabled={isDateDisabled}
+              numberOfMonths={1}
+              modifiers={rangeModifiers}
+              modifiersClassNames={{
+                range_start: 'rdp-range_start',
+                range_end: 'rdp-range_end',
+                range_middle: 'rdp-range_middle',
+              }}
+              fromDate={new Date()}
+              className={cn(
+                'calendar-availability',
+                checkOutDate && 'calendar-range-active',
+              )}
+            />
           </div>
         </div>
 

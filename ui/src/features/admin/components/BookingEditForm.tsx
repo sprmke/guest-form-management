@@ -608,7 +608,7 @@ export function BookingEditForm({
       <DocumentsSection booking={booking} onPreview={onPreview} />
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end items-center pt-4 border-t border-border">
+      <div className="flex gap-3 justify-end items-center pt-4 border-t border-separator">
         <button
           type="button"
           onClick={onClose}

@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { TelegramOperationsSettingsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -185,7 +186,7 @@ function CollapsibleSection({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className="space-y-3 border-t border-border/70 px-3 pb-3 pt-3 sm:space-y-4"
+          className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4"
         >
           {children}
         </div>
@@ -302,15 +303,7 @@ export function TelegramAdminSettingsCard() {
   }
 
   if (isLoading || !draft) {
-    return (
-      <section
-        className="surface-card w-full px-3 py-3 animate-pulse sm:px-4 sm:py-3.5"
-        aria-labelledby="admin-operations-heading"
-      >
-        <div className="h-4 w-48 rounded bg-muted" />
-        <div className="mt-3 h-32 rounded bg-muted" />
-      </section>
-    );
+    return <TelegramOperationsSettingsSkeleton />;
   }
 
   return (

@@ -20,7 +20,7 @@ export function WorkflowDevControlsChecklist({
 
   return (
     <div className="mt-3 max-h-[40vh] overflow-y-auto rounded-lg border border-border bg-muted/50/80">
-      <p className="sticky top-0 z-[1] border-b border-border bg-muted/50/95 px-3 py-2 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
+      <p className="sticky top-0 z-[1] border-b border-separator bg-muted/50/95 px-3 py-2 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
         Side effects
       </p>
       <div className="space-y-0.5 p-1.5">

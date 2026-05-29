@@ -709,7 +709,7 @@ export function WorkflowPanel({ booking }: Props) {
       <aside className="flex overflow-hidden flex-col gap-0 bg-card rounded-xl border shadow-sm border-border">
         {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
         {pipeline.length > 0 && status !== 'CANCELLED' ? (
-          <div className="px-4 py-4 border-b border-border/60">
+          <div className="px-4 py-4 border-b border-separator">
             <div className="flex flex-wrap gap-2 justify-between items-center mb-3">
               <p className="text-overline">
                 Progress
@@ -729,7 +729,7 @@ export function WorkflowPanel({ booking }: Props) {
             />
           </div>
         ) : status === 'CANCELLED' ? (
-          <div className="px-4 py-4 border-b border-border/60">
+          <div className="px-4 py-4 border-b border-separator">
             <div className="flex flex-wrap gap-2 justify-between items-center">
               <p className="text-overline">
                 Status
@@ -745,7 +745,7 @@ export function WorkflowPanel({ booking }: Props) {
           needsSdRefund ||
           needsGuestBalance ||
           showSdGuestInfoCard) && (
-          <div className="px-4 py-4 space-y-6 border-b border-border/60">
+          <div className="px-4 py-4 space-y-6 border-b border-separator">
             {viewingPendingDocSub && !inPendingDocuments && (
               <button
                 type="button"
@@ -847,7 +847,7 @@ export function WorkflowPanel({ booking }: Props) {
 
         {/* ── Automation triggers (Q6.6) ───────────────────────────────────── */}
         {(showGmailPoll || showSdCron || showSdFormResend) && (
-          <div className="border-b border-border/60">
+          <div className="border-b border-separator">
             <button
               type="button"
               aria-expanded={automationHelpOpen}
@@ -953,7 +953,7 @@ export function WorkflowPanel({ booking }: Props) {
                   </>
                 )}
 
-                <div className="flex flex-col gap-1.5 border-t border-border/60 pt-3">
+                <div className="flex flex-col gap-1.5 border-t border-separator pt-3">
                   {showGmailPoll && (
                     <button
                       type="button"
@@ -1248,9 +1248,9 @@ export function WorkflowPanel({ booking }: Props) {
             secondaryLabel="Cancel"
             banner={
               confirm.pastStayWarning ? (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
                   <p className="font-semibold">Stay dates are in the past</p>
-                  <p className="mt-1 text-xs leading-relaxed text-amber-900/95">
+                  <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
                     At least one of check-in (
                     {formatBookingDate(booking.check_in_date)}) or check-out (
                     {formatBookingDate(booking.check_out_date)}) is before
@@ -1589,7 +1589,7 @@ function ConfirmModal({
             </div>
           </div>
         </div>
-        <div className="flex gap-2 justify-end pt-4 mt-5 border-t shrink-0 border-border/60">
+        <div className="mt-5 flex shrink-0 justify-end gap-2 border-t border-separator pt-4">
           <button
             type="button"
             onClick={onCancel}

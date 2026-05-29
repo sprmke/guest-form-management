@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
+import { BookingsTableSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
@@ -8,7 +9,7 @@ import {
   formatBookingDateShort,
   formatMoney,
 } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { bookingRequestsSurpriseDecor, bookingFlagIconChipClass } from '@/features/admin/lib/bookingFlags';
 import { BookingStaySortControl } from '@/features/admin/components/BookingStaySortControl';
 import type { BookingRow, BookingsSort } from '@/features/admin/lib/types';
 
@@ -52,7 +53,7 @@ export function BookingTable({
     );
   }
 
-  if (isLoading) return <TableSkeleton />;
+  if (isLoading) return <BookingsTableSkeleton />;
 
   if (rows.length === 0) {
     return (
@@ -87,7 +88,7 @@ export function BookingTable({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] border-collapse">
           <thead>
-            <tr className="border-b border-border/60 bg-muted/40">
+            <tr className="border-b border-separator bg-muted/40">
               <Th className="pr-3 pl-4 sm:pl-5">Status</Th>
               <Th className="px-3 sm:px-4">Guest</Th>
               <Th className="px-3 sm:px-4">
@@ -181,7 +182,7 @@ function BookingTableRow({
         'group cursor-pointer transition-colors duration-100 outline-none',
         'hover:bg-sidebar-accent/30 focus-visible:bg-sidebar-accent/40',
         'focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-primary/40',
-        index > 0 && 'border-t border-border/40',
+        index > 0 && 'border-t border-separator',
       )}
     >
       {/* Status */}
@@ -231,7 +232,7 @@ function BookingTableRow({
             <span
               title="Needs parking"
               aria-label="Needs parking"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.parking)}
             >
               <Car className="size-4" aria-hidden />
             </span>
@@ -240,7 +241,7 @@ function BookingTableRow({
             <span
               title="Has pets"
               aria-label="Has pets"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.pet)}
             >
               <Dog className="size-4" aria-hidden />
             </span>
@@ -249,7 +250,7 @@ function BookingTableRow({
             <span
               title="Surprise decor setup"
               aria-label="Surprise decor setup"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.decor)}
             >
               <PartyPopper className="size-4" aria-hidden />
             </span>
@@ -289,42 +290,5 @@ function BookingTableRow({
         </span>
       </td>
     </tr>
-  );
-}
-
-function TableSkeleton() {
-  return (
-    <div className="surface-card overflow-hidden">
-      <div className="flex items-center gap-6 border-b border-border/60 bg-muted/40 px-5 py-[11px]">
-        {[72, 120, 150, 48, 60, 72].map((w, i) => (
-          <div
-            key={i}
-            className="h-2.5 rounded-full bg-muted animate-pulse shrink-0"
-            style={{ width: w, opacity: 0.6 }}
-          />
-        ))}
-      </div>
-      {Array.from({ length: 7 }).map((_, i) => (
-        <div
-          key={i}
-          className={cn(
-            'flex items-center gap-4 px-5 py-4',
-            i > 0 && 'border-t border-border/40',
-          )}
-          style={{ opacity: 1 - i * 0.1 }}
-        >
-          <div className="w-24 h-5 rounded-md animate-pulse bg-muted" />
-          <div className="flex flex-1 gap-3 items-center">
-            <div className="rounded-full animate-pulse size-9 bg-muted shrink-0" />
-            <div className="space-y-1.5 flex-1">
-              <div className="w-32 h-3 rounded-full animate-pulse bg-muted" />
-              <div className="h-2.5 rounded-full bg-muted/70 animate-pulse w-40" />
-            </div>
-          </div>
-          <div className="hidden w-36 h-3 rounded-full animate-pulse md:block bg-muted" />
-          <div className="ml-auto w-14 h-7 rounded-lg animate-pulse bg-muted" />
-        </div>
-      ))}
-    </div>
   );
 }

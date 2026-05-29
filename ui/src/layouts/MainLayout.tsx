@@ -64,7 +64,7 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
       </div>
 
       <footer className="px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center text-xs text-muted-foreground sm:px-6">
-        <p>© {new Date().getFullYear()} Kame Home — Azure North. All rights reserved.</p>
+        <p>© 2024 Kame Home — Azure North. All rights reserved.</p>
       </footer>
     </main>
   );

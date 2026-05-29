@@ -41,6 +41,7 @@
     --border: 150 12% 90%;
     --input: 150 12% 90%;
     --ring: 168 65% 40%;
+    --separator: 150 10% 86%;
 
     --success: 152 69% 38%;
     --success-foreground: 0 0% 100%;
@@ -90,6 +91,7 @@
     --border: 160 12% 20%;
     --input: 160 12% 20%;
     --ring: 168 65% 45%;
+    --separator: 160 8% 17%;
 
     --success: 152 65% 45%;
     --success-foreground: 0 0% 100%;

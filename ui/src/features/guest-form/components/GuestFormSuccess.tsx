@@ -91,7 +91,7 @@ export function GuestFormSuccess() {
           <div className="space-y-6">
             {/* Booking Summary Card */}
             <div className="overflow-hidden rounded-xl border shadow-sm border-border bg-card">
-              <div className="px-6 py-3 border-b border-border">
+              <div className="border-b border-separator px-6 py-3">
                 <h2 className="text-lg font-semibold text-foreground">
                   Booking Summary
                 </h2>
