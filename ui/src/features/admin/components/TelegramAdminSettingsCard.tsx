@@ -144,6 +144,7 @@ function CollapsibleSection({
   badge,
   defaultOpen,
   triggerTitle,
+  nested,
   children,
 }: {
   id: string;
@@ -151,12 +152,19 @@ function CollapsibleSection({
   badge?: React.ReactNode;
   defaultOpen?: boolean;
   triggerTitle?: string;
+  /** Nested inside a parent collapsible (scenario rows). */
+  nested?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <Collapsible
       defaultOpen={defaultOpen}
-      className="group rounded-2xl border border-border/50 bg-muted/30"
+      className={cn(
+        'group border border-border/50',
+        nested
+          ? 'rounded-lg bg-background/80'
+          : 'rounded-2xl bg-muted/30',
+      )}
     >
       <CollapsibleTrigger
         type="button"
@@ -440,8 +448,14 @@ export function TelegramAdminSettingsCard() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {SCENARIO_ORDER.map((key) => {
+        <CollapsibleSection
+          id="admin-scenarios"
+          title="Message Templates"
+          defaultOpen
+          triggerTitle="Per-workflow toggles and message templates"
+        >
+          <div className="space-y-2.5">
+            {SCENARIO_ORDER.map((key) => {
             const cfg = SCENARIO_CONFIG[key];
             const meta = scenarioMetaById.get(cfg.scenarioId);
             const toggleChecked = Boolean(draft[cfg.toggleKey]);
@@ -451,6 +465,7 @@ export function TelegramAdminSettingsCard() {
             return (
               <CollapsibleSection
                 key={key}
+                nested
                 id={sectionId}
                 title={meta?.label ?? cfg.scenarioId}
                 badge={meta ? <ScenarioBadge type={meta.type} /> : undefined}
@@ -487,7 +502,7 @@ export function TelegramAdminSettingsCard() {
                   <Textarea
                     id={`${sectionId}-template`}
                     disabled={busy}
-                    rows={4}
+                    rows={8}
                     className="min-h-[96px] w-full resize-y text-sm sm:text-[13px]"
                     value={templateValue}
                     onChange={(e) =>
@@ -513,7 +528,8 @@ export function TelegramAdminSettingsCard() {
               </CollapsibleSection>
             );
           })}
-        </div>
+          </div>
+        </CollapsibleSection>
 
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <Button
