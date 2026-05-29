@@ -5,20 +5,37 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export type StaffTimeSlot = { hour: number; minute: number };
 
+export type StaffScenarioMeta = {
+  id: string;
+  label: string;
+  trigger: string;
+  type: 'scheduled' | 'event';
+};
+
 export type TelegramStaffSettingsDto = {
   enabled: boolean;
+  notifyOnSameDayCheckin: boolean;
   dailySummaryTemplate: string;
+  sameDayCheckinTemplate: string;
   dailySummaryTimeManila: StaffTimeSlot;
   dailySummaryUtcCronPreview: string;
+  sameDayCheckinAfterHourManila: number;
   placeholdersReference: string[];
+  scenarios: StaffScenarioMeta[];
 };
 
 export type TelegramStaffSettingsPatch = Partial<
   Pick<
     TelegramStaffSettingsDto,
-    'enabled' | 'dailySummaryTemplate' | 'dailySummaryTimeManila'
+    | 'enabled'
+    | 'notifyOnSameDayCheckin'
+    | 'dailySummaryTemplate'
+    | 'sameDayCheckinTemplate'
+    | 'dailySummaryTimeManila'
   >
 >;
+
+export type StaffDraftScenario = 'daily_summary' | 'same_day_checkin';
 
 export type StaffEnvVerifyDto = {
   credentials: {
@@ -62,11 +79,13 @@ export function useTelegramStaffSettings() {
 export type TelegramStaffTestAction =
   | 'verify_staff_telegram_env'
   | 'send_test_daily_summary'
+  | 'send_test_same_day_checkin'
   | 'send_draft_preview';
 
 export type TelegramStaffTestPayload = {
   action: TelegramStaffTestAction;
   text?: string;
+  scenario?: StaffDraftScenario;
 };
 
 export function useTelegramStaffTestSend() {

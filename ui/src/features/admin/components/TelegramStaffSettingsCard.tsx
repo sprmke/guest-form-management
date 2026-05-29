@@ -5,6 +5,7 @@ import {
   Clock,
   HardHat,
   Send,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -24,9 +25,26 @@ import {
   useTelegramStaffTestSend,
   useUpdateTelegramStaffSettings,
   type StaffEnvVerifyDto,
+  type StaffScenarioMeta,
+  type StaffDraftScenario,
   type TelegramStaffSettingsDto,
   type StaffTimeSlot,
 } from '@/features/admin/hooks/useTelegramStaffSettings';
+
+function ScenarioBadge({ type }: { type: StaffScenarioMeta['type'] }) {
+  return (
+    <span
+      className={cn(
+        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        type === 'event'
+          ? 'bg-primary/10 text-primary'
+          : 'bg-amber-500/15 text-amber-800 dark:text-amber-200',
+      )}
+    >
+      {type === 'event' ? 'Instant' : 'Daily'}
+    </span>
+  );
+}
 
 function CheckboxRow({
   id,
@@ -164,7 +182,9 @@ export function TelegramStaffSettingsCard() {
     update.mutate(
       {
         enabled: draft.enabled,
+        notifyOnSameDayCheckin: draft.notifyOnSameDayCheckin,
         dailySummaryTemplate: draft.dailySummaryTemplate,
+        sameDayCheckinTemplate: draft.sameDayCheckinTemplate,
         dailySummaryTimeManila: draft.dailySummaryTimeManila,
       },
       {
@@ -182,13 +202,19 @@ export function TelegramStaffSettingsCard() {
     );
   };
 
-  const onSendDraftPreview = () => {
-    if (!draft?.dailySummaryTemplate.trim()) {
+  const scenarioMetaById = React.useMemo(() => {
+    const map = new Map<string, StaffScenarioMeta>();
+    for (const s of draft?.scenarios ?? []) map.set(s.id, s);
+    return map;
+  }, [draft?.scenarios]);
+
+  const onSendDraftPreview = (scenario: StaffDraftScenario, text: string) => {
+    if (!text.trim()) {
       toast.error('Template is empty');
       return;
     }
     testSend.mutate(
-      { action: 'send_draft_preview', text: draft.dailySummaryTemplate },
+      { action: 'send_draft_preview', text, scenario },
       {
         onSuccess: (j) => {
           if (j.sent) {
@@ -238,7 +264,7 @@ export function TelegramStaffSettingsCard() {
         <AdminPageHeader
           id="staff-heading"
           title="Staff"
-          subtitle="Daily booking summary for your staff group. Save when you're done editing."
+          subtitle="Daily summary and same-day check-in alerts for your staff group. Save when you're done editing."
           icon={HardHat}
         />
 
@@ -326,6 +352,34 @@ export function TelegramStaffSettingsCard() {
               >
                 Daily summary
               </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={busy}
+                className="min-h-[44px] w-full gap-2 sm:w-auto"
+                onClick={() =>
+                  testSend.mutate(
+                    { action: 'send_test_same_day_checkin' },
+                    {
+                      onSuccess: (j) => {
+                        const r = j.result as { sent?: boolean; skip?: string } | undefined;
+                        if (r?.sent) {
+                          toast.success('Same-day check-in test sent');
+                        } else {
+                          toast.error(
+                            r?.skip ??
+                              'Not sent. Needs a today check-in booking or pass bookingId.',
+                          );
+                        }
+                      },
+                      onError: (e) => toast.error((e as Error).message),
+                    },
+                  )
+                }
+              >
+                <Zap className="size-4 shrink-0" aria-hidden />
+                Same-day alert
+              </Button>
             </div>
           </CollapsibleSection>
 
@@ -342,7 +396,7 @@ export function TelegramStaffSettingsCard() {
 
           {/* Settings */}
           <CollapsibleSection id="staff-config" title="Schedule & Alerts">
-            <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-1">
+            <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-3">
               <CheckboxRow
                 id="staff-enabled"
                 label="Enable Daily Summary"
@@ -351,6 +405,16 @@ export function TelegramStaffSettingsCard() {
                 disabled={busy}
                 onChange={(v) =>
                   setDraft((d) => (d ? { ...d, enabled: v } : d))
+                }
+              />
+              <CheckboxRow
+                id="staff-same-day"
+                label="Same-day check-in alert"
+                description={`Instant one-time message when a guest submits a booking checking in today at or after ${draft.sameDayCheckinAfterHourManila}:00 AM Manila.`}
+                checked={draft.notifyOnSameDayCheckin}
+                disabled={busy}
+                onChange={(v) =>
+                  setDraft((d) => (d ? { ...d, notifyOnSameDayCheckin: v } : d))
                 }
               />
             </div>
@@ -409,42 +473,76 @@ export function TelegramStaffSettingsCard() {
             </div>
           </CollapsibleSection>
 
-          {/* Message template */}
-          <CollapsibleSection id="staff-template" title="Message Template">
-            <div className="space-y-3 sm:space-y-4">
-              <div className="grid grid-cols-1 gap-2 rounded-md border border-border/80 bg-background/80 p-2.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-3 sm:gap-y-2 sm:p-3 sm:items-start">
-                <Label
-                  htmlFor="staff-template-textarea"
-                  className="min-w-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-start-1 sm:row-start-1 sm:self-center sm:text-[11px]"
-                >
-                  Daily Summary
-                </Label>
-                <Textarea
-                  id="staff-template-textarea"
-                  disabled={busy}
-                  rows={14}
-                  className="col-span-full min-h-[200px] min-w-0 w-full resize-y text-sm font-mono sm:col-span-2 sm:row-start-2 sm:text-[13px]"
-                  value={draft.dailySummaryTemplate}
-                  onChange={(e) =>
-                    setDraft((d) =>
-                      d
-                        ? { ...d, dailySummaryTemplate: e.target.value }
-                        : d,
-                    )
-                  }
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={busy}
-                  className="min-h-[44px] w-full min-w-0 sm:col-start-2 sm:row-start-1 sm:h-9 sm:w-auto sm:min-h-9 sm:shrink-0 sm:justify-self-end sm:self-center"
-                  title="Sends a test message with live booking data."
-                  onClick={onSendDraftPreview}
-                >
-                  Send preview
-                </Button>
-              </div>
+          {/* Message templates */}
+          <CollapsibleSection id="staff-template" title="Message Templates" defaultOpen>
+            <div className="space-y-4">
+              {(
+                [
+                  {
+                    id: 'daily_summary',
+                    label: 'Daily Summary',
+                    templateKey: 'dailySummaryTemplate' as const,
+                    scenario: 'daily_summary' as const,
+                  },
+                  {
+                    id: 'same_day_checkin',
+                    label: 'Same-Day Check-In Alert',
+                    templateKey: 'sameDayCheckinTemplate' as const,
+                    scenario: 'same_day_checkin' as const,
+                  },
+                ] as const
+              ).map(({ id, label, templateKey, scenario }) => {
+                const meta = scenarioMetaById.get(id);
+                const templateValue = String(draft[templateKey] ?? '');
+
+                return (
+                  <div
+                    key={id}
+                    className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3 sm:p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{label}</p>
+                      {meta ? <ScenarioBadge type={meta.type} /> : null}
+                    </div>
+                    {meta && (
+                      <p className="text-xs text-muted-foreground leading-snug rounded-md bg-muted/30 px-2.5 py-2">
+                        {meta.trigger}
+                      </p>
+                    )}
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                      <Label
+                        htmlFor={`staff-template-${id}`}
+                        className="sr-only"
+                      >
+                        {label}
+                      </Label>
+                      <Textarea
+                        id={`staff-template-${id}`}
+                        disabled={busy}
+                        rows={id === 'daily_summary' ? 14 : 10}
+                        className="col-span-full min-h-[160px] min-w-0 w-full resize-y text-sm font-mono sm:col-span-2 sm:text-[13px]"
+                        value={templateValue}
+                        onChange={(e) =>
+                          setDraft((d) =>
+                            d ? { ...d, [templateKey]: e.target.value } : d,
+                          )
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={busy}
+                        className="min-h-[44px] w-full sm:col-start-2 sm:h-9 sm:w-auto sm:min-h-9"
+                        title="Sends a test message with live booking data."
+                        onClick={() => onSendDraftPreview(scenario, templateValue)}
+                      >
+                        Send preview
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CollapsibleSection>
         </div>

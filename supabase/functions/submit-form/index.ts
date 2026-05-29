@@ -6,6 +6,7 @@ import { SheetsService } from '../_shared/sheetsService.ts'
 import { sendNewBookingRequestNotify } from '../_shared/emailService.ts'
 import { notifyTelegramNewBookingRequest } from '../_shared/telegramMarketing.ts'
 import { notifyTelegramAdminNewBooking } from '../_shared/telegramAdmin.ts'
+import { notifyTelegramStaffSameDayCheckIn } from '../_shared/telegramStaff.ts'
 import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
 import type { GuestSubmission } from '../_shared/types.ts'
@@ -189,6 +190,11 @@ serve(async (req) => {
         await notifyTelegramAdminNewBooking(submissionData as Record<string, unknown>);
       } catch (adminTgErr) {
         console.error('[submit-form] Telegram admin new-booking notify failed (non-fatal):', adminTgErr);
+      }
+      try {
+        await notifyTelegramStaffSameDayCheckIn(submissionData as Record<string, unknown>);
+      } catch (staffTgErr) {
+        console.error('[submit-form] Telegram staff same-day check-in notify failed (non-fatal):', staffTgErr);
       }
     }
 
