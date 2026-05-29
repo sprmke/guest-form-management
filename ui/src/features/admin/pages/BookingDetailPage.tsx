@@ -5,8 +5,9 @@
  *   Left (flexible): all booking info cards + document previews
  *   Right (sticky 344px): WorkflowPanel
  *
- * Mobile (<lg) when status ≠ PENDING_REVIEW: compact summary + expand control,
- * Progress (WorkflowPanel) next, full detail cards in a collapsible block below.
+ * Mobile (<lg): compact summary + expand control; Progress (WorkflowPanel) next;
+ * full detail cards in a collapsible block (all statuses). Edit lives in the
+ * expanded header, not on the collapsed summary strip.
  *
  * Header card toggles **Edit** ↔ **Cancel**; booking status is shown on the
  * **Progress** card in `WorkflowPanel` (after `PendingReviewWorkflowGate` when
@@ -86,6 +87,10 @@ import {
 } from "@/features/admin/components/PayParkingModal";
 import { buildPayParkingPath } from "@/features/pay-parking/lib/api";
 import { hasPayParkingAvailed } from "@/features/pay-parking/lib/payParkingHelpers";
+import {
+  Collapsible,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
@@ -134,8 +139,8 @@ export function BookingDetailPage() {
     if (editMode) setDetailsExpanded(true);
   }, [editMode]);
 
-  const isMobileWorkflowFirst =
-    isBelowLg && booking != null && booking.status !== "PENDING_REVIEW";
+  /** Collapsed guest cards on mobile so Progress stays above the fold. */
+  const isMobileWorkflowFirst = isBelowLg && booking != null;
 
   const showMobileDetailCards =
     !isMobileWorkflowFirst || detailsExpanded || editMode;
@@ -146,7 +151,8 @@ export function BookingDetailPage() {
 
   useEffect(() => {
     if (!isMobileWorkflowFirst || !showMobileDetailCards) return;
-    scrollDetailsIntoView();
+    const timer = window.setTimeout(() => scrollDetailsIntoView(), 400);
+    return () => window.clearTimeout(timer);
   }, [isMobileWorkflowFirst, showMobileDetailCards, scrollDetailsIntoView]);
 
   const handleToggleDetails = useCallback(() => {
@@ -165,9 +171,6 @@ export function BookingDetailPage() {
     }
     setPayParkingModalOpen(true);
   }, [booking, navigate]);
-
-  const title =
-    booking?.primary_guest_name ?? (isLoading ? "Loading…" : "Booking");
 
   const handlePreview = async (label: string, rawUrl: string) => {
     setPreviewLoading(true);
@@ -188,13 +191,12 @@ export function BookingDetailPage() {
   };
 
   return (
-    <AdminLayout title={title} breadcrumb="Bookings">
-      <div className="min-h-screen bg-[hsl(210_20%_98%)]">
-        <div className="mx-auto max-w-7xl p-3 sm:p-4 lg:p-6">
+    <AdminLayout>
+      <div className="space-y-4">
           {/* Back nav */}
           <Link
             to="/bookings"
-            className="mb-4 inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="size-3.5" />
             Back to Bookings
@@ -212,7 +214,7 @@ export function BookingDetailPage() {
 
           {/* Not found */}
           {!isLoading && !booking && !error && (
-            <div className="rounded-xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-500">
+            <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
               Booking not found.
             </div>
           )}
@@ -224,41 +226,48 @@ export function BookingDetailPage() {
                   <BookingDetailMobileSummary
                     className="order-1 lg:hidden"
                     booking={booking}
-                    editMode={editMode}
                     detailsExpanded={detailsExpanded}
                     onToggleDetails={handleToggleDetails}
-                    onEdit={handleStartEdit}
-                    onCancelEdit={() => setEditMode(false)}
                     onPayParking={handleOpenPayParking}
                   />
                 )}
 
                 {/* ── Full booking details (collapsible on mobile) ───────────── */}
-                <div
-                  ref={detailsPanelRef}
-                  id="booking-detail-full-panel"
+                <Collapsible
+                  open={showMobileDetailCards}
+                  onOpenChange={(open) => {
+                    if (isMobileWorkflowFirst && !editMode) {
+                      setDetailsExpanded(open);
+                    }
+                  }}
                   className={cn(
-                    "flex-1 min-w-0 space-y-5",
+                    "flex-1 min-w-0",
                     isMobileWorkflowFirst &&
                       (mobileDetailsBeforeWorkflow ? "order-2" : "order-3"),
                     isMobileWorkflowFirst && "lg:order-none",
-                    isMobileWorkflowFirst &&
-                      !showMobileDetailCards &&
-                      "hidden lg:block",
                   )}
                 >
+                  <CollapsibleContent
+                    ref={detailsPanelRef}
+                    id="booking-detail-full-panel"
+                    className={cn(
+                      "space-y-5 overflow-hidden",
+                      "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
+                      "motion-reduce:animate-none",
+                      "lg:overflow-visible lg:animate-none",
+                    )}
+                  >
                   <BookingHeader
                     booking={booking}
                     editMode={editMode}
                     onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
                     onPayParking={handleOpenPayParking}
-                    className={cn(isMobileWorkflowFirst && "hidden lg:block")}
                   />
 
                   {editMode ? (
                     <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
-                      <h2 className="mb-4 text-sm font-bold text-slate-800">
+                      <h2 className="mb-4 text-sm font-bold text-foreground">
                         Edit Booking Details
                       </h2>
                       <BookingEditForm
@@ -304,7 +313,8 @@ export function BookingDetailPage() {
                       className="lg:hidden"
                     />
                   )}
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
 
                 {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
                 <div
@@ -331,7 +341,6 @@ export function BookingDetailPage() {
               </div>
             </>
           )}
-        </div>
       </div>
       <AssetPreviewModal
         asset={previewAsset}
@@ -380,27 +389,27 @@ function BookingHeader({
   return (
     <div
       className={cn(
-        "rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6",
+        "rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6",
         className,
       )}
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 max-w-full break-words text-base font-bold leading-snug text-slate-900 sm:text-[17px]">
+            <h1 className="min-w-0 max-w-full break-words text-base font-bold leading-snug text-foreground sm:text-[17px]">
               {heading}
             </h1>
           </div>
           {showPrimarySubtitle && (
-            <p className="text-xs font-medium text-slate-500 sm:text-[13px]">
-              <span className="text-slate-400">Primary guest</span>{" "}
-              <span className="text-slate-600">{primary}</span>
+            <p className="text-ui font-medium text-muted-foreground">
+              <span className="text-muted-foreground">Primary guest</span>{" "}
+              <span className="text-muted-foreground">{primary}</span>
             </p>
           )}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-slate-500 sm:text-[13px]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-ui text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <Calendar
-                className="size-3.5 shrink-0 text-slate-400"
+                className="size-3.5 shrink-0 text-muted-foreground"
                 aria-hidden
               />
               <span>
@@ -409,7 +418,7 @@ function BookingHeader({
               </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Users className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+              <Users className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
               <span>
                 {pax} pax · {booking.number_of_nights} night
                 {booking.number_of_nights !== 1 ? "s" : ""}
@@ -430,7 +439,7 @@ function BookingHeader({
               type="button"
               onClick={onCancelEdit}
               aria-label="Cancel and close the form"
-              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex-initial sm:px-4"
+              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:flex-initial sm:px-4"
             >
               <X className="size-3.5 shrink-0" aria-hidden />
               <span>Cancel</span>
@@ -439,7 +448,7 @@ function BookingHeader({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white px-4 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 sm:flex-initial sm:px-4"
+              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:flex-initial sm:px-4"
             >
               <Edit2 className="size-3.5 shrink-0" aria-hidden />
               Edit
@@ -469,17 +478,17 @@ function GuestInfoCard({
         <InfoField
           label="Email"
           value={booking.guest_email}
-          icon={<Mail className="size-3.5 text-slate-400" />}
+          icon={<Mail className="size-3.5 text-muted-foreground" />}
         />
         <InfoField
           label="Phone"
           value={booking.guest_phone_number}
-          icon={<Phone className="size-3.5 text-slate-400" />}
+          icon={<Phone className="size-3.5 text-muted-foreground" />}
         />
         <InfoField
           label="Address"
           value={booking.guest_address}
-          icon={<MapPin className="size-3.5 text-slate-400" />}
+          icon={<MapPin className="size-3.5 text-muted-foreground" />}
         />
         <InfoField label="Nationality" value={booking.nationality} />
       </Grid2>
@@ -521,9 +530,9 @@ function AdditionalGuestsCard({ booking }: { booking: BookingRow }) {
         {extra.map((name, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700"
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground"
           >
-            <User className="size-3 text-slate-400" />
+            <User className="size-3 text-muted-foreground" />
             {name}
           </span>
         ))}
@@ -679,7 +688,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
     <Card title="Other Information" icon={<Info className="size-3.5" />}>
       {/* Booking Source */}
       <div className="mb-3">
-        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+        <p className="mb-1 text-overline">
           Booking Source
         </p>
         <span
@@ -694,14 +703,14 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
       </div>
 
       <div className="mb-3">
-        <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+        <p className="mb-1 text-overline">
           Surprise decor
         </p>
         <span
           className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
             booking.guest_requests_surprise_decor
               ? "border-violet-200 bg-violet-50 text-violet-800"
-              : "border-slate-200 bg-slate-50 text-slate-600"
+              : "border-border bg-muted/50 text-muted-foreground"
           }`}
         >
           {booking.guest_requests_surprise_decor
@@ -712,18 +721,18 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
 
       {(booking.find_us || booking.find_us_details) && (
         <div className="mb-3">
-          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mb-1 text-overline">
             How they found us
           </p>
           <div className="flex flex-wrap gap-2">
             {booking.find_us && (
-              <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700">
-                <Search className="size-3 text-slate-400" />
+              <span className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground">
+                <Search className="size-3 text-muted-foreground" />
                 {booking.find_us}
               </span>
             )}
             {booking.find_us_details && (
-              <span className="text-xs text-slate-600 py-1">
+              <span className="text-xs text-muted-foreground py-1">
                 {booking.find_us_details}
               </span>
             )}
@@ -732,11 +741,11 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
       )}
       {booking.guest_special_requests && (
         <div>
-          <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="mb-1 text-overline">
             Special Requests
           </p>
-          <p className="flex items-start gap-2 text-sm text-slate-700">
-            <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-slate-400" />
+          <p className="flex items-start gap-2 text-sm text-foreground">
+            <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
             {booking.guest_special_requests}
           </p>
         </div>
@@ -852,7 +861,7 @@ function PricingSummaryCard({
 
   return (
     <Card title="Pricing" icon={<Banknote className="size-3.5" />}>
-      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+      <p className="mb-2 text-overline">
         Rates & fees
       </p>
       <Grid3>
@@ -901,10 +910,10 @@ function PricingSummaryCard({
       {totalGuestBalance != null && (
         <div className="mt-3 overflow-hidden rounded-lg ring-1 ring-slate-200">
           {/* Guest settlement */}
-          <p className="bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <p className="bg-muted/50 px-4 py-1.5 text-overline">
             Guest settlement
           </p>
-          <div className="divide-y divide-slate-100 bg-white">
+          <div className="divide-y divide-slate-100 bg-card">
             <MiniRow
               label="Total guest balance"
               value={formatMoney(totalGuestBalance)}
@@ -917,7 +926,7 @@ function PricingSummaryCard({
             />
             <MiniRow label="Unpaid">
               {unpaidCents !== null && unpaidCents <= 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
                   <CheckCircle2
                     className="size-3 shrink-0 text-emerald-600"
                     aria-hidden
@@ -925,7 +934,7 @@ function PricingSummaryCard({
                   Paid in full
                 </span>
               ) : (
-                <span className="text-[13px] font-semibold tabular-nums text-amber-800">
+                <span className="text-data-primary tabular-nums text-amber-800">
                   {unpaidCents != null ? formatMoney(unpaidCents / 100) : "—"}
                 </span>
               )}
@@ -934,11 +943,11 @@ function PricingSummaryCard({
 
           {/* P&L — COMPLETED only */}
           {isCompleted && (
-            <div className="border-t border-slate-200">
-              <p className="bg-slate-50 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <div className="border-t border-border">
+              <p className="bg-muted/50 px-4 py-1.5 text-overline">
                 Profit &amp; loss
               </p>
-              <div className="divide-y divide-slate-100 bg-white">
+              <div className="divide-y divide-slate-100 bg-card">
                 <MiniRow
                   label="Profit"
                   value={formatMoney(totalProfit)}
@@ -956,7 +965,7 @@ function PricingSummaryCard({
                       ? "text-emerald-700"
                       : totalNet < 0
                         ? "text-red-600"
-                        : "text-slate-900"
+                        : "text-foreground"
                   }
                 />
               </div>
@@ -964,7 +973,7 @@ function PricingSummaryCard({
           )}
 
           {unpaidCents !== null && unpaidCents < 0 && (
-            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-[10.5px] text-amber-900">
+            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900">
               Overpaid by {formatMoney(Math.abs(unpaidCents) / 100)}
             </p>
           )}
@@ -973,7 +982,7 @@ function PricingSummaryCard({
 
       {(hasPaymentReceipt || hasBalanceReceipt) && (
         <div className="mt-4">
-          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+          <p className="mb-2 text-overline">
             Payment receipts
           </p>
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
@@ -1000,8 +1009,8 @@ function PricingSummaryCard({
       )}
 
       {isCompleted && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+        <div className="mt-4 border-t border-border/60 pt-4">
+          <p className="mb-2 text-overline">
             Security deposit refund
           </p>
           <Grid2>
@@ -1072,14 +1081,14 @@ function PricingSummaryCard({
 
           {sdExpenses.length > 0 && (
             <div className="mt-3">
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-1.5 text-overline">
                 Additional SD expenses
               </p>
-              <ul className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+              <ul className="space-y-1 rounded-lg border border-border bg-muted/50/80 px-3 py-2">
                 {sdExpenses.map((row, i) => (
                   <li
                     key={`e-${i}`}
-                    className="flex justify-between gap-2 text-xs text-slate-700"
+                    className="flex justify-between gap-2 text-xs text-foreground"
                   >
                     <span className="min-w-0 truncate">
                       {row.label?.trim() || `Line ${i + 1}`}
@@ -1095,14 +1104,14 @@ function PricingSummaryCard({
 
           {sdProfits.length > 0 && (
             <div className="mt-3">
-              <p className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+              <p className="mb-1.5 text-overline">
                 Additional SD profits
               </p>
-              <ul className="space-y-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2">
+              <ul className="space-y-1 rounded-lg border border-border bg-muted/50/80 px-3 py-2">
                 {sdProfits.map((row, i) => (
                   <li
                     key={`p-${i}`}
-                    className="flex justify-between gap-2 text-xs text-slate-700"
+                    className="flex justify-between gap-2 text-xs text-foreground"
                   >
                     <span className="min-w-0 truncate">
                       {row.label?.trim() || `Line ${i + 1}`}
@@ -1118,7 +1127,7 @@ function PricingSummaryCard({
 
           {booking.sd_refund_receipt_url && (
             <div className="mt-3">
-              <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+              <p className="mb-2 text-overline">
                 Refund receipt
               </p>
               <DocPreview
@@ -1152,8 +1161,8 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
   const awardedAt = booking.next_stay_voucher_awarded_at;
 
   return (
-    <div className="mt-4 border-t border-slate-100 pt-4">
-      <p className="mb-2 text-[10.5px] font-bold uppercase tracking-widest text-slate-400">
+    <div className="mt-4 border-t border-border/60 pt-4">
+      <p className="mb-2 text-overline">
         Next-stay voucher
       </p>
       <div className="relative overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80">
@@ -1166,10 +1175,10 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
             <Ticket className="size-4" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm font-bold tracking-[0.18em] text-slate-900 sm:text-base">
+            <p className="font-mono text-sm font-bold tracking-[0.18em] text-foreground sm:text-base">
               {code}
             </p>
-            <p className="mt-0.5 text-[11px] text-slate-500">
+            <p className="mt-0.5 text-caption">
               {amount != null ? formatMoney(amount) : "—"} off the next booking
               {awardedAt && (
                 <>
@@ -1280,13 +1289,13 @@ function DocPreview({
   if (needsResolve && !displayUrl) {
     return (
       <div
-        className={`flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white ${docPreviewOuterWidth()}`}
+        className={`flex flex-col overflow-hidden rounded-xl border border-border bg-card ${docPreviewOuterWidth()}`}
       >
-        <div className="relative flex aspect-video items-center justify-center bg-slate-100">
-          <Loader2 className="size-8 animate-spin text-slate-400" aria-hidden />
+        <div className="relative flex aspect-video items-center justify-center bg-muted">
+          <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
         </div>
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="truncate text-[11px] font-medium text-slate-500">
+          <span className="truncate text-caption font-medium">
             {label}
           </span>
         </div>
@@ -1304,10 +1313,10 @@ function DocPreview({
           e.preventDefault();
           onPreview(label, url);
         }}
-        className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 ${docPreviewOuterWidth()}`}
+        className={`flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted ${docPreviewOuterWidth()}`}
       >
-        <ExternalLink className="size-4 shrink-0 text-slate-400" />
-        <span className="truncate text-xs font-medium text-slate-700">
+        <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate text-xs font-medium text-foreground">
           {label}
         </span>
       </a>
@@ -1324,9 +1333,9 @@ function DocPreview({
           e.preventDefault();
           onPreview(label, url);
         }}
-        className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
+        className={`group flex flex-col overflow-hidden rounded-xl border border-border transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
       >
-        <div className="relative aspect-video bg-slate-100 overflow-hidden">
+        <div className="relative aspect-video bg-muted overflow-hidden">
           <img
             src={hrefForOpen}
             alt=""
@@ -1337,12 +1346,12 @@ function DocPreview({
             <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
           </div>
         </div>
-        <div className="flex items-center justify-between px-3 py-2 bg-white">
-          <span className="truncate inline-flex items-center gap-1 text-[11px] font-medium text-slate-600">
-            <ImageIcon className="size-3 shrink-0 text-slate-400" />
+        <div className="flex items-center justify-between px-3 py-2 bg-card">
+          <span className="inline-flex truncate items-center gap-1 text-caption font-medium">
+            <ImageIcon className="size-3 shrink-0 text-muted-foreground" />
             <span className="truncate">{label}</span>
           </span>
-          <ExternalLink className="size-3 shrink-0 text-slate-400" />
+          <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
         </div>
       </a>
     );
@@ -1358,9 +1367,9 @@ function DocPreview({
           e.preventDefault();
           onPreview(label, url);
         }}
-        className={`group flex flex-col overflow-hidden rounded-xl border border-slate-200 transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
+        className={`group flex flex-col overflow-hidden rounded-xl border border-border transition-all hover:border-blue-300 hover:shadow-md ${docPreviewOuterWidth()}`}
       >
-        <div className="relative aspect-video bg-slate-100 overflow-hidden">
+        <div className="relative aspect-video bg-muted overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center bg-rose-100">
             <FileText className="size-10 text-rose-500" />
           </div>
@@ -1368,12 +1377,12 @@ function DocPreview({
             <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
           </div>
         </div>
-        <div className="flex items-center justify-between px-3 py-2 bg-white">
-          <span className="truncate inline-flex items-center gap-1 text-[11px] font-medium text-slate-600">
+        <div className="flex items-center justify-between px-3 py-2 bg-card">
+          <span className="inline-flex truncate items-center gap-1 text-caption font-medium">
             <FileText className="size-3 shrink-0 text-rose-500" />
             <span className="truncate">{label}</span>
           </span>
-          <ExternalLink className="size-3 shrink-0 text-slate-400" />
+          <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
         </div>
       </a>
     );
@@ -1388,10 +1397,10 @@ function DocPreview({
         e.preventDefault();
         onPreview(label, url);
       }}
-      className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 transition-colors hover:bg-slate-100 ${docPreviewOuterWidth()}`}
+      className={`flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted ${docPreviewOuterWidth()}`}
     >
-      <ExternalLink className="size-4 shrink-0 text-slate-400" />
-      <span className="truncate text-xs font-medium text-slate-700">
+      <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
+      <span className="truncate text-xs font-medium text-foreground">
         {label}
       </span>
     </a>
@@ -1415,19 +1424,19 @@ function AssetPreviewModal({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/70 backdrop-blur-[1px] p-3 sm:p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-[1px] p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={asset ? `Preview ${asset.label}` : "Loading preview"}
       onClick={onClose}
     >
       <div
-        className="mx-auto flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+        className="mx-auto flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex min-h-[52px] items-center justify-between border-b border-slate-200 px-2.5 sm:min-h-[56px] sm:px-4">
+        <div className="flex min-h-[52px] items-center justify-between border-b border-border px-2.5 sm:min-h-[56px] sm:px-4">
           <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-slate-800 sm:text-sm">
+            <p className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {asset?.label ?? "Loading preview..."}
             </p>
           </div>
@@ -1437,7 +1446,7 @@ function AssetPreviewModal({
                 href={asset.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-slate-200 px-2 text-[11px] font-medium text-slate-700 hover:bg-slate-50 sm:min-h-[44px] sm:px-3 sm:text-xs"
+                className="inline-flex min-h-[40px] items-center justify-center rounded-lg border border-border px-2 text-ui font-medium hover:bg-muted/50 sm:min-h-[44px] sm:px-3"
               >
                 Open in new tab
               </a>
@@ -1445,7 +1454,7 @@ function AssetPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 sm:min-h-[44px] sm:min-w-[44px]"
+              className="inline-flex min-h-[40px] min-w-[40px] items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted/50 sm:min-h-[44px] sm:min-w-[44px]"
               aria-label="Close preview"
             >
               <X className="size-4" />
@@ -1454,12 +1463,12 @@ function AssetPreviewModal({
         </div>
         <div
           className={cn(
-            "flex-1 bg-slate-100 p-1.5 sm:p-3",
+            "flex-1 bg-muted p-1.5 sm:p-3",
             ASSET_PREVIEW_BODY_MIN_H,
           )}
         >
           {loading && (
-            <div className="flex h-full min-h-[inherit] items-center justify-center gap-2 text-slate-600">
+            <div className="flex h-full min-h-[inherit] items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" />
               <span className="text-sm">Loading preview...</span>
             </div>
@@ -1468,7 +1477,7 @@ function AssetPreviewModal({
           {!loading && asset?.type === "image" && (
             <div
               className={cn(
-                "flex h-full items-center justify-center overflow-auto rounded-lg bg-white",
+                "flex h-full items-center justify-center overflow-auto rounded-lg bg-card",
                 ASSET_PREVIEW_BODY_MIN_H,
               )}
             >
@@ -1485,7 +1494,7 @@ function AssetPreviewModal({
               title={asset.label}
               src={asset.url}
               className={cn(
-                "h-full w-full rounded-lg bg-white",
+                "h-full w-full rounded-lg bg-card",
                 ASSET_PREVIEW_BODY_MIN_H,
               )}
             />
@@ -1508,10 +1517,10 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+    <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex items-center gap-1.5">
-        {icon && <span className="text-slate-400">{icon}</span>}
-        <h2 className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+        {icon && <span className="text-muted-foreground">{icon}</span>}
+        <h2 className="text-overline">
           {title}
         </h2>
       </div>
@@ -1537,13 +1546,13 @@ function MiniRow({
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-2">
       <span
-        className={`text-[11px] uppercase tracking-wider ${bold ? "font-bold text-slate-700" : "font-medium text-slate-500"}`}
+        className={`text-xs uppercase tracking-wider ${bold ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}
       >
         {label}
       </span>
       {children ?? (
         <span
-          className={`text-[13px] tabular-nums ${bold ? "font-bold" : "font-semibold"} ${valueClass ?? "text-slate-900"}`}
+          className={`text-data-primary tabular-nums ${bold ? "font-bold" : "font-semibold"} ${valueClass ?? "text-foreground"}`}
         >
           {value}
         </span>
@@ -1582,10 +1591,10 @@ function InfoField({
     return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-400">
+      <span className="text-overline">
         {label}
       </span>
-      <span className="flex items-center gap-1.5 text-sm text-slate-800">
+      <span className="flex items-center gap-1.5 text-sm text-foreground">
         {icon}
         {String(value)}
       </span>
@@ -1596,14 +1605,14 @@ function InfoField({
 function LoadingSkeleton() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-24 rounded-xl bg-slate-200" />
+      <div className="h-24 rounded-xl bg-muted" />
       <div className="flex gap-4">
         <div className="flex-1 space-y-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 rounded-xl bg-slate-200" />
+            <div key={i} className="h-32 rounded-xl bg-muted" />
           ))}
         </div>
-        <div className="hidden lg:block w-80 h-64 rounded-xl bg-slate-200" />
+        <div className="hidden lg:block w-80 h-64 rounded-xl bg-muted" />
       </div>
     </div>
   );

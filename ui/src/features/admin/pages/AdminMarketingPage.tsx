@@ -6,10 +6,8 @@ import { TelegramMarketingSettingsCard } from '@/features/admin/components/Teleg
  */
 export function AdminMarketingPage() {
   return (
-    <AdminLayout title="Marketing" breadcrumb="Configure">
-      <div className="w-full max-w-full space-y-4 p-3 sm:space-y-5 sm:p-4 lg:p-6">
-        <TelegramMarketingSettingsCard />
-      </div>
+    <AdminLayout>
+      <TelegramMarketingSettingsCard />
     </AdminLayout>
   );
 }

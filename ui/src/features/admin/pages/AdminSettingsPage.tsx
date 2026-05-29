@@ -33,8 +33,8 @@ export function AdminSettingsPage() {
   }, [searchParams, setSearchParams, qc]);
 
   return (
-    <AdminLayout title="Settings" breadcrumb="Configure">
-      <div className="p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-5 w-full max-w-full">
+    <AdminLayout>
+      <div className="space-y-4 sm:space-y-5">
         <AppSettingsCard />
         <GmailMailIntegrationCard />
       </div>
