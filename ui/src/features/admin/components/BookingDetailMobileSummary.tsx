@@ -3,10 +3,8 @@ import {
   Car,
   ChevronDown,
   Dog,
-  Edit2,
   PartyPopper,
   Users,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/features/admin/lib/formatters';
@@ -16,26 +14,20 @@ import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
   booking: BookingRow;
-  editMode: boolean;
   detailsExpanded: boolean;
   onToggleDetails: () => void;
-  onEdit: () => void;
-  onCancelEdit: () => void;
   onPayParking: () => void;
   className?: string;
 };
 
 /**
- * Compact booking strip for mobile detail when status is past Pending Review.
- * Keeps workflow (Progress) above the fold; full cards live in the collapsible below.
+ * Compact booking strip for mobile detail.
+ * Keeps workflow (Progress) above the fold; full cards + Edit live in the collapsible below.
  */
 export function BookingDetailMobileSummary({
   booking,
-  editMode,
   detailsExpanded,
   onToggleDetails,
-  onEdit,
-  onCancelEdit,
   onPayParking,
   className,
 }: Props) {
@@ -48,61 +40,36 @@ export function BookingDetailMobileSummary({
     booking.guest_requests_surprise_decor,
   );
 
-  /** Compact control aligned to title line; negative margin preserves ~44px touch target. */
-  const headerActionButtonClass =
-    'mt-0.5 inline-flex shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white p-2 text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 -m-2';
-
   return (
     <section
       className={cn(
-        'rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4',
+        'rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4',
         className,
       )}
       aria-label="Booking summary"
     >
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-base font-bold leading-tight text-slate-900 break-words">
-            {heading}
-          </h1>
-          {fb && primary && fb.toLowerCase() !== primary.toLowerCase() && (
-            <p className="mt-0.5 truncate text-[11px] font-medium text-slate-500">
-              {primary}
-            </p>
-          )}
-        </div>
-        {editMode ? (
-          <button
-            type="button"
-            onClick={onCancelEdit}
-            aria-label="Cancel editing"
-            className={headerActionButtonClass}
-          >
-            <X className="size-3.5" aria-hidden />
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={onEdit}
-            aria-label="Edit booking"
-            className={headerActionButtonClass}
-          >
-            <Edit2 className="size-3.5" aria-hidden />
-          </button>
+      <div className="min-w-0">
+        <h1 className="text-base font-bold leading-tight text-foreground break-words">
+          {heading}
+        </h1>
+        {fb && primary && fb.toLowerCase() !== primary.toLowerCase() && (
+          <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">
+            {primary}
+          </p>
         )}
       </div>
 
-      <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-slate-600">
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <Calendar className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+          <Calendar className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           {formatBookingDate(booking.check_in_date)}
-          <span className="text-slate-300" aria-hidden>
+          <span className="text-muted-foreground/50" aria-hidden>
             →
           </span>
           {formatBookingDate(booking.check_out_date)}
         </span>
-        <span className="inline-flex items-center gap-1 text-slate-500">
-          <Users className="size-3.5 shrink-0 text-slate-400" aria-hidden />
+        <span className="inline-flex items-center gap-1 text-muted-foreground">
+          <Users className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
           {pax} pax · {booking.number_of_nights}{' '}
           {booking.number_of_nights === 1 ? 'night' : 'nights'}
         </span>
@@ -131,15 +98,13 @@ export function BookingDetailMobileSummary({
         </div>
       )}
 
-      {!editMode && (
-        <div className="mt-3">
-          <PayParkingHeaderButton
-            booking={booking}
-            onOpenModal={onPayParking}
-            onViewParking={onPayParking}
-          />
-        </div>
-      )}
+      <div className="mt-3">
+        <PayParkingHeaderButton
+          booking={booking}
+          onOpenModal={onPayParking}
+          onViewParking={onPayParking}
+        />
+      </div>
 
       <button
         type="button"
@@ -147,9 +112,9 @@ export function BookingDetailMobileSummary({
         aria-expanded={detailsExpanded}
         aria-controls="booking-detail-full-panel"
         className={cn(
-          'mt-3 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-colors',
+          'mt-3 flex w-full min-h-[44px] items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200',
           detailsExpanded
-            ? 'border border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+            ? 'border border-border bg-muted/50 text-foreground hover:bg-muted'
             : 'border border-sidebar-primary/30 bg-sidebar-primary/5 text-sidebar-primary hover:bg-sidebar-primary/10',
         )}
       >
@@ -160,7 +125,7 @@ export function BookingDetailMobileSummary({
         </span>
         <ChevronDown
           className={cn(
-            'size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none',
+            'size-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none',
             detailsExpanded && 'rotate-180',
           )}
           aria-hidden

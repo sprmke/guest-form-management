@@ -476,9 +476,9 @@ export function BookingEditForm({
           <input
             type="checkbox"
             {...register('need_parking')}
-            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="text-blue-600 rounded border-border focus:ring-blue-500"
           />
-          <span className="text-sm text-slate-700">Needs parking</span>
+          <span className="text-sm text-foreground">Needs parking</span>
         </label>
         {watchParking && (
           <Row3>
@@ -504,9 +504,9 @@ export function BookingEditForm({
           <input
             type="checkbox"
             {...register('has_pets')}
-            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="text-blue-600 rounded border-border focus:ring-blue-500"
           />
-          <span className="text-sm text-slate-700">Has pets</span>
+          <span className="text-sm text-foreground">Has pets</span>
         </label>
         {watchPets && (
           <>
@@ -553,9 +553,9 @@ export function BookingEditForm({
           <input
             type="checkbox"
             {...register('guest_requests_surprise_decor')}
-            className="text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+            className="text-blue-600 rounded border-border focus:ring-blue-500"
           />
-          <span className="text-sm text-slate-700">
+          <span className="text-sm text-foreground">
             Guest requested a surprise decor / room setup
           </span>
         </label>
@@ -608,12 +608,12 @@ export function BookingEditForm({
       <DocumentsSection booking={booking} onPreview={onPreview} />
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end items-center pt-4 border-t border-slate-200">
+      <div className="flex gap-3 justify-end items-center pt-4 border-t border-border">
         <button
           type="button"
           onClick={onClose}
           disabled={updateMut.isPending}
-          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-50 transition-colors"
+          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
         >
           <X className="size-3.5" aria-hidden />
           Cancel
@@ -683,11 +683,11 @@ function DocumentsSection({
   ];
 
   return (
-    <div className="p-4 space-y-3 bg-white rounded-xl border shadow-sm border-slate-200">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <div className="p-4 space-y-3 bg-card rounded-xl border shadow-sm border-border">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Documents
       </h3>
-      <p className="text-xs text-slate-400">
+      <p className="text-xs text-muted-foreground">
         Replacing a file uploads it immediately — no need to press Save.
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -751,8 +751,8 @@ function DocumentReplacer({
   const showImageThumb = docType === 'image' && !thumbFailed;
 
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-xl border border-slate-200 bg-slate-50">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-muted/50">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
 
@@ -761,10 +761,10 @@ function DocumentReplacer({
           type="button"
           aria-label={`Preview ${label}`}
           onClick={() => void onPreview(label, currentUrl)}
-          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-2 text-left transition-colors hover:border-blue-300"
+          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border bg-card p-2 text-left transition-colors hover:border-blue-300"
         >
           {showImageThumb ? (
-            <div className="overflow-hidden w-14 h-14 rounded-md shrink-0 bg-slate-100">
+            <div className="overflow-hidden w-14 h-14 rounded-md shrink-0 bg-muted">
               <img
                 src={displayUrl}
                 alt=""
@@ -778,7 +778,7 @@ function DocumentReplacer({
             </div>
           )}
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium truncate text-slate-600">
+            <p className="text-xs font-medium truncate text-muted-foreground">
               Current file
             </p>
             <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline">
@@ -787,7 +787,7 @@ function DocumentReplacer({
           </div>
         </button>
       ) : (
-        <div className="flex justify-center items-center h-16 text-xs bg-white rounded-lg border border-dashed border-slate-300 text-slate-400">
+        <div className="flex justify-center items-center h-16 text-xs bg-card rounded-lg border border-dashed border-border text-muted-foreground">
           No file uploaded
         </div>
       )}
@@ -808,7 +808,7 @@ function DocumentReplacer({
           'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
             ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-            : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 hover:text-slate-800',
+            : 'bg-card text-muted-foreground ring-1 ring-slate-200 hover:bg-muted/50 hover:text-foreground',
           isLoading && 'opacity-60 cursor-not-allowed',
         )}
       >
@@ -850,8 +850,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-4 space-y-3 bg-white rounded-xl border shadow-sm border-slate-200">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <div className="p-4 space-y-3 bg-card rounded-xl border shadow-sm border-border">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
       {children}
@@ -882,7 +882,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-slate-600">
+      <span className="text-xs font-medium text-muted-foreground">
         {label}
         {required && <span className="ml-0.5 text-red-500">*</span>}
       </span>
@@ -892,7 +892,7 @@ function Field({
 }
 
 const inputClass =
-  'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors resize-none';
+  'w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:bg-card focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors resize-none';
 
 // forwardRef is required so React Hook Form's ref callback reaches the DOM <input>
 // and can apply defaultValues. Without it React strips `ref` at the component boundary.

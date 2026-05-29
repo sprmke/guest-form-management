@@ -242,14 +242,14 @@ export function ReviewPricingForm({
       </div>
 
       {/* Total guest balance display */}
-      <div className="flex justify-between items-center px-3.5 py-2.5 rounded-lg ring-1 bg-slate-50 ring-slate-200">
+      <div className="flex justify-between items-center px-3.5 py-2.5 rounded-lg ring-1 bg-muted/50 ring-slate-200">
         <span className="flex flex-col gap-0.5">
-          <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-slate-700">
+          <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-foreground">
             Total Guest Balance
           </span>
         </span>
         <span
-          className={`text-xl font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-slate-900'}`}
+          className={`text-xl font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
         >
           {formatMoney(totalGuestBalance)}
         </span>
@@ -265,10 +265,10 @@ function inputClass(hasError: boolean, disabled = false) {
     'w-full rounded-md border px-3 py-1.5 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
     disabled
-      ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-500'
+      ? 'cursor-not-allowed border-border bg-muted text-muted-foreground'
       : hasError
         ? 'border-red-400 bg-red-50'
-        : 'border-slate-300 bg-white',
+        : 'border-border bg-card',
   ].join(' ');
 }
 
@@ -289,7 +289,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-xs text-slate-600">
+      <label className="block text-xs text-muted-foreground">
         {label}
         {required ? (
           <>
@@ -300,7 +300,7 @@ function Field({
       </label>
       {children}
       {helpText && (
-        <p className="text-[10.5px] leading-snug text-slate-500">{helpText}</p>
+        <p className="text-[10.5px] leading-snug text-muted-foreground">{helpText}</p>
       )}
       {error && <p className="text-[10px] text-red-600">{error}</p>}
     </div>

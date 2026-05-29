@@ -81,9 +81,9 @@ export function PendingReviewWorkflowGate({ booking, children }: Props) {
           onChange={(e) => {
             if (e.target.checked) onConfirm();
           }}
-          className="mt-1 text-blue-600 rounded size-4 shrink-0 border-slate-300 focus:ring-blue-500/40"
+          className="mt-1 text-blue-600 rounded size-4 shrink-0 border-border focus:ring-blue-500/40"
         />
-        <span className="text-xs text-slate-800">
+        <span className="text-xs text-foreground">
           I have reviewed the guest's booking submission and confirm that all
           provided details, attached documents and receipts are accurate and
           valid.

@@ -48,7 +48,7 @@ export function BookingsSortMenu({
           fullWidth && 'w-full justify-center',
           open
             ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
-            : 'border-sidebar-border bg-white text-sidebar-foreground hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50',
+            : 'border-sidebar-border bg-card text-sidebar-foreground hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50',
         )}
       >
         <ArrowUpDown className="size-3.5 shrink-0" aria-hidden />
@@ -65,7 +65,7 @@ export function BookingsSortMenu({
       {open && (
         <div
           className={cn(
-            'absolute top-full left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl bg-white sm:left-0 sm:right-auto sm:w-80',
+            'absolute top-full left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl bg-card sm:left-0 sm:right-auto sm:w-80',
             'max-w-[calc(100vw-24px)]',
           )}
           style={{
@@ -78,7 +78,7 @@ export function BookingsSortMenu({
             className="px-3.5 py-2.5"
             style={{ borderBottom: '1px solid #f1f5f9' }}
           >
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Sort by
             </span>
           </div>
@@ -95,13 +95,13 @@ export function BookingsSortMenu({
                   }}
                   className={cn(
                     'flex w-full items-start gap-2.5 px-3.5 py-2.5 text-left transition-colors',
-                    isSelected ? 'bg-slate-50' : 'hover:bg-slate-50',
+                    isSelected ? 'bg-muted/50' : 'hover:bg-muted/50',
                   )}
                 >
                   <ArrowUpDown
                     className={cn(
                       'mt-0.5 size-3.5 shrink-0',
-                      isSelected ? 'text-sidebar-primary' : 'text-slate-300',
+                      isSelected ? 'text-sidebar-primary' : 'text-muted-foreground/50',
                     )}
                     aria-hidden
                   />
@@ -110,14 +110,14 @@ export function BookingsSortMenu({
                       className={cn(
                         'block text-[13px]',
                         isSelected
-                          ? 'font-semibold text-slate-800'
-                          : 'font-medium text-slate-600',
+                          ? 'font-semibold text-foreground'
+                          : 'font-medium text-muted-foreground',
                       )}
                     >
                       {opt.label}
                     </span>
                     {opt.description ? (
-                      <span className="mt-0.5 block text-[11px] leading-snug text-slate-400">
+                      <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">
                         {opt.description}
                       </span>
                     ) : null}

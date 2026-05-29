@@ -119,10 +119,6 @@ export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }
           </li>
         ))}
       </ol>
-
-      <p className="hidden text-center text-xs text-muted-foreground sm:block">
-        {current.label} — {current.hint}
-      </p>
     </nav>
   );
 }

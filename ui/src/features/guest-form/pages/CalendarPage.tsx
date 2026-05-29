@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Calendar } from '@/components/ui/calendar';
 import { Button } from '@/components/ui/button';
-import { MainLayout } from '@/layouts/MainLayout';
 import { stripLegacyFromQueryParam } from '@/features/guest-form/lib/bookingSourceFromSearchParams';
+import type { GuestNavState } from '@/layouts/guestNavState';
 import {
   dateToString,
   stringToDate,
@@ -11,8 +11,10 @@ import {
   normalizeDateString,
   type BookedDateRange,
 } from '@/utils/dates';
+import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
 import { CalendarCheck, ArrowRight, CalendarX, Info } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 const apiUrl = import.meta.env.VITE_API_URL;
 
@@ -117,7 +119,9 @@ export function CalendarPage() {
       next.set('checkOutDate', checkOut);
       // Fresh date selection from calendar is a new booking flow
       next.delete('bookingId');
-      navigate(`/form?${next.toString()}`);
+      navigate(`/form?${next.toString()}`, {
+        state: { guestEnter: 'forward' } satisfies GuestNavState,
+      });
     }
   };
 
@@ -204,24 +208,14 @@ export function CalendarPage() {
     },
   };
 
+  const canProceed = Boolean(checkInDate && checkOutDate);
+
   return (
-    <MainLayout>
-      <div className="p-6 md:p-8">
-        {/* Header */}
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/5">
-            <CalendarCheck className="w-8 h-8 text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl">
-            Check Availability
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Select your check-in and check-out dates to book your stay
-          </p>
-        </div>
+    <div className="relative min-w-0 space-y-6 p-4 guest-inner-enter sm:space-y-8 sm:p-6 lg:p-8">
+        <KameFormBrandHeader title="Check Availability" />
 
         {/* Calendar Container */}
-        <div className="flex justify-center">
+        <div className="flex w-full justify-center">
           <div className="availability-calendar">
             {isLoading ? (
               <div className="flex items-center justify-center h-80">
@@ -236,27 +230,30 @@ export function CalendarPage() {
                 numberOfMonths={1}
                 modifiers={rangeModifiers}
                 modifiersClassNames={{
-                  range_start: 'rdp-day_range_start',
-                  range_end: 'rdp-day_range_end',
-                  range_middle: 'rdp-day_range_middle',
+                  range_start: 'rdp-range_start',
+                  range_end: 'rdp-range_end',
+                  range_middle: 'rdp-range_middle',
                 }}
                 fromDate={new Date()}
-                className="calendar-availability"
+                className={cn(
+                  'calendar-availability',
+                  checkOutDate && 'calendar-range-active',
+                )}
               />
             )}
           </div>
         </div>
 
         {/* Selection Summary */}
-        <div className="mt-8">
+        <div>
           {checkInDate || checkOutDate ? (
-            <div className="p-4 border rounded-xl bg-gradient-to-br from-secondary/30 to-secondary/10 border-primary/20">
+            <div className="surface-muted rounded-2xl border border-primary/15 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
                   {/* Check-in */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                      <CalendarCheck className="w-5 h-5 text-primary" />
+                    <div className="icon-well-sm bg-primary/10">
+                      <CalendarCheck className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-xs font-medium text-muted-foreground">
@@ -275,8 +272,8 @@ export function CalendarPage() {
 
                   {/* Check-out */}
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                      <CalendarX className="w-5 h-5 text-primary" />
+                    <div className="icon-well-sm bg-primary/10">
+                      <CalendarX className="h-5 w-5 text-primary" />
                     </div>
                     <div>
                       <p className="text-xs font-medium text-muted-foreground">
@@ -309,25 +306,19 @@ export function CalendarPage() {
                 </Button>
               </div>
             </div>
-          ) : (
-            <div className="flex items-center justify-center gap-2 p-4 border rounded-xl bg-muted/30 border-border/50">
-              <Info className="w-4 h-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Click on a date to select your check-in, then click another date
-                for check-out
-              </p>
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* Proceed Button */}
-        <div className="mt-6">
+        <div>
           <Button
             onClick={handleProceed}
-            disabled={!checkInDate || !checkOutDate}
-            className="w-full h-12 text-base font-semibold transition-all duration-200 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!canProceed}
+            variant={canProceed ? 'default' : 'secondary'}
+            size="lg"
+            className="w-full"
           >
-            {checkInDate && checkOutDate ? (
+            {canProceed ? (
               <>
                 Proceed to Booking Form
                 <ArrowRight className="w-5 h-5 ml-2" />
@@ -338,24 +329,26 @@ export function CalendarPage() {
           </Button>
         </div>
 
-        {/* Info Note */}
-        <div className="mt-6 p-4 rounded-lg bg-blue-50 border border-blue-200">
-          <div className="flex gap-3">
-            <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-sm text-blue-800">
-              <p className="font-medium">Booking Information</p>
-              <ul className="mt-1 space-y-1 list-disc list-inside text-blue-700">
-                <li>Standard check-in time is 2:00 PM</li>
-                <li>Standard check-out time is 11:00 AM</li>
-                <li>
-                  Early check-in and late check-out may be available upon
-                  request
-                </li>
-              </ul>
+        {canProceed ? (
+          <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+            <div className="flex gap-3">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <div className="text-sm text-foreground/80">
+                <p className="font-semibold text-foreground">
+                  Booking Information
+                </p>
+                <ul className="mt-1 list-inside list-disc space-y-1 text-muted-foreground">
+                  <li>Standard check-in time is 2:00 PM</li>
+                  <li>Standard check-out time is 11:00 AM</li>
+                  <li>
+                    Early check-in and late check-out may be available upon
+                    request
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
-        </div>
+        ) : null}
       </div>
-    </MainLayout>
   );
 }

@@ -23,7 +23,7 @@ export function GmailMailIntegrationCard() {
   return (
     <section
       className={cn(
-        'w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5',
+        'surface-card w-full px-3 py-3 sm:px-4 sm:py-3.5',
         'shadow-sm',
       )}
       aria-labelledby="gmail-integration-heading"
@@ -41,7 +41,7 @@ export function GmailMailIntegrationCard() {
               'flex justify-center items-center rounded-lg shrink-0 size-10 sm:size-11',
               connected
                 ? 'text-emerald-700 bg-emerald-500/15'
-                : 'bg-slate-100 text-slate-500',
+                : 'bg-muted text-muted-foreground',
             )}
           >
             <Mail className="size-5 sm:size-[22px]" aria-hidden />
@@ -58,7 +58,7 @@ export function GmailMailIntegrationCard() {
               GAF and pet PDFs are picked up automatically.
             </p>
             {isLoading && (
-              <p className="mt-1 text-xs text-slate-400">Loading status…</p>
+              <p className="mt-1 text-xs text-muted-foreground">Loading status…</p>
             )}
             {isError && (
               <p className="mt-1 text-xs text-destructive">

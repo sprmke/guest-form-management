@@ -407,7 +407,7 @@ function RevealedVoucherCard({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 divide-y divide-primary/15 rounded-xl bg-white/60 ring-1 ring-primary/20 backdrop-blur md:grid-cols-3 md:divide-x md:divide-y-0">
+        <div className="grid grid-cols-1 divide-y divide-primary/15 rounded-xl bg-card/60 ring-1 ring-primary/20 backdrop-blur md:grid-cols-3 md:divide-x md:divide-y-0">
           <div className="min-w-0 space-y-1 px-4 py-3">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
               Discount

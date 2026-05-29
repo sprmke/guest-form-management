@@ -61,6 +61,10 @@ module.exports = {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
         },
+        info: {
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
+        },
         sidebar: {
           DEFAULT: 'hsl(var(--sidebar-background))',
           foreground: 'hsl(var(--sidebar-foreground))',
@@ -77,6 +81,9 @@ module.exports = {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        xl: 'calc(var(--radius) + 4px)',
+        '2xl': 'calc(var(--radius) + 8px)',
+        '3xl': 'calc(var(--radius) + 16px)',
       },
       keyframes: {
         'accordion-down': {
@@ -88,26 +95,44 @@ module.exports = {
           to: { height: 0 },
         },
         'collapsible-down': {
-          from: { height: 0 },
-          to: { height: 'var(--radix-collapsible-content-height)' },
+          from: { height: '0', opacity: '0' },
+          to: {
+            height: 'var(--radix-collapsible-content-height)',
+            opacity: '1',
+          },
         },
         'collapsible-up': {
-          from: { height: 'var(--radix-collapsible-content-height)' },
-          to: { height: 0 },
+          from: {
+            height: 'var(--radix-collapsible-content-height)',
+            opacity: '1',
+          },
+          to: { height: '0', opacity: '0' },
+        },
+        'fade-in': {
+          from: { opacity: 0 },
+          to: { opacity: 1 },
+        },
+        'fade-in-up': {
+          from: { opacity: 0, transform: 'translateY(16px)' },
+          to: { opacity: 1, transform: 'translateY(0)' },
         },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'collapsible-down': 'collapsible-down 0.2s ease-out',
-        'collapsible-up': 'collapsible-up 0.2s ease-out',
+        'collapsible-down': 'collapsible-down 0.38s cubic-bezier(0.22, 1, 0.36, 1)',
+        'collapsible-up': 'collapsible-up 0.32s cubic-bezier(0.22, 1, 0.36, 1)',
+        'fade-in': 'fade-in 0.5s ease-out forwards',
+        'fade-in-up': 'fade-in-up 0.6s ease-out forwards',
       },
       boxShadow: {
-        soft: '0 2px 8px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06)',
+        soft: 'var(--shadow-soft)',
+        elevated: 'var(--shadow-elevated)',
+        'elevated-lg': 'var(--shadow-elevated-lg)',
         'soft-sm': '0 1px 4px rgba(0, 0, 0, 0.06)',
         medium: '0 4px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06)',
         hard: '0 10px 40px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08)',
-        card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+        card: 'var(--shadow-elevated)',
       },
     },
   },

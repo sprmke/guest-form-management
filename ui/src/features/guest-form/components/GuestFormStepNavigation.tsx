@@ -28,7 +28,7 @@ export function GuestFormStepNavigation({
     <div
       className={
         isFirst
-          ? 'border-t border-border/60 pt-5'
+          ? 'flex justify-end border-t border-border/60 pt-5'
           : 'flex flex-col-reverse gap-2 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between'
       }
     >
@@ -64,7 +64,11 @@ export function GuestFormStepNavigation({
       ) : (
         <Button
           type="button"
-          className="min-h-[44px] w-full shadow-md shadow-primary/15 sm:ml-auto sm:w-auto"
+          className={
+            isFirst
+              ? 'min-h-[44px] w-auto min-w-[8.5rem] shadow-md shadow-primary/15'
+              : 'min-h-[44px] w-full shadow-md shadow-primary/15 sm:ml-auto sm:w-auto'
+          }
           disabled={isSubmitting || !canProceed}
           onClick={onNext}
         >

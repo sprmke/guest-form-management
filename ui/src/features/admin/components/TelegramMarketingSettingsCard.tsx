@@ -3,6 +3,7 @@ import {
   Activity,
   ChevronDown,
   Clock,
+  Megaphone,
   Plus,
   Send,
   Trash2,
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -57,11 +59,11 @@ function CheckboxRow({
       <div className="min-w-0 space-y-0.5">
         <label
           htmlFor={id}
-          className="text-sm font-medium text-foreground cursor-pointer leading-snug"
+          className="text-ui font-medium text-foreground cursor-pointer leading-snug"
         >
           {label}
         </label>
-        <p className="text-xs text-muted-foreground leading-snug">
+        <p className="text-caption leading-snug">
           {description}
         </p>
       </div>
@@ -86,7 +88,7 @@ function CollapsibleSection({
   return (
     <Collapsible
       defaultOpen={defaultOpen}
-      className="group rounded-lg border border-border bg-muted/15"
+      className="group rounded-2xl border border-border/50 bg-muted/30"
     >
       <CollapsibleTrigger
         type="button"
@@ -321,7 +323,7 @@ export function TelegramMarketingSettingsCard() {
   if (isLoading || !draft) {
     return (
       <section
-        className="w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5 animate-pulse"
+        className="w-full surface-card px-3 py-3 sm:px-4 sm:py-3.5 animate-pulse"
         aria-labelledby="telegram-marketing-heading"
       >
         <div className="h-4 w-40 rounded bg-muted" />
@@ -332,24 +334,16 @@ export function TelegramMarketingSettingsCard() {
 
   return (
     <section
-      className={cn(
-        'w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
-      )}
+      className={cn('surface-card w-full px-3 py-3 sm:px-4 sm:py-4')}
       aria-labelledby="telegram-marketing-heading"
     >
       <div className="space-y-4">
-        <div className="space-y-1">
-          <h2
-            id="telegram-marketing-heading"
-            className="text-sm font-bold text-sidebar-foreground sm:text-[13px]"
-          >
-            Marketing
-          </h2>
-          <p className="text-xs text-muted-foreground leading-snug max-w-prose">
-            Telegram reminders for your marketing group. Save when you&apos;re
-            done editing.
-          </p>
-        </div>
+        <AdminPageHeader
+          id="telegram-marketing-heading"
+          title="Marketing"
+          subtitle="Telegram reminders for your marketing group. Save when you're done editing."
+          icon={Megaphone}
+        />
 
         <div className="space-y-3">
           <CollapsibleSection

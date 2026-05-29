@@ -3,10 +3,12 @@ import {
   Activity,
   ChevronDown,
   Clock,
+  HardHat,
   Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -53,11 +55,11 @@ function CheckboxRow({
       <div className="min-w-0 space-y-0.5">
         <label
           htmlFor={id}
-          className="text-sm font-medium text-foreground cursor-pointer leading-snug"
+          className="text-ui cursor-pointer"
         >
           {label}
         </label>
-        <p className="text-xs text-muted-foreground leading-snug">
+        <p className="text-caption">
           {description}
         </p>
       </div>
@@ -81,7 +83,7 @@ function CollapsibleSection({
   return (
     <Collapsible
       defaultOpen={defaultOpen}
-      className="group rounded-lg border border-border bg-muted/15"
+      className="group rounded-2xl border border-border/50 bg-muted/30"
     >
       <CollapsibleTrigger
         type="button"
@@ -225,7 +227,7 @@ export function TelegramStaffSettingsCard() {
   if (isLoading || !draft) {
     return (
       <section
-        className="w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5 animate-pulse"
+        className="w-full surface-card px-3 py-3 sm:px-4 sm:py-3.5 animate-pulse"
         aria-labelledby="staff-heading"
       >
         <div className="h-4 w-40 rounded bg-muted" />
@@ -236,24 +238,16 @@ export function TelegramStaffSettingsCard() {
 
   return (
     <section
-      className={cn(
-        'w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4',
-      )}
+      className={cn('surface-card w-full px-4 py-4 sm:px-5 sm:py-5')}
       aria-labelledby="staff-heading"
     >
       <div className="space-y-4">
-        <div className="space-y-1">
-          <h2
-            id="staff-heading"
-            className="text-sm font-bold text-sidebar-foreground sm:text-[13px]"
-          >
-            Staff
-          </h2>
-          <p className="text-xs text-muted-foreground leading-snug max-w-prose">
-            Daily booking summary for your staff group. Save when you&apos;re
-            done editing.
-          </p>
-        </div>
+        <AdminPageHeader
+          id="staff-heading"
+          title="Staff"
+          subtitle="Daily booking summary for your staff group. Save when you're done editing."
+          icon={HardHat}
+        />
 
         <div className="space-y-3">
           {/* Test actions */}

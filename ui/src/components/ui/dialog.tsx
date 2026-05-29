@@ -37,7 +37,7 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         // Centered card at all breakpoints — never full-viewport (see mobile-responsive.mdc)
-        'fixed left-1/2 top-1/2 z-[101] grid w-full max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border border-sidebar-border bg-background p-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] pt-[max(env(safe-area-inset-top,0px),0.75rem)] shadow-xl outline-none duration-200',
+        'fixed left-1/2 top-1/2 z-[101] grid w-full max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),28rem)] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-3xl border border-border/50 bg-background p-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)] pt-[max(env(safe-area-inset-top,0px),0.75rem)] shadow-elevated-lg outline-none duration-200',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
         'sm:max-w-[min(90vw,28rem)] sm:p-6',
         className,
@@ -46,7 +46,7 @@ const DialogContent = React.forwardRef<
     >
       {children}
       <DialogPrimitive.Close
-        className="absolute right-3 top-3 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-muted-foreground opacity-80 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+        className="absolute right-3 top-3 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-muted-foreground opacity-80 ring-offset-background transition-all hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
         aria-label="Close"
       >
         <X className="size-5 shrink-0" aria-hidden />

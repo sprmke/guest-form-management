@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import type { GuestNavState } from '@/layouts/guestNavState';
 import { Button } from '@/components/ui/button';
-import 'react-day-picker/dist/style.css';
 import {
   Form,
   FormControl,
@@ -469,7 +469,9 @@ export function GuestForm() {
       // Back to calendar; drop bookingId + legacy `from`; keep source=airbnb, dev, dates, etc.
       const next = stripLegacyFromQueryParam(searchParams);
       next.delete('bookingId');
-      navigate(next.toString() ? `/?${next.toString()}` : '/');
+      navigate(next.toString() ? `/?${next.toString()}` : '/', {
+        state: { guestEnter: 'back' } satisfies GuestNavState,
+      });
     } catch (error) {
       console.error('Cancel booking error:', error);
       toast.error('Failed to cancel booking', {
@@ -621,7 +623,9 @@ export function GuestForm() {
 
         // Redirect to success page with booking data
         navigate(`/success?bookingId=${currentBookingId}`, {
-          state: { bookingData },
+          state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
+            bookingData: typeof bookingData;
+          },
         });
         return;
       }
@@ -657,7 +661,9 @@ export function GuestForm() {
 
       // Redirect to success page with bookingId and booking data
       navigate(`/success?bookingId=${currentBookingId}`, {
-        state: { bookingData },
+        state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
+          bookingData: typeof bookingData;
+        },
       });
     } catch (error: unknown) {
       console.error('Error submitting form:', {
@@ -728,21 +734,23 @@ export function GuestForm() {
         toast.error('Failed to submit the guest form', {
           id: 'submission-error',
           description: (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold leading-relaxed">
+            <div className="space-y-3 text-foreground">
+              <p className="text-sm font-semibold leading-relaxed text-foreground">
                 {cleanedMessage}
               </p>
-              <p className="text-sm leading-relaxed opacity-90">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {isAirbnb
                   ? "Click the button below to copy your form data and share it with your host so we don't need to manually fill up all information again. We really apologize for the inconvenience."
                   : "Click the button below to copy your form data and paste it on our Facebook Messenger so we don't need to manually fill up all information again. We really apologize for the inconvenience."}
               </p>
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 min-h-[44px] w-full bg-card text-foreground hover:bg-muted"
                 onClick={handleCopyBookingInfo}
-                className="w-full px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
               >
                 Copy Booking Information
-              </button>
+              </Button>
             </div>
           ),
           duration: 7000,
@@ -806,7 +814,7 @@ export function GuestForm() {
           }
           void form.handleSubmit(onSubmit)(event);
         }}
-        className="relative space-y-6 p-4 sm:p-6 lg:p-8"
+        className="relative space-y-6 p-4 sm:p-6 lg:p-8 guest-inner-enter"
       >
         {isLoading ? (
           <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
@@ -837,6 +845,7 @@ export function GuestForm() {
                   next.delete('bookingId');
                   navigate(next.toString() ? `/?${next.toString()}` : '/', {
                     replace: true,
+                    state: { guestEnter: 'back' } satisfies GuestNavState,
                   });
                 }}
                 className="mt-4"
@@ -871,16 +880,13 @@ export function GuestForm() {
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
                   <StepIcon className="size-5" aria-hidden />
                 </div>
-                <div className="min-w-0 space-y-0.5">
+                <div className="min-w-0">
                   <h2
                     id="guest-form-step-heading"
                     className="text-base font-bold text-foreground sm:text-lg"
                   >
                     {activeStepConfig.label}
                   </h2>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {activeStepConfig.hint}
-                  </p>
                 </div>
               </header>
 
@@ -1552,7 +1558,7 @@ export function GuestForm() {
                             className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
                             role="status"
                           >
-                            <p className="text-sm text-slate-800 leading-relaxed">
+                            <p className="text-sm text-foreground leading-relaxed">
                               By checking this, you confirm you have already
                               messaged us on{' '}
                               <span className="font-semibold">
@@ -1574,15 +1580,7 @@ export function GuestForm() {
 
             {currentStep === 3 && (
             <div className="space-y-4">
-              <GuestFormInfoCallout title="Azure North parking">
-                <p>
-                  Free parking is available outside the gate and Home Depot (3–5
-                  min walk). Paid slots inside Azure are ₱400/night when
-                  available.
-                </p>
-              </GuestFormInfoCallout>
-
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Do you need paid parking?
                 </p>
@@ -1591,33 +1589,19 @@ export function GuestForm() {
                     selected={!form.watch('needParking')}
                     onSelect={() => form.setValue('needParking', false)}
                     title="No paid parking needed"
-                    description="I'll use free parking outside or arrange drop-off only"
+                    description="Vehicles without a parking slot may enter for drop-off only at the tower entrance. Free parking is available outside Azure, in front of Home Depot (3–5 minute walk) on a first-come, first-served basis."
                   />
                   <GuestFormOptionCard
                     selected={form.watch('needParking')}
                     onSelect={() => form.setValue('needParking', true)}
                     title="Yes, reserve paid parking"
-                    description="₱400 per night inside Azure North (subject to availability)"
+                    description="₱400 per night inside Azure North residence and is subject to availability."
                   />
                 </div>
               </div>
 
               {form.watch('needParking') && (
-                <div className="space-y-4">
-                  <GuestFormInfoCallout title="🚙 Azure North parking reminder">
-                    <p>
-                      Vehicles without a slot may enter for{' '}
-                      <span className="font-semibold text-foreground">
-                        drop-off only
-                      </span>{' '}
-                      at the tower entrance.
-                    </p>
-                    <p>
-                      Fill in your car details below. Slots are limited on
-                      weekends — book in advance when possible.
-                    </p>
-                  </GuestFormInfoCallout>
-
+                <div className="space-y-4 pt-5">
                   <FormField
                     control={form.control}
                     name="carPlateNumber"
@@ -1625,9 +1609,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Plate Number{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. ABC123" {...field} />
@@ -1644,9 +1626,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Brand & Model{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1669,9 +1649,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Color{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1695,15 +1673,7 @@ export function GuestForm() {
 
             {currentStep === 4 && (
             <div className="space-y-4">
-
-              <GuestFormInfoCallout title="Bringing a pet?">
-                <p>
-                  Azure allows one toy/small dog per unit with a ₱300 pet fee.
-                  Select below only if a pet is joining your stay.
-                </p>
-              </GuestFormInfoCallout>
-
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Will a pet join your stay?
                 </p>
@@ -1717,29 +1687,19 @@ export function GuestForm() {
                     selected={form.watch('hasPets')}
                     onSelect={() => form.setValue('hasPets', true)}
                     title="Yes, I'm bringing a pet"
-                    description="One toy/small dog — PMO approval required"
                   />
                 </div>
               </div>
 
               {form.watch('hasPets') && (
                 <div className="space-y-5">
-                  <GuestFormInfoCallout title="🐶 Azure North pet policy">
-                    <p>
-                      Provide complete pet details and vaccination records for PMO
-                      approval.
-                    </p>
-                    <p>
-                      Only one toy/small dog is allowed (₱300 pet fee). Pets
-                      must use the service elevator only, in a zipped bag and on
-                      a leash whenever outside the unit.
-                    </p>
-                    <p>
-                      <span className="font-semibold text-foreground">
-                        No pets allowed in:
-                      </span>{' '}
-                      Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck
-                    </p>
+                  <GuestFormInfoCallout title="🐶 Azure North Pet Policy">
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Only one toy/small dog is allowed. <span className="font-semibold text-foreground">Pet fee: P300</span></li>
+                      <li>Pets must use the service elevator only, should be in a leash whenever outside the unit.</li>
+                      <li>Azure North requires complete pet details and vaccination records for PMO approval.</li>
+                      <li>No pets allowed in: Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck</li>
+                    </ul>
                   </GuestFormInfoCallout>
 
                   <FormField
