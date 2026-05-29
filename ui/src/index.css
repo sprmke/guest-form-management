@@ -1,110 +1,120 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Professional Booking Management Color Scheme */
+/* Kame Home — Teal-green gradient design system */
 @layer base {
   :root {
-    /* Sophisticated gradient background */
-    --background: 210 20% 98%;
-    --foreground: 215 25% 20%;
+    --radius: 1rem;
+    --shadow-elevated: 0 1px 2px hsl(160 20% 20% / 0.04),
+      0 8px 24px -6px hsl(160 20% 20% / 0.08);
+    --shadow-elevated-lg: 0 2px 4px hsl(160 20% 20% / 0.04),
+      0 16px 40px -8px hsl(160 20% 20% / 0.12);
+    --shadow-soft: 0 4px 20px -4px hsl(168 65% 40% / 0.22);
 
-    /* Clean card design */
+    --background: 150 20% 98%;
+    --foreground: 160 25% 14%;
+
     --card: 0 0% 100%;
-    --card-foreground: 215 25% 20%;
+    --card-foreground: 160 25% 14%;
 
-    /* Popover styling */
     --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 20%;
+    --popover-foreground: 160 25% 14%;
 
-    /* Primary matches sidebar primary green */
     --primary: 168 65% 40%;
     --primary-foreground: 0 0% 100%;
 
-    /* Subtle secondary for accents */
-    --secondary: 142 20% 92%;
-    --secondary-foreground: 142 76% 28%;
+    --secondary: 152 30% 94%;
+    --secondary-foreground: 158 50% 22%;
 
-    /* Muted backgrounds */
-    --muted: 210 20% 95%;
-    --muted-foreground: 215 15% 50%;
+    --muted: 150 15% 95%;
+    --muted-foreground: 160 10% 46%;
 
-    /* Accent color - warm complementary */
-    --accent: 25 90% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 152 35% 93%;
+    --accent-foreground: 158 50% 22%;
 
-    /* Destructive/error states */
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders and inputs */
-    --border: 215 20% 88%;
-    --input: 215 20% 88%;
+    --border: 150 12% 90%;
+    --input: 150 12% 90%;
     --ring: 168 65% 40%;
 
-    /* Success color for confirmed bookings */
-    --success: 142 76% 36%;
+    --success: 152 69% 38%;
     --success-foreground: 0 0% 100%;
 
-    /* Warning color */
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --radius: 0.75rem;
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
 
-    /* ── Admin Dashboard Sidebar Tokens (matches property-management design system) ── */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 224 71% 4%;
+    --sidebar-foreground: 160 25% 14%;
     --sidebar-primary: 168 65% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 168 65% 96%;
     --sidebar-accent-foreground: 168 65% 28%;
-    --sidebar-border: 220 13% 93%;
+    --sidebar-border: 150 12% 91%;
     --sidebar-ring: 168 65% 40%;
-    --sidebar-muted: 220 9% 46%;
+    --sidebar-muted: 160 8% 48%;
   }
 
   .dark {
-    --background: 215 25% 12%;
-    --foreground: 210 20% 98%;
+    --background: 160 20% 8%;
+    --foreground: 150 15% 96%;
 
-    --card: 215 25% 15%;
-    --card-foreground: 210 20% 98%;
+    --card: 160 18% 11%;
+    --card-foreground: 150 15% 96%;
 
-    --popover: 215 25% 15%;
-    --popover-foreground: 210 20% 98%;
+    --popover: 160 18% 11%;
+    --popover-foreground: 150 15% 96%;
 
     --primary: 168 65% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 215 25% 20%;
-    --secondary-foreground: 142 76% 60%;
+    --secondary: 160 15% 16%;
+    --secondary-foreground: 152 50% 70%;
 
-    --muted: 215 25% 18%;
-    --muted-foreground: 215 15% 65%;
+    --muted: 160 15% 14%;
+    --muted-foreground: 150 10% 62%;
 
-    --accent: 25 90% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 160 15% 18%;
+    --accent-foreground: 150 15% 96%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 215 25% 25%;
-    --input: 215 25% 25%;
+    --border: 160 12% 20%;
+    --input: 160 12% 20%;
     --ring: 168 65% 45%;
 
-    /* Sidebar dark tokens */
-    --sidebar-background: 0 0% 8%;
-    --sidebar-foreground: 0 0% 90%;
+    --success: 152 65% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 199 89% 55%;
+    --info-foreground: 0 0% 100%;
+
+    --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.2),
+      0 8px 24px -6px hsl(0 0% 0% / 0.35);
+    --shadow-elevated-lg: 0 2px 4px hsl(0 0% 0% / 0.25),
+      0 16px 40px -8px hsl(0 0% 0% / 0.45);
+    --shadow-soft: 0 4px 20px -4px hsl(168 65% 45% / 0.25);
+
+    --sidebar-background: 160 18% 9%;
+    --sidebar-foreground: 150 15% 92%;
     --sidebar-primary: 168 65% 45%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 168 50% 12%;
     --sidebar-accent-foreground: 168 65% 55%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-border: 160 12% 18%;
     --sidebar-ring: 168 65% 45%;
-    --sidebar-muted: 0 0% 55%;
+    --sidebar-muted: 150 8% 55%;
   }
 }
 
@@ -113,23 +123,341 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-muted-foreground antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings:
       'rlig' 1,
       'calt' 1;
+    letter-spacing: -0.015em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Enhanced typography */
   h1,
   h2,
   h3,
   h4,
   h5,
   h6 {
-    @apply font-semibold tracking-tight;
+    @apply font-semibold tracking-tight text-muted-foreground;
+    letter-spacing: -0.028em;
+  }
+
+  ::-webkit-scrollbar {
+    @apply h-1.5 w-1.5;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-muted-foreground/20;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/40;
+  }
+}
+
+@layer utilities {
+  .gradient-primary {
+    background: linear-gradient(
+      135deg,
+      hsl(168 65% 46%) 0%,
+      hsl(168 65% 42%) 45%,
+      hsl(168 65% 38%) 100%
+    );
+  }
+
+  .gradient-primary-subtle {
+    background: linear-gradient(
+      135deg,
+      hsl(168 65% 96%) 0%,
+      hsl(152 45% 95%) 100%
+    );
+  }
+
+  .dark .gradient-primary-subtle {
+    background: linear-gradient(
+      135deg,
+      hsl(168 40% 14%) 0%,
+      hsl(160 18% 11%) 100%
+    );
+  }
+
+  .nav-item-active {
+    background: linear-gradient(
+      135deg,
+      hsl(168 65% 46%) 0%,
+      hsl(168 65% 42%) 45%,
+      hsl(168 60% 38%) 100%
+    );
+    color: hsl(0 0% 100%);
+    box-shadow: 0 2px 12px -3px hsl(168 65% 40% / 0.4);
+  }
+
+  .nav-item-active-icon {
+    background: hsl(0 0% 100% / 0.22);
+  }
+
+  .app-shell {
+    @apply relative min-h-screen;
+    background:
+      radial-gradient(
+        ellipse 80% 50% at 100% -10%,
+        hsl(168 65% 40% / 0.07),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 60% 40% at 0% 100%,
+        hsl(152 50% 50% / 0.05),
+        transparent 50%
+      ),
+      hsl(var(--background));
+  }
+
+  .surface-card {
+    @apply overflow-visible rounded-3xl border border-border/50 bg-card text-card-foreground;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .surface-card-interactive {
+    @apply rounded-3xl border border-border/50 bg-card text-card-foreground transition-all duration-300;
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .surface-card-interactive:hover {
+    box-shadow: var(--shadow-elevated-lg);
+    @apply -translate-y-0.5;
+  }
+
+  .surface-muted {
+    @apply rounded-2xl border border-border/40 bg-muted/60;
+  }
+
+  .icon-well-sm {
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl;
+  }
+
+  .text-overline {
+    @apply text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground;
+  }
+
+  .section-eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.1em] text-primary;
+  }
+
+  /* Typography scale — single source for UI copy hierarchy */
+  .text-display {
+    @apply text-2xl font-bold tracking-tight text-muted-foreground;
+    letter-spacing: -0.03em;
+  }
+
+  .text-page-title {
+    @apply text-xl font-bold tracking-tight text-muted-foreground lg:text-[1.375rem];
+    letter-spacing: -0.028em;
+  }
+
+  /** In-card page headers — slightly smaller than standalone page titles. */
+  .text-card-title {
+    @apply text-base font-bold tracking-tight text-muted-foreground lg:text-lg;
+    letter-spacing: -0.024em;
+  }
+
+  .text-page-subtitle {
+    @apply text-sm font-normal leading-relaxed text-muted-foreground;
+  }
+
+  .text-section-title {
+    @apply text-sm font-semibold tracking-tight text-muted-foreground;
+  }
+
+  /** Primary interactive / toolbar copy (filters, buttons, menu items). */
+  .text-ui {
+    @apply text-sm font-medium leading-snug text-muted-foreground;
+  }
+
+  /** Dense toolbar controls (filter bar, sort, date chips). */
+  .text-toolbar {
+    @apply text-xs font-semibold leading-none text-muted-foreground;
+  }
+
+  /** Emphasized values in lists, tables, and cards. */
+  .text-data-primary {
+    @apply text-sm font-semibold leading-snug text-muted-foreground lg:text-[13px];
+  }
+
+  /** Money / numeric values in dense tables — same size as data, lighter weight. */
+  .text-table-amount {
+    @apply text-sm font-medium tabular-nums leading-snug text-muted-foreground lg:text-[13px];
+  }
+
+  /** Secondary lines under primary data (email, nights, hints). */
+  .text-data-secondary {
+    @apply text-xs font-normal leading-snug text-muted-foreground;
+  }
+
+  /** Muted summary lines (counts, pagination meta). */
+  .text-meta {
+    @apply text-sm font-normal leading-snug text-muted-foreground;
+  }
+
+  /** Table / grid column headers. */
+  .text-table-head {
+    @apply text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  .text-caption {
+    @apply text-xs font-normal leading-relaxed text-muted-foreground;
+  }
+
+  .hover-lift {
+    @apply transition-all duration-200;
+  }
+
+  .hover-lift:hover {
+    @apply -translate-y-0.5 shadow-lg;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+    opacity: 0;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 0.4s;
+    opacity: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-fade-in,
+    .animate-fade-in-up,
+    .guest-enter,
+    .guest-enter-forward,
+    .guest-enter-back,
+    .guest-enter-success,
+    .guest-inner-enter,
+    .surface-card-interactive:hover,
+    .hover-lift:hover {
+      animation: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+
+  /* Guest public pages — route entrance (calendar ↔ form ↔ success) */
+  @keyframes guest-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 12px, 0) scale(0.988);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes guest-enter-forward {
+    from {
+      opacity: 0;
+      transform: translate3d(20px, 8px, 0) scale(0.988);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes guest-enter-back {
+    from {
+      opacity: 0;
+      transform: translate3d(-16px, 6px, 0) scale(0.99);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes guest-enter-success {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+
+  @keyframes guest-inner-enter {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 6px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  .guest-enter,
+  .guest-enter-forward,
+  .guest-enter-back,
+  .guest-enter-success {
+    animation-duration: 0.52s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+    animation-fill-mode: both;
+    will-change: transform, opacity;
+  }
+
+  .guest-enter {
+    animation-name: guest-enter;
+  }
+
+  .guest-enter-forward {
+    animation-name: guest-enter-forward;
+  }
+
+  .guest-enter-back {
+    animation-name: guest-enter-back;
+  }
+
+  .guest-enter-success {
+    animation-name: guest-enter-success;
+  }
+
+  .guest-inner-enter {
+    animation: guest-inner-enter 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.09s both;
   }
 }
 
@@ -138,7 +466,7 @@
    forcing relative breaks stacking and creates huge gaps between toasts. */
 [data-sonner-toast] {
   border-radius: 0.75rem !important;
-  background: hsl(0 0% 100%) !important;
+  background: hsl(var(--card)) !important;
   color: hsl(var(--foreground)) !important;
   border: 1px solid hsl(var(--border)) !important;
   border-left-width: 4px !important;
@@ -177,8 +505,8 @@
 }
 
 [data-sonner-toast] [data-close-button]:hover {
-  background: hsl(215 16% 92%) !important;
-  color: hsl(215 25% 28%) !important;
+  background: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
 }
 
 [data-sonner-toast] [data-close-button]:focus-visible {
@@ -224,116 +552,126 @@
   border-left-color: hsl(var(--primary)) !important;
 }
 
-/* Professional Calendar Styling */
-.rdp-root {
-  --rdp-accent-color: hsl(142 76% 36%) !important;
+/* Professional Calendar Styling (admin / form pickers — not public availability page) */
+.rdp-root:not(.calendar-availability) {
+  --rdp-accent-color: hsl(var(--primary)) !important;
   padding: 1.25rem;
-  background: hsl(0 0% 100%);
+  background: hsl(var(--card));
   border-radius: 0.75rem;
+  color: hsl(var(--foreground));
 }
 
-.rdp-root .rdp-nav {
+.rdp-root:not(.calendar-availability) .rdp-nav {
   gap: 0.75rem;
   margin-bottom: 0.5rem;
 }
 
-.rdp-root .rdp-nav button {
+.rdp-root:not(.calendar-availability) .rdp-nav button {
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
 }
 
-.rdp-root .rdp-nav button:hover {
-  background-color: hsl(142 20% 92%);
+.rdp-root:not(.calendar-availability) .rdp-nav button:hover {
+  background-color: hsl(var(--muted)) !important;
   transform: scale(1.05);
 }
 
-.rdp-root .rdp-month_caption {
+.rdp-root:not(.calendar-availability) .rdp-month_caption {
   font-weight: 600 !important;
   font-size: 1rem !important;
-  color: hsl(215 25% 20%);
+  color: hsl(var(--foreground));
   margin-bottom: 0.75rem;
 }
 
-.rdp-root td {
+.rdp-root:not(.calendar-availability) td {
   font-size: 0.925rem !important;
 }
 
-.rdp-root td.rdp-disabled:not(.rdp-selected) {
+.rdp-root:not(.calendar-availability) td.rdp-disabled:not(.rdp-selected) {
   opacity: 0.35;
 }
 
-.rdp-root td .rdp-day_button {
+.rdp-root:not(.calendar-availability) td .rdp-day_button {
   border-radius: 0.625rem !important;
   transition: all 0.15s ease;
   font-weight: 500;
 }
 
-.rdp-root td .rdp-day_button:hover {
-  background-color: hsl(142 20% 92%) !important;
+.rdp-root:not(.calendar-availability) td .rdp-day_button:hover {
+  background-color: hsl(var(--muted)) !important;
   transform: scale(1.05);
 }
 
-.rdp-root td[aria-selected] .rdp-day_button {
-  color: hsl(142 76% 36%) !important;
+.rdp-root:not(.calendar-availability) td[aria-selected] .rdp-day_button {
+  background: linear-gradient(
+    135deg,
+    hsl(168 65% 46%) 0%,
+    hsl(168 65% 40%) 100%
+  ) !important;
+  color: white !important;
   font-weight: 600;
+  box-shadow: 0 2px 8px -2px hsl(168 65% 40% / 0.35);
 }
 
 /* Professional range highlighting for multi-night bookings */
-.rdp-day_range_middle .rdp-day_button {
+.rdp-root:not(.calendar-availability) .rdp-day_range_middle .rdp-day_button {
   background: linear-gradient(
     135deg,
-    hsl(142 76% 85%) 0%,
-    hsl(142 76% 90%) 100%
+    hsl(168 55% 92%) 0%,
+    hsl(168 50% 88%) 100%
   ) !important;
-  color: hsl(142 76% 30%) !important;
+  color: hsl(168 65% 28%) !important;
   font-weight: 500;
 }
 
-.rdp-root td.rdp-day_range_start .rdp-day_button {
+.rdp-root:not(.calendar-availability) td.rdp-day_range_start .rdp-day_button {
   background: linear-gradient(
     135deg,
-    hsl(142 76% 36%) 0%,
-    hsl(142 76% 42%) 100%
+    hsl(168 65% 46%) 0%,
+    hsl(168 65% 40%) 100%
   ) !important;
   color: white !important;
   font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 10px -2px hsl(168 65% 40% / 0.4);
 }
 
-.rdp-root td.rdp-day_range_end .rdp-day_button {
+.rdp-root:not(.calendar-availability) td.rdp-day_range_end .rdp-day_button {
   background: linear-gradient(
     135deg,
-    hsl(142 76% 36%) 0%,
-    hsl(142 76% 42%) 100%
+    hsl(168 65% 46%) 0%,
+    hsl(168 65% 40%) 100%
   ) !important;
   color: white !important;
   font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+  box-shadow: 0 4px 10px -2px hsl(168 65% 40% / 0.4);
 }
 
-.rdp-day_range_start.rdp-day_range_end .rdp-day_button {
+.rdp-root:not(.calendar-availability)
+  .rdp-day_range_start.rdp-day_range_end
+  .rdp-day_button {
   border-radius: 0.625rem !important;
 }
 
 /* Disabled dates styling */
-.rdp-root td.rdp-day_disabled .rdp-day_button {
+.rdp-root:not(.calendar-availability) td.rdp-day_disabled .rdp-day_button {
   opacity: 0.3;
   cursor: not-allowed;
 }
 
 /* Professional Form Sections */
 .form-section {
-  @apply space-y-5 px-4 py-6 rounded-xl bg-gradient-to-br from-white to-secondary/5 border-2 border-border/20 shadow-soft;
+  @apply space-y-5 rounded-2xl border border-border/50 bg-card px-4 py-6;
+  box-shadow: var(--shadow-elevated);
 }
 
 .form-section-header {
-  @apply flex items-center gap-3 pb-3 mb-4 border-b-2 border-primary/10;
+  @apply mb-4 flex items-center gap-3 border-b border-primary/10 pb-3;
 }
 
 .form-section-title {
-  @apply text-lg font-semibold text-foreground tracking-tight;
+  @apply text-lg font-semibold text-muted-foreground tracking-tight;
 }
 
 .form-section-icon {
@@ -363,7 +701,13 @@ input.ui-native-datetime[type='datetime-local'] {
   padding-bottom: 0;
   padding-left: 1rem;
   padding-right: 0.5rem;
-  color-scheme: light;
+  color-scheme: light dark;
+}
+
+.dark input.ui-native-datetime[type='time'],
+.dark input.ui-native-datetime[type='date'],
+.dark input.ui-native-datetime[type='datetime-local'] {
+  color-scheme: dark;
 }
 
 input.ui-native-datetime[type='time']::-webkit-datetime-edit,
@@ -409,122 +753,284 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
   @apply relative w-full h-48 border-2 border-dashed border-input rounded-lg flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/40 hover:border-primary/50 transition-all duration-200 cursor-pointer;
 }
 
-/* Calendar Availability Page Styles */
-.availability-calendar .rdp-root {
-  padding: 1.5rem;
-  background: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(142 20% 98%) 100%);
-  border-radius: 1rem;
-  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.08);
+/* Calendar Availability Page Styles — square 7×7 day grid at every breakpoint */
+.availability-calendar {
+  --avail-cal-pad-x: 0.75rem;
+  --avail-cal-pad-y: 1rem;
+  /* Scale cells to viewport on small screens; fixed rem sizes from sm+ */
+  --avail-cal-cell: min(
+    2.875rem,
+    calc((100vw - 2.5rem - var(--avail-cal-pad-x) * 2) / 7)
+  );
+  width: fit-content;
+  max-width: min(100%, calc(7 * var(--avail-cal-cell) + var(--avail-cal-pad-x) * 2));
+  min-width: 0;
+  margin-inline: auto;
+}
+
+.availability-calendar .rdp-root.calendar-availability,
+.availability-calendar .calendar-availability {
+  box-sizing: border-box;
+  width: calc(7 * var(--avail-cal-cell) + var(--avail-cal-pad-x) * 2);
+  max-width: 100%;
+  min-width: 0;
+  --rdp-accent-color: hsl(var(--primary));
+  --rdp-accent-background-color: hsl(168 65% 40% / 0.14);
+  --rdp-selected-border: transparent;
+  --rdp-range_start-background: transparent;
+  --rdp-range_end-background: transparent;
+  --rdp-range_middle-background-color: transparent;
+  --rdp-range_start-date-background-color: transparent;
+  --rdp-range_end-date-background-color: transparent;
+  --rdp-day-width: var(--avail-cal-cell);
+  --rdp-day-height: var(--avail-cal-cell);
+  --rdp-day_button-width: var(--avail-cal-cell);
+  --rdp-day_button-height: var(--avail-cal-cell);
+  --rdp-day_button-border-radius: 0.75rem;
+  padding: var(--avail-cal-pad-y) var(--avail-cal-pad-x);
+  background: hsl(var(--card));
+  border: 1px solid hsl(168 65% 40% / 0.14);
+  border-radius: 1.25rem;
+  box-shadow: var(--shadow-elevated);
 }
 
 .availability-calendar .rdp-months {
-  gap: 2rem;
-}
-
-@media (max-width: 768px) {
-  .availability-calendar .rdp-months {
-    flex-direction: column;
-    gap: 1.5rem;
-  }
+  width: auto;
+  max-width: none !important;
+  gap: 1.5rem;
+  justify-content: center;
 }
 
 .availability-calendar .rdp-month {
+  width: calc(7 * var(--avail-cal-cell));
+  min-width: 0;
   background: transparent;
+}
+
+.availability-calendar .rdp-month_grid {
+  width: calc(7 * var(--avail-cal-cell));
+  table-layout: fixed;
+}
+
+.availability-calendar .rdp-day {
+  width: var(--avail-cal-cell) !important;
+  height: var(--avail-cal-cell) !important;
+  padding: 0;
+  vertical-align: middle;
+  position: relative;
+  aspect-ratio: 1 / 1;
+}
+
+@media (min-width: 640px) {
+  .availability-calendar {
+    --avail-cal-cell: 3.25rem;
+    --avail-cal-pad-x: 1.375rem;
+    --avail-cal-pad-y: 1.25rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .availability-calendar {
+    --avail-cal-cell: 3.5rem;
+    --avail-cal-pad-x: 1.5rem;
+    --avail-cal-pad-y: 1.375rem;
+  }
+
+  .availability-calendar .rdp-month_caption {
+    font-size: 1.2rem !important;
+  }
+
+  .availability-calendar .rdp-weekday {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .availability-calendar {
+    --avail-cal-cell: 4rem;
+    --avail-cal-pad-x: 1.75rem;
+    --avail-cal-pad-y: 1.625rem;
+  }
+
+  .availability-calendar .rdp-month_caption {
+    font-size: 1.375rem !important;
+  }
+
+  .availability-calendar .rdp-weekday {
+    font-size: 0.875rem;
+  }
 }
 
 .availability-calendar .rdp-month_caption {
   font-size: 1.1rem !important;
   font-weight: 700 !important;
-  color: hsl(215 25% 20%);
+  color: hsl(var(--foreground));
   padding-bottom: 0.75rem;
-  border-bottom: 2px solid hsl(142 76% 36% / 0.15);
+  border-bottom: 2px solid hsl(168 65% 40% / 0.22);
   margin-bottom: 0.75rem;
 }
 
 .availability-calendar .rdp-weekday {
-  font-weight: 600;
-  color: hsl(142 76% 36%);
-  font-size: 0.8rem;
+  width: var(--avail-cal-cell);
+  max-width: var(--avail-cal-cell);
+  font-weight: 700;
+  color: hsl(168 65% 34%);
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .availability-calendar td .rdp-day_button {
-  width: 2.75rem !important;
-  height: 2.75rem !important;
-  font-size: 0.95rem !important;
+  width: var(--avail-cal-cell) !important;
+  height: var(--avail-cal-cell) !important;
+  min-width: var(--avail-cal-cell);
+  min-height: var(--avail-cal-cell);
+  aspect-ratio: 1 / 1;
+  font-size: clamp(0.8125rem, 2.8vw, 1rem) !important;
   font-weight: 500;
+  color: hsl(var(--foreground));
   border-radius: 0.75rem !important;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (min-width: 640px) {
+  .availability-calendar td .rdp-day_button {
+    font-size: 0.95rem !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .availability-calendar td .rdp-day_button {
+    font-size: 1rem !important;
+  }
+}
+
+.availability-calendar .rdp-outside .rdp-day_button {
+  color: hsl(var(--muted-foreground)) !important;
+  opacity: 0.45;
 }
 
 .availability-calendar td .rdp-day_button:hover:not(:disabled) {
-  background: hsl(142 76% 36% / 0.15) !important;
-  transform: scale(1.08);
+  background: hsl(168 65% 40% / 0.12) !important;
+  color: hsl(168 65% 32%) !important;
 }
 
-/* Booked/Disabled dates on calendar page */
+/* ── Selected / range styling ───────────────────────────────────────── */
+.availability-calendar .rdp-selected .rdp-day_button {
+  border: none !important;
+}
+
+/* Endpoint pills — check-in, check-out, lone selection */
+.availability-calendar .rdp-day.rdp-range_start .rdp-day_button,
+.availability-calendar .rdp-day.rdp-range_end .rdp-day_button,
+.availability-calendar .rdp-day.rdp-selected .rdp-day_button {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    hsl(168 65% 48%) 0%,
+    hsl(168 65% 40%) 100%
+  ) !important;
+  color: #fff !important;
+  font-weight: 700;
+  border: none !important;
+  border-radius: 9999px !important;
+  box-shadow: 0 2px 10px -2px hsl(168 65% 40% / 0.45);
+}
+
+/* Today must not override range endpoints */
+.availability-calendar .rdp-day.rdp-range_start.rdp-day_today .rdp-day_button,
+.availability-calendar .rdp-day.rdp-range_end.rdp-day_today .rdp-day_button,
+.availability-calendar .rdp-day.rdp-selected.rdp-day_today .rdp-day_button {
+  border: none !important;
+  background: linear-gradient(
+    135deg,
+    hsl(168 65% 48%) 0%,
+    hsl(168 65% 40%) 100%
+  ) !important;
+  color: #fff !important;
+}
+
+/* Range track — full-height bar on every night in the selection */
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_start,
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_middle,
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_end {
+  background-color: hsl(168 65% 40% / 0.14) !important;
+}
+
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_start {
+  border-radius: 9999px 0 0 9999px;
+}
+
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_end {
+  border-radius: 0 9999px 9999px 0;
+}
+
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_middle {
+  border-radius: 0;
+}
+
+/* Lone night or same-day range — fully rounded track */
+.availability-calendar .calendar-range-active .rdp-day.rdp-range_start.rdp-range_end {
+  border-radius: 9999px;
+}
+
+/* Middle days — track on cell, label only on button */
+.availability-calendar .rdp-day.rdp-range_middle .rdp-day_button {
+  position: relative;
+  z-index: 1;
+  background: transparent !important;
+  color: hsl(168 65% 32%) !important;
+  font-weight: 600;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Neutralize react-day-picker default range cell fills (track uses calendar-range-active) */
+.availability-calendar:not(:has(.calendar-range-active)) .rdp-range_start,
+.availability-calendar:not(:has(.calendar-range-active)) .rdp-range_end {
+  background: transparent !important;
+}
+
+.availability-calendar .rdp-range_start .rdp-day_button,
+.availability-calendar .rdp-range_end .rdp-day_button,
+.availability-calendar .rdp-range_middle .rdp-day_button {
+  border: none !important;
+}
 .availability-calendar .rdp-day_disabled .rdp-day_button {
-  background: hsl(0 72% 51% / 0.1) !important;
-  color: hsl(0 72% 40%) !important;
-  opacity: 0.7;
+  background: hsl(0 72% 51% / 0.08) !important;
+  color: hsl(0 65% 45%) !important;
+  opacity: 0.75;
   cursor: not-allowed;
   text-decoration: line-through;
 }
 
-.availability-calendar .rdp-day_disabled .rdp-day_button::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  background: repeating-linear-gradient(
-    45deg,
-    transparent,
-    transparent 3px,
-    hsl(0 72% 51% / 0.1) 3px,
-    hsl(0 72% 51% / 0.1) 6px
-  );
-  border-radius: 0.5rem;
-  pointer-events: none;
-}
 
-/* Selected range styling for availability calendar */
-.availability-calendar .rdp-day_range_start .rdp-day_button,
-.availability-calendar .rdp-day_range_end .rdp-day_button {
-  background: linear-gradient(
-    135deg,
-    hsl(142 76% 36%) 0%,
-    hsl(142 76% 30%) 100%
-  ) !important;
-  color: white !important;
+/* Booked/Disabled dates on calendar page */
+.availability-calendar .rdp-day_today:not([aria-selected]) .rdp-day_button {
+  border: 2px solid hsl(168 65% 40%);
+  background: hsl(168 65% 40% / 0.1) !important;
+  color: hsl(168 65% 30%) !important;
   font-weight: 700;
-  box-shadow: 0 4px 12px -2px rgba(34, 197, 94, 0.4);
 }
 
-.availability-calendar .rdp-day_range_middle .rdp-day_button {
-  background: linear-gradient(
-    135deg,
-    hsl(142 76% 88%) 0%,
-    hsl(142 76% 92%) 100%
-  ) !important;
-  color: hsl(142 76% 25%) !important;
-  font-weight: 600;
-  border-radius: 0 !important;
+.dark .availability-calendar .rdp-day.rdp-range_middle .rdp-day_button {
+  color: hsl(168 55% 78%) !important;
 }
 
-.availability-calendar .rdp-day_range_start .rdp-day_button {
-  border-radius: 0.75rem 0 0 0.75rem !important;
+.dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_start,
+.dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_middle,
+.dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_end {
+  background-color: hsl(168 65% 40% / 0.22) !important;
 }
 
-.availability-calendar .rdp-day_range_end .rdp-day_button {
-  border-radius: 0 0.75rem 0.75rem 0 !important;
+.dark .availability-calendar .rdp-weekday {
+  color: hsl(168 55% 62%);
 }
 
-.availability-calendar .rdp-day_range_start.rdp-day_range_end .rdp-day_button {
-  border-radius: 0.75rem !important;
-}
-
-/* Today indicator */
-.availability-calendar .rdp-day_today .rdp-day_button {
-  border: 2px solid hsl(142 76% 36%);
-  font-weight: 700;
+.dark .availability-calendar .rdp-day_today:not([aria-selected]) .rdp-day_button {
+  background: hsl(168 65% 45% / 0.15) !important;
+  color: hsl(168 55% 70%) !important;
+  border-color: hsl(168 65% 45%);
 }
