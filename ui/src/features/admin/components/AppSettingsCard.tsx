@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { Check, ChevronDown, Globe, Mail, Shield, Timer } from 'lucide-react';
+import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -219,19 +220,17 @@ export function AppSettingsCard() {
   return (
     <section
       className={cn(
-        'px-3 py-3 w-full rounded-xl border border-sidebar-border bg-card sm:px-4 sm:py-4',
+        'surface-card w-full px-3 py-3 sm:px-4 sm:py-4',
         'space-y-4 shadow-sm',
       )}
       aria-labelledby="app-settings-heading"
     >
-      <div className="min-w-0 space-y-1.5">
-        <h2
-          id="app-settings-heading"
-          className="text-base font-bold tracking-tight text-sidebar-foreground sm:text-lg"
-        >
-          General settings
-        </h2>
-      </div>
+      <AdminPageHeader
+        id="app-settings-heading"
+        title="Settings"
+        subtitle="Integrations, credentials, and workspace configuration."
+        icon={Settings}
+      />
 
       {isLoading && (
         <p className="text-sm text-muted-foreground">Loading settings…</p>

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -127,11 +128,11 @@ function CheckboxRow({
       <div className="min-w-0 space-y-0.5">
         <label
           htmlFor={id}
-          className="text-sm font-medium text-foreground cursor-pointer leading-snug"
+          className="text-ui cursor-pointer"
         >
           {label}
         </label>
-        <p className="text-xs text-muted-foreground leading-snug">{description}</p>
+        <p className="text-caption">{description}</p>
       </div>
     </div>
   );
@@ -155,7 +156,7 @@ function CollapsibleSection({
   return (
     <Collapsible
       defaultOpen={defaultOpen}
-      className="group rounded-lg border border-border bg-muted/15"
+      className="group rounded-2xl border border-border/50 bg-muted/30"
     >
       <CollapsibleTrigger
         type="button"
@@ -294,7 +295,7 @@ export function TelegramAdminSettingsCard() {
 
   if (isLoading || !draft) {
     return (
-      <section className="w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 animate-pulse sm:px-4 sm:py-3.5">
+      <section className="surface-card w-full px-3 py-3 animate-pulse sm:px-4 sm:py-3.5">
         <div className="h-4 w-48 rounded bg-muted" />
         <div className="mt-3 h-32 rounded bg-muted" />
       </section>
@@ -302,19 +303,14 @@ export function TelegramAdminSettingsCard() {
   }
 
   return (
-    <section className="w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 shadow-sm sm:px-4 sm:py-4">
+    <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
       <div className="space-y-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Bell className="size-4 shrink-0 text-primary" aria-hidden />
-            <h2 className="text-sm font-bold text-sidebar-foreground sm:text-[13px]">
-              Operations alerts
-            </h2>
-          </div>
-          <p className="text-xs text-muted-foreground leading-snug max-w-prose">
-            Workflow Telegram reminders for your admin team
-          </p>
-        </div>
+        <AdminPageHeader
+          id="admin-operations-heading"
+          title="Operations"
+          subtitle="Workflow Telegram reminders for your admin team."
+          icon={Bell}
+        />
 
         <CollapsibleSection id="admin-tests" title="Test & diagnostics" defaultOpen>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
