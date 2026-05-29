@@ -1,6 +1,6 @@
 /**
  * Admin operations Telegram alerts — booking workflow reminders to a dedicated admin group.
- * Event-driven (new booking, SD form) + hourly cron scenarios (pending docs, balance receipt, SD refund).
+ * Event-driven (SD form submit) + instant + hourly cron (new booking, pending docs, balance receipt, SD refund).
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -45,6 +45,7 @@ export type TelegramAdminSettings = {
 };
 
 export type AdminHourlyNotificationType =
+  | 'new_booking'
   | 'pending_docs'
   | 'balance_receipt'
   | 'sd_refund_pending';
@@ -339,6 +340,12 @@ function isCancelledStatus(status: unknown): boolean {
   return s === 'CANCELLED' || s === 'canceled';
 }
 
+/** Still awaiting admin review — hourly until Proceed to Pending Documents (or GAF). */
+export function bookingNeedsNewBookingHourlyAlert(booking: BookingRow): boolean {
+  if (isCancelledStatus(booking.status)) return false;
+  return String(booking.status ?? '') === 'PENDING_REVIEW';
+}
+
 /** Check-in today + incomplete required docs, not yet ready for check-in workflow-wise. */
 export function bookingNeedsPendingDocsHourlyAlert(
   booking: BookingRow,
@@ -524,6 +531,10 @@ export async function notifyTelegramAdminNewBooking(
   if (!r.ok) {
     return { sent: false, skip: 'send_failed', telegramError: r.error };
   }
+  const bookingId = String(booking.id ?? '').trim();
+  if (bookingId) {
+    await tryClaimHourlySend(bookingId, 'new_booking', manilaHourBucket());
+  }
   return { sent: true };
 }
 
@@ -551,6 +562,7 @@ export type AdminHourlyCronResult = {
   sent: boolean;
   mode: 'sent' | 'disabled' | 'no_env' | 'no_settings' | 'nothing_due' | 'error';
   hourBucket?: string;
+  newBookingSent?: number;
   pendingDocsSent?: number;
   balanceReceiptSent?: number;
   sdRefundPendingSent?: number;
@@ -591,6 +603,7 @@ export async function runAdminHourlyAlerts(opts?: {
     return { sent: false, mode: 'error', detail: error.message };
   }
 
+  let newBookingSent = 0;
   let pendingDocsSent = 0;
   let balanceReceiptSent = 0;
   let sdRefundPendingSent = 0;
@@ -599,6 +612,17 @@ export async function runAdminHourlyAlerts(opts?: {
   for (const booking of rows ?? []) {
     const id = String(booking.id ?? '');
     if (!id) continue;
+
+    if (
+      (opts?.force || settings.notify_on_new_booking) &&
+      bookingNeedsNewBookingHourlyAlert(booking)
+    ) {
+      if (opts?.force || await tryClaimHourlySend(id, 'new_booking', hourBucket)) {
+        const r = await sendAdminTemplateForBooking(settings.new_booking_template, booking);
+        if (r.ok) newBookingSent++;
+        else if (r.error) errors.push(`new_booking:${id}:${r.error}`);
+      }
+    }
 
     if (
       (opts?.force || settings.notify_pending_docs_hourly) &&
@@ -634,11 +658,13 @@ export async function runAdminHourlyAlerts(opts?: {
     }
   }
 
-  const totalSent = pendingDocsSent + balanceReceiptSent + sdRefundPendingSent;
+  const totalSent =
+    newBookingSent + pendingDocsSent + balanceReceiptSent + sdRefundPendingSent;
   return {
     sent: totalSent > 0,
     mode: totalSent > 0 ? 'sent' : 'nothing_due',
     hourBucket,
+    newBookingSent,
     pendingDocsSent,
     balanceReceiptSent,
     sdRefundPendingSent,
@@ -679,7 +705,7 @@ export async function sendAdminDraftPreview(
   let booking: BookingRow | undefined;
 
   if (scenario === 'new_booking') {
-    booking = (rows ?? [])[0];
+    booking = (rows ?? []).find((r) => bookingNeedsNewBookingHourlyAlert(r));
   } else if (scenario === 'sd_form_submitted') {
     booking = (rows ?? []).find((r) => String(r.status) === 'PENDING_SD_REFUND' && r.sd_refund_method);
   } else if (scenario === 'pending_docs') {
@@ -794,8 +820,9 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
       {
         id: 'new_booking',
         label: 'New booking',
-        trigger: 'Instant when a guest submits a new booking form',
-        type: 'event',
+        trigger:
+          'Instant when a guest submits, then every hour while status is Pending Review (stops after Proceed to Pending Documents)',
+        type: 'hourly',
       },
       {
         id: 'pending_docs',

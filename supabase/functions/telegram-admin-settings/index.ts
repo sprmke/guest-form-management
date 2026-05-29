@@ -53,6 +53,7 @@ serve(async (req) => {
       if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;
       if (typeof body.notifyOnNewBooking === 'boolean') {
         patch.notify_on_new_booking = body.notifyOnNewBooking;
+        syncCron = true;
       }
       if (typeof body.notifyOnSdFormSubmitted === 'boolean') {
         patch.notify_on_sd_form_submitted = body.notifyOnSdFormSubmitted;

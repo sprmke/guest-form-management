@@ -175,5 +175,5 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
 - Update additional guests and ask if adult or child (below 5 years old) per field
 - Support slack and telegram notifications for important booking events
-  - New booking requests
+  - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
 - If we received a same day booking, notify on Staff telegram group

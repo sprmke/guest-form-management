@@ -213,6 +213,7 @@ function ScenarioBadge({ type }: { type: AdminScenarioMeta['type'] }) {
 type HourlyCronResult = {
   sent?: boolean;
   mode?: string;
+  newBookingSent?: number;
   pendingDocsSent?: number;
   balanceReceiptSent?: number;
   sdRefundPendingSent?: number;
@@ -380,7 +381,7 @@ export function TelegramAdminSettingsCard() {
                       const r = j.result as HourlyCronResult | undefined;
                       if (r?.sent) {
                         toast.success(
-                          `Hourly run sent ${(r.pendingDocsSent ?? 0) + (r.balanceReceiptSent ?? 0) + (r.sdRefundPendingSent ?? 0)} message(s)`,
+                          `Hourly run sent ${(r.newBookingSent ?? 0) + (r.pendingDocsSent ?? 0) + (r.balanceReceiptSent ?? 0) + (r.sdRefundPendingSent ?? 0)} message(s)`,
                         );
                       } else {
                         toast.message(`Hourly run: ${r?.mode ?? 'unknown'}`, {
@@ -434,9 +435,9 @@ export function TelegramAdminSettingsCard() {
           <div className="min-w-0 space-y-0.5 text-xs text-muted-foreground">
             <p className="font-medium text-foreground">Hourly cron schedule</p>
             <p>
-              Pending docs, balance receipt, and SD refund reminders run{' '}
+              New booking, pending docs, balance receipt, and SD refund reminders run{' '}
               <span className="font-medium text-foreground">every hour</span> when their
-              scenario toggle is on.
+              scenario toggle is on. New booking also sends once instantly on guest submit.
             </p>
           </div>
         </div>
