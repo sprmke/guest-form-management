@@ -174,6 +174,10 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         configured={status.telegramStaffChatIdConfigured}
       />
       <SecretBadge
+        label="Operations group"
+        configured={status.telegramAdminChatIdConfigured}
+      />
+      <SecretBadge
         label="Gmail security key"
         configured={status.gmailEncryptionKeyConfigured}
       />

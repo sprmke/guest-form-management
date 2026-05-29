@@ -237,6 +237,12 @@ verify_jwt = false
 [functions.telegram-staff-settings]
 verify_jwt = false
 
+[functions.telegram-admin-cron]
+verify_jwt = false
+
+[functions.telegram-admin-settings]
+verify_jwt = false
+
 [functions.app-settings]
 verify_jwt = false
 

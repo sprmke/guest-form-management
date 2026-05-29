@@ -48,6 +48,7 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - `/settings` — admin settings (**Gmail listener** connect / reconnect / disconnect via `GmailMailIntegrationCard`).
 - `/marketing` — Telegram marketing reminders (`TelegramMarketingSettingsCard`; see `docs/reference/telegram-marketing-reminders.md`).
 - `/staff` — Staff/cleaner Telegram daily booking summary (`TelegramStaffSettingsCard`; configurable template + time + enable/disable).
+- `/operations` — Admin workflow Telegram alerts (`TelegramAdminSettingsCard`; instant + hourly scenarios, per-event templates, test sends).
 
 ## When editing the guest form
 

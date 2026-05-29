@@ -269,6 +269,7 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
       telegramBotTokenConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_BOT_TOKEN')),
       telegramChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_CHAT_ID')),
       telegramStaffChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_STAFF_CHAT_ID')),
+      telegramAdminChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_ADMIN_CHAT_ID')),
       gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
       gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
     },

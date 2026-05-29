@@ -13,6 +13,7 @@ export type AppSettingsSecretsStatus = {
   telegramBotTokenConfigured: boolean;
   telegramChatIdConfigured: boolean;
   telegramStaffChatIdConfigured: boolean;
+  telegramAdminChatIdConfigured: boolean;
   gmailEncryptionKeyConfigured: boolean;
   gmailWebClientConfigured: boolean;
 };

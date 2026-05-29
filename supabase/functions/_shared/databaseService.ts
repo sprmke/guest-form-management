@@ -869,4 +869,55 @@ export class DatabaseService {
     }
     return { ok: false, error: 'unexpected rpc response' };
   }
+
+  static async getTelegramAdminSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_admin_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramAdminSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram admin settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260702120000_telegram_admin_settings.sql on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramAdminSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_admin_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramAdminSettings:', error);
+      throw new Error('Failed to update Telegram admin settings');
+    }
+    return data;
+  }
+
+  static async syncTelegramAdminHourlyCronJob(): Promise<{
+    ok?: boolean;
+    error?: string;
+    cronExpr?: string;
+  }> {
+    const { data, error } = await this.supabase.rpc('sync_telegram_admin_hourly_cron_job');
+    if (error) {
+      console.error('syncTelegramAdminHourlyCronJob rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; cronExpr?: string };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
+  }
 } 
