@@ -693,7 +693,7 @@ export async function sendAdminDraftPreview(
   if (!booking) {
     return {
       sent: false,
-      error: `No booking matches scenario "${scenario}" for preview. Try with live data or use Run hourly cron.`,
+      error: `No booking matches scenario "${scenario}" for preview. Try to execute Run hourly cron.`,
     };
   }
 
