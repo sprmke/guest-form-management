@@ -23,15 +23,15 @@ export function GuestFormOptionCard({
       type="button"
       onClick={onSelect}
       className={cn(
-        'w-full min-h-[44px] rounded-xl border px-4 py-3 text-left transition-colors',
+        'w-full min-h-[44px] rounded-2xl border px-4 py-3 text-left transition-all duration-200 space-y-1',
         selected
-          ? 'border-2 border-primary bg-primary/5'
-          : 'border border-border bg-card hover:bg-muted/40',
+          ? 'border-primary bg-primary/5 shadow-soft ring-1 ring-primary/20'
+          : 'border-border/60 bg-card hover:border-primary/25 hover:bg-muted/40 hover:shadow-elevated',
       )}
     >
       <p className="text-sm font-semibold text-foreground">{title}</p>
       {description ? (
-        <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+        <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
           {description}
         </p>
       ) : null}
@@ -51,7 +51,7 @@ export function GuestFormInfoCallout({
 }: GuestFormInfoCalloutProps) {
   return (
     <div
-      className="space-y-3 rounded-xl border border-border/80 bg-muted/15 px-4 py-3 text-sm leading-relaxed text-muted-foreground"
+      className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm leading-relaxed text-muted-foreground"
       role="note"
     >
       <p className="font-semibold text-foreground">{title}</p>
