@@ -3,6 +3,7 @@ import type { ComponentType, ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   BookOpen,
+  Bell,
   ChevronLeft,
   HardHat,
   LayoutDashboard,
@@ -35,6 +36,7 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Reports', href: null, Icon: LayoutDashboard, soon: true },
       { label: 'Marketing', href: '/marketing', Icon: Megaphone },
       { label: 'Staff', href: '/staff', Icon: HardHat },
+      { label: 'Operations', href: '/operations', Icon: Bell },
       { label: 'Settings', href: '/settings', Icon: Settings },
     ],
   },

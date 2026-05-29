@@ -20,8 +20,6 @@ export type TelegramStaffSettings = {
   updated_at: string;
 };
 
-const APP_BASE_URL = 'https://kamehomes.space';
-
 export const STAFF_KNOWN_PLACEHOLDERS = [
   'check_in_date',
   'check_out_date',
@@ -40,7 +38,6 @@ export const STAFF_KNOWN_PLACEHOLDERS = [
   'special_requests',
   'total_guest_balance',
   'next_bookings',
-  'booking_link',
 ] as const;
 
 export type StaffKnownPlaceholder = (typeof STAFF_KNOWN_PLACEHOLDERS)[number];
@@ -153,7 +150,6 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
     pet_flag: hasPets ? '🐶 Has pets' : '',
     special_requests: specialReqs || 'None',
     total_guest_balance: formatCurrency(balance),
-    booking_link: `View Booking Details: ${APP_BASE_URL}/bookings/${booking.id}`,
   };
 }
 
@@ -564,7 +560,6 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       '{{special_requests}} — guest special requests or "None"',
       '{{total_guest_balance}} — total amount due from guest (₱ formatted)',
       '{{next_bookings}} — next 3 days; only 🎉 decor + 🐶 pets flags (no parking)',
-      '{{booking_link}} — link to booking details in admin dashboard',
     ],
   };
 }
@@ -592,7 +587,7 @@ export async function ensureStaffSettingsRow(): Promise<void> {
     'Booking Details\n{{check_in_date}} - {{check_out_date}}\n{{check_in_time}} - {{check_out_time}}\n{{nights}} night/s, {{pax}} pax\n\n' +
     'Guest Details\n{{primary_guest_name}}, {{guest_phone}}\n\n' +
     'Additional Details\nHas decor: {{decor_status}}\nHas pets: {{pet_status}}\nSpecial Requests: {{special_requests}}\nTotal guest balance: {{total_guest_balance}}\n\n' +
-    'Next Bookings\n{{next_bookings}}\n\n{{booking_link}}';
+    'Next Bookings\n{{next_bookings}}';
 
   const { error: insertError } = await supabase.from('telegram_staff_settings').insert({
     id: 1,
