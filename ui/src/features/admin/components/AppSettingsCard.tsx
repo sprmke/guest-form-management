@@ -144,49 +144,74 @@ function SecretBadge({
   );
 }
 
+function SecretGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-separator bg-muted/10 p-3 space-y-2.5">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h4>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
+    </div>
+  );
+}
+
 function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-      <SecretBadge
-        label="Email (Resend)"
-        configured={status.resendApiKeyConfigured}
-      />
-      <SecretBadge
-        label="Google account"
-        configured={status.googleServiceAccountConfigured}
-      />
-      <SecretBadge
-        label="Calendar"
-        configured={status.googleCalendarIdConfigured}
-      />
-      <SecretBadge
-        label="Spreadsheet"
-        configured={status.googleSpreadsheetIdConfigured}
-      />
-      <SecretBadge
-        label="Telegram bot"
-        configured={status.telegramBotTokenConfigured}
-      />
-      <SecretBadge
-        label="Marketing group"
-        configured={status.telegramChatIdConfigured}
-      />
-      <SecretBadge
-        label="Staff group"
-        configured={status.telegramStaffChatIdConfigured}
-      />
-      <SecretBadge
-        label="Operations group"
-        configured={status.telegramAdminChatIdConfigured}
-      />
-      <SecretBadge
-        label="Gmail security key"
-        configured={status.gmailEncryptionKeyConfigured}
-      />
-      <SecretBadge
-        label="Gmail app login"
-        configured={status.gmailWebClientConfigured}
-      />
+    <div className="space-y-3">
+      <SecretGroup title="Email">
+        <SecretBadge
+          label="Email (Resend)"
+          configured={status.resendApiKeyConfigured}
+        />
+      </SecretGroup>
+
+      <SecretGroup title="Google">
+        <SecretBadge
+          label="Google account"
+          configured={status.googleServiceAccountConfigured}
+        />
+        <SecretBadge
+          label="Calendar"
+          configured={status.googleCalendarIdConfigured}
+        />
+        <SecretBadge
+          label="Spreadsheet"
+          configured={status.googleSpreadsheetIdConfigured}
+        />
+        <SecretBadge
+          label="Gmail security key"
+          configured={status.gmailEncryptionKeyConfigured}
+        />
+        <SecretBadge
+          label="Gmail app login"
+          configured={status.gmailWebClientConfigured}
+        />
+      </SecretGroup>
+
+      <SecretGroup title="Telegram">
+        <SecretBadge
+          label="Telegram bot"
+          configured={status.telegramBotTokenConfigured}
+        />
+        <SecretBadge
+          label="Marketing group"
+          configured={status.telegramChatIdConfigured}
+        />
+        <SecretBadge
+          label="Staff group"
+          configured={status.telegramStaffChatIdConfigured}
+        />
+        <SecretBadge
+          label="Operations group"
+          configured={status.telegramAdminChatIdConfigured}
+        />
+      </SecretGroup>
     </div>
   );
 }
