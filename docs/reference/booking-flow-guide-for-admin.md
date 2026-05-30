@@ -403,7 +403,25 @@ That single line tells you the booking is in review **and** the guest has a pet,
 
 ---
 
-## 8. Your daily checklist (the "what should I be doing?" answer)
+## 8. Finance (`/finance`)
+
+Use **Finance** in the admin sidebar when you need totals across many stays or property costs that are not tied to one booking.
+
+| Tab | What it shows |
+| --- | --- |
+| **Overview** | KPI cards: grand net (completed stays + operating), guest collected, parking margin, outstanding balances, pipeline estimates |
+| **Stays** | One row per booking with collected amount, parking margin, and net (realized when **Completed**, projected otherwise) |
+| **Operating** | Rent, utilities, supplies, marketing, etc. — add **expense** or **income** lines with a date and optional category |
+
+**Period basis** (toolbar): filter by **check-in**, **check-out**, or **completed** date. Presets: This month, Last month, YTD, All time.
+
+**Per-booking SD lines** (damage, extra cleaning, etc.) stay on the booking detail **Pricing** card and **Pending SD Refund** workflow — Finance **Stays** reads those totals but does not replace that form.
+
+**Export** (top right): download CSV for overview, stays, operating lines, or a combined report.
+
+---
+
+## 9. Your daily checklist (the "what should I be doing?" answer)
 
 Every morning, when you open `/bookings`, here's a sensible routine:
 
@@ -416,7 +434,7 @@ Everything else — yellow PENDING GAF / PET, green READY FOR CHECK-IN, orange R
 
 ---
 
-## 9. Rules you should not break
+## 10. Rules you should not break
 
 A few simple rules that keep the system trustworthy:
 
@@ -428,7 +446,7 @@ A few simple rules that keep the system trustworthy:
 
 ---
 
-## 10. Glossary (terms you'll see)
+## 11. Glossary (terms you'll see)
 
 | Term                         | Plain-English meaning                                                                                                 |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
@@ -448,9 +466,10 @@ A few simple rules that keep the system trustworthy:
 
 ---
 
-## 11. Quick links
+## 12. Quick links
 
 - **Admin dashboard:** `/bookings`
+- **Finance reports:** `/finance`
 - **Single booking:** `/bookings/<booking-id>`
 - **Admin settings (Gmail integration):** `/settings`
 - **Marketing (Telegram reminders):** `/marketing`
@@ -460,7 +479,7 @@ A few simple rules that keep the system trustworthy:
 
 ---
 
-## 12. A note from the team
+## 13. A note from the team
 
 This new flow was designed so you spend less time **doing manual work** (sending emails, copy-pasting to the sheet, painting the calendar) and more time **deciding things** (which parking is cheapest, is this guest worth the deposit refund, etc.).
 

@@ -29,6 +29,27 @@ const DOT_COLOR: Record<StatusTone, string> = {
   neutral: 'bg-slate-400',
 };
 
+const PILL_SURFACE: Record<StatusTone, string> = {
+  red: 'bg-red-50 text-red-800 border-red-200/70',
+  yellow: 'bg-amber-50 text-amber-900 border-amber-200/70',
+  green: 'bg-emerald-50 text-emerald-800 border-emerald-200/70',
+  amber: 'bg-amber-50 text-amber-900 border-amber-300/60',
+  orange: 'bg-orange-50 text-orange-800 border-orange-200/70',
+  blue: 'bg-sky-50 text-sky-800 border-sky-200/70',
+  purple: 'bg-violet-50 text-violet-800 border-violet-200/70',
+  neutral: 'bg-slate-50 text-slate-700 border-slate-200/70',
+};
+
+/** Dot color for calendar pills and compact status indicators. */
+export function statusDotClass(status: string): string {
+  return DOT_COLOR[statusTone(status)];
+}
+
+/** Pill surface for calendar booking chips (matches StatusBadge tones). */
+export function statusPillSurfaceClass(status: string): string {
+  return PILL_SURFACE[statusTone(status)];
+}
+
 // Statuses that are actively "in-progress" — their dot gets a subtle pulse animation
 // so admins can see at a glance which rows need attention.
 const PULSE_TONES: ReadonlySet<StatusTone> = new Set([

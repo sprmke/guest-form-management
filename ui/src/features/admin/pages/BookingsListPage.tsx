@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { CalendarPlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
@@ -31,6 +32,7 @@ import {
 import { useGmailMailIntegrationStatus } from '@/features/admin/hooks/useGmailMailIntegration';
 import { showGmailDisconnectedToast } from '@/features/admin/components/GmailDisconnectedToast';
 const PAGE_SIZES = [25, 50, 100] as const;
+const CALENDAR_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
 // ─── URL ↔ query helpers ─────────────────────────────────────
@@ -150,6 +152,17 @@ export function BookingsListPage() {
     [searchParams, isMobileLayout],
   );
 
+  /** Calendar needs past stays + a higher row cap for the whole month grid. */
+  const listQuery = useMemo((): BookingsQuery => {
+    if (view !== 'calendar') return query;
+    return {
+      ...query,
+      showPreviousBookings: true,
+      limit: CALENDAR_BOOKINGS_LIMIT,
+      page: 1,
+    };
+  }, [query, view]);
+
   // Table is desktop-only; switch away live when the viewport narrows.
   useEffect(() => {
     if (!isMobileLayout || view !== 'table') return;
@@ -177,7 +190,7 @@ export function BookingsListPage() {
         : null,
   });
 
-  const { data, isLoading, isFetching, error, refetch } = useBookings(query);
+  const { data, isLoading, isFetching, error, refetch } = useBookings(listQuery);
   const gmailIntegration = useGmailMailIntegrationStatus();
 
   useEffect(() => {
@@ -194,6 +207,33 @@ export function BookingsListPage() {
     [query, setSearchParams],
   );
 
+  // Keep URL in sync when entering calendar view (toggle + limit).
+  useEffect(() => {
+    if (view !== 'calendar') return;
+    const needsPatch =
+      !query.showPreviousBookings ||
+      query.limit !== CALENDAR_BOOKINGS_LIMIT ||
+      query.page !== 1;
+    if (!needsPatch) return;
+    patch({
+      showPreviousBookings: true,
+      limit: CALENDAR_BOOKINGS_LIMIT,
+      page: 1,
+    });
+  }, [view, query.showPreviousBookings, query.limit, query.page, patch]);
+
+  const handleCalendarMonthChange = useCallback(
+    (month: Date) => {
+      patch({
+        from: format(startOfMonth(month), 'yyyy-MM-dd'),
+        to: format(endOfMonth(month), 'yyyy-MM-dd'),
+        page: 1,
+        showPreviousBookings: true,
+      });
+    },
+    [patch],
+  );
+
   // Sync date-nav state changes (preset switches, custom range, prev/next) → URL.
   // Pass the URL-derived from/to so the hook can detect "URL is empty but the
   // user just clicked Month" and still fire a patch.
@@ -208,6 +248,10 @@ export function BookingsListPage() {
           const sp = new URLSearchParams(prev);
           if (next === 'table') sp.delete('view');
           else sp.set('view', next);
+          if (next === 'calendar') {
+            sp.set('showPreviousBookings', 'true');
+            sp.set('limit', String(CALENDAR_BOOKINGS_LIMIT));
+          }
           // Reset to first page when switching views; calendar in particular
           // benefits from seeing all results in the active range.
           sp.delete('page');
@@ -243,7 +287,10 @@ export function BookingsListPage() {
   const showPagination = view !== 'calendar' && pageCount > 1;
 
   const listEmptyExtraHint =
-    !query.showPreviousBookings && !isLoading && total === 0
+    view !== 'calendar' &&
+    !query.showPreviousBookings &&
+    !isLoading &&
+    total === 0
       ? 'Tip: turn on “Show previous bookings” to include cancelled stays and check-ins before today (Asia/Manila). Also confirm the date range includes that stay’s check-in month.'
       : null;
 
@@ -390,6 +437,7 @@ export function BookingsListPage() {
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
             initialMonth={dateNav.dateRange.from}
+            onMonthChange={handleCalendarMonthChange}
           />
         )}
 

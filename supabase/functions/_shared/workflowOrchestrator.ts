@@ -63,6 +63,8 @@ export type TransitionPayload = {
   // SD Refund (PENDING_SD_REFUND → COMPLETED)
   sd_additional_expenses?: number[] | null;
   sd_additional_profits?: number[] | null;
+  sd_additional_expense_items?: Array<{ label: string; amount: number }> | null;
+  sd_additional_profit_items?: Array<{ label: string; amount: number }> | null;
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
 
@@ -368,6 +370,12 @@ export class WorkflowOrchestrator {
     if (toStatus === 'COMPLETED') {
       if (payload.sd_additional_expenses != null) workflowFields.sd_additional_expenses = payload.sd_additional_expenses;
       if (payload.sd_additional_profits != null) workflowFields.sd_additional_profits = payload.sd_additional_profits;
+      if (payload.sd_additional_expense_items != null) {
+        workflowFields.sd_additional_expense_items = payload.sd_additional_expense_items;
+      }
+      if (payload.sd_additional_profit_items != null) {
+        workflowFields.sd_additional_profit_items = payload.sd_additional_profit_items;
+      }
       if (payload.sd_refund_amount != null) workflowFields.sd_refund_amount = payload.sd_refund_amount;
       if (payload.sd_refund_receipt_url) workflowFields.sd_refund_receipt_url = payload.sd_refund_receipt_url;
       workflowFields.settled_at = new Date().toISOString();

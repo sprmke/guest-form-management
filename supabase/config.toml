@@ -240,6 +240,18 @@ verify_jwt = false
 [functions.app-settings]
 verify_jwt = false
 
+[functions.finance-summary]
+verify_jwt = false
+
+[functions.finance-bookings]
+verify_jwt = false
+
+[functions.finance-line-items]
+verify_jwt = false
+
+[functions.finance-export]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"

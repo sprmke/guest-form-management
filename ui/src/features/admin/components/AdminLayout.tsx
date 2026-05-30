@@ -5,7 +5,7 @@ import {
   BookOpen,
   ChevronLeft,
   HardHat,
-  LayoutDashboard,
+  DollarSign,
   LogOut,
   Megaphone,
   Menu,
@@ -32,7 +32,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Configure',
     items: [
-      { label: 'Reports', href: null, Icon: LayoutDashboard, soon: true },
+      { label: 'Finance', href: '/finance', Icon: DollarSign },
       { label: 'Marketing', href: '/marketing', Icon: Megaphone },
       { label: 'Staff', href: '/staff', Icon: HardHat },
       { label: 'Settings', href: '/settings', Icon: Settings },

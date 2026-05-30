@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   addMonths,
@@ -24,7 +24,11 @@ import {
   PartyPopper,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
+import {
+  StatusBadge,
+  statusDotClass,
+  statusPillSurfaceClass,
+} from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
 import {
   formatBookingDate,
@@ -43,6 +47,8 @@ type Props = {
   isRefreshing?: boolean;
   /** Optional initial month — defaults to today. */
   initialMonth?: Date;
+  /** Fired when the user navigates to a different month (sync list fetch range). */
+  onMonthChange?: (month: Date) => void;
 };
 
 /**
@@ -64,12 +70,17 @@ export function BookingCalendarView({
   error,
   isRefreshing,
   initialMonth,
+  onMonthChange,
 }: Props) {
   const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState<Date>(
     () => initialMonth ?? new Date(),
   );
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+
+  useEffect(() => {
+    if (initialMonth) setCurrentMonth(initialMonth);
+  }, [initialMonth]);
 
   const bookingsByDay = useMemo(() => buildBookingsByDay(rows), [rows]);
 
@@ -90,9 +101,11 @@ export function BookingCalendarView({
   }, [selectedDay, bookingsByDay]);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
-    setCurrentMonth((cur) =>
-      direction === 'prev' ? subMonths(cur, 1) : addMonths(cur, 1),
-    );
+    setCurrentMonth((cur) => {
+      const next = direction === 'prev' ? subMonths(cur, 1) : addMonths(cur, 1);
+      onMonthChange?.(next);
+      return next;
+    });
     setSelectedDay(null);
   };
 
@@ -157,7 +170,9 @@ export function BookingCalendarView({
             <button
               type="button"
               onClick={() => {
-                setCurrentMonth(new Date());
+                const today = new Date();
+                setCurrentMonth(today);
+                onMonthChange?.(today);
                 setSelectedDay(null);
               }}
               className={cn(
@@ -271,11 +286,17 @@ export function BookingCalendarView({
 
                     {/* Mobile dot indicator */}
                     {hasBookings && (
-                      <div className="sm:hidden mt-auto flex justify-center pb-0.5">
-                        <span
-                          className="size-1.5 rounded-full"
-                          style={{ background: 'hsl(var(--sidebar-primary))' }}
-                        />
+                      <div className="sm:hidden mt-auto flex justify-center gap-0.5 pb-0.5">
+                        {dayBookings.slice(0, 3).map((b) => (
+                          <span
+                            key={b.id}
+                            className={cn(
+                              'size-1.5 rounded-full shrink-0',
+                              statusDotClass(b.status),
+                            )}
+                            aria-hidden
+                          />
+                        ))}
                       </div>
                     )}
                   </button>
@@ -383,16 +404,15 @@ function BookingPill({ row }: { row: BookingRow }) {
     'Guest';
   return (
     <div
-      className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 truncate"
-      style={{
-        background: 'hsl(var(--sidebar-accent) / 0.5)',
-        border: '1px solid hsl(var(--sidebar-border))',
-      }}
+      className={cn(
+        'flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] font-semibold truncate',
+        statusPillSurfaceClass(row.status),
+      )}
       title={`${row.primary_guest_name || row.guest_facebook_name || 'Guest'} · ${statusLabel(row.status)}`}
     >
       <span
-        className="size-1.5 rounded-full shrink-0"
-        style={{ background: 'hsl(var(--sidebar-primary))' }}
+        className={cn('size-1.5 rounded-full shrink-0', statusDotClass(row.status))}
+        aria-hidden
       />
       <span className="truncate">{name}</span>
     </div>
