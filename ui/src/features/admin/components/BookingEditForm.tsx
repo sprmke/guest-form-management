@@ -562,7 +562,7 @@ export function BookingEditForm({
         {surpriseDecorChangedFromSaved && (
           <div
             role="status"
-            className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 sm:text-[13px]"
+            className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-100 sm:text-[13px]"
           >
             <Info
               className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
@@ -683,7 +683,7 @@ function DocumentsSection({
   ];
 
   return (
-    <div className="p-4 space-y-3 bg-card rounded-xl border shadow-sm border-border">
+    <div className="p-4 space-y-3 rounded-xl border border-border/60 bg-background/80 shadow-sm dark:bg-muted/30">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Documents
       </h3>
@@ -808,7 +808,7 @@ function DocumentReplacer({
           'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
             ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-            : 'bg-card text-muted-foreground ring-1 ring-slate-200 hover:bg-muted/50 hover:text-foreground',
+            : 'bg-card text-muted-foreground ring-1 ring-border/50 hover:bg-muted/50 hover:text-foreground dark:ring-border/60',
           isLoading && 'opacity-60 cursor-not-allowed',
         )}
       >
@@ -850,7 +850,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="p-4 space-y-3 bg-card rounded-xl border shadow-sm border-border">
+    <div className="p-4 space-y-3 rounded-xl border border-border/60 bg-background/80 shadow-sm dark:bg-muted/30">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         {title}
       </h3>
@@ -892,7 +892,7 @@ function Field({
 }
 
 const inputClass =
-  'w-full rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-blue-500 focus:bg-card focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors resize-none';
+  'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors resize-none';
 
 // forwardRef is required so React Hook Form's ref callback reaches the DOM <input>
 // and can apply defaultValues. Without it React strips `ref` at the component boundary.

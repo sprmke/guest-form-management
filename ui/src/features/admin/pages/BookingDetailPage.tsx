@@ -252,7 +252,7 @@ export function BookingDetailPage() {
                   />
 
                   {editMode ? (
-                    <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-4 sm:p-5">
+                    <div className="rounded-xl border border-blue-200/80 bg-blue-50/40 p-4 sm:p-5 dark:border-blue-500/25 dark:bg-blue-950/25">
                       <h2 className="mb-4 text-sm font-bold text-foreground">
                         Edit Booking Details
                       </h2>
@@ -680,8 +680,8 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
             isAirbnb
-              ? "border-orange-200 bg-orange-50 text-orange-700"
-              : "border-blue-200 bg-blue-50 text-blue-700"
+              ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300"
+              : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300"
           }`}
         >
           {source}
@@ -695,7 +695,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
         <span
           className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
             booking.guest_requests_surprise_decor
-              ? "border-violet-200 bg-violet-50 text-violet-800"
+              ? "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300"
               : "border-border bg-muted/50 text-muted-foreground"
           }`}
         >
@@ -894,7 +894,7 @@ function PricingSummaryCard({
       </Grid3>
 
       {totalGuestBalance != null && (
-        <div className="mt-3 overflow-hidden rounded-lg ring-1 ring-slate-200">
+        <div className="mt-3 overflow-hidden rounded-lg border border-border/50">
           {/* Guest settlement */}
           <p className="bg-muted/50 px-4 py-1.5 text-overline">
             Guest settlement
@@ -912,9 +912,9 @@ function PricingSummaryCard({
             />
             <MiniRow label="Unpaid">
               {unpaidCents !== null && unpaidCents <= 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200">
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30">
                   <CheckCircle2
-                    className="size-3 shrink-0 text-emerald-600"
+                    className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
                     aria-hidden
                   />
                   Paid in full
@@ -1151,20 +1151,20 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
       <p className="mb-2 text-overline">
         Next-stay voucher
       </p>
-      <div className="relative overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80">
+      <div className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80 dark:border-emerald-500/30 dark:from-emerald-950/50 dark:via-card dark:to-emerald-900/25 dark:ring-emerald-500/20">
         <Sparkles
-          className="absolute right-3 top-3 size-4 text-emerald-500/70"
+          className="absolute right-3 top-3 size-4 text-emerald-500/70 dark:text-emerald-400/80"
           aria-hidden
         />
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
             <Ticket className="size-4" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-mono text-sm font-bold tracking-[0.18em] text-foreground sm:text-base">
+            <p className="font-mono text-sm font-bold tracking-[0.18em] text-emerald-950 dark:text-emerald-100 sm:text-base">
               {code}
             </p>
-            <p className="mt-0.5 text-caption">
+            <p className="mt-0.5 text-caption text-emerald-900/70 dark:text-emerald-200/80">
               {amount != null ? formatMoney(amount) : "—"} off the next booking
               {awardedAt && (
                 <>
@@ -1393,9 +1393,8 @@ function DocPreview({
   );
 }
 
-/** Preview body height — PDF iframes need an explicit min-height; images fill naturally. */
-const ASSET_PREVIEW_BODY_MIN_H =
-  "min-h-[min(78dvh,calc(100dvh-8.5rem))]";
+/** PDF iframe height inside the preview modal body. */
+const ASSET_PREVIEW_PDF_H = "h-[min(78dvh,calc(100dvh-8.5rem))]";
 
 function AssetPreviewModal({
   asset,
@@ -1458,30 +1457,20 @@ function AssetPreviewModal({
             </button>
           </div>
         </div>
-        <div
-          className={cn(
-            "flex-1 bg-muted p-1.5 sm:p-3",
-            ASSET_PREVIEW_BODY_MIN_H,
-          )}
-        >
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted p-1.5 sm:p-3">
           {loading && (
-            <div className="flex h-full min-h-[inherit] items-center justify-center gap-2 text-muted-foreground">
+            <div className="flex min-h-[min(50dvh,20rem)] items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" />
               <span className="text-sm">Loading preview...</span>
             </div>
           )}
 
           {!loading && asset?.type === "image" && (
-            <div
-              className={cn(
-                "flex h-full items-center justify-center overflow-auto rounded-lg bg-card",
-                ASSET_PREVIEW_BODY_MIN_H,
-              )}
-            >
+            <div className="flex justify-center rounded-lg bg-card p-2">
               <img
                 src={asset.url}
                 alt={asset.label}
-                className="max-h-full w-auto object-contain"
+                className="h-auto max-w-full w-auto object-contain"
               />
             </div>
           )}
@@ -1491,8 +1480,8 @@ function AssetPreviewModal({
               title={asset.label}
               src={asset.url}
               className={cn(
-                "h-full w-full rounded-lg bg-card",
-                ASSET_PREVIEW_BODY_MIN_H,
+                "w-full rounded-lg bg-card",
+                ASSET_PREVIEW_PDF_H,
               )}
             />
           )}

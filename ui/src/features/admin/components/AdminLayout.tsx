@@ -261,20 +261,8 @@ export function AdminLayout({ children }: Props) {
                 : 'bottom-full left-3 right-3 mb-1.5',
             )}
           >
-            <div className="border-b border-separator bg-muted/40 px-3.5 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-primary-foreground">
-                  {initial}
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-ui font-bold capitalize leading-tight text-foreground">
-                    {displayName}
-                  </p>
-                  <p className="mt-0.5 truncate text-caption leading-tight">
-                    {email}
-                  </p>
-                </div>
-              </div>
+            <div className="border-b border-separator bg-muted/40 px-3.5 py-2.5">
+              <p className="text-ui font-semibold text-foreground">My Account</p>
             </div>
             <div className="p-1.5">
               <button
