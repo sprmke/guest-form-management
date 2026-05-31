@@ -187,7 +187,10 @@ serve(async (req) => {
         console.error('[submit-form] Telegram new-booking notify failed (non-fatal):', tgErr);
       }
       try {
-        await notifyTelegramAdminNewBooking(submissionData as Record<string, unknown>);
+        const adminTg = await notifyTelegramAdminNewBooking(
+          submissionData as Record<string, unknown>,
+        );
+        console.log('[submit-form] Telegram admin new-booking:', JSON.stringify(adminTg));
       } catch (adminTgErr) {
         console.error('[submit-form] Telegram admin new-booking notify failed (non-fatal):', adminTgErr);
       }

@@ -97,21 +97,36 @@ const STATUS_LABELS: Record<string, string> = {
 
 type BookingRow = Record<string, unknown>;
 
-function nowManila(): Date {
-  return new Date(new Date().toLocaleString('en-US', { timeZone: MANILA_TZ }));
-}
-
-function manilaHourBucket(): string {
+function manilaDateTimeParts(date = new Date()): Record<string, string> {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: MANILA_TZ,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
     hour12: false,
-  }).formatToParts(new Date());
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}`;
+  }).formatToParts(date);
+  return Object.fromEntries(
+    parts
+      .filter((p) => p.type !== 'literal')
+      .map((p) => [p.type, p.value]),
+  );
+}
+
+function nowManila(): Date {
+  const p = manilaDateTimeParts();
+  const hour = p.hour === '24' ? '00' : p.hour;
+  return new Date(
+    `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}:${p.second}+08:00`,
+  );
+}
+
+function manilaHourBucket(): string {
+  const p = manilaDateTimeParts();
+  const hour = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}-${p.month}-${p.day}T${hour}`;
 }
 
 function parseBookingDateTimeManila(
@@ -340,10 +355,16 @@ function isCancelledStatus(status: unknown): boolean {
   return s === 'CANCELLED' || s === 'canceled';
 }
 
+/** Legacy rows may still use `booked` if status migration was not applied. */
+function isPendingReviewLikeStatus(status: unknown): boolean {
+  const s = String(status ?? '');
+  return s === 'PENDING_REVIEW' || s === 'booked';
+}
+
 /** Still awaiting admin review — hourly until Proceed to Pending Documents (or GAF). */
 export function bookingNeedsNewBookingHourlyAlert(booking: BookingRow): boolean {
   if (isCancelledStatus(booking.status)) return false;
-  return String(booking.status ?? '') === 'PENDING_REVIEW';
+  return isPendingReviewLikeStatus(booking.status);
 }
 
 /** Check-in today + incomplete required docs, not yet ready for check-in workflow-wise. */
@@ -359,6 +380,7 @@ export function bookingNeedsPendingDocsHourlyAlert(
   const status = String(booking.status ?? '');
   const preRfci = [
     'PENDING_REVIEW',
+    'booked',
     'PENDING_DOCUMENTS',
     'PENDING_GAF',
     'PENDING_PARKING_REQUEST',
@@ -369,7 +391,7 @@ export function bookingNeedsPendingDocsHourlyAlert(
   return false;
 }
 
-/** Check-in today, after check-in time, before check-out, positive balance receipt missing. */
+/** During stay, after check-in time on check-in day, before check-out, positive balance receipt missing. */
 export function bookingNeedsBalanceReceiptHourlyAlert(
   booking: BookingRow,
   todayYmd: string,
@@ -377,7 +399,9 @@ export function bookingNeedsBalanceReceiptHourlyAlert(
 ): boolean {
   if (isCancelledStatus(booking.status)) return false;
   const ciYmd = normalizeBookingDateToYmd(String(booking.check_in_date ?? ''));
-  if (ciYmd !== todayYmd) return false;
+  const coYmd = normalizeBookingDateToYmd(String(booking.check_out_date ?? ''));
+  if (!ciYmd || !coYmd) return false;
+  if (todayYmd < ciYmd || todayYmd > coYmd) return false;
 
   const total = computeTotalGuestBalanceFromBooking(booking);
   if (total === null || !guestBalancePaymentReceiptRequired(total)) return false;
@@ -390,12 +414,14 @@ export function bookingNeedsBalanceReceiptHourlyAlert(
     return false;
   }
 
-  const checkInDt = parseBookingDateTimeManila(
-    String(booking.check_in_date ?? ''),
-    booking.check_in_time as string | null | undefined,
-    DEFAULT_CHECK_IN_TIME,
-  );
-  if (!checkInDt || now.getTime() < checkInDt.getTime()) return false;
+  if (todayYmd === ciYmd) {
+    const checkInDt = parseBookingDateTimeManila(
+      String(booking.check_in_date ?? ''),
+      booking.check_in_time as string | null | undefined,
+      DEFAULT_CHECK_IN_TIME,
+    );
+    if (!checkInDt || now.getTime() < checkInDt.getTime()) return false;
+  }
 
   const checkOutDt = parseBookingDateTimeManila(
     String(booking.check_out_date ?? ''),
@@ -473,11 +499,34 @@ async function loadAdminSettings(): Promise<TelegramAdminSettings | null> {
   }
 }
 
-async function tryClaimHourlySend(
+async function hasHourlyDedupeEntry(
   bookingId: string,
   notificationType: AdminHourlyNotificationType,
   hourBucket: string,
 ): Promise<boolean> {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+  const { data, error } = await supabase
+    .from('telegram_admin_notification_log')
+    .select('id')
+    .eq('booking_id', bookingId)
+    .eq('notification_type', notificationType)
+    .eq('hour_bucket', hourBucket)
+    .maybeSingle();
+  if (error) {
+    console.error('[telegram-admin] dedupe lookup:', error);
+    return false;
+  }
+  return !!data;
+}
+
+async function recordHourlySend(
+  bookingId: string,
+  notificationType: AdminHourlyNotificationType,
+  hourBucket: string,
+): Promise<{ ok: boolean; constraintRejected?: boolean }> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -487,12 +536,20 @@ async function tryClaimHourlySend(
     notification_type: notificationType,
     hour_bucket: hourBucket,
   });
-  if (error?.code === '23505') return false;
-  if (error) {
-    console.error('[telegram-admin] claim hourly send:', error);
-    return false;
+  if (error?.code === '23505') return { ok: true };
+  if (error?.code === '23514') {
+    console.error(
+      '[telegram-admin] notification_type rejected by DB check — deploy migration ' +
+        '20260705120000_telegram_admin_new_booking_hourly.sql',
+      error,
+    );
+    return { ok: false, constraintRejected: true };
   }
-  return true;
+  if (error) {
+    console.error('[telegram-admin] record hourly send:', error);
+    return { ok: false };
+  }
+  return { ok: true };
 }
 
 async function sendAdminTemplateForBooking(
@@ -533,7 +590,7 @@ export async function notifyTelegramAdminNewBooking(
   }
   const bookingId = String(booking.id ?? '').trim();
   if (bookingId) {
-    await tryClaimHourlySend(bookingId, 'new_booking', manilaHourBucket());
+    await recordHourlySend(bookingId, 'new_booking', manilaHourBucket());
   }
   return { sent: true };
 }
@@ -566,6 +623,11 @@ export type AdminHourlyCronResult = {
   pendingDocsSent?: number;
   balanceReceiptSent?: number;
   sdRefundPendingSent?: number;
+  matchedNewBooking?: number;
+  matchedPendingDocs?: number;
+  matchedBalanceReceipt?: number;
+  matchedSdRefundPending?: number;
+  skippedDedupe?: number;
   detail?: string;
 };
 
@@ -607,59 +669,106 @@ export async function runAdminHourlyAlerts(opts?: {
   let pendingDocsSent = 0;
   let balanceReceiptSent = 0;
   let sdRefundPendingSent = 0;
+  let matchedNewBooking = 0;
+  let matchedPendingDocs = 0;
+  let matchedBalanceReceipt = 0;
+  let matchedSdRefundPending = 0;
+  let skippedDedupe = 0;
+  let dedupeMigrationMissing = false;
   const errors: string[] = [];
+
+  async function sendHourlyAlert(
+    booking: BookingRow,
+    id: string,
+    enabled: boolean,
+    needsAlert: boolean,
+    template: string,
+    notificationType: AdminHourlyNotificationType,
+  ): Promise<boolean> {
+    if (!needsAlert) return false;
+    if (notificationType === 'new_booking') matchedNewBooking++;
+    else if (notificationType === 'pending_docs') matchedPendingDocs++;
+    else if (notificationType === 'balance_receipt') matchedBalanceReceipt++;
+    else if (notificationType === 'sd_refund_pending') matchedSdRefundPending++;
+
+    if (!opts?.force && !enabled) return false;
+
+    if (!opts?.force && await hasHourlyDedupeEntry(id, notificationType, hourBucket)) {
+      skippedDedupe++;
+      return false;
+    }
+    const r = await sendAdminTemplateForBooking(template, booking);
+    if (!r.ok) {
+      if (r.error) errors.push(`${notificationType}:${id}:${r.error}`);
+      return false;
+    }
+    if (!opts?.force) {
+      const recorded = await recordHourlySend(id, notificationType, hourBucket);
+      if (recorded.constraintRejected) dedupeMigrationMissing = true;
+    }
+    return true;
+  }
 
   for (const booking of rows ?? []) {
     const id = String(booking.id ?? '');
     if (!id) continue;
 
-    if (
-      (opts?.force || settings.notify_on_new_booking) &&
-      bookingNeedsNewBookingHourlyAlert(booking)
-    ) {
-      if (opts?.force || await tryClaimHourlySend(id, 'new_booking', hourBucket)) {
-        const r = await sendAdminTemplateForBooking(settings.new_booking_template, booking);
-        if (r.ok) newBookingSent++;
-        else if (r.error) errors.push(`new_booking:${id}:${r.error}`);
-      }
+    if (await sendHourlyAlert(
+      booking,
+      id,
+      settings.notify_on_new_booking,
+      bookingNeedsNewBookingHourlyAlert(booking),
+      settings.new_booking_template,
+      'new_booking',
+    )) {
+      newBookingSent++;
     }
 
-    if (
-      (opts?.force || settings.notify_pending_docs_hourly) &&
-      bookingNeedsPendingDocsHourlyAlert(booking, todayYmd)
-    ) {
-      if (opts?.force || await tryClaimHourlySend(id, 'pending_docs', hourBucket)) {
-        const r = await sendAdminTemplateForBooking(settings.pending_docs_template, booking);
-        if (r.ok) pendingDocsSent++;
-        else if (r.error) errors.push(`pending_docs:${id}:${r.error}`);
-      }
+    if (await sendHourlyAlert(
+      booking,
+      id,
+      settings.notify_pending_docs_hourly,
+      bookingNeedsPendingDocsHourlyAlert(booking, todayYmd),
+      settings.pending_docs_template,
+      'pending_docs',
+    )) {
+      pendingDocsSent++;
     }
 
-    if (
-      (opts?.force || settings.notify_balance_receipt_hourly) &&
-      bookingNeedsBalanceReceiptHourlyAlert(booking, todayYmd, now)
-    ) {
-      if (opts?.force || await tryClaimHourlySend(id, 'balance_receipt', hourBucket)) {
-        const r = await sendAdminTemplateForBooking(settings.balance_receipt_template, booking);
-        if (r.ok) balanceReceiptSent++;
-        else if (r.error) errors.push(`balance_receipt:${id}:${r.error}`);
-      }
+    if (await sendHourlyAlert(
+      booking,
+      id,
+      settings.notify_balance_receipt_hourly,
+      bookingNeedsBalanceReceiptHourlyAlert(booking, todayYmd, now),
+      settings.balance_receipt_template,
+      'balance_receipt',
+    )) {
+      balanceReceiptSent++;
     }
 
-    if (
-      (opts?.force || settings.notify_sd_refund_pending_hourly) &&
-      bookingNeedsSdRefundPendingHourlyAlert(booking)
-    ) {
-      if (opts?.force || await tryClaimHourlySend(id, 'sd_refund_pending', hourBucket)) {
-        const r = await sendAdminTemplateForBooking(settings.sd_refund_pending_template, booking);
-        if (r.ok) sdRefundPendingSent++;
-        else if (r.error) errors.push(`sd_refund_pending:${id}:${r.error}`);
-      }
+    if (await sendHourlyAlert(
+      booking,
+      id,
+      settings.notify_sd_refund_pending_hourly,
+      bookingNeedsSdRefundPendingHourlyAlert(booking),
+      settings.sd_refund_pending_template,
+      'sd_refund_pending',
+    )) {
+      sdRefundPendingSent++;
     }
   }
 
   const totalSent =
     newBookingSent + pendingDocsSent + balanceReceiptSent + sdRefundPendingSent;
+  const totalMatched =
+    matchedNewBooking + matchedPendingDocs + matchedBalanceReceipt + matchedSdRefundPending;
+
+  const disabledToggles: string[] = [];
+  if (!settings.notify_on_new_booking) disabledToggles.push('notify_on_new_booking');
+  if (!settings.notify_pending_docs_hourly) disabledToggles.push('notify_pending_docs_hourly');
+  if (!settings.notify_balance_receipt_hourly) disabledToggles.push('notify_balance_receipt_hourly');
+  if (!settings.notify_sd_refund_pending_hourly) disabledToggles.push('notify_sd_refund_pending_hourly');
+
   return {
     sent: totalSent > 0,
     mode: totalSent > 0 ? 'sent' : 'nothing_due',
@@ -668,7 +777,24 @@ export async function runAdminHourlyAlerts(opts?: {
     pendingDocsSent,
     balanceReceiptSent,
     sdRefundPendingSent,
-    detail: errors.length ? errors.join('; ') : undefined,
+    matchedNewBooking,
+    matchedPendingDocs,
+    matchedBalanceReceipt,
+    matchedSdRefundPending,
+    skippedDedupe,
+    detail: errors.length
+      ? errors.join('; ')
+      : dedupeMigrationMissing
+      ? 'deploy_migration_20260705120000_for_new_booking_hourly_dedupe'
+      : totalMatched === 0
+      ? 'no_bookings_matched_any_scenario'
+      : totalSent === 0 && skippedDedupe > 0
+      ? 'all_due_alerts_already_sent_this_hour'
+      : totalSent === 0 && totalMatched > 0
+      ? disabledToggles.length
+        ? `matched_${totalMatched}_bookings_but_toggles_off:${disabledToggles.join(',')}`
+        : 'matched_bookings_but_send_failed'
+      : undefined,
   };
 }
 
@@ -833,7 +959,8 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
       {
         id: 'balance_receipt',
         label: 'Balance receipt needed',
-        trigger: 'Every hour on check-in day after check-in time until check-out or receipt uploaded',
+        trigger:
+          'Every hour during the stay (check-in day after check-in time through check-out) until receipt uploaded',
         type: 'hourly',
       },
       {

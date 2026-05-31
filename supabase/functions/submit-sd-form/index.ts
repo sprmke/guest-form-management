@@ -127,7 +127,8 @@ serve(async (req) => {
     try {
       const updated = await DatabaseService.getBookingById(bookingId);
       if (updated) {
-        await notifyTelegramAdminSdFormSubmitted(updated);
+        const adminTg = await notifyTelegramAdminSdFormSubmitted(updated);
+        console.log('[submit-sd-form] Telegram admin SD form:', JSON.stringify(adminTg));
       }
     } catch (tgErr) {
       console.error('[submit-sd-form] Telegram admin SD form notify failed (non-fatal):', tgErr);

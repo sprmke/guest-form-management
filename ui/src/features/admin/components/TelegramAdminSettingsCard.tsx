@@ -217,8 +217,29 @@ type HourlyCronResult = {
   pendingDocsSent?: number;
   balanceReceiptSent?: number;
   sdRefundPendingSent?: number;
+  matchedNewBooking?: number;
+  matchedPendingDocs?: number;
+  matchedBalanceReceipt?: number;
+  matchedSdRefundPending?: number;
+  skippedDedupe?: number;
   detail?: string;
 };
+
+function formatHourlyCronSummary(r: HourlyCronResult | undefined): string {
+  if (!r) return 'No result payload from server';
+  const parts: string[] = [];
+  if (r.detail) parts.push(r.detail);
+  const matched = [
+    r.matchedNewBooking ? `new booking: ${r.matchedNewBooking}` : null,
+    r.matchedPendingDocs ? `pending docs: ${r.matchedPendingDocs}` : null,
+    r.matchedBalanceReceipt ? `balance receipt: ${r.matchedBalanceReceipt}` : null,
+    r.matchedSdRefundPending ? `SD refund: ${r.matchedSdRefundPending}` : null,
+  ].filter(Boolean);
+  if (matched.length) parts.push(`Matched — ${matched.join(', ')}`);
+  if (r.skippedDedupe) parts.push(`Skipped dedupe: ${r.skippedDedupe}`);
+  if (parts.length) return parts.join(' · ');
+  return 'No matching bookings or alerts disabled. Check toggles and live data.';
+}
 
 export function TelegramAdminSettingsCard() {
   const { data, isLoading, isError, error } = useTelegramAdminSettings();
@@ -385,9 +406,8 @@ export function TelegramAdminSettingsCard() {
                         );
                       } else {
                         toast.message(`Hourly run: ${r?.mode ?? 'unknown'}`, {
-                          description:
-                            r?.detail ??
-                            'No matching bookings or alerts disabled. Check toggles and live data.',
+                          description: formatHourlyCronSummary(r),
+                          duration: 14_000,
                         });
                       }
                     },
