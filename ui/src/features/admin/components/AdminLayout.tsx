@@ -54,7 +54,8 @@ export function AdminLayout({ children }: Props) {
   const { email, name, signOut } = useAdminSession();
   const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState(readSidebarCollapsed);
   const profileRef = useRef<HTMLDivElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
 
@@ -118,10 +119,10 @@ export function AdminLayout({ children }: Props) {
     collapsed?: boolean;
     showCollapseToggle?: boolean;
   }) => (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col h-full">
       <div
         className={cn(
-          'relative flex h-16 shrink-0 items-center border-b border-separator',
+          'flex relative items-center h-16 border-b shrink-0 border-separator',
           collapsed ? 'justify-center px-2' : 'justify-between px-4',
         )}
       >
@@ -134,7 +135,7 @@ export function AdminLayout({ children }: Props) {
           onClick={onClose}
           title={collapsed ? 'Kame Home Admin' : undefined}
         >
-          <div className="gradient-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl shadow-soft">
+          <div className="flex justify-center items-center w-10 h-10 rounded-2xl gradient-primary shrink-0 shadow-soft">
             <span className="text-[14px] font-black text-primary-foreground">
               K
             </span>
@@ -144,7 +145,7 @@ export function AdminLayout({ children }: Props) {
               <span className="block text-base font-bold tracking-tight text-foreground">
                 Kame Home
               </span>
-              <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="block text-xs font-semibold tracking-wider uppercase text-muted-foreground">
                 Admin
               </span>
             </div>
@@ -154,10 +155,10 @@ export function AdminLayout({ children }: Props) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground lg:hidden"
+            className="p-2 rounded-xl transition-colors text-muted-foreground hover:bg-muted/70 hover:text-foreground lg:hidden"
             aria-label="Close menu"
           >
-            <X className="h-4 w-4" />
+            <X className="w-4 h-4" />
           </button>
         ) : showCollapseToggle ? (
           <button
@@ -182,7 +183,7 @@ export function AdminLayout({ children }: Props) {
 
       <nav
         className={cn(
-          'flex-1 overflow-y-auto py-4',
+          'overflow-y-auto flex-1 py-4',
           collapsed ? 'px-2' : 'px-3',
         )}
         aria-label="Main menu"
@@ -216,13 +217,13 @@ export function AdminLayout({ children }: Props) {
                     >
                       <div
                         className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all duration-200',
+                          'flex justify-center items-center w-9 h-9 rounded-xl transition-all duration-200 shrink-0',
                           active
                             ? 'nav-item-active-icon'
                             : 'bg-muted/80 group-hover:bg-primary/10',
                         )}
                       >
-                        <Icon className="h-4 w-4 shrink-0" />
+                        <Icon className="w-4 h-4 shrink-0" />
                       </div>
                       {!collapsed && (
                         <span className="flex-1 truncate">{label}</span>
@@ -239,7 +240,7 @@ export function AdminLayout({ children }: Props) {
       <div
         ref={profileRef}
         className={cn(
-          'relative shrink-0 space-y-2 border-t border-separator',
+          'relative space-y-2 border-t shrink-0 border-separator',
           collapsed ? 'p-2' : 'p-3',
         )}
       >
@@ -262,7 +263,9 @@ export function AdminLayout({ children }: Props) {
             )}
           >
             <div className="border-b border-separator bg-muted/40 px-3.5 py-2.5">
-              <p className="text-ui font-semibold text-foreground">My Account</p>
+              <p className="font-semibold text-ui text-foreground">
+                My Account
+              </p>
             </div>
             <div className="p-1.5">
               <button
@@ -297,13 +300,11 @@ export function AdminLayout({ children }: Props) {
           </div>
           {!collapsed && (
             <>
-              <div className="min-w-0 flex-1 text-left">
-                <p className="truncate text-ui font-semibold capitalize leading-none text-foreground">
+              <div className="flex-1 min-w-0 text-left">
+                <p className="font-semibold leading-none capitalize truncate text-ui text-foreground">
                   {displayName}
                 </p>
-                <p className="mt-0.5 truncate text-caption leading-none">
-                  {email}
-                </p>
+                <p className="leading-none truncate text-caption">{email}</p>
               </div>
               {!collapsed && (
                 <ChevronLeft
@@ -322,7 +323,7 @@ export function AdminLayout({ children }: Props) {
   );
 
   return (
-    <div className="app-shell min-h-screen">
+    <div className="min-h-screen app-shell">
       {/* Desktop — floating sidebar */}
       <aside
         className={cn(
@@ -332,20 +333,17 @@ export function AdminLayout({ children }: Props) {
         aria-label="Admin navigation"
         aria-expanded={!sidebarCollapsed}
       >
-        <SidebarContent
-          collapsed={sidebarCollapsed}
-          showCollapseToggle
-        />
+        <SidebarContent collapsed={sidebarCollapsed} showCollapseToggle />
       </aside>
 
       {/* Mobile drawer — slide + backdrop fade (panel stays mounted for exit animation) */}
       <div className="lg:hidden" aria-hidden={!mobileMenuOpen}>
         <div
           className={cn(
-            'fixed inset-0 z-40 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none',
+            'fixed inset-0 z-40 backdrop-blur-sm transition-opacity duration-300 ease-out bg-background/80 motion-reduce:transition-none',
             mobileMenuOpen
-              ? 'pointer-events-auto opacity-100'
-              : 'pointer-events-none opacity-0',
+              ? 'opacity-100 pointer-events-auto'
+              : 'opacity-0 pointer-events-none',
           )}
           onClick={() => {
             setMobileMenuOpen(false);
@@ -382,21 +380,21 @@ export function AdminLayout({ children }: Props) {
             : 'lg:ml-[calc(17rem+2rem)]',
         )}
       >
-        <header className="sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-separator bg-background/90 px-3 backdrop-blur-md sm:px-4 lg:hidden">
+        <header className="flex sticky top-0 z-20 gap-3 justify-between items-center px-3 h-14 border-b backdrop-blur-md shrink-0 border-separator bg-background/90 sm:px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
             className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
             aria-label="Open menu"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="w-5 h-5" />
           </button>
           <div className="flex shrink-0 items-center gap-1.5">
             <ThemeToggle />
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-5 xl:px-8">
+        <main className="overflow-y-auto flex-1 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-5 xl:px-8">
           <div className="mx-auto max-w-[1680px] animate-fade-in-up">
             <div className="space-y-3 sm:space-y-4">{children}</div>
           </div>
