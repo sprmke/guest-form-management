@@ -470,20 +470,43 @@ async function sendAdminTelegramMessage(text: string): Promise<{ ok: boolean; er
   }
 
   const url = `https://api.telegram.org/bot${creds.token}/sendMessage`;
-  const res = await fetch(url, {
+  const sendPayload = async (chatId: string) => await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      chat_id: creds.chatId,
+      chat_id: chatId,
       text: text.slice(0, 4096),
       disable_web_page_preview: false,
     }),
   });
-  const json = await res.json().catch(() => ({}));
+
+  const parseResponse = async (res: Response): Promise<Record<string, unknown>> =>
+    (await res.json().catch(() => ({}))) as Record<string, unknown>;
+
+  let res = await sendPayload(creds.chatId);
+  let json = await parseResponse(res);
   if (!res.ok || !json?.ok) {
-    const desc = json?.description ?? res.statusText;
+    const description = String(json?.description ?? res.statusText ?? 'sendMessage failed');
+    const migrateTo = json?.parameters &&
+      typeof json.parameters === 'object' &&
+      typeof (json.parameters as { migrate_to_chat_id?: unknown }).migrate_to_chat_id === 'number'
+      ? String((json.parameters as { migrate_to_chat_id: number }).migrate_to_chat_id)
+      : null;
+
+    // Group -> supergroup migrations return migrate_to_chat_id. Retry immediately to avoid dropped alerts.
+    if (description.includes('group chat was upgraded to a supergroup chat') && migrateTo) {
+      console.warn(
+        `[telegram-admin] chat migrated; retrying with chat_id=${migrateTo}. ` +
+          'Update TELEGRAM_ADMIN_CHAT_ID secret to this value.',
+      );
+      res = await sendPayload(migrateTo);
+      json = await parseResponse(res);
+      if (res.ok && json?.ok) return { ok: true };
+    }
+
+    const desc = String(json?.description ?? res.statusText ?? description);
     console.error('[telegram-admin] sendMessage failed:', desc);
-    return { ok: false, error: String(desc) };
+    return { ok: false, error: desc };
   }
   return { ok: true };
 }
