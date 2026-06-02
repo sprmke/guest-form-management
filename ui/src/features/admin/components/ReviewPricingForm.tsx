@@ -242,7 +242,7 @@ export function ReviewPricingForm({
       </div>
 
       {/* Total guest balance display */}
-      <div className="flex justify-between items-center px-3.5 py-2.5 rounded-lg ring-1 bg-muted/50 ring-slate-200">
+      <div className="flex justify-between items-center rounded-lg bg-muted/50 px-3.5 py-2.5 ring-1 ring-slate-200 dark:ring-border/60">
         <span className="flex flex-col gap-0.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-foreground">
             Total Guest Balance
@@ -267,7 +267,7 @@ function inputClass(hasError: boolean, disabled = false) {
     disabled
       ? 'cursor-not-allowed border-border bg-muted text-muted-foreground'
       : hasError
-        ? 'border-red-400 bg-red-50'
+        ? 'border-red-400 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10'
         : 'border-border bg-card',
   ].join(' ');
 }

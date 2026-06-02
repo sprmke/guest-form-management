@@ -320,21 +320,18 @@ export function BookingDetailPageSkeleton() {
   return (
     <div className="space-y-4" aria-busy="true" aria-label="Loading booking">
       <Skeleton className="h-3 w-28" />
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-5 lg:gap-6">
         <div className="min-w-0 flex-1 space-y-5">
           <div className="rounded-xl border border-border/50 bg-card p-4 sm:p-5">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex min-w-0 items-start gap-3">
-                <Skeleton className="size-12 shrink-0 rounded-full" />
-                <div className="min-w-0 space-y-2">
-                  <Skeleton className="h-5 w-40" />
-                  <Skeleton className="h-3 w-52 max-w-full" />
-                  <Skeleton className="h-6 w-28 rounded-full" />
-                </div>
+            <div className="flex flex-col gap-4">
+              <div className="space-y-2">
+                <Skeleton className="h-5 w-40 max-w-full" />
+                <Skeleton className="h-3 w-52 max-w-full" />
+                <Skeleton className="h-3 w-36 max-w-full" />
               </div>
-              <div className="flex gap-2">
-                <Skeleton className="h-10 w-24 rounded-lg" />
-                <Skeleton className="h-10 w-24 rounded-lg" />
+              <div className="flex flex-wrap gap-2">
+                <Skeleton className="h-10 w-28 rounded-full" />
+                <Skeleton className="h-10 w-20 rounded-full" />
               </div>
             </div>
           </div>
@@ -344,7 +341,7 @@ export function BookingDetailPageSkeleton() {
           <DetailCardSkeleton lines={4} />
           <DetailCardSkeleton lines={3} />
         </div>
-        <div className="w-full space-y-3 lg:w-[370px] lg:shrink-0">
+        <div className="w-full space-y-3 md:w-[min(100%,20rem)] md:shrink-0 xl:w-[370px]">
           <div className="rounded-xl border border-border/50 bg-card p-4">
             <Skeleton className="mb-4 h-4 w-24" />
             <div className="space-y-2">

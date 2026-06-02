@@ -5,7 +5,8 @@
  *   Left (flexible): all booking info cards + document previews
  *   Right (sticky 344px): WorkflowPanel
  *
- * Mobile (<lg): compact summary + expand control; Progress (WorkflowPanel) next;
+ * Mobile (<md): compact summary + expand control; Progress (WorkflowPanel) next;
+ * Tablet (md–lg): two-column layout like desktop; sidebar still hidden until lg.
  * full detail cards in a collapsible block (all statuses). Edit lives in the
  * expanded header, not on the collapsed summary strip.
  *
@@ -60,7 +61,7 @@ import { BookingMetaCard } from "@/features/admin/components/BookingMetaCard";
 import { PendingReviewWorkflowGate } from "@/features/admin/components/PendingReviewWorkflowGate";
 import { WorkflowPanel } from "@/features/admin/components/WorkflowPanel";
 import { BookingEditForm } from "@/features/admin/components/BookingEditForm";
-import { useIsBelowLg } from "@/hooks/useMediaQuery";
+import { useIsBelowMd } from "@/hooks/useMediaQuery";
 import { useBooking } from "@/features/admin/hooks/useBooking";
 import {
   formatBookingDate,
@@ -107,7 +108,7 @@ export function BookingDetailPage() {
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
-  const isBelowLg = useIsBelowLg();
+  const isBelowMd = useIsBelowMd();
 
   const copyBookingIdToClipboard = useCallback(async () => {
     const id = bookingId?.trim();
@@ -129,7 +130,7 @@ export function BookingDetailPage() {
   }, [editMode]);
 
   /** Collapsed guest cards on mobile so Progress stays above the fold. */
-  const isMobileWorkflowFirst = isBelowLg && booking != null;
+  const isMobileWorkflowFirst = isBelowMd && booking != null;
 
   const showMobileDetailCards =
     !isMobileWorkflowFirst || detailsExpanded || editMode;
@@ -190,7 +191,7 @@ export function BookingDetailPage() {
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
               Failed to load booking. Please refresh.
             </div>
           )}
@@ -204,10 +205,10 @@ export function BookingDetailPage() {
 
           {booking && (
             <>
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-5 lg:gap-6">
                 {isMobileWorkflowFirst && (
                   <BookingDetailMobileSummary
-                    className="order-1 lg:hidden"
+                    className="order-1 md:hidden"
                     booking={booking}
                     detailsExpanded={detailsExpanded}
                     onToggleDetails={handleToggleDetails}
@@ -230,7 +231,7 @@ export function BookingDetailPage() {
                     "flex-1 min-w-0",
                     isMobileWorkflowFirst &&
                       (mobileDetailsBeforeWorkflow ? "order-2" : "order-3"),
-                    isMobileWorkflowFirst && "lg:order-none",
+                    isMobileWorkflowFirst && "md:order-none",
                   )}
                 >
                   <CollapsibleContent
@@ -239,7 +240,7 @@ export function BookingDetailPage() {
                       "space-y-5 overflow-hidden",
                       "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
                       "motion-reduce:animate-none",
-                      "lg:overflow-visible lg:animate-none",
+                      "md:overflow-visible md:animate-none",
                     )}
                   >
                   <BookingHeader
@@ -248,7 +249,7 @@ export function BookingDetailPage() {
                     onEdit={handleStartEdit}
                     onCancelEdit={() => setEditMode(false)}
                     onPayParking={handleOpenPayParking}
-                    className={cn(isMobileWorkflowFirst && "hidden lg:block")}
+                    className={cn(isMobileWorkflowFirst && "hidden md:block")}
                   />
 
                   {editMode ? (
@@ -296,7 +297,7 @@ export function BookingDetailPage() {
                     <BookingMetaCard
                       booking={booking}
                       onCopyBookingId={() => void copyBookingIdToClipboard()}
-                      className="lg:hidden"
+                      className="md:hidden"
                     />
                   )}
                   </CollapsibleContent>
@@ -305,10 +306,10 @@ export function BookingDetailPage() {
                 {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
                 <div
                   className={cn(
-                    "w-full lg:w-[370px] lg:shrink-0 lg:sticky lg:top-[58px]",
+                    "w-full md:w-[min(100%,20rem)] md:shrink-0 md:sticky md:top-14 lg:w-[min(100%,22.5rem)] lg:top-[58px] xl:w-[370px]",
                     isMobileWorkflowFirst &&
                       (mobileDetailsBeforeWorkflow ? "order-3" : "order-2"),
-                    isMobileWorkflowFirst && "lg:order-none",
+                    isMobileWorkflowFirst && "md:order-none",
                   )}
                 >
                   <PendingReviewWorkflowGate booking={booking}>
@@ -320,7 +321,7 @@ export function BookingDetailPage() {
                     onCopyBookingId={() => void copyBookingIdToClipboard()}
                     className={cn(
                       "mt-3",
-                      isMobileWorkflowFirst && "hidden lg:block",
+                      isMobileWorkflowFirst && "hidden md:block",
                     )}
                   />
                 </div>
@@ -379,13 +380,11 @@ function BookingHeader({
         className,
       )}
     >
-      <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 max-w-full break-words text-base font-bold leading-snug text-foreground sm:text-[17px]">
-              {heading}
-            </h1>
-          </div>
+      <div className="flex flex-col gap-4">
+        <div className="min-w-0 space-y-2">
+          <h1 className="text-base font-bold leading-snug text-foreground sm:text-[17px]">
+            {heading}
+          </h1>
           {showPrimarySubtitle && (
             <p className="text-ui font-medium text-muted-foreground">
               <span className="text-muted-foreground">Primary guest</span>{" "}
@@ -393,12 +392,12 @@ function BookingHeader({
             </p>
           )}
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-ui text-muted-foreground">
-            <span className="flex items-center gap-1.5">
+            <span className="flex min-w-0 items-center gap-1.5">
               <Calendar
                 className="size-3.5 shrink-0 text-muted-foreground"
                 aria-hidden
               />
-              <span>
+              <span className="min-w-0">
                 {formatBookingDate(booking.check_in_date)} →{" "}
                 {formatBookingDate(booking.check_out_date)}
               </span>
@@ -412,7 +411,7 @@ function BookingHeader({
             </span>
           </div>
         </div>
-        <div className="flex w-full shrink-0 flex-wrap items-start justify-stretch gap-2 sm:w-auto sm:justify-end">
+        <div className="flex flex-wrap items-center gap-2">
           {!editMode && (
             <PayParkingHeaderButton
               booking={booking}
@@ -425,7 +424,7 @@ function BookingHeader({
               type="button"
               onClick={onCancelEdit}
               aria-label="Cancel and close the form"
-              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:flex-initial sm:px-4"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
             >
               <X className="size-3.5 shrink-0" aria-hidden />
               <span>Cancel</span>
@@ -434,7 +433,7 @@ function BookingHeader({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex min-h-[44px] min-w-[44px] flex-1 items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:flex-initial sm:px-4"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
             >
               <Edit2 className="size-3.5 shrink-0" aria-hidden />
               Edit

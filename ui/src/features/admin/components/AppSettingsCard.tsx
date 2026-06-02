@@ -127,18 +127,20 @@ function SecretBadge({
       className={cn(
         'flex gap-2 justify-between items-center px-3 py-2 rounded-lg border min-h-[44px]',
         configured
-          ? 'text-emerald-900 border-emerald-200 bg-emerald-50/80'
-          : 'border-amber-200 bg-amber-50/60 text-amber-950',
+          ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+          : 'border-amber-200 bg-amber-50/60 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
       )}
     >
       <span className="text-sm">{label}</span>
       {configured ? (
         <Check
-          className="text-emerald-700 size-4 shrink-0"
+          className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
           aria-label="Configured"
         />
       ) : (
-        <span className="text-xs font-medium text-amber-800">Not set</span>
+        <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+          Not set
+        </span>
       )}
     </div>
   );

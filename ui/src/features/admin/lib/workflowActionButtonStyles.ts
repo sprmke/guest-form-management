@@ -52,3 +52,28 @@ export const workflowInlineLink =
 /** Text-only back control above sub-forms. */
 export const workflowTextBackLink =
   'flex min-h-[44px] w-full items-center justify-between text-sm font-medium text-primary transition-colors hover:text-primary/80 disabled:opacity-50';
+
+/** Full-width image upload / replace control in workflow sub-forms. */
+export const workflowUploadBtnBase =
+  'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors';
+
+const workflowUploadBtnDisabled =
+  'cursor-not-allowed bg-muted text-muted-foreground ring-1 ring-slate-200 dark:ring-border/60';
+
+const workflowUploadBtnEnabled =
+  'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100 dark:bg-blue-500/10 dark:text-blue-400 dark:ring-blue-500/30 dark:hover:bg-blue-500/20';
+
+export function workflowUploadButtonClass(disabled: boolean): string {
+  return cn(
+    workflowUploadBtnBase,
+    disabled ? workflowUploadBtnDisabled : workflowUploadBtnEnabled,
+  );
+}
+
+/** "View image" link on asset preview rows in workflow sub-forms. */
+export const workflowAssetViewLink =
+  'inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline dark:text-blue-400';
+
+/** Clickable asset preview card (receipt / endorsement). */
+export const workflowAssetPreviewCard =
+  'group flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card p-2 transition-colors hover:border-blue-300 dark:hover:border-blue-500/40';

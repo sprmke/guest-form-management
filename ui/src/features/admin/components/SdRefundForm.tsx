@@ -27,6 +27,11 @@ import type {
 } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  workflowAssetPreviewCard,
+  workflowAssetViewLink,
+  workflowUploadButtonClass,
+} from '@/features/admin/lib/workflowActionButtonStyles';
 import { cn } from '@/lib/utils';
 
 function parseNumberArray(raw: unknown): number[] {
@@ -495,7 +500,7 @@ export function SdRefundForm({
             className={cn(
               'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
               netSD < 0
-                ? 'border-red-300 bg-red-50 text-red-700'
+                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
                 : 'border-border bg-muted/50 text-foreground',
             )}
             aria-readonly="true"
@@ -528,7 +533,7 @@ export function SdRefundForm({
               href={receiptUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card p-2 hover:border-blue-300 transition-colors"
+              className={workflowAssetPreviewCard}
             >
               <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
                 <img
@@ -543,7 +548,7 @@ export function SdRefundForm({
                 <p className="text-xs font-medium text-foreground">
                   Current receipt
                 </p>
-                <p className="inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline">
+                <p className={workflowAssetViewLink}>
                   <ExternalLink className="size-3 shrink-0" />
                   View image
                 </p>
@@ -570,12 +575,7 @@ export function SdRefundForm({
             type="button"
             disabled={uploadMut.isPending}
             onClick={() => receiptFileRef.current?.click()}
-            className={cn(
-              'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              uploadMut.isPending
-                ? 'cursor-not-allowed bg-muted text-muted-foreground ring-1 ring-slate-200'
-                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100',
-            )}
+            className={workflowUploadButtonClass(uploadMut.isPending)}
           >
             {uploadMut.isPending ? (
               <>
@@ -621,7 +621,7 @@ function LineListSection({
         <button
           type="button"
           onClick={onAdd}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 sm:min-h-0 sm:min-w-0 sm:justify-end"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 sm:min-h-0 sm:min-w-0 sm:justify-end"
         >
           <Plus className="size-3 shrink-0" /> Add
         </button>

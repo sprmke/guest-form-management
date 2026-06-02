@@ -21,6 +21,11 @@ export function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+/** Matches Tailwind `md` — below 768px uses compact mobile booking detail layout. */
+export function useIsBelowMd(): boolean {
+  return useMediaQuery('(max-width: 767px)');
+}
+
 /** Matches Tailwind `lg` — below 1024px is treated as mobile/tablet bookings layout. */
 export function useIsBelowLg(): boolean {
   return useMediaQuery('(max-width: 1023px)');

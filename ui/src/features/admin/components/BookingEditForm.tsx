@@ -773,15 +773,15 @@ function DocumentReplacer({
               />
             </div>
           ) : (
-            <div className="flex justify-center items-center w-14 h-14 bg-red-50 rounded-md shrink-0">
-              <FileText className="text-red-400 size-6" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-red-50 dark:bg-red-500/15">
+              <FileText className="size-6 text-red-400 dark:text-red-300" />
             </div>
           )}
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium truncate text-muted-foreground">
               Current file
             </p>
-            <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline">
+            <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline dark:text-blue-400">
               View
             </p>
           </div>

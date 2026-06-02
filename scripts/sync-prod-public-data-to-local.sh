@@ -211,7 +211,74 @@ run_dump() {
   fi
 }
 
+# Tables the restore step truncates — must exist locally (run `npm run db:reset` if behind).
+LOCAL_TRUNCATE_TABLES=(
+  guest_submissions_backup_20260501
+  gmail_listener_state
+  gmail_mail_integration
+  gmail_mail_oauth_state
+  app_settings
+  telegram_marketing_settings
+  telegram_staff_settings
+  telegram_admin_settings
+  guest_submissions
+)
+
+assert_local_schema_ready() {
+  local missing=()
+  local t
+  for t in "${LOCAL_TRUNCATE_TABLES[@]}"; do
+    if ! docker exec "$CONTAINER" psql -U postgres -d postgres -tAc \
+      "SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = '$t'" | grep -q 1; then
+      missing+=("$t")
+    fi
+  done
+  if ((${#missing[@]} > 0)); then
+    echo "ERROR: Local Postgres is missing table(s): ${missing[*]}"
+    echo "Your local DB is behind repo migrations. From repo root run:"
+    echo "  npm run db:reset"
+    echo "Then re-run this script."
+    exit 1
+  fi
+}
+
+warn_prod_db_url_misconfig() {
+  if [[ "$RESTORE_ONLY" == "1" ]]; then
+    return 0
+  fi
+  PROD_DB_URL="$PROD_DB_URL" python3 - <<'PY' || true
+import os, sys
+from urllib.parse import urlparse
+
+p = urlparse(os.environ["PROD_DB_URL"])
+h = (p.hostname or "").strip()
+port = p.port or 5432
+user = (p.username or "").strip()
+
+if h.startswith("db.") and h.endswith(".supabase.co"):
+    print(
+        "WARN: PROD_DB_URL uses direct host db.*.supabase.co (often IPv6-only / DNS failures in Docker).\n"
+        "      Use Dashboard → Connect → Session mode (pooler host, port 5432).",
+        file=sys.stderr,
+    )
+
+if ".pooler.supabase.com" in h and port == 6543:
+    print(
+        "WARN: PROD_DB_URL uses pooler port 6543 (Transaction mode). pg_dump needs Session mode (port 5432).\n"
+        "      In Dashboard → Connect, switch to Session and copy that URI.",
+        file=sys.stderr,
+    )
+
+if user == "postgres" and ".pooler.supabase.com" in h:
+    print(
+        "WARN: Pooler username should be postgres.[PROJECT_REF], not postgres alone.",
+        file=sys.stderr,
+    )
+PY
+}
+
 if [[ "$RESTORE_ONLY" != "1" ]]; then
+  warn_prod_db_url_misconfig
   echo "==> Dumping production public schema (data only) → $DUMP_FILE"
   DUMP_LOG="$(mktemp)"
   trap 'rm -f "$DUMP_LOG"' EXIT
@@ -222,6 +289,19 @@ if [[ "$RESTORE_ONLY" != "1" ]]; then
     run_dump "$IPV4_URL"
   else
     if ! run_dump "$PROD_DB_URL" 2> >(tee "$DUMP_LOG" >&2); then
+      if grep -qE 'could not translate host name|No address associated with hostname|Name or service not known' "$DUMP_LOG" 2>/dev/null; then
+        echo "ERROR: pg_dump could not resolve the database host (see log above)."
+        echo "  • Set PROD_DB_URL to the **Session pooler** URI (Dashboard → Connect), not db.*.supabase.co"
+        echo "  • Check VPN / DNS; try: dig +short YOUR_HOST A"
+        exit 1
+      fi
+      if grep -qE 'tenant/user|Tenant or user not found' "$DUMP_LOG" 2>/dev/null; then
+        echo "ERROR: Pooler does not recognize this project (tenant/user not found)."
+        echo "  • Dashboard → Connect → **Session** mode — copy the URI verbatim (port 5432, not Transaction 6543)"
+        echo "  • Host must match your project (aws-0 vs aws-1 and region come from the dashboard, not examples)"
+        echo "  • Username: postgres.<ref> where <ref> is Project Settings → General → Reference ID"
+        exit 1
+      fi
       if grep -qE 'Connection refused|Network is unreachable' "$DUMP_LOG" 2>/dev/null && command -v python3 >/dev/null 2>&1; then
         echo "==> Retrying dump with IPv4 hostaddr (IPv6/pg_dump in Docker often fails on some networks)..."
         IPV4_URL="$(prod_db_url_with_ipv4 "$PROD_DB_URL")"
@@ -238,9 +318,11 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER}$"; then
   exit 1
 fi
 
+assert_local_schema_ready
+
 echo "==> Truncating local public app tables (CASCADE also clears processed_emails → guest_submissions)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
-  "TRUNCATE TABLE guest_submissions_backup_20260501, gmail_listener_state, gmail_mail_integration, app_settings, telegram_marketing_settings, telegram_staff_settings, guest_submissions RESTART IDENTITY CASCADE;"
+  "TRUNCATE TABLE guest_submissions_backup_20260501, gmail_listener_state, gmail_mail_integration, gmail_mail_oauth_state, app_settings, telegram_marketing_settings, telegram_staff_settings, telegram_admin_settings, guest_submissions RESTART IDENTITY CASCADE;"
 
 echo "==> Drop CHECK constraints that prod rows may violate (legacy status, bad date order, etc.)"
 docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
