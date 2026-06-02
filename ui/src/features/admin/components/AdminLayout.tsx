@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ComponentType, ReactNode } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Bell,
   BookOpen,
@@ -52,29 +52,13 @@ type Props = {
 export function AdminLayout({ children }: Props) {
   const location = useLocation();
   const { email, name, signOut } = useAdminSession();
-  const [profileOpen, setProfileOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(readSidebarCollapsed);
-  const profileRef = useRef<HTMLDivElement>(null);
   const mobileDrawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const handler = (e: PointerEvent) => {
-      if (
-        profileRef.current &&
-        !profileRef.current.contains(e.target as Node)
-      ) {
-        setProfileOpen(false);
-      }
-    };
-    document.addEventListener('pointerdown', handler);
-    return () => document.removeEventListener('pointerdown', handler);
-  }, []);
-
-  useEffect(() => {
     setMobileMenuOpen(false);
-    setProfileOpen(false);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -107,17 +91,19 @@ export function AdminLayout({ children }: Props) {
       localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
       return next;
     });
-    setProfileOpen(false);
   };
 
   const SidebarContent = ({
     onClose,
     collapsed = false,
     showCollapseToggle = false,
+    menuOpen,
   }: {
     onClose?: () => void;
     collapsed?: boolean;
     showCollapseToggle?: boolean;
+    /** When false (mobile drawer closed), collapse the account menu. */
+    menuOpen?: boolean;
   }) => (
     <div className="flex flex-col h-full">
       <div
@@ -237,88 +223,15 @@ export function AdminLayout({ children }: Props) {
         </div>
       </nav>
 
-      <div
-        ref={profileRef}
-        className={cn(
-          'relative space-y-2 border-t shrink-0 border-separator',
-          collapsed ? 'p-2' : 'p-3',
-        )}
-      >
-        {!onClose && (
-          <div className={cn(collapsed ? 'flex justify-center px-0' : 'px-1')}>
-            <ThemeToggle
-              variant={collapsed ? 'icon' : 'segmented'}
-              className={collapsed ? undefined : 'w-full'}
-            />
-          </div>
-        )}
-
-        {profileOpen && (
-          <div
-            className={cn(
-              'absolute z-50 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-elevated-lg',
-              collapsed
-                ? 'bottom-0 left-full ml-2 w-[14rem]'
-                : 'bottom-full left-3 right-3 mb-1.5',
-            )}
-          >
-            <div className="border-b border-separator bg-muted/40 px-3.5 py-2.5">
-              <p className="font-semibold text-ui text-foreground">
-                My Account
-              </p>
-            </div>
-            <div className="p-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  void signOut();
-                  setProfileOpen(false);
-                }}
-                className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-ui font-semibold text-destructive transition-colors hover:bg-destructive/10"
-              >
-                <LogOut className="h-3.5 w-3.5 shrink-0" />
-                Sign out
-              </button>
-            </div>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setProfileOpen((o) => !o)}
-          aria-haspopup="true"
-          aria-expanded={profileOpen}
-          aria-label="Account menu"
-          className={cn(
-            'flex w-full min-h-[44px] items-center rounded-2xl transition-all duration-150 hover:bg-muted/70',
-            collapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-2.5 py-2',
-            profileOpen && 'bg-muted/70',
-          )}
-        >
-          <div className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-primary-foreground">
-            {initial}
-          </div>
-          {!collapsed && (
-            <>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="font-semibold leading-none capitalize truncate text-ui text-foreground">
-                  {displayName}
-                </p>
-                <p className="leading-none truncate text-caption">{email}</p>
-              </div>
-              {!collapsed && (
-                <ChevronLeft
-                  className={cn(
-                    'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
-                    profileOpen ? 'rotate-90' : '-rotate-90',
-                  )}
-                  aria-hidden
-                />
-              )}
-            </>
-          )}
-        </button>
-      </div>
+      <AdminProfileFooter
+        collapsed={collapsed}
+        showThemeToggle={!onClose}
+        displayName={displayName}
+        initial={initial}
+        email={email}
+        signOut={signOut}
+        menuOpen={menuOpen}
+      />
     </div>
   );
 
@@ -345,10 +258,7 @@ export function AdminLayout({ children }: Props) {
               ? 'opacity-100 pointer-events-auto'
               : 'opacity-0 pointer-events-none',
           )}
-          onClick={() => {
-            setMobileMenuOpen(false);
-            setProfileOpen(false);
-          }}
+          onClick={() => setMobileMenuOpen(false)}
           aria-hidden={!mobileMenuOpen}
         />
         <aside
@@ -363,10 +273,8 @@ export function AdminLayout({ children }: Props) {
           aria-hidden={!mobileMenuOpen}
         >
           <SidebarContent
-            onClose={() => {
-              setMobileMenuOpen(false);
-              setProfileOpen(false);
-            }}
+            menuOpen={mobileMenuOpen}
+            onClose={() => setMobileMenuOpen(false)}
           />
         </aside>
       </div>
@@ -400,6 +308,149 @@ export function AdminLayout({ children }: Props) {
           </div>
         </main>
       </div>
+    </div>
+  );
+}
+
+type AdminProfileFooterProps = {
+  collapsed: boolean;
+  showThemeToggle: boolean;
+  displayName: string;
+  initial: string;
+  email: string | null;
+  signOut: () => Promise<void>;
+  menuOpen?: boolean;
+};
+
+/**
+ * Account menu at the bottom of each sidebar instance. State is per-instance
+ * because desktop and mobile drawers both mount SidebarContent — a shared ref
+ * would point at the hidden drawer and break outside-click / sign-out.
+ */
+function AdminProfileFooter({
+  collapsed,
+  showThemeToggle,
+  displayName,
+  initial,
+  email,
+  signOut,
+  menuOpen,
+}: AdminProfileFooterProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const profileRef = useRef<HTMLDivElement>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: PointerEvent) => {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
+        setProfileOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, []);
+
+  useEffect(() => {
+    setProfileOpen(false);
+  }, [location.pathname, collapsed]);
+
+  useEffect(() => {
+    if (menuOpen === false) setProfileOpen(false);
+  }, [menuOpen]);
+
+  const handleSignOut = async () => {
+    setProfileOpen(false);
+    try {
+      await signOut();
+      navigate('/sign-in', { replace: true });
+    } catch (err) {
+      console.error('[AdminProfileFooter] signOut failed', err);
+    }
+  };
+
+  return (
+    <div
+      ref={profileRef}
+      className={cn(
+        'relative shrink-0 space-y-2 border-t border-separator',
+        collapsed ? 'p-2' : 'p-3',
+      )}
+    >
+      {showThemeToggle && (
+        <div className={cn(collapsed ? 'flex justify-center px-0' : 'px-1')}>
+          <ThemeToggle
+            variant={collapsed ? 'icon' : 'segmented'}
+            className={collapsed ? undefined : 'w-full'}
+          />
+        </div>
+      )}
+
+      {profileOpen && (
+        <div
+          className={cn(
+            'absolute z-50 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-elevated-lg',
+            collapsed
+              ? 'bottom-0 left-full ml-2 w-[14rem]'
+              : 'bottom-full left-3 right-3 mb-1.5',
+          )}
+          role="menu"
+        >
+          <div className="border-b border-separator bg-muted/40 px-3.5 py-2.5">
+            <p className="text-ui font-semibold text-foreground">My Account</p>
+          </div>
+          <div className="p-1.5">
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => void handleSignOut()}
+              className="flex w-full min-h-[44px] items-center gap-2.5 rounded-xl px-3 py-2 text-ui font-semibold text-destructive transition-colors hover:bg-destructive/10"
+            >
+              <LogOut className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Sign out
+            </button>
+          </div>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setProfileOpen((o) => !o)}
+        aria-haspopup="menu"
+        aria-expanded={profileOpen}
+        aria-label="Account menu"
+        className={cn(
+          'relative z-10 flex w-full min-h-[44px] items-center rounded-2xl transition-all duration-150 hover:bg-muted/70',
+          collapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-2.5 py-2',
+          profileOpen && 'bg-muted/70',
+        )}
+      >
+        <div className="gradient-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-black text-primary-foreground">
+          {initial}
+        </div>
+        {!collapsed && (
+          <>
+            <div className="min-w-0 flex-1 text-left">
+              <p className="truncate text-ui font-semibold capitalize leading-none text-foreground">
+                {displayName}
+              </p>
+              <p className="mt-0.5 truncate text-caption leading-none">
+                {email}
+              </p>
+            </div>
+            <ChevronLeft
+              className={cn(
+                'h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200',
+                profileOpen ? 'rotate-90' : '-rotate-90',
+              )}
+              aria-hidden
+            />
+          </>
+        )}
+      </button>
     </div>
   );
 }
