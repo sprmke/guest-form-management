@@ -10,16 +10,21 @@ type GuestFormStepNavigationProps = {
   currentStep: GuestFormStepId;
   isSubmitting: boolean;
   canProceed: boolean;
+  /** False briefly after landing on the last step so a Continue click cannot hit Submit. */
+  submitReady: boolean;
   onBack: () => void;
   onNext: () => void;
+  onSubmit: () => void;
 };
 
 export function GuestFormStepNavigation({
   currentStep,
   isSubmitting,
   canProceed,
+  submitReady,
   onBack,
   onNext,
+  onSubmit,
 }: GuestFormStepNavigationProps) {
   const isFirst = currentStep === 1;
   const isLast = currentStep === GUEST_FORM_STEP_COUNT;
@@ -47,9 +52,10 @@ export function GuestFormStepNavigation({
 
       {isLast ? (
         <Button
-          type="submit"
+          type="button"
           variant="success"
-          disabled={isSubmitting || !canProceed}
+          disabled={isSubmitting || !canProceed || !submitReady}
+          onClick={onSubmit}
           className="min-h-[44px] w-full shadow-md shadow-primary/15 sm:w-auto"
         >
           {isSubmitting ? (
@@ -70,6 +76,7 @@ export function GuestFormStepNavigation({
               : 'min-h-[44px] w-full shadow-md shadow-primary/15 sm:ml-auto sm:w-auto'
           }
           disabled={isSubmitting || !canProceed}
+          onMouseDown={(event) => event.preventDefault()}
           onClick={onNext}
         >
           Continue

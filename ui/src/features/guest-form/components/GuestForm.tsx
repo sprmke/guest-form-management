@@ -50,6 +50,7 @@ import {
   stringToDate,
   dateToString,
   normalizeDateString,
+  getManilaYmdToday,
   type BookedDateRange,
 } from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -68,6 +69,7 @@ import {
   parseBookingInfoFromClipboard,
 } from '@/utils/bookingFormatter';
 import { GuestFormParkingDates } from '@/features/guest-form/components/GuestFormParkingDates';
+import { GuestFormPaymentStepContent } from '@/features/guest-form/components/GuestFormPaymentStepContent';
 import { GuestFormStepper } from '@/features/guest-form/components/GuestFormStepper';
 import { GuestFormStepNavigation } from '@/features/guest-form/components/GuestFormStepNavigation';
 import {
@@ -104,6 +106,7 @@ export function GuestForm() {
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [sameAsFacebookName, setSameAsFacebookName] = useState(false);
   const [currentStep, setCurrentStep] = useState<GuestFormStepId>(1);
+  const [submitReady, setSubmitReady] = useState(false);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null);
@@ -298,6 +301,14 @@ export function GuestForm() {
             formData.petImage = petImageFile;
             setPetImagePreview(formData.petImageUrl);
           }
+        }
+
+        if (formData.petVaccinationDate) {
+          formData.petVaccinationDate = normalizeDateString(
+            formData.petVaccinationDate,
+          );
+        } else if (formData.hasPets) {
+          formData.petVaccinationDate = getManilaYmdToday();
         }
 
         // Reset form with the modified data
@@ -801,6 +812,21 @@ export function GuestForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
+  useEffect(() => {
+    if (currentStep !== GUEST_FORM_STEP_COUNT) {
+      setSubmitReady(false);
+      return;
+    }
+    setSubmitReady(false);
+    const timer = window.setTimeout(() => setSubmitReady(true), 400);
+    return () => window.clearTimeout(timer);
+  }, [currentStep]);
+
+  const handleSubmitGuestForm = () => {
+    if (!submitReady || isSubmitting || !canProceed) return;
+    void form.handleSubmit(onSubmit)();
+  };
+
   const activeStepConfig = GUEST_FORM_STEPS[currentStep - 1];
   const StepIcon = activeStepConfig.icon;
 
@@ -808,12 +834,10 @@ export function GuestForm() {
     <Form {...form}>
       <form
         onSubmit={(event) => {
+          event.preventDefault();
           if (currentStep < GUEST_FORM_STEP_COUNT) {
-            event.preventDefault();
             if (canProceed) void handleNextStep();
-            return;
           }
-          void form.handleSubmit(onSubmit)(event);
         }}
         className="relative space-y-6 p-4 sm:p-6 lg:p-8 guest-inner-enter"
       >
@@ -993,6 +1017,125 @@ export function GuestForm() {
                           field.onChange(toCapitalCase(e.target.value))
                         }
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="validId"
+                render={({ field: { onChange, value, ...field } }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Valid ID <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="guest-image-upload-dropzone group">
+                        {validIdImageLoadError ? (
+                          <div className="guest-image-upload-error">
+                            <p>
+                              Image could not be loaded (link may be outdated).
+                            </p>
+                            <p>Please re-upload your Valid ID below.</p>
+                            <label className="guest-image-upload-trigger">
+                              <Upload className="w-4 h-4" />
+                              Re-upload Image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
+                                className="hidden"
+                                {...field}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
+                                    onChange(file);
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file),
+                                    );
+                                    setValidIdImageLoadError(false);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        ) : validIdPreview || value ? (
+                          <>
+                            <img
+                              src={
+                                validIdPreview ||
+                                (value && URL.createObjectURL(value))
+                              }
+                              alt="Valid ID Preview"
+                              className="object-cover w-full h-full"
+                              onError={() => {
+                                setValidIdImageLoadError(true);
+                                setValidIdPreview(null);
+                              }}
+                            />
+                            <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
+                              <label className="guest-image-upload-replace">
+                                <Upload className="w-4 h-4" />
+                                Replace Image
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/jpg,image/png,image/heic"
+                                  className="hidden"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const validation =
+                                        validateImageFile(file);
+                                      if (!validation.valid) {
+                                        alert(validation.message);
+                                        return;
+                                      }
+                                      onChange(file);
+                                      setValidIdPreview(
+                                        URL.createObjectURL(file),
+                                      );
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex absolute inset-0 justify-center items-center">
+                            <label className="guest-image-upload-trigger">
+                              <Upload className="w-4 h-4" />
+                              Upload Image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
+                                className="hidden"
+                                {...field}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
+                                    onChange(file);
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file),
+                                    );
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1683,7 +1826,12 @@ export function GuestForm() {
                   />
                   <GuestFormOptionCard
                     selected={form.watch('hasPets')}
-                    onSelect={() => form.setValue('hasPets', true)}
+                    onSelect={() => {
+                      form.setValue('hasPets', true);
+                      if (!form.getValues('petVaccinationDate')?.trim()) {
+                        form.setValue('petVaccinationDate', getManilaYmdToday());
+                      }
+                    }}
                     title="Yes, I'm bringing a pet"
                   />
                 </div>
@@ -1825,7 +1973,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="guest-image-upload-dropzone group">
                             {petImagePreview || value ? (
                               <>
                                 <img
@@ -1837,7 +1985,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <label className="guest-image-upload-replace">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1866,7 +2014,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                                <label className="guest-image-upload-trigger">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -1912,7 +2060,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="guest-image-upload-dropzone group">
                             {petVaccinationPreview || value ? (
                               <>
                                 <img
@@ -1924,7 +2072,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <label className="guest-image-upload-replace">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1953,7 +2101,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                                <label className="guest-image-upload-trigger">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -1994,124 +2142,7 @@ export function GuestForm() {
             {currentStep === 5 && (
             <div className="space-y-4">
 
-              <FormField
-                control={form.control}
-                name="validId"
-                render={({ field: { onChange, value, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Valid ID <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                        {validIdImageLoadError ? (
-                          <div className="flex flex-col gap-2 justify-center items-center p-4 w-full h-full text-sm text-center text-amber-700 bg-amber-50">
-                            <p>
-                              Image could not be loaded (link may be outdated).
-                            </p>
-                            <p>Please re-upload your Valid ID below.</p>
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 cursor-pointer hover:text-green-600 hover:border-green-600">
-                              <Upload className="w-4 h-4" />
-                              Re-upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                    setValidIdImageLoadError(false);
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        ) : validIdPreview || value ? (
-                          <>
-                            <img
-                              src={
-                                validIdPreview ||
-                                (value && URL.createObjectURL(value))
-                              }
-                              alt="Valid ID Preview"
-                              className="object-cover w-full h-full"
-                              onError={() => {
-                                setValidIdImageLoadError(true);
-                                setValidIdPreview(null);
-                              }}
-                            />
-                            <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
-                                <Upload className="w-4 h-4" />
-                                Replace Image
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/jpg,image/png,image/heic"
-                                  className="hidden"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const validation =
-                                        validateImageFile(file);
-                                      if (!validation.valid) {
-                                        alert(validation.message);
-                                        return;
-                                      }
-                                      onChange(file);
-                                      setValidIdPreview(
-                                        URL.createObjectURL(file),
-                                      );
-                                    }
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
-                              <Upload className="w-4 h-4" />
-                              Upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <GuestFormPaymentStepContent form={form} />
 
               <FormField
                 control={form.control}
@@ -2123,7 +2154,7 @@ export function GuestForm() {
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                      <div className="guest-image-upload-dropzone group">
                         {paymentReceiptPreview || value ? (
                           <>
                             <img
@@ -2135,7 +2166,7 @@ export function GuestForm() {
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                              <label className="guest-image-upload-replace">
                                 <Upload className="w-4 h-4" />
                                 Replace Image
                                 <input
@@ -2164,7 +2195,7 @@ export function GuestForm() {
                           </>
                         ) : (
                           <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                            <label className="guest-image-upload-trigger">
                               <Upload className="w-4 h-4" />
                               Upload Image
                               <input
@@ -2393,8 +2424,10 @@ export function GuestForm() {
               currentStep={currentStep}
               isSubmitting={isSubmitting}
               canProceed={canProceed}
+              submitReady={submitReady}
               onBack={handleBackStep}
               onNext={handleNextStep}
+              onSubmit={handleSubmitGuestForm}
             />
             </div>
           </div>
