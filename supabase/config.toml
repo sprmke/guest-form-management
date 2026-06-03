@@ -107,6 +107,9 @@ verify_jwt = false
 [functions.get-form]
 verify_jwt = false
 
+[functions.get-guest-payment-info]
+verify_jwt = false
+
 [functions.get-sd-form]
 verify_jwt = false
 
