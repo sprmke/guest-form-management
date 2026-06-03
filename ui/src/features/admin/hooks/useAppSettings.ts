@@ -28,6 +28,8 @@ export type AppSettingsDto = {
   facebookReviewsUrl: string;
   emailLogoUrl: string;
   defaultParkingRateGuest: number;
+  gcashName: string;
+  gcashNumber: string;
   updatedAt: string | null;
   fieldSources: Record<
     | 'emailTo'
@@ -38,7 +40,9 @@ export type AppSettingsDto = {
     | 'publicGuestAppOrigin'
     | 'facebookReviewsUrl'
     | 'emailLogoUrl'
-    | 'defaultParkingRateGuest',
+    | 'defaultParkingRateGuest'
+    | 'gcashName'
+    | 'gcashNumber',
     AppSettingsFieldSource
   >;
   secretsStatus: AppSettingsSecretsStatus;
@@ -54,6 +58,8 @@ export type AppSettingsFormValues = {
   facebookReviewsUrl: string;
   emailLogoUrl: string;
   defaultParkingRateGuest: number;
+  gcashName: string;
+  gcashNumber: string;
 };
 
 /** DB/env store minutes; Settings UI uses hours (max 168 h = 10080 min). */
@@ -80,6 +86,8 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     facebookReviewsUrl: data.facebookReviewsUrl,
     emailLogoUrl: data.emailLogoUrl,
     defaultParkingRateGuest: data.defaultParkingRateGuest,
+    gcashName: data.gcashName,
+    gcashNumber: data.gcashNumber,
   };
 }
 
@@ -132,6 +140,8 @@ export function useUpdateAppSettings() {
           facebookReviewsUrl: values.facebookReviewsUrl,
           emailLogoUrl: values.emailLogoUrl,
           defaultParkingRateGuest: values.defaultParkingRateGuest,
+          gcashName: values.gcashName,
+          gcashNumber: values.gcashNumber,
         }),
       });
       const json = (await res.json()) as {

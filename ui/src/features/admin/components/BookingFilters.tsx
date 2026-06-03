@@ -159,7 +159,7 @@ export function BookingFilters({
     query.status.length +
     (query.hasPets !== null ? 1 : 0) +
     (query.needParking !== null ? 1 : 0) +
-    (query.showPreviousBookings ? 1 : 0) +
+    (query.showCompletedBookings ? 1 : 0) +
     (isDateActive ? 1 : 0);
 
   const isDirty = totalActiveFilters > 0;
@@ -429,12 +429,12 @@ function BookingFilterChips({
       <button
         type="button"
         role="switch"
-        aria-checked={query.showPreviousBookings}
-        aria-label="Show previous bookings with check-in before today"
-        title="By default, cancelled bookings and stays with check-in before today (Manila) are hidden. Turn on to include them."
+        aria-checked={query.showCompletedBookings}
+        aria-label="Show completed bookings"
+        title="By default, completed and cancelled bookings are hidden. Turn on to include completed stays (including past check-ins)."
         onClick={() =>
           onChange({
-            showPreviousBookings: !query.showPreviousBookings,
+            showCompletedBookings: !query.showCompletedBookings,
             page: 1,
           })
         }
@@ -446,13 +446,13 @@ function BookingFilterChips({
               ? 'gap-1.5 px-3 py-2.5'
               : 'min-w-[44px] justify-center px-2.5 py-2.5'),
           fillWidth && previousLabel === 'full' && 'gap-1.5 px-3 py-2.5',
-          query.showPreviousBookings
+          query.showCompletedBookings
             ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
             : 'border-sidebar-border bg-card text-sidebar-muted hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
         )}
       >
         <History className="size-4 shrink-0" aria-hidden />
-        {previousLabel === 'full' && 'Show previous bookings'}
+        {previousLabel === 'full' && 'Show completed bookings'}
       </button>
     </>
   );

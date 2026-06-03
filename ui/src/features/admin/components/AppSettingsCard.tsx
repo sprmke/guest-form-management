@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer } from 'lucide-react';
+import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
@@ -398,6 +398,50 @@ export function AppSettingsCard() {
                     set('defaultParkingRateGuest', Number(e.target.value) || 0)
                   }
                   className="h-10"
+                />
+              </Field>
+            </FieldGrid>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            id="payment"
+            title="Payment"
+            icon={<Wallet className="size-4" aria-hidden />}
+            defaultOpen={false}
+          >
+            <FieldGrid>
+              <Field
+                id="gcash-name"
+                label="GCash Name"
+                hint="Account name shown on the guest form Payment step."
+                source={sources?.gcashName}
+              >
+                <Input
+                  id="gcash-name"
+                  autoComplete="off"
+                  disabled={busy}
+                  value={draft.gcashName}
+                  onChange={(e) => set('gcashName', e.target.value)}
+                  className="h-10"
+                  placeholder="Arianna Perez"
+                />
+              </Field>
+              <Field
+                id="gcash-number"
+                label="GCash Number"
+                hint="Mobile number shown beside the GCash QR code on the guest form."
+                source={sources?.gcashNumber}
+              >
+                <Input
+                  id="gcash-number"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  disabled={busy}
+                  value={draft.gcashNumber}
+                  onChange={(e) => set('gcashNumber', e.target.value)}
+                  className="h-10"
+                  placeholder="0962 564 7541"
                 />
               </Field>
             </FieldGrid>

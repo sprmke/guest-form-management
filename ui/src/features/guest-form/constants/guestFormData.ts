@@ -2,6 +2,7 @@ import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import {
   getDefaultDates,
   formatDateToYYYYMMDD,
+  getManilaYmdToday,
   normalizeDateString,
 } from '@/utils/dates';
 
@@ -27,6 +28,7 @@ export const defaultFormValues: Partial<GuestFormData> = {
     parkingSameAsBookingDuration: true,
     hasPets: false,
     petType: 'Dog',
+    petVaccinationDate: getManilaYmdToday(),
   };
 
 /**
