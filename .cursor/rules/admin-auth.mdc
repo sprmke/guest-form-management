@@ -64,7 +64,7 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 - All admin edge functions (`list-bookings`, `transition-booking`, `sync-booking-integrations`, `upload-booking-asset`, `send-sd-refund-form-email`, `parking-broadcast-email`, `cancel-booking`, …) set **`verify_jwt = false`** in `supabase/config.toml` **and** must call `verifyAdminJwt(req)` as the first line of the handler.
   - **Why `false` in config.toml:** Kong's `verify_jwt = true` gate uses the legacy HS256 JWT secret and rejects newer ES256 auth tokens issued by Supabase local dev (≥ 1.x). Our `verifyAdminJwt` calls `supabase.auth.getUser(jwt)` which handles both algorithms correctly **and** also enforces the `ADMIN_ALLOWED_EMAILS` allow-list — making it a strictly stronger gate than Kong's check.
   - **The function body check IS the security boundary** — never skip `verifyAdminJwt(req)` on the assumption that Kong already validated the token.
-- The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
+- The public functions (`submit-form`, `get-form`, `get-booked-dates`, `get-guest-payment-info`, `get-sd-form`, `submit-sd-form`) keep `verify_jwt = false` — guests must still be able to hit them with only the anon key.
 
 ## 7. Env vars summary (new)
 
