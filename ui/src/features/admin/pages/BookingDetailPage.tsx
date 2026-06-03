@@ -380,7 +380,7 @@ function BookingHeader({
         className,
       )}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between md:gap-6">
         <div className="min-w-0 space-y-2">
           <h1 className="text-base font-bold leading-snug text-foreground sm:text-[17px]">
             {heading}
@@ -411,7 +411,7 @@ function BookingHeader({
             </span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:justify-end">
           {!editMode && (
             <PayParkingHeaderButton
               booking={booking}

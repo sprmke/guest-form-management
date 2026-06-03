@@ -64,7 +64,8 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
-    showPreviousBookings:
+    showCompletedBookings:
+      sp.get('showCompletedBookings') === 'true' ||
       sp.get('showPreviousBookings') === 'true' ||
       sp.get('hideStaleCompleted') === 'false',
     sort,
@@ -103,8 +104,8 @@ function writeQueryToParams(
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
   set(
-    'showPreviousBookings',
-    q.showPreviousBookings ? 'true' : null,
+    'showCompletedBookings',
+    q.showCompletedBookings ? 'true' : null,
   );
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
