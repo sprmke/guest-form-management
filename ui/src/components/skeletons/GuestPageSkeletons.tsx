@@ -93,24 +93,34 @@ export function GuestFormPageSkeleton({ title }: { title?: string }) {
 
 export function CalendarAvailabilitySkeleton() {
   return (
-    <div className="flex w-full justify-center" aria-busy="true" aria-label="Loading calendar">
-      <div className="availability-calendar w-full max-w-md overflow-hidden rounded-2xl border border-border/50 bg-card p-3 sm:p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <Skeleton className="h-5 w-32" />
-          <div className="flex gap-1">
-            <Skeleton className="size-8 rounded-lg" />
-            <Skeleton className="size-8 rounded-lg" />
+    <div className="flex w-full justify-center">
+      <div className="availability-calendar">
+        <div
+          className="calendar-availability calendar-availability-skeleton"
+          aria-busy="true"
+          aria-label="Loading calendar"
+        >
+          <div className="availability-calendar-skeleton-caption">
+            <Skeleton className="h-[1.1rem] w-[7.5rem] rounded-md lg:h-[1.375rem] lg:w-[8.5rem]" />
+            <div className="flex shrink-0 items-center gap-1">
+              <Skeleton className="size-8 rounded-lg" />
+              <Skeleton className="size-8 rounded-lg" />
+            </div>
           </div>
-        </div>
-        <div className="mb-2 grid grid-cols-7 gap-1">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <Skeleton key={i} className="mx-auto h-3 w-6 rounded-full" />
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 35 }).map((_, i) => (
-            <Skeleton key={i} className="aspect-square rounded-lg" />
-          ))}
+
+          <div className="availability-calendar-skeleton-grid mb-3">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="availability-calendar-skeleton-weekday">
+                <Skeleton className="h-3 w-7 rounded-full" />
+              </div>
+            ))}
+          </div>
+
+          <div className="availability-calendar-skeleton-grid">
+            {Array.from({ length: 42 }).map((_, i) => (
+              <Skeleton key={i} className="availability-calendar-skeleton-day" />
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -119,29 +129,15 @@ export function CalendarAvailabilitySkeleton() {
 
 export function CalendarPageSkeleton() {
   return (
-    <div className="relative min-w-0 space-y-6 p-4 sm:space-y-8 sm:p-6 lg:p-8">
+    <div
+      className="relative min-w-0 space-y-6 p-4 sm:space-y-8 sm:p-6 lg:p-8"
+      aria-busy="true"
+      aria-label="Loading availability"
+    >
       <KameFormBrandHeader title="Check Availability" />
       <CalendarAvailabilitySkeleton />
-      <div className="surface-muted rounded-2xl border border-primary/15 p-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-10 rounded-2xl" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-3 w-14" />
-                <Skeleton className="h-4 w-28" />
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-10 rounded-2xl" />
-              <div className="space-y-1.5">
-                <Skeleton className="h-3 w-14" />
-                <Skeleton className="h-4 w-28" />
-              </div>
-            </div>
-          </div>
-          <Skeleton className="h-11 w-full rounded-2xl sm:w-40" />
-        </div>
+      <div>
+        <Skeleton className="h-12 w-full rounded-2xl" />
       </div>
     </div>
   );

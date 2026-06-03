@@ -90,6 +90,7 @@ import {
 } from "@/features/admin/components/PayParkingModal";
 import { buildPayParkingPath } from "@/features/pay-parking/lib/api";
 import { hasPayParkingAvailed } from "@/features/pay-parking/lib/payParkingHelpers";
+import { isStaycationVoucher } from "@/features/sd-form/lib/voucher";
 import {
   Collapsible,
   CollapsibleContent,
@@ -1164,7 +1165,11 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
               {code}
             </p>
             <p className="mt-0.5 text-caption text-emerald-900/70 dark:text-emerald-200/80">
-              {amount != null ? formatMoney(amount) : "—"} off the next booking
+              {isStaycationVoucher({ code })
+                ? 'Free staycation on the next booking'
+                : amount != null
+                  ? `${formatMoney(amount)} off the next booking`
+                  : '—'}
               {awardedAt && (
                 <>
                   {" · "}

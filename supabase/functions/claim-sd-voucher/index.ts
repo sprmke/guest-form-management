@@ -3,7 +3,7 @@
  *
  * Called when the guest taps "Claim it!" on /sd-form (after the
  * Facebook-review link is opened). The handler ignores the optional client
- * `code` and rolls server-side from VOUCHER_WIN_POOL so the outcome is not
+ * `code` and rolls server-side from `VOUCHER_WIN_WEIGHTS` so the outcome is not
  * tamperable. If a voucher is already on the booking, that one is returned
  * instead of rolling again.
  *

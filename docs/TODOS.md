@@ -114,7 +114,7 @@ Todos
 - ✅ Improve the mobile responsiveness and look of email templates on mobile
 - ✅ Support 'Mark as incomplete' to sub booking status?
 - ✅ Update SD refund form UI (stepper, no feedback field, Facebook-first then Continue, optional `guestFeedback` on API)
-- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
+- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_WEIGHTS` (`KAME-100`/`150`/`200` **5%**; `KAME-250`/`300`/`350` **~25%**; `KAME-400`/`450` **3%**; `KAME-500` **2%**; `KAME-1000` **1%**; **`KAME-STAY` free staycation** **0.5%**) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
 - ✅ Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
 - ✅ Update ready for check-in email to add generated Gcash QR or link for the total balance payment upon check-in
 - ✅ Update booking flow when guest is coming from Airbnb.
@@ -179,6 +179,6 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
   - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
 - If we received a same day booking, notify on Staff telegram group — ✅ instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
 - Make the QR code image configurable via settings. Update public guest form and check-in email to use this QR image
-- Improve SD form to include chance to win free staycation if you leave a review
+- ✅ Improve SD form to include chance to win free staycation if you leave a review (`KAME-STAY` at **0.5%** via `VOUCHER_WIN_WEIGHTS`; `VoucherReveal` copy + slot reel)
 - Support same-day check-in
 - Add password or faceid when accessing settings page?

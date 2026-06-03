@@ -889,6 +889,42 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
   margin-bottom: 0.75rem;
 }
 
+/* Check Availability skeleton — mirrors .calendar-availability grid sizing */
+.availability-calendar .calendar-availability-skeleton {
+  pointer-events: none;
+}
+
+.availability-calendar-skeleton-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid hsl(168 65% 40% / 0.22);
+  margin-bottom: 0.75rem;
+}
+
+.availability-calendar-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(7, var(--avail-cal-cell));
+  width: calc(7 * var(--avail-cal-cell));
+  min-width: 0;
+}
+
+.availability-calendar-skeleton-weekday {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--avail-cal-cell);
+  height: calc(var(--avail-cal-cell) * 0.45);
+}
+
+.availability-calendar-skeleton-day {
+  width: var(--avail-cal-cell);
+  height: var(--avail-cal-cell);
+  border-radius: 0.75rem;
+}
+
 .availability-calendar .rdp-weekday {
   width: var(--avail-cal-cell);
   max-width: var(--avail-cal-cell);
