@@ -14,6 +14,9 @@ import {
   validateOptionalEmail,
   validateOptionalOrigin,
   validateOptionalUrl,
+  validateGcashName,
+  validateGcashNumber,
+  formatGcashNumberDisplay,
 } from '../_shared/appSettings.ts';
 
 serve(async (req) => {
@@ -119,6 +122,26 @@ serve(async (req) => {
           return jsonError(req, 400, 'Default parking rate must be greater than 0');
         }
         patch.default_parking_rate_guest = Math.round(n * 100) / 100;
+      }
+      if (typeof body.gcashName === 'string') {
+        const trimmed = body.gcashName.trim();
+        if (trimmed) {
+          const err = validateGcashName(trimmed);
+          if (err) return jsonError(req, 400, err);
+          patch.gcash_name = trimmed;
+        } else {
+          patch.gcash_name = null;
+        }
+      }
+      if (typeof body.gcashNumber === 'string') {
+        const trimmed = body.gcashNumber.trim();
+        if (trimmed) {
+          const err = validateGcashNumber(trimmed);
+          if (err) return jsonError(req, 400, err);
+          patch.gcash_number = formatGcashNumberDisplay(trimmed);
+        } else {
+          patch.gcash_number = null;
+        }
       }
 
       if (Object.keys(patch).length === 0) {

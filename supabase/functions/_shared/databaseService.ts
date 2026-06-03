@@ -478,8 +478,8 @@ export class DatabaseService {
       | 'created_at:desc';
     page?: number;
     limit?: number;
-    /** When true, include rows whose check_in_date < today (Manila), any status. */
-    showPreviousBookings?: boolean;
+    /** When true, include COMPLETED rows (cancelled stays hidden unless status filter). */
+    showCompletedBookings?: boolean;
   }) {
     const {
       q = '',
@@ -491,7 +491,7 @@ export class DatabaseService {
       sort = 'status_priority:asc',
       page = 1,
       limit = 25,
-      showPreviousBookings = false,
+      showCompletedBookings = false,
     } = params;
 
     const todayManila = manilaTodayIso();
@@ -564,12 +564,10 @@ export class DatabaseService {
       );
     }
 
-    // Default list: hide cancelled + check-in before today (Manila)
-    if (!showPreviousBookings) {
-      rows = rows.filter((r) =>
-        matchesDefaultBookingsListVisibility(r, todayManila)
-      );
-    }
+    // Default list: hide cancelled + completed unless toggle is on
+    rows = rows.filter((r) =>
+      matchesDefaultBookingsListVisibility(r, showCompletedBookings),
+    );
 
     const listSort = sort as BookingsListSort;
     rows.sort((a, b) =>
@@ -797,7 +795,9 @@ export class DatabaseService {
 
     if (error) {
       console.error('updateAppSettings:', error);
-      throw new Error('Failed to update app settings');
+      throw new Error(
+        `Failed to update app settings: ${error.message ?? 'unknown error'}`,
+      );
     }
     return data;
   }

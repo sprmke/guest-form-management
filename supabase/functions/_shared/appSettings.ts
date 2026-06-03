@@ -18,7 +18,12 @@ export type AppSettingsRow = {
   facebook_reviews_url: string | null;
   email_logo_url: string | null;
   default_parking_rate_guest: number | null;
+  gcash_name: string | null;
+  gcash_number: string | null;
 };
+
+export const DEFAULT_GCASH_NAME = 'Arianna Perez';
+export const DEFAULT_GCASH_NUMBER = '0962 564 7541';
 
 export type AppSettingsResolved = {
   emailTo: string;
@@ -30,6 +35,13 @@ export type AppSettingsResolved = {
   facebookReviewsUrl: string;
   emailLogoUrl: string;
   defaultParkingRateGuest: number;
+  gcashName: string;
+  gcashNumber: string;
+};
+
+export type GuestPaymentInfoDto = {
+  gcashName: string;
+  gcashNumber: string;
 };
 
 export type AppSettingsFieldSource = 'db' | 'env' | 'default';
@@ -172,6 +184,8 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
   const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
   const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
+  const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
+  const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
 
   return {
     emailTo: emailTo.value,
@@ -183,6 +197,18 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
     facebookReviewsUrl: facebook.value || 'https://www.facebook.com',
     emailLogoUrl: logo.value || DEFAULT_EMAIL_LOGO_URL,
     defaultParkingRateGuest: parkingRate.value,
+    gcashName: gcashName.value || DEFAULT_GCASH_NAME,
+    gcashNumber: formatGcashNumberDisplay(
+      gcashNumber.value || DEFAULT_GCASH_NUMBER,
+    ),
+  };
+}
+
+export async function serializeGuestPaymentInfo(): Promise<GuestPaymentInfoDto> {
+  const s = await resolveAppSettings();
+  return {
+    gcashName: s.gcashName,
+    gcashNumber: s.gcashNumber,
   };
 }
 
@@ -217,6 +243,8 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
   const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
   const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
+  const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
+  const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
 
   const listSource = (
     items: string[],
@@ -260,6 +288,18 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
       ),
       emailLogoUrl: urlSource(logo, DEFAULT_EMAIL_LOGO_URL, resolved.emailLogoUrl),
       defaultParkingRateGuest: parkingRate.source,
+      gcashName:
+        gcashName.source === 'db'
+          ? 'db'
+          : trimOrEmpty(Deno.env.get('GCASH_NAME'))
+            ? 'env'
+            : 'default',
+      gcashNumber:
+        gcashNumber.source === 'db'
+          ? 'db'
+          : trimOrEmpty(Deno.env.get('GCASH_NUMBER'))
+            ? 'env'
+            : 'default',
     },
     secretsStatus: {
       resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),
@@ -321,6 +361,37 @@ export function validateOptionalOrigin(raw: string): string | null {
     }
   } catch {
     return 'Invalid guest app origin URL';
+  }
+  return null;
+}
+
+export function formatGcashNumberDisplay(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('09')) {
+    return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
+  }
+  if (digits.length === 10 && digits.startsWith('9')) {
+    return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  }
+  return raw.trim();
+}
+
+export function validateGcashName(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (v.length > 120) return 'GCash name is too long (max 120 characters)';
+  return null;
+}
+
+export function validateGcashNumber(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  const digits = v.replace(/\D/g, '');
+  if (digits.length < 10 || digits.length > 11) {
+    return 'GCash number must be 10–11 digits';
+  }
+  if (!digits.startsWith('09') && !(digits.length === 10 && digits.startsWith('9'))) {
+    return 'GCash number should start with 09';
   }
   return null;
 }
