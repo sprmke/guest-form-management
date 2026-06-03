@@ -7,7 +7,7 @@
  * - Date-range filter on check_in_date; PENDING_REVIEW always included (any month)
  * - has_pets / need_parking boolean filters
  * - Default sort: status_priority ASC (workflow order), then check-in proximity for review/docs
- * - Default filter: hide cancelled + check-in before today; `show_previous_bookings=true` to include
+ * - Default filter: hide cancelled + completed; `show_completed_bookings=true` to include completed
  *
  * Trigger:  GET /functions/v1/list-bookings
  * Auth:     verify_jwt = true (admin only)
@@ -38,8 +38,9 @@ serve(async (req) => {
       p.get('has_pets') === 'true' ? true : p.get('has_pets') === 'false' ? false : null;
     const needParking =
       p.get('need_parking') === 'true' ? true : p.get('need_parking') === 'false' ? false : null;
-    const showPreviousBookings =
-      p.get('show_previous_bookings') === 'true' ||
+    const showCompletedBookings =
+      p.get('show_completed_bookings') === 'true' ||
+      p.get('show_previous_bookings') === 'true' || // legacy alias
       p.get('hide_stale_completed') === 'false'; // legacy alias
     const sort = (p.get('sort') ?? 'status_priority:asc') as
       | 'status_priority:asc'
@@ -60,7 +61,7 @@ serve(async (req) => {
       sort,
       page,
       limit,
-      showPreviousBookings,
+      showCompletedBookings,
     });
 
     return new Response(
