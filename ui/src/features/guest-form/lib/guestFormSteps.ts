@@ -27,7 +27,7 @@ export const GUEST_FORM_STEPS: GuestFormStepConfig[] = [
     id: 1,
     short: 'Guest',
     label: 'Primary Guest Info',
-    hint: 'How we can reach you',
+    hint: 'How we can reach you & valid ID',
     icon: User,
   },
   {
@@ -53,9 +53,9 @@ export const GUEST_FORM_STEPS: GuestFormStepConfig[] = [
   },
   {
     id: 5,
-    short: 'Docs',
-    label: 'Required documents',
-    hint: 'Downpayment receipt & valid ID',
+    short: 'Payment',
+    label: 'Payment',
+    hint: 'Downpayment receipt',
     icon: FileText,
   },
 ];
@@ -83,6 +83,7 @@ export function getFieldsForGuestFormStep(
         'guestEmail',
         'guestPhoneNumber',
         'guestAddress',
+        'validId',
       ];
     case 2: {
       const fields: (keyof GuestFormData)[] = [
@@ -135,7 +136,7 @@ export function getFieldsForGuestFormStep(
       ];
     }
     case 5:
-      return ['paymentReceipt', 'validId'];
+      return ['paymentReceipt'];
     default:
       return [];
   }

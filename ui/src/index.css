@@ -755,6 +755,23 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
   @apply relative w-full h-48 border-2 border-dashed border-input rounded-lg flex flex-col items-center justify-center gap-3 bg-muted/20 hover:bg-muted/40 hover:border-primary/50 transition-all duration-200 cursor-pointer;
 }
 
+/* Guest form — image upload dropzones (pet, valid ID, receipt) */
+.guest-image-upload-dropzone {
+  @apply relative aspect-[3/2] max-h-[250px] w-full overflow-hidden rounded-lg border border-border bg-muted/40 transition-colors md:max-h-[300px] dark:bg-muted/20;
+}
+
+.guest-image-upload-trigger {
+  @apply flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10 dark:border-primary/50 dark:hover:bg-primary/15;
+}
+
+.guest-image-upload-replace {
+  @apply flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:brightness-[1.03];
+}
+
+.guest-image-upload-error {
+  @apply flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-amber-900 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-200;
+}
+
 /* Calendar Availability Page Styles — square 7×7 day grid at every breakpoint */
 .availability-calendar {
   --avail-cal-pad-x: 0.75rem;
