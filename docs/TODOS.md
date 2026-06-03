@@ -3,7 +3,7 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 - ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `processed_emails`, `gmail_listener_state`, 4 new storage buckets; **`20260501000010`** adds request PDF URL columns. No Edge/UI behavior change from SQL alone. **Apply order:** **`docs/MIGRATION_RUNBOOK.md` §1** (`20260428120000_*` runs before the May 1 batch). Runbook: `docs/MIGRATION_RUNBOOK.md`. (The `is_test_booking` column was added in `20260501000004` and **removed** in `20260608120000_drop_is_test_booking.sql`.)
 - ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, 25/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
 - ✅ **Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.** Migration `20260502000000_widen_status_enum.sql` backfills `booked/canceled` rows to new enum, adds CHECK constraint + `DEFAULT 'PENDING_REVIEW'`. Created `_shared/statusMachine.ts` (server) + `ui/src/features/admin/lib/workflow.ts` (client mirror) with full transition graph, calendar meta, and sub-form requirements. Updated `get-booked-dates` and `databaseService.checkOverlappingBookings` to filter on `CANCELLED` only.
-  - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` uses workflow priority sort; stays with check-in before today (Manila) hidden by default for **any status**; **Show previous bookings** sends `show_previous_bookings=true`.
+  - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` uses workflow priority sort; **completed** stays hidden by default (cancelled too); **Show completed bookings** sends `show_completed_bookings=true`. Active past check-ins (checkout, SD refund, etc.) stay visible without the toggle.
   - **Not in Phase 1–2:** `/bookings/:bookingId` detail + workflow panel — Phase 3.
 - ✅ **Phase 3 — `transition-booking` endpoint + admin transition UI + new guest emails.**
   - Created `_shared/workflowOrchestrator.ts` — central side-effect fan-out for all transitions (DB, Calendar, Sheets, emails). All callers (UI, future cron, future Gmail listener) go through it.
@@ -178,3 +178,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Support slack and telegram notifications for important booking events
   - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
 - If we received a same day booking, notify on Staff telegram group — ✅ instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
+- Make the QR code image configurable via settings. Update public guest form and check-in email to use this QR image
+- Improve SD form to include chance to win free staycation if you leave a review
+- Support same-day check-in
+- Add password or faceid when accessing settings page?
