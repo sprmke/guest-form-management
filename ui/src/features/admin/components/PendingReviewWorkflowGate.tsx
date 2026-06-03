@@ -67,13 +67,13 @@ export function PendingReviewWorkflowGate({ booking, children }: Props) {
   const checkboxId = `pending-review-workflow-gate-${booking.id}`;
 
   return (
-    <div className="p-4 rounded-xl border border-amber-200 shadow-sm bg-amber-50/60 sm:p-5">
-      <p className="text-[10.5px] font-bold uppercase tracking-widest text-amber-800/80">
+    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm dark:border-amber-500/30 dark:bg-amber-500/10 sm:p-5">
+      <p className="text-[10.5px] font-bold uppercase tracking-widest text-amber-800/80 dark:text-amber-300">
         Pending review
       </p>
       <label
         htmlFor={checkboxId}
-        className="mt-1 flex items-start gap-3 min-h-[44px] cursor-pointer rounded-lg px-1 -mx-1 py-2 hover:bg-amber-100/50"
+        className="mt-1 flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg px-1 py-2 -mx-1 hover:bg-amber-100/50 dark:hover:bg-amber-500/10"
       >
         <input
           id={checkboxId}
@@ -81,9 +81,9 @@ export function PendingReviewWorkflowGate({ booking, children }: Props) {
           onChange={(e) => {
             if (e.target.checked) onConfirm();
           }}
-          className="mt-1 text-blue-600 rounded size-4 shrink-0 border-slate-300 focus:ring-blue-500/40"
+          className="mt-1 size-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500/40 dark:border-amber-400/40"
         />
-        <span className="text-xs text-slate-800">
+        <span className="text-xs leading-snug text-amber-950 dark:text-amber-100">
           I have reviewed the guest's booking submission and confirm that all
           provided details, attached documents and receipts are accurate and
           valid.

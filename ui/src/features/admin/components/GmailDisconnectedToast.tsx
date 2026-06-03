@@ -43,7 +43,7 @@ export function showGmailDisconnectedToast(openSettings: () => void) {
             <summary className="font-medium text-foreground/85 outline-none rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card">
               Using legacy server tokens instead?
             </summary>
-            <p className="mt-2 pt-2 border-t border-border/60 leading-relaxed">
+            <p className="mt-2 pt-2 border-t border-separator leading-relaxed">
               If this deployment only uses the CLI flow (
               <code className="rounded bg-muted px-1 py-px font-mono text-[11px] text-foreground/90">
                 npm run gmail-auth

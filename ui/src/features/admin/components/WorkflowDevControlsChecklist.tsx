@@ -19,8 +19,8 @@ export function WorkflowDevControlsChecklist({
   if (controls.length === 0) return null;
 
   return (
-    <div className="mt-3 max-h-[40vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/80">
-      <p className="sticky top-0 z-[1] border-b border-slate-200 bg-slate-50/95 px-3 py-2 text-[10.5px] font-bold uppercase tracking-wider text-slate-500">
+    <div className="mt-3 max-h-[40vh] overflow-y-auto rounded-lg border border-border bg-muted/50/80">
+      <p className="sticky top-0 z-[1] border-b border-separator bg-muted/50/95 px-3 py-2 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground">
         Side effects
       </p>
       <div className="space-y-0.5 p-1.5">
@@ -36,26 +36,26 @@ export function WorkflowDevControlsChecklist({
                 'flex min-h-[44px] w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left transition-colors',
                 disabled
                   ? 'cursor-not-allowed opacity-50'
-                  : 'hover:bg-white',
+                  : 'hover:bg-card',
               )}
             >
               <span className="mt-0.5 shrink-0">
                 {checked ? (
                   <CheckSquare className="size-4 text-blue-600" />
                 ) : (
-                  <Square className="size-4 text-slate-300" />
+                  <Square className="size-4 text-muted-foreground/50" />
                 )}
               </span>
               <span className="flex min-w-0 flex-col">
                 <span
                   className={cn(
                     'text-xs font-medium leading-snug',
-                    checked ? 'text-slate-800' : 'text-slate-600',
+                    checked ? 'text-foreground' : 'text-muted-foreground',
                   )}
                 >
                   {label}
                 </span>
-                <span className="text-[10.5px] leading-tight text-slate-400">
+                <span className="text-[10.5px] leading-tight text-muted-foreground">
                   {description}
                 </span>
               </span>

@@ -15,12 +15,14 @@ import { formatTimeForDisplay, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } f
 export type TelegramStaffSettings = {
   id: number;
   enabled: boolean;
+  notify_on_same_day_checkin: boolean;
   daily_summary_template: string;
+  same_day_checkin_template: string;
   daily_summary_time_manila: unknown;
   updated_at: string;
 };
 
-const APP_BASE_URL = 'https://kamehomes.space';
+export type StaffManilaTimeSlot = { hour: number; minute: number };
 
 export const STAFF_KNOWN_PLACEHOLDERS = [
   'check_in_date',
@@ -40,12 +42,73 @@ export const STAFF_KNOWN_PLACEHOLDERS = [
   'special_requests',
   'total_guest_balance',
   'next_bookings',
-  'booking_link',
 ] as const;
 
 export type StaffKnownPlaceholder = (typeof STAFF_KNOWN_PLACEHOLDERS)[number];
 
 type BookingRow = Record<string, unknown>;
+
+const MANILA_TZ = 'Asia/Manila';
+
+function manilaClockParts(now = new Date()): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: MANILA_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  return { hour, minute };
+}
+
+function isManilaTimeAtOrAfter(
+  targetHour: number,
+  targetMinute: number,
+  now = new Date(),
+): boolean {
+  const { hour, minute } = manilaClockParts(now);
+  return hour > targetHour || (hour === targetHour && minute >= targetMinute);
+}
+
+export function parseStaffSlot(raw: unknown): StaffManilaTimeSlot {
+  if (raw && typeof raw === 'object' && raw !== null) {
+    const o = raw as Record<string, unknown>;
+    const h = typeof o.hour === 'number' ? o.hour : 8;
+    const m = typeof o.minute === 'number' ? o.minute : 0;
+    return {
+      hour: Math.max(0, Math.min(23, Math.round(h))),
+      minute: Math.max(0, Math.min(59, Math.round(m))),
+    };
+  }
+  return { hour: 8, minute: 0 };
+}
+
+export function formatStaffManilaTimeLabel(slot: StaffManilaTimeSlot): string {
+  const d = new Date(2000, 0, 1, slot.hour, slot.minute);
+  return d.toLocaleTimeString('en-PH', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function isCancelledStatus(status: unknown): boolean {
+  const s = String(status ?? '');
+  return s === 'CANCELLED' || s === 'canceled';
+}
+
+/** Check-in is today (Manila) and submission time is at/after the daily summary time. */
+export function bookingQualifiesForSameDayCheckinStaffAlert(
+  booking: BookingRow,
+  cutoff: StaffManilaTimeSlot,
+  now = new Date(),
+): boolean {
+  if (isCancelledStatus(booking.status)) return false;
+  const ciYmd = normalizeBookingDateToYmd(String(booking.check_in_date ?? ''));
+  if (!ciYmd || ciYmd !== manilaTodayYmd()) return false;
+  return isManilaTimeAtOrAfter(cutoff.hour, cutoff.minute, now);
+}
 
 function toMoneyNumber(value: unknown): number {
   if (value === null || value === undefined || value === '') return 0;
@@ -153,7 +216,6 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
     pet_flag: hasPets ? '🐶 Has pets' : '',
     special_requests: specialReqs || 'None',
     total_guest_balance: formatCurrency(balance),
-    booking_link: `View Booking Details: ${APP_BASE_URL}/bookings/${booking.id}`,
   };
 }
 
@@ -194,6 +256,80 @@ function applyPlaceholders(template: string, vars: Record<string, string>): stri
     out = out.split(`{{${k}}}`).join(v);
   }
   return out;
+}
+
+/** Legacy staff templates included admin booking URLs; strip on send/save. */
+export function sanitizeStaffDailySummaryTemplate(template: string): string {
+  let out = template;
+  out = out.replace(/\r?\n*View Booking Details:\s*\r?\n*/gi, '\n');
+  out = out.replace(/\r?\n*\{\{booking_link\}\}\s*\r?\n*/g, '\n');
+  out = out.replace(/\r?\n*https?:\/\/[^\s]*\/bookings\/[0-9a-f-]+\s*\r?\n*/gi, '\n');
+  out = out.replace(/\n{3,}/g, '\n\n');
+  return out.trim();
+}
+
+export async function tryClaimStaffNotification(
+  bookingId: string,
+  notificationType: 'same_day_checkin',
+): Promise<boolean> {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+  const { error } = await supabase.from('telegram_staff_notification_log').insert({
+    booking_id: bookingId,
+    notification_type: notificationType,
+  });
+  if (error?.code === '23505') return false;
+  if (error) {
+    console.error('[telegram-staff] claim notification:', error);
+    return false;
+  }
+  return true;
+}
+
+export type StaffNotifySkip =
+  | 'disabled'
+  | 'notify_off'
+  | 'missing_env'
+  | 'send_failed'
+  | 'no_settings'
+  | 'not_qualified'
+  | 'already_sent';
+
+/** Instant one-time alert when a same-day check-in is received after the daily summary time. */
+export async function notifyTelegramStaffSameDayCheckIn(
+  booking: BookingRow,
+  opts?: { force?: boolean },
+): Promise<{ sent: boolean; skip?: StaffNotifySkip; telegramError?: string }> {
+  const settings = await loadStaffSettings();
+  if (!settings) return { sent: false, skip: 'no_settings' };
+  if (!opts?.force && !settings.notify_on_same_day_checkin) {
+    return { sent: false, skip: 'notify_off' };
+  }
+  const cutoff = parseStaffSlot(settings.daily_summary_time_manila);
+  if (!opts?.force && !bookingQualifiesForSameDayCheckinStaffAlert(booking, cutoff)) {
+    return { sent: false, skip: 'not_qualified' };
+  }
+  const creds = resolveStaffTelegramCredentials();
+  if (!creds.ok) return { sent: false, skip: 'missing_env', telegramError: creds.error };
+
+  const bookingId = String(booking.id ?? '').trim();
+  if (!bookingId) return { sent: false, skip: 'not_qualified' };
+
+  if (!opts?.force && !(await tryClaimStaffNotification(bookingId, 'same_day_checkin'))) {
+    return { sent: false, skip: 'already_sent' };
+  }
+
+  const text = applyPlaceholders(
+    sanitizeStaffDailySummaryTemplate(settings.same_day_checkin_template),
+    buildBookingPlaceholders(booking),
+  );
+  const r = await sendStaffTelegramMessage(text.slice(0, 4096));
+  if (!r.ok) {
+    return { sent: false, skip: 'send_failed', telegramError: r.error };
+  }
+  return { sent: true };
 }
 
 export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {
@@ -333,6 +469,45 @@ export type StaffDraftPreviewResult = {
   error?: string;
 };
 
+/** Admin preview: fill placeholders from a qualifying same-day check-in booking. */
+export async function sendStaffSameDayCheckinDraftPreview(
+  template: string,
+): Promise<StaffDraftPreviewResult> {
+  const trimmed = template.trim();
+  if (!trimmed) return { sent: false, error: 'empty_message' };
+
+  const settings = await loadStaffSettings();
+  if (!settings) return { sent: false, error: 'no_settings_row' };
+
+  const todayYmd = manilaTodayYmd();
+  const todayBookings = await queryTodayBookings(todayYmd);
+  const cutoff = parseStaffSlot(settings.daily_summary_time_manila);
+  const booking = todayBookings.find((b) =>
+    bookingQualifiesForSameDayCheckinStaffAlert(b, cutoff),
+  );
+  if (!booking) {
+    return {
+      sent: false,
+      error:
+        `No same-day check-in booking qualifies for preview (needs check-in today after ${formatStaffManilaTimeLabel(cutoff)} Manila, or use test send with force).`,
+    };
+  }
+
+  const filled = applyPlaceholders(
+    sanitizeStaffDailySummaryTemplate(trimmed),
+    buildBookingPlaceholders(booking),
+  );
+  const r = await sendStaffAdminPreview(filled);
+  if (!r.ok) return { sent: false, error: r.error ?? 'send_failed' };
+
+  return {
+    sent: true,
+    messageCharCount: filled.length,
+    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
+    todayBookingCount: todayBookings.length,
+  };
+}
+
 /** Admin preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
 export async function sendStaffDraftPreview(template: string): Promise<StaffDraftPreviewResult> {
   const trimmed = template.trim();
@@ -354,7 +529,7 @@ export async function sendStaffDraftPreview(template: string): Promise<StaffDraf
   const vars = buildBookingPlaceholders(booking);
   vars.next_bookings = nextBookingsText;
 
-  const filled = applyPlaceholders(trimmed, vars);
+  const filled = applyPlaceholders(sanitizeStaffDailySummaryTemplate(trimmed), vars);
   const unresolved = filled.match(/\{\{[^}]+\}\}/g);
   if (unresolved?.length) {
     console.warn('[telegram-staff] draft preview unresolved:', unresolved.join(', '));
@@ -435,7 +610,10 @@ export async function runStaffDailySummary(opts?: {
     const vars = buildBookingPlaceholders(booking);
     vars.next_bookings = nextBookingsText;
 
-    const text = applyPlaceholders(settings.daily_summary_template, vars);
+    const text = applyPlaceholders(
+      sanitizeStaffDailySummaryTemplate(settings.daily_summary_template),
+      vars,
+    );
 
     const unresolved = text.match(/\{\{[^}]+\}\}/g);
     if (unresolved?.length) {
@@ -525,16 +703,6 @@ export async function verifyStaffTelegramEnv(): Promise<{
   };
 }
 
-function parseStaffSlot(raw: unknown): { hour: number; minute: number } {
-  if (raw && typeof raw === 'object' && raw !== null) {
-    const o = raw as Record<string, unknown>;
-    const h = typeof o.hour === 'number' ? o.hour : 8;
-    const m = typeof o.minute === 'number' ? o.minute : 0;
-    return { hour: Math.max(0, Math.min(23, Math.round(h))), minute: Math.max(0, Math.min(59, Math.round(m))) };
-  }
-  return { hour: 8, minute: 0 };
-}
-
 export function serializeStaffSettings(row: TelegramStaffSettings) {
   const slot = parseStaffSlot(row.daily_summary_time_manila);
   const utcTotal = (slot.hour * 60 + slot.minute - 480 + 2880) % 1440;
@@ -543,7 +711,9 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
 
   return {
     enabled: row.enabled,
+    notifyOnSameDayCheckin: row.notify_on_same_day_checkin,
     dailySummaryTemplate: row.daily_summary_template,
+    sameDayCheckinTemplate: row.same_day_checkin_template,
     dailySummaryTimeManila: slot,
     dailySummaryUtcCronPreview: `${utcM} ${utcH} * * *`,
     placeholdersReference: [
@@ -564,7 +734,21 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       '{{special_requests}} — guest special requests or "None"',
       '{{total_guest_balance}} — total amount due from guest (₱ formatted)',
       '{{next_bookings}} — next 3 days; only 🎉 decor + 🐶 pets flags (no parking)',
-      '{{booking_link}} — link to booking details in admin dashboard',
+    ],
+    scenarios: [
+      {
+        id: 'daily_summary',
+        label: 'Daily summary',
+        trigger: 'Scheduled once per day at the configured Manila time',
+        type: 'scheduled',
+      },
+      {
+        id: 'same_day_checkin',
+        label: 'Same-day check-in alert',
+        trigger:
+          `Instant once when a guest submits a booking checking in today at or after the daily summary time (${formatStaffManilaTimeLabel(slot)} Manila)`,
+        type: 'event',
+      },
     ],
   };
 }
@@ -592,7 +776,7 @@ export async function ensureStaffSettingsRow(): Promise<void> {
     'Booking Details\n{{check_in_date}} - {{check_out_date}}\n{{check_in_time}} - {{check_out_time}}\n{{nights}} night/s, {{pax}} pax\n\n' +
     'Guest Details\n{{primary_guest_name}}, {{guest_phone}}\n\n' +
     'Additional Details\nHas decor: {{decor_status}}\nHas pets: {{pet_status}}\nSpecial Requests: {{special_requests}}\nTotal guest balance: {{total_guest_balance}}\n\n' +
-    'Next Bookings\n{{next_bookings}}\n\n{{booking_link}}';
+    'Next Bookings\n{{next_bookings}}';
 
   const { error: insertError } = await supabase.from('telegram_staff_settings').insert({
     id: 1,

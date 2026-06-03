@@ -3,7 +3,7 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 - ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `processed_emails`, `gmail_listener_state`, 4 new storage buckets; **`20260501000010`** adds request PDF URL columns. No Edge/UI behavior change from SQL alone. **Apply order:** **`docs/MIGRATION_RUNBOOK.md` §1** (`20260428120000_*` runs before the May 1 batch). Runbook: `docs/MIGRATION_RUNBOOK.md`. (The `is_test_booking` column was added in `20260501000004` and **removed** in `20260608120000_drop_is_test_booking.sql`.)
 - ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, 25/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
 - ✅ **Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.** Migration `20260502000000_widen_status_enum.sql` backfills `booked/canceled` rows to new enum, adds CHECK constraint + `DEFAULT 'PENDING_REVIEW'`. Created `_shared/statusMachine.ts` (server) + `ui/src/features/admin/lib/workflow.ts` (client mirror) with full transition graph, calendar meta, and sub-form requirements. Updated `get-booked-dates` and `databaseService.checkOverlappingBookings` to filter on `CANCELLED` only.
-  - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` uses workflow priority sort; stays with check-in before today (Manila) hidden by default for **any status**; **Show previous bookings** sends `show_previous_bookings=true`.
+  - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` uses workflow priority sort; **completed** stays hidden by default (cancelled too); **Show completed bookings** sends `show_completed_bookings=true`. Active past check-ins (checkout, SD refund, etc.) stay visible without the toggle.
   - **Not in Phase 1–2:** `/bookings/:bookingId` detail + workflow panel — Phase 3.
 - ✅ **Phase 3 — `transition-booking` endpoint + admin transition UI + new guest emails.**
   - Created `_shared/workflowOrchestrator.ts` — central side-effect fan-out for all transitions (DB, Calendar, Sheets, emails). All callers (UI, future cron, future Gmail listener) go through it.
@@ -114,7 +114,7 @@ Todos
 - ✅ Improve the mobile responsiveness and look of email templates on mobile
 - ✅ Support 'Mark as incomplete' to sub booking status?
 - ✅ Update SD refund form UI (stepper, no feedback field, Facebook-first then Continue, optional `guestFeedback` on API)
-- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_POOL` (currently `KAME-250` / `300` / `350`) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
+- ✅ **Next-stay Facebook-review voucher** — after the guest taps "Review us on Facebook" on `/sd-form`, swap the greeting for a slot-machine voucher reveal (`VoucherReveal`). New `claim-sd-voucher` edge function idempotently rolls a code from `VOUCHER_WIN_WEIGHTS` (`KAME-100`/`150`/`200` **5%**; `KAME-250`/`300`/`350` **~25%**; `KAME-400`/`450` **3%**; `KAME-500` **2%**; `KAME-1000` **1%**; **`KAME-STAY` free staycation** **0.5%**) and persists `next_stay_voucher_code` / `_amount` / `_awarded_at` on `guest_submissions`. Admin Pricing card surfaces the voucher when status = `COMPLETED`. Migration: `20260606120000_next_stay_voucher.sql`.
 - ✅ Display QR or gcash link (gcash://send?mobile=09625412941&amount=500&note=test) on Pending SD Refund step for admin to easily do the SD payment
 - ✅ Update ready for check-in email to add generated Gcash QR or link for the total balance payment upon check-in
 - ✅ Update booking flow when guest is coming from Airbnb.
@@ -133,6 +133,7 @@ Todos
   - ✅ Includes next 3 days booking summary
   - ✅ Configurable template with `{{placeholder}}` tokens on `/staff` admin page (`TelegramStaffSettingsCard`)
   - ✅ Enable/disable toggle + time picker + test sends
+  - ✅ Instant same-day check-in alert to staff group when guest submits at or after the daily summary time (one-time per booking)
   - Notification for guest check-out
     ✅ IMPROVED PAY PARKING FLOW
 - ✅ Public **`/bookings/:bookingId/parking`** (`PayParkingPage`) — booking summary + vehicle fields; **`get-pay-parking`** / **`submit-pay-parking`**
@@ -176,4 +177,9 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
 - Update additional guests and ask if adult or child (below 5 years old) per field
 - Support slack and telegram notifications for important booking events
-  - New booking requests
+  - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
+- If we received a same day booking, notify on Staff telegram group — ✅ instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
+- Make the QR code image configurable via settings. Update public guest form and check-in email to use this QR image
+- ✅ Improve SD form to include chance to win free staycation if you leave a review (`KAME-STAY` at **0.5%** via `VOUCHER_WIN_WEIGHTS`; `VoucherReveal` copy + slot reel)
+- Support same-day check-in
+- Add password or faceid when accessing settings page?

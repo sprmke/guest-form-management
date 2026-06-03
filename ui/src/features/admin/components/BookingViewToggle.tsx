@@ -42,7 +42,7 @@ export function BookingViewToggle({
       role="group"
       aria-label="Choose booking view"
       className={cn(
-        'inline-flex items-center rounded-lg border border-sidebar-border bg-white p-0.5 shrink-0',
+        'inline-flex items-center rounded-lg border border-sidebar-border bg-card p-0.5 shrink-0',
         className,
       )}
     >

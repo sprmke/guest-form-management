@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
-import { CalendarPlus, RefreshCw } from 'lucide-react';
+import { BookOpen, CalendarPlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { useBookings } from '@/features/admin/hooks/useBookings';
 import {
   useDateNavigation,
@@ -65,7 +66,8 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
-    showPreviousBookings:
+    showCompletedBookings:
+      sp.get('showCompletedBookings') === 'true' ||
       sp.get('showPreviousBookings') === 'true' ||
       sp.get('hideStaleCompleted') === 'false',
     sort,
@@ -104,8 +106,8 @@ function writeQueryToParams(
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
   set(
-    'showPreviousBookings',
-    q.showPreviousBookings ? 'true' : null,
+    'showCompletedBookings',
+    q.showCompletedBookings ? 'true' : null,
   );
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
@@ -157,7 +159,7 @@ export function BookingsListPage() {
     if (view !== 'calendar') return query;
     return {
       ...query,
-      showPreviousBookings: true,
+      showCompletedBookings: true,
       limit: CALENDAR_BOOKINGS_LIMIT,
       page: 1,
     };
@@ -211,16 +213,16 @@ export function BookingsListPage() {
   useEffect(() => {
     if (view !== 'calendar') return;
     const needsPatch =
-      !query.showPreviousBookings ||
+      !query.showCompletedBookings ||
       query.limit !== CALENDAR_BOOKINGS_LIMIT ||
       query.page !== 1;
     if (!needsPatch) return;
     patch({
-      showPreviousBookings: true,
+      showCompletedBookings: true,
       limit: CALENDAR_BOOKINGS_LIMIT,
       page: 1,
     });
-  }, [view, query.showPreviousBookings, query.limit, query.page, patch]);
+  }, [view, query.showCompletedBookings, query.limit, query.page, patch]);
 
   const handleCalendarMonthChange = useCallback(
     (month: Date) => {
@@ -228,7 +230,7 @@ export function BookingsListPage() {
         from: format(startOfMonth(month), 'yyyy-MM-dd'),
         to: format(endOfMonth(month), 'yyyy-MM-dd'),
         page: 1,
-        showPreviousBookings: true,
+        showCompletedBookings: true,
       });
     },
     [patch],
@@ -249,7 +251,7 @@ export function BookingsListPage() {
           if (next === 'table') sp.delete('view');
           else sp.set('view', next);
           if (next === 'calendar') {
-            sp.set('showPreviousBookings', 'true');
+            sp.set('showCompletedBookings', 'true');
             sp.set('limit', String(CALENDAR_BOOKINGS_LIMIT));
           }
           // Reset to first page when switching views; calendar in particular
@@ -286,14 +288,6 @@ export function BookingsListPage() {
   // property's volume; widen later if needed via a cursor / infinite query.
   const showPagination = view !== 'calendar' && pageCount > 1;
 
-  const listEmptyExtraHint =
-    view !== 'calendar' &&
-    !query.showPreviousBookings &&
-    !isLoading &&
-    total === 0
-      ? 'Tip: turn on “Show previous bookings” to include cancelled stays and check-ins before today (Asia/Manila). Also confirm the date range includes that stay’s check-in month.'
-      : null;
-
   const showTableView = view === 'table' && !isMobileLayout;
 
   const handleStaySortChange = useCallback(
@@ -311,44 +305,48 @@ export function BookingsListPage() {
     view,
   };
 
+  const bookingActions = (
+    <>
+      <button
+        type="button"
+        onClick={() => refetch()}
+        disabled={isFetching}
+        aria-label="Refresh bookings"
+        title="Refresh"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground disabled:opacity-40"
+      >
+        <RefreshCw
+          className={cn('size-4', isFetching && 'animate-spin')}
+          aria-hidden
+        />
+      </button>
+      <Link
+        to="/form"
+        className={cn(
+          'inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-3 py-2 sm:px-3.5',
+          'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+          'transition-all duration-200 hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] motion-safe:active:scale-[0.98]',
+        )}
+      >
+        <CalendarPlus className="size-4" aria-hidden />
+        <span className="hidden sm:inline">New booking</span>
+      </Link>
+    </>
+  );
+
   return (
-    <AdminLayout
-      title="Bookings"
-      actions={
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => refetch()}
-            disabled={isFetching}
-            aria-label="Refresh bookings"
-            title="Refresh"
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg text-sidebar-muted hover:text-sidebar-accent-foreground hover:bg-sidebar-accent disabled:opacity-40 transition-colors"
-          >
-            <RefreshCw
-              className={cn('size-4', isFetching && 'animate-spin')}
-              aria-hidden
-            />
-          </button>
-          <Link
-            to="/form"
-            className={cn(
-              'inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-2 rounded-lg min-h-[44px]',
-              'text-[13px] font-semibold text-white',
-              'transition-all duration-150',
-              'hover:opacity-90 active:scale-[0.98]',
-            )}
-            style={{
-              background: 'hsl(var(--sidebar-primary))',
-              boxShadow: '0 1px 3px hsl(var(--sidebar-primary) / 0.35)',
-            }}
-          >
-            <CalendarPlus className="size-4" aria-hidden />
-            <span className="hidden sm:inline">New booking</span>
-          </Link>
-        </div>
-      }
-    >
-      <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4">
+    <AdminLayout>
+      <div className="space-y-3 sm:space-y-4">
+        <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+          <AdminPageHeader
+            id="bookings-heading"
+            variant="compact"
+            title="Bookings"
+            subtitle="Search, filter, and manage guest stays."
+            icon={BookOpen}
+            actions={bookingActions}
+          />
+        </section>
         <BookingFilters
           query={query}
           onChange={patch}
@@ -375,14 +373,14 @@ export function BookingsListPage() {
               hideTableView={isMobileLayout}
             />
             {view !== 'calendar' && (
-              <label className="flex items-center gap-2 text-[12px] text-slate-500">
+              <label className="flex items-center gap-2 text-caption">
                 <select
                   value={query.limit}
                   onChange={(e) =>
                     patch({ limit: Number(e.target.value), page: 1 })
                   }
                   aria-label="Items per page"
-                  className="h-9 rounded-lg border border-sidebar-border bg-white px-2 text-[12px] font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
+                  className="h-9 rounded-lg border border-sidebar-border bg-card px-2 text-ui font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
                 >
                   {PAGE_SIZES.map((n) => (
                     <option key={n} value={n}>
@@ -418,7 +416,6 @@ export function BookingsListPage() {
             isRefreshing={isFetching}
             sort={query.sort}
             onStaySortChange={handleStaySortChange}
-            emptyExtraHint={listEmptyExtraHint}
           />
         )}
         {view === 'card' && (
@@ -427,7 +424,6 @@ export function BookingsListPage() {
             isLoading={isLoading}
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
-            emptyExtraHint={listEmptyExtraHint}
           />
         )}
         {view === 'calendar' && (

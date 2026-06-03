@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { GoogleSignInButton } from '@/features/admin/components/GoogleSignInButton';
+import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { supabase } from '@/lib/supabaseClient';
 import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
@@ -48,7 +49,7 @@ export function SignInPage() {
     <div className="flex min-h-screen">
       {/* ─── Left brand panel ─────────────────────────── */}
       <div
-        className="hidden lg:flex lg:w-[46%] xl:w-[44%] flex-col justify-between p-10 relative overflow-hidden"
+        className="relative hidden flex-col justify-between overflow-hidden p-10 lg:flex lg:w-[46%] xl:w-[44%]"
         style={{ backgroundColor: 'hsl(168 65% 40%)' }}
         aria-hidden="true"
       >
@@ -76,8 +77,8 @@ export function SignInPage() {
 
         {/* Brand mark */}
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/10">
-            <span className="size-1.5 rounded-full bg-white" />
+          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full border border-white/25 bg-card/10">
+            <span className="size-1.5 rounded-full bg-card" />
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
               Admin
             </span>
@@ -95,7 +96,7 @@ export function SignInPage() {
             </p>
           </div>
 
-          <div className="w-12 h-px bg-white/30" />
+          <div className="w-12 h-px bg-card/30" />
 
           <blockquote className="text-[15px] text-white/60 leading-relaxed font-light italic max-w-[300px]">
             "Your property, perfectly managed."
@@ -105,30 +106,33 @@ export function SignInPage() {
         {/* Footer */}
         <div className="relative z-10">
           <p className="text-[11px] text-white/30">
-            © {new Date().getFullYear()} Kame Home. All rights reserved.
+            © 2024 Kame Home. All rights reserved.
           </p>
         </div>
       </div>
 
       {/* ─── Right form panel ──────────────────────────── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 bg-white">
-        {/* Mobile brand mark */}
-        <div className="lg:hidden mb-8 text-center">
+      <div className="relative flex flex-1 flex-col items-center justify-center bg-background px-6 py-12">
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <ThemeToggle />
+        </div>
+        <div className="mb-8 animate-fade-in-up text-center lg:hidden">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary shadow-soft">
+            <span className="text-lg font-black text-primary-foreground">K</span>
+          </div>
           <p className="text-2xl font-extrabold tracking-tight text-foreground">
             Kame Home
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Monaco 2604 · Admin
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Monaco 2604 · Admin</p>
         </div>
 
-        <div className="w-full max-w-[360px] space-y-7">
-          {/* Heading */}
+        <div className="w-full max-w-[360px] animate-fade-in-up animation-delay-200 space-y-7">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            <p className="section-eyebrow mb-2">Admin access</p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">
               Welcome back
             </h2>
-            <p className="mt-1.5 text-[14px] text-slate-500 leading-relaxed">
+            <p className="mt-1.5 text-[14px] leading-relaxed text-muted-foreground">
               Sign in with your authorized Google account to access the admin
               dashboard.
             </p>
@@ -136,7 +140,7 @@ export function SignInPage() {
 
           {/* Access-restricted notice */}
           {status === 'not-admin' && (
-            <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700">
+            <div className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
               <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
               <p className="text-[13px] leading-snug">
                 We could not open the admin area with your current Google
@@ -147,7 +151,7 @@ export function SignInPage() {
 
           {/* OAuth error */}
           {error && (
-            <div className="flex gap-2.5 items-start p-3.5 rounded-xl bg-red-50 border border-red-100 text-red-700">
+            <div className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
               <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
               <p className="text-[13px] leading-snug">{error}</p>
             </div>
@@ -161,7 +165,7 @@ export function SignInPage() {
           />
 
           {/* Footer note */}
-          <p className="text-[12px] text-slate-400 text-center leading-relaxed">
+          <p className="text-center text-[12px] leading-relaxed text-muted-foreground">
             Only authorized property administrators can sign in. Public guests
             should use the{' '}
             <a

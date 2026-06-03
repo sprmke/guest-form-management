@@ -10,6 +10,7 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
+import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
 import {
   isSdRefundBank,
   type SdRefundBank,
@@ -122,6 +123,16 @@ serve(async (req) => {
       },
       false,
     );
+
+    try {
+      const updated = await DatabaseService.getBookingById(bookingId);
+      if (updated) {
+        const adminTg = await notifyTelegramAdminSdFormSubmitted(updated);
+        console.log('[submit-sd-form] Telegram admin SD form:', JSON.stringify(adminTg));
+      }
+    } catch (tgErr) {
+      console.error('[submit-sd-form] Telegram admin SD form notify failed (non-fatal):', tgErr);
+    }
 
     return new Response(
       JSON.stringify({

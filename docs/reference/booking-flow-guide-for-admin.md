@@ -214,7 +214,7 @@ This stage is driven by the **SD Refund Cron** job (runs every ~5 minutes, all i
 
 After getting the SD refund email, the guest opens `/sd-form?bookingId=…` and:
 
-1. Sees a button to leave a **Facebook review** (optional, in exchange for a small voucher for their next stay).
+1. Sees a button to leave a **Facebook review** (optional — guests can spin for **₱100–₱1,000 off** or a rare **free staycation** on their next booking).
 2. May see a "still waiting for your balance to be settled" message if you haven't recorded their final payment yet.
 3. Picks a **refund method** (e.g. GCash, bank transfer) and provides the details.
 4. Submits the form.

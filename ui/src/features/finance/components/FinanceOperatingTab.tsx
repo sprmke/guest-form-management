@@ -3,12 +3,12 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   CircleDollarSign,
-  Loader2,
   Pencil,
   Plus,
   Receipt,
   Trash2,
 } from 'lucide-react';
+import { FinanceOperatingTabSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import {
   OperatingLineItemForm,
@@ -71,47 +71,81 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
     .reduce((a, i) => a + i.amount, 0);
   const net = incomeTotal - expenseTotal;
 
+  if (isLoading && items.length === 0) {
+    return <FinanceOperatingTabSkeleton />;
+  }
+
   return (
     <div className="space-y-4">
-      {/* Summary cards */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-emerald-100">
-              <ArrowUpRight className="size-3.5 text-emerald-600" aria-hidden />
+            <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/15">
+              <ArrowUpRight className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Income</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Income
+            </span>
           </div>
-          <p className="mt-2 text-lg font-bold tabular-nums text-emerald-700">{formatMoney(incomeTotal)}</p>
+          <p className="mt-2 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
+            {formatMoney(incomeTotal)}
+          </p>
         </div>
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
           <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-red-100">
-              <ArrowDownRight className="size-3.5 text-red-600" aria-hidden />
+            <div className="flex size-7 items-center justify-center rounded-md bg-red-500/15">
+              <ArrowDownRight className="size-3.5 text-red-600 dark:text-red-400" aria-hidden />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Expenses</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Expenses
+            </span>
           </div>
-          <p className="mt-2 text-lg font-bold tabular-nums text-red-600">{formatMoney(expenseTotal)}</p>
+          <p className="mt-2 text-lg font-bold tabular-nums text-red-600 dark:text-red-400">
+            {formatMoney(expenseTotal)}
+          </p>
         </div>
-        <div className="rounded-xl border border-slate-200/80 bg-white p-4">
+        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
           <div className="flex items-center gap-2">
-            <div className={cn('flex size-7 items-center justify-center rounded-md', net >= 0 ? 'bg-emerald-100' : 'bg-red-100')}>
-              <CircleDollarSign className={cn('size-3.5', net >= 0 ? 'text-emerald-600' : 'text-red-600')} aria-hidden />
+            <div
+              className={cn(
+                'flex size-7 items-center justify-center rounded-md',
+                net >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15',
+              )}
+            >
+              <CircleDollarSign
+                className={cn(
+                  'size-3.5',
+                  net >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-red-600 dark:text-red-400',
+                )}
+                aria-hidden
+              />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Net</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+              Net
+            </span>
           </div>
-          <p className={cn('mt-2 text-lg font-bold tabular-nums', net >= 0 ? 'text-emerald-700' : 'text-red-600')}>{formatMoney(net)}</p>
+          <p
+            className={cn(
+              'mt-2 text-lg font-bold tabular-nums',
+              net >= 0
+                ? 'text-emerald-700 dark:text-emerald-300'
+                : 'text-red-600 dark:text-red-400',
+            )}
+          >
+            {formatMoney(net)}
+          </p>
         </div>
       </div>
 
-      {/* Table header with add button */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="flex items-center justify-between px-0.5">
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {items.length} line{items.length === 1 ? '' : 's'}
         </p>
         <button
           type="button"
-          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-teal-700 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-teal-800"
+          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft transition-all hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)]"
           onClick={openCreate}
         >
           <Plus className="size-3.5" aria-hidden />
@@ -119,11 +153,10 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="surface-card overflow-x-auto">
         <table className="w-full min-w-[520px]">
           <thead>
-            <tr className="bg-slate-50/80 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            <tr className="bg-muted/40 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Description</th>
@@ -132,28 +165,21 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
               <th className="w-20 px-3 py-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
-            {isLoading && items.length === 0 ? (
+          <tbody className="divide-y divide-separator">
+            {items.length === 0 ? (
               <tr>
                 <td colSpan={6} className="py-16 text-center">
-                  <Loader2 className="mx-auto size-5 animate-spin text-slate-400" />
-                  <p className="mt-2 text-sm text-slate-500">Loading…</p>
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center">
-                  <Receipt className="mx-auto size-10 text-slate-200" />
-                  <p className="mt-3 text-sm font-medium text-slate-600">
+                  <Receipt className="mx-auto size-10 text-muted-foreground/30" />
+                  <p className="mt-3 text-sm font-medium text-foreground">
                     No operating lines yet
                   </p>
-                  <p className="mx-auto mt-1 max-w-[280px] text-xs text-slate-400">
+                  <p className="mx-auto mt-1 max-w-[280px] text-xs text-muted-foreground">
                     Add rent, utilities, or other property costs to track
                     operating profit alongside stay revenue.
                   </p>
                   <button
                     type="button"
-                    className="mt-4 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg bg-teal-700 px-4 text-xs font-semibold text-white hover:bg-teal-800"
+                    className="mt-4 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg gradient-primary px-4 text-xs font-semibold text-primary-foreground"
                     onClick={openCreate}
                   >
                     <Plus className="size-3.5" aria-hidden />
@@ -165,9 +191,9 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="group transition-colors hover:bg-slate-50/60"
+                  className="group transition-colors hover:bg-muted/40"
                 >
-                  <td className="px-4 py-3 text-xs tabular-nums text-slate-600">
+                  <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
                     {item.occurred_on}
                   </td>
                   <td className="px-4 py-3">
@@ -175,8 +201,8 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                       className={cn(
                         'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
                         item.kind === 'income'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-red-50 text-red-600',
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                          : 'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
                       )}
                     >
                       {item.kind === 'income' ? (
@@ -188,24 +214,24 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="max-w-[220px] truncate text-sm font-medium text-slate-900">
+                    <p className="max-w-[220px] truncate text-sm font-medium text-foreground">
                       {item.label}
                     </p>
                     {item.notes && (
-                      <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-slate-400">
+                      <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-muted-foreground">
                         {item.notes}
                       </p>
                     )}
                   </td>
-                  <td className="hidden px-4 py-3 text-xs text-slate-500 md:table-cell">
+                  <td className="hidden px-4 py-3 text-xs text-muted-foreground md:table-cell">
                     {item.category ?? '—'}
                   </td>
                   <td
                     className={cn(
                       'px-4 py-3 text-right text-sm tabular-nums font-semibold',
                       item.kind === 'income'
-                        ? 'text-emerald-700'
-                        : 'text-red-600',
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-red-600 dark:text-red-400',
                     )}
                   >
                     {item.kind === 'income' ? '+' : '−'}
@@ -215,7 +241,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                     <div className="flex justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         type="button"
-                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
                         aria-label="Edit"
                         onClick={() => openEdit(item)}
                       >
@@ -223,7 +249,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                       </button>
                       <button
                         type="button"
-                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                         aria-label="Delete"
                         onClick={() => {
                           if (
@@ -246,11 +272,10 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
         </table>
       </div>
 
-      {/* Modal */}
       {modalOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
             onClick={closeModal}
             aria-hidden
           />
@@ -258,11 +283,11 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="operating-form-title"
-            className="fixed left-1/2 top-1/2 z-50 max-h-[min(90dvh,36rem)] w-[min(calc(100vw-1.5rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-50 max-h-[min(90dvh,36rem)] w-[min(calc(100vw-1.5rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-elevated-lg"
           >
             <h2
               id="operating-form-title"
-              className="mb-4 text-base font-bold text-slate-900"
+              className="mb-4 text-base font-bold text-foreground"
             >
               {editing ? 'Edit line item' : 'New line item'}
             </h2>

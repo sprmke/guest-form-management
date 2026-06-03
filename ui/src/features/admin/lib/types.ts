@@ -135,10 +135,11 @@ export type BookingsQuery = {
   hasPets: boolean | null;
   needParking: boolean | null;
   /**
-   * When true, list includes cancelled rows and stays whose check-in is strictly
-   * before today (Asia/Manila). Default false hides both.
+   * When true, list includes COMPLETED rows. Default false hides completed
+   * (cancelled stays hidden unless the status filter includes them). Active
+   * stays from past check-in dates remain visible.
    */
-  showPreviousBookings: boolean;
+  showCompletedBookings: boolean;
   sort: BookingsSort;
   page: number; // 1-indexed
   limit: number;
@@ -151,7 +152,7 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   to: null,
   hasPets: null,
   needParking: null,
-  showPreviousBookings: false,
+  showCompletedBookings: false,
   sort: "status_priority:asc",
   page: 1,
   limit: 25,

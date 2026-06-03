@@ -62,18 +62,22 @@ export function GuestFormSuccess() {
     : 0;
 
   return (
-    <div className="flex flex-col justify-center items-center px-5 pt-14 pb-10 space-y-8 text-center">
-      <img
-        src="/images/logo.png"
-        alt="Kame Home"
-        className="absolute top-[-3.5rem] md:top-[-4.5rem] right-0 left-0 mx-auto w-[120px] md:w-[160px] border-4 border-white rounded-full"
-      />
+    <div className="guest-inner-enter relative flex flex-col items-center justify-center px-5 pb-10 pt-14 text-center">
+      <div className="absolute left-0 right-0 top-[-3.25rem] mx-auto flex justify-center md:top-[-4.25rem]">
+        <div className="rounded-full bg-card p-1 shadow-elevated ring-4 ring-card">
+          <img
+            src="/images/logo.png"
+            alt="Kame Home"
+            className="h-[88px] w-[88px] rounded-full object-cover md:h-[120px] md:w-[120px]"
+          />
+        </div>
+      </div>
 
-      <div className="space-y-8 w-full max-w-xl">
-        {/* Success Header */}
+      <div className="w-full max-w-xl space-y-8">
         <div className="space-y-3">
+          <p className="section-eyebrow">Booking submitted</p>
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold md:text-3xl text-foreground">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Booking Confirmed!
             </h1>
             <p className="text-base text-muted-foreground">
@@ -87,7 +91,7 @@ export function GuestFormSuccess() {
           <div className="space-y-6">
             {/* Booking Summary Card */}
             <div className="overflow-hidden rounded-xl border shadow-sm border-border bg-card">
-              <div className="px-6 py-3 border-b border-border">
+              <div className="border-b border-separator px-6 py-3">
                 <h2 className="text-lg font-semibold text-foreground">
                   Booking Summary
                 </h2>

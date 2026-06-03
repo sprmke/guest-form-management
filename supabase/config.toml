@@ -107,6 +107,9 @@ verify_jwt = false
 [functions.get-form]
 verify_jwt = false
 
+[functions.get-guest-payment-info]
+verify_jwt = false
+
 [functions.get-sd-form]
 verify_jwt = false
 
@@ -235,6 +238,12 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.telegram-staff-settings]
+verify_jwt = false
+
+[functions.telegram-admin-cron]
+verify_jwt = false
+
+[functions.telegram-admin-settings]
 verify_jwt = false
 
 [functions.app-settings]

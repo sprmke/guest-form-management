@@ -30,45 +30,45 @@ export function BookingsListSummary({
   view,
 }: SummaryProps) {
   return (
-    <p className="min-h-[20px] text-[13px] leading-snug text-slate-500">
+    <p className="text-meta min-h-[20px]">
       {isLoading ? (
-        <span className="inline-block h-3 w-28 animate-pulse rounded-full bg-slate-200" />
+        <span className="inline-block h-3 w-28 animate-pulse rounded-full bg-muted" />
       ) : total === 0 ? (
         'No bookings found'
       ) : view === 'calendar' ? (
         <>
-          <span className="font-bold text-slate-700">
+          <span className="font-bold text-foreground">
             {rowsLength.toLocaleString()}
           </span>
-          <span className="ml-1.5 text-slate-400">
+          <span className="ml-1.5 text-muted-foreground">
             {rowsLength === 1 ? 'booking' : 'bookings'} in view
           </span>
           {total > rowsLength && (
-            <span className="ml-1.5 text-slate-300">
+            <span className="ml-1.5 text-muted-foreground/50">
               {' '}
               of {total.toLocaleString()}
             </span>
           )}
           {isFetching && !isLoading && (
-            <span className="ml-2 text-slate-300">· updating…</span>
+            <span className="ml-2 text-muted-foreground/50">· updating…</span>
           )}
         </>
       ) : (
         <>
-          <span className="font-bold text-slate-700">
+          <span className="font-bold text-foreground">
             {startIdx.toLocaleString()}
           </span>
-          <span className="mx-1 text-slate-300">–</span>
-          <span className="font-bold text-slate-700">
+          <span className="mx-1 text-muted-foreground/50">–</span>
+          <span className="font-bold text-foreground">
             {endIdx.toLocaleString()}
           </span>
-          <span className="mx-1.5 text-slate-400">of</span>
-          <span className="font-bold text-slate-700">
+          <span className="mx-1.5 text-muted-foreground">of</span>
+          <span className="font-bold text-foreground">
             {total.toLocaleString()}
           </span>
-          <span className="ml-1.5 text-slate-400">bookings</span>
+          <span className="ml-1.5 text-muted-foreground">bookings</span>
           {isFetching && !isLoading && (
-            <span className="ml-2 text-slate-300">· updating…</span>
+            <span className="ml-2 text-muted-foreground/50">· updating…</span>
           )}
         </>
       )}
@@ -112,12 +112,12 @@ export function BookingsListControls({
         />
 
         {showPerPage && view !== 'calendar' && (
-          <label className="flex shrink-0 items-center gap-2 text-[12px] text-slate-500">
+          <label className="flex shrink-0 items-center gap-2 text-caption">
             <select
               value={limit}
               onChange={(e) => onLimitChange(Number(e.target.value))}
               aria-label="Items per page"
-              className="h-10 min-h-[44px] rounded-lg border border-sidebar-border bg-white px-2.5 text-[12px] font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
+              className="h-10 min-h-[44px] rounded-lg border border-sidebar-border bg-card px-2.5 text-ui font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
             >
               {PAGE_SIZES.map((n) => (
                 <option key={n} value={n}>
@@ -166,7 +166,7 @@ export function BookingsListPagination({
           item === 'ellipsis' ? (
             <span
               key={`dots-${idx}`}
-              className="flex size-10 shrink-0 items-center justify-center text-[12px] text-slate-400 select-none lg:size-8"
+              className="flex size-10 shrink-0 select-none items-center justify-center text-caption lg:size-8"
             >
               …
             </span>
@@ -178,7 +178,7 @@ export function BookingsListPagination({
               aria-label={`Go to page ${item}`}
               aria-current={item === page ? 'page' : undefined}
               className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-lg text-[13px] font-semibold transition-all duration-100 lg:size-8 lg:text-[12px]',
+                'flex size-10 shrink-0 items-center justify-center rounded-lg text-ui font-semibold transition-all duration-100 lg:size-8',
                 item === page
                   ? 'text-sidebar-primary-foreground'
                   : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
@@ -231,7 +231,7 @@ function PaginationBtn({
       className={cn(
         'inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-3',
         'lg:min-h-0 lg:min-w-0 lg:px-3 lg:py-1.5',
-        'border border-sidebar-border bg-white text-[12px] font-semibold text-sidebar-muted',
+        'border border-sidebar-border bg-card text-ui font-semibold text-sidebar-muted',
         'transition-all duration-100',
         'hover:border-sidebar-primary/30 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
         'disabled:pointer-events-none disabled:opacity-40',

@@ -21,7 +21,7 @@ export function GoogleSignInButton({ onClick, disabled, loading }: Props) {
       onClick={onClick}
       disabled={busy}
       className={cn(
-        'relative flex h-12 w-full items-center justify-center gap-3 rounded-lg border px-4',
+        'relative flex h-12 w-full items-center justify-center gap-3 rounded-2xl border px-4',
         'border-[#dadce0] bg-white text-[15px] font-medium text-[#3c4043] shadow-sm',
         'transition-[box-shadow,background-color,border-color,transform] duration-200',
         'hover:border-[#d2d2d2] hover:bg-[#f8f9fa] hover:shadow-md',

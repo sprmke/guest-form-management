@@ -1,7 +1,9 @@
 import * as React from 'react';
-import { Check, ChevronDown, Globe, Mail, Shield, Timer } from 'lucide-react';
+import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
   Collapsible,
@@ -56,7 +58,7 @@ function CollapsibleSection({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className="px-3 pt-3 pb-4 space-y-4 border-t border-border/70"
+          className="px-3 pt-3 pb-4 space-y-4 border-t border-separator"
         >
           {children}
         </div>
@@ -125,62 +127,93 @@ function SecretBadge({
       className={cn(
         'flex gap-2 justify-between items-center px-3 py-2 rounded-lg border min-h-[44px]',
         configured
-          ? 'text-emerald-900 border-emerald-200 bg-emerald-50/80'
-          : 'border-amber-200 bg-amber-50/60 text-amber-950',
+          ? 'border-emerald-200 bg-emerald-50/80 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300'
+          : 'border-amber-200 bg-amber-50/60 text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200',
       )}
     >
       <span className="text-sm">{label}</span>
       {configured ? (
         <Check
-          className="text-emerald-700 size-4 shrink-0"
+          className="size-4 shrink-0 text-emerald-700 dark:text-emerald-400"
           aria-label="Configured"
         />
       ) : (
-        <span className="text-xs font-medium text-amber-800">Not set</span>
+        <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+          Not set
+        </span>
       )}
+    </div>
+  );
+}
+
+function SecretGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-separator bg-muted/10 p-3 space-y-2.5">
+      <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+        {title}
+      </h4>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
     </div>
   );
 }
 
 function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
   return (
-    <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-      <SecretBadge
-        label="Email (Resend)"
-        configured={status.resendApiKeyConfigured}
-      />
-      <SecretBadge
-        label="Google account"
-        configured={status.googleServiceAccountConfigured}
-      />
-      <SecretBadge
-        label="Calendar"
-        configured={status.googleCalendarIdConfigured}
-      />
-      <SecretBadge
-        label="Spreadsheet"
-        configured={status.googleSpreadsheetIdConfigured}
-      />
-      <SecretBadge
-        label="Telegram bot"
-        configured={status.telegramBotTokenConfigured}
-      />
-      <SecretBadge
-        label="Marketing group"
-        configured={status.telegramChatIdConfigured}
-      />
-      <SecretBadge
-        label="Staff group"
-        configured={status.telegramStaffChatIdConfigured}
-      />
-      <SecretBadge
-        label="Gmail security key"
-        configured={status.gmailEncryptionKeyConfigured}
-      />
-      <SecretBadge
-        label="Gmail app login"
-        configured={status.gmailWebClientConfigured}
-      />
+    <div className="space-y-3">
+      <SecretGroup title="Email">
+        <SecretBadge
+          label="Email (Resend)"
+          configured={status.resendApiKeyConfigured}
+        />
+      </SecretGroup>
+
+      <SecretGroup title="Google">
+        <SecretBadge
+          label="Google account"
+          configured={status.googleServiceAccountConfigured}
+        />
+        <SecretBadge
+          label="Calendar"
+          configured={status.googleCalendarIdConfigured}
+        />
+        <SecretBadge
+          label="Spreadsheet"
+          configured={status.googleSpreadsheetIdConfigured}
+        />
+        <SecretBadge
+          label="Gmail security key"
+          configured={status.gmailEncryptionKeyConfigured}
+        />
+        <SecretBadge
+          label="Gmail app login"
+          configured={status.gmailWebClientConfigured}
+        />
+      </SecretGroup>
+
+      <SecretGroup title="Telegram">
+        <SecretBadge
+          label="Telegram bot"
+          configured={status.telegramBotTokenConfigured}
+        />
+        <SecretBadge
+          label="Marketing group"
+          configured={status.telegramChatIdConfigured}
+        />
+        <SecretBadge
+          label="Staff group"
+          configured={status.telegramStaffChatIdConfigured}
+        />
+        <SecretBadge
+          label="Operations group"
+          configured={status.telegramAdminChatIdConfigured}
+        />
+      </SecretGroup>
     </div>
   );
 }
@@ -212,33 +245,32 @@ export function AppSettingsCard() {
     });
   };
 
+  if (isLoading) {
+    return <AppSettingsCardSkeleton />;
+  }
+
   return (
     <section
       className={cn(
-        'px-3 py-3 w-full rounded-xl border border-sidebar-border bg-card sm:px-4 sm:py-4',
+        'surface-card w-full px-3 py-3 sm:px-4 sm:py-4',
         'space-y-4 shadow-sm',
       )}
       aria-labelledby="app-settings-heading"
     >
-      <div className="min-w-0 space-y-1.5">
-        <h2
-          id="app-settings-heading"
-          className="text-base font-bold tracking-tight text-sidebar-foreground sm:text-lg"
-        >
-          General settings
-        </h2>
-      </div>
+      <AdminPageHeader
+        id="app-settings-heading"
+        title="Settings"
+        subtitle="Integrations, credentials, and workspace configuration."
+        icon={Settings}
+      />
 
-      {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading settings…</p>
-      )}
       {isError && (
         <p className="text-sm text-destructive">
           {(error as Error)?.message ?? 'Could not load settings'}
         </p>
       )}
 
-      {draft && data && !isLoading && (
+      {draft && data && (
         <div className="space-y-3">
           <CollapsibleSection
             id="email-routing"
@@ -372,6 +404,50 @@ export function AppSettingsCard() {
           </CollapsibleSection>
 
           <CollapsibleSection
+            id="payment"
+            title="Payment"
+            icon={<Wallet className="size-4" aria-hidden />}
+            defaultOpen={false}
+          >
+            <FieldGrid>
+              <Field
+                id="gcash-name"
+                label="GCash Name"
+                hint="Account name shown on the guest form Payment step."
+                source={sources?.gcashName}
+              >
+                <Input
+                  id="gcash-name"
+                  autoComplete="off"
+                  disabled={busy}
+                  value={draft.gcashName}
+                  onChange={(e) => set('gcashName', e.target.value)}
+                  className="h-10"
+                  placeholder="Arianna Perez"
+                />
+              </Field>
+              <Field
+                id="gcash-number"
+                label="GCash Number"
+                hint="Mobile number shown beside the GCash QR code on the guest form."
+                source={sources?.gcashNumber}
+              >
+                <Input
+                  id="gcash-number"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
+                  disabled={busy}
+                  value={draft.gcashNumber}
+                  onChange={(e) => set('gcashNumber', e.target.value)}
+                  className="h-10"
+                  placeholder="0962 564 7541"
+                />
+              </Field>
+            </FieldGrid>
+          </CollapsibleSection>
+
+          <CollapsibleSection
             id="guest-links"
             title="Links & Branding"
             icon={<Globe className="size-4" aria-hidden />}
@@ -444,7 +520,7 @@ export function AppSettingsCard() {
       )}
 
       {!isError ? (
-        <div className="flex flex-col gap-2 pt-3 border-t border-border sm:flex-row sm:justify-end">
+        <div className="flex flex-col gap-2 border-t border-separator pt-3 sm:flex-row sm:justify-end">
           <Button
             type="button"
             disabled={busy || !draft}

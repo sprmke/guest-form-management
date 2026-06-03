@@ -3,7 +3,7 @@
  *
  * Phase 3: calls the `list-bookings` edge function (admin JWT required) which
  * handles server-side check_in_date sorting (converting MM-DD-YYYY → YYYY-MM-DD
- * in the service layer), stale-COMPLETED filtering (Q5.1), and accurate pagination.
+ * in the service layer), default COMPLETED hiding, and accurate pagination.
  *
  * Falls back to a direct PostgREST read when the user's session JWT is unavailable
  * (shouldn't happen inside RequireAdmin, but prevents a hard crash during hydration).
@@ -48,8 +48,8 @@ async function fetchBookingsFromEdgeFunction(query: BookingsQuery): Promise<Book
   params.set('sort', query.sort);
   params.set('page', String(query.page));
   params.set('limit', String(query.limit));
-  if (query.showPreviousBookings) {
-    params.set('show_previous_bookings', 'true');
+  if (query.showCompletedBookings) {
+    params.set('show_completed_bookings', 'true');
   }
 
   const res = await fetch(`${FUNCTIONS_URL}/list-bookings?${params.toString()}`, {
@@ -133,11 +133,9 @@ export function useBookings(query: BookingsQuery) {
           );
         }
 
-        if (!query.showPreviousBookings) {
-          rows = rows.filter((r) =>
-            matchesDefaultBookingsListVisibility(r, today),
-          );
-        }
+        rows = rows.filter((r) =>
+          matchesDefaultBookingsListVisibility(r, query.showCompletedBookings),
+        );
 
         rows.sort((a, b) =>
           compareBookingsForListSort(a, b, query.sort, today),

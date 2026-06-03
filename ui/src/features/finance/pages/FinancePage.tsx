@@ -4,9 +4,11 @@ import {
   BarChart3,
   BedDouble,
   Building2,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
+import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { FinancePeriodToolbar } from '@/features/finance/components/FinancePeriodToolbar';
 import { FinanceExportMenu } from '@/features/finance/components/FinanceExportMenu';
 import { FinanceOverviewTab } from '@/features/finance/components/FinanceOverviewTab';
@@ -59,7 +61,6 @@ export function FinancePage() {
     [setSearchParams],
   );
 
-  // Date navigation — same component as Bookings page
   const initialFromDate = fromIsoDate(query.from);
   const initialToDate = fromIsoDate(query.to);
   const dateNav = useDateNavigation({
@@ -83,93 +84,93 @@ export function FinancePage() {
   const lineItemsQuery = useFinanceLineItems(query);
 
   return (
-    <AdminLayout
-      title="Finance"
-      actions={
-        <FinanceExportMenu
-          query={query}
-          summary={summaryQuery.data}
-          operating={lineItemsQuery.data}
-        />
-      }
-    >
-      <div className="w-full max-w-full p-3 sm:p-4 lg:p-6">
-        {/* Tabs — context first */}
-        <div
-          className="flex border-b border-slate-200"
-          role="tablist"
-          aria-label="Finance sections"
-        >
-          {TABS.map((tab) => {
-            const Icon = tab.icon;
-            const active = query.tab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={cn(
-                  'flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
-                  active
-                    ? 'border-teal-700 text-teal-800'
-                    : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
-                )}
-                onClick={() =>
-                  setQuery({ ...query, tab: tab.id, page: 1 })
-                }
-              >
-                <Icon
-                  className={cn(
-                    'size-4',
-                    active ? 'text-teal-600' : 'text-slate-400',
-                  )}
-                  aria-hidden
-                />
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Controls bar */}
-        <div className="mt-4">
-          <FinancePeriodToolbar
-            query={query}
-            onChange={setQuery}
-            showStaysSearch={query.tab === 'stays'}
-            dateNav={dateNav}
-            onClearDate={handleClearDate}
+    <AdminLayout>
+      <div className="space-y-3 sm:space-y-4">
+        <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+          <AdminPageHeader
+            id="finance-heading"
+            title="Finance"
+            subtitle="Revenue, stay profit, and operating costs for the selected period."
+            icon={DollarSign}
+            actions={
+              <FinanceExportMenu
+                query={query}
+                summary={summaryQuery.data}
+                operating={lineItemsQuery.data}
+              />
+            }
           />
-        </div>
 
-        {/* Tab content */}
-        <div className="mt-4">
-          {query.tab === 'overview' ? (
-            <FinanceOverviewTab
-              summary={summaryQuery.data}
-              isLoading={summaryQuery.isLoading}
-            />
-          ) : null}
+          <div
+            className="mt-4 flex border-b border-separator"
+            role="tablist"
+            aria-label="Finance sections"
+          >
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const active = query.tab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={cn(
+                    'flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
+                    active
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                  )}
+                  onClick={() =>
+                    setQuery({ ...query, tab: tab.id, page: 1 })
+                  }
+                >
+                  <Icon
+                    className={cn(
+                      'size-4',
+                      active ? 'text-primary' : 'text-muted-foreground',
+                    )}
+                    aria-hidden
+                  />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-          {query.tab === 'stays' ? (
-            <FinanceStaysTab
-              query={query}
-              rows={bookingsQuery.data?.rows ?? []}
-              total={bookingsQuery.data?.total ?? 0}
-              isLoading={bookingsQuery.isLoading}
-              onQueryChange={setQuery}
-            />
-          ) : null}
+        <FinancePeriodToolbar
+          query={query}
+          onChange={setQuery}
+          showStaysSearch={query.tab === 'stays'}
+          dateNav={dateNav}
+          onClearDate={handleClearDate}
+        />
 
-          {query.tab === 'operating' ? (
-            <FinanceOperatingTab
-              query={query}
-              items={lineItemsQuery.data ?? []}
-              isLoading={lineItemsQuery.isLoading}
-            />
-          ) : null}
-        </div>
+        {query.tab === 'overview' ? (
+          <FinanceOverviewTab
+            summary={summaryQuery.data}
+            isLoading={summaryQuery.isLoading}
+          />
+        ) : null}
+
+        {query.tab === 'stays' ? (
+          <FinanceStaysTab
+            query={query}
+            rows={bookingsQuery.data?.rows ?? []}
+            total={bookingsQuery.data?.total ?? 0}
+            isLoading={bookingsQuery.isLoading}
+            onQueryChange={setQuery}
+          />
+        ) : null}
+
+        {query.tab === 'operating' ? (
+          <FinanceOperatingTab
+            query={query}
+            items={lineItemsQuery.data ?? []}
+            isLoading={lineItemsQuery.isLoading}
+          />
+        ) : null}
       </div>
     </AdminLayout>
   );

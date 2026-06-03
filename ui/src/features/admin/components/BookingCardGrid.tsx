@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Car, Dog, PartyPopper } from 'lucide-react';
+import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
@@ -8,7 +9,7 @@ import {
   formatBookingDateShort,
   formatMoney,
 } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor } from '@/features/admin/lib/bookingFlags';
+import { bookingRequestsSurpriseDecor, bookingFlagIconChipClass } from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
@@ -16,7 +17,6 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
-  emptyExtraHint?: string | null;
 };
 
 /**
@@ -30,54 +30,42 @@ export function BookingCardGrid({
   isLoading,
   error,
   isRefreshing,
-  emptyExtraHint,
 }: Props) {
   const navigate = useNavigate();
 
   if (error) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center bg-red-50 rounded-full size-9">
+      <div className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl border border-border/50">
+        <div className="flex justify-center items-center bg-red-50 dark:bg-red-500/15 rounded-full size-9">
           <span className="text-base font-black leading-none text-red-500">
             !
           </span>
         </div>
         <div>
-          <p className="text-[14px] font-bold text-slate-800">
+          <p className="text-section-title font-bold text-foreground">
             Could not load bookings
           </p>
-          <p className="mt-1 text-[12px] text-slate-400 max-w-xs">{error}</p>
+          <p className="mt-1 max-w-xs text-caption">{error}</p>
         </div>
       </div>
     );
   }
 
-  if (isLoading) return <CardGridSkeleton />;
+  if (isLoading) return <BookingsCardGridSkeleton />;
 
   if (rows.length === 0) {
     return (
-      <div
-        className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-white rounded-xl"
-        style={{ border: '1px solid rgba(0,0,0,0.08)' }}
-      >
-        <div className="flex justify-center items-center rounded-full size-9 bg-slate-100">
-          <span className="text-lg leading-none text-slate-400">∅</span>
+      <div className="flex flex-col gap-3 justify-center items-center py-20 text-center bg-card rounded-xl border border-border/50">
+        <div className="flex justify-center items-center rounded-full size-9 bg-muted">
+          <span className="text-lg leading-none text-muted-foreground">∅</span>
         </div>
         <div>
-          <p className="text-[14px] font-bold text-slate-700">
+          <p className="text-section-title font-bold text-foreground">
             No bookings found
           </p>
-          <p className="mt-1 text-[12px] text-slate-400">
+          <p className="mt-1 text-caption">
             Adjust your filters or clear the search.
           </p>
-          {emptyExtraHint ? (
-            <p className="mt-2 text-[12px] text-slate-500 max-w-sm">
-              {emptyExtraHint}
-            </p>
-          ) : null}
         </div>
       </div>
     );
@@ -125,14 +113,11 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
       onKeyDown={handleKey}
       aria-label={`Open booking for ${name}`}
       className={cn(
-        'group relative bg-white rounded-xl overflow-hidden cursor-pointer transition-all duration-200',
+        'group relative bg-card rounded-xl overflow-hidden cursor-pointer transition-all duration-200',
+        'border border-border/50 shadow-sm dark:shadow-none',
         'hover:-translate-y-0.5 outline-none',
         'focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
       )}
-      style={{
-        border: '1px solid rgba(0,0,0,0.08)',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-      }}
     >
       {/* Top: mobile = status beside guest; sm+ = status above avatar + name */}
       <div className="space-y-4 p-4 pb-3">
@@ -149,10 +134,10 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
               className="shrink-0"
             />
             <div className="min-w-0">
-              <p className="text-[14px] font-bold leading-tight text-slate-800 truncate">
+              <p className="truncate text-sm font-bold leading-tight text-foreground">
                 {name}
               </p>
-              <p className="mt-[2px] text-[11px] leading-tight text-slate-400 truncate">
+              <p className="mt-0.5 truncate text-data-secondary">
                 {row.guest_email}
               </p>
             </div>
@@ -163,34 +148,31 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
       {/* Body: stay */}
       <div className="px-4 pb-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+          <p className="text-overline">
             Stay
           </p>
-          <p className="mt-0.5 text-[13px] font-semibold text-slate-700 whitespace-nowrap">
+          <p className="mt-0.5 whitespace-nowrap text-data-primary">
             {formatBookingDateShort(row.check_in_date)}
-            <span className="mx-1.5 text-slate-300 font-light">→</span>
+            <span className="mx-1.5 text-muted-foreground/50 font-light">→</span>
             {formatBookingDate(row.check_out_date)}
           </p>
-          <p className="mt-[2px] text-[11px] text-slate-400">
+          <p className="mt-0.5 text-data-secondary">
             {row.number_of_nights}{' '}
             {row.number_of_nights === 1 ? 'night' : 'nights'}
-            <span className="mx-1.5 text-slate-300">·</span>
+            <span className="mx-1.5 text-muted-foreground/50">·</span>
             {pax} {pax === 1 ? 'guest' : 'guests'}
           </p>
         </div>
       </div>
 
       {/* Footer: flags + amount */}
-      <div
-        className="flex items-center justify-between gap-2 px-4 py-3"
-        style={{ borderTop: '1px solid #f8fafc', background: '#fcfcfd' }}
-      >
+      <div className="flex items-center justify-between gap-2 border-t border-separator bg-muted/20 px-4 py-3 dark:bg-muted/30">
         <div className="flex items-center gap-1.5 min-w-0">
           {row.need_parking ? (
             <span
               title="Needs parking"
               aria-label="Needs parking"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-sky-50 text-sky-700 ring-1 ring-inset ring-sky-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.parking)}
             >
               <Car className="size-4" aria-hidden />
             </span>
@@ -199,7 +181,7 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
             <span
               title="Has pets"
               aria-label="Has pets"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.pet)}
             >
               <Dog className="size-4" aria-hidden />
             </span>
@@ -208,7 +190,7 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
             <span
               title="Surprise decor setup"
               aria-label="Surprise decor setup"
-              className="inline-flex items-center justify-center size-7 rounded-md bg-fuchsia-50 text-fuchsia-700 ring-1 ring-inset ring-fuchsia-200/70"
+              className={cn('size-7', bookingFlagIconChipClass.decor)}
             >
               <PartyPopper className="size-4" aria-hidden />
             </span>
@@ -216,56 +198,16 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
           {!row.need_parking &&
             !row.has_pets &&
             !bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
-            <span className="text-[11px] text-slate-300">No flags</span>
+            <span className="text-caption text-muted-foreground/50">No flags</span>
           )}
         </div>
 
         {row.booking_rate != null && (
-          <span className="shrink-0 text-[12px] font-bold text-slate-700 tabular-nums">
+          <span className="shrink-0 text-table-amount">
             {formatMoney(row.booking_rate)}
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-function CardGridSkeleton() {
-  return (
-    <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="bg-white rounded-xl overflow-hidden"
-          style={{
-            border: '1px solid rgba(0,0,0,0.08)',
-            opacity: 1 - i * 0.06,
-          }}
-        >
-          <div className="flex items-center gap-3 p-4 pb-3">
-            <div className="rounded-full size-12 animate-pulse bg-slate-100 shrink-0" />
-            <div className="flex-1 min-w-0 space-y-1.5">
-              <div className="h-3 rounded-full bg-slate-100 animate-pulse w-2/3" />
-              <div className="h-2.5 rounded-full bg-slate-100/70 animate-pulse w-3/4" />
-            </div>
-          </div>
-          <div className="px-4 pb-3 space-y-2">
-            <div className="w-24 h-5 rounded-md animate-pulse bg-slate-100" />
-            <div className="w-3/4 h-3 rounded-full animate-pulse bg-slate-100" />
-            <div className="w-1/2 h-2.5 rounded-full bg-slate-100/70 animate-pulse" />
-          </div>
-          <div
-            className="flex items-center justify-between px-4 py-3"
-            style={{ borderTop: '1px solid #f8fafc', background: '#fcfcfd' }}
-          >
-            <div className="flex gap-1.5">
-              <div className="rounded-md size-7 animate-pulse bg-slate-100" />
-              <div className="rounded-md size-7 animate-pulse bg-slate-100" />
-            </div>
-            <div className="w-16 h-3 rounded-full animate-pulse bg-slate-100" />
-          </div>
-        </div>
-      ))}
     </div>
   );
 }

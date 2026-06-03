@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Check, ExternalLink, Loader2, Wallet } from 'lucide-react';
 
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { MainLayout } from '@/layouts/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -33,7 +34,7 @@ import {
 import { handleNameInputChange } from '@/utils/helpers';
 import { toCapitalCase } from '@/utils/formatters';
 import type { SubmitSdRefundBody } from '@/features/sd-form/lib/api';
-import { findVoucher, type Voucher } from '@/features/sd-form/lib/voucher';
+import { findVoucher, formatVoucherDiscountRange, type Voucher } from '@/features/sd-form/lib/voucher';
 import { VoucherReveal } from '@/features/sd-form/components/VoucherReveal';
 
 type Step = 1 | 2 | 'done';
@@ -276,13 +277,7 @@ export function SdFormPage() {
   if (query.isLoading) {
     return (
       <MainLayout>
-        <div className="relative space-y-8 p-4 sm:p-6 lg:p-8">
-          <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} />
-          <div className="flex flex-col items-center justify-center gap-3 py-6 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-            <p className="text-sm">Loading your form…</p>
-          </div>
-        </div>
+        <SdFormPageSkeleton title={SD_FORM_BRAND_TITLE} />
       </MainLayout>
     );
   }
@@ -355,7 +350,7 @@ export function SdFormPage() {
         <SdFormStepper activeStep={step === 1 ? 1 : 2} />
 
         {showGreeting && (
-          <header className="space-y-4 border-b border-border/60 px-5 pb-5">
+          <header className="space-y-4 border-b border-separator px-5 pb-5">
             <h1 className="text-base font-bold text-foreground sm:text-lg">
               Hi {data.primary_guest_name},
             </h1>
@@ -370,6 +365,10 @@ export function SdFormPage() {
                 hear about your stay! We’d really appreciate it if you could
                 leave us a review on our Facebook page and share your favorite
                 moments (photos or videos) with your loved ones.
+              </p>
+              <p className="font-semibold text-warning">
+                Leave us a review and get a chance to win {formatVoucherDiscountRange()} or a
+                FREE stay on your next booking!
               </p>
             </div>
           </header>
@@ -476,22 +475,24 @@ function StepOneReview({
       <Button
         asChild
         variant="outline"
-        className="min-h-[48px] w-full gap-2 border-primary/40 text-primary hover:bg-primary/10 hover:text-primary"
+        className="h-auto min-h-[48px] w-full whitespace-normal border-primary/40 px-4 py-3.5 text-primary hover:bg-primary/10 hover:text-primary sm:px-6"
       >
         <a
           href={reviewsUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-2"
+          className="flex w-full min-h-[48px] items-center justify-center text-center text-sm font-semibold leading-snug sm:text-base"
           onClick={onReviewOpened}
         >
-          Review us on Facebook
-          <ExternalLink className="size-4 shrink-0" aria-hidden />
+          <span className="inline text-balance">
+            Review us on Facebook and win amazing prizes!{' '}
+            <ExternalLink
+              className="mb-0.5 inline size-4 shrink-0 align-middle"
+              aria-hidden
+            />
+          </span>
         </a>
       </Button>
-      <p className="text-center text-xs text-muted-foreground">
-        We've got a little surprise for you after you leave a review.
-      </p>
     </div>
   );
 }

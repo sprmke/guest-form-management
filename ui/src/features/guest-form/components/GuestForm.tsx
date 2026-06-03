@@ -1,8 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, useWatch } from 'react-hook-form';
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
+import type { GuestNavState } from '@/layouts/guestNavState';
 import { Button } from '@/components/ui/button';
-import 'react-day-picker/dist/style.css';
 import {
   Form,
   FormControl,
@@ -49,6 +50,7 @@ import {
   stringToDate,
   dateToString,
   normalizeDateString,
+  getManilaYmdToday,
   type BookedDateRange,
 } from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -67,6 +69,7 @@ import {
   parseBookingInfoFromClipboard,
 } from '@/utils/bookingFormatter';
 import { GuestFormParkingDates } from '@/features/guest-form/components/GuestFormParkingDates';
+import { GuestFormPaymentStepContent } from '@/features/guest-form/components/GuestFormPaymentStepContent';
 import { GuestFormStepper } from '@/features/guest-form/components/GuestFormStepper';
 import { GuestFormStepNavigation } from '@/features/guest-form/components/GuestFormStepNavigation';
 import {
@@ -103,6 +106,7 @@ export function GuestForm() {
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [sameAsFacebookName, setSameAsFacebookName] = useState(false);
   const [currentStep, setCurrentStep] = useState<GuestFormStepId>(1);
+  const [submitReady, setSubmitReady] = useState(false);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const validIdInputRef = useRef<HTMLInputElement>(null);
@@ -299,6 +303,14 @@ export function GuestForm() {
           }
         }
 
+        if (formData.petVaccinationDate) {
+          formData.petVaccinationDate = normalizeDateString(
+            formData.petVaccinationDate,
+          );
+        } else if (formData.hasPets) {
+          formData.petVaccinationDate = getManilaYmdToday();
+        }
+
         // Reset form with the modified data
         form.reset(formData);
       } else {
@@ -469,7 +481,9 @@ export function GuestForm() {
       // Back to calendar; drop bookingId + legacy `from`; keep source=airbnb, dev, dates, etc.
       const next = stripLegacyFromQueryParam(searchParams);
       next.delete('bookingId');
-      navigate(next.toString() ? `/?${next.toString()}` : '/');
+      navigate(next.toString() ? `/?${next.toString()}` : '/', {
+        state: { guestEnter: 'back' } satisfies GuestNavState,
+      });
     } catch (error) {
       console.error('Cancel booking error:', error);
       toast.error('Failed to cancel booking', {
@@ -621,7 +635,9 @@ export function GuestForm() {
 
         // Redirect to success page with booking data
         navigate(`/success?bookingId=${currentBookingId}`, {
-          state: { bookingData },
+          state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
+            bookingData: typeof bookingData;
+          },
         });
         return;
       }
@@ -657,7 +673,9 @@ export function GuestForm() {
 
       // Redirect to success page with bookingId and booking data
       navigate(`/success?bookingId=${currentBookingId}`, {
-        state: { bookingData },
+        state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
+          bookingData: typeof bookingData;
+        },
       });
     } catch (error: unknown) {
       console.error('Error submitting form:', {
@@ -728,21 +746,23 @@ export function GuestForm() {
         toast.error('Failed to submit the guest form', {
           id: 'submission-error',
           description: (
-            <div className="space-y-3">
-              <p className="text-sm font-semibold leading-relaxed">
+            <div className="space-y-3 text-foreground">
+              <p className="text-sm font-semibold leading-relaxed text-foreground">
                 {cleanedMessage}
               </p>
-              <p className="text-sm leading-relaxed opacity-90">
+              <p className="text-sm leading-relaxed text-muted-foreground">
                 {isAirbnb
                   ? "Click the button below to copy your form data and share it with your host so we don't need to manually fill up all information again. We really apologize for the inconvenience."
                   : "Click the button below to copy your form data and paste it on our Facebook Messenger so we don't need to manually fill up all information again. We really apologize for the inconvenience."}
               </p>
-              <button
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 min-h-[44px] w-full bg-card text-foreground hover:bg-muted"
                 onClick={handleCopyBookingInfo}
-                className="w-full px-4 py-2.5 text-sm font-medium text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors shadow-sm"
               >
                 Copy Booking Information
-              </button>
+              </Button>
             </div>
           ),
           duration: 7000,
@@ -792,6 +812,21 @@ export function GuestForm() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep]);
 
+  useEffect(() => {
+    if (currentStep !== GUEST_FORM_STEP_COUNT) {
+      setSubmitReady(false);
+      return;
+    }
+    setSubmitReady(false);
+    const timer = window.setTimeout(() => setSubmitReady(true), 400);
+    return () => window.clearTimeout(timer);
+  }, [currentStep]);
+
+  const handleSubmitGuestForm = () => {
+    if (!submitReady || isSubmitting || !canProceed) return;
+    void form.handleSubmit(onSubmit)();
+  };
+
   const activeStepConfig = GUEST_FORM_STEPS[currentStep - 1];
   const StepIcon = activeStepConfig.icon;
 
@@ -799,20 +834,15 @@ export function GuestForm() {
     <Form {...form}>
       <form
         onSubmit={(event) => {
+          event.preventDefault();
           if (currentStep < GUEST_FORM_STEP_COUNT) {
-            event.preventDefault();
             if (canProceed) void handleNextStep();
-            return;
           }
-          void form.handleSubmit(onSubmit)(event);
         }}
-        className="relative space-y-6 p-4 sm:p-6 lg:p-8"
+        className="relative space-y-6 p-4 sm:p-6 lg:p-8 guest-inner-enter"
       >
         {isLoading ? (
-          <div className="flex flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
-            <Loader2 className="size-8 animate-spin text-primary" aria-hidden />
-            <p className="text-sm">Loading your form…</p>
-          </div>
+          <GuestFormPageSkeleton />
         ) : invalidBookingId ? (
           <div className="flex flex-col justify-center items-center py-20 space-y-4">
             <div className="text-center">
@@ -837,6 +867,7 @@ export function GuestForm() {
                   next.delete('bookingId');
                   navigate(next.toString() ? `/?${next.toString()}` : '/', {
                     replace: true,
+                    state: { guestEnter: 'back' } satisfies GuestNavState,
                   });
                 }}
                 className="mt-4"
@@ -867,20 +898,17 @@ export function GuestForm() {
               className="space-y-5 rounded-xl border border-border/80 bg-card px-4 py-5 shadow-sm outline-none sm:px-6 sm:py-6"
               aria-labelledby="guest-form-step-heading"
             >
-              <header className="flex items-center gap-3 border-b border-border/60 pb-4">
+              <header className="flex items-center gap-3 border-b border-separator pb-4">
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
                   <StepIcon className="size-5" aria-hidden />
                 </div>
-                <div className="min-w-0 space-y-0.5">
+                <div className="min-w-0">
                   <h2
                     id="guest-form-step-heading"
                     className="text-base font-bold text-foreground sm:text-lg"
                   >
                     {activeStepConfig.label}
                   </h2>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {activeStepConfig.hint}
-                  </p>
                 </div>
               </header>
 
@@ -994,6 +1022,125 @@ export function GuestForm() {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="validId"
+                render={({ field: { onChange, value, ...field } }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Valid ID <span className="text-destructive">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="guest-image-upload-dropzone group">
+                        {validIdImageLoadError ? (
+                          <div className="guest-image-upload-error">
+                            <p>
+                              Image could not be loaded (link may be outdated).
+                            </p>
+                            <p>Please re-upload your Valid ID below.</p>
+                            <label className="guest-image-upload-trigger">
+                              <Upload className="w-4 h-4" />
+                              Re-upload Image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
+                                className="hidden"
+                                {...field}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
+                                    onChange(file);
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file),
+                                    );
+                                    setValidIdImageLoadError(false);
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        ) : validIdPreview || value ? (
+                          <>
+                            <img
+                              src={
+                                validIdPreview ||
+                                (value && URL.createObjectURL(value))
+                              }
+                              alt="Valid ID Preview"
+                              className="object-cover w-full h-full"
+                              onError={() => {
+                                setValidIdImageLoadError(true);
+                                setValidIdPreview(null);
+                              }}
+                            />
+                            <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
+                              <label className="guest-image-upload-replace">
+                                <Upload className="w-4 h-4" />
+                                Replace Image
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/jpg,image/png,image/heic"
+                                  className="hidden"
+                                  {...field}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      const validation =
+                                        validateImageFile(file);
+                                      if (!validation.valid) {
+                                        alert(validation.message);
+                                        return;
+                                      }
+                                      onChange(file);
+                                      setValidIdPreview(
+                                        URL.createObjectURL(file),
+                                      );
+                                    }
+                                  }}
+                                />
+                              </label>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex absolute inset-0 justify-center items-center">
+                            <label className="guest-image-upload-trigger">
+                              <Upload className="w-4 h-4" />
+                              Upload Image
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/jpg,image/png,image/heic"
+                                className="hidden"
+                                {...field}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const validation = validateImageFile(file);
+                                    if (!validation.valid) {
+                                      alert(validation.message);
+                                      return;
+                                    }
+                                    onChange(file);
+                                    setValidIdPreview(
+                                      URL.createObjectURL(file),
+                                    );
+                                  }
+                                }}
+                              />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
             )}
 
@@ -1072,7 +1219,7 @@ export function GuestForm() {
               {form.watch('checkInTime') &&
                 form.watch('checkInTime') < '14:00' && (
                   <div
-                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                     role="alert"
                   >
                     <p className="text-sm font-medium">
@@ -1165,7 +1312,7 @@ export function GuestForm() {
               {form.watch('checkOutTime') &&
                 form.watch('checkOutTime') > '11:00' && (
                   <div
-                    className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                    className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                     role="alert"
                   >
                     <p className="text-sm font-medium">
@@ -1322,7 +1469,7 @@ export function GuestForm() {
 
               {totalGuests >= 4 && (
                 <div
-                  className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                  className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                   role="alert"
                 >
                   <p className="text-sm font-medium">
@@ -1549,10 +1696,10 @@ export function GuestForm() {
                         {field.value ? (
                           <div
                             id="surprise-decor-hint"
-                            className="px-4 py-3 bg-blue-50 rounded-lg border-2 border-blue-200"
+                            className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
                             role="status"
                           >
-                            <p className="text-sm text-slate-800 leading-relaxed">
+                            <p className="text-sm text-foreground leading-relaxed">
                               By checking this, you confirm you have already
                               messaged us on{' '}
                               <span className="font-semibold">
@@ -1574,15 +1721,7 @@ export function GuestForm() {
 
             {currentStep === 3 && (
             <div className="space-y-4">
-              <GuestFormInfoCallout title="Azure North parking">
-                <p>
-                  Free parking is available outside the gate and Home Depot (3–5
-                  min walk). Paid slots inside Azure are ₱400/night when
-                  available.
-                </p>
-              </GuestFormInfoCallout>
-
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Do you need paid parking?
                 </p>
@@ -1591,33 +1730,19 @@ export function GuestForm() {
                     selected={!form.watch('needParking')}
                     onSelect={() => form.setValue('needParking', false)}
                     title="No paid parking needed"
-                    description="I'll use free parking outside or arrange drop-off only"
+                    description="Vehicles without a parking slot may enter for drop-off only at the tower entrance. Free parking is available outside Azure, in front of Home Depot (3–5 minute walk) on a first-come, first-served basis."
                   />
                   <GuestFormOptionCard
                     selected={form.watch('needParking')}
                     onSelect={() => form.setValue('needParking', true)}
                     title="Yes, reserve paid parking"
-                    description="₱400 per night inside Azure North (subject to availability)"
+                    description="₱400 per night inside Azure North residence and is subject to availability."
                   />
                 </div>
               </div>
 
               {form.watch('needParking') && (
-                <div className="space-y-4">
-                  <GuestFormInfoCallout title="🚙 Azure North parking reminder">
-                    <p>
-                      Vehicles without a slot may enter for{' '}
-                      <span className="font-semibold text-foreground">
-                        drop-off only
-                      </span>{' '}
-                      at the tower entrance.
-                    </p>
-                    <p>
-                      Fill in your car details below. Slots are limited on
-                      weekends — book in advance when possible.
-                    </p>
-                  </GuestFormInfoCallout>
-
+                <div className="space-y-4 pt-5">
                   <FormField
                     control={form.control}
                     name="carPlateNumber"
@@ -1625,9 +1750,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Plate Number{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input placeholder="Ex. ABC123" {...field} />
@@ -1644,9 +1767,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Brand & Model{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1669,9 +1790,7 @@ export function GuestForm() {
                       <FormItem>
                         <FormLabel>
                           Car Color{' '}
-                          {form.watch('needParking') && (
-                            <span className="text-red-500">*</span>
-                          )}
+                          <span className="text-destructive">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -1695,15 +1814,7 @@ export function GuestForm() {
 
             {currentStep === 4 && (
             <div className="space-y-4">
-
-              <GuestFormInfoCallout title="Bringing a pet?">
-                <p>
-                  Azure allows one toy/small dog per unit with a ₱300 pet fee.
-                  Select below only if a pet is joining your stay.
-                </p>
-              </GuestFormInfoCallout>
-
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Will a pet join your stay?
                 </p>
@@ -1715,31 +1826,26 @@ export function GuestForm() {
                   />
                   <GuestFormOptionCard
                     selected={form.watch('hasPets')}
-                    onSelect={() => form.setValue('hasPets', true)}
+                    onSelect={() => {
+                      form.setValue('hasPets', true);
+                      if (!form.getValues('petVaccinationDate')?.trim()) {
+                        form.setValue('petVaccinationDate', getManilaYmdToday());
+                      }
+                    }}
                     title="Yes, I'm bringing a pet"
-                    description="One toy/small dog — PMO approval required"
                   />
                 </div>
               </div>
 
               {form.watch('hasPets') && (
                 <div className="space-y-5">
-                  <GuestFormInfoCallout title="🐶 Azure North pet policy">
-                    <p>
-                      Provide complete pet details and vaccination records for PMO
-                      approval.
-                    </p>
-                    <p>
-                      Only one toy/small dog is allowed (₱300 pet fee). Pets
-                      must use the service elevator only, in a zipped bag and on
-                      a leash whenever outside the unit.
-                    </p>
-                    <p>
-                      <span className="font-semibold text-foreground">
-                        No pets allowed in:
-                      </span>{' '}
-                      Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck
-                    </p>
+                  <GuestFormInfoCallout title="🐶 Azure North Pet Policy">
+                    <ul className="list-disc list-inside space-y-2">
+                      <li>Only one toy/small dog is allowed. <span className="font-semibold text-foreground">Pet fee: P300</span></li>
+                      <li>Pets must use the service elevator only, should be in a leash whenever outside the unit.</li>
+                      <li>Azure North requires complete pet details and vaccination records for PMO approval.</li>
+                      <li>No pets allowed in: Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck</li>
+                    </ul>
                   </GuestFormInfoCallout>
 
                   <FormField
@@ -1867,7 +1973,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="guest-image-upload-dropzone group">
                             {petImagePreview || value ? (
                               <>
                                 <img
@@ -1879,7 +1985,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <label className="guest-image-upload-replace">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1908,7 +2014,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                                <label className="guest-image-upload-trigger">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -1954,7 +2060,7 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                          <div className="guest-image-upload-dropzone group">
                             {petVaccinationPreview || value ? (
                               <>
                                 <img
@@ -1966,7 +2072,7 @@ export function GuestForm() {
                                   className="object-cover w-full h-full"
                                 />
                                 <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                                  <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                                  <label className="guest-image-upload-replace">
                                     <Upload className="w-4 h-4" />
                                     Replace Image
                                     <input
@@ -1995,7 +2101,7 @@ export function GuestForm() {
                               </>
                             ) : (
                               <div className="flex absolute inset-0 justify-center items-center">
-                                <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                                <label className="guest-image-upload-trigger">
                                   <Upload className="w-4 h-4" />
                                   Upload Image
                                   <input
@@ -2036,124 +2142,7 @@ export function GuestForm() {
             {currentStep === 5 && (
             <div className="space-y-4">
 
-              <FormField
-                control={form.control}
-                name="validId"
-                render={({ field: { onChange, value, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Valid ID <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
-                        {validIdImageLoadError ? (
-                          <div className="flex flex-col gap-2 justify-center items-center p-4 w-full h-full text-sm text-center text-amber-700 bg-amber-50">
-                            <p>
-                              Image could not be loaded (link may be outdated).
-                            </p>
-                            <p>Please re-upload your Valid ID below.</p>
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 cursor-pointer hover:text-green-600 hover:border-green-600">
-                              <Upload className="w-4 h-4" />
-                              Re-upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                    setValidIdImageLoadError(false);
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        ) : validIdPreview || value ? (
-                          <>
-                            <img
-                              src={
-                                validIdPreview ||
-                                (value && URL.createObjectURL(value))
-                              }
-                              alt="Valid ID Preview"
-                              className="object-cover w-full h-full"
-                              onError={() => {
-                                setValidIdImageLoadError(true);
-                                setValidIdPreview(null);
-                              }}
-                            />
-                            <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
-                                <Upload className="w-4 h-4" />
-                                Replace Image
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/jpg,image/png,image/heic"
-                                  className="hidden"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const validation =
-                                        validateImageFile(file);
-                                      if (!validation.valid) {
-                                        alert(validation.message);
-                                        return;
-                                      }
-                                      onChange(file);
-                                      setValidIdPreview(
-                                        URL.createObjectURL(file),
-                                      );
-                                    }
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
-                              <Upload className="w-4 h-4" />
-                              Upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <GuestFormPaymentStepContent form={form} />
 
               <FormField
                 control={form.control}
@@ -2165,7 +2154,7 @@ export function GuestForm() {
                       <span className="text-destructive">*</span>
                     </FormLabel>
                     <FormControl>
-                      <div className="relative aspect-[3/2] max-h-[250px] md:max-h-[300px] w-full overflow-hidden rounded-lg border border-gray-200 bg-gray-50 group">
+                      <div className="guest-image-upload-dropzone group">
                         {paymentReceiptPreview || value ? (
                           <>
                             <img
@@ -2177,7 +2166,7 @@ export function GuestForm() {
                               className="object-cover w-full h-full"
                             />
                             <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="flex gap-2 items-center px-4 py-2 text-sm text-white bg-green-500 rounded transition-colors cursor-pointer hover:bg-green-600">
+                              <label className="guest-image-upload-replace">
                                 <Upload className="w-4 h-4" />
                                 Replace Image
                                 <input
@@ -2206,7 +2195,7 @@ export function GuestForm() {
                           </>
                         ) : (
                           <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="flex gap-2 items-center px-4 py-2 text-sm text-green-500 rounded border border-green-500 border-solid transition-colors cursor-pointer hover:text-green-600 hover:border-green-600">
+                            <label className="guest-image-upload-trigger">
                               <Upload className="w-4 h-4" />
                               Upload Image
                               <input
@@ -2244,7 +2233,7 @@ export function GuestForm() {
             {/* Developer API Controls (non-production or ?dev=true) */}
             {showDevControls && currentStep === 5 && (
               <div className="space-y-4 rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-4">
-                <div className="flex items-center gap-3 border-b border-border/60 pb-3">
+                <div className="flex items-center gap-3 border-b border-separator pb-3">
                   <Settings className="size-5 text-primary" aria-hidden />
                   <h3 className="text-sm font-semibold text-foreground">
                     Developer controls
@@ -2435,8 +2424,10 @@ export function GuestForm() {
               currentStep={currentStep}
               isSubmitting={isSubmitting}
               canProceed={canProceed}
+              submitReady={submitReady}
               onBack={handleBackStep}
               onNext={handleNextStep}
+              onSubmit={handleSubmitGuestForm}
             />
             </div>
           </div>

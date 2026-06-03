@@ -3,6 +3,7 @@ import { History, Mail, Unplug } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
+import { GmailMailIntegrationCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import {
   useDisconnectGmailMail,
   useGmailMailIntegrationStatus,
@@ -20,10 +21,23 @@ export function GmailMailIntegrationCard() {
 
   const busy = startOAuth.isPending || disconnect.isPending || isLoading;
 
+  if (isLoading) {
+    return (
+      <>
+        <GmailMailIntegrationCardSkeleton />
+        <HistoricalApprovalBackfillDialog
+          open={backfillModalOpen}
+          onOpenChange={setBackfillModalOpen}
+          variant="settings"
+        />
+      </>
+    );
+  }
+
   return (
     <section
       className={cn(
-        'w-full rounded-xl border border-sidebar-border bg-card px-3 py-3 sm:px-4 sm:py-3.5',
+        'surface-card w-full px-3 py-3 sm:px-4 sm:py-3.5',
         'shadow-sm',
       )}
       aria-labelledby="gmail-integration-heading"
@@ -41,7 +55,7 @@ export function GmailMailIntegrationCard() {
               'flex justify-center items-center rounded-lg shrink-0 size-10 sm:size-11',
               connected
                 ? 'text-emerald-700 bg-emerald-500/15'
-                : 'bg-slate-100 text-slate-500',
+                : 'bg-muted text-muted-foreground',
             )}
           >
             <Mail className="size-5 sm:size-[22px]" aria-hidden />
@@ -57,23 +71,19 @@ export function GmailMailIntegrationCard() {
               Connect the inbox that receives Azure approval replies. Approved
               GAF and pet PDFs are picked up automatically.
             </p>
-            {isLoading && (
-              <p className="mt-1 text-xs text-slate-400">Loading status…</p>
-            )}
             {isError && (
               <p className="mt-1 text-xs text-destructive">
                 {String((error as Error)?.message ?? error)}
               </p>
             )}
-            {!isLoading &&
-              !isError &&
+            {!isError &&
               connected &&
               data?.googleAccountEmail && (
                 <p className="text-xs text-emerald-800 mt-1.5 font-medium sm:text-[11px]">
                   Connected as {data.googleAccountEmail}
                 </p>
               )}
-            {!isLoading && !isError && !connected && (
+            {!isError && !connected && (
               <p className="text-xs text-amber-800/90 mt-1.5 sm:text-[11px]">
                 Not connected — connect to process approvals automatically.
               </p>

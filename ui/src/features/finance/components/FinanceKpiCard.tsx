@@ -16,7 +16,7 @@ export function FinanceKpiCard({
   value,
   hint,
   icon: Icon,
-  iconColor = 'text-slate-400',
+  iconColor = 'text-muted-foreground',
   valueClassName,
   size = 'default',
 }: Props) {
@@ -25,17 +25,17 @@ export function FinanceKpiCard({
   return (
     <div
       className={cn(
-        'group relative overflow-hidden rounded-xl border bg-white transition-shadow hover:shadow-md',
+        'group relative overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm transition-shadow hover:shadow-md dark:shadow-none',
         isHero
-          ? 'border-teal-200 bg-gradient-to-br from-teal-50/80 to-white p-5'
-          : 'border-slate-200/80 p-4',
+          ? 'border-primary/25 bg-gradient-to-br from-primary/10 via-card to-card p-5'
+          : 'p-4',
       )}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p
             className={cn(
-              'font-semibold uppercase tracking-wider text-slate-500',
+              'font-semibold uppercase tracking-wider text-muted-foreground',
               isHero ? 'text-[11px]' : 'text-[10px]',
             )}
           >
@@ -43,9 +43,9 @@ export function FinanceKpiCard({
           </p>
           <p
             className={cn(
-              'mt-1.5 truncate font-bold tabular-nums',
+              'mt-1.5 truncate font-bold tabular-nums text-foreground',
               isHero ? 'text-2xl sm:text-3xl' : 'text-lg sm:text-xl',
-              valueClassName ?? (isHero ? 'text-teal-800' : 'text-slate-900'),
+              valueClassName,
             )}
           >
             {value}
@@ -53,7 +53,7 @@ export function FinanceKpiCard({
           {hint && (
             <p
               className={cn(
-                'mt-1 text-slate-500',
+                'mt-1 text-muted-foreground',
                 isHero ? 'text-xs' : 'text-[11px]',
               )}
             >
@@ -66,14 +66,14 @@ export function FinanceKpiCard({
             className={cn(
               'flex shrink-0 items-center justify-center rounded-lg',
               isHero
-                ? 'size-10 bg-teal-100/80'
-                : 'size-8 bg-slate-100 group-hover:bg-slate-200/60',
+                ? 'size-10 bg-primary/15'
+                : 'size-8 bg-muted/80 group-hover:bg-muted',
             )}
           >
             <Icon
               className={cn(
                 isHero ? 'size-5' : 'size-4',
-                isHero ? 'text-teal-700' : iconColor,
+                isHero ? 'text-primary' : iconColor,
               )}
               aria-hidden
             />

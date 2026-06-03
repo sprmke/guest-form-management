@@ -74,11 +74,10 @@ export function FinanceExportMenu({
 
   return (
     <div className="relative inline-flex">
-      {/* Primary action — PDF report */}
       <button
         type="button"
         disabled={busy}
-        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-l-lg border border-r-0 border-slate-200 bg-teal-700 px-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:opacity-60"
+        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-l-2xl border border-r-0 border-border gradient-primary px-3 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] disabled:opacity-60"
         onClick={() => void handlePdfExport()}
       >
         {loading === 'pdf' ? (
@@ -90,14 +89,13 @@ export function FinanceExportMenu({
         <span className="sm:hidden">Report</span>
       </button>
 
-      {/* Secondary — CSV formats */}
       <div className="relative">
         <button
           type="button"
           disabled={busy}
           className={cn(
-            'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-r-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:opacity-60',
-            csvOpen && 'bg-slate-50',
+            'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-r-2xl border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted/50 disabled:opacity-60 dark:shadow-none',
+            csvOpen && 'bg-muted/50',
           )}
           onClick={() => setCsvOpen((v) => !v)}
           aria-expanded={csvOpen}
@@ -121,10 +119,10 @@ export function FinanceExportMenu({
             />
             <div
               role="menu"
-              className="absolute right-0 z-50 mt-1.5 w-[min(calc(100vw-24px),15rem)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+              className="absolute right-0 z-50 mt-1.5 w-[min(calc(100vw-24px),15rem)] overflow-hidden rounded-xl border border-border bg-popover shadow-elevated-lg"
             >
-              <div className="border-b border-slate-100 px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              <div className="border-b border-separator px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Spreadsheet (CSV)
                 </p>
               </div>
@@ -134,10 +132,10 @@ export function FinanceExportMenu({
                   type="button"
                   role="menuitem"
                   disabled={busy}
-                  className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-60"
+                  className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm text-foreground hover:bg-muted/50 disabled:opacity-60"
                   onClick={() => void handleCsvExport(opt.type)}
                 >
-                  <Sheet className="size-4 shrink-0 text-slate-400" aria-hidden />
+                  <Sheet className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   {opt.label}
                 </button>
               ))}

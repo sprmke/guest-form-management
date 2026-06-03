@@ -20,7 +20,11 @@ import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
-import { cn } from '@/lib/utils';
+import {
+  workflowAssetPreviewCard,
+  workflowAssetViewLink,
+  workflowUploadButtonClass,
+} from '@/features/admin/lib/workflowActionButtonStyles';
 
 export const parkingRequestFormSchema = z.object({
   parking_owner: z.string().trim().min(1, 'Enter parking owner or agent name'),
@@ -124,7 +128,7 @@ export function ParkingRequestForm({
 
   return (
     <WorkflowSubFormCard title="Parking request">
-      <div className="px-3 py-2 text-xs text-amber-800 bg-amber-50 rounded-md ring-1 ring-amber-200">
+      <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
         Parking fee is <strong>non-refundable</strong> and cannot be rescheduled
         after this step.
       </div>
@@ -186,9 +190,9 @@ export function ParkingRequestForm({
               href={currentEndorsementUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex gap-2 items-center p-2 bg-white rounded-lg border transition-colors group border-slate-200 hover:border-blue-300"
+              className={workflowAssetPreviewCard}
             >
-              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-slate-100">
+              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
                 <img
                   src={currentEndorsementUrl}
                   alt="Parking endorsement"
@@ -196,17 +200,17 @@ export function ParkingRequestForm({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-700">
+                <p className="text-xs font-medium text-foreground">
                   Current endorsement
                 </p>
-                <p className="inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline">
+                <p className={workflowAssetViewLink}>
                   <ExternalLink className="size-3 shrink-0" />
                   View image
                 </p>
               </div>
             </a>
           ) : (
-            <div className="flex justify-center items-center h-14 text-xs bg-white rounded-lg border border-dashed border-slate-300 text-slate-500">
+            <div className="flex justify-center items-center h-14 text-xs bg-card rounded-lg border border-dashed border-border text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <FileImage className="size-3.5" />
                 No parking endorsement uploaded
@@ -226,12 +230,7 @@ export function ParkingRequestForm({
             type="button"
             disabled={uploadMut.isPending}
             onClick={() => fileInputRef.current?.click()}
-            className={cn(
-              'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              uploadMut.isPending
-                ? 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-slate-200'
-                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100',
-            )}
+            className={workflowUploadButtonClass(uploadMut.isPending)}
           >
             {uploadMut.isPending ? (
               <>
@@ -257,13 +256,15 @@ function inputClass(hasError: boolean) {
   return [
     'h-10 w-full rounded-md border px-3 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-    hasError ? 'border-red-400 bg-red-50' : 'border-slate-300 bg-white',
+    hasError
+      ? 'border-red-400 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10'
+      : 'border-border bg-card',
   ].join(' ');
 }
 
 function readOnlyInputClass() {
   return [
-    'h-10 w-full rounded-md border border-slate-200 bg-slate-50 px-3 text-sm text-slate-700',
+    'h-10 w-full rounded-md border border-border bg-muted/50 px-3 text-sm text-foreground',
     'cursor-default focus:outline-none',
   ].join(' ');
 }
@@ -283,7 +284,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1">
-      <label className="block text-xs text-slate-600">
+      <label className="block text-xs text-muted-foreground">
         {label}
         {required ? (
           <>
@@ -293,7 +294,7 @@ function Field({
         ) : null}
       </label>
       {description && (
-        <p className="text-[10px] text-slate-500 -mt-0.5">{description}</p>
+        <p className="text-[10px] text-muted-foreground -mt-0.5">{description}</p>
       )}
       {children}
       {error && <p className="text-[10px] text-red-600">{error}</p>}

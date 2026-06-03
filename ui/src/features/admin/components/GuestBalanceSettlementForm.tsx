@@ -22,6 +22,11 @@ import {
 import { resolveAssetUrlForBrowser } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  workflowAssetPreviewCard,
+  workflowAssetViewLink,
+  workflowUploadButtonClass,
+} from '@/features/admin/lib/workflowActionButtonStyles';
 import { cn } from '@/lib/utils';
 
 export type GuestBalanceSettlementValues = {
@@ -198,7 +203,7 @@ export function GuestBalanceSettlementForm({
       ? Math.round(paidUi * 100)
       : null;
   const balCentsUi = totalDue !== null ? Math.round(totalDue * 100) : null;
-  let paidFieldClass = 'border-slate-200 bg-white';
+  let paidFieldClass = 'border-border bg-card';
   if (
     totalDue !== null &&
     paidInput !== '' &&
@@ -207,9 +212,11 @@ export function GuestBalanceSettlementForm({
     balCentsUi !== null
   ) {
     if (paidCentsUi > balCentsUi) {
-      paidFieldClass = 'border-red-300 bg-red-50 text-red-900';
+      paidFieldClass =
+        'border-red-300 bg-red-50 text-red-900 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300';
     } else if (paidCentsUi < balCentsUi) {
-      paidFieldClass = 'border-amber-300 bg-amber-50 text-amber-950';
+      paidFieldClass =
+        'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200';
     }
   }
 
@@ -239,15 +246,15 @@ export function GuestBalanceSettlementForm({
       bodyClassName="space-y-4"
     >
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <span className="text-xs font-medium text-slate-600">
+        <span className="text-xs font-medium text-muted-foreground">
           Total guest balance
         </span>
         <span
           className={cn(
             'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1',
             totalDue === null
-              ? 'bg-amber-50 text-amber-900 ring-amber-200'
-              : 'bg-slate-100 text-slate-900 ring-slate-200',
+              ? 'bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30'
+              : 'bg-muted text-foreground ring-slate-200 dark:ring-border/60',
           )}
         >
           {totalDue === null
@@ -259,7 +266,7 @@ export function GuestBalanceSettlementForm({
       <div className="space-y-1">
         <label
           htmlFor="guest-balance-paid"
-          className="block text-xs text-slate-600"
+          className="block text-xs text-muted-foreground"
         >
           Balance amount paid <span className="text-red-600">*</span>
         </label>
@@ -280,7 +287,7 @@ export function GuestBalanceSettlementForm({
       </div>
 
       <div className="space-y-1">
-        <span className="block text-xs text-slate-600">
+        <span className="block text-xs text-muted-foreground">
           Payment balance receipt
           {receiptRequired ? (
             <>
@@ -290,7 +297,7 @@ export function GuestBalanceSettlementForm({
           ) : null}
         </span>
         {!receiptRequired && totalDue !== null ? (
-          <p className="text-[10.5px] leading-snug text-slate-500">
+          <p className="text-[10.5px] leading-snug text-muted-foreground">
             Not required when total guest balance is {formatMoney(totalDue)}.
           </p>
         ) : null}
@@ -300,19 +307,19 @@ export function GuestBalanceSettlementForm({
               href={receiptImgSrc ?? receiptUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 hover:border-blue-300 transition-colors"
+              className={workflowAssetPreviewCard}
             >
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-slate-100">
+              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
                 {!receiptImgSrc ? (
                   <div className="flex h-full w-full items-center justify-center">
                     <Loader2
-                      className="size-5 animate-spin text-slate-400"
+                      className="size-5 animate-spin text-muted-foreground"
                       aria-hidden
                     />
                   </div>
                 ) : receiptImgFailed ? (
                   <div className="flex h-full w-full items-center justify-center">
-                    <FileImage className="size-5 text-slate-400" aria-hidden />
+                    <FileImage className="size-5 text-muted-foreground" aria-hidden />
                   </div>
                 ) : (
                   <img
@@ -326,17 +333,17 @@ export function GuestBalanceSettlementForm({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-slate-700">
+                <p className="text-xs font-medium text-foreground">
                   Current receipt
                 </p>
-                <p className="inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline">
+                <p className={workflowAssetViewLink}>
                   <ExternalLink className="size-3 shrink-0" aria-hidden />
                   View image
                 </p>
               </div>
             </a>
           ) : (
-            <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 text-xs text-slate-500">
+            <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-border bg-card px-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <FileImage className="size-3.5 shrink-0" aria-hidden />
                 No payment balance receipt uploaded
@@ -356,11 +363,8 @@ export function GuestBalanceSettlementForm({
             type="button"
             disabled={uploadMut.isPending || totalDue === null}
             onClick={() => fileRef.current?.click()}
-            className={cn(
-              'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              uploadMut.isPending || totalDue === null
-                ? 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-slate-200'
-                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100',
+            className={workflowUploadButtonClass(
+              uploadMut.isPending || totalDue === null,
             )}
           >
             {uploadMut.isPending ? (

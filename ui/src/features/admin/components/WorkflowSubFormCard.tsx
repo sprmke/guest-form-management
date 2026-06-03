@@ -21,13 +21,13 @@ export function WorkflowSubFormCard({
   bodyClassName,
 }: Props) {
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
-      <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3.5 sm:px-5">
-        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-slate-950/[0.04]">
+      <div className="border-b border-separator bg-muted/50/80 px-4 py-3.5 sm:px-5">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
           {title}
         </h3>
         {description ? (
-          <p className="mt-1 text-[11px] leading-snug text-slate-500">
+          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
             {description}
           </p>
         ) : null}

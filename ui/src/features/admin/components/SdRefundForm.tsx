@@ -27,6 +27,11 @@ import type {
 } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  workflowAssetPreviewCard,
+  workflowAssetViewLink,
+  workflowUploadButtonClass,
+} from '@/features/admin/lib/workflowActionButtonStyles';
 import { cn } from '@/lib/utils';
 
 function parseNumberArray(raw: unknown): number[] {
@@ -156,8 +161,8 @@ export function InlineCopyIconButton({
       className={cn(
         'relative top-px inline-flex shrink-0 items-center justify-center rounded border p-0 align-middle transition-colors ml-1',
         disabled
-          ? 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300'
-          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100',
+          ? 'cursor-not-allowed border-border bg-muted/50 text-muted-foreground/50'
+          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20',
       )}
       style={{ width: 18, height: 18, padding: 0 }}
       aria-label={ariaLabel}
@@ -178,14 +183,14 @@ function RefundSummaryRow({
 }) {
   return (
     <div className="grid gap-1.5 py-3.5 sm:grid-cols-[minmax(0,5.75rem)_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:gap-y-0 sm:py-3.5">
-      <dt className="text-left text-xs font-semibold leading-snug text-slate-500 sm:pt-[2px] sm:text-[11px]">
+      <dt className="text-left text-xs font-semibold leading-snug text-muted-foreground sm:pt-[2px] sm:text-[11px]">
         {label}
       </dt>
       <dd
         className={cn(
-          'min-w-0 text-sm font-medium leading-relaxed text-slate-900 break-words sm:text-[13px] sm:leading-relaxed sm:font-normal',
+          'min-w-0 text-sm font-medium leading-relaxed text-foreground break-words sm:text-[13px] sm:leading-relaxed sm:font-normal',
           mono &&
-            'font-mono text-[13px] tracking-tight text-slate-800 sm:font-mono',
+            'font-mono text-[13px] tracking-tight text-foreground sm:font-mono',
         )}
       >
         {children}
@@ -375,13 +380,13 @@ export function SdRefundForm({
       bodyClassName="space-y-4"
     >
       {guestMethod && (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-950/[0.04]">
-          <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3.5 sm:px-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-slate-950/[0.04]">
+          <div className="border-b border-separator bg-muted/50/80 px-4 py-3.5 sm:px-5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Guest refund details
             </h3>
           </div>
-          <dl className="min-w-0 divide-y divide-slate-100 px-4 sm:px-5">
+          <dl className="min-w-0 divide-y divide-separator px-4 sm:px-5">
             <RefundSummaryRow label="Method">
               {methodLabel(guestMethod)}
             </RefundSummaryRow>
@@ -390,8 +395,8 @@ export function SdRefundForm({
                 <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
                   <span
                     className={cn(
-                      'min-w-0 break-words font-mono text-[13px] leading-snug tracking-tight text-slate-800 sm:leading-normal',
-                      !phoneDisplay && 'text-slate-400',
+                      'min-w-0 break-words font-mono text-[13px] leading-snug tracking-tight text-foreground sm:leading-normal',
+                      !phoneDisplay && 'text-muted-foreground',
                     )}
                   >
                     {phoneDisplay || '—'}
@@ -413,8 +418,8 @@ export function SdRefundForm({
                   <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
                     <span
                       className={cn(
-                        'min-w-0 break-words text-sm leading-snug text-slate-900 sm:text-[13px] sm:font-normal sm:leading-normal',
-                        !accountNameForCopy && 'text-slate-400',
+                        'min-w-0 break-words text-sm leading-snug text-foreground sm:text-[13px] sm:font-normal sm:leading-normal',
+                        !accountNameForCopy && 'text-muted-foreground',
                       )}
                     >
                       {accountNameForCopy || '—'}
@@ -430,8 +435,8 @@ export function SdRefundForm({
                   <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
                     <span
                       className={cn(
-                        'min-w-0 break-all font-mono text-[13px] leading-snug tracking-tight text-slate-800 sm:font-mono sm:leading-normal',
-                        !accountNumberForCopy && 'text-slate-400',
+                        'min-w-0 break-all font-mono text-[13px] leading-snug tracking-tight text-foreground sm:font-mono sm:leading-normal',
+                        !accountNumberForCopy && 'text-muted-foreground',
                       )}
                     >
                       {booking.sd_refund_account_number?.trim() || '—'}
@@ -447,7 +452,7 @@ export function SdRefundForm({
             )}
             {booking.sd_refund_guest_feedback && (
               <RefundSummaryRow label="Guest feedback">
-                <span className="whitespace-pre-wrap font-normal text-slate-700">
+                <span className="whitespace-pre-wrap font-normal text-foreground">
                   {booking.sd_refund_guest_feedback}
                 </span>
               </RefundSummaryRow>
@@ -457,7 +462,7 @@ export function SdRefundForm({
       )}
 
       <div className="flex justify-between items-center text-sm">
-        <span className="text-slate-600">Security Deposit (base)</span>
+        <span className="text-muted-foreground">Security Deposit (base)</span>
         <span className="font-medium">{formatMoney(baseSd)}</span>
       </div>
 
@@ -485,9 +490,9 @@ export function SdRefundForm({
 
       <div className="space-y-2">
         <div className="space-y-1">
-          <label className="block text-xs text-slate-600">
+          <label className="block text-xs text-muted-foreground">
             Actual Refund Amount{' '}
-            <span className="font-normal text-slate-400">
+            <span className="font-normal text-muted-foreground">
               (base + expenses − profits)
             </span>
           </label>
@@ -495,8 +500,8 @@ export function SdRefundForm({
             className={cn(
               'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
               netSD < 0
-                ? 'border-red-300 bg-red-50 text-red-700'
-                : 'border-slate-200 bg-slate-50 text-slate-900',
+                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
+                : 'border-border bg-muted/50 text-foreground',
             )}
             aria-readonly="true"
           >
@@ -519,7 +524,7 @@ export function SdRefundForm({
       </div>
 
       <div className="space-y-1">
-        <label className="block text-xs text-slate-600">
+        <label className="block text-xs text-muted-foreground">
           Refund receipt (optional)
         </label>
         <div className="space-y-2">
@@ -528,9 +533,9 @@ export function SdRefundForm({
               href={receiptUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex min-h-[44px] items-center gap-2 rounded-lg border border-slate-200 bg-white p-2 hover:border-blue-300 transition-colors"
+              className={workflowAssetPreviewCard}
             >
-              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-slate-100">
+              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
                 <img
                   src={receiptUrl}
                   alt="Refund receipt"
@@ -540,17 +545,17 @@ export function SdRefundForm({
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-slate-700">
+                <p className="text-xs font-medium text-foreground">
                   Current receipt
                 </p>
-                <p className="inline-flex items-center gap-1 text-[11px] text-blue-600 group-hover:underline">
+                <p className={workflowAssetViewLink}>
                   <ExternalLink className="size-3 shrink-0" />
                   View image
                 </p>
               </div>
             </a>
           ) : (
-            <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white px-2 text-xs text-slate-500">
+            <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-border bg-card px-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
                 <FileImage className="size-3.5 shrink-0" />
                 No receipt uploaded
@@ -570,12 +575,7 @@ export function SdRefundForm({
             type="button"
             disabled={uploadMut.isPending}
             onClick={() => receiptFileRef.current?.click()}
-            className={cn(
-              'flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-              uploadMut.isPending
-                ? 'cursor-not-allowed bg-slate-100 text-slate-400 ring-1 ring-slate-200'
-                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100',
-            )}
+            className={workflowUploadButtonClass(uploadMut.isPending)}
           >
             {uploadMut.isPending ? (
               <>
@@ -617,17 +617,17 @@ function LineListSection({
   return (
     <div className="space-y-1.5">
       <div className="flex gap-2 justify-between items-center">
-        <span className="text-xs text-slate-600">{label}</span>
+        <span className="text-xs text-muted-foreground">{label}</span>
         <button
           type="button"
           onClick={onAdd}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 sm:min-h-0 sm:min-w-0 sm:justify-end"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 sm:min-h-0 sm:min-w-0 sm:justify-end"
         >
           <Plus className="size-3 shrink-0" /> Add
         </button>
       </div>
       {items.length === 0 && (
-        <p className="text-[11px] text-slate-400 italic">None added</p>
+        <p className="text-[11px] text-muted-foreground italic">None added</p>
       )}
       {items.map((row, i) => (
         <div
@@ -644,7 +644,7 @@ function LineListSection({
             value={row.label}
             onChange={(e) => onPatch(i, { label: e.target.value })}
             placeholder={labelPlaceholder}
-            className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            className="h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40"
           />
           <div className="flex items-center gap-1.5">
             <span
@@ -659,12 +659,12 @@ function LineListSection({
               value={row.amount}
               onChange={(e) => onPatch(i, { amount: Number(e.target.value) })}
               placeholder={amountPlaceholder}
-              className="h-9 w-full min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]"
+              className="h-9 w-full min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]"
             />
             <button
               type="button"
               onClick={() => onRemove(i)}
-              className="flex justify-center items-center rounded-md size-11 shrink-0 text-slate-400 hover:bg-slate-100 hover:text-red-600"
+              className="flex justify-center items-center rounded-md size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-red-600"
               aria-label="Remove row"
             >
               <Trash2 className="size-4" />

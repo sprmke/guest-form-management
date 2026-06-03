@@ -5,6 +5,7 @@ import { BookingDetailPage } from '@/features/admin/pages/BookingDetailPage';
 import { AdminSettingsPage } from '@/features/admin/pages/AdminSettingsPage';
 import { AdminMarketingPage } from '@/features/admin/pages/AdminMarketingPage';
 import { AdminStaffPage } from '@/features/admin/pages/AdminStaffPage';
+import { AdminOperationsPage } from '@/features/admin/pages/AdminOperationsPage';
 import { FinancePage } from '@/features/finance/pages/FinancePage';
 import { RequireAdmin } from '@/features/admin/components/RequireAdmin';
 
@@ -25,6 +26,15 @@ export const adminRoutes = [
     element={
       <RequireAdmin>
         <AdminStaffPage />
+      </RequireAdmin>
+    }
+  />,
+  <Route
+    key="admin-operations"
+    path="/operations"
+    element={
+      <RequireAdmin>
+        <AdminOperationsPage />
       </RequireAdmin>
     }
   />,

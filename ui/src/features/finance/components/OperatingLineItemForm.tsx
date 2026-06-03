@@ -74,7 +74,6 @@ export function OperatingLineItemForm({
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-      {/* Kind toggle */}
       <div className="grid grid-cols-2 gap-2">
         {(['expense', 'income'] as const).map((k) => {
           const active = kind === k;
@@ -87,9 +86,9 @@ export function OperatingLineItemForm({
                 'flex min-h-[44px] items-center justify-center gap-2 rounded-xl text-sm font-semibold capitalize transition-all',
                 active
                   ? isIncome
-                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-                    : 'bg-amber-50 text-amber-800 ring-1 ring-amber-200'
-                  : 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100',
+                    ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : 'bg-amber-500/10 text-amber-800 ring-1 ring-amber-500/25 dark:bg-amber-500/15 dark:text-amber-300'
+                  : 'border border-border bg-muted/40 text-muted-foreground hover:bg-muted/60',
               )}
               onClick={() => reset({ ...watch(), kind: k })}
             >
@@ -106,7 +105,7 @@ export function OperatingLineItemForm({
 
       <Field label="Label" error={errors.label?.message}>
         <input
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="e.g. Monthly rent"
           {...register('label')}
         />
@@ -117,7 +116,7 @@ export function OperatingLineItemForm({
           type="number"
           step="0.01"
           min={0}
-          className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm tabular-nums transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm tabular-nums text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="0.00"
           {...register('amount')}
         />
@@ -127,7 +126,7 @@ export function OperatingLineItemForm({
         <Field label="Category" error={errors.category?.message}>
           <input
             list="finance-categories"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             placeholder="Select or type"
             {...register('category')}
           />
@@ -141,7 +140,7 @@ export function OperatingLineItemForm({
         <Field label="Date" error={errors.occurred_on?.message}>
           <input
             type="date"
-            className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             {...register('occurred_on')}
           />
         </Field>
@@ -150,7 +149,7 @@ export function OperatingLineItemForm({
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
           rows={2}
-          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="Optional notes…"
           {...register('notes')}
         />
@@ -159,7 +158,7 @@ export function OperatingLineItemForm({
       <div className="flex gap-2 pt-1">
         <button
           type="button"
-          className="min-h-[44px] flex-1 rounded-xl border border-slate-200 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+          className="min-h-[44px] flex-1 rounded-xl border border-border text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted"
           onClick={onCancel}
         >
           Cancel
@@ -167,7 +166,7 @@ export function OperatingLineItemForm({
         <button
           type="submit"
           disabled={isPending}
-          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-teal-700 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-800 disabled:opacity-50"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-50"
         >
           {isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
           {initial ? 'Save changes' : 'Add line'}
@@ -188,12 +187,12 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-semibold text-slate-600">
+      <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">
         {label}
       </span>
       {children}
       {error && (
-        <p className="mt-1 text-xs font-medium text-red-600">{error}</p>
+        <p className="mt-1 text-xs font-medium text-destructive">{error}</p>
       )}
     </label>
   );
