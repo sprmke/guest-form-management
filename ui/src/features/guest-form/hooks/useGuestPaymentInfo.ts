@@ -5,11 +5,13 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 export type GuestPaymentInfo = {
   gcashName: string;
   gcashNumber: string;
+  gcashQrImageUrl: string;
 };
 
 export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   gcashName: 'Arianna Perez',
   gcashNumber: '0962 564 7541',
+  gcashQrImageUrl: '/images/kame-home-gcash-qr-payment.jpg',
 };
 
 export function useGuestPaymentInfo() {
