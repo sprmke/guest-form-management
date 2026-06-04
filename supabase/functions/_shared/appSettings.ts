@@ -20,10 +20,13 @@ export type AppSettingsRow = {
   default_parking_rate_guest: number | null;
   gcash_name: string | null;
   gcash_number: string | null;
+  gcash_qr_image_url: string | null;
 };
 
 export const DEFAULT_GCASH_NAME = 'Arianna Perez';
 export const DEFAULT_GCASH_NUMBER = '0962 564 7541';
+export const DEFAULT_GCASH_QR_RELATIVE_PATH =
+  '/images/kame-home-gcash-qr-payment.jpg';
 
 export type AppSettingsResolved = {
   emailTo: string;
@@ -37,11 +40,13 @@ export type AppSettingsResolved = {
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
+  gcashQrImageUrl: string;
 };
 
 export type GuestPaymentInfoDto = {
   gcashName: string;
   gcashNumber: string;
+  gcashQrImageUrl: string;
 };
 
 export type AppSettingsFieldSource = 'db' | 'env' | 'default';
@@ -186,6 +191,11 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
   const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
   const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
+  const gcashQr = pickString(row?.gcash_qr_image_url, 'GCASH_QR_IMAGE_URL');
+  const originBase = (origin.value || 'https://kamehomes.space').replace(
+    /\/+$/,
+    '',
+  );
 
   return {
     emailTo: emailTo.value,
@@ -201,6 +211,8 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
     gcashNumber: formatGcashNumberDisplay(
       gcashNumber.value || DEFAULT_GCASH_NUMBER,
     ),
+    gcashQrImageUrl:
+      gcashQr.value || `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`,
   };
 }
 
@@ -209,6 +221,7 @@ export async function serializeGuestPaymentInfo(): Promise<GuestPaymentInfoDto> 
   return {
     gcashName: s.gcashName,
     gcashNumber: s.gcashNumber,
+    gcashQrImageUrl: s.gcashQrImageUrl,
   };
 }
 
@@ -245,6 +258,12 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
   const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
   const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
+  const gcashQr = pickString(row?.gcash_qr_image_url, 'GCASH_QR_IMAGE_URL');
+  const originBase = (origin.value || 'https://kamehomes.space').replace(
+    /\/+$/,
+    '',
+  );
+  const defaultGcashQrUrl = `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
 
   const listSource = (
     items: string[],
@@ -300,6 +319,11 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
           : trimOrEmpty(Deno.env.get('GCASH_NUMBER'))
             ? 'env'
             : 'default',
+      gcashQrImageUrl: urlSource(
+        gcashQr,
+        defaultGcashQrUrl,
+        resolved.gcashQrImageUrl,
+      ),
     },
     secretsStatus: {
       resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),

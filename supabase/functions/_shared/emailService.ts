@@ -12,7 +12,7 @@ import {
   formatDateForEmail,
   formatTimeForDisplay,
 } from "./utils.ts";
-import { resolveAppSettings } from "./appSettings.ts";
+import { resolveAppSettings, DEFAULT_GCASH_QR_RELATIVE_PATH } from "./appSettings.ts";
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const settings = await resolveAppSettings();
@@ -135,6 +135,73 @@ async function loadBundledReadyForCheckinPaymentQr(): Promise<Uint8Array | null>
     );
     return null;
   }
+}
+
+type ReadyForCheckinQrAsset = {
+  bytes: Uint8Array | null;
+  contentType: string;
+  filename: string;
+  fallbackUrl: string;
+};
+
+async function resolveReadyForCheckinPaymentQr(
+  settings: Awaited<ReturnType<typeof resolveAppSettings>>,
+): Promise<ReadyForCheckinQrAsset> {
+  const originBase = settings.publicGuestAppOrigin.replace(/\/+$/, "");
+  const defaultUrl = `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
+  const fallbackUrl = settings.gcashQrImageUrl || defaultUrl;
+  const isCustomUpload =
+    !!settings.gcashQrImageUrl && settings.gcashQrImageUrl !== defaultUrl;
+
+  if (isCustomUpload) {
+    try {
+      const res = await fetch(settings.gcashQrImageUrl);
+      if (res.ok) {
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        if (bytes.length > 0) {
+          const contentType =
+            res.headers.get("content-type")?.split(";")[0]?.trim() ||
+            "image/jpeg";
+          const ext =
+            contentType === "image/png"
+              ? "png"
+              : contentType === "image/webp"
+                ? "webp"
+                : "jpg";
+          return {
+            bytes,
+            contentType,
+            filename: `gcash-qr.${ext}`,
+            fallbackUrl,
+          };
+        }
+      }
+      console.warn(
+        "[emailService] Custom GCash QR fetch failed:",
+        res.status,
+        settings.gcashQrImageUrl,
+      );
+    } catch (err) {
+      console.warn("[emailService] Custom GCash QR fetch error:", err);
+    }
+  }
+
+  const bundled = await loadBundledReadyForCheckinPaymentQr();
+  if (bundled && bundled.length > 0) {
+    return {
+      bytes: bundled,
+      contentType: "image/jpeg",
+      filename: "kame-home-gcash-qr-payment.jpg",
+      fallbackUrl,
+    };
+  }
+
+  return {
+    bytes: null,
+    contentType: "image/jpeg",
+    filename: "kame-home-gcash-qr-payment.jpg",
+    fallbackUrl,
+  };
 }
 
 type ResendAttachment = {
@@ -859,12 +926,11 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const settings = await resolveAppSettings();
-  const qrBytes = await loadBundledReadyForCheckinPaymentQr();
-  const paymentQrBase = settings.publicGuestAppOrigin.replace(/\/+$/, "");
+  const qrAsset = await resolveReadyForCheckinPaymentQr(settings);
   const paymentQrImageUrl =
-    qrBytes && qrBytes.length > 0
+    qrAsset.bytes && qrAsset.bytes.length > 0
       ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
-      : escapeHtml(`${paymentQrBase}/images/kame-home-gcash-qr-payment.jpg`);
+      : escapeHtml(qrAsset.fallbackUrl);
   const rfiTpl = await loadEmailTemplate("ready-for-checkin");
   const html = replacePlaceholders(
     rfiTpl,
@@ -895,16 +961,16 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   // ── Build attachments ─────────────────────────────────────────────────────────
   const attachments: ResendAttachment[] = [];
 
-  if (qrBytes && qrBytes.length > 0) {
+  if (qrAsset.bytes && qrAsset.bytes.length > 0) {
     attachments.push({
-      filename: "kame-home-gcash-qr-payment.jpg",
-      content: toBase64(qrBytes),
+      filename: qrAsset.filename,
+      content: toBase64(qrAsset.bytes),
       encoding: "base64",
-      content_type: "image/jpeg",
+      content_type: qrAsset.contentType,
       content_id: READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID,
     });
     console.log(
-      "[readyForCheckin] Inline payment QR (CID attachment, bundled asset)",
+      "[readyForCheckin] Inline payment QR (CID attachment)",
     );
   }
 
