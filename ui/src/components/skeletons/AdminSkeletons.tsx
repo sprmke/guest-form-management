@@ -279,23 +279,43 @@ export function AppSettingsCardSkeleton() {
   );
 }
 
-export function GmailMailIntegrationCardSkeleton() {
-  return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading Gmail integration">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-3">
-          <Skeleton className="size-10 shrink-0 rounded-lg sm:size-11" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-3 w-full max-w-md" />
-            <Skeleton className="h-3 w-40" />
-          </div>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
-          <Skeleton className="h-11 w-full rounded-lg sm:w-32" />
+export function GmailMailIntegrationCardSkeleton({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
+  const inner = (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <Skeleton className="size-10 shrink-0 rounded-lg sm:size-11" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-3 w-full max-w-md" />
+          <Skeleton className="h-3 w-40" />
         </div>
       </div>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
+        <Skeleton className="h-11 w-full rounded-lg sm:w-32" />
+      </div>
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div
+        aria-busy="true"
+        aria-label="Loading Gmail integration"
+        className="rounded-lg bg-muted/20 px-3 py-3"
+      >
+        {inner}
+      </div>
+    );
+  }
+
+  return (
+    <AdminSurfaceCard aria-busy="true" aria-label="Loading Gmail integration">
+      {inner}
     </AdminSurfaceCard>
   );
 }
