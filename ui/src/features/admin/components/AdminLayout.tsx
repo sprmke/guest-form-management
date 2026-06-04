@@ -14,7 +14,9 @@ import {
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TeamLogoMark } from '@/components/TeamLogoMark';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { useAppSettings } from '@/features/admin/hooks/useAppSettings';
 import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
 type NavItem = {
@@ -52,6 +54,8 @@ type Props = {
 export function AdminLayout({ children }: Props) {
   const location = useLocation();
   const { email, name, signOut } = useAdminSession();
+  const { data: appSettings } = useAppSettings();
+  const teamLogoUrl = appSettings?.emailLogoUrl;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] =
     useState(readSidebarCollapsed);
@@ -121,11 +125,7 @@ export function AdminLayout({ children }: Props) {
           onClick={onClose}
           title={collapsed ? 'Kame Home Admin' : undefined}
         >
-          <div className="flex justify-center items-center w-10 h-10 rounded-2xl gradient-primary shrink-0 shadow-soft">
-            <span className="text-[14px] font-black text-primary-foreground">
-              K
-            </span>
-          </div>
+          <TeamLogoMark src={teamLogoUrl} />
           {!collapsed && (
             <div className="min-w-0">
               <span className="block text-base font-bold tracking-tight text-foreground">

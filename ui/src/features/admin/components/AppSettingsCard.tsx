@@ -1,5 +1,16 @@
 import * as React from 'react';
-import { Check, ChevronDown, Globe, Mail, Settings, Shield, Timer, Wallet } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  Globe,
+  Loader2,
+  Mail,
+  Settings,
+  Shield,
+  Timer,
+  Upload,
+  Wallet,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
@@ -15,12 +26,19 @@ import { Label } from '@/components/ui/label';
 import {
   appSettingsToFormValues,
   useAppSettings,
+  useClearAppSettingsImage,
   useUpdateAppSettings,
   type AppSettingsFieldSource,
   type AppSettingsFormValues,
+  type AppSettingsImageField,
   type AppSettingsSecretsStatus,
   SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS,
 } from '@/features/admin/hooks/useAppSettings';
+import {
+  useUploadAppSettingsAsset,
+  type AppSettingsAssetType,
+} from '@/features/admin/hooks/useUploadAppSettingsAsset';
+import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
 
 function CollapsibleSection({
   id,
@@ -38,7 +56,7 @@ function CollapsibleSection({
   return (
     <Collapsible
       defaultOpen={defaultOpen}
-      className="rounded-lg border group border-border bg-muted/15"
+      className="rounded-lg border group/collapse border-border bg-muted/15"
     >
       <CollapsibleTrigger
         type="button"
@@ -51,7 +69,7 @@ function CollapsibleSection({
         <span className="shrink-0 text-muted-foreground">{icon}</span>
         <span className="flex-1 min-w-0 text-sm font-semibold">{title}</span>
         <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+          className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapse:rotate-180"
           aria-hidden
         />
       </CollapsibleTrigger>
@@ -149,9 +167,11 @@ function SecretBadge({
 function SecretGroup({
   title,
   children,
+  footer,
 }: {
   title: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="rounded-lg border border-separator bg-muted/10 p-3 space-y-2.5">
@@ -159,6 +179,9 @@ function SecretGroup({
         {title}
       </h4>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
+      {footer ? (
+        <div className="border-t border-separator pt-3">{footer}</div>
+      ) : null}
     </div>
   );
 }
@@ -173,7 +196,10 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         />
       </SecretGroup>
 
-      <SecretGroup title="Google">
+      <SecretGroup
+        title="Google"
+        footer={<GmailMailIntegrationCard variant="embedded" />}
+      >
         <SecretBadge
           label="Google account"
           configured={status.googleServiceAccountConfigured}
@@ -215,6 +241,140 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         />
       </SecretGroup>
     </div>
+  );
+}
+
+const DEFAULT_TEAM_LOGO_URL = 'https://kamehomes.space/images/logo.png';
+
+function SettingsImageField({
+  id,
+  label,
+  hint,
+  source,
+  disabled,
+  imageUrl,
+  assetType,
+  clearField,
+  previewAlt,
+  previewClassName = 'block h-auto max-h-40 w-auto max-w-full object-contain',
+  uploadLabel = 'Upload image',
+  replaceLabel = 'Replace image',
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  source?: AppSettingsFieldSource;
+  disabled?: boolean;
+  imageUrl: string;
+  assetType: AppSettingsAssetType;
+  clearField: AppSettingsImageField;
+  previewAlt: string;
+  previewClassName?: string;
+  uploadLabel?: string;
+  replaceLabel?: string;
+}) {
+  const fileRef = React.useRef<HTMLInputElement>(null);
+  const uploadMut = useUploadAppSettingsAsset();
+  const clearMut = useClearAppSettingsImage();
+  const busy = disabled || uploadMut.isPending || clearMut.isPending;
+  const hasStoredCustom = source === 'db';
+
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      await uploadMut.mutateAsync({ assetType, file });
+      toast.success(`${label} updated`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      if (fileRef.current) fileRef.current.value = '';
+    }
+  }
+
+  async function handleReset() {
+    try {
+      await clearMut.mutateAsync(clearField);
+      toast.success(`${label} reset to default`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Reset failed');
+    }
+  }
+
+  return (
+    <Field id={id} label={label} hint={hint} source={source}>
+      <div className="space-y-3">
+        <div className="mx-auto flex w-fit max-w-full justify-center rounded-xl border border-border/60 bg-card p-3">
+          <div className="group/image relative inline-block max-w-full">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+              aria-label={hasStoredCustom ? replaceLabel : uploadLabel}
+              className={cn(
+                'relative block max-w-full overflow-hidden rounded-lg border-0 bg-transparent p-0',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-card',
+                !busy && 'cursor-pointer',
+                busy && !uploadMut.isPending && 'cursor-not-allowed opacity-60',
+              )}
+            >
+              <img
+                src={imageUrl}
+                alt={previewAlt}
+                className={cn(
+                  previewClassName,
+                  uploadMut.isPending && 'opacity-50',
+                )}
+              />
+              <span
+                className={cn(
+                  'pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 px-3 text-center text-sm font-medium text-foreground transition-opacity motion-reduce:transition-none',
+                  uploadMut.isPending
+                    ? 'opacity-100'
+                    : 'opacity-0 group-hover/image:opacity-100 group-focus-within/image:opacity-100',
+                )}
+                aria-hidden
+              >
+                {uploadMut.isPending ? (
+                  <>
+                    <Loader2 className="size-5 animate-spin text-primary" />
+                    <span>Uploading…</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="size-5 text-primary" />
+                    <span>{hasStoredCustom ? replaceLabel : uploadLabel}</span>
+                  </>
+                )}
+              </span>
+            </button>
+          </div>
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => void handleFileChange(e)}
+        />
+        {hasStoredCustom ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            className="min-h-[44px]"
+            onClick={() => void handleReset()}
+          >
+            {clearMut.isPending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              'Reset to default'
+            )}
+          </Button>
+        ) : null}
+      </div>
+    </Field>
   );
 }
 
@@ -444,6 +604,22 @@ export function AppSettingsCard() {
                   placeholder="0962 564 7541"
                 />
               </Field>
+              <FieldSpan>
+                <SettingsImageField
+                  id="gcash-qr-image"
+                  label="GCash QR Image"
+                  hint="Shown on the guest form Payment step and in the ready-for-check-in email."
+                  source={sources?.gcashQrImageUrl}
+                  disabled={busy}
+                  imageUrl={data.gcashQrImageUrl}
+                  assetType="gcash_qr"
+                  clearField="gcashQrImageUrl"
+                  previewAlt="GCash QR code preview"
+                  previewClassName="block h-auto max-h-72 w-auto max-w-full object-contain"
+                  uploadLabel="Upload QR image"
+                  replaceLabel="Replace QR image"
+                />
+              </FieldSpan>
             </FieldGrid>
           </CollapsibleSection>
 
@@ -486,21 +662,19 @@ export function AppSettingsCard() {
                 />
               </Field>
               <FieldSpan>
-                <Field
+                <SettingsImageField
                   id="email-logo-url"
                   label="Team Logo"
-                  hint="Logo image used across the app."
+                  hint="Logo image used across the app and in emails."
                   source={sources?.emailLogoUrl}
-                >
-                  <Input
-                    id="email-logo-url"
-                    type="url"
-                    disabled={busy}
-                    value={draft.emailLogoUrl}
-                    onChange={(e) => set('emailLogoUrl', e.target.value)}
-                    className="h-10"
-                  />
-                </Field>
+                  disabled={busy}
+                  imageUrl={data.emailLogoUrl || DEFAULT_TEAM_LOGO_URL}
+                  assetType="team_logo"
+                  clearField="emailLogoUrl"
+                  previewAlt="Team logo preview"
+                  uploadLabel="Upload logo"
+                  replaceLabel="Replace logo"
+                />
               </FieldSpan>
             </FieldGrid>
           </CollapsibleSection>
@@ -520,7 +694,7 @@ export function AppSettingsCard() {
       )}
 
       {!isError ? (
-        <div className="flex flex-col gap-2 border-t border-separator pt-3 sm:flex-row sm:justify-end">
+        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
           <Button
             type="button"
             disabled={busy || !draft}
