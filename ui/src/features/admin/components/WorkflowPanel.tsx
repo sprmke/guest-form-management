@@ -31,7 +31,9 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  ExternalLink,
   History,
+  Info,
   Loader2,
   Mail,
   RefreshCw,
@@ -63,11 +65,13 @@ import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubForm
 import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
-  applicableTransitions,
   arePendingDocumentsComplete,
   bookingNeedsGmailListenerPoll,
   bookingPipeline,
   canNavigatePendingParkingSubStep,
+  defaultPendingDocSub,
+  initialViewedWorkflowStep,
+  isLiveWorkflowView,
   isSubStatusCompleted,
   isSubStatusCompletedInStepper,
   isSubStatusRequired,
@@ -75,6 +79,8 @@ import {
   type PendingDocumentSubStatus,
   previousStep,
   requiredSubForm,
+  workflowContentForView,
+  type ViewedWorkflowStep,
 } from '@/features/admin/lib/workflow';
 import {
   TERMINAL_STATUSES,
@@ -116,7 +122,6 @@ import {
   workflowInlineLink,
   workflowNeutralActionClass,
   workflowPrimaryActionClass,
-  workflowTextBackLink,
   workflowWarningActionClass,
 } from '@/features/admin/lib/workflowActionButtonStyles';
 
@@ -152,9 +157,6 @@ type ConfirmState = {
   /** Extra banner when stay dates are before today (Manila) for early pipeline statuses. */
   pastStayWarning?: boolean;
 } | null;
-
-/** Which workflow panel content is shown — current status vs a nested doc sub-step. */
-type WorkflowPanelFocus = 'pipeline' | 'pending-doc-sub';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -214,35 +216,42 @@ export function WorkflowPanel({ booking }: Props) {
   );
   const [guestBalanceValues, setGuestBalanceValues] =
     useState<GuestBalanceSettlementValues | null>(null);
-  const [activePendingDocSubStatus, setActivePendingDocSubStatus] =
-    useState<PendingDocumentSubStatus>('PENDING_GAF');
-
-  const [panelFocus, setPanelFocus] = useState<WorkflowPanelFocus>(() =>
-    status === 'PENDING_DOCUMENTS' ? 'pending-doc-sub' : 'pipeline',
+  const [viewedStep, setViewedStep] = useState<ViewedWorkflowStep>(() =>
+    initialViewedWorkflowStep(status, booking),
   );
 
-  useEffect(() => {
-    setActivePendingDocSubStatus((current) =>
-      isSubStatusRequired(current, booking) ? current : 'PENDING_GAF',
-    );
-  }, [booking.id, booking.need_parking, booking.has_pets]);
+  const activePendingDocSubStatus =
+    viewedStep.kind === 'pending-doc-sub'
+      ? viewedStep.sub
+      : defaultPendingDocSub(booking);
 
   useEffect(() => {
-    setPanelFocus(
-      status === 'PENDING_DOCUMENTS' ? 'pending-doc-sub' : 'pipeline',
-    );
-  }, [booking.id, status]);
+    setViewedStep(initialViewedWorkflowStep(status, booking));
+  }, [booking.id, status, booking.need_parking, booking.has_pets]);
 
   const focusPipelineView = useCallback(() => {
-    setPanelFocus('pipeline');
-  }, []);
+    setViewedStep({ kind: 'pipeline', status });
+  }, [status]);
 
   const focusPendingDocSubView = useCallback(
     (sub: PendingDocumentSubStatus) => {
-      setActivePendingDocSubStatus(sub);
-      setPanelFocus('pending-doc-sub');
+      setViewedStep({ kind: 'pending-doc-sub', sub });
     },
     [],
+  );
+
+  const selectPipelineStep = useCallback(
+    (step: BookingStatus) => {
+      if (step === 'PENDING_DOCUMENTS') {
+        setViewedStep({
+          kind: 'pending-doc-sub',
+          sub: defaultPendingDocSub(booking),
+        });
+        return;
+      }
+      setViewedStep({ kind: 'pipeline', status: step });
+    },
+    [booking],
   );
 
   // Confirm modals
@@ -275,7 +284,6 @@ export function WorkflowPanel({ booking }: Props) {
   const showSdCron = status === 'READY_FOR_CHECKIN';
   const showSdFormResend =
     status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
-  const showReadyForCheckoutSdGuestInfo = status === 'READY_FOR_CHECKOUT';
   const sdGuestFormUrl = `${window.location.origin}/sd-form?bookingId=${encodeURIComponent(booking.id)}`;
 
   const [recheckSdGuestSubmitPending, setRecheckSdGuestSubmitPending] =
@@ -458,12 +466,6 @@ export function WorkflowPanel({ booking }: Props) {
     }
   }
 
-  // Booking-data-aware transitions for the dev-controls relevance check.
-  // The "ACTIONS" UI itself is now driven by `next` + `prev` below — at most
-  // one forward and one backward step are shown at a time, mirroring the
-  // pipeline computed by `bookingPipeline()`.
-  const transitions = applicableTransitions(status, { manual: true }, booking);
-
   // Pipeline navigation — the stepper + Proceed/Back buttons read from these.
   const pipeline = bookingPipeline(booking, status);
   const next = !isTerminal ? nextStep(booking, status) : null;
@@ -487,17 +489,27 @@ export function WorkflowPanel({ booking }: Props) {
       isParkingRequestDraftComplete(parkingValues));
   const selectedPendingDocCanMarkIncomplete =
     selectedPendingDocRequired && selectedPendingDocCompleted;
-  const viewingPipelineStatus = panelFocus === 'pipeline';
-  const viewingPendingDocSub = panelFocus === 'pending-doc-sub';
+  const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
+  const contentReadOnly =
+    !isLiveView || status === 'COMPLETED' || status === 'CANCELLED';
+  const viewedContent = workflowContentForView(viewedStep, booking);
+  const viewingPendingDocSub = viewedStep.kind === 'pending-doc-sub';
 
   const canShowLateParkingForm =
+    isLiveView &&
     viewingPendingDocSub &&
     activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
     !inPendingDocuments &&
     canNavigatePendingParkingSubStep(booking, status);
   const showLateParkingActions = canShowLateParkingForm;
+  const returnToLiveStep = useCallback(() => {
+    setViewedStep(initialViewedWorkflowStep(status, booking));
+  }, [status, booking]);
+
   const showProceedToReadyForCheckin =
-    inPendingDocuments && viewingPendingDocSub;
+    isLiveView && inPendingDocuments && viewingPendingDocSub;
+  const livePipelineActions =
+    isLiveView && viewedStep.kind === 'pipeline' && !inPendingDocuments;
 
   const transitionConfirmDevControls = confirm
     ? workflowDevControlsForTransition(status, confirm.toStatus, booking)
@@ -664,25 +676,19 @@ export function WorkflowPanel({ booking }: Props) {
 
   // ─── Sub-form visibility ─────────────────────────────────────────────────
 
-  const needsPricing =
-    viewingPipelineStatus &&
-    !inPendingDocuments &&
-    transitions.some((t) => requiredSubForm(status, t) === 'pricing');
-  const needsParking =
-    viewingPendingDocSub &&
-    activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
-    isSubStatusRequired('PENDING_PARKING_REQUEST', booking) &&
-    (inPendingDocuments
-      ? !isSubStatusCompleted('PENDING_PARKING_REQUEST', booking)
-      : canNavigatePendingParkingSubStep(booking, status));
-  const needsSdRefund =
-    viewingPipelineStatus &&
-    transitions.some((t) => requiredSubForm(status, t) === 'sd_refund');
-  const needsGuestBalance =
-    viewingPipelineStatus &&
-    transitions.some((t) => requiredSubForm(status, t) === 'guest_balance');
-  const showSdGuestInfoCard =
-    viewingPipelineStatus && showReadyForCheckoutSdGuestInfo;
+  const needsPricing = viewedContent === 'pricing';
+  const needsParking = viewedContent === 'parking';
+  const needsSdRefund = viewedContent === 'sd_refund';
+  const needsGuestBalance = viewedContent === 'guest_balance';
+  const needsDocSubStatus = viewedContent === 'doc_sub_status';
+  const showSdGuestInfoCard = viewedContent === 'sd_guest_info';
+  const showStageContent =
+    needsPricing ||
+    needsParking ||
+    needsSdRefund ||
+    needsGuestBalance ||
+    needsDocSubStatus ||
+    showSdGuestInfoCard;
 
   return (
     <>
@@ -721,9 +727,8 @@ export function WorkflowPanel({ booking }: Props) {
               currentStatus={status}
               statusUpdatedAt={booking.status_updated_at}
               booking={booking}
-              panelFocus={panelFocus}
-              activePendingDocSubStatus={activePendingDocSubStatus}
-              onFocusPipeline={focusPipelineView}
+              viewedStep={viewedStep}
+              onSelectPipelineStep={selectPipelineStep}
               onSelectPendingDocSubStatus={focusPendingDocSubView}
               transitionPending={transitionMut.isPending}
             />
@@ -740,23 +745,24 @@ export function WorkflowPanel({ booking }: Props) {
         ) : null}
 
         {/* ── Stage-specific sub-form ───────────────────────────────────────── */}
-        {(needsPricing ||
-          needsParking ||
-          needsSdRefund ||
-          needsGuestBalance ||
-          showSdGuestInfoCard) && (
+        {showStageContent && (
           <div className="px-4 py-4 space-y-6 border-b border-separator">
-            {viewingPendingDocSub && !inPendingDocuments && (
-              <button
-                type="button"
-                disabled={transitionMut.isPending}
-                onClick={focusPipelineView}
-                className={workflowTextBackLink}
+            {contentReadOnly ? (
+              <div
+                role="status"
+                className="flex gap-2.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2.5 dark:border-blue-500/30 dark:bg-blue-950/40 sm:gap-3 sm:px-4 sm:py-3"
               >
-                <span>Back to {statusLabel(status)}</span>
-                <ArrowLeft className="size-4 shrink-0" aria-hidden />
-              </button>
-            )}
+                <Info
+                  className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400 sm:size-[18px]"
+                  aria-hidden
+                />
+                <p className="min-w-0 text-[12px] leading-snug text-blue-950 dark:text-blue-100 sm:text-[13px]">
+                  Quick view of previously completed steps is read-only. To make
+                  changes to them, use the{' '}
+                  <span className="font-semibold">Actions</span> section.
+                </p>
+              </div>
+            ) : null}
             {showSdGuestInfoCard && (
               <WorkflowSubFormCard title="Guest SD refund form">
                 <p className="text-[11.5px] leading-relaxed text-muted-foreground">
@@ -805,6 +811,12 @@ export function WorkflowPanel({ booking }: Props) {
                 </button>
               </WorkflowSubFormCard>
             )}
+            {needsDocSubStatus && (
+              <PendingDocSubStatusCard
+                booking={booking}
+                sub={activePendingDocSubStatus}
+              />
+            )}
             {needsPricing && (
               <>
                 <ReviewPricingForm
@@ -812,11 +824,13 @@ export function WorkflowPanel({ booking }: Props) {
                   booking={booking}
                   initialDraft={pricingValues}
                   onChange={setPricingValues}
+                  readOnly={contentReadOnly}
                 />
                 {booking.guest_requests_surprise_decor ? (
                   <SurpriseDecorAckCard
                     acknowledged={surpriseDecorStaffAck}
                     onAcknowledgedChange={setSurpriseDecorStaffAck}
+                    readOnly={contentReadOnly}
                   />
                 ) : null}
               </>
@@ -826,6 +840,7 @@ export function WorkflowPanel({ booking }: Props) {
                 booking={booking}
                 initialDraft={parkingValues}
                 onChange={setParkingValues}
+                readOnly={contentReadOnly}
               />
             )}
             {needsGuestBalance && (
@@ -833,6 +848,7 @@ export function WorkflowPanel({ booking }: Props) {
                 booking={booking}
                 initialDraft={guestBalanceValues}
                 onChange={setGuestBalanceValues}
+                readOnly={contentReadOnly}
               />
             )}
             {needsSdRefund && (
@@ -840,6 +856,7 @@ export function WorkflowPanel({ booking }: Props) {
                 booking={booking}
                 initialDraft={sdRefundValues}
                 onChange={setSdRefundValues}
+                readOnly={contentReadOnly}
               />
             )}
           </div>
@@ -1028,10 +1045,25 @@ export function WorkflowPanel({ booking }: Props) {
         {/* ── Transition actions ────────────────────────────────────────────── */}
         {!isTerminal && (
           <div className="px-4 py-4">
-            <p className="mb-2.5 text-overline">
+            {!isLiveView ? (
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  disabled={transitionMut.isPending}
+                  onClick={returnToLiveStep}
+                  className={workflowPrimaryActionClass(!transitionMut.isPending)}
+                >
+                  <span className="min-w-0 pr-2 text-left">
+                    Return to {statusLabel(status)}
+                  </span>
+                  <ChevronRight className="size-4 shrink-0" aria-hidden />
+                </button>
+              </div>
+            ) : (
+            <div className="flex flex-col gap-4">
+            <p className="text-overline">
               Actions
             </p>
-            <div className="flex flex-col gap-4">
               {inPendingDocuments && viewingPendingDocSub && (
                 <>
                   {prev && (
@@ -1174,7 +1206,7 @@ export function WorkflowPanel({ booking }: Props) {
               )}
 
               {/* Backward — secondary recovery action. */}
-              {viewingPipelineStatus && !inPendingDocuments && prev && (
+              {livePipelineActions && prev && (
                 <button
                   disabled={transitionMut.isPending}
                   onClick={() =>
@@ -1197,7 +1229,7 @@ export function WorkflowPanel({ booking }: Props) {
               )}
 
               {/* Forward — primary CTA. */}
-              {viewingPipelineStatus && !inPendingDocuments && next && (
+              {livePipelineActions && next && (
                 <button
                   disabled={
                     isTransitionDisabled(next) || transitionMut.isPending
@@ -1238,6 +1270,7 @@ export function WorkflowPanel({ booking }: Props) {
                 </p>
               )}
             </div>
+            )}
           </div>
         )}
 
@@ -1291,21 +1324,27 @@ export function WorkflowPanel({ booking }: Props) {
 
 // ─── Pipeline stepper ─────────────────────────────────────────────────────────
 //
-// Vertical stepper that mirrors the booking's *applicable* pipeline (parking
-// and pet stages are filtered out when those flags are off). Steps before the
-// current status render as "completed" with a check; the current step renders
-// with a filled ring + relative timestamp; later steps render as outlined
-// dots. The stepper is purely informational — actual navigation happens via
-// the Proceed / Back buttons in the ACTIONS section.
+// Vertical stepper for the booking's applicable pipeline. Completed and current
+// steps are clickable to preview saved data (read-only when not the live step).
+// Future steps stay disabled. Proceed / Back actions remain in the ACTIONS section.
+
+function isPipelineStepSelected(
+  step: BookingStatus,
+  viewedStep: ViewedWorkflowStep,
+): boolean {
+  if (step === 'PENDING_DOCUMENTS') {
+    return viewedStep.kind === 'pending-doc-sub';
+  }
+  return viewedStep.kind === 'pipeline' && viewedStep.status === step;
+}
 
 function PipelineStepper({
   pipeline,
   currentStatus,
   statusUpdatedAt,
   booking,
-  panelFocus,
-  activePendingDocSubStatus,
-  onFocusPipeline,
+  viewedStep,
+  onSelectPipelineStep,
   onSelectPendingDocSubStatus,
   transitionPending,
 }: {
@@ -1313,38 +1352,58 @@ function PipelineStepper({
   currentStatus: BookingStatus;
   statusUpdatedAt?: string | null;
   booking: BookingRow;
-  panelFocus: WorkflowPanelFocus;
-  activePendingDocSubStatus: PendingDocumentSubStatus;
-  onFocusPipeline: () => void;
+  viewedStep: ViewedWorkflowStep;
+  onSelectPipelineStep: (step: BookingStatus) => void;
   onSelectPendingDocSubStatus: (status: PendingDocumentSubStatus) => void;
   transitionPending: boolean;
 }) {
   const currentIdx = pipeline.indexOf(currentStatus);
+  const pendingDocsIdx = pipeline.indexOf('PENDING_DOCUMENTS');
+  const pendingDocsBrowsable =
+    pendingDocsIdx >= 0 &&
+    currentIdx >= pendingDocsIdx &&
+    currentStatus !== 'CANCELLED';
+
   return (
     <ol className="flex flex-col">
       {pipeline.map((step, i) => {
         const isCompleted = currentIdx >= 0 && i < currentIdx;
         const isCurrent = i === currentIdx;
         const isLast = i === pipeline.length - 1;
+        const isReachable = isCompleted || isCurrent;
+        const isSelected = isPipelineStepSelected(step, viewedStep);
+
+        const labelClass = cn(
+          'text-sm leading-tight transition-colors',
+          isSelected
+            ? 'font-semibold text-primary'
+            : isCurrent
+              ? 'font-semibold text-primary'
+              : isCompleted
+                ? 'font-medium text-foreground'
+                : 'font-medium text-muted-foreground',
+        );
+
         return (
           <li key={step} className="flex gap-3">
-            {/* Connector + dot column */}
-            <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  'flex justify-center items-center rounded-full transition-colors shrink-0',
-                  isCurrent
-                    ? 'h-6 w-6 bg-primary/10 ring-2 ring-primary'
-                    : isCompleted
-                      ? 'h-5 w-5 bg-primary text-primary-foreground'
-                      : 'h-5 w-5 bg-card ring-1 ring-border/60',
-                )}
-              >
-                {isCompleted ? (
-                  <Check className="size-3" strokeWidth={3} />
-                ) : isCurrent ? (
-                  <span className="size-2 rounded-full bg-primary" />
-                ) : null}
+            <div className="flex w-6 shrink-0 flex-col items-center">
+              <div className="flex size-6 shrink-0 items-center justify-center">
+                <div
+                  className={cn(
+                    'flex items-center justify-center rounded-full transition-colors',
+                    isCurrent
+                      ? 'size-6 bg-primary/10 ring-2 ring-primary'
+                      : isCompleted
+                        ? 'size-5 bg-primary text-primary-foreground'
+                        : 'size-5 bg-card ring-1 ring-border/60',
+                  )}
+                >
+                  {isCompleted ? (
+                    <Check className="size-3" strokeWidth={3} />
+                  ) : isCurrent ? (
+                    <span className="size-2 rounded-full bg-primary" />
+                  ) : null}
+                </div>
               </div>
               {!isLast && (
                 <div
@@ -1356,52 +1415,47 @@ function PipelineStepper({
               )}
             </div>
 
-            {/* Label column */}
-            <div className={cn('flex-1 -mt-0.5', isLast ? 'pb-0' : 'pb-3')}>
-              {isCurrent && currentStatus !== 'PENDING_DOCUMENTS' ? (
-                <button
-                  type="button"
-                  disabled={!!transitionPending}
-                  onClick={() => {
-                    if (!transitionPending) onFocusPipeline();
-                  }}
-                  className={cn(
-                    'min-h-[35px] text-left text-sm leading-tight transition-colors',
-                    transitionPending
-                      ? 'cursor-not-allowed text-muted-foreground'
-                      : panelFocus === 'pipeline'
-                        ? 'font-semibold text-primary'
-                        : 'font-medium text-muted-foreground hover:text-primary',
-                  )}
-                  aria-label={`View ${statusLabel(step)}`}
-                  aria-current={panelFocus === 'pipeline' ? 'step' : undefined}
-                >
-                  {statusLabel(step)}
-                </button>
-              ) : (
-                <div
-                  className={cn(
-                    'text-sm leading-tight transition-colors',
-                    isCurrent
-                      ? 'font-semibold text-primary'
-                      : isCompleted
-                        ? 'font-medium text-foreground'
-                        : 'font-medium text-muted-foreground',
-                  )}
-                >
-                  {statusLabel(step)}
-                </div>
+            <div
+              className={cn(
+                'flex flex-1 flex-col gap-3',
+                isLast ? 'pb-0' : 'pb-3',
               )}
-              {step === 'PENDING_DOCUMENTS' && (
+            >
+              <div className="flex min-h-6 items-center">
+                {isReachable ? (
+                  <button
+                    type="button"
+                    disabled={!!transitionPending}
+                    onClick={() => {
+                      if (!transitionPending) onSelectPipelineStep(step);
+                    }}
+                    className={cn(
+                      'inline-flex min-h-[44px] w-full items-center py-2 text-left leading-tight transition-colors -my-[10px]',
+                      transitionPending
+                        ? 'cursor-not-allowed text-muted-foreground'
+                        : labelClass,
+                      !transitionPending && !isSelected && isCompleted
+                        ? 'hover:text-primary'
+                        : null,
+                    )}
+                    aria-label={`View ${statusLabel(step)}`}
+                    aria-current={isSelected ? 'step' : undefined}
+                  >
+                    {statusLabel(step)}
+                  </button>
+                ) : (
+                  <div className={labelClass}>{statusLabel(step)}</div>
+                )}
+              </div>
+              {step === 'PENDING_DOCUMENTS' && pendingDocsBrowsable && (
                 <PendingDocumentsSubTree
                   booking={booking}
-                  className="mt-4"
-                  panelFocus={panelFocus}
-                  activeStatus={activePendingDocSubStatus}
+                  viewedStep={viewedStep}
                   onSelect={onSelectPendingDocSubStatus}
                   transitionPending={transitionPending}
                   currentStatus={currentStatus}
-                  isInteractive={currentStatus === 'PENDING_DOCUMENTS'}
+                  currentIdx={currentIdx}
+                  pendingDocsIdx={pendingDocsIdx}
                 />
               )}
               {isCurrent && statusUpdatedAt && (
@@ -1420,23 +1474,22 @@ function PipelineStepper({
 function PendingDocumentsSubTree({
   booking,
   className,
-  panelFocus,
-  activeStatus,
+  viewedStep,
   onSelect,
   transitionPending,
   currentStatus,
-  isInteractive = false,
+  currentIdx,
+  pendingDocsIdx,
 }: {
   booking: BookingRow;
   className?: string;
-  panelFocus: WorkflowPanelFocus;
-  activeStatus?: PendingDocumentSubStatus;
+  viewedStep: ViewedWorkflowStep;
   onSelect?: (status: PendingDocumentSubStatus) => void;
   transitionPending?: boolean;
   currentStatus: BookingStatus;
-  isInteractive?: boolean;
+  currentIdx: number;
+  pendingDocsIdx: number;
 }) {
-  /** Canonical order: GAF → parking → pet (matches server / booking pipeline). */
   const allStatuses: PendingDocumentSubStatus[] = [
     'PENDING_GAF',
     'PENDING_PARKING_REQUEST',
@@ -1444,9 +1497,15 @@ function PendingDocumentsSubTree({
   ];
 
   const statuses = allStatuses.filter((s) => isSubStatusRequired(s, booking));
+  const activeStatus =
+    viewedStep.kind === 'pending-doc-sub' ? viewedStep.sub : undefined;
+  const isLivePendingDocs = currentStatus === 'PENDING_DOCUMENTS';
+  const canBrowseCompletedPendingDocs =
+    pendingDocsIdx >= 0 && currentIdx > pendingDocsIdx;
 
   function isSubStepInteractive(sub: PendingDocumentSubStatus): boolean {
-    if (isInteractive) return true;
+    if (isLivePendingDocs) return true;
+    if (canBrowseCompletedPendingDocs) return true;
     if (
       sub === 'PENDING_PARKING_REQUEST' &&
       canNavigatePendingParkingSubStep(booking, currentStatus)
@@ -1457,32 +1516,50 @@ function PendingDocumentsSubTree({
   }
 
   return (
-    <div className={cn('space-y-1.5 pl-2', className)}>
-      {statuses.map((sub, index) => {
+    <ul className={cn('relative flex flex-col gap-3', className)}>
+      {statuses.length > 1 ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute bottom-[10px] left-2 top-[10px] w-px bg-muted"
+        />
+      ) : null}
+      {statuses.map((sub) => {
         const completed = isSubStatusCompletedInStepper(booking, sub);
-        const isLast = index === statuses.length - 1;
-        const isActive =
-          panelFocus === 'pending-doc-sub' && activeStatus === sub;
+        const isActive = activeStatus === sub;
         const subInteractive = isSubStepInteractive(sub);
+
+        const iconClass = cn(
+          'relative z-[1] flex size-4 shrink-0 items-center justify-center rounded-full box-border',
+          completed
+            ? 'bg-primary text-primary-foreground'
+            : 'border border-border/60 bg-card',
+        );
+
+        const labelClass = cn(
+          'text-xs leading-4 transition-colors',
+          transitionPending
+            ? 'cursor-not-allowed text-muted-foreground'
+            : isActive
+              ? 'font-semibold text-primary'
+              : completed
+                ? 'font-medium text-foreground'
+                : 'font-medium text-muted-foreground',
+          subInteractive &&
+            !transitionPending &&
+            !isActive &&
+            'hover:text-primary',
+        );
+
         return (
-          <div key={sub} className="flex gap-2 items-start">
-            <div className="flex flex-col items-center">
-              <div
-                className={cn(
-                  'flex justify-center items-center w-4 h-4 rounded-full mt-[2px]',
-                  completed
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card ring-1 ring-border/60',
-                )}
-              >
-                {completed ? (
-                  <Check className="size-2.5" strokeWidth={3} />
-                ) : null}
-              </div>
-              {!isLast && <div className="mt-0.5 h-4 w-px bg-muted" />}
+          <li key={sub} className="flex items-center gap-2.5">
+            <div className={iconClass}>
+              {completed ? (
+                <Check className="size-2.5" strokeWidth={3} />
+              ) : null}
             </div>
+
             {subInteractive ? (
-              <div className="flex min-h-[35px] flex-1 items-start justify-between pt-[1px]">
+              <div className="flex min-h-6 min-w-0 flex-1 items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -1490,20 +1567,17 @@ function PendingDocumentsSubTree({
                   }}
                   disabled={!!transitionPending}
                   className={cn(
-                    'text-left text-xs leading-4 transition-colors',
-                    transitionPending
-                      ? 'cursor-not-allowed text-muted-foreground'
-                      : isActive
-                        ? 'font-semibold text-primary'
-                        : 'font-medium text-muted-foreground hover:text-primary',
+                    'inline-flex min-h-[44px] min-w-0 flex-1 items-center py-2 text-left -my-[10px]',
+                    labelClass,
                   )}
-                  aria-label={`Select ${statusLabel(sub)}`}
+                  aria-label={`View ${statusLabel(sub)}`}
+                  aria-current={isActive ? 'step' : undefined}
                 >
                   {statusLabel(sub)}
                 </button>
                 <span
                   className={cn(
-                    'pt-px text-xs font-semibold',
+                    'shrink-0 text-xs font-semibold leading-4',
                     completed ? 'text-primary' : 'text-amber-600',
                   )}
                 >
@@ -1513,16 +1587,116 @@ function PendingDocumentsSubTree({
             ) : (
               <div
                 className={cn(
-                  'text-xs leading-4',
-                  completed ? 'font-medium text-emerald-700' : 'text-muted-foreground',
+                  'flex min-h-6 flex-1 items-center text-xs leading-4',
+                  completed
+                    ? 'font-medium text-emerald-700'
+                    : 'text-muted-foreground',
                 )}
               >
                 {statusLabel(sub)}
               </div>
             )}
-          </div>
+          </li>
         );
       })}
+    </ul>
+  );
+}
+
+function PendingDocSubStatusCard({
+  booking,
+  sub,
+}: {
+  booking: BookingRow;
+  sub: PendingDocumentSubStatus;
+}) {
+  const completed = isSubStatusCompleted(sub, booking);
+  const isGaf = sub === 'PENDING_GAF';
+  const isPet = sub === 'PENDING_PET_REQUEST';
+
+  return (
+    <WorkflowSubFormCard title={statusLabel(sub)}>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Status</span>
+          <span
+            className={cn(
+              'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+              completed
+                ? 'bg-primary/10 text-primary'
+                : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+            )}
+          >
+            {completed ? 'Complete' : 'Incomplete'}
+          </span>
+        </div>
+
+        {isGaf ? (
+          <div className="space-y-2">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {completed
+                ? 'Azure returned an approved GAF. The booking sub-step is marked complete.'
+                : 'Waiting for Azure to return an approved GAF. Use Run Gmail poll in Automation triggers if an approval email was missed.'}
+            </p>
+            <DocLinkRow label="GAF request PDF" url={booking.gaf_request_pdf_url} />
+            <DocLinkRow
+              label="Approved GAF"
+              url={booking.approved_gaf_pdf_url}
+            />
+            <DocLinkRow label="Guest valid ID" url={booking.valid_id_url} />
+          </div>
+        ) : null}
+
+        {isPet ? (
+          <div className="space-y-2">
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              {completed
+                ? 'Azure returned an approved pet request. The booking sub-step is marked complete.'
+                : 'Waiting for Azure to return an approved pet request. Use Run Gmail poll in Automation triggers if an approval email was missed.'}
+            </p>
+            <DocLinkRow
+              label="Pet request PDF"
+              url={booking.pet_request_pdf_url}
+            />
+            <DocLinkRow
+              label="Approved pet request"
+              url={booking.approved_pet_pdf_url}
+            />
+            <DocLinkRow
+              label="Pet vaccination"
+              url={booking.pet_vaccination_url}
+            />
+            <DocLinkRow label="Pet photo" url={booking.pet_image_url} />
+          </div>
+        ) : null}
+      </div>
+    </WorkflowSubFormCard>
+  );
+}
+
+function DocLinkRow({
+  label,
+  url,
+}: {
+  label: string;
+  url?: string | null;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+      <span className="text-muted-foreground">{label}</span>
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={cn(workflowInlineLink, 'inline-flex items-center gap-1')}
+        >
+          View
+          <ExternalLink className="size-3 shrink-0" aria-hidden />
+        </a>
+      ) : (
+        <span className="italic text-muted-foreground">Not available</span>
+      )}
     </div>
   );
 }

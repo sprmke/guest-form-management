@@ -56,6 +56,8 @@ type Props = {
   /** Last valid values from this session when the sub-form unmounts (e.g. pipeline step change). */
   initialDraft?: ReviewPricingFormValues | null;
   onChange: (values: ReviewPricingFormValues | null) => void;
+  /** Read-only preview when browsing a completed pipeline step. */
+  readOnly?: boolean;
 };
 
 const WEEKDAY_RATE = 2799;
@@ -69,6 +71,7 @@ export function ReviewPricingForm({
   booking,
   initialDraft = null,
   onChange,
+  readOnly = false,
 }: Props) {
   const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
   const needParking = booking.need_parking === true;
@@ -115,12 +118,14 @@ export function ReviewPricingForm({
     additionalFee;
 
   useEffect(() => {
+    if (readOnly) return;
     if (isValid) {
       onChange(getValues() as ReviewPricingFormValues);
     } else {
       onChange(null);
     }
   }, [
+    readOnly,
     bookingRate,
     downPayment,
     securityDeposit,
@@ -143,7 +148,8 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder="2799"
-            className={inputClass(!!errors.booking_rate)}
+            className={inputClass(!!errors.booking_rate, false, readOnly)}
+            readOnly={readOnly}
             {...register('booking_rate')}
             onChange={async (e) => {
               register('booking_rate').onChange(e);
@@ -162,7 +168,8 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder="1500"
-            className={inputClass(!!errors.down_payment)}
+            className={inputClass(!!errors.down_payment, false, readOnly)}
+            readOnly={readOnly}
             {...register('down_payment')}
             onChange={async (e) => {
               register('down_payment').onChange(e);
@@ -181,7 +188,8 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder="1500"
-            className={inputClass(!!errors.security_deposit)}
+            className={inputClass(!!errors.security_deposit, false, readOnly)}
+            readOnly={readOnly}
             {...register('security_deposit')}
           />
         </Field>
@@ -192,8 +200,9 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder={hasPets ? '300' : '0'}
-            disabled={!hasPets}
-            className={inputClass(!!errors.pet_fee, !hasPets)}
+            disabled={!hasPets || readOnly}
+            readOnly={readOnly}
+            className={inputClass(!!errors.pet_fee, !hasPets || readOnly, readOnly)}
             {...register('pet_fee')}
           />
         </Field>
@@ -209,7 +218,8 @@ export function ReviewPricingForm({
             min={0}
             step={0.01}
             placeholder="400"
-            className={inputClass(!!errors.parking_rate_guest)}
+            className={inputClass(!!errors.parking_rate_guest, false, readOnly)}
+            readOnly={readOnly}
             {...register('parking_rate_guest')}
           />
         </Field>
@@ -231,7 +241,8 @@ export function ReviewPricingForm({
             step={0.01}
             placeholder={surpriseDecorRequested ? '₱800-₱2000' : '0'}
             aria-required={surpriseDecorRequested}
-            className={inputClass(!!errors.guest_additional_fee)}
+            className={inputClass(!!errors.guest_additional_fee, false, readOnly)}
+            readOnly={readOnly}
             {...register('guest_additional_fee')}
             onChange={async (e) => {
               register('guest_additional_fee').onChange(e);
@@ -260,12 +271,12 @@ export function ReviewPricingForm({
 
 // ─── Tiny helpers ──────────────────────────────────────────────────────────────
 
-function inputClass(hasError: boolean, disabled = false) {
+function inputClass(hasError: boolean, disabled = false, readOnly = false) {
   return [
     'w-full rounded-md border px-3 py-1.5 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-    disabled
-      ? 'cursor-not-allowed border-border bg-muted text-muted-foreground'
+    disabled || readOnly
+      ? 'cursor-not-allowed border-border bg-muted text-foreground'
       : hasError
         ? 'border-red-400 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10'
         : 'border-border bg-card',

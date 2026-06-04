@@ -210,6 +210,7 @@ type Props = {
   booking: BookingRow;
   initialDraft?: SdRefundValues | null;
   onChange: (values: SdRefundValues | null) => void;
+  readOnly?: boolean;
 };
 
 const SD_DEFAULT = 1500;
@@ -218,6 +219,7 @@ export function SdRefundForm({
   booking,
   initialDraft = null,
   onChange,
+  readOnly = false,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const receiptFileRef = useRef<HTMLInputElement>(null);
@@ -317,6 +319,7 @@ export function SdRefundForm({
   }, [booking.sd_refund_receipt_url]);
 
   useEffect(() => {
+    if (readOnly) return;
     if (netSD >= 0) {
       onChange({
         sd_additional_expense_items: expenseItems,
@@ -475,6 +478,7 @@ export function SdRefundForm({
         onPatch={patchExpense}
         amountPlaceholder="Amount"
         labelPlaceholder="Pool fee payment"
+        readOnly={readOnly}
       />
 
       <LineListSection
@@ -486,6 +490,7 @@ export function SdRefundForm({
         onPatch={patchProfit}
         amountPlaceholder="Amount"
         labelPlaceholder="Honesty store payment"
+        readOnly={readOnly}
       />
 
       <div className="space-y-2">
@@ -563,32 +568,38 @@ export function SdRefundForm({
             </div>
           )}
 
-          <input
-            ref={receiptFileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleReceiptFileChange}
-            disabled={uploadMut.isPending}
-          />
-          <button
-            type="button"
-            disabled={uploadMut.isPending}
-            onClick={() => receiptFileRef.current?.click()}
-            className={workflowUploadButtonClass(uploadMut.isPending)}
-          >
-            {uploadMut.isPending ? (
-              <>
-                <Loader2 className="size-3.5 animate-spin shrink-0" />
-                Uploading image…
-              </>
-            ) : (
-              <>
-                <Upload className="size-3.5 shrink-0" />
-                {receiptUrl ? 'Replace receipt image' : 'Upload receipt image'}
-              </>
-            )}
-          </button>
+          {!readOnly ? (
+            <>
+              <input
+                ref={receiptFileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleReceiptFileChange}
+                disabled={uploadMut.isPending}
+              />
+              <button
+                type="button"
+                disabled={uploadMut.isPending}
+                onClick={() => receiptFileRef.current?.click()}
+                className={workflowUploadButtonClass(uploadMut.isPending)}
+              >
+                {uploadMut.isPending ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin shrink-0" />
+                    Uploading image…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="size-3.5 shrink-0" />
+                    {receiptUrl
+                      ? 'Replace receipt image'
+                      : 'Upload receipt image'}
+                  </>
+                )}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     </WorkflowSubFormCard>
@@ -604,6 +615,7 @@ function LineListSection({
   onPatch,
   labelPlaceholder,
   amountPlaceholder,
+  readOnly = false,
 }: {
   label: string;
   sign: '+' | '-';
@@ -613,18 +625,21 @@ function LineListSection({
   onPatch: (i: number, patch: Partial<SdSettlementLineItem>) => void;
   labelPlaceholder: string;
   amountPlaceholder: string;
+  readOnly?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
       <div className="flex gap-2 justify-between items-center">
         <span className="text-xs text-muted-foreground">{label}</span>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 sm:min-h-0 sm:min-w-0 sm:justify-end"
-        >
-          <Plus className="size-3 shrink-0" /> Add
-        </button>
+        {!readOnly ? (
+          <button
+            type="button"
+            onClick={onAdd}
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center gap-1 rounded-lg px-2 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 sm:min-h-0 sm:min-w-0 sm:justify-end"
+          >
+            <Plus className="size-3 shrink-0" /> Add
+          </button>
+        ) : null}
       </div>
       {items.length === 0 && (
         <p className="text-[11px] text-muted-foreground italic">None added</p>
@@ -644,7 +659,11 @@ function LineListSection({
             value={row.label}
             onChange={(e) => onPatch(i, { label: e.target.value })}
             placeholder={labelPlaceholder}
-            className="h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            readOnly={readOnly}
+            className={cn(
+              'h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40',
+              readOnly && 'cursor-default bg-muted/40 text-foreground',
+            )}
           />
           <div className="flex items-center gap-1.5">
             <span
@@ -659,16 +678,22 @@ function LineListSection({
               value={row.amount}
               onChange={(e) => onPatch(i, { amount: Number(e.target.value) })}
               placeholder={amountPlaceholder}
-              className="h-9 w-full min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]"
+              readOnly={readOnly}
+              className={cn(
+                'h-9 w-full min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]',
+                readOnly && 'cursor-default bg-muted/40 text-foreground',
+              )}
             />
-            <button
-              type="button"
-              onClick={() => onRemove(i)}
-              className="flex justify-center items-center rounded-md size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-red-600"
-              aria-label="Remove row"
-            >
-              <Trash2 className="size-4" />
-            </button>
+            {!readOnly ? (
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                className="flex justify-center items-center rounded-md size-11 shrink-0 text-muted-foreground hover:bg-muted hover:text-red-600"
+                aria-label="Remove row"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            ) : null}
           </div>
         </div>
       ))}

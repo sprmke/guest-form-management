@@ -154,7 +154,7 @@ export interface GuestSubmission {
 
   // ── Parking fields (shown at PENDING_PARKING_REQUEST) ────────────────────
   parking_rate_guest?: number | null; // UI label: "Guest Parking Rate"
-  parking_rate_paid?: number | null; // UI label: "Paid Parking Rate"
+  parking_rate_paid?: number | null; // UI label: "Owner Parking Rate"
   parking_check_in_date?: string | null; // MM-DD-YYYY — guest-paid parking window start
   parking_check_out_date?: string | null; // MM-DD-YYYY — guest-paid parking window end
   parking_endorsement_url?: string | null;

@@ -175,10 +175,11 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Improve Other information section UI / cols
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
 - Update additional guests and ask if adult or child (below 5 years old) per field
-- Support slack and telegram notifications for important booking events
+-  ✅ Support slack and telegram notifications for important booking events
   - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
-- If we received a same day booking, notify on Staff telegram group — ✅ instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
-- Make the QR code image configurable via settings. Update public guest form and check-in email to use this QR image
+-  ✅ If we received a same day booking, notify on Staff telegram group — instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
+- Make the QR code image configurable via settings using image uploader. Update public guest form and check-in email to use this QR image
 - ✅ Improve SD form to include chance to win free staycation if you leave a review (`KAME-STAY` at **0.5%** via `VOUCHER_WIN_WEIGHTS`; `VoucherReveal` copy + slot reel)
 - Support same-day check-in
 - Add password or faceid when accessing settings page?
+- Update GAF details to be configurable via settings

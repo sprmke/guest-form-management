@@ -2,7 +2,7 @@
  * ParkingRequestForm — Sub-form shown in WorkflowPanel when transitioning
  * from PENDING_PARKING_REQUEST → PENDING_PET_REQUEST | READY_FOR_CHECKIN.
  *
- * Captures: parking_owner (owner/agent name), parking_rate_paid (Paid Parking Rate),
+ * Captures: parking_owner (owner/agent name), parking_rate_paid (Owner Parking Rate),
  * and parking_endorsement_url. Displays read-only `parking_rate_guest` (Parking Rate).
  * Parking endorsement is uploaded directly from this form.
  *
@@ -29,7 +29,7 @@ import {
 export const parkingRequestFormSchema = z.object({
   parking_owner: z.string().trim().min(1, 'Enter parking owner or agent name'),
   parking_rate_paid: requiredPositiveMoney({
-    requiredError: 'Enter paid parking rate',
+    requiredError: 'Enter owner parking rate',
     positiveError: 'Enter a rate greater than 0',
   }),
   parking_endorsement_url: z
@@ -51,12 +51,14 @@ type Props = {
   booking: BookingRow;
   initialDraft?: ParkingRequestValues | null;
   onChange: (values: ParkingRequestValues | null) => void;
+  readOnly?: boolean;
 };
 
 export function ParkingRequestForm({
   booking,
   initialDraft = null,
   onChange,
+  readOnly = false,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -92,12 +94,13 @@ export function ParkingRequestForm({
   const watched = watch();
 
   useEffect(() => {
+    if (readOnly) return;
     if (isValid) {
       onChange(getValues());
     } else {
       onChange(null);
     }
-  }, [JSON.stringify(watched), isValid]);
+  }, [JSON.stringify(watched), isValid, readOnly]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -128,10 +131,12 @@ export function ParkingRequestForm({
 
   return (
     <WorkflowSubFormCard title="Parking request">
+      {!readOnly ? (
       <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
         Parking fee is <strong>non-refundable</strong> and cannot be rescheduled
         after this step.
       </div>
+      ) : null}
 
       <Field
         label="Parking Owner"
@@ -143,7 +148,8 @@ export function ParkingRequestForm({
           type="text"
           autoComplete="off"
           placeholder="Juan Dela Cruz"
-          className={inputClass(!!errors.parking_owner)}
+          className={inputClass(!!errors.parking_owner, readOnly)}
+          readOnly={readOnly}
           {...register('parking_owner')}
         />
       </Field>
@@ -163,7 +169,7 @@ export function ParkingRequestForm({
       </Field>
 
       <Field
-        label="Paid Parking Rate"
+        label="Owner Parking Rate"
         required
         description="Exact parking amount paid to parking owner"
         error={errors.parking_rate_paid?.message}
@@ -173,7 +179,8 @@ export function ParkingRequestForm({
           min={1}
           step={10}
           placeholder="400"
-          className={inputClass(!!errors.parking_rate_paid)}
+          className={inputClass(!!errors.parking_rate_paid, readOnly)}
+          readOnly={readOnly}
           {...register('parking_rate_paid')}
         />
       </Field>
@@ -218,6 +225,8 @@ export function ParkingRequestForm({
             </div>
           )}
 
+          {!readOnly ? (
+          <>
           <input
             ref={fileInputRef}
             type="file"
@@ -246,17 +255,21 @@ export function ParkingRequestForm({
               </>
             )}
           </button>
+          </>
+          ) : null}
         </div>
       </Field>
     </WorkflowSubFormCard>
   );
 }
 
-function inputClass(hasError: boolean) {
+function inputClass(hasError: boolean, readOnly = false) {
   return [
     'h-10 w-full rounded-md border px-3 text-sm',
     'focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-    hasError
+    readOnly
+      ? 'cursor-default border-border bg-muted/50 text-foreground'
+      : hasError
       ? 'border-red-400 bg-red-50 dark:border-red-500/40 dark:bg-red-500/10'
       : 'border-border bg-card',
   ].join(' ');
