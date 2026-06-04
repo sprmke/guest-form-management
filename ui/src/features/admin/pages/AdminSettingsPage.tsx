@@ -4,7 +4,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AppSettingsCard } from '@/features/admin/components/AppSettingsCard';
-import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
 
 /**
  * Admin settings — integrations and workspace configuration.
@@ -34,10 +33,7 @@ export function AdminSettingsPage() {
 
   return (
     <AdminLayout>
-      <div className="space-y-4 sm:space-y-5">
-        <AppSettingsCard />
-        <GmailMailIntegrationCard />
-      </div>
+      <AppSettingsCard />
     </AdminLayout>
   );
 }
