@@ -30,6 +30,7 @@ export type AppSettingsDto = {
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
+  gcashQrImageUrl: string;
   updatedAt: string | null;
   fieldSources: Record<
     | 'emailTo'
@@ -42,7 +43,8 @@ export type AppSettingsDto = {
     | 'emailLogoUrl'
     | 'defaultParkingRateGuest'
     | 'gcashName'
-    | 'gcashNumber',
+    | 'gcashNumber'
+    | 'gcashQrImageUrl',
     AppSettingsFieldSource
   >;
   secretsStatus: AppSettingsSecretsStatus;
@@ -56,7 +58,6 @@ export type AppSettingsFormValues = {
   sdRefundCronMaxCheckoutAgeDays: number;
   publicGuestAppOrigin: string;
   facebookReviewsUrl: string;
-  emailLogoUrl: string;
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
@@ -84,7 +85,6 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     sdRefundCronMaxCheckoutAgeDays: data.sdRefundCronMaxCheckoutAgeDays,
     publicGuestAppOrigin: data.publicGuestAppOrigin,
     facebookReviewsUrl: data.facebookReviewsUrl,
-    emailLogoUrl: data.emailLogoUrl,
     defaultParkingRateGuest: data.defaultParkingRateGuest,
     gcashName: data.gcashName,
     gcashNumber: data.gcashNumber,
@@ -138,7 +138,6 @@ export function useUpdateAppSettings() {
           sdRefundCronMaxCheckoutAgeDays: values.sdRefundCronMaxCheckoutAgeDays,
           publicGuestAppOrigin: values.publicGuestAppOrigin,
           facebookReviewsUrl: values.facebookReviewsUrl,
-          emailLogoUrl: values.emailLogoUrl,
           defaultParkingRateGuest: values.defaultParkingRateGuest,
           gcashName: values.gcashName,
           gcashNumber: values.gcashNumber,
@@ -156,6 +155,40 @@ export function useUpdateAppSettings() {
     },
     onSuccess: (data) => {
       qc.setQueryData(['app-settings'], data);
+    },
+  });
+}
+
+export type AppSettingsImageField = 'gcashQrImageUrl' | 'emailLogoUrl';
+
+export function useClearAppSettingsImage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (field: AppSettingsImageField) => {
+      const jwt = await getAdminJwt();
+      const res = await fetch(`${FUNCTIONS_URL}/app-settings`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${jwt}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ [field]: '' }),
+      });
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: AppSettingsDto;
+      };
+      if (!res.ok || !json.success || !json.data) {
+        throw new Error(json.error ?? `Reset failed (${res.status})`);
+      }
+      return json.data;
+    },
+    onSuccess: (data, field) => {
+      qc.setQueryData(['app-settings'], data);
+      if (field === 'gcashQrImageUrl') {
+        qc.invalidateQueries({ queryKey: ['guest-payment-info'] });
+      }
     },
   });
 }
