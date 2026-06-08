@@ -1,4 +1,9 @@
 import type { BookingFinancials } from '@/features/admin/lib/bookingFinance';
+import type { BookingPricingSummarySource } from '@/features/admin/components/BookingPricingSummary';
+import type {
+  RecurrenceEditScope,
+  RecurrenceInterval,
+} from '@/features/finance/lib/recurrence';
 
 export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
@@ -26,15 +31,15 @@ export const DEFAULT_FINANCE_QUERY: FinanceQuery = {
   completedOnly: false,
   q: '',
   page: 1,
-  limit: 25,
+  limit: 31,
   sort: 'check_in_date:desc',
 };
 
 export type FinanceStaysSummary = {
   count: number;
   completedCount: number;
-  guestCollected: number;
-  stayRevenue: number;
+  bookingRate: number;
+  otherFees: number;
   parkingMargin: number;
   sdExpenses: number;
   hostNetCompleted: number;
@@ -63,9 +68,17 @@ export type FinanceBookingLedgerRow = {
   id: string;
   guest_facebook_name: string;
   primary_guest_name: string;
+  guest_email: string;
+  valid_id_url: string | null;
+  need_parking: boolean;
+  has_pets: boolean;
+  guest_requests_surprise_decor: unknown;
   check_in_date: string;
   check_out_date: string;
+  number_of_nights: number;
   status: string;
+  /** Raw pricing / SD fields for `BookingPricingSummary` (same as booking detail). */
+  pricing: Omit<BookingPricingSummarySource, 'status' | 'has_pets' | 'need_parking'>;
   financials: BookingFinancials;
 };
 
@@ -78,9 +91,13 @@ export type FinanceLineItem = {
   occurred_on: string;
   notes: string | null;
   receipt_path: string | null;
+  recurrence_series_id: string | null;
+  recurrence_interval: Exclude<RecurrenceInterval, 'none'> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type { RecurrenceEditScope, RecurrenceInterval };
 
 export type FinanceExportType = 'overview' | 'stays' | 'operating' | 'combined';

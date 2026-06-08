@@ -4,6 +4,10 @@
 
 import type { FinancePeriodBasis, FinanceQuery, FinanceTab } from '@/features/finance/lib/types';
 import { DEFAULT_FINANCE_QUERY } from '@/features/finance/lib/types';
+import {
+  ADMIN_DEFAULT_PAGE_SIZE,
+  normalizeAdminPageLimit,
+} from '@/lib/pagination';
 
 export function manilaTodayIso(): string {
   return new Date(
@@ -94,7 +98,9 @@ export function parseFinanceQueryFromParams(
     completedOnly: params.get('completed_only') === 'true',
     q: params.get('q') ?? '',
     page: Math.max(1, parseInt(params.get('page') ?? '1', 10)),
-    limit: Math.min(100, Math.max(1, parseInt(params.get('limit') ?? '25', 10))),
+    limit: normalizeAdminPageLimit(
+      parseInt(params.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE), 10),
+    ),
     sort,
   };
 }
@@ -112,7 +118,9 @@ export function writeFinanceQueryToParams(
   if (query.completedOnly) p.set('completed_only', 'true');
   if (query.q.trim()) p.set('q', query.q.trim());
   if (query.page > 1) p.set('page', String(query.page));
-  if (query.limit !== 25) p.set('limit', String(query.limit));
+  if (query.limit !== ADMIN_DEFAULT_PAGE_SIZE) {
+    p.set('limit', String(query.limit));
+  }
   if (query.sort !== DEFAULT_FINANCE_QUERY.sort) p.set('sort', query.sort);
   if (preset && preset !== 'this_month') p.set('preset', preset);
   return p;
