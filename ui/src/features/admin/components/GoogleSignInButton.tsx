@@ -8,9 +8,9 @@ type Props = {
 };
 
 /**
- * Branded-adjacent "Continue with Google" control: light surface, neutral border,
- * and the standard four-color G mark (same pattern used across the web for OAuth).
- * Matches Google’s light-button guidance more closely than the app’s green primary.
+ * Branded-adjacent "Continue with Google" control with light + dark surfaces,
+ * neutral borders, and the standard four-color G mark (OAuth pattern).
+ * Colors follow Google Identity light/dark button guidance.
  */
 export function GoogleSignInButton({ onClick, disabled, loading }: Props) {
   const busy = Boolean(disabled || loading);
@@ -22,9 +22,12 @@ export function GoogleSignInButton({ onClick, disabled, loading }: Props) {
       disabled={busy}
       className={cn(
         'relative flex h-12 w-full items-center justify-center gap-3 rounded-2xl border px-4',
-        'border-[#dadce0] bg-white text-[15px] font-medium text-[#3c4043] shadow-sm',
+        'text-[15px] font-medium shadow-sm',
+        'border-[#dadce0] bg-white text-[#3c4043]',
+        'dark:border-[#8e918f] dark:bg-[#131314] dark:text-[#e3e3e3] dark:shadow-none',
         'transition-[box-shadow,background-color,border-color,transform] duration-200',
         'hover:border-[#d2d2d2] hover:bg-[#f8f9fa] hover:shadow-md',
+        'dark:hover:border-[#a8a8a8] dark:hover:bg-[#292929]',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1a73e8]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'motion-safe:active:scale-[0.99] motion-reduce:active:scale-100',
         'disabled:pointer-events-none disabled:opacity-55',
@@ -32,7 +35,10 @@ export function GoogleSignInButton({ onClick, disabled, loading }: Props) {
     >
       {loading ? (
         <>
-          <Loader2 className="size-[18px] shrink-0 animate-spin text-[#5f6368]" aria-hidden />
+          <Loader2
+            className="size-[18px] shrink-0 animate-spin text-[#5f6368] dark:text-[#9aa0a6]"
+            aria-hidden
+          />
           <span>Redirecting to Google…</span>
         </>
       ) : (

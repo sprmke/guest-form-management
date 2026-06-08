@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { format } from 'date-fns';
 import {
   CalendarDays,
@@ -47,7 +48,7 @@ const PRESET_OPTIONS: {
  * Layout differs between modes:
  * - Preset modes (week/month/year): trigger button shows the formatted range,
  *   and is flanked by ← / → buttons that call `navigatePeriod`.
- * - Custom mode: trigger button opens a 2-month calendar to pick start/end.
+ * - Custom mode: trigger button opens a calendar to pick start/end.
  */
 export function BookingDateRangeFilter({
   dateRange,
@@ -66,8 +67,11 @@ export function BookingDateRangeFilter({
     undefined,
   );
   const containerRef = useRef<HTMLDivElement>(null);
+  const isBelowMd = useIsBelowMd();
 
   const isCurrent = isCurrentPeriod(dateRange.from, datePreset);
+  const popoverAlign = fullWidth ? 'start' : 'end';
+  const calendarMonths = fullWidth && !isBelowMd ? 2 : 1;
   const canNavigate = datePreset !== 'custom' && isActive;
   const isCustomMode = datePreset === 'custom';
 
@@ -194,8 +198,9 @@ export function BookingDateRangeFilter({
         {open && (
           <div
             className={cn(
-              'absolute top-full left-0 z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
+              'absolute top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
               'max-w-[calc(100vw-24px)]',
+              popoverAlign === 'end' ? 'right-0' : 'left-0',
             )}
           >
             <div className="flex items-center justify-between border-b border-separator px-3.5 py-2.5">
@@ -283,8 +288,12 @@ export function BookingDateRangeFilter({
         {calendarOpen && (
           <div
             className={cn(
-              'absolute top-full left-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
+              'absolute top-full z-50 mt-1.5 rounded-xl border border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg',
               'max-w-[calc(100vw-24px)]',
+              popoverAlign === 'end' ? 'right-0' : 'left-0',
+              calendarMonths === 2
+                ? 'w-[min(calc(100vw-24px),34rem)]'
+                : 'w-[min(calc(100vw-24px),18.5rem)]',
             )}
           >
             <div className="flex items-center justify-between gap-4 border-b border-separator px-3.5 py-2.5">
@@ -302,19 +311,24 @@ export function BookingDateRangeFilter({
                 Back to presets
               </button>
             </div>
-            <div className="p-2 sm:p-3">
+            <div
+              className={cn(
+                'p-2 sm:p-3',
+                calendarMonths === 2 && 'overflow-x-auto',
+              )}
+            >
               <Calendar
                 mode="range"
                 defaultMonth={dateRange.from}
                 selected={localRange}
                 onSelect={setLocalRange}
-                numberOfMonths={
-                  typeof window !== 'undefined' && window.innerWidth >= 768
-                    ? 2
-                    : 1
-                }
+                numberOfMonths={calendarMonths}
                 weekStartsOn={0}
-                classNames={CALENDAR_CLASSNAMES}
+                classNames={
+                  calendarMonths === 2
+                    ? CALENDAR_CLASSNAMES_TWO_MONTHS
+                    : CALENDAR_CLASSNAMES
+                }
               />
             </div>
             <div className="flex items-center justify-between gap-2 border-t border-separator px-3.5 py-2.5">
@@ -396,7 +410,7 @@ export function BookingDateRangeFilter({
 
 /** Tailwind classes for `react-day-picker` v9 styled to match this app. */
 const CALENDAR_CLASSNAMES = {
-  months: 'flex flex-col sm:flex-row gap-4',
+  months: 'flex flex-col gap-4',
   month: 'space-y-2',
   month_caption: 'flex justify-center pt-1 relative items-center h-8',
   caption_label: 'text-[13px] font-bold text-foreground',
@@ -444,4 +458,10 @@ const CALENDAR_CLASSNAMES = {
   range_middle:
     'aria-selected:bg-sidebar-accent/60 aria-selected:text-sidebar-accent-foreground',
   hidden: 'invisible',
+};
+
+const CALENDAR_CLASSNAMES_TWO_MONTHS = {
+  ...CALENDAR_CLASSNAMES,
+  months: 'flex flex-nowrap gap-4',
+  month: 'min-w-[16.5rem] shrink-0 space-y-2',
 };

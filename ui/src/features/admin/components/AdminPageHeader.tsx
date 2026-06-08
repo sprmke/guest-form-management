@@ -11,7 +11,10 @@ type AdminPageHeaderProps = {
   actionsClassName?: string;
   className?: string;
   id?: string;
-  /** Dense toolbar-style header (bookings list). Other pages use default in-card sizing. */
+  /**
+   * `compact` — title row + actions on one line (Bookings, Finance).
+   * Typography matches `default` on all breakpoints.
+   */
   variant?: 'default' | 'compact';
 };
 
@@ -26,52 +29,32 @@ export function AdminPageHeader({
   variant = 'default',
 }: AdminPageHeaderProps) {
   const compact = variant === 'compact';
-
   const rowWithActions = compact && actions;
 
   return (
     <div
       className={cn(
         rowWithActions
-          ? 'flex flex-row items-center justify-between gap-2'
+          ? 'flex flex-row items-center justify-between gap-3'
           : 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
         compact && !rowWithActions && 'sm:items-center',
         className,
       )}
     >
-      <div className="min-w-0 space-y-1">
-        <div className="flex items-center gap-2">
+      <div className="min-w-0 space-y-1.5">
+        <div className="flex items-center gap-2.5">
           {Icon ? (
             <Icon
-              className={cn(
-                'shrink-0 text-primary',
-                compact ? 'size-3.5' : 'size-4',
-              )}
+              className="size-4 shrink-0 text-primary sm:size-[18px]"
               aria-hidden
             />
           ) : null}
-          <h1
-            id={id}
-            className={
-              compact
-                ? 'text-base font-bold text-foreground lg:text-[14px]'
-                : 'text-card-title'
-            }
-          >
+          <h1 id={id} className="text-admin-page-title">
             {title}
           </h1>
         </div>
         {subtitle ? (
-          <p
-            className={cn(
-              'max-w-prose',
-              compact
-                ? 'text-xs leading-snug text-muted-foreground lg:text-[11px]'
-                : 'text-caption',
-            )}
-          >
-            {subtitle}
-          </p>
+          <p className="max-w-prose text-admin-page-subtitle">{subtitle}</p>
         ) : null}
       </div>
       {actions ? (
