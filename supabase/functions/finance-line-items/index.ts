@@ -12,6 +12,10 @@ import {
   updateFinanceLineItem,
   type FinanceLineItemKind,
 } from '../_shared/financeService.ts';
+import {
+  isRecurrenceEditScope,
+  isRecurrenceInterval,
+} from '../_shared/financeRecurrence.ts';
 
 function isKind(v: unknown): v is FinanceLineItemKind {
   return v === 'expense' || v === 'income';
@@ -30,6 +34,7 @@ serve(async (req) => {
       const items = await listOperatingLineItems({
         from: url.searchParams.get('from'),
         to: url.searchParams.get('to'),
+        q: url.searchParams.get('q') ?? undefined,
       });
       return new Response(JSON.stringify({ success: true, data: items }), {
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
@@ -53,7 +58,30 @@ serve(async (req) => {
           headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
-      const row = await createFinanceLineItem(
+
+      const recurrence_interval =
+        body.recurrence_interval === null || body.recurrence_interval === 'none'
+          ? null
+          : isRecurrenceInterval(body.recurrence_interval)
+            ? body.recurrence_interval
+            : null;
+      const recurrence_until =
+        typeof body.recurrence_until === 'string' && body.recurrence_until
+          ? body.recurrence_until.slice(0, 10)
+          : null;
+
+      if (
+        body.recurrence_interval &&
+        body.recurrence_interval !== 'none' &&
+        !recurrence_interval
+      ) {
+        return new Response(JSON.stringify({ success: false, error: 'Invalid recurrence interval' }), {
+          status: 400,
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
+
+      const result = await createFinanceLineItem(
         {
           kind: body.kind,
           label,
@@ -61,12 +89,21 @@ serve(async (req) => {
           category: typeof body.category === 'string' ? body.category : null,
           occurred_on,
           notes: typeof body.notes === 'string' ? body.notes : null,
+          recurrence_interval,
+          recurrence_until,
         },
         email,
       );
-      return new Response(JSON.stringify({ success: true, data: row }), {
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: result.row,
+          created_count: result.created_count,
+        }),
+        {
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     if (req.method === 'PATCH') {
@@ -78,6 +115,7 @@ serve(async (req) => {
           headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
+      const scope = isRecurrenceEditScope(body.scope) ? body.scope : 'this';
       const patch: Parameters<typeof updateFinanceLineItem>[1] = {};
       if (body.kind !== undefined && isKind(body.kind)) patch.kind = body.kind;
       if (typeof body.label === 'string') patch.label = body.label.trim();
@@ -92,10 +130,17 @@ serve(async (req) => {
       if (body.notes !== undefined) {
         patch.notes = typeof body.notes === 'string' ? body.notes : null;
       }
-      const row = await updateFinanceLineItem(id, patch);
-      return new Response(JSON.stringify({ success: true, data: row }), {
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      });
+      const result = await updateFinanceLineItem(id, patch, scope);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          data: result.row,
+          updated_count: result.updated_count,
+        }),
+        {
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     if (req.method === 'DELETE') {
@@ -106,10 +151,15 @@ serve(async (req) => {
           headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
         });
       }
-      await deleteFinanceLineItem(id);
-      return new Response(JSON.stringify({ success: true }), {
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      });
+      const scopeParam = url.searchParams.get('scope');
+      const scope = isRecurrenceEditScope(scopeParam) ? scopeParam : 'this';
+      const result = await deleteFinanceLineItem(id, scope);
+      return new Response(
+        JSON.stringify({ success: true, deleted_count: result.deleted_count }),
+        {
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        },
+      );
     }
 
     return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {

@@ -43,7 +43,7 @@ serve(async (req) => {
     const url = new URL(req.url);
     const p = url.searchParams;
     const page = Math.max(1, parseInt(p.get('page') ?? '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '25', 10)));
+    const limit = Math.min(100, Math.max(1, parseInt(p.get('limit') ?? '31', 10)));
 
     const { rows, total } = await listFinanceBookings({
       from: p.get('from'),
