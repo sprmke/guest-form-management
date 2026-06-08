@@ -12,6 +12,7 @@ import {
   addYears,
   subYears,
   format,
+  isSameDay,
   isSameMonth,
   isSameYear,
   isThisWeek,
@@ -34,6 +35,31 @@ export interface DateNavigationState {
   setDateRange: (range: DateRange) => void;
   navigatePeriod: (direction: 'prev' | 'next') => void;
   goToToday: () => void;
+}
+
+/**
+ * Infer week / month / year preset from an applied range so URL-hydrated
+ * filters still show "June 2026" + ←/→ instead of a custom "Jun 1 – 30" label.
+ */
+export function detectPresetFromRange(from: Date, to: Date): DatePreset {
+  const weekStart = startOfWeek(from, { weekStartsOn: 0 });
+  const weekEnd = endOfWeek(from, { weekStartsOn: 0 });
+  if (isSameDay(from, weekStart) && isSameDay(to, weekEnd)) {
+    return 'week';
+  }
+
+  const monthStart = startOfMonth(from);
+  if (isSameDay(from, monthStart) && isSameMonth(from, to)) {
+    return 'month';
+  }
+
+  const yearStart = startOfYear(from);
+  const yearEnd = endOfYear(from);
+  if (isSameDay(from, yearStart) && isSameDay(to, yearEnd)) {
+    return 'year';
+  }
+
+  return 'custom';
 }
 
 export function getDateRangeFromPreset(
