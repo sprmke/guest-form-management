@@ -32,7 +32,7 @@
     - On this step, we will just check the replies from parking owners and choose which is available and has lowest parking rate
     - Reply to the selected parking owner and pay them (**manual** — no auto “winning owner” email in v1; see §6.1 **Q4.2** / **Q4.3** in `docs/NEW_FLOW_PLAN.md`).
     - **Parking endorsement (v1):** manual screenshot + **manual upload** in admin (no auto-screenshot of email — see `docs/NEW_FLOW_PLAN.md` §6.1 **Q4.4**). Image is sent to the guest at **Ready for check-in** when provided.
-    - Two parking amount fields (DB: `parking_rate_guest`, `parking_rate_paid`); **labels:** **Guest Parking Rate** (charged to guest) and **Paid Parking Rate** (paid out to the selected parking owner) — `docs/NEW_FLOW_PLAN.md` §6.1 **Q4.5**.
+    - Two parking amount fields (DB: `parking_rate_guest`, `parking_rate_paid`); **labels:** **Guest Parking Rate** (charged to guest) and **Owner Parking Rate** (paid out to the selected parking owner) — `docs/NEW_FLOW_PLAN.md` §6.1 **Q4.5**.
     - After clicking (Proceed to 'PENDING PET REQUEST' (if enabled) or Proceed to 'READY FOR CHECK-IN'), sync database, calendar, and Google Sheet with parking fields
 
   - **PENDING PET REQUEST** — Guest has pets; pet-form request email sent; waiting on approval.

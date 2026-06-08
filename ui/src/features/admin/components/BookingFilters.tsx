@@ -452,7 +452,7 @@ function BookingFilterChips({
         )}
       >
         <History className="size-4 shrink-0" aria-hidden />
-        {previousLabel === 'full' && 'Show completed bookings'}
+        {previousLabel === 'full' && 'Show completed'}
       </button>
     </>
   );

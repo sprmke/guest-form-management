@@ -145,7 +145,7 @@ This step only happens if the guest wants parking.
 4. **Take a screenshot** of their parking endorsement / chat reply (so we have proof of parking).
 5. On the booking page, fill out the **Parking Request Form**:
    - **Parking Owner** (display name of the owner you chose)
-   - **Paid Parking Rate** (what you paid out)
+   - **Owner Parking Rate** (what you paid out)
    - **Upload the screenshot** of the endorsement
 6. Click **Proceed**.
 

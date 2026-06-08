@@ -39,6 +39,7 @@ type Props = {
   booking: BookingRow;
   initialDraft?: GuestBalanceSettlementValues | null;
   onChange: (values: GuestBalanceSettlementValues | null) => void;
+  readOnly?: boolean;
 };
 
 function defaultPaidFromBooking(booking: BookingRow): number {
@@ -63,6 +64,7 @@ export function GuestBalanceSettlementForm({
   booking,
   initialDraft = null,
   onChange,
+  readOnly = false,
 }: Props) {
   const qc = useQueryClient();
   const uploadMut = useUploadBookingAsset();
@@ -130,6 +132,7 @@ export function GuestBalanceSettlementForm({
 
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
+    if (readOnly) return;
     if (booking.status !== 'READY_FOR_CHECKIN') return;
     const paidParsed = parsePaidInput(paidInput);
     if (paidParsed === null || paidParsed < 0 || totalDue === null) return;
@@ -153,9 +156,11 @@ export function GuestBalanceSettlementForm({
     booking.id,
     booking.status,
     booking.guest_balance_paid_amount,
+    readOnly,
   ]);
 
   useEffect(() => {
+    if (readOnly) return;
     if (totalDue === null) {
       onChange(null);
       return;
@@ -195,7 +200,7 @@ export function GuestBalanceSettlementForm({
       guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
       guest_balance_payment_receipt_url: receipt,
     });
-  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange]);
+  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange, readOnly]);
 
   const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi =
@@ -276,7 +281,8 @@ export function GuestBalanceSettlementForm({
           inputMode="decimal"
           min={0}
           step="0.01"
-          disabled={totalDue === null}
+          disabled={totalDue === null || readOnly}
+          readOnly={readOnly}
           value={paidInput}
           onChange={(e) => setPaidInput(e.target.value)}
           className={cn(
@@ -351,6 +357,8 @@ export function GuestBalanceSettlementForm({
             </div>
           )}
 
+          {!readOnly ? (
+          <>
           <input
             ref={fileRef}
             type="file"
@@ -384,6 +392,8 @@ export function GuestBalanceSettlementForm({
               </>
             )}
           </button>
+          </>
+          ) : null}
         </div>
       </div>
     </WorkflowSubFormCard>

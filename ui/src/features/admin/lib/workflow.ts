@@ -403,7 +403,7 @@ export const TRANSITION_SUB_FORM: Partial<Record<BookingStatus, SubFormKind>> = 
   PENDING_DOCUMENTS:       'pricing',   // admin must enter rates before proceeding
   PENDING_PARKING_REQUEST: null,
   READY_FOR_CHECKIN:       null,        // use requiredSubForm(from, to) — RFCI → READY_FOR_CHECKOUT uses guest_balance
-  COMPLETED:               'sd_refund',
+  COMPLETED:               null,
 };
 
 export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
@@ -412,6 +412,89 @@ export function requiredSubForm(from: string, to: BookingStatus): SubFormKind {
   if (from === 'READY_FOR_CHECKIN' && to === 'READY_FOR_CHECKOUT') return 'guest_balance';
   if (from === 'PENDING_SD_REFUND' && to === 'COMPLETED') return 'sd_refund';
   return null;
+}
+
+// ─── Progress stepper — read-only preview ─────────────────────────────────────
+
+export type WorkflowViewContent =
+  | SubFormKind
+  | 'sd_guest_info'
+  | 'doc_sub_status';
+
+export type ViewedWorkflowStep =
+  | { kind: 'pipeline'; status: BookingStatus }
+  | { kind: 'pending-doc-sub'; sub: PendingDocumentSubStatus };
+
+/** First applicable nested doc sub-step for Pending Documents preview. */
+export function defaultPendingDocSub(
+  booking: ApplicabilityFlags,
+): PendingDocumentSubStatus {
+  const order: PendingDocumentSubStatus[] = [
+    'PENDING_GAF',
+    'PENDING_PARKING_REQUEST',
+    'PENDING_PET_REQUEST',
+  ];
+  for (const sub of order) {
+    if (isSubStatusRequired(sub, booking)) return sub;
+  }
+  return 'PENDING_GAF';
+}
+
+export function initialViewedWorkflowStep(
+  status: BookingStatus,
+  booking: ApplicabilityFlags,
+): ViewedWorkflowStep {
+  if (status === 'PENDING_DOCUMENTS') {
+    return { kind: 'pending-doc-sub', sub: defaultPendingDocSub(booking) };
+  }
+  return { kind: 'pipeline', status };
+}
+
+/** Which sub-form / info card to render for a stepper selection. */
+export function workflowContentForView(
+  viewed: ViewedWorkflowStep,
+  booking: ApplicabilityFlags,
+): WorkflowViewContent | null {
+  if (viewed.kind === 'pending-doc-sub') {
+    if (!isSubStatusRequired(viewed.sub, booking)) return null;
+    if (viewed.sub === 'PENDING_PARKING_REQUEST') return 'parking';
+    return 'doc_sub_status';
+  }
+
+  switch (viewed.status) {
+    case 'PENDING_REVIEW':
+    case 'PENDING_DOCUMENTS':
+      return 'pricing';
+    case 'READY_FOR_CHECKIN':
+      return 'guest_balance';
+    case 'READY_FOR_CHECKOUT':
+      return 'sd_guest_info';
+    case 'PENDING_SD_REFUND':
+      return 'sd_refund';
+    case 'COMPLETED':
+      return null;
+    default:
+      return null;
+  }
+}
+
+/** True when the panel shows the live editable workflow for the booking's current status. */
+export function isLiveWorkflowView(
+  viewed: ViewedWorkflowStep,
+  currentStatus: BookingStatus,
+  booking: ApplicabilityFlags,
+): boolean {
+  if (currentStatus === 'CANCELLED' || currentStatus === 'COMPLETED') {
+    return viewed.kind === 'pipeline' && viewed.status === currentStatus;
+  }
+  if (viewed.kind === 'pending-doc-sub') {
+    if (currentStatus === 'PENDING_DOCUMENTS') return true;
+    return (
+      viewed.sub === 'PENDING_PARKING_REQUEST' &&
+      canNavigatePendingParkingSubStep(booking, currentStatus)
+    );
+  }
+  return viewed.status === currentStatus;
 }
 
 // ─── Terminal status check ────────────────────────────────────────────────────

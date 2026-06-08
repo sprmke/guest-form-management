@@ -102,7 +102,7 @@ Two-column on ≥lg, single column on mobile:
   - Status badge + `status_updated_at`
   - Stage-specific sub-form:
     - PENDING_REVIEW → `ReviewPricingForm` (booking rate, down payment, **Guest Parking Rate** (`parking_rate_guest`) when parking, pet fee, **balance = rate − down payment**, SD tracked separately)
-    - PENDING_PARKING_REQUEST → `ParkingRequestForm` (**Paid Parking Rate** (`parking_rate_paid`), parking owner email selected, endorsement image upload — labels per §6.1 **Q4.5**)
+    - PENDING_PARKING_REQUEST → `ParkingRequestForm` (**Owner Parking Rate** (`parking_rate_paid`), parking owner email selected, endorsement image upload — labels per §6.1 **Q4.5**)
     - PENDING_SD_REFUND → `SdRefundForm` (**`sd_additional_expense_items` / `sd_additional_profit_items`** as `{ label, amount }` in `JSONB`; **`sd_additional_expenses` / `sd_additional_profits`** `NUMERIC[]` in sync on transition; **`sd_refund_receipt_url`** via `upload-booking-asset` / `sd_refund_receipt`; **`sd_refund_amount`** = read-only **base SD + Σ(expenses) − Σ(profits)**)
   - List of **available transitions** (buttons) per the state machine.
   - **No v1 activity timeline** on the detail page (`NEW_FLOW_PLAN.md` §6.1 **Q5.4** / **Q1.6** — full history table deferred).

@@ -15,9 +15,9 @@ This skill is the **playbook** for the redesign. The **rules of engagement** liv
 4. `.cursor/rules/admin-auth.mdc` — who can transition and how.
 5. `.cursor/rules/supabase-edge-functions.mdc` — function conventions.
 
-If the task touches the **surprise-setup** checkbox semantics, check **`NEW_FLOW_PLAN.md` §6.2** (**Q7.4**) — if copy/behavior is still ambiguous, **ask the user** before shipping. **Parking field labels** are locked: **Guest Parking Rate** / **Paid Parking Rate** (§6.1 **Q4.5**).
+If the task touches the **surprise-setup** checkbox semantics, check **`NEW_FLOW_PLAN.md` §6.2** (**Q7.4**) — if copy/behavior is still ambiguous, **ask the user** before shipping. **Parking field labels** are locked: **Guest Parking Rate** / **Owner Parking Rate** (§6.1 **Q4.5**).
 
-**Already decided** — full table in `NEW_FLOW_PLAN.md` §6.1 (includes **Q1.3** `TEXT`+`CHECK` for status, **Q1.4/Q1.6** money + audit shape, **Q2.3/Q2.4** amount surfaces + currency format, **Q3.x** PDF + dev-controls scope + test blast radius, **Q4.2/Q4.4/Q4.5** parking comms + manual endorsement + **Guest Parking Rate** / **Paid Parking Rate** labels, **Q5.x** `/bookings` UX, **Q6.x** Gmail inbox + multi-match + failure/manual triggers, **Q7.x** calendar blocking, legacy links, observability, ship-first tests — do not re-litigate).
+**Already decided** — full table in `NEW_FLOW_PLAN.md` §6.1 (includes **Q1.3** `TEXT`+`CHECK` for status, **Q1.4/Q1.6** money + audit shape, **Q2.3/Q2.4** amount surfaces + currency format, **Q3.x** PDF + dev-controls scope + test blast radius, **Q4.2/Q4.4/Q4.5** parking comms + manual endorsement + **Guest Parking Rate** / **Owner Parking Rate** labels, **Q5.x** `/bookings` UX, **Q6.x** Gmail inbox + multi-match + failure/manual triggers, **Q7.x** calendar blocking, legacy links, observability, ship-first tests — do not re-litigate).
 
 ## Phased implementation
 

@@ -109,12 +109,13 @@ serve(async (req) => {
       if (typeof body.emailLogoUrl === 'string') {
         const trimmed = body.emailLogoUrl.trim();
         if (trimmed) {
-          const err = validateOptionalUrl(trimmed, 'Email logo URL');
-          if (err) return jsonError(req, 400, err);
-          patch.email_logo_url = trimmed;
-        } else {
-          patch.email_logo_url = null;
+          return jsonError(
+            req,
+            400,
+            'Team logo can only be updated via upload-app-settings-asset',
+          );
         }
+        patch.email_logo_url = null;
       }
       if (typeof body.defaultParkingRateGuest === 'number') {
         const n = body.defaultParkingRateGuest;
@@ -142,6 +143,17 @@ serve(async (req) => {
         } else {
           patch.gcash_number = null;
         }
+      }
+      if (typeof body.gcashQrImageUrl === 'string') {
+        const trimmed = body.gcashQrImageUrl.trim();
+        if (trimmed) {
+          return jsonError(
+            req,
+            400,
+            'GCash QR image can only be updated via upload-app-settings-asset',
+          );
+        }
+        patch.gcash_qr_image_url = null;
       }
 
       if (Object.keys(patch).length === 0) {

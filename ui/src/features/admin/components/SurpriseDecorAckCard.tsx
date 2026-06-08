@@ -8,11 +8,13 @@ import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubForm
 type Props = {
   acknowledged: boolean;
   onAcknowledgedChange: (value: boolean) => void;
+  readOnly?: boolean;
 };
 
 export function SurpriseDecorAckCard({
   acknowledged,
   onAcknowledgedChange,
+  readOnly = false,
 }: Props) {
   return (
     <WorkflowSubFormCard title="Surprise decor">
@@ -21,14 +23,21 @@ export function SurpriseDecorAckCard({
           Staff coordination confirmation
           <span className="text-red-600"> *</span>
         </div>
-        <label className="flex items-start gap-3 min-h-[44px] cursor-pointer rounded-lg px-1 -mx-1 py-1 hover:bg-muted/50/80">
+        <label
+          className={
+            readOnly
+              ? 'flex items-start gap-3 min-h-[44px] rounded-lg px-1 -mx-1 py-1'
+              : 'flex items-start gap-3 min-h-[44px] cursor-pointer rounded-lg px-1 -mx-1 py-1 hover:bg-muted/50/80'
+          }
+        >
           <input
             type="checkbox"
             checked={acknowledged}
-            required
-            aria-required="true"
+            required={!readOnly}
+            aria-required={!readOnly}
+            disabled={readOnly}
             onChange={(e) => onAcknowledgedChange(e.target.checked)}
-            className="mt-1.5 size-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500/40"
+            className="mt-1.5 size-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500/40 disabled:cursor-default disabled:opacity-70"
           />
           <span className="text-xs text-foreground">
             By checking this, you confirm that you have already coordinated with

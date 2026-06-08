@@ -585,7 +585,7 @@ function ParkingCard({
         )}
         {booking.parking_rate_paid != null && (
           <InfoField
-            label="Paid Parking Rate"
+            label="Owner Parking Rate"
             value={formatMoney(booking.parking_rate_paid as number)}
           />
         )}

@@ -261,6 +261,9 @@ verify_jwt = false
 [functions.finance-export]
 verify_jwt = false
 
+[functions.upload-app-settings-asset]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"

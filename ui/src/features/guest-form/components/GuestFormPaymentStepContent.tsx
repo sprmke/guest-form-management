@@ -12,7 +12,7 @@ import {
 } from '@/features/guest-form/lib/guestFormPayment';
 import { useGuestPaymentInfo } from '@/features/guest-form/hooks/useGuestPaymentInfo';
 
-const GCASH_QR_SRC = '/images/kame-home-gcash-qr-payment.jpg';
+const DEFAULT_GCASH_QR_SRC = '/images/kame-home-gcash-qr-payment.jpg';
 
 type Props = {
   form: UseFormReturn<GuestFormData>;
@@ -53,6 +53,7 @@ export function GuestFormPaymentStepContent({ form }: Props) {
 
   const gcashName = paymentInfo?.gcashName ?? '';
   const gcashNumber = paymentInfo?.gcashNumber ?? '';
+  const gcashQrSrc = paymentInfo?.gcashQrImageUrl || DEFAULT_GCASH_QR_SRC;
 
   const copyGcashName = useCallback(async () => {
     if (!gcashName) return;
@@ -162,7 +163,7 @@ export function GuestFormPaymentStepContent({ form }: Props) {
 
           <div className="flex min-w-0 items-center justify-center overflow-hidden rounded-xl border border-border/60 bg-card p-2 shadow-sm sm:p-3">
             <img
-              src={GCASH_QR_SRC}
+              src={gcashQrSrc}
               alt="Kame Home GCash QR code — Book and Pay Here"
               className="h-auto w-full max-h-[min(70dvh,28rem)] object-contain"
               width={320}
