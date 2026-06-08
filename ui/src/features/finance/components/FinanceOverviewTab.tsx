@@ -2,9 +2,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Banknote,
-  Car,
   CircleDollarSign,
-  PiggyBank,
   ShieldCheck,
   TrendingUp,
   Wallet,
@@ -26,46 +24,51 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
   }
   if (!summary) {
     return (
-      <div className="surface-card flex flex-col items-center justify-center px-4 py-16">
-        <CircleDollarSign className="size-10 text-muted-foreground/40" />
-        <p className="mt-3 text-sm font-medium text-foreground">
-          No data for this period
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Select a different date range above.
-        </p>
+      <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
+        <div className="icon-well-sm bg-muted/80">
+          <CircleDollarSign className="size-[18px] text-muted-foreground" aria-hidden />
+        </div>
+        <div>
+          <p className="text-section-title font-bold text-foreground">
+            No data for this period
+          </p>
+          <p className="mt-1 text-caption">
+            Select a different date range above.
+          </p>
+        </div>
       </div>
     );
   }
 
   const { stays: s, operating: o, grandNet } = summary;
+  const showPipeline = s.projectedNetPipeline !== 0;
 
   return (
-    <div className="space-y-6">
-      <FinanceKpiCard
-        label="Grand net profit"
-        value={formatMoney(grandNet)}
-        hint={`${s.completedCount} completed stay${s.completedCount === 1 ? '' : 's'} + operating lines`}
-        icon={TrendingUp}
-        valueClassName={cn(
-          grandNet >= 0
-            ? 'text-emerald-700 dark:text-emerald-300'
-            : 'text-red-600 dark:text-red-400',
-        )}
-        size="hero"
-      />
+    <div className="space-y-4 sm:space-y-5">
+      <div className="surface-card p-3 sm:p-4">
+        <FinanceKpiCard
+          label="Total net"
+          value={formatMoney(grandNet)}
+          icon={TrendingUp}
+          valueClassName={cn(
+            grandNet >= 0
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : 'text-red-600 dark:text-red-400',
+          )}
+          size="hero"
+        />
+      </div>
 
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Stays · {s.count} in period
+      <section>
+        <p className="section-eyebrow mb-3 px-0.5">
+          Stays · {s.count} in period · {s.completedCount} completed
         </p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <FinanceKpiCard
             label="Completed net"
             value={formatMoney(s.hostNetCompleted)}
-            hint={`${s.completedCount} completed`}
             icon={Wallet}
-            iconColor="text-emerald-500 dark:text-emerald-400"
+            iconColor="text-emerald-600 dark:text-emerald-400"
             valueClassName={cn(
               s.hostNetCompleted >= 0
                 ? 'text-emerald-700 dark:text-emerald-300'
@@ -73,25 +76,22 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
             )}
           />
           <FinanceKpiCard
-            label="Collected"
-            value={formatMoney(s.guestCollected)}
-            hint="Balance payments received"
+            label="Booking rate"
+            value={formatMoney(s.bookingRate)}
             icon={Banknote}
-            iconColor="text-sky-500 dark:text-sky-400"
+            iconColor="text-primary"
           />
           <FinanceKpiCard
-            label="Revenue"
-            value={formatMoney(s.stayRevenue)}
-            hint="Collected minus SD"
-            icon={PiggyBank}
-            iconColor="text-primary"
+            label="Other fees"
+            value={formatMoney(s.otherFees)}
+            icon={Banknote}
+            iconColor="text-sky-600 dark:text-sky-400"
           />
           <FinanceKpiCard
             label="Outstanding"
             value={formatMoney(s.outstandingGuestBalance)}
-            hint="Unpaid guest balance"
             icon={ShieldCheck}
-            iconColor="text-amber-500 dark:text-amber-400"
+            iconColor="text-amber-600 dark:text-amber-400"
             valueClassName={cn(
               s.outstandingGuestBalance > 0
                 ? 'text-amber-700 dark:text-amber-300'
@@ -100,31 +100,19 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
           />
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <FinanceKpiCard
-            label="Parking margin"
-            value={formatMoney(s.parkingMargin)}
-            hint="Guest fee minus owner cost"
-            icon={Car}
-            iconColor="text-indigo-500 dark:text-indigo-400"
-          />
-          <FinanceKpiCard
-            label="SD expenses"
-            value={formatMoney(s.sdExpenses)}
-          />
-          <FinanceKpiCard
-            label="Pipeline"
-            value={formatMoney(s.projectedNetPipeline)}
-            hint="Projected · non-completed"
-            valueClassName="text-amber-700 dark:text-amber-300"
-          />
-        </div>
-      </div>
+        {showPipeline ? (
+          <div className="mt-3">
+            <FinanceKpiCard
+              label="Pipeline estimate"
+              value={formatMoney(s.projectedNetPipeline)}
+              valueClassName="text-amber-700 dark:text-amber-300"
+            />
+          </div>
+        ) : null}
+      </section>
 
-      <div>
-        <p className="mb-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          Operating
-        </p>
+      <section>
+        <p className="section-eyebrow mb-3 px-0.5">Operating</p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <FinanceKpiCard
             label="Operating net"
@@ -132,8 +120,8 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
             icon={CircleDollarSign}
             iconColor={
               o.net >= 0
-                ? 'text-emerald-500 dark:text-emerald-400'
-                : 'text-red-500 dark:text-red-400'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-red-600 dark:text-red-400'
             }
             valueClassName={cn(
               o.net >= 0
@@ -145,16 +133,16 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
             label="Income"
             value={formatMoney(o.income)}
             icon={ArrowUpRight}
-            iconColor="text-emerald-500 dark:text-emerald-400"
+            iconColor="text-emerald-600 dark:text-emerald-400"
           />
           <FinanceKpiCard
             label="Expenses"
             value={formatMoney(o.expenses)}
             icon={ArrowDownRight}
-            iconColor="text-red-500 dark:text-red-400"
+            iconColor="text-red-600 dark:text-red-400"
           />
         </div>
-      </div>
+      </section>
     </div>
   );
 }

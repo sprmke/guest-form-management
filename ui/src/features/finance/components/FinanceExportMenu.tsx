@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, FileText, Loader2, Sheet } from 'lucide-react';
+import { ChevronDown, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import type {
@@ -9,20 +9,26 @@ import type {
   FinanceSummary,
 } from '@/features/finance/lib/types';
 import {
-  downloadFinanceExport,
   fetchAllFinanceBookings,
   fetchFinanceLineItems,
   fetchFinanceSummary,
 } from '@/features/finance/hooks/useFinanceApi';
-import { downloadCsvBlob } from '@/features/finance/lib/exportCsv';
 import { downloadFinanceReportPdf } from '@/features/finance/lib/exportPdf';
 
-const CSV_OPTIONS: { type: FinanceExportType; label: string }[] = [
+const FULL_REPORT = { type: 'combined' as const, label: 'Full report' };
+
+const SECTION_OPTIONS: { type: FinanceExportType; label: string }[] = [
   { type: 'overview', label: 'Overview summary' },
   { type: 'stays', label: 'Stays ledger' },
   { type: 'operating', label: 'Operating lines' },
-  { type: 'combined', label: 'Combined (all sections)' },
 ];
+
+const menuItemClass =
+  'flex w-full min-h-[44px] items-center px-3.5 py-2 text-left text-[13px] font-medium text-foreground/80 transition-colors hover:bg-muted/50 disabled:opacity-60';
+
+/** Matches BookingFilters FilterBtn density (rounded-lg, 13px, 44px touch). */
+const outlineBtnClass =
+  'inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border bg-card px-2.5 py-2 text-[13px] font-semibold text-foreground transition-all duration-100 hover:border-primary/40 hover:bg-muted/60 disabled:opacity-60';
 
 type Props = {
   query: FinanceQuery;
@@ -35,36 +41,28 @@ export function FinanceExportMenu({
   summary: cachedSummary,
   operating: cachedOperating,
 }: Props) {
-  const [csvOpen, setCsvOpen] = useState(false);
-  const [loading, setLoading] = useState<'pdf' | FinanceExportType | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [loading, setLoading] = useState<FinanceExportType | null>(null);
 
-  async function handlePdfExport() {
-    setLoading('pdf');
-    setCsvOpen(false);
+  async function handlePdfExport(type: FinanceExportType) {
+    setLoading(type);
+    setMenuOpen(false);
     try {
+      const needsStays = type === 'stays' || type === 'combined';
+      const needsOperating = type === 'operating' || type === 'combined';
+
       const [summary, stays, operating] = await Promise.all([
         cachedSummary ?? fetchFinanceSummary(query),
-        fetchAllFinanceBookings(query),
-        cachedOperating ?? fetchFinanceLineItems(query),
+        needsStays ? fetchAllFinanceBookings(query) : Promise.resolve([]),
+        needsOperating
+          ? (cachedOperating ?? fetchFinanceLineItems(query))
+          : Promise.resolve([]),
       ]);
-      downloadFinanceReportPdf({ query, summary, stays, operating });
-      toast.success('Finance report downloaded');
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Report export failed');
-    } finally {
-      setLoading(null);
-    }
-  }
 
-  async function handleCsvExport(type: FinanceExportType) {
-    setLoading(type);
-    setCsvOpen(false);
-    try {
-      const { blob, filename } = await downloadFinanceExport(query, type);
-      downloadCsvBlob(blob, filename);
-      toast.success('CSV downloaded');
+      await downloadFinanceReportPdf({ query, summary, stays, operating }, type);
+      toast.success('PDF downloaded');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'CSV export failed');
+      toast.error(e instanceof Error ? e.message : 'PDF export failed');
     } finally {
       setLoading(null);
     }
@@ -73,76 +71,77 @@ export function FinanceExportMenu({
   const busy = loading !== null;
 
   return (
-    <div className="relative inline-flex">
+    <div className="relative shrink-0">
       <button
         type="button"
         disabled={busy}
-        className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-l-2xl border border-r-0 border-border gradient-primary px-3 text-sm font-semibold text-primary-foreground shadow-soft transition-all hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] disabled:opacity-60"
-        onClick={() => void handlePdfExport()}
+        className={cn(
+          outlineBtnClass,
+          'gap-1.5 px-3',
+          menuOpen && 'border-primary/40 bg-muted/60',
+        )}
+        onClick={() => setMenuOpen((v) => !v)}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+        aria-label="Export report"
       >
-        {loading === 'pdf' ? (
-          <Loader2 className="size-4 animate-spin" aria-hidden />
+        {busy ? (
+          <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
         ) : (
-          <FileText className="size-4" aria-hidden />
+          <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         )}
         <span className="hidden sm:inline">Export report</span>
         <span className="sm:hidden">Report</span>
+        <ChevronDown
+          className={cn(
+            'size-3.5 shrink-0 text-muted-foreground transition-transform duration-150',
+            menuOpen && 'rotate-180',
+          )}
+          aria-hidden
+        />
       </button>
 
-      <div className="relative">
-        <button
-          type="button"
-          disabled={busy}
-          className={cn(
-            'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-r-2xl border border-border bg-card text-foreground shadow-sm transition-colors hover:bg-muted/50 disabled:opacity-60 dark:shadow-none',
-            csvOpen && 'bg-muted/50',
-          )}
-          onClick={() => setCsvOpen((v) => !v)}
-          aria-expanded={csvOpen}
-          aria-haspopup="menu"
-          aria-label="Export as CSV"
-        >
-          {loading && loading !== 'pdf' ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-          ) : (
-            <ChevronDown className="size-4" aria-hidden />
-          )}
-        </button>
-
-        {csvOpen ? (
-          <>
+      {menuOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-40 cursor-default"
+            aria-label="Close export menu"
+            onClick={() => setMenuOpen(false)}
+          />
+          <div
+            role="menu"
+            className="absolute right-0 z-50 mt-1.5 min-w-[11.5rem] w-max max-w-[min(calc(100vw-24px),13rem)] overflow-hidden rounded-xl border border-border/50 bg-popover shadow-elevated-lg dark:border-border/20"
+          >
             <button
               type="button"
-              className="fixed inset-0 z-40 cursor-default"
-              aria-label="Close CSV menu"
-              onClick={() => setCsvOpen(false)}
-            />
-            <div
-              role="menu"
-              className="absolute right-0 z-50 mt-1.5 w-[min(calc(100vw-24px),15rem)] overflow-hidden rounded-xl border border-border bg-popover shadow-elevated-lg"
+              role="menuitem"
+              disabled={busy}
+              className={cn(menuItemClass, loading === FULL_REPORT.type && 'bg-muted/50')}
+              onClick={() => void handlePdfExport(FULL_REPORT.type)}
             >
-              <div className="border-b border-separator px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Spreadsheet (CSV)
-                </p>
-              </div>
-              {CSV_OPTIONS.map((opt) => (
+              {FULL_REPORT.label}
+            </button>
+
+            <div className="border-b border-separator" role="separator" />
+
+            <div className="py-0.5">
+              {SECTION_OPTIONS.map((opt) => (
                 <button
                   key={opt.type}
                   type="button"
                   role="menuitem"
                   disabled={busy}
-                  className="flex min-h-[44px] w-full items-center gap-2.5 px-3 text-left text-sm text-foreground hover:bg-muted/50 disabled:opacity-60"
-                  onClick={() => void handleCsvExport(opt.type)}
+                  className={cn(menuItemClass, loading === opt.type && 'bg-muted/50')}
+                  onClick={() => void handlePdfExport(opt.type)}
                 >
-                  <Sheet className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   {opt.label}
                 </button>
               ))}
             </div>
-          </>
-        ) : null}
-      </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }

@@ -1,19 +1,30 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-  ArrowUpDown,
-  BedDouble,
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BedDouble } from 'lucide-react';
 import { FinanceStaysTableSkeleton } from '@/components/skeletons/AdminSkeletons';
 import {
-  formatBookingDateShort,
-  formatMoney,
-} from '@/features/admin/lib/formatters';
-import { StatusBadge } from '@/features/admin/components/StatusBadge';
-import { StayFinanceDrawer } from '@/features/finance/components/StayFinanceDrawer';
+  AdminListMetaBar,
+  AdminListPagination,
+  AdminListPerPageSelect,
+  buildPageItems,
+} from '@/features/admin/components/AdminListToolbar';
+import {
+  AdminDataTable,
+  AdminTableFlagsCell,
+  AdminTableGuestCell,
+  AdminTableHeadRow,
+  AdminTableRowLink,
+  AdminTableStatusBadge,
+  AdminTableTh,
+  adminTableCell,
+  adminTableMoneyClass,
+  adminTableRowClass,
+} from '@/features/admin/components/AdminDataTable';
+import { financeDisplayNet } from '@/features/admin/lib/bookingFinance';
+import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
+import { formatMoney } from '@/features/admin/lib/formatters';
+import { BookingStayDatesCell } from '@/features/admin/components/BookingStayDatesCell';
+import { FinanceStaysSortMenu } from '@/features/finance/components/FinanceStaysSortMenu';
+import { StayFinanceModal } from '@/features/finance/components/StayFinanceModal';
 import type { FinanceBookingLedgerRow, FinanceQuery } from '@/features/finance/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +33,7 @@ type Props = {
   rows: FinanceBookingLedgerRow[];
   total: number;
   isLoading: boolean;
+  isFetching?: boolean;
   onQueryChange: (next: FinanceQuery) => void;
 };
 
@@ -30,12 +42,20 @@ export function FinanceStaysTab({
   rows,
   total,
   isLoading,
+  isFetching = false,
   onQueryChange,
 }: Props) {
   const [drawerRow, setDrawerRow] = useState<FinanceBookingLedgerRow | null>(
     null,
   );
-  const totalPages = Math.max(1, Math.ceil(total / query.limit));
+  const pageCount = Math.max(1, Math.ceil(total / query.limit));
+  const startIdx = total === 0 ? 0 : (query.page - 1) * query.limit + 1;
+  const endIdx = Math.min(total, startIdx + rows.length - 1);
+  const pageItems = useMemo(
+    () => buildPageItems(query.page, pageCount),
+    [query.page, pageCount],
+  );
+  const showPagination = pageCount > 1;
 
   if (isLoading && rows.length === 0) {
     return <FinanceStaysTableSkeleton />;
@@ -43,175 +63,212 @@ export function FinanceStaysTab({
 
   return (
     <div className="space-y-3">
-      <div className="surface-card overflow-x-auto">
-        <table className="w-full min-w-[680px]">
-          <thead>
-            <tr className="bg-muted/40 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-3">Guest</th>
-              <th className="hidden px-4 py-3 md:table-cell">Dates</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="hidden px-4 py-3 text-right lg:table-cell">Due</th>
-              <th className="px-4 py-3 text-right">Collected</th>
-              <th className="hidden px-4 py-3 text-right sm:table-cell">Parking</th>
-              <th className="px-4 py-3 text-right">Net</th>
-              <th className="w-10 px-3 py-3" />
+      <AdminListMetaBar
+        summary={{
+          total,
+          startIdx,
+          endIdx,
+          entityLabel: total === 1 ? 'stay' : 'stays',
+          isLoading,
+          isFetching,
+          emptyLabel: 'No stays in this period',
+        }}
+        limit={query.limit}
+        onLimitChange={(limit) => onQueryChange({ ...query, limit, page: 1 })}
+        sortSlot={
+          <FinanceStaysSortMenu
+            sort={query.sort}
+            onChange={(sort) => onQueryChange({ ...query, sort, page: 1 })}
+          />
+        }
+        mobileToolbar={
+          <div className="flex flex-col gap-2.5">
+            <FinanceStaysSortMenu
+              sort={query.sort}
+              onChange={(sort) => onQueryChange({ ...query, sort, page: 1 })}
+              fullWidth
+            />
+            <div className="flex justify-end">
+              <AdminListPerPageSelect
+                limit={query.limit}
+                onChange={(limit) =>
+                  onQueryChange({ ...query, limit, page: 1 })
+                }
+              />
+            </div>
+          </div>
+        }
+      />
+
+      <AdminDataTable minWidth={680}>
+        <AdminTableHeadRow>
+          <AdminTableTh className="pr-3 pl-4 sm:pl-5">Status</AdminTableTh>
+          <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
+          <AdminTableTh className="hidden px-3 md:table-cell sm:px-4">
+            Stay
+          </AdminTableTh>
+          <AdminTableTh className="hidden px-3 text-center sm:table-cell sm:px-4">
+            Flags
+          </AdminTableTh>
+          <AdminTableTh className="hidden text-right lg:table-cell">
+            Booking rate
+          </AdminTableTh>
+          <AdminTableTh className="text-right">Other fees</AdminTableTh>
+          <AdminTableTh className="text-right">Host net</AdminTableTh>
+          <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+            <span className="sr-only">View</span>
+          </AdminTableTh>
+        </AdminTableHeadRow>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+                  <td colSpan={8}>
+                <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                  <div className="icon-well-sm bg-muted/80">
+                    <BedDouble
+                      className="size-[18px] text-muted-foreground"
+                      aria-hidden
+                    />
+                  </div>
+                  <div>
+                    <p className="text-section-title font-bold text-foreground">
+                      No stays in this period
+                    </p>
+                    <p className="mt-1 text-caption">
+                      Adjust dates or remove filters to see results.
+                    </p>
+                  </div>
+                </div>
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-separator">
-            {rows.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="py-16 text-center">
-                  <BedDouble className="mx-auto size-10 text-muted-foreground/30" />
-                  <p className="mt-3 text-sm font-medium text-foreground">
-                    No stays in this period
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Adjust dates or remove filters to see results.
-                  </p>
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => {
-                const fin = row.financials;
-                const netDisplay = fin.isCompleted
-                  ? fin.hostNet
-                  : fin.projectedNet;
-                const isRealized = fin.isCompleted;
-                return (
-                  <tr
-                    key={row.id}
-                    className="group cursor-pointer transition-colors hover:bg-muted/40"
-                    onClick={() => setDrawerRow(row)}
+          ) : (
+            rows.map((row, index) => {
+              const fin = row.financials;
+              const netDisplay = financeDisplayNet(fin);
+              const isRealized = fin.isCompleted;
+                  const name = bookingListDisplayName(row);
+
+                  const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setDrawerRow(row);
+                }
+              };
+
+              return (
+                <tr
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Open finance details for ${name}`}
+                  className={adminTableRowClass(index)}
+                  onClick={() => setDrawerRow(row)}
+                  onKeyDown={handleKey}
+                >
+                  <td className={adminTableCell.status}>
+                    <AdminTableStatusBadge status={row.status} />
+                  </td>
+                  <td className={adminTableCell.body}>
+                    <AdminTableGuestCell
+                      primary_guest_name={row.primary_guest_name}
+                      guest_facebook_name={row.guest_facebook_name}
+                      guest_email={row.guest_email}
+                      valid_id_url={row.valid_id_url}
+                      mobileExtra={
+                        <BookingStayDatesCell
+                          checkInDate={row.check_in_date}
+                          checkOutDate={row.check_out_date}
+                          numberOfNights={row.number_of_nights}
+                        />
+                      }
+                    />
+                  </td>
+                  <td
+                    className={cn(
+                      'hidden md:table-cell',
+                      adminTableCell.body,
+                    )}
                   >
-                    <td className="px-4 py-3.5">
-                      <p className="max-w-[180px] truncate text-sm font-semibold text-foreground">
-                        {row.guest_facebook_name ||
-                          row.primary_guest_name}
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground md:hidden">
-                        {formatBookingDateShort(row.check_in_date)}
-                        {row.check_out_date
-                          ? ` – ${formatBookingDateShort(row.check_out_date)}`
-                          : ''}
-                      </p>
-                    </td>
-                    <td className="hidden px-4 py-3.5 md:table-cell">
-                      <span className="whitespace-nowrap text-xs text-muted-foreground">
-                        {formatBookingDateShort(row.check_in_date)}
-                      </span>
-                      {row.check_out_date && (
-                        <span className="text-xs text-muted-foreground/70">
-                          {' – '}
-                          {formatBookingDateShort(row.check_out_date)}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <StatusBadge status={row.status} />
-                    </td>
-                    <td className="hidden px-4 py-3.5 text-right text-sm tabular-nums text-muted-foreground lg:table-cell">
-                      {formatMoney(fin.totalGuestBalance)}
-                    </td>
-                    <td className="px-4 py-3.5 text-right text-sm tabular-nums text-foreground">
-                      {formatMoney(fin.guestCollected)}
-                    </td>
-                    <td className="hidden px-4 py-3.5 text-right text-sm tabular-nums text-muted-foreground sm:table-cell">
-                      {formatMoney(fin.parkingMargin)}
-                    </td>
-                    <td className="px-4 py-3.5 text-right">
-                      <span
-                        className={cn(
-                          'text-sm tabular-nums font-semibold',
-                          isRealized
-                            ? fin.hostNet >= 0
+                    <BookingStayDatesCell
+                      checkInDate={row.check_in_date}
+                      checkOutDate={row.check_out_date}
+                      numberOfNights={row.number_of_nights}
+                    />
+                  </td>
+                  <td
+                    className={cn(
+                      'hidden text-center sm:table-cell',
+                      adminTableCell.body,
+                    )}
+                  >
+                    <AdminTableFlagsCell
+                      need_parking={row.need_parking}
+                      has_pets={row.has_pets}
+                      guest_requests_surprise_decor={
+                        row.guest_requests_surprise_decor
+                      }
+                    />
+                  </td>
+                  <td
+                    className={cn('hidden lg:table-cell', adminTableCell.money)}
+                  >
+                    <span
+                      className={adminTableMoneyClass()}
+                    >
+                      {formatMoney(fin.bookingRate)}
+                    </span>
+                  </td>
+                  <td className={adminTableCell.money}>
+                    <span className={adminTableMoneyClass()}>
+                      {formatMoney(fin.otherFees)}
+                    </span>
+                  </td>
+                  <td className={adminTableCell.money}>
+                    <span
+                      className={adminTableMoneyClass(
+                        netDisplay == null
+                          ? undefined
+                          : isRealized
+                            ? netDisplay >= 0
                               ? 'text-emerald-700 dark:text-emerald-300'
                               : 'text-red-600 dark:text-red-400'
                             : 'text-amber-700 dark:text-amber-300',
-                        )}
-                      >
-                        {formatMoney(netDisplay)}
-                      </span>
-                      {!isRealized && (
-                        <span className="ml-1 text-[9px] font-semibold uppercase text-amber-500 dark:text-amber-400">
-                          est
-                        </span>
                       )}
-                    </td>
-                    <td className="px-3 py-3.5">
-                      <Link
-                        to={`/bookings/${row.id}`}
-                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground"
-                        aria-label="Open booking"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <ExternalLink className="size-3.5" />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                    >
+                      {formatMoney(netDisplay)}
+                    </span>
+                    {!isRealized && netDisplay != null ? (
+                      <span className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-amber-600/90 dark:text-amber-400/90">
+                        est
+                      </span>
+                    ) : null}
+                  </td>
+                  <td className={adminTableCell.action}>
+                    <AdminTableRowLink
+                      to={`/bookings/${row.id}`}
+                      ariaLabel={`Open booking for ${name}`}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </td>
+                </tr>
+              );
+            })
+          )}
+        </tbody>
+      </AdminDataTable>
 
-      <div className="flex items-center justify-between gap-3 px-0.5">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">{total}</span>{' '}
-          stay{total === 1 ? '' : 's'}
-        </p>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2 py-1">
-            <ArrowUpDown className="size-3 text-muted-foreground" aria-hidden />
-            <select
-              className="h-7 appearance-none border-0 bg-transparent pr-5 text-xs font-medium text-foreground focus:outline-none focus:ring-0"
-              value={query.sort}
-              onChange={(e) =>
-                onQueryChange({
-                  ...query,
-                  page: 1,
-                  sort: e.target.value as FinanceQuery['sort'],
-                })
-              }
-              aria-label="Sort stays"
-            >
-              <option value="check_in_date:desc">Newest first</option>
-              <option value="check_in_date:asc">Oldest first</option>
-              <option value="host_net:desc">Net ↓</option>
-              <option value="host_net:asc">Net ↑</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              disabled={query.page <= 1}
-              className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
-              onClick={() =>
-                onQueryChange({ ...query, page: query.page - 1 })
-              }
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="size-4" />
-            </button>
-            <span className="min-w-[3.5rem] text-center text-xs tabular-nums text-muted-foreground">
-              {query.page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              disabled={query.page >= totalPages}
-              className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-muted disabled:opacity-30"
-              onClick={() =>
-                onQueryChange({ ...query, page: query.page + 1 })
-              }
-              aria-label="Next page"
-            >
-              <ChevronRight className="size-4" />
-            </button>
-          </div>
-        </div>
-      </div>
+      {showPagination ? (
+        <AdminListPagination
+          page={query.page}
+          pageCount={pageCount}
+          pageItems={pageItems}
+          isLoading={isLoading}
+          onPageChange={(page) => onQueryChange({ ...query, page })}
+          ariaLabel="Finance stays pagination"
+        />
+      ) : null}
 
-      <StayFinanceDrawer
+      <StayFinanceModal
         row={drawerRow}
         onClose={() => setDrawerRow(null)}
       />

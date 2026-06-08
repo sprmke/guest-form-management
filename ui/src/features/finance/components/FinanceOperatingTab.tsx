@@ -6,15 +6,35 @@ import {
   Pencil,
   Plus,
   Receipt,
+  Repeat,
   Trash2,
 } from 'lucide-react';
 import { FinanceOperatingTabSkeleton } from '@/components/skeletons/AdminSkeletons';
-import { formatMoney } from '@/features/admin/lib/formatters';
+import { AdminListMetaBar } from '@/features/admin/components/AdminListToolbar';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AdminDataTable,
+  AdminTableHeadRow,
+  AdminTableTh,
+  adminTableCell,
+  adminTableIconButtonClass,
+  adminTableMoneyClass,
+  adminTableRowClass,
+} from '@/features/admin/components/AdminDataTable';
+import { formatIsoDate, formatMoney } from '@/features/admin/lib/formatters';
+import { FinanceKpiCard } from '@/features/finance/components/FinanceKpiCard';
 import {
   OperatingLineItemForm,
   type OperatingLineItemFormValues,
 } from '@/features/finance/components/OperatingLineItemForm';
+import { RecurringDeleteDialog } from '@/features/finance/components/RecurringDeleteDialog';
 import { useFinanceLineItemMutations } from '@/features/finance/hooks/useFinanceLineItems';
+import { recurrenceIntervalLabel } from '@/features/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/finance/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +48,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
   const { create, update, remove } = useFinanceLineItemMutations(query);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceLineItem | null>(null);
+  const [deleting, setDeleting] = useState<FinanceLineItem | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -55,11 +76,28 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
     };
     if (editing) {
       update.mutate(
-        { id: editing.id, patch: payload },
+        {
+          id: editing.id,
+          patch: payload,
+          scope: editing.recurrence_series_id ? values.edit_scope : 'this',
+        },
         { onSuccess: closeModal },
       );
     } else {
-      create.mutate(payload, { onSuccess: closeModal });
+      create.mutate(
+        {
+          ...payload,
+          recurrence_interval:
+            values.recurrence_interval === 'none'
+              ? null
+              : values.recurrence_interval,
+          recurrence_until:
+            values.recurrence_interval === 'none'
+              ? null
+              : values.recurrence_until ?? null,
+        },
+        { onSuccess: closeModal },
+      );
     }
   }
 
@@ -71,235 +109,264 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
     .reduce((a, i) => a + i.amount, 0);
   const net = incomeTotal - expenseTotal;
 
+  const hasSearch = query.q.trim().length > 0;
+
   if (isLoading && items.length === 0) {
     return <FinanceOperatingTabSkeleton />;
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-emerald-500/15">
-              <ArrowUpRight className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Income
-            </span>
-          </div>
-          <p className="mt-2 text-lg font-bold tabular-nums text-emerald-700 dark:text-emerald-300">
-            {formatMoney(incomeTotal)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
-          <div className="flex items-center gap-2">
-            <div className="flex size-7 items-center justify-center rounded-md bg-red-500/15">
-              <ArrowDownRight className="size-3.5 text-red-600 dark:text-red-400" aria-hidden />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Expenses
-            </span>
-          </div>
-          <p className="mt-2 text-lg font-bold tabular-nums text-red-600 dark:text-red-400">
-            {formatMoney(expenseTotal)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none">
-          <div className="flex items-center gap-2">
-            <div
-              className={cn(
-                'flex size-7 items-center justify-center rounded-md',
-                net >= 0 ? 'bg-emerald-500/15' : 'bg-red-500/15',
-              )}
-            >
-              <CircleDollarSign
-                className={cn(
-                  'size-3.5',
-                  net >= 0
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : 'text-red-600 dark:text-red-400',
-                )}
-                aria-hidden
-              />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              Net
-            </span>
-          </div>
-          <p
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <FinanceKpiCard
+          label="Income"
+          value={formatMoney(incomeTotal)}
+          icon={ArrowUpRight}
+          iconColor="text-emerald-600 dark:text-emerald-400"
+          valueClassName="text-emerald-700 dark:text-emerald-300"
+        />
+        <FinanceKpiCard
+          label="Expenses"
+          value={formatMoney(expenseTotal)}
+          icon={ArrowDownRight}
+          iconColor="text-red-600 dark:text-red-400"
+          valueClassName="text-red-600 dark:text-red-400"
+        />
+        <FinanceKpiCard
+          label="Net"
+          value={formatMoney(net)}
+          icon={CircleDollarSign}
+          iconColor={
+            net >= 0
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-red-600 dark:text-red-400'
+          }
+          valueClassName={cn(
+            net >= 0
+              ? 'text-emerald-700 dark:text-emerald-300'
+              : 'text-red-600 dark:text-red-400',
+          )}
+        />
+      </div>
+
+      <AdminListMetaBar
+        summary={{
+          total: items.length,
+          startIdx: items.length === 0 ? 0 : 1,
+          endIdx: items.length,
+          entityLabel: items.length === 1 ? 'transaction' : 'transactions',
+          isLoading,
+          emptyLabel: hasSearch
+            ? 'No transactions match your search'
+            : 'No operating transactions yet',
+        }}
+        showPerPage={false}
+        actionsSlot={
+          <button
+            type="button"
             className={cn(
-              'mt-2 text-lg font-bold tabular-nums',
-              net >= 0
-                ? 'text-emerald-700 dark:text-emerald-300'
-                : 'text-red-600 dark:text-red-400',
+              'inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-3.5 py-2',
+              'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+              'transition-all duration-200 hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] motion-safe:active:scale-[0.98]',
             )}
+            onClick={openCreate}
           >
-            {formatMoney(net)}
-          </p>
-        </div>
-      </div>
+            <Plus className="size-4" aria-hidden />
+            Add transaction
+          </button>
+        }
+      />
 
-      <div className="flex items-center justify-between px-0.5">
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-          {items.length} line{items.length === 1 ? '' : 's'}
-        </p>
-        <button
-          type="button"
-          className="inline-flex min-h-[36px] items-center gap-1.5 rounded-lg gradient-primary px-3 text-xs font-semibold text-primary-foreground shadow-soft transition-all hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)]"
-          onClick={openCreate}
-        >
-          <Plus className="size-3.5" aria-hidden />
-          Add line
-        </button>
-      </div>
-
-      <div className="surface-card overflow-x-auto">
-        <table className="w-full min-w-[520px]">
-          <thead>
-            <tr className="bg-muted/40 text-left text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="hidden px-4 py-3 md:table-cell">Category</th>
-              <th className="px-4 py-3 text-right">Amount</th>
-              <th className="w-20 px-3 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-separator">
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="py-16 text-center">
-                  <Receipt className="mx-auto size-10 text-muted-foreground/30" />
-                  <p className="mt-3 text-sm font-medium text-foreground">
-                    No operating lines yet
-                  </p>
-                  <p className="mx-auto mt-1 max-w-[280px] text-xs text-muted-foreground">
-                    Add rent, utilities, or other property costs to track
-                    operating profit alongside stay revenue.
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-4 inline-flex min-h-[36px] items-center gap-1.5 rounded-lg gradient-primary px-4 text-xs font-semibold text-primary-foreground"
-                    onClick={openCreate}
-                  >
-                    <Plus className="size-3.5" aria-hidden />
-                    Add first line
-                  </button>
-                </td>
-              </tr>
-            ) : (
-              items.map((item) => (
-                <tr
-                  key={item.id}
-                  className="group transition-colors hover:bg-muted/40"
-                >
-                  <td className="px-4 py-3 text-xs tabular-nums text-muted-foreground">
-                    {item.occurred_on}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase',
-                        item.kind === 'income'
-                          ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-                          : 'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
-                      )}
-                    >
-                      {item.kind === 'income' ? (
-                        <ArrowUpRight className="size-3" aria-hidden />
-                      ) : (
-                        <ArrowDownRight className="size-3" aria-hidden />
-                      )}
-                      {item.kind}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <p className="max-w-[220px] truncate text-sm font-medium text-foreground">
-                      {item.label}
-                    </p>
-                    {item.notes && (
-                      <p className="mt-0.5 max-w-[220px] truncate text-[11px] text-muted-foreground">
-                        {item.notes}
-                      </p>
-                    )}
-                  </td>
-                  <td className="hidden px-4 py-3 text-xs text-muted-foreground md:table-cell">
-                    {item.category ?? '—'}
-                  </td>
-                  <td
-                    className={cn(
-                      'px-4 py-3 text-right text-sm tabular-nums font-semibold',
-                      item.kind === 'income'
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-red-600 dark:text-red-400',
-                    )}
-                  >
-                    {item.kind === 'income' ? '+' : '−'}
-                    {formatMoney(item.amount)}
-                  </td>
-                  <td className="px-3 py-3">
-                    <div className="flex justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        type="button"
-                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-                        aria-label="Edit"
-                        onClick={() => openEdit(item)}
-                      >
-                        <Pencil className="size-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        className="flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        aria-label="Delete"
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `Delete "${item.label}"? This cannot be undone.`,
-                            )
-                          ) {
-                            remove.mutate(item.id);
-                          }
-                        }}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+      <AdminDataTable minWidth={520}>
+        <AdminTableHeadRow>
+          <AdminTableTh className="pr-3 pl-4 sm:pl-5">Date</AdminTableTh>
+          <AdminTableTh className="px-3 sm:px-4">Type</AdminTableTh>
+          <AdminTableTh className="px-3 sm:px-4">Description</AdminTableTh>
+          <AdminTableTh className="hidden md:table-cell">Category</AdminTableTh>
+          <AdminTableTh className="text-right">Amount</AdminTableTh>
+          <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+            <span className="sr-only">Actions</span>
+          </AdminTableTh>
+        </AdminTableHeadRow>
+        <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6}>
+                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
+                      <div className="icon-well-sm bg-muted/80">
+                        <Receipt
+                          className="size-[18px] text-muted-foreground"
+                          aria-hidden
+                        />
+                      </div>
+                      <div>
+                        <p className="text-section-title font-bold text-foreground">
+                          {hasSearch
+                            ? 'No transactions match your search'
+                            : 'No operating transactions yet'}
+                        </p>
+                        <p className="mx-auto mt-1 max-w-[280px] text-caption">
+                          {hasSearch
+                            ? 'Try a different keyword or clear the search filter.'
+                            : 'Add rent, utilities, or other property costs to track operating profit alongside stay revenue.'}
+                        </p>
+                      </div>
+                      {!hasSearch ? (
+                        <button
+                          type="button"
+                          className={cn(
+                            'mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-4',
+                            'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+                          )}
+                          onClick={openCreate}
+                        >
+                          <Plus className="size-4" aria-hidden />
+                          Add first transaction
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                items.map((item, index) => (
+                  <tr
+                    key={item.id}
+                    className={adminTableRowClass(index, { interactive: false })}
+                  >
+                    <td
+                      className={cn(
+                        'whitespace-nowrap',
+                        adminTableCell.status,
+                      )}
+                    >
+                      <p className="text-data-primary">
+                        {formatIsoDate(item.occurred_on)}
+                      </p>
+                    </td>
+                    <td className={adminTableCell.body}>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                          item.kind === 'income'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                            : 'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
+                        )}
+                      >
+                        {item.kind === 'income' ? (
+                          <ArrowUpRight className="size-3" aria-hidden />
+                        ) : (
+                          <ArrowDownRight className="size-3" aria-hidden />
+                        )}
+                        {item.kind}
+                      </span>
+                    </td>
+                    <td className={adminTableCell.body}>
+                      <p className="max-w-[220px] truncate text-data-primary">
+                        {item.label}
+                      </p>
+                      {item.recurrence_series_id ? (
+                        <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          <Repeat className="size-3 shrink-0" aria-hidden />
+                          {recurrenceIntervalLabel(item.recurrence_interval)}
+                        </span>
+                      ) : null}
+                      {item.notes ? (
+                        <p className="mt-0.5 max-w-[220px] truncate text-data-secondary">
+                          {item.notes}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td
+                      className={cn(
+                        'hidden text-data-secondary md:table-cell',
+                        adminTableCell.body,
+                      )}
+                    >
+                      {item.category ?? '—'}
+                    </td>
+                    <td className={adminTableCell.money}>
+                      <span
+                        className={adminTableMoneyClass(
+                          item.kind === 'income'
+                            ? 'text-emerald-700 dark:text-emerald-300'
+                            : 'text-red-600 dark:text-red-400',
+                        )}
+                      >
+                        {item.kind === 'income' ? '+' : '−'}
+                        {formatMoney(item.amount)}
+                      </span>
+                    </td>
+                    <td className={adminTableCell.action}>
+                      <div className="flex justify-end gap-0.5">
+                        <button
+                          type="button"
+                          className={adminTableIconButtonClass}
+                          aria-label="Edit"
+                          onClick={() => openEdit(item)}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className={cn(
+                            adminTableIconButtonClass,
+                            'hover:bg-destructive/10 hover:text-destructive',
+                          )}
+                          aria-label="Delete"
+                          onClick={() => setDeleting(item)}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+        </tbody>
+      </AdminDataTable>
 
-      {modalOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm"
-            onClick={closeModal}
-            aria-hidden
+      <Dialog
+        open={modalOpen}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
+      >
+        <DialogContent
+          className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] sm:p-5"
+          onPointerDownOutside={(e) => {
+            if (create.isPending || update.isPending) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (create.isPending || update.isPending) e.preventDefault();
+          }}
+        >
+          <DialogHeader className="text-left">
+            <DialogTitle>
+              {editing ? 'Edit transaction' : 'New transaction'}
+            </DialogTitle>
+          </DialogHeader>
+          <OperatingLineItemForm
+            initial={editing}
+            onSubmit={handleSubmit}
+            onCancel={closeModal}
+            isPending={create.isPending || update.isPending}
           />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="operating-form-title"
-            className="fixed left-1/2 top-1/2 z-50 max-h-[min(90dvh,36rem)] w-[min(calc(100vw-1.5rem),26rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-card p-5 shadow-elevated-lg"
-          >
-            <h2
-              id="operating-form-title"
-              className="mb-4 text-base font-bold text-foreground"
-            >
-              {editing ? 'Edit line item' : 'New line item'}
-            </h2>
-            <OperatingLineItemForm
-              initial={editing}
-              onSubmit={handleSubmit}
-              onCancel={closeModal}
-              isPending={create.isPending || update.isPending}
-            />
-          </div>
-        </>
-      )}
+        </DialogContent>
+      </Dialog>
+
+      <RecurringDeleteDialog
+        item={deleting}
+        open={deleting != null}
+        onClose={() => setDeleting(null)}
+        isPending={remove.isPending}
+        onConfirm={(scope) => {
+          if (!deleting) return;
+          remove.mutate(
+            { id: deleting.id, scope },
+            { onSuccess: () => setDeleting(null) },
+          );
+        }}
+      />
     </div>
   );
 }
