@@ -9,6 +9,8 @@ export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
 export type FinanceTab = 'overview' | 'stays' | 'operating';
 
+export type FinanceStaysView = 'table' | 'card';
+
 export type FinanceQuery = {
   tab: FinanceTab;
   basis: FinancePeriodBasis;
@@ -20,6 +22,8 @@ export type FinanceQuery = {
   page: number;
   limit: number;
   sort: 'check_in_date:asc' | 'check_in_date:desc' | 'host_net:desc' | 'host_net:asc';
+  /** Stays ledger layout — table on desktop; card default on mobile. */
+  staysView: FinanceStaysView;
 };
 
 export const DEFAULT_FINANCE_QUERY: FinanceQuery = {
@@ -33,6 +37,7 @@ export const DEFAULT_FINANCE_QUERY: FinanceQuery = {
   page: 1,
   limit: 31,
   sort: 'check_in_date:desc',
+  staysView: 'table',
 };
 
 export type FinanceStaysSummary = {

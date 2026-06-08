@@ -557,6 +557,39 @@ export function FinanceToolbarSkeleton() {
   );
 }
 
+export function FinanceStaysCardGridSkeleton() {
+  return (
+    <div
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+      aria-busy="true"
+      aria-label="Loading stays"
+    >
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-xl border border-border/50 bg-card p-3.5 sm:p-4"
+          style={{ opacity: 1 - i * 0.06 }}
+        >
+          <Skeleton className="h-6 w-24 rounded-full" />
+          <Skeleton className="mt-2 h-3.5 w-2/3" />
+          <Skeleton className="mt-2 h-3 w-full max-w-[14rem]" />
+          <Skeleton className="mt-1.5 size-7 rounded-md" />
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-separator pt-3">
+            <div className="space-y-1.5">
+              <Skeleton className="h-2.5 w-14" />
+              <Skeleton className="h-3.5 w-16" />
+            </div>
+            <div className="space-y-1.5 text-right">
+              <Skeleton className="ml-auto h-2.5 w-12" />
+              <Skeleton className="ml-auto h-3.5 w-20" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function FinanceStaysTableSkeleton() {
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Loading stays ledger">

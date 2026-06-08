@@ -196,6 +196,8 @@ type FlagsCellProps = {
   need_parking?: boolean | null;
   has_pets?: boolean | null;
   guest_requests_surprise_decor?: unknown;
+  /** Omit the empty placeholder (e.g. inline flags on mobile finance cards). */
+  hideEmpty?: boolean;
 };
 
 /** Flags column — parking / pet / decor chips (Bookings + Finance stays). */
@@ -203,9 +205,12 @@ export function AdminTableFlagsCell({
   need_parking,
   has_pets,
   guest_requests_surprise_decor,
+  hideEmpty = false,
 }: FlagsCellProps) {
   const decor = bookingRequestsSurpriseDecor(guest_requests_surprise_decor);
   const hasAny = need_parking || has_pets || decor;
+
+  if (!hasAny && hideEmpty) return null;
 
   return (
     <div className="inline-flex items-center justify-center gap-1.5">

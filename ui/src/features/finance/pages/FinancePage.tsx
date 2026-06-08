@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { BarChart3, BedDouble, Building2, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,7 @@ import {
   useSyncDateRangeWithQuery,
 } from '@/features/admin/hooks/useDateNavigation';
 import { fromIsoDate } from '@/lib/dateNavigation';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import type { FinanceQuery, FinanceTab } from '@/features/finance/lib/types';
 
 const TABS: {
@@ -37,6 +38,7 @@ const TABS: {
 
 export function FinancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobileLayout = useIsBelowLg();
 
   const query = useMemo(() => {
     const parsed = parseFinanceQueryFromParams(searchParams);
@@ -74,6 +76,25 @@ export function FinancePage() {
     setQuery({ ...query, page: 1, from: null, to: null });
   }, [query, setQuery]);
 
+  // Table is desktop-only on Stays; switch away when the viewport narrows.
+  useEffect(() => {
+    if (!isMobileLayout) return;
+    setSearchParams(
+      (prev) => {
+        const parsed = parseFinanceQueryFromParams(prev);
+        if (parsed.tab !== 'stays' || parsed.staysView !== 'table') {
+          return prev;
+        }
+        return writeFinanceQueryToParams({
+          ...parsed,
+          staysView: 'card',
+          page: 1,
+        });
+      },
+      { replace: true },
+    );
+  }, [isMobileLayout, setSearchParams]);
+
   const summaryQuery = useFinanceSummary(query);
   const bookingsQuery = useFinanceBookings(query);
   const lineItemsQuery = useFinanceLineItems(query);
@@ -99,9 +120,9 @@ export function FinancePage() {
         </section>
 
         <section className="surface-card w-full overflow-visible px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
             <div
-              className="flex min-w-0 shrink-0 gap-1 overflow-x-auto"
+              className="flex min-w-0 w-full gap-1 lg:w-auto lg:shrink-0"
               role="tablist"
               aria-label="Finance sections"
             >
@@ -115,7 +136,8 @@ export function FinancePage() {
                     role="tab"
                     aria-selected={active}
                     className={cn(
-                      'inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors sm:min-h-[40px]',
+                      'inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3',
+                      'lg:flex-none lg:shrink-0 lg:justify-start',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',

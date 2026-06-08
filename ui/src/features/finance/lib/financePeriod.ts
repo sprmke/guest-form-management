@@ -88,6 +88,8 @@ export function parseFinanceQueryFromParams(
     sortRaw === 'host_net:asc'
       ? sortRaw
       : DEFAULT_FINANCE_QUERY.sort;
+  const staysView =
+    params.get('view') === 'card' ? 'card' : DEFAULT_FINANCE_QUERY.staysView;
 
   return {
     tab,
@@ -102,6 +104,7 @@ export function parseFinanceQueryFromParams(
       parseInt(params.get('limit') ?? String(ADMIN_DEFAULT_PAGE_SIZE), 10),
     ),
     sort,
+    staysView,
   };
 }
 
@@ -122,6 +125,9 @@ export function writeFinanceQueryToParams(
     p.set('limit', String(query.limit));
   }
   if (query.sort !== DEFAULT_FINANCE_QUERY.sort) p.set('sort', query.sort);
+  if (query.tab === 'stays' && query.staysView === 'card') {
+    p.set('view', 'card');
+  }
   if (preset && preset !== 'this_month') p.set('preset', preset);
   return p;
 }

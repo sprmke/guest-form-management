@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { BookingDateRangeFilter } from '@/features/admin/components/BookingDateRangeFilter';
 import type { DateNavigationState } from '@/lib/dateNavigation';
 import type { FinancePeriodBasis, FinanceQuery } from '@/features/finance/lib/types';
@@ -35,6 +36,7 @@ export function FinancePeriodToolbar({
   onClearDate,
   align = 'end',
 }: Props) {
+  const isBelowMd = useIsBelowMd();
   const [basisOpen, setBasisOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState(query.q);
@@ -79,8 +81,16 @@ export function FinancePeriodToolbar({
   }, [basisOpen, optionsOpen]);
 
   const filterCluster = (
-    <div className="flex shrink-0 items-center gap-1.5">
-      <div className="relative shrink-0" ref={basisRef}>
+    <div
+      className={cn(
+        'flex items-center gap-1.5',
+        isBelowMd ? 'w-full min-w-0' : 'shrink-0',
+      )}
+    >
+      <div
+        className={cn('relative min-w-0', isBelowMd ? 'flex-1' : 'shrink-0')}
+        ref={basisRef}
+      >
         <button
           type="button"
           onClick={() => setBasisOpen((v) => !v)}
@@ -88,7 +98,8 @@ export function FinancePeriodToolbar({
           aria-haspopup="listbox"
           className={cn(
             'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
-            'whitespace-nowrap transition-all duration-100',
+            'transition-all duration-100',
+            isBelowMd ? 'w-full justify-between' : 'shrink-0 whitespace-nowrap',
             basisOpen
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60',
@@ -260,12 +271,21 @@ export function FinancePeriodToolbar({
         </div>
       )}
 
-      <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto lg:shrink-0 lg:justify-end">
-        <BookingDateRangeFilter
-          {...dateNav}
-          isActive={isDateActive}
-          onClear={onClearDate}
-        />
+      <div
+        className={cn(
+          'flex w-full min-w-0 flex-col gap-2',
+          'md:flex-row md:items-center md:gap-2',
+          'lg:w-auto lg:shrink-0',
+        )}
+      >
+        <div className={cn('min-w-0', isBelowMd ? 'w-full' : 'shrink-0')}>
+          <BookingDateRangeFilter
+            {...dateNav}
+            isActive={isDateActive}
+            onClear={onClearDate}
+            fullWidth={isBelowMd}
+          />
+        </div>
 
         {filterCluster}
       </div>

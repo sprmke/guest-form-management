@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { BedDouble } from 'lucide-react';
-import { FinanceStaysTableSkeleton } from '@/components/skeletons/AdminSkeletons';
+import {
+  FinanceStaysCardGridSkeleton,
+  FinanceStaysTableSkeleton,
+} from '@/components/skeletons/AdminSkeletons';
 import {
   AdminListMetaBar,
   AdminListPagination,
@@ -23,9 +26,12 @@ import { financeDisplayNet } from '@/features/admin/lib/bookingFinance';
 import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import { BookingStayDatesCell } from '@/features/admin/components/BookingStayDatesCell';
+import { FinanceStaysCardGrid } from '@/features/finance/components/FinanceStaysCardGrid';
 import { FinanceStaysSortMenu } from '@/features/finance/components/FinanceStaysSortMenu';
+import { FinanceStaysViewToggle } from '@/features/finance/components/FinanceStaysViewToggle';
 import { StayFinanceModal } from '@/features/finance/components/StayFinanceModal';
 import type { FinanceBookingLedgerRow, FinanceQuery } from '@/features/finance/lib/types';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -45,6 +51,7 @@ export function FinanceStaysTab({
   isFetching = false,
   onQueryChange,
 }: Props) {
+  const isMobileLayout = useIsBelowLg();
   const [drawerRow, setDrawerRow] = useState<FinanceBookingLedgerRow | null>(
     null,
   );
@@ -56,9 +63,19 @@ export function FinanceStaysTab({
     [query.page, pageCount],
   );
   const showPagination = pageCount > 1;
+  const showTableView = query.staysView === 'table' && !isMobileLayout;
+  const showCardView = query.staysView === 'card' || isMobileLayout;
+
+  const handleViewChange = (staysView: FinanceQuery['staysView']) => {
+    onQueryChange({ ...query, staysView, page: 1 });
+  };
 
   if (isLoading && rows.length === 0) {
-    return <FinanceStaysTableSkeleton />;
+    return showCardView ? (
+      <FinanceStaysCardGridSkeleton />
+    ) : (
+      <FinanceStaysTableSkeleton />
+    );
   }
 
   return (
@@ -81,6 +98,13 @@ export function FinanceStaysTab({
             onChange={(sort) => onQueryChange({ ...query, sort, page: 1 })}
           />
         }
+        actionsSlot={
+          <FinanceStaysViewToggle
+            value={query.staysView}
+            onChange={handleViewChange}
+            hideTableView={isMobileLayout}
+          />
+        }
         mobileToolbar={
           <div className="flex flex-col gap-2.5">
             <FinanceStaysSortMenu
@@ -88,7 +112,12 @@ export function FinanceStaysTab({
               onChange={(sort) => onQueryChange({ ...query, sort, page: 1 })}
               fullWidth
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-3">
+              <FinanceStaysViewToggle
+                value={query.staysView}
+                onChange={handleViewChange}
+                hideTableView={isMobileLayout}
+              />
               <AdminListPerPageSelect
                 limit={query.limit}
                 onChange={(limit) =>
@@ -100,162 +129,171 @@ export function FinanceStaysTab({
         }
       />
 
-      <AdminDataTable minWidth={680}>
-        <AdminTableHeadRow>
-          <AdminTableTh className="pr-3 pl-4 sm:pl-5">Status</AdminTableTh>
-          <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
-          <AdminTableTh className="hidden px-3 md:table-cell sm:px-4">
-            Stay
-          </AdminTableTh>
-          <AdminTableTh className="hidden px-3 text-center sm:table-cell sm:px-4">
-            Flags
-          </AdminTableTh>
-          <AdminTableTh className="hidden text-right lg:table-cell">
-            Booking rate
-          </AdminTableTh>
-          <AdminTableTh className="text-right">Other fees</AdminTableTh>
-          <AdminTableTh className="text-right">Host net</AdminTableTh>
-          <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
-            <span className="sr-only">View</span>
-          </AdminTableTh>
-        </AdminTableHeadRow>
-        <tbody>
-          {rows.length === 0 ? (
-            <tr>
-                  <td colSpan={8}>
-                <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-                  <div className="icon-well-sm bg-muted/80">
-                    <BedDouble
-                      className="size-[18px] text-muted-foreground"
-                      aria-hidden
-                    />
+      {showTableView ? (
+        <AdminDataTable minWidth={680}>
+          <AdminTableHeadRow>
+            <AdminTableTh className="pr-3 pl-4 sm:pl-5">Status</AdminTableTh>
+            <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
+            <AdminTableTh className="hidden px-3 md:table-cell sm:px-4">
+              Stay
+            </AdminTableTh>
+            <AdminTableTh className="hidden px-3 text-center sm:table-cell sm:px-4">
+              Flags
+            </AdminTableTh>
+            <AdminTableTh className="hidden text-right lg:table-cell">
+              Booking rate
+            </AdminTableTh>
+            <AdminTableTh className="text-right">Other fees</AdminTableTh>
+            <AdminTableTh className="text-right">Host net</AdminTableTh>
+            <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+              <span className="sr-only">View</span>
+            </AdminTableTh>
+          </AdminTableHeadRow>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={8}>
+                  <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                    <div className="icon-well-sm bg-muted/80">
+                      <BedDouble
+                        className="size-[18px] text-muted-foreground"
+                        aria-hidden
+                      />
+                    </div>
+                    <div>
+                      <p className="text-section-title font-bold text-foreground">
+                        No stays in this period
+                      </p>
+                      <p className="mt-1 text-caption">
+                        Adjust dates or remove filters to see results.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-section-title font-bold text-foreground">
-                      No stays in this period
-                    </p>
-                    <p className="mt-1 text-caption">
-                      Adjust dates or remove filters to see results.
-                    </p>
-                  </div>
-                </div>
-              </td>
-            </tr>
-          ) : (
-            rows.map((row, index) => {
-              const fin = row.financials;
-              const netDisplay = financeDisplayNet(fin);
-              const isRealized = fin.isCompleted;
-                  const name = bookingListDisplayName(row);
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, index) => {
+                const fin = row.financials;
+                const netDisplay = financeDisplayNet(fin);
+                const isRealized = fin.isCompleted;
+                const name = bookingListDisplayName(row);
 
-                  const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  setDrawerRow(row);
-                }
-              };
+                const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setDrawerRow(row);
+                  }
+                };
 
-              return (
-                <tr
-                  key={row.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Open finance details for ${name}`}
-                  className={adminTableRowClass(index)}
-                  onClick={() => setDrawerRow(row)}
-                  onKeyDown={handleKey}
-                >
-                  <td className={adminTableCell.status}>
-                    <AdminTableStatusBadge status={row.status} />
-                  </td>
-                  <td className={adminTableCell.body}>
-                    <AdminTableGuestCell
-                      primary_guest_name={row.primary_guest_name}
-                      guest_facebook_name={row.guest_facebook_name}
-                      guest_email={row.guest_email}
-                      valid_id_url={row.valid_id_url}
-                      mobileExtra={
-                        <BookingStayDatesCell
-                          checkInDate={row.check_in_date}
-                          checkOutDate={row.check_out_date}
-                          numberOfNights={row.number_of_nights}
-                        />
-                      }
-                    />
-                  </td>
-                  <td
-                    className={cn(
-                      'hidden md:table-cell',
-                      adminTableCell.body,
-                    )}
+                return (
+                  <tr
+                    key={row.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Open finance details for ${name}`}
+                    className={adminTableRowClass(index)}
+                    onClick={() => setDrawerRow(row)}
+                    onKeyDown={handleKey}
                   >
-                    <BookingStayDatesCell
-                      checkInDate={row.check_in_date}
-                      checkOutDate={row.check_out_date}
-                      numberOfNights={row.number_of_nights}
-                    />
-                  </td>
-                  <td
-                    className={cn(
-                      'hidden text-center sm:table-cell',
-                      adminTableCell.body,
-                    )}
-                  >
-                    <AdminTableFlagsCell
-                      need_parking={row.need_parking}
-                      has_pets={row.has_pets}
-                      guest_requests_surprise_decor={
-                        row.guest_requests_surprise_decor
-                      }
-                    />
-                  </td>
-                  <td
-                    className={cn('hidden lg:table-cell', adminTableCell.money)}
-                  >
-                    <span
-                      className={adminTableMoneyClass()}
-                    >
-                      {formatMoney(fin.bookingRate)}
-                    </span>
-                  </td>
-                  <td className={adminTableCell.money}>
-                    <span className={adminTableMoneyClass()}>
-                      {formatMoney(fin.otherFees)}
-                    </span>
-                  </td>
-                  <td className={adminTableCell.money}>
-                    <span
-                      className={adminTableMoneyClass(
-                        netDisplay == null
-                          ? undefined
-                          : isRealized
-                            ? netDisplay >= 0
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : 'text-red-600 dark:text-red-400'
-                            : 'text-amber-700 dark:text-amber-300',
+                    <td className={adminTableCell.status}>
+                      <AdminTableStatusBadge status={row.status} />
+                    </td>
+                    <td className={adminTableCell.body}>
+                      <AdminTableGuestCell
+                        primary_guest_name={row.primary_guest_name}
+                        guest_facebook_name={row.guest_facebook_name}
+                        guest_email={row.guest_email}
+                        valid_id_url={row.valid_id_url}
+                        mobileExtra={
+                          <BookingStayDatesCell
+                            checkInDate={row.check_in_date}
+                            checkOutDate={row.check_out_date}
+                            numberOfNights={row.number_of_nights}
+                          />
+                        }
+                      />
+                    </td>
+                    <td
+                      className={cn(
+                        'hidden md:table-cell',
+                        adminTableCell.body,
                       )}
                     >
-                      {formatMoney(netDisplay)}
-                    </span>
-                    {!isRealized && netDisplay != null ? (
-                      <span className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-amber-600/90 dark:text-amber-400/90">
-                        est
+                      <BookingStayDatesCell
+                        checkInDate={row.check_in_date}
+                        checkOutDate={row.check_out_date}
+                        numberOfNights={row.number_of_nights}
+                      />
+                    </td>
+                    <td
+                      className={cn(
+                        'hidden text-center sm:table-cell',
+                        adminTableCell.body,
+                      )}
+                    >
+                      <AdminTableFlagsCell
+                        need_parking={row.need_parking}
+                        has_pets={row.has_pets}
+                        guest_requests_surprise_decor={
+                          row.guest_requests_surprise_decor
+                        }
+                      />
+                    </td>
+                    <td
+                      className={cn('hidden lg:table-cell', adminTableCell.money)}
+                    >
+                      <span className={adminTableMoneyClass()}>
+                        {formatMoney(fin.bookingRate)}
                       </span>
-                    ) : null}
-                  </td>
-                  <td className={adminTableCell.action}>
-                    <AdminTableRowLink
-                      to={`/bookings/${row.id}`}
-                      ariaLabel={`Open booking for ${name}`}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                </tr>
-              );
-            })
-          )}
-        </tbody>
-      </AdminDataTable>
+                    </td>
+                    <td className={adminTableCell.money}>
+                      <span className={adminTableMoneyClass()}>
+                        {formatMoney(fin.otherFees)}
+                      </span>
+                    </td>
+                    <td className={adminTableCell.money}>
+                      <span
+                        className={adminTableMoneyClass(
+                          netDisplay == null
+                            ? undefined
+                            : isRealized
+                              ? netDisplay >= 0
+                                ? 'text-emerald-700 dark:text-emerald-300'
+                                : 'text-red-600 dark:text-red-400'
+                              : 'text-amber-700 dark:text-amber-300',
+                        )}
+                      >
+                        {formatMoney(netDisplay)}
+                      </span>
+                      {!isRealized && netDisplay != null ? (
+                        <span className="ml-1 align-middle text-[10px] font-medium uppercase tracking-wide text-amber-600/90 dark:text-amber-400/90">
+                          est
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className={adminTableCell.action}>
+                      <AdminTableRowLink
+                        to={`/bookings/${row.id}`}
+                        ariaLabel={`Open booking for ${name}`}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </AdminDataTable>
+      ) : null}
+
+      {showCardView ? (
+        <FinanceStaysCardGrid
+          rows={rows}
+          isLoading={isLoading}
+          isRefreshing={isFetching}
+          onOpenRow={setDrawerRow}
+        />
+      ) : null}
 
       {showPagination ? (
         <AdminListPagination
