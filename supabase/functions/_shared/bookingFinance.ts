@@ -7,9 +7,14 @@ import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 export type SdSettlementLineItem = { label: string; amount: number };
 
 export type BookingFinancials = {
+  /** Down payment + guest balance. */
+  bookingRate: number | null;
+  /** Pet + parking margin + additional + (SD paid − SD refund). */
+  otherFees: number;
   totalGuestBalance: number | null;
   guestCollected: number;
   guestUnpaid: number | null;
+  /** Balance paid minus security deposit — host stay fees only (COMPLETED). */
   stayRevenue: number | null;
   parkingMargin: number | null;
   sdExpenseTotal: number;
@@ -22,6 +27,88 @@ export type BookingFinancials = {
   isCompleted: boolean;
   isRealized: boolean;
 };
+
+function bookingFlagTrue(v: unknown): boolean {
+  return v === true || v === 'true';
+}
+
+function petFeeForHostNet(booking: Record<string, unknown>): number {
+  return bookingFlagTrue(booking.has_pets) ? num(booking.pet_fee) : 0;
+}
+
+function parkingFeeForHostNet(booking: Record<string, unknown>): number {
+  return bookingFlagTrue(booking.need_parking)
+    ? num(booking.parking_rate_guest)
+    : 0;
+}
+
+function guestBalanceForStayDisplay(
+  booking: Record<string, unknown>,
+): number | null {
+  const rate = booking.booking_rate;
+  if (rate !== null && rate !== undefined && rate !== '') {
+    return roundMoney(num(rate) - num(booking.down_payment));
+  }
+  const balance = booking.balance;
+  if (balance !== null && balance !== undefined && balance !== '') {
+    return roundMoney(num(balance));
+  }
+  return null;
+}
+
+function bookingRateForDisplay(booking: Record<string, unknown>): number | null {
+  const guestBalance = guestBalanceForStayDisplay(booking);
+  if (guestBalance == null) return null;
+  return roundMoney(num(booking.down_payment) + guestBalance);
+}
+
+function otherFeesForDisplay(booking: Record<string, unknown>): number {
+  const pet = petFeeForHostNet(booking);
+  const parkingMargin = bookingFlagTrue(booking.need_parking)
+    ? roundMoney(
+        parkingFeeForHostNet(booking) - num(booking.parking_rate_paid),
+      )
+    : 0;
+  const additional = num(booking.guest_additional_fee);
+  const sdNet = roundMoney(
+    num(booking.security_deposit) - num(booking.sd_refund_amount),
+  );
+  return roundMoney(pet + parkingMargin + additional + sdNet);
+}
+
+function guestBalanceForHostNet(booking: Record<string, unknown>): number | null {
+  return guestBalanceForStayDisplay(booking);
+}
+
+function computeHostNetComponents(
+  booking: Record<string, unknown>,
+  options: { includeSdRefund: boolean } = { includeSdRefund: true },
+): number {
+  const deposit = num(booking.security_deposit);
+  const down = num(booking.down_payment);
+  const guestBalance = guestBalanceForHostNet(booking) ?? 0;
+  const pet = petFeeForHostNet(booking);
+  const additional = num(booking.guest_additional_fee);
+  const parkingGuest = parkingFeeForHostNet(booking);
+  const parkingPaid = num(booking.parking_rate_paid);
+  const sdRefund = options.includeSdRefund ? num(booking.sd_refund_amount) : 0;
+
+  return roundMoney(
+    down +
+      guestBalance +
+      parkingGuest +
+      pet +
+      additional +
+      deposit -
+      parkingPaid -
+      sdRefund,
+  );
+}
+
+export function financeDisplayNet(fin: BookingFinancials): number | null {
+  if (fin.isCompleted) return fin.hostNet;
+  return fin.projectedNet;
+}
 
 function num(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
@@ -95,7 +182,9 @@ export function computeBookingFinancials(
   const deposit = num(booking.security_deposit);
   const parkingGuest = num(booking.parking_rate_guest);
   const parkingPaid = num(booking.parking_rate_paid);
-  const parkingMargin = roundMoney(parkingGuest - parkingPaid);
+  const parkingMargin = bookingFlagTrue(booking.need_parking)
+    ? roundMoney(parkingGuest - parkingPaid)
+    : null;
 
   const { expenses, profits } = buildSdExpenseProfitRows(booking);
   const sdExpenseTotal = roundMoney(sumSdLineAmounts(expenses));
@@ -106,27 +195,38 @@ export function computeBookingFinancials(
       : '';
   const voucherCost = voucherCode ? roundMoney(num(booking.next_stay_voucher_amount)) : 0;
 
-  const stayRevenue =
-    guestCollected > 0 || isCompleted
-      ? roundMoney(guestCollected - deposit)
-      : null;
+  const stayRevenue = isCompleted
+    ? roundMoney(guestCollected - deposit)
+    : null;
+
+  const hostInflows = roundMoney(
+    num(booking.down_payment) +
+      (guestBalanceForHostNet(booking) ?? 0) +
+      parkingFeeForHostNet(booking) +
+      petFeeForHostNet(booking) +
+      num(booking.guest_additional_fee) +
+      deposit,
+  );
+  const sdRefund = num(booking.sd_refund_amount);
 
   let hostProfit = 0;
   let hostExpenses = 0;
   let hostNet = 0;
 
   if (isCompleted) {
-    hostProfit = roundMoney(guestCollected - deposit + sdProfitTotal);
-    hostExpenses = roundMoney(sdExpenseTotal + parkingPaid + voucherCost);
-    hostNet = roundMoney(hostProfit - hostExpenses);
+    hostProfit = hostInflows;
+    hostExpenses = roundMoney(parkingPaid + sdRefund);
+    hostNet = computeHostNetComponents(booking, { includeSdRefund: true });
   }
 
   let projectedNet: number | null = null;
-  if (!isCompleted && totalGuestBalance != null) {
-    projectedNet = roundMoney(totalGuestBalance - deposit - parkingPaid);
+  if (!isCompleted) {
+    projectedNet = computeHostNetComponents(booking, { includeSdRefund: false });
   }
 
   return {
+    bookingRate: bookingRateForDisplay(booking),
+    otherFees: otherFeesForDisplay(booking),
     totalGuestBalance,
     guestCollected,
     guestUnpaid,

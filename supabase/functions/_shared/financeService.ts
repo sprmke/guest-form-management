@@ -3,13 +3,21 @@
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { computeBookingFinancials } from './bookingFinance.ts';
+import { computeBookingFinancials, financeDisplayNet } from './bookingFinance.ts';
 import { checkInDateToIso } from './bookingsListSort.ts';
 import {
   isCancelledBooking,
   passesFinancePeriodFilter,
   type FinancePeriodBasis,
 } from './financePeriodFilter.ts';
+import {
+  defaultRecurrenceUntilForInterval,
+  generateRecurrenceDates,
+  isRecurrenceEditScope,
+  isRecurrenceInterval,
+  type RecurrenceEditScope,
+  type RecurrenceInterval,
+} from './financeRecurrence.ts';
 
 export type FinanceLineItemKind = 'expense' | 'income';
 
@@ -22,16 +30,41 @@ export type FinanceLineItemRow = {
   occurred_on: string;
   notes: string | null;
   receipt_path: string | null;
+  recurrence_series_id: string | null;
+  recurrence_interval: RecurrenceInterval | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 };
 
+function mapFinanceLineItemRow(row: Record<string, unknown>): FinanceLineItemRow {
+  const interval = row.recurrence_interval;
+  return {
+    id: String(row.id),
+    kind: row.kind as FinanceLineItemKind,
+    label: String(row.label),
+    amount: Number(row.amount),
+    category: row.category ? String(row.category) : null,
+    occurred_on: String(row.occurred_on).slice(0, 10),
+    notes: row.notes ? String(row.notes) : null,
+    receipt_path: row.receipt_path ? String(row.receipt_path) : null,
+    recurrence_series_id: row.recurrence_series_id
+      ? String(row.recurrence_series_id)
+      : null,
+    recurrence_interval: isRecurrenceInterval(interval) ? interval : null,
+    created_by: row.created_by ? String(row.created_by) : null,
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+  };
+}
+
 export type FinanceStaysSummary = {
   count: number;
   completedCount: number;
-  guestCollected: number;
-  stayRevenue: number;
+  /** Σ booking rate (down + guest balance) for stays in period. */
+  bookingRate: number;
+  /** Σ other fees (pet, parking margin, additional, SD net) for stays in period. */
+  otherFees: number;
   parkingMargin: number;
   sdExpenses: number;
   hostNetCompleted: number;
@@ -107,8 +140,8 @@ function filterBookings(
 }
 
 export function summarizeStays(rows: Record<string, unknown>[]): FinanceStaysSummary {
-  let guestCollected = 0;
-  let stayRevenue = 0;
+  let bookingRate = 0;
+  let otherFees = 0;
   let parkingMargin = 0;
   let sdExpenses = 0;
   let hostNetCompleted = 0;
@@ -118,13 +151,13 @@ export function summarizeStays(rows: Record<string, unknown>[]): FinanceStaysSum
 
   for (const row of rows) {
     const fin = computeBookingFinancials(row);
-    guestCollected += fin.guestCollected;
-    if (fin.stayRevenue != null) stayRevenue += fin.stayRevenue;
-    if (fin.parkingMargin != null) parkingMargin += fin.parkingMargin;
-    sdExpenses += fin.sdExpenseTotal;
+    if (fin.bookingRate != null) bookingRate += fin.bookingRate;
+    otherFees += fin.otherFees;
     if (fin.isCompleted) {
       completedCount += 1;
       hostNetCompleted += fin.hostNet;
+      if (fin.parkingMargin != null) parkingMargin += fin.parkingMargin;
+      sdExpenses += fin.sdExpenseTotal;
     } else if (fin.projectedNet != null) {
       projectedNetPipeline += fin.projectedNet;
     }
@@ -136,8 +169,8 @@ export function summarizeStays(rows: Record<string, unknown>[]): FinanceStaysSum
   return {
     count: rows.length,
     completedCount,
-    guestCollected: roundMoney(guestCollected),
-    stayRevenue: roundMoney(stayRevenue),
+    bookingRate: roundMoney(bookingRate),
+    otherFees: roundMoney(otherFees),
     parkingMargin: roundMoney(parkingMargin),
     sdExpenses: roundMoney(sdExpenses),
     hostNetCompleted: roundMoney(hostNetCompleted),
@@ -146,31 +179,37 @@ export function summarizeStays(rows: Record<string, unknown>[]): FinanceStaysSum
   };
 }
 
+function filterOperatingLineItems(
+  items: FinanceLineItemRow[],
+  q?: string,
+): FinanceLineItemRow[] {
+  const needle = q?.trim().toLowerCase() ?? '';
+  if (!needle) return items;
+  return items.filter((item) => {
+    const hay = [item.label, item.category, item.notes, item.kind]
+      .map((v) => String(v ?? '').toLowerCase())
+      .join(' ');
+    return hay.includes(needle);
+  });
+}
+
 export async function listOperatingLineItems(params: {
   from: string | null;
   to: string | null;
+  q?: string;
 }): Promise<FinanceLineItemRow[]> {
   const supabase = getSupabase();
-  let q = supabase.from('finance_line_items').select('*').order('occurred_on', {
+  let query = supabase.from('finance_line_items').select('*').order('occurred_on', {
     ascending: false,
   });
-  if (params.from) q = q.gte('occurred_on', params.from);
-  if (params.to) q = q.lte('occurred_on', params.to);
-  const { data, error } = await q;
+  if (params.from) query = query.gte('occurred_on', params.from);
+  if (params.to) query = query.lte('occurred_on', params.to);
+  const { data, error } = await query;
   if (error) throw new Error(`finance_line_items query failed: ${error.message}`);
-  return (data ?? []).map((row) => ({
-    id: String(row.id),
-    kind: row.kind as FinanceLineItemKind,
-    label: String(row.label),
-    amount: Number(row.amount),
-    category: row.category ? String(row.category) : null,
-    occurred_on: String(row.occurred_on).slice(0, 10),
-    notes: row.notes ? String(row.notes) : null,
-    receipt_path: row.receipt_path ? String(row.receipt_path) : null,
-    created_by: row.created_by ? String(row.created_by) : null,
-    created_at: String(row.created_at),
-    updated_at: String(row.updated_at),
-  }));
+  const rows = (data ?? []).map((row) =>
+    mapFinanceLineItemRow(row as Record<string, unknown>)
+  );
+  return filterOperatingLineItems(rows, params.q);
 }
 
 export function summarizeOperating(items: FinanceLineItemRow[]): FinanceOperatingSummary {
@@ -217,15 +256,82 @@ export async function computeFinanceSummary(params: {
   };
 }
 
+export type FinanceBookingPricingSnapshot = {
+  booking_rate: unknown;
+  down_payment: unknown;
+  balance: unknown;
+  security_deposit: unknown;
+  pet_fee: unknown;
+  parking_rate_guest: unknown;
+  parking_rate_paid: unknown;
+  guest_additional_fee: unknown;
+  guest_balance_paid_amount: unknown;
+  sd_refund_amount: unknown;
+  sd_refund_method: unknown;
+  sd_refund_bank: unknown;
+  sd_refund_account_name: unknown;
+  sd_refund_account_number: unknown;
+  sd_refund_phone_confirmed: unknown;
+  sd_refund_guest_feedback: unknown;
+  sd_refund_form_emailed_at: unknown;
+  sd_refund_form_submitted_at: unknown;
+  settled_at: unknown;
+  sd_additional_expense_items: unknown;
+  sd_additional_profit_items: unknown;
+  sd_additional_expenses: unknown;
+  sd_additional_profits: unknown;
+  next_stay_voucher_code: unknown;
+  next_stay_voucher_amount: unknown;
+};
+
 export type FinanceBookingRow = {
   id: string;
   guest_facebook_name: string;
   primary_guest_name: string;
+  guest_email: string;
+  valid_id_url: string | null;
+  need_parking: boolean;
+  has_pets: boolean;
+  guest_requests_surprise_decor: unknown;
   check_in_date: string;
   check_out_date: string;
+  number_of_nights: number;
   status: string;
+  pricing: FinanceBookingPricingSnapshot;
   financials: ReturnType<typeof computeBookingFinancials>;
 };
+
+function pricingSnapshotFromRow(
+  row: Record<string, unknown>,
+): FinanceBookingPricingSnapshot {
+  return {
+    booking_rate: row.booking_rate ?? null,
+    down_payment: row.down_payment ?? null,
+    balance: row.balance ?? null,
+    security_deposit: row.security_deposit ?? null,
+    pet_fee: row.pet_fee ?? null,
+    parking_rate_guest: row.parking_rate_guest ?? null,
+    parking_rate_paid: row.parking_rate_paid ?? null,
+    guest_additional_fee: row.guest_additional_fee ?? null,
+    guest_balance_paid_amount: row.guest_balance_paid_amount ?? null,
+    sd_refund_amount: row.sd_refund_amount ?? null,
+    sd_refund_method: row.sd_refund_method ?? null,
+    sd_refund_bank: row.sd_refund_bank ?? null,
+    sd_refund_account_name: row.sd_refund_account_name ?? null,
+    sd_refund_account_number: row.sd_refund_account_number ?? null,
+    sd_refund_phone_confirmed: row.sd_refund_phone_confirmed ?? null,
+    sd_refund_guest_feedback: row.sd_refund_guest_feedback ?? null,
+    sd_refund_form_emailed_at: row.sd_refund_form_emailed_at ?? null,
+    sd_refund_form_submitted_at: row.sd_refund_form_submitted_at ?? null,
+    settled_at: row.settled_at ?? null,
+    sd_additional_expense_items: row.sd_additional_expense_items ?? null,
+    sd_additional_profit_items: row.sd_additional_profit_items ?? null,
+    sd_additional_expenses: row.sd_additional_expenses ?? null,
+    sd_additional_profits: row.sd_additional_profits ?? null,
+    next_stay_voucher_code: row.next_stay_voucher_code ?? null,
+    next_stay_voucher_amount: row.next_stay_voucher_amount ?? null,
+  };
+}
 
 export async function listFinanceBookings(params: {
   from: string | null;
@@ -243,8 +349,8 @@ export async function listFinanceBookings(params: {
 
   filtered.sort((a, b) => {
     if (params.sort === 'host_net:desc' || params.sort === 'host_net:asc') {
-      const na = computeBookingFinancials(a).hostNet;
-      const nb = computeBookingFinancials(b).hostNet;
+      const na = financeDisplayNet(computeBookingFinancials(a)) ?? -Infinity;
+      const nb = financeDisplayNet(computeBookingFinancials(b)) ?? -Infinity;
       return params.sort === 'host_net:desc' ? nb - na : na - nb;
     }
     const ia = checkInDateToIso(String(a.check_in_date ?? ''));
@@ -262,9 +368,19 @@ export async function listFinanceBookings(params: {
     id: String(row.id),
     guest_facebook_name: String(row.guest_facebook_name ?? ''),
     primary_guest_name: String(row.primary_guest_name ?? ''),
+    guest_email: String(row.guest_email ?? ''),
+    valid_id_url:
+      typeof row.valid_id_url === 'string' && row.valid_id_url.trim()
+        ? row.valid_id_url
+        : null,
+    need_parking: row.need_parking === true,
+    has_pets: row.has_pets === true,
+    guest_requests_surprise_decor: row.guest_requests_surprise_decor,
     check_in_date: String(row.check_in_date ?? ''),
     check_out_date: String(row.check_out_date ?? ''),
+    number_of_nights: Math.max(1, Number(row.number_of_nights) || 1),
     status: String(row.status ?? ''),
+    pricing: pricingSnapshotFromRow(row),
     financials: computeBookingFinancials(row),
   }));
 
@@ -280,40 +396,71 @@ export async function createFinanceLineItem(
     occurred_on: string;
     notes?: string | null;
     receipt_path?: string | null;
+    recurrence_interval?: RecurrenceInterval | null;
+    recurrence_until?: string | null;
   },
   createdBy: string,
-): Promise<FinanceLineItemRow> {
+): Promise<{ row: FinanceLineItemRow; created_count: number }> {
   const supabase = getSupabase();
   const now = new Date().toISOString();
+  const base = {
+    kind: input.kind,
+    label: input.label.slice(0, 200),
+    amount: input.amount,
+    category: input.category?.slice(0, 80) ?? null,
+    notes: input.notes?.slice(0, 2000) ?? null,
+    receipt_path: input.receipt_path ?? null,
+    created_by: createdBy,
+    created_at: now,
+    updated_at: now,
+  };
+
+  const interval = input.recurrence_interval;
+  if (!interval || !isRecurrenceInterval(interval)) {
+    const { data, error } = await supabase
+      .from('finance_line_items')
+      .insert({
+        ...base,
+        occurred_on: input.occurred_on,
+        recurrence_series_id: null,
+        recurrence_interval: null,
+      })
+      .select('*')
+      .single();
+    if (error) throw new Error(`create finance_line_item failed: ${error.message}`);
+    const row = mapFinanceLineItemRow(data as Record<string, unknown>);
+    return { row, created_count: 1 };
+  }
+
+  const until =
+    input.recurrence_until && input.recurrence_until >= input.occurred_on
+      ? input.recurrence_until.slice(0, 10)
+      : defaultRecurrenceUntilForInterval(input.occurred_on, interval);
+  const dates = generateRecurrenceDates(input.occurred_on, interval, until);
+  if (dates.length === 0) {
+    throw new Error('recurrence_generated_no_dates');
+  }
+
+  const seriesId = crypto.randomUUID();
+  const rows = dates.map((occurred_on) => ({
+    ...base,
+    occurred_on,
+    recurrence_series_id: seriesId,
+    recurrence_interval: interval,
+  }));
+
   const { data, error } = await supabase
     .from('finance_line_items')
-    .insert({
-      kind: input.kind,
-      label: input.label.slice(0, 200),
-      amount: input.amount,
-      category: input.category?.slice(0, 80) ?? null,
-      occurred_on: input.occurred_on,
-      notes: input.notes?.slice(0, 2000) ?? null,
-      receipt_path: input.receipt_path ?? null,
-      created_by: createdBy,
-      created_at: now,
-      updated_at: now,
-    })
-    .select('*')
-    .single();
-  if (error) throw new Error(`create finance_line_item failed: ${error.message}`);
+    .insert(rows)
+    .select('*');
+  if (error) throw new Error(`create recurring finance_line_items failed: ${error.message}`);
+  const inserted = ((data ?? []) as Record<string, unknown>[]).sort((a, b) =>
+    String(a.occurred_on).localeCompare(String(b.occurred_on))
+  );
+  if (inserted.length === 0) throw new Error('create recurring finance_line_items empty');
   return {
-    id: String(data.id),
-    kind: data.kind as FinanceLineItemKind,
-    label: String(data.label),
-    amount: Number(data.amount),
-    category: data.category ? String(data.category) : null,
-    occurred_on: String(data.occurred_on).slice(0, 10),
-    notes: data.notes ? String(data.notes) : null,
-    receipt_path: data.receipt_path ? String(data.receipt_path) : null,
-    created_by: data.created_by ? String(data.created_by) : null,
-    created_at: String(data.created_at),
-    updated_at: String(data.updated_at),
+    row: mapFinanceLineItemRow(inserted[0]),
+    created_count: inserted.length,
   };
 }
 
@@ -328,8 +475,21 @@ export async function updateFinanceLineItem(
     notes: string | null;
     receipt_path: string | null;
   }>,
-): Promise<FinanceLineItemRow> {
+  scope: RecurrenceEditScope = 'this',
+): Promise<{ row: FinanceLineItemRow; updated_count: number }> {
   const supabase = getSupabase();
+  const { data: existing, error: fetchErr } = await supabase
+    .from('finance_line_items')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchErr) throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
+  if (!existing) throw new Error('finance_line_item_not_found');
+
+  const row = mapFinanceLineItemRow(existing as Record<string, unknown>);
+  const effectiveScope =
+    row.recurrence_series_id && isRecurrenceEditScope(scope) ? scope : 'this';
+
   const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.kind) update.kind = patch.kind;
   if (patch.label != null) update.label = patch.label.slice(0, 200);
@@ -337,34 +497,82 @@ export async function updateFinanceLineItem(
   if (patch.category !== undefined) {
     update.category = patch.category?.slice(0, 80) ?? null;
   }
-  if (patch.occurred_on) update.occurred_on = patch.occurred_on;
   if (patch.notes !== undefined) update.notes = patch.notes?.slice(0, 2000) ?? null;
   if (patch.receipt_path !== undefined) update.receipt_path = patch.receipt_path;
 
-  const { data, error } = await supabase
+  if (effectiveScope === 'this') {
+    if (patch.occurred_on) update.occurred_on = patch.occurred_on;
+    const { data, error } = await supabase
+      .from('finance_line_items')
+      .update(update)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw new Error(`update finance_line_item failed: ${error.message}`);
+    return {
+      row: mapFinanceLineItemRow(data as Record<string, unknown>),
+      updated_count: 1,
+    };
+  }
+
+  if (patch.occurred_on) {
+    throw new Error('cannot_change_date_on_series_batch');
+  }
+
+  let q = supabase
     .from('finance_line_items')
     .update(update)
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) throw new Error(`update finance_line_item failed: ${error.message}`);
+    .eq('recurrence_series_id', row.recurrence_series_id);
+  if (effectiveScope === 'this_and_future') {
+    q = q.gte('occurred_on', row.occurred_on);
+  }
+
+  const { data, error } = await q.select('*');
+  if (error) throw new Error(`update finance_line_items series failed: ${error.message}`);
+  const updated = (data ?? []) as Record<string, unknown>[];
+  const anchor =
+    updated.find((r) => String(r.id) === id) ?? updated[0] ?? existing;
   return {
-    id: String(data.id),
-    kind: data.kind as FinanceLineItemKind,
-    label: String(data.label),
-    amount: Number(data.amount),
-    category: data.category ? String(data.category) : null,
-    occurred_on: String(data.occurred_on).slice(0, 10),
-    notes: data.notes ? String(data.notes) : null,
-    receipt_path: data.receipt_path ? String(data.receipt_path) : null,
-    created_by: data.created_by ? String(data.created_by) : null,
-    created_at: String(data.created_at),
-    updated_at: String(data.updated_at),
+    row: mapFinanceLineItemRow(anchor as Record<string, unknown>),
+    updated_count: updated.length,
   };
 }
 
-export async function deleteFinanceLineItem(id: string): Promise<void> {
+export async function deleteFinanceLineItem(
+  id: string,
+  scope: RecurrenceEditScope = 'this',
+): Promise<{ deleted_count: number }> {
   const supabase = getSupabase();
-  const { error } = await supabase.from('finance_line_items').delete().eq('id', id);
-  if (error) throw new Error(`delete finance_line_item failed: ${error.message}`);
+  const { data: existing, error: fetchErr } = await supabase
+    .from('finance_line_items')
+    .select('id, recurrence_series_id, occurred_on')
+    .eq('id', id)
+    .maybeSingle();
+  if (fetchErr) throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
+  if (!existing) throw new Error('finance_line_item_not_found');
+
+  const seriesId = existing.recurrence_series_id
+    ? String(existing.recurrence_series_id)
+    : null;
+  const occurredOn = String(existing.occurred_on).slice(0, 10);
+  const effectiveScope =
+    seriesId && isRecurrenceEditScope(scope) ? scope : 'this';
+
+  if (effectiveScope === 'this' || !seriesId) {
+    const { error } = await supabase.from('finance_line_items').delete().eq('id', id);
+    if (error) throw new Error(`delete finance_line_item failed: ${error.message}`);
+    return { deleted_count: 1 };
+  }
+
+  let q = supabase
+    .from('finance_line_items')
+    .delete()
+    .eq('recurrence_series_id', seriesId);
+  if (effectiveScope === 'this_and_future') {
+    q = q.gte('occurred_on', occurredOn);
+  }
+
+  const { data, error } = await q.select('id');
+  if (error) throw new Error(`delete finance_line_items series failed: ${error.message}`);
+  return { deleted_count: (data ?? []).length };
 }

@@ -490,7 +490,7 @@ export class DatabaseService {
       needParking = null,
       sort = 'status_priority:asc',
       page = 1,
-      limit = 25,
+      limit = 31,
       showCompletedBookings = false,
     } = params;
 

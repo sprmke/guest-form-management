@@ -51,8 +51,8 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
       ['to', summary.period.to ?? ''],
       ['stays_count', summary.stays.count],
       ['completed_stays', summary.stays.completedCount],
-      ['guest_collected', summary.stays.guestCollected],
-      ['stay_revenue', summary.stays.stayRevenue],
+      ['booking_rate', summary.stays.bookingRate],
+      ['other_fees', summary.stays.otherFees],
       ['parking_margin', summary.stays.parkingMargin],
       ['sd_expenses', summary.stays.sdExpenses],
       ['host_net_completed', summary.stays.hostNetCompleted],
@@ -63,14 +63,36 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
       ['operating_net', summary.operating.net],
       ['grand_net', summary.grandNet],
     ];
+    const definitions = rowsToCsv(
+      ['metric', 'formula'],
+      [
+        [
+          'booking_rate',
+          'down_payment + guest_balance (booking_rate - down_payment)',
+        ],
+        [
+          'other_fees',
+          'pet_fee + parking_margin + additional_guest_fee + (security_deposit - sd_refund)',
+        ],
+        [
+          'host_net_completed',
+          'booking_rate + other_fees per completed stay (Breakdown net)',
+        ],
+        ['grand_net', 'host_net_completed + operating_net'],
+      ],
+    );
     return {
       filename: `finance-overview-${periodLabel}.csv`,
-      body: rowsToCsv(headers, rows),
+      body: `${rowsToCsv(headers, rows)}\r\n\r\n# Definitions\r\n${definitions}`,
     };
   }
 
   if (params.type === 'operating') {
-    const items = await listOperatingLineItems({ from: params.from, to: params.to });
+    const items = await listOperatingLineItems({
+      from: params.from,
+      to: params.to,
+      q: params.q,
+    });
     return {
       filename: `finance-operating-${periodLabel}.csv`,
       body: operatingItemsToCsv(items),
@@ -97,7 +119,34 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
       [
         ['grand_net', summary.grandNet],
         ['host_net_completed', summary.stays.hostNetCompleted],
+        ['booking_rate', summary.stays.bookingRate],
+        ['other_fees', summary.stays.otherFees],
+        ['outstanding_guest_balance', summary.stays.outstandingGuestBalance],
+        ['stays_count', summary.stays.count],
+        ['completed_stays', summary.stays.completedCount],
         ['operating_net', summary.operating.net],
+        ['operating_income', summary.operating.income],
+        ['operating_expenses', summary.operating.expenses],
+      ],
+    ),
+    '',
+    '# Definitions',
+    rowsToCsv(
+      ['metric', 'formula'],
+      [
+        [
+          'booking_rate',
+          'down_payment + guest_balance (booking_rate - down_payment)',
+        ],
+        [
+          'other_fees',
+          'pet_fee + parking_margin + additional_guest_fee + (security_deposit - sd_refund)',
+        ],
+        [
+          'host_net_completed',
+          'booking_rate + other_fees per completed stay (Breakdown net: income + SD lines - expenses)',
+        ],
+        ['grand_net', 'host_net_completed + operating_net'],
       ],
     ),
     '',
@@ -118,6 +167,8 @@ function operatingItemsToCsv(items: FinanceLineItemRow[]): string {
     'amount',
     'category',
     'occurred_on',
+    'recurrence_series_id',
+    'recurrence_interval',
     'notes',
     'created_by',
   ];
@@ -128,6 +179,8 @@ function operatingItemsToCsv(items: FinanceLineItemRow[]): string {
     i.amount,
     i.category ?? '',
     i.occurred_on,
+    i.recurrence_series_id ?? '',
+    i.recurrence_interval ?? '',
     i.notes ?? '',
     i.created_by ?? '',
   ]);
@@ -167,28 +220,52 @@ async function staysExportCsv(params: FinanceExportParams): Promise<string> {
     'check_in',
     'check_out',
     'status',
-    'total_guest_balance',
-    'guest_collected',
+    'booking_rate',
+    'other_fees',
     'guest_unpaid',
     'parking_margin',
     'host_net',
     'projected_net',
   ];
+  let bookingRateTotal = 0;
+  let otherFeesTotal = 0;
+  let hostNetCompletedTotal = 0;
+
   const rows = filtered.map((row) => {
     const fin = computeBookingFinancials(row);
+    if (fin.bookingRate != null) bookingRateTotal += fin.bookingRate;
+    otherFeesTotal += fin.otherFees;
+    if (fin.isCompleted) hostNetCompletedTotal += fin.hostNet;
     return [
       String(row.id),
       String(row.guest_facebook_name ?? row.primary_guest_name ?? ''),
       String(row.check_in_date ?? ''),
       String(row.check_out_date ?? ''),
       String(row.status ?? ''),
-      fin.totalGuestBalance ?? '',
-      fin.guestCollected,
+      fin.bookingRate ?? '',
+      fin.otherFees,
       fin.guestUnpaid ?? '',
       fin.parkingMargin ?? '',
       fin.isCompleted ? fin.hostNet : '',
       fin.projectedNet ?? '',
     ];
   });
+
+  if (rows.length > 0) {
+    rows.push([
+      'TOTALS',
+      '',
+      '',
+      '',
+      '',
+      Math.round(bookingRateTotal * 100) / 100,
+      Math.round(otherFeesTotal * 100) / 100,
+      '',
+      '',
+      Math.round(hostNetCompletedTotal * 100) / 100,
+      '',
+    ]);
+  }
+
   return rowsToCsv(headers, rows);
 }
