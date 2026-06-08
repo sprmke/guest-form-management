@@ -34,7 +34,6 @@ import {
   Banknote,
   Calendar,
   Car,
-  CheckCircle2,
   Dog,
   Edit2,
   ExternalLink,
@@ -69,21 +68,14 @@ import {
   formatMoney,
   formatRelative,
 } from "@/features/admin/lib/formatters";
-import type {
-  BookingRow,
-  SdSettlementLineItem,
-} from "@/features/admin/lib/types";
+import type { BookingRow } from "@/features/admin/lib/types";
 import {
   normalizeStoragePublicUrl,
   parseStorageUrl,
   PRIVATE_STORAGE_BUCKETS,
   resolveAssetUrlForBrowser,
 } from "@/features/admin/lib/storageUrls";
-import {
-  computeCompletedStayProfitLoss,
-  computeTotalGuestBalance,
-  guestBalancePaidRecorded,
-} from "@/features/admin/lib/totalGuestBalance";
+import { BookingPricingSummary } from "@/features/admin/components/BookingPricingSummary";
 import {
   PayParkingHeaderButton,
   PayParkingModal,
@@ -740,78 +732,6 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
   );
 }
 
-const SD_REFUND_METHOD_LABELS: Record<string, string> = {
-  same_phone: "Refund to same phone (GCash)",
-  other_bank: "Bank transfer",
-  cash: "Cash pickup",
-};
-
-function parseSdNumberArray(raw: unknown): number[] {
-  if (Array.isArray(raw)) {
-    return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
-  }
-  if (typeof raw === "string" && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed)
-        ? parsed.map((v) => Number(v)).filter((n) => !Number.isNaN(n))
-        : [];
-    } catch {
-      return [];
-    }
-  }
-  return [];
-}
-
-function parseSdLineItemsFromBooking(raw: unknown): SdSettlementLineItem[] {
-  let arr: unknown = raw;
-  if (typeof raw === "string" && raw.trim()) {
-    try {
-      arr = JSON.parse(raw) as unknown;
-    } catch {
-      return [];
-    }
-  }
-  if (!Array.isArray(arr) || arr.length === 0) return [];
-  return arr.map((row) => {
-    if (typeof row !== "object" || row === null) {
-      return { label: "", amount: 0 };
-    }
-    const r = row as Record<string, unknown>;
-    const label = typeof r.label === "string" ? r.label : "";
-    const n = Number(r.amount);
-    return { label, amount: Number.isNaN(n) ? 0 : n };
-  });
-}
-
-function buildSdExpenseProfitRows(booking: BookingRow): {
-  expenses: SdSettlementLineItem[];
-  profits: SdSettlementLineItem[];
-} {
-  const expJson = parseSdLineItemsFromBooking(
-    booking.sd_additional_expense_items,
-  );
-  const profJson = parseSdLineItemsFromBooking(
-    booking.sd_additional_profit_items,
-  );
-  const expFallback = parseSdNumberArray(booking.sd_additional_expenses).map(
-    (amount, i) => ({
-      label: `Expense line ${i + 1}`,
-      amount,
-    }),
-  );
-  const profFallback = parseSdNumberArray(booking.sd_additional_profits).map(
-    (amount, i) => ({
-      label: `Profit line ${i + 1}`,
-      amount,
-    }),
-  );
-  return {
-    expenses: expJson.length ? expJson : expFallback,
-    profits: profJson.length ? profJson : profFallback,
-  };
-}
-
 /**
  * Post-review pricing + payment proof; on COMPLETED, adds SD refund settlement fields.
  * Hidden while status is PENDING_REVIEW (rates captured on first workflow transition).
@@ -826,20 +746,6 @@ function PricingSummaryCard({
   if (booking.status === "PENDING_REVIEW") return null;
 
   const isCompleted = booking.status === "COMPLETED";
-  const totalGuestBalance = computeTotalGuestBalance(booking);
-  const paidTowardBalance = guestBalancePaidRecorded(booking);
-  const unpaidCents =
-    totalGuestBalance != null
-      ? Math.round(totalGuestBalance * 100) -
-        Math.round(paidTowardBalance * 100)
-      : null;
-  const { expenses: sdExpenses, profits: sdProfits } =
-    buildSdExpenseProfitRows(booking);
-
-  const { totalProfit, totalExpenses, totalNet } = isCompleted
-    ? computeCompletedStayProfitLoss(booking, sdProfits, sdExpenses)
-    : { totalProfit: 0, totalExpenses: 0, totalNet: 0 };
-
   const hasPaymentReceipt = Boolean(booking.payment_receipt_url?.trim());
   const hasBalanceReceipt = Boolean(
     booking.guest_balance_payment_receipt_url?.trim(),
@@ -847,124 +753,7 @@ function PricingSummaryCard({
 
   return (
     <Card title="Pricing" icon={<Banknote className="size-3.5" />}>
-      <p className="mb-2 text-overline">
-        Rates & fees
-      </p>
-      <Grid3>
-        <InfoField
-          label="Booking rate"
-          value={formatMoney(booking.booking_rate as number)}
-        />
-        <InfoField
-          label="Down payment"
-          value={formatMoney(booking.down_payment as number)}
-        />
-        <InfoField
-          label="Security deposit"
-          value={formatMoney(booking.security_deposit as number)}
-        />
-        <InfoField
-          label="Balance after down (recorded)"
-          value={formatMoney(booking.balance as number)}
-        />
-        <InfoField
-          label="Pet fee"
-          value={
-            booking.has_pets === true
-              ? formatMoney(booking.pet_fee as number)
-              : '—'
-          }
-        />
-        <InfoField
-          label="Parking fee (guest)"
-          value={
-            booking.need_parking === true
-              ? formatMoney(booking.parking_rate_guest as number)
-              : '—'
-          }
-        />
-        <InfoField
-          label="Parking rate (paid)"
-          value={formatMoney(booking.parking_rate_paid as number)}
-        />
-        <InfoField
-          label="Additional guest fee"
-          value={formatMoney(booking.guest_additional_fee as number)}
-        />
-      </Grid3>
-
-      {totalGuestBalance != null && (
-        <div className="mt-3 overflow-hidden rounded-lg border border-border/50">
-          {/* Guest settlement */}
-          <p className="bg-muted/50 px-4 py-1.5 text-overline">
-            Guest settlement
-          </p>
-          <div className="divide-y divide-separator bg-card">
-            <MiniRow
-              label="Total guest balance"
-              value={formatMoney(totalGuestBalance)}
-            />
-            <MiniRow
-              label="Balance paid"
-              value={
-                paidTowardBalance > 0 ? formatMoney(paidTowardBalance) : "—"
-              }
-            />
-            <MiniRow label="Unpaid">
-              {unpaidCents !== null && unpaidCents <= 0 ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30">
-                  <CheckCircle2
-                    className="size-3 shrink-0 text-emerald-600 dark:text-emerald-400"
-                    aria-hidden
-                  />
-                  Paid in full
-                </span>
-              ) : (
-                <span className="text-data-primary tabular-nums text-amber-800">
-                  {unpaidCents != null ? formatMoney(unpaidCents / 100) : "—"}
-                </span>
-              )}
-            </MiniRow>
-          </div>
-
-          {/* P&L — COMPLETED only */}
-          {isCompleted && (
-            <div className="border-t border-separator">
-              <p className="bg-muted/50 px-4 py-1.5 text-overline">
-                Profit &amp; loss
-              </p>
-              <div className="divide-y divide-separator bg-card">
-                <MiniRow
-                  label="Profit"
-                  value={formatMoney(totalProfit)}
-                  valueClass={
-                    totalProfit >= 0 ? "text-emerald-700" : "text-red-600"
-                  }
-                />
-                <MiniRow label="Expenses" value={formatMoney(totalExpenses)} />
-                <MiniRow
-                  label="Net"
-                  bold
-                  value={formatMoney(totalNet)}
-                  valueClass={
-                    totalNet > 0
-                      ? "text-emerald-700"
-                      : totalNet < 0
-                        ? "text-red-600"
-                        : "text-foreground"
-                  }
-                />
-              </div>
-            </div>
-          )}
-
-          {unpaidCents !== null && unpaidCents < 0 && (
-            <p className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-xs text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              Overpaid by {formatMoney(Math.abs(unpaidCents) / 100)}
-            </p>
-          )}
-        </div>
-      )}
+      <BookingPricingSummary booking={booking} layout="page" />
 
       {(hasPaymentReceipt || hasBalanceReceipt) && (
         <div className="mt-4">
@@ -994,135 +783,16 @@ function PricingSummaryCard({
         <NextStayVoucherCard booking={booking} />
       )}
 
-      {isCompleted && (
+      {isCompleted && booking.sd_refund_receipt_url && (
         <div className="mt-4 border-t border-separator pt-4">
           <p className="mb-2 text-overline">
-            Security deposit refund
+            Refund receipt
           </p>
-          <Grid2>
-            <InfoField
-              label="SD refund amount"
-              value={formatMoney(booking.sd_refund_amount as number)}
-            />
-            <InfoField
-              label="Refund method"
-              value={
-                booking.sd_refund_method
-                  ? (SD_REFUND_METHOD_LABELS[booking.sd_refund_method] ??
-                    booking.sd_refund_method)
-                  : undefined
-              }
-            />
-            <InfoField
-              label="Refund bank"
-              value={booking.sd_refund_bank ?? undefined}
-            />
-            <InfoField
-              label="Account name"
-              value={booking.sd_refund_account_name ?? undefined}
-            />
-            <InfoField
-              label="Account number"
-              value={booking.sd_refund_account_number ?? undefined}
-            />
-            <InfoField
-              label="Phone confirmed for refund"
-              value={
-                booking.sd_refund_phone_confirmed === true
-                  ? "Yes"
-                  : booking.sd_refund_phone_confirmed === false
-                    ? "No"
-                    : undefined
-              }
-            />
-            <InfoField
-              label="Guest feedback"
-              value={booking.sd_refund_guest_feedback ?? undefined}
-            />
-            <InfoField
-              label="SD form emailed"
-              value={
-                booking.sd_refund_form_emailed_at
-                  ? formatRelative(booking.sd_refund_form_emailed_at)
-                  : undefined
-              }
-            />
-            <InfoField
-              label="SD form submitted"
-              value={
-                booking.sd_refund_form_submitted_at
-                  ? formatRelative(booking.sd_refund_form_submitted_at)
-                  : undefined
-              }
-            />
-            <InfoField
-              label="Settled"
-              value={
-                booking.settled_at
-                  ? formatRelative(booking.settled_at)
-                  : undefined
-              }
-            />
-          </Grid2>
-
-          {sdExpenses.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-overline">
-                Additional SD expenses
-              </p>
-              <ul className="space-y-1 rounded-lg border border-border bg-muted/50/80 px-3 py-2">
-                {sdExpenses.map((row, i) => (
-                  <li
-                    key={`e-${i}`}
-                    className="flex justify-between gap-2 text-xs text-foreground"
-                  >
-                    <span className="min-w-0 truncate">
-                      {row.label?.trim() || `Line ${i + 1}`}
-                    </span>
-                    <span className="shrink-0 font-medium tabular-nums">
-                      {formatMoney(row.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {sdProfits.length > 0 && (
-            <div className="mt-3">
-              <p className="mb-1.5 text-overline">
-                Additional SD profits
-              </p>
-              <ul className="space-y-1 rounded-lg border border-border bg-muted/50/80 px-3 py-2">
-                {sdProfits.map((row, i) => (
-                  <li
-                    key={`p-${i}`}
-                    className="flex justify-between gap-2 text-xs text-foreground"
-                  >
-                    <span className="min-w-0 truncate">
-                      {row.label?.trim() || `Line ${i + 1}`}
-                    </span>
-                    <span className="shrink-0 font-medium tabular-nums">
-                      {formatMoney(row.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {booking.sd_refund_receipt_url && (
-            <div className="mt-3">
-              <p className="mb-2 text-overline">
-                Refund receipt
-              </p>
-              <DocPreview
-                label="SD refund receipt"
-                url={booking.sd_refund_receipt_url}
-                onPreview={onPreview}
-              />
-            </div>
-          )}
+          <DocPreview
+            label="SD refund receipt"
+            url={booking.sd_refund_receipt_url}
+            onPreview={onPreview}
+          />
         </div>
       )}
     </Card>
@@ -1520,50 +1190,9 @@ function Card({
   );
 }
 
-/** Compact 2-col key/value row for the settlement + P&L block. */
-function MiniRow({
-  label,
-  value,
-  valueClass,
-  bold,
-  children,
-}: {
-  label: string;
-  value?: string;
-  valueClass?: string;
-  bold?: boolean;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 px-4 py-2">
-      <span
-        className={`text-xs uppercase tracking-wider ${bold ? "font-bold text-foreground" : "font-medium text-muted-foreground"}`}
-      >
-        {label}
-      </span>
-      {children ?? (
-        <span
-          className={`text-data-primary tabular-nums ${bold ? "font-bold" : "font-semibold"} ${valueClass ?? "text-foreground"}`}
-        >
-          {value}
-        </span>
-      )}
-    </div>
-  );
-}
-
 function Grid2({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-      {children}
-    </div>
-  );
-}
-
-/** Rates-style dense grid: 1 col mobile, 2 on small tablet, 3 from md up. */
-function Grid3({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 md:grid-cols-3">
       {children}
     </div>
   );

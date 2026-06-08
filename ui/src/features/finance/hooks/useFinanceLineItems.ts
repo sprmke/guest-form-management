@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import type { FinanceQuery } from '@/features/finance/lib/types';
+import type { FinanceQuery, RecurrenceEditScope } from '@/features/finance/lib/types';
 import {
   createFinanceLineItemApi,
   deleteFinanceLineItemApi,
@@ -13,7 +13,7 @@ export const FINANCE_LINE_ITEMS_KEY = ['finance-line-items'] as const;
 
 export function useFinanceLineItems(query: FinanceQuery) {
   return useQuery({
-    queryKey: [...FINANCE_LINE_ITEMS_KEY, query.from, query.to] as const,
+    queryKey: [...FINANCE_LINE_ITEMS_KEY, query.from, query.to, query.q] as const,
     queryFn: () => fetchFinanceLineItems(query),
     enabled: query.tab === 'operating' || query.tab === 'overview',
   });
@@ -28,8 +28,12 @@ export function useFinanceLineItemMutations(_query: FinanceQuery) {
 
   const create = useMutation({
     mutationFn: createFinanceLineItemApi,
-    onSuccess: () => {
-      toast.success('Line item saved');
+    onSuccess: (result) => {
+      toast.success(
+        result.created_count > 1
+          ? `${result.created_count} recurring transactions created`
+          : 'Transaction saved',
+      );
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -39,21 +43,37 @@ export function useFinanceLineItemMutations(_query: FinanceQuery) {
     mutationFn: ({
       id,
       patch,
+      scope,
     }: {
       id: string;
       patch: Parameters<typeof updateFinanceLineItemApi>[1];
-    }) => updateFinanceLineItemApi(id, patch),
-    onSuccess: () => {
-      toast.success('Line item updated');
+      scope?: RecurrenceEditScope;
+    }) => updateFinanceLineItemApi(id, patch, scope),
+    onSuccess: (result) => {
+      toast.success(
+        result.updated_count > 1
+          ? `${result.updated_count} transactions updated`
+          : 'Transaction updated',
+      );
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
   const remove = useMutation({
-    mutationFn: deleteFinanceLineItemApi,
-    onSuccess: () => {
-      toast.success('Line item deleted');
+    mutationFn: ({
+      id,
+      scope,
+    }: {
+      id: string;
+      scope?: RecurrenceEditScope;
+    }) => deleteFinanceLineItemApi(id, scope),
+    onSuccess: (result) => {
+      toast.success(
+        result.deleted_count > 1
+          ? `${result.deleted_count} transactions deleted`
+          : 'Transaction deleted',
+      );
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),

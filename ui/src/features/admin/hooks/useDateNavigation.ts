@@ -3,6 +3,7 @@ import {
   type DatePreset,
   type DateRange,
   type DateNavigationState,
+  detectPresetFromRange,
   getDateRangeFromPreset,
   navigateReferenceDate,
   toIsoDate,
@@ -28,17 +29,15 @@ type Options = {
 export function useDateNavigation(options: Options = {}): DateNavigationState {
   const { initialPreset = 'month', initialRange = null } = options;
 
-  // Tracked only so navigatePeriod / goToToday can derive the next range
-  // relative to the currently-anchored reference. We never read the state
-  // directly — the setter callback form is the only consumer.
-  const [, setReferenceDate] = useState<Date>(
-    () => initialRange?.from ?? new Date(),
-  );
-  const [datePreset, setDatePresetState] = useState<DatePreset>(
-    initialRange ? 'custom' : initialPreset,
-  );
+  const [datePreset, setDatePresetState] = useState<DatePreset>(() => {
+    if (!initialRange) return initialPreset;
+    return detectPresetFromRange(initialRange.from, initialRange.to);
+  });
   const [dateRange, setDateRangeState] = useState<DateRange>(
     () => initialRange ?? getDateRangeFromPreset(initialPreset, new Date()),
+  );
+  const [, setReferenceDate] = useState<Date>(
+    () => initialRange?.from ?? new Date(),
   );
 
   const setDatePreset = useCallback((preset: DatePreset) => {

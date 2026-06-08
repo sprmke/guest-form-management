@@ -1,11 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import {
-  BarChart3,
-  BedDouble,
-  Building2,
-  DollarSign,
-} from 'lucide-react';
+import { BarChart3, BedDouble, Building2, DollarSign } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
@@ -89,8 +84,9 @@ export function FinancePage() {
         <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
           <AdminPageHeader
             id="finance-heading"
+            variant="compact"
             title="Finance"
-            subtitle="Revenue, stay profit, and operating costs for the selected period."
+            subtitle="Revenue, profit, and operating costs."
             icon={DollarSign}
             actions={
               <FinanceExportMenu
@@ -100,52 +96,66 @@ export function FinancePage() {
               />
             }
           />
-
-          <div
-            className="mt-4 flex border-b border-separator"
-            role="tablist"
-            aria-label="Finance sections"
-          >
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = query.tab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  className={cn(
-                    'flex min-h-[44px] items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-semibold transition-colors',
-                    active
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground',
-                  )}
-                  onClick={() =>
-                    setQuery({ ...query, tab: tab.id, page: 1 })
-                  }
-                >
-                  <Icon
-                    className={cn(
-                      'size-4',
-                      active ? 'text-primary' : 'text-muted-foreground',
-                    )}
-                    aria-hidden
-                  />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
         </section>
 
-        <FinancePeriodToolbar
-          query={query}
-          onChange={setQuery}
-          showStaysSearch={query.tab === 'stays'}
-          dateNav={dateNav}
-          onClearDate={handleClearDate}
-        />
+        <section className="surface-card w-full overflow-visible px-3 py-2.5 sm:px-4 sm:py-3">
+          <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:gap-3">
+            <div
+              className="flex min-w-0 shrink-0 gap-1 overflow-x-auto"
+              role="tablist"
+              aria-label="Finance sections"
+            >
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                const active = query.tab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    className={cn(
+                      'inline-flex min-h-[36px] shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors sm:min-h-[40px]',
+                      active
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                    )}
+                    onClick={() =>
+                      setQuery({ ...query, tab: tab.id, page: 1, q: '' })
+                    }
+                  >
+                    <Icon
+                      className={cn(
+                        'size-3.5',
+                        active ? 'text-primary' : 'text-muted-foreground',
+                      )}
+                      aria-hidden
+                    />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="min-w-0 w-full lg:flex-1">
+              <FinancePeriodToolbar
+                query={query}
+                onChange={setQuery}
+                showSearch={
+                  query.tab === 'stays' || query.tab === 'operating'
+                }
+                searchPlaceholder={
+                  query.tab === 'stays'
+                    ? 'Search guest…'
+                    : 'Search transactions…'
+                }
+                dateNav={dateNav}
+                onClearDate={handleClearDate}
+                align="end"
+              />
+            </div>
+          </div>
+        </section>
 
         {query.tab === 'overview' ? (
           <FinanceOverviewTab
@@ -160,6 +170,7 @@ export function FinancePage() {
             rows={bookingsQuery.data?.rows ?? []}
             total={bookingsQuery.data?.total ?? 0}
             isLoading={bookingsQuery.isLoading}
+            isFetching={bookingsQuery.isFetching}
             onQueryChange={setQuery}
           />
         ) : null}

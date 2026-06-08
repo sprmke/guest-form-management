@@ -29,11 +29,11 @@ export function AdminPageHeaderSkeleton({
       )}
     >
       <div className="min-w-0 space-y-2">
-        <div className="flex items-center gap-2">
-          <Skeleton className="size-4 shrink-0 rounded" />
-          <Skeleton className={cn(compact ? 'h-4 w-28' : 'h-5 w-36')} />
+        <div className="flex items-center gap-2.5">
+          <Skeleton className="size-[18px] shrink-0 rounded" />
+          <Skeleton className="h-6 w-32 sm:h-7 sm:w-36" />
         </div>
-        <Skeleton className="h-3 w-full max-w-md" />
+        <Skeleton className="h-4 w-full max-w-md" />
       </div>
     </div>
   );
@@ -366,7 +366,7 @@ export function BookingsTableSkeleton() {
     <div className="surface-card overflow-hidden" aria-busy="true" aria-label="Loading bookings">
       <div className="overflow-x-auto">
         <div className="min-w-[560px]">
-          <div className="flex items-center gap-4 border-b border-separator bg-muted/40 px-4 py-3 sm:px-5">
+          <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3 sm:px-5">
             {[56, 96, 88, 32, 40, 56, 24].map((w, i) => (
               <Skeleton
                 key={i}
@@ -384,7 +384,7 @@ export function BookingsTableSkeleton() {
             <div
               key={i}
               className={cn(
-                'flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-5',
+                'flex items-center gap-3 bg-card px-4 py-4 sm:gap-4 sm:px-5',
                 i > 0 && 'border-t border-separator',
               )}
               style={{ opacity: 1 - i * 0.08 }}
@@ -461,14 +461,13 @@ function FinanceKpiGridSkeleton({
 }) {
   if (hero) {
     return (
-      <div className="rounded-xl border border-border/50 bg-card p-5 shadow-sm dark:shadow-none">
+      <div className="gradient-primary-subtle rounded-2xl border border-primary/20 p-4 sm:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <Skeleton className="h-3 w-28" />
             <Skeleton className="h-8 w-40 sm:h-9" />
-            <Skeleton className="h-3 w-48 max-w-full" />
           </div>
-          <Skeleton className="size-10 shrink-0 rounded-lg" />
+          <Skeleton className="size-10 shrink-0 rounded-2xl" />
         </div>
       </div>
     );
@@ -485,7 +484,7 @@ function FinanceKpiGridSkeleton({
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="rounded-xl border border-border/50 bg-card p-4 shadow-sm dark:shadow-none"
+          className="rounded-2xl border border-border/50 bg-card p-3.5 sm:p-4"
           style={{ opacity: 1 - i * 0.05 }}
         >
           <div className="flex items-start justify-between gap-2">
@@ -494,7 +493,7 @@ function FinanceKpiGridSkeleton({
               <Skeleton className="h-6 w-24" />
               <Skeleton className="h-2.5 w-28 max-w-full" />
             </div>
-            <Skeleton className="size-8 shrink-0 rounded-lg" />
+            <Skeleton className="size-10 shrink-0 rounded-2xl" />
           </div>
         </div>
       ))}
@@ -504,8 +503,10 @@ function FinanceKpiGridSkeleton({
 
 export function FinanceOverviewSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading finance overview">
-      <FinanceKpiGridSkeleton hero />
+    <div className="space-y-4 sm:space-y-5" aria-busy="true" aria-label="Loading finance overview">
+      <div className="surface-card p-3 sm:p-4">
+        <FinanceKpiGridSkeleton hero />
+      </div>
       <div className="space-y-3">
         <Skeleton className="h-3 w-32" />
         <FinanceKpiGridSkeleton count={4} />
@@ -526,11 +527,11 @@ export function FinanceToolbarSkeleton() {
       aria-busy="true"
       aria-label="Loading finance filters"
     >
-      <Skeleton className="h-9 w-[min(100%,14rem)] rounded-lg" />
-      <Skeleton className="order-last h-9 w-full rounded-lg sm:order-none sm:max-w-xs sm:flex-1" />
+      <Skeleton className="h-11 w-[min(100%,14rem)] rounded-xl" />
+      <Skeleton className="order-last h-11 w-full rounded-xl sm:order-none sm:max-w-xs sm:flex-1" />
       <div className="flex gap-2 sm:ml-auto">
-        <Skeleton className="h-9 w-[10rem] rounded-lg" />
-        <Skeleton className="size-9 rounded-lg" />
+        <Skeleton className="h-11 w-[10rem] rounded-xl" />
+        <Skeleton className="size-11 rounded-xl" />
       </div>
     </div>
   );
@@ -542,8 +543,8 @@ export function FinanceStaysTableSkeleton() {
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[640px]">
-            <div className="flex items-center gap-4 border-b border-separator bg-muted/40 px-4 py-3">
-              {[72, 88, 88, 56, 48, 48, 40].map((w, i) => (
+            <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3">
+              {[56, 120, 88, 40, 56, 48, 48, 40].map((w, i) => (
                 <Skeleton key={i} className="h-2.5 shrink-0 rounded-full" style={{ width: w }} />
               ))}
             </div>
@@ -551,17 +552,22 @@ export function FinanceStaysTableSkeleton() {
               <div
                 key={i}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-4',
+                  'flex items-center gap-3 bg-card px-4 py-4',
                   i > 0 && 'border-t border-separator',
                 )}
                 style={{ opacity: 1 - i * 0.08 }}
               >
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <Skeleton className="h-3.5 w-32 max-w-full" />
-                  <Skeleton className="h-2.5 w-40 max-w-full" />
+                <Skeleton className="h-6 w-24 shrink-0 rounded-full" />
+                <div className="flex min-w-0 flex-1 items-center gap-2.5">
+                  <Skeleton className="size-9 shrink-0 rounded-full" />
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <Skeleton className="h-3.5 w-32 max-w-full" />
+                    <Skeleton className="h-2.5 w-40 max-w-full" />
+                  </div>
                 </div>
-                <Skeleton className="hidden h-6 w-24 rounded-full md:block" />
-                <Skeleton className="hidden h-3 w-24 lg:block" />
+                <Skeleton className="hidden h-8 w-28 md:block" />
+                <Skeleton className="hidden size-7 rounded-md sm:block" />
+                <Skeleton className="hidden h-3 w-16 lg:block" />
                 <Skeleton className="h-3 w-16" />
                 <Skeleton className="hidden h-3 w-14 sm:block" />
                 <Skeleton className="h-3 w-16" />
@@ -573,9 +579,9 @@ export function FinanceStaysTableSkeleton() {
       <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
         <Skeleton className="h-3 w-24" />
         <div className="flex gap-2">
-          <Skeleton className="h-9 w-28 rounded-lg" />
-          <Skeleton className="size-9 rounded-lg" />
-          <Skeleton className="size-9 rounded-lg" />
+          <Skeleton className="h-11 w-28 rounded-xl" />
+          <Skeleton className="size-11 rounded-xl" />
+          <Skeleton className="size-11 rounded-xl" />
         </div>
       </div>
     </div>
@@ -584,16 +590,16 @@ export function FinanceStaysTableSkeleton() {
 
 export function FinanceOperatingTabSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading operating lines">
+    <div className="space-y-4" aria-busy="true" aria-label="Loading operating transactions">
       <FinanceKpiGridSkeleton count={3} />
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-11 w-28 rounded-2xl" />
       </div>
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[520px]">
-            <div className="flex items-center gap-4 border-b border-separator bg-muted/40 px-4 py-3">
+            <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3">
               {[48, 40, 120, 64, 56].map((w, i) => (
                 <Skeleton
                   key={i}
@@ -606,7 +612,7 @@ export function FinanceOperatingTabSkeleton() {
               <div
                 key={i}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3.5',
+                  'flex items-center gap-3 bg-card px-4 py-3.5',
                   i > 0 && 'border-t border-separator',
                 )}
               >

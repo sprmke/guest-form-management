@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { BookOpen, CalendarPlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { buildPageItems, normalizeAdminPageLimit } from '@/lib/pagination';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { useBookings } from '@/features/admin/hooks/useBookings';
@@ -12,6 +13,7 @@ import {
 } from '@/features/admin/hooks/useDateNavigation';
 import { fromIsoDate } from '@/lib/dateNavigation';
 import { BookingFilters } from '@/features/admin/components/BookingFilters';
+import { AdminListPerPageSelect } from '@/features/admin/components/AdminListToolbar';
 import {
   BookingsListControls,
   BookingsListPagination,
@@ -32,7 +34,6 @@ import {
 } from '@/features/admin/lib/types';
 import { useGmailMailIntegrationStatus } from '@/features/admin/hooks/useGmailMailIntegration';
 import { showGmailDisconnectedToast } from '@/features/admin/components/GmailDisconnectedToast';
-const PAGE_SIZES = [25, 50, 100] as const;
 const CALENDAR_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
@@ -72,9 +73,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
       sp.get('hideStaleCompleted') === 'false',
     sort,
     page: Number.isFinite(page) && page > 0 ? Math.floor(page) : 1,
-    limit: (PAGE_SIZES as ReadonlyArray<number>).includes(limit)
-      ? limit
-      : DEFAULT_BOOKINGS_QUERY.limit,
+    limit: normalizeAdminPageLimit(limit),
   };
 }
 
@@ -116,27 +115,6 @@ function writeQueryToParams(
     q.limit === DEFAULT_BOOKINGS_QUERY.limit ? null : String(q.limit),
   );
   return next;
-}
-
-// ─── Smart page number builder ───────────────────────────────
-
-type PageItem = number | 'ellipsis';
-
-function buildPageItems(current: number, total: number): PageItem[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-
-  const items: PageItem[] = [1];
-
-  if (current > 3) items.push('ellipsis');
-
-  const lo = Math.max(2, current - 1);
-  const hi = Math.min(total - 1, current + 1);
-  for (let p = lo; p <= hi; p++) items.push(p);
-
-  if (current < total - 2) items.push('ellipsis');
-
-  items.push(total);
-  return items;
 }
 
 // ─── Page component ──────────────────────────────────────────
@@ -373,22 +351,10 @@ export function BookingsListPage() {
               hideTableView={isMobileLayout}
             />
             {view !== 'calendar' && (
-              <label className="flex items-center gap-2 text-caption">
-                <select
-                  value={query.limit}
-                  onChange={(e) =>
-                    patch({ limit: Number(e.target.value), page: 1 })
-                  }
-                  aria-label="Items per page"
-                  className="h-9 rounded-lg border border-sidebar-border bg-card px-2 text-ui font-semibold text-sidebar-foreground focus:border-sidebar-primary focus:outline-none focus:ring-2 focus:ring-sidebar-ring/20"
-                >
-                  {PAGE_SIZES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <AdminListPerPageSelect
+                limit={query.limit}
+                onChange={(limit) => patch({ limit, page: 1 })}
+              />
             )}
           </div>
         </div>

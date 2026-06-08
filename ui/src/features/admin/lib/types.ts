@@ -155,5 +155,5 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   showCompletedBookings: false,
   sort: "status_priority:asc",
   page: 1,
-  limit: 25,
+  limit: 31,
 };

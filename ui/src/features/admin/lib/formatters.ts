@@ -36,6 +36,14 @@ export function formatBookingDate(mmddyyyy: string | null | undefined): string {
   return d.format('MMM D, YYYY');
 }
 
+/** ISO `YYYY-MM-DD` (e.g. finance_line_items.occurred_on) → `Apr 20, 2026`. */
+export function formatIsoDate(iso: string | null | undefined): string {
+  if (!iso) return '—';
+  const d = dayjs(iso.slice(0, 10));
+  if (!d.isValid()) return iso;
+  return d.format('MMM D, YYYY');
+}
+
 /** Short e.g. "Apr 20" — handy inside tight table cells when the year is obvious. */
 export function formatBookingDateShort(mmddyyyy: string | null | undefined): string {
   if (!mmddyyyy) return '—';

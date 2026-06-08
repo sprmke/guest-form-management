@@ -5,6 +5,8 @@ import type {
   FinanceLineItem,
   FinanceQuery,
   FinanceSummary,
+  RecurrenceEditScope,
+  RecurrenceInterval,
 } from '@/features/finance/lib/types';
 import { financeQueryToApiParams } from '@/features/finance/lib/financePeriod';
 
@@ -55,13 +57,11 @@ export async function fetchFinanceBookings(query: FinanceQuery): Promise<{
 }
 
 export async function fetchFinanceLineItems(query: FinanceQuery): Promise<FinanceLineItem[]> {
-  const params = new URLSearchParams();
-  if (query.from) params.set('from', query.from);
-  if (query.to) params.set('to', query.to);
+  const params = financeQueryToApiParams(query);
   const res = await adminFetch(`/finance-line-items?${params.toString()}`);
   const json = await res.json();
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Failed to load operating items');
+    throw new Error(json.error ?? 'Failed to load transactions');
   }
   return json.data as FinanceLineItem[];
 }
@@ -73,7 +73,9 @@ export async function createFinanceLineItemApi(input: {
   category?: string | null;
   occurred_on: string;
   notes?: string | null;
-}): Promise<FinanceLineItem> {
+  recurrence_interval?: RecurrenceInterval | null;
+  recurrence_until?: string | null;
+}): Promise<{ row: FinanceLineItem; created_count: number }> {
   const res = await adminFetch('/finance-line-items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -81,9 +83,12 @@ export async function createFinanceLineItemApi(input: {
   });
   const json = await res.json();
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Failed to create line item');
+    throw new Error(json.error ?? 'Failed to create transaction');
   }
-  return json.data as FinanceLineItem;
+  return {
+    row: json.data as FinanceLineItem,
+    created_count: (json.created_count as number) ?? 1,
+  };
 }
 
 export async function updateFinanceLineItemApi(
@@ -96,27 +101,36 @@ export async function updateFinanceLineItemApi(
     occurred_on: string;
     notes: string | null;
   }>,
-): Promise<FinanceLineItem> {
+  scope: RecurrenceEditScope = 'this',
+): Promise<{ row: FinanceLineItem; updated_count: number }> {
   const res = await adminFetch('/finance-line-items', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id, ...patch }),
+    body: JSON.stringify({ id, scope, ...patch }),
   });
   const json = await res.json();
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Failed to update line item');
+    throw new Error(json.error ?? 'Failed to update transaction');
   }
-  return json.data as FinanceLineItem;
+  return {
+    row: json.data as FinanceLineItem,
+    updated_count: (json.updated_count as number) ?? 1,
+  };
 }
 
-export async function deleteFinanceLineItemApi(id: string): Promise<void> {
-  const res = await adminFetch(`/finance-line-items?id=${encodeURIComponent(id)}`, {
+export async function deleteFinanceLineItemApi(
+  id: string,
+  scope: RecurrenceEditScope = 'this',
+): Promise<{ deleted_count: number }> {
+  const params = new URLSearchParams({ id, scope });
+  const res = await adminFetch(`/finance-line-items?${params.toString()}`, {
     method: 'DELETE',
   });
   const json = await res.json();
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? 'Failed to delete line item');
+    throw new Error(json.error ?? 'Failed to delete transaction');
   }
+  return { deleted_count: (json.deleted_count as number) ?? 1 };
 }
 
 /** Fetch all stays matching filters (for PDF export; capped at 500 rows). */

@@ -1,4 +1,4 @@
-import type { BookingRow } from '@/features/admin/lib/types';
+import type { BookingFinanceInput } from '@/features/admin/lib/bookingFinance';
 import {
   buildSdExpenseProfitRows,
   computeBookingFinancials,
@@ -15,14 +15,14 @@ function bookingFlagTrue(value: boolean | string | null | undefined): boolean {
 }
 
 /** Pet fee counts toward guest balance only when the guest is bringing pets. */
-export function petFeeForGuestBalance(booking: BookingRow): number {
+export function petFeeForGuestBalance(booking: BookingFinanceInput): number {
   return bookingFlagTrue(booking.has_pets)
     ? toMoneyNumber(booking.pet_fee)
     : 0;
 }
 
 /** Parking fee counts toward guest balance only when the guest needs parking. */
-export function parkingFeeForGuestBalance(booking: BookingRow): number {
+export function parkingFeeForGuestBalance(booking: BookingFinanceInput): number {
   return bookingFlagTrue(booking.need_parking)
     ? toMoneyNumber(booking.parking_rate_guest)
     : 0;
@@ -40,7 +40,7 @@ export function guestBalancePaymentReceiptRequired(totalDue: number): boolean {
   return Math.round(totalDue * 100) !== 0;
 }
 
-export function computeTotalGuestBalance(booking: BookingRow): number | null {
+export function computeTotalGuestBalance(booking: BookingFinanceInput): number | null {
   if (booking.booking_rate == null || booking.booking_rate === '') return null;
   const rate = toMoneyNumber(booking.booking_rate);
   return (
@@ -54,7 +54,7 @@ export function computeTotalGuestBalance(booking: BookingRow): number | null {
 }
 
 /** Amount recorded toward **total guest balance** (RFCI → SD details settlement). */
-export function guestBalancePaidRecorded(booking: BookingRow): number {
+export function guestBalancePaidRecorded(booking: BookingFinanceInput): number {
   const raw = booking.guest_balance_paid_amount;
   if (raw === null || raw === undefined || raw === '') return 0;
   const n = typeof raw === 'string' ? Number(raw) : raw;
@@ -67,7 +67,7 @@ export function guestBalancePaidRecorded(booking: BookingRow): number {
  * Delegates to `computeBookingFinancials` (includes parking paid + voucher cost in expenses).
  */
 export function computeCompletedStayProfitLoss(
-  booking: BookingRow,
+  booking: BookingFinanceInput,
   _sdProfitLines?: ReadonlyArray<{ amount: number }>,
   _sdExpenseLines?: ReadonlyArray<{ amount: number }>,
 ): { totalProfit: number; totalExpenses: number; totalNet: number } {

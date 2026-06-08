@@ -261,14 +261,24 @@
     letter-spacing: -0.028em;
   }
 
-  /** In-card page headers — slightly smaller than standalone page titles. */
+  /** Admin shell page titles (Bookings, Finance, Settings, …). */
+  .text-admin-page-title {
+    @apply text-lg font-bold tracking-tight text-foreground sm:text-xl;
+    letter-spacing: -0.024em;
+  }
+
+  .text-admin-page-subtitle {
+    @apply text-sm font-normal leading-relaxed text-muted-foreground sm:text-[15px];
+  }
+
+  /** In-card section headers — below page title scale. */
   .text-card-title {
-    @apply text-base font-bold tracking-tight text-muted-foreground lg:text-lg;
+    @apply text-base font-bold tracking-tight text-foreground sm:text-lg;
     letter-spacing: -0.024em;
   }
 
   .text-page-subtitle {
-    @apply text-sm font-normal leading-relaxed text-muted-foreground;
+    @apply text-sm font-normal leading-relaxed text-muted-foreground sm:text-[15px];
   }
 
   .text-section-title {
@@ -290,9 +300,9 @@
     @apply text-sm font-semibold leading-snug text-muted-foreground lg:text-[13px];
   }
 
-  /** Money / numeric values in dense tables — same size as data, lighter weight. */
+  /** Money in modals / detail rows — matches admin table amount columns. */
   .text-table-amount {
-    @apply text-sm font-medium tabular-nums leading-snug text-muted-foreground lg:text-[13px];
+    @apply text-[14px] font-medium tabular-nums leading-snug text-muted-foreground;
   }
 
   /** Secondary lines under primary data (email, nights, hints). */
@@ -308,6 +318,12 @@
   /** Table / grid column headers. */
   .text-table-head {
     @apply text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground;
+  }
+
+  /** Admin list tables (Bookings, Finance Stays/Operating) — solid card surface in light + dark. */
+  .admin-data-table thead tr,
+  .admin-data-table tbody tr {
+    @apply bg-card;
   }
 
   .text-caption {
