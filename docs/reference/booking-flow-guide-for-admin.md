@@ -417,7 +417,7 @@ Use **Finance** in the admin sidebar when you need totals across many stays or p
 
 **Per-booking SD lines** (damage, extra cleaning, etc.) stay on the booking detail **Pricing** card and **Pending SD Refund** workflow — Finance **Stays** reads those totals but does not replace that form.
 
-**Export** (top right): download CSV for overview, stays, operating lines, or a combined report.
+**Export** (top right): **Export report** opens a menu — full report (all sections), overview summary, stays ledger, or operating lines only.
 
 ---
 

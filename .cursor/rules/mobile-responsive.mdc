@@ -72,7 +72,8 @@ Table row actions, filter buttons, nav items, and pagination chips must all meet
 
 | Use | Mobile | Desktop |
 |-----|--------|---------|
-| Page title | `text-base font-bold` | `text-[14px] font-bold` |
+| Page title | `text-lg font-bold` (`text-admin-page-title`) | `sm:text-xl` |
+| Page subtitle | `text-sm` (`text-admin-page-subtitle`) | `sm:text-[15px]` |
 | Table data | `text-sm` | `text-[13px]` |
 | Secondary / muted | `text-xs` | `text-[11px]` |
 | Section labels | `text-xs font-bold uppercase tracking-wider` | same |

@@ -60,7 +60,7 @@ Supabase applies migrations in **filename sort order**. Among workflow redesign 
 | `20260504000000_sd_settlement_line_items.sql`                             | JSONB line items + sync from numeric arrays           |
 | `20260530120000_guest_additional_fee.sql`                                 | `guest_additional_fee` column                         |
 | `20260531120000_fix_guest_submissions_status_check_pending_documents.sql` | Status CHECK allows `PENDING_DOCUMENTS`               |
-| `20260601120000_gmail_mail_oauth_integration.sql`                         | `gmail_mail_integration` + OAuth state                |
+| `20260601130000_gmail_mail_oauth_integration.sql`                         | `gmail_mail_integration` + OAuth state                |
 | `20260602120000_document_substep_manual_incomplete.sql`                   | Manual incomplete flags / doc pipeline                |
 | `20260603120000_guest_balance_settlement.sql`                             | Guest balance settlement columns                      |
 | `20260604140000_parking_owner.sql`                                        | `parking_owner` display name                          |
