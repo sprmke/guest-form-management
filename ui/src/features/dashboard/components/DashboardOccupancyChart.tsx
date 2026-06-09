@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { DashboardChartTooltip } from '@/features/dashboard/components/DashboardChartTooltip';
 import {
   chartYDomain,
@@ -45,6 +46,7 @@ function VolumeTooltip({
 
 export function DashboardOccupancyChart({ data }: Props) {
   const theme = useChartTheme();
+  const isMobile = useIsBelowMd();
   const checkInDomain = useMemo(
     () => chartYDomain(data.map((d) => d.checkIns), 'count'),
     [data],
@@ -58,7 +60,7 @@ export function DashboardOccupancyChart({ data }: Props) {
 
   if (!hasData) {
     return (
-      <div className="flex h-[260px] flex-col items-center justify-center gap-1.5 text-center">
+      <div className="flex h-[220px] flex-col items-center justify-center gap-1.5 text-center sm:h-[260px]">
         <p className="text-sm font-semibold text-foreground">No check-ins</p>
         <p className="max-w-xs text-caption">
           Stays starting in this period will show here.
@@ -67,13 +69,17 @@ export function DashboardOccupancyChart({ data }: Props) {
     );
   }
 
+  const chartMargin = isMobile
+    ? { top: 8, right: 0, left: -4, bottom: 0 }
+    : { top: 12, right: 8, left: 0, bottom: 0 };
+
   return (
-    <div className="w-full">
-      <div className="h-[228px] w-full">
+    <div className="w-full min-w-0">
+      <div className="h-[200px] w-full min-w-0 sm:h-[228px]">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart
             data={data}
-            margin={{ top: 12, right: 8, left: 0, bottom: 0 }}
+            margin={chartMargin}
             barGap={2}
           >
             <CartesianGrid
@@ -83,30 +89,30 @@ export function DashboardOccupancyChart({ data }: Props) {
             />
             <XAxis
               dataKey="label"
-              tick={{ fill: theme.axis, fontSize: 11 }}
+              tick={{ fill: theme.axis, fontSize: isMobile ? 10 : 11 }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
-              minTickGap={24}
+              minTickGap={isMobile ? 36 : 24}
             />
             <YAxis
               yAxisId="checkIns"
               domain={checkInDomain}
               allowDecimals={false}
-              tick={{ fill: theme.axis, fontSize: 11 }}
+              tick={{ fill: theme.axis, fontSize: isMobile ? 10 : 11 }}
               axisLine={false}
               tickLine={false}
-              width={28}
+              width={isMobile ? 24 : 28}
             />
             <YAxis
               yAxisId="nights"
               orientation="right"
               domain={nightsDomain}
               allowDecimals={false}
-              tick={{ fill: theme.axis, fontSize: 11 }}
+              tick={{ fill: theme.axis, fontSize: isMobile ? 10 : 11 }}
               axisLine={false}
               tickLine={false}
-              width={28}
+              width={isMobile ? 24 : 28}
             />
             <Tooltip content={<VolumeTooltip theme={theme} />} />
             <Bar
@@ -133,7 +139,7 @@ export function DashboardOccupancyChart({ data }: Props) {
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex items-center justify-center gap-5 border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-border/50 pt-2.5 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-2">
           <span
             className="size-2.5 shrink-0 rounded-sm"

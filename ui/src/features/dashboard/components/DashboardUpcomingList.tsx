@@ -80,9 +80,11 @@ function buildDayGroups(
 function DatePill({
   checkInIso,
   manilaDate,
+  className,
 }: {
   checkInIso: string;
   manilaDate: string;
+  className?: string;
 }) {
   const days = daysUntil(checkInIso, manilaDate);
   const isToday = days === 0;
@@ -96,6 +98,7 @@ function DatePill({
         isToday && 'border-rose-500/30 bg-rose-500/10',
         isTomorrow && 'border-amber-500/35 bg-amber-500/10',
         !isToday && !isTomorrow && 'border-border/60 bg-muted/40',
+        className,
       )}
     >
       <span
@@ -147,22 +150,31 @@ function StayRow({
     <Link
       to={`/bookings/${stay.id}`}
       className={cn(
-        'group grid min-h-[76px] grid-cols-[3.5rem_1fr_auto] items-center gap-3 px-3 py-3 transition-colors hover:bg-muted/40 sm:px-4',
+        'group grid min-h-[68px] grid-cols-[3.5rem_minmax(0,1fr)] gap-x-3 gap-y-2 px-3 py-3 transition-colors hover:bg-muted/40 sm:min-h-[76px] sm:grid-cols-[3.5rem_minmax(0,1fr)_auto] sm:items-center sm:gap-y-0 sm:px-4',
         !showDate && 'border-t border-dashed border-border/40',
       )}
     >
       {showDate ? (
-        <DatePill checkInIso={checkInIso} manilaDate={manilaDate} />
+        <DatePill
+          checkInIso={checkInIso}
+          manilaDate={manilaDate}
+          className="row-span-2 self-start sm:row-span-1 sm:self-center"
+        />
       ) : (
-        <div className="w-14 shrink-0" aria-hidden />
+        <div
+          className="row-span-2 w-14 shrink-0 self-start sm:row-span-1 sm:self-center"
+          aria-hidden
+        />
       )}
 
-      <div className="min-w-0">
+      <div className="min-w-0 self-center">
         <p className="truncate text-sm font-semibold text-foreground">
           {stay.guestName}
         </p>
-        <p className="mt-0.5 truncate text-caption">
-          {formatIsoDate(stay.checkInIso)} → {formatIsoDate(stay.checkOutIso)}
+        <p className="mt-0.5 text-caption leading-snug sm:truncate">
+          <span className="block sm:inline">
+            {formatIsoDate(stay.checkInIso)} → {formatIsoDate(stay.checkOutIso)}
+          </span>
           <span className="text-muted-foreground/80">
             {' '}
             · {stay.nights}n · {stay.pax} pax
@@ -185,11 +197,8 @@ function StayRow({
         )}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-        <StatusBadge
-          status={stay.status}
-          className="max-w-[6.75rem] sm:max-w-[9.5rem]"
-        />
+      <div className="col-start-2 flex items-center justify-end gap-1 sm:col-start-3 sm:row-start-1">
+        <StatusBadge status={stay.status} className="max-w-[9.5rem]" />
         <ChevronRight
           className="size-4 shrink-0 text-muted-foreground opacity-50 transition-all group-hover:translate-x-0.5 group-hover:opacity-100"
           aria-hidden

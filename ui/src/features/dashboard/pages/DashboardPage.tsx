@@ -17,8 +17,7 @@ import { DashboardStatCards } from '@/features/dashboard/components/DashboardSta
 import { DashboardPipelineChart } from '@/features/dashboard/components/DashboardPipelineChart';
 import { DashboardRevenueChart } from '@/features/dashboard/components/DashboardRevenueChart';
 import { DashboardOccupancyChart } from '@/features/dashboard/components/DashboardOccupancyChart';
-import { DashboardUpcomingList } from '@/features/dashboard/components/DashboardUpcomingList';
-import { DashboardStaysListControls } from '@/features/dashboard/components/DashboardStaysListControls';
+import { DashboardStaysSection } from '@/features/dashboard/components/DashboardStaysSection';
 import {
   defaultStaysListView,
   staysDayGridAvailable,
@@ -135,10 +134,22 @@ export function DashboardPage() {
     );
   }, [data, showPreviousDates]);
 
+  const staysSectionProps = data
+    ? {
+        data,
+        trendLabel,
+        showEmptyDays,
+        showPreviousDates,
+        onShowEmptyDaysChange: setShowEmptyDays,
+        onShowPreviousDatesChange: setShowPreviousDates,
+        emptyDaysAvailable,
+      }
+    : null;
+
   return (
     <AdminLayout>
-      <div className="space-y-3 sm:space-y-4">
-        <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+      <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
+        <section className="surface-card min-w-0 w-full px-3 py-3 sm:px-4 sm:py-4">
           <AdminPageHeader
             id="dashboard-heading"
             title="Dashboard"
@@ -179,27 +190,35 @@ export function DashboardPage() {
         ) : data ? (
           <>
             <DashboardAttentionStrip items={data.attention} />
+
+            {staysSectionProps ? (
+              <DashboardStaysSection
+                {...staysSectionProps}
+                className="lg:hidden"
+              />
+            ) : null}
+
             <DashboardStatCards stats={data} periodLabel={trendLabel} />
 
-            <div className="grid gap-3 lg:grid-cols-2 xl:gap-4">
-              <section className="surface-card p-3 sm:p-4">
+            <div className="grid min-w-0 gap-3 lg:grid-cols-2 xl:gap-4">
+              <section className="surface-card min-w-0 p-3 sm:p-4">
                 <div className="mb-1 flex flex-col gap-0.5 sm:mb-3">
                   <p className="text-section-title font-bold text-foreground">
                     Completed revenue
                   </p>
-                  <p className="text-caption">
+                  <p className="break-words text-caption">
                     Host net by check-in date · {trendLabel}
                   </p>
                 </div>
                 <DashboardRevenueChart data={data.revenueTrend} />
               </section>
 
-              <section className="surface-card p-3 sm:p-4">
+              <section className="surface-card min-w-0 p-3 sm:p-4">
                 <div className="mb-1 flex flex-col gap-0.5 sm:mb-3">
                   <p className="text-section-title font-bold text-foreground">
                     Check-in volume
                   </p>
-                  <p className="text-caption">
+                  <p className="break-words text-caption">
                     Stays starting · {trendLabel}
                   </p>
                 </div>
@@ -207,18 +226,20 @@ export function DashboardPage() {
               </section>
             </div>
 
-            <div className="grid gap-3 lg:grid-cols-5 lg:items-stretch xl:gap-4">
-              <section className="surface-card flex flex-col overflow-hidden p-3 sm:p-4 lg:col-span-2">
-                <div className="mb-3 flex shrink-0 items-center justify-between gap-2">
-                  <div>
+            <div className="grid min-w-0 gap-3 lg:grid-cols-5 lg:items-stretch xl:gap-4">
+              <section className="surface-card flex min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-2">
+                <div className="mb-3 flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="min-w-0">
                     <p className="text-section-title font-bold text-foreground">
                       Active pipeline
                     </p>
-                    <p className="text-caption">By workflow stage · {trendLabel}</p>
+                    <p className="break-words text-caption">
+                      By workflow stage · {trendLabel}
+                    </p>
                   </div>
                   <Link
                     to={`/bookings?from=${data.trendWindow.from}&to=${data.trendWindow.to}`}
-                    className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 sm:min-h-[36px]"
+                    className="inline-flex min-h-[44px] shrink-0 items-center gap-1 self-start rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 sm:min-h-[36px] sm:self-auto"
                   >
                     View all
                     <ArrowRight className="size-3.5" aria-hidden />
@@ -233,42 +254,12 @@ export function DashboardPage() {
                 </div>
               </section>
 
-              <section className="surface-card flex flex-col overflow-hidden lg:col-span-3">
-                <div className="flex flex-col gap-2 border-b border-border/60 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-4">
-                  <div className="min-w-0">
-                    <p className="text-section-title font-bold text-foreground">
-                      Stays in period
-                    </p>
-                    <p className="text-caption">By check-in date · {trendLabel}</p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
-                    <DashboardStaysListControls
-                      showEmptyDays={showEmptyDays}
-                      showPreviousDates={showPreviousDates}
-                      onShowEmptyDaysChange={setShowEmptyDays}
-                      onShowPreviousDatesChange={setShowPreviousDates}
-                      emptyDaysAvailable={emptyDaysAvailable}
-                    />
-                    <Link
-                      to={`/bookings?view=calendar&from=${data.trendWindow.from}&to=${data.trendWindow.to}`}
-                      className="inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 sm:min-h-[36px]"
-                    >
-                      Calendar
-                      <ArrowRight className="size-3.5" aria-hidden />
-                    </Link>
-                  </div>
-                </div>
-                <div className="max-h-[min(70vh,520px)] overflow-y-auto">
-                  <DashboardUpcomingList
-                    stays={data.upcoming}
-                    manilaDate={data.manilaDate}
-                    rangeFrom={data.trendWindow.from}
-                    rangeTo={data.trendWindow.to}
-                    showEmptyDays={showEmptyDays}
-                    showPreviousDates={showPreviousDates}
-                  />
-                </div>
-              </section>
+              {staysSectionProps ? (
+                <DashboardStaysSection
+                  {...staysSectionProps}
+                  className="hidden lg:flex"
+                />
+              ) : null}
             </div>
           </>
         ) : null}
