@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
 function safeRedirect(raw: string | null): string {
-  if (!raw) return '/bookings';
-  if (!raw.startsWith('/') || raw.startsWith('//')) return '/bookings';
+  if (!raw) return '/dashboard';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
   return raw;
 }
 

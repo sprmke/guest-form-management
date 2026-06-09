@@ -727,3 +727,28 @@ export function BookingsCalendarSkeleton() {
     </div>
   );
 }
+
+export function DashboardSkeleton() {
+  return (
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading dashboard">
+      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-[72px] rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-[88px] rounded-2xl" />
+        ))}
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        <Skeleton className="h-[300px] rounded-2xl" />
+        <Skeleton className="h-[300px] rounded-2xl" />
+      </div>
+      <div className="grid gap-3 lg:grid-cols-5">
+        <Skeleton className="h-[300px] rounded-2xl lg:col-span-2" />
+        <Skeleton className="h-[300px] rounded-2xl lg:col-span-3" />
+      </div>
+    </div>
+  );
+}
