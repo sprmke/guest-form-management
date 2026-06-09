@@ -7,10 +7,20 @@ import { AdminMarketingPage } from '@/features/admin/pages/AdminMarketingPage';
 import { AdminStaffPage } from '@/features/admin/pages/AdminStaffPage';
 import { AdminOperationsPage } from '@/features/admin/pages/AdminOperationsPage';
 import { FinancePage } from '@/features/finance/pages/FinancePage';
+import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { RequireAdmin } from '@/features/admin/components/RequireAdmin';
 
 export const adminRoutes = [
   <Route key="admin-sign-in" path="/sign-in" element={<SignInPage />} />,
+  <Route
+    key="admin-dashboard"
+    path="/dashboard"
+    element={
+      <RequireAdmin>
+        <DashboardPage />
+      </RequireAdmin>
+    }
+  />,
   <Route
     key="admin-marketing"
     path="/marketing"

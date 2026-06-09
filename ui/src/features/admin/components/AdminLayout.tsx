@@ -8,6 +8,7 @@ import {
   ChevronRight,
   DollarSign,
   HardHat,
+  LayoutDashboard,
   LogOut,
   Megaphone,
   Menu,
@@ -32,6 +33,7 @@ const NAV_SECTIONS: NavSection[] = [
   {
     label: 'Manage',
     items: [
+      { label: 'Dashboard', href: '/dashboard', Icon: LayoutDashboard },
       { label: 'Bookings', href: '/bookings', Icon: BookOpen },
       { label: 'Finance', href: '/finance', Icon: DollarSign },
       { label: 'Marketing', href: '/marketing', Icon: Megaphone },
@@ -119,7 +121,7 @@ export function AdminLayout({ children }: Props) {
         )}
       >
         <Link
-          to="/bookings"
+          to="/dashboard"
           className={cn(
             'flex items-center gap-3',
             collapsed && 'justify-center',
