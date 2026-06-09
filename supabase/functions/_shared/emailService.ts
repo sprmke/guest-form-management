@@ -13,6 +13,7 @@ import {
   formatTimeForDisplay,
 } from "./utils.ts";
 import { resolveAppSettings, DEFAULT_GCASH_QR_RELATIVE_PATH } from "./appSettings.ts";
+import { formatReceiptVerdictLabel } from "./receiptValidationService.ts";
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const settings = await resolveAppSettings();
@@ -595,6 +596,46 @@ function notifySectionTitle(text: string): string {
   return `<p class="section-label" style="margin:24px 0 10px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">${text}</p>`;
 }
 
+function receiptVerdictEmailBadgeHtml(verdict: string | null | undefined): string {
+  const label = formatReceiptVerdictLabel(verdict);
+  const v = String(verdict ?? '').toLowerCase();
+  let bg = '#f3f4f6';
+  let color = '#374151';
+  if (v === 'valid' || v === 'likely_valid') {
+    bg = '#dcfce7';
+    color = '#166534';
+  } else if (v === 'unclear' || v === 'skipped') {
+    bg = '#fef9c3';
+    color = '#854d0e';
+  } else if (v === 'invalid') {
+    bg = '#fee2e2';
+    color = '#991b1b';
+  }
+  return `<span style="display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;background:${bg};color:${color};">${escapeHtml(label)}</span>`;
+}
+
+function buildDownpaymentReceiptAiEmailSection(booking: GuestSubmission): string {
+  const verdict = (booking as Record<string, unknown>).dp_receipt_ai_verdict as
+    | string
+    | null
+    | undefined;
+  const summary = String(
+    (booking as Record<string, unknown>).dp_receipt_ai_summary ?? '',
+  ).trim();
+  if (!verdict && !summary) return '';
+
+  const tblStyle = notifyDetailTableStyle();
+  const rows = [
+    notifyRow('Verdict', receiptVerdictEmailBadgeHtml(verdict), true),
+    notifyRow('Summary', escapeHtml(summary || 'N/A'), false),
+  ].join('');
+
+  return [
+    notifySectionTitle('Downpayment receipt AI check'),
+    `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${rows}</table>`,
+  ].join('\n');
+}
+
 function buildNewBookingRequestEmailBodyMain(
   booking: GuestSubmission,
   appOrigin: string,
@@ -666,6 +707,7 @@ function buildNewBookingRequestEmailBodyMain(
     `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${guestRows}</table>`,
     notifySectionTitle("Notable information"),
     `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${tblStyle}">${notableRows}</table>`,
+    buildDownpaymentReceiptAiEmailSection(booking),
     cta,
   ].join("\n");
 }

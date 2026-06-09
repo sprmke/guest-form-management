@@ -178,6 +178,12 @@ export interface GuestSubmission {
   sd_refund_amount?: number | null;
   sd_refund_receipt_url?: string | null;
   settled_at?: string | null; // Timestamp when moved to COMPLETED
+
+  // ── AI receipt validation (Gemini Flash) ───────────────────────────────────
+  dp_receipt_ai_verdict?: string | null;
+  dp_receipt_ai_summary?: string | null;
+  balance_receipt_ai_verdict?: string | null;
+  balance_receipt_ai_summary?: string | null;
 }
 
 // Helper function to convert string to boolean

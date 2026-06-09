@@ -24,6 +24,7 @@ import {
   countStayNights,
   formatDateForEmail,
 } from './utils.ts';
+import { formatReceiptVerdictLabel } from './receiptValidationService.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 const APP_BASE_URL = 'https://kamehomes.space';
@@ -337,6 +338,14 @@ export function buildAdminBookingPlaceholders(booking: BookingRow): Record<strin
     pending_docs_list: buildPendingDocsList(booking),
     total_guest_balance: formatCurrency(computeTotalGuestBalanceFromBooking(booking)),
     sd_refund_method: formatSdRefundMethod(booking.sd_refund_method),
+    dp_receipt_ai_verdict: formatReceiptVerdictLabel(
+      booking.dp_receipt_ai_verdict as string | null | undefined,
+    ),
+    dp_receipt_ai_summary: String(booking.dp_receipt_ai_summary ?? '').trim() || 'N/A',
+    balance_receipt_ai_verdict: formatReceiptVerdictLabel(
+      booking.balance_receipt_ai_verdict as string | null | undefined,
+    ),
+    balance_receipt_ai_summary: String(booking.balance_receipt_ai_summary ?? '').trim() || 'N/A',
     ...buildSdRefundPlaceholderFields(booking),
     booking_link: `${APP_BASE_URL}/bookings/${booking.id}`,
   };
@@ -632,6 +641,26 @@ export async function notifyTelegramAdminSdFormSubmitted(
   if (!creds.ok) return { sent: false, skip: 'missing_env', telegramError: creds.error };
 
   const r = await sendAdminTemplateForBooking(settings.sd_form_submitted_template, booking);
+  if (!r.ok) {
+    return { sent: false, skip: 'send_failed', telegramError: r.error };
+  }
+  return { sent: true };
+}
+
+/** After admin uploads a guest balance payment receipt. */
+export async function notifyTelegramAdminBalanceReceiptUploaded(
+  booking: BookingRow,
+  opts?: { force?: boolean },
+): Promise<{ sent: boolean; skip?: AdminNotifySkip; telegramError?: string }> {
+  const settings = await loadAdminSettings();
+  if (!settings) return { sent: false, skip: 'no_settings' };
+  if (!opts?.force && !settings.enabled) {
+    return { sent: false, skip: 'disabled' };
+  }
+  const creds = resolveAdminTelegramCredentials();
+  if (!creds.ok) return { sent: false, skip: 'missing_env', telegramError: creds.error };
+
+  const r = await sendAdminTemplateForBooking(settings.balance_receipt_template, booking);
   if (!r.ok) {
     return { sent: false, skip: 'send_failed', telegramError: r.error };
   }

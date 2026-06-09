@@ -148,8 +148,8 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Notification for guest check-out
 
 - Display carousel on the top background that auto slides to show different unit pictures/amenities
-- Use AI to analyze and validate guest uploaded assets
-  - Analyze if receipt is valid receipt, id is id, etc
+- ✅ **AI payment receipt validation** — Gemini Flash vision on downpayment receipt (`submit-form`) and balance receipt (`upload-booking-asset`); results in New Booking Request email, admin Telegram templates, and admin UI. Invalid balance receipts block RFCI → RFCO transition.
+- Use AI to analyze and validate other guest uploaded assets (valid ID, pet docs, etc.)
 - Persist dev query parameters on booking summary and booking detail pages on route change (optional polish)
 - Combine GAF request and pet request in one email when sending to Azure
 - Optimize and reduce size of image before uploading to supabase storage
@@ -157,11 +157,11 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Review edit booking info form
 
 - Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
-- - Update google calendar summary info with new guest form and processes
+- Update google calendar summary info with new guest form and processes
 - Review and improve form UI validation on workflow status forms
 - Review bucket policy to check public buckets and convert them to private?
 - On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
-- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- ✅ Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
 - Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ? Only display Sensitive edit warning on edit booking detail page
@@ -184,3 +184,6 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Support same-day check-in
 - Add password or faceid when accessing settings page?
 - Update GAF details to be configurable via settings
+- Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
+- Add quick edit on bookings page
+- Support free booking (payment related steps/action not required, etc)

@@ -36,6 +36,14 @@ export type UploadAssetResult = {
   bucket: string;
   path: string;
   column: string;
+  receiptValidation?: {
+    verdict: string;
+    confidence: number | null;
+    summary: string;
+    has_amount: boolean;
+    has_date: boolean;
+    has_reference: boolean;
+  } | null;
 };
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;

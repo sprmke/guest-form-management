@@ -76,6 +76,7 @@ import {
   resolveAssetUrlForBrowser,
 } from "@/features/admin/lib/storageUrls";
 import { BookingPricingSummary } from "@/features/admin/components/BookingPricingSummary";
+import { ReceiptAiVerdictBadge } from "@/features/admin/components/ReceiptAiVerdictBadge";
 import {
   PayParkingHeaderButton,
   PayParkingModal,
@@ -762,18 +763,32 @@ function PricingSummaryCard({
           </p>
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
             {hasPaymentReceipt && (
-              <DocPreview
-                label="Downpayment receipt"
-                url={booking.payment_receipt_url!.trim()}
-                onPreview={onPreview}
-              />
+              <div className="space-y-2">
+                <DocPreview
+                  label="Downpayment receipt"
+                  url={booking.payment_receipt_url!.trim()}
+                  onPreview={onPreview}
+                />
+                <ReceiptAiVerdictBadge
+                  verdict={booking.dp_receipt_ai_verdict}
+                  summary={booking.dp_receipt_ai_summary}
+                  compact
+                />
+              </div>
             )}
             {hasBalanceReceipt && (
-              <DocPreview
-                label="Payment balance receipt"
-                url={booking.guest_balance_payment_receipt_url!.trim()}
-                onPreview={onPreview}
-              />
+              <div className="space-y-2">
+                <DocPreview
+                  label="Payment balance receipt"
+                  url={booking.guest_balance_payment_receipt_url!.trim()}
+                  onPreview={onPreview}
+                />
+                <ReceiptAiVerdictBadge
+                  verdict={booking.balance_receipt_ai_verdict}
+                  summary={booking.balance_receipt_ai_summary}
+                  compact
+                />
+              </div>
             )}
           </div>
         </div>

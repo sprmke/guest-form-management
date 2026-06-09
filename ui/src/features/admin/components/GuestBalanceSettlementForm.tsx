@@ -23,6 +23,11 @@ import { resolveAssetUrlForBrowser } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
 import {
+  ReceiptAiVerdictBadge,
+  receiptAiVerdictBlocksAdmin,
+  type ReceiptAiVerdict,
+} from '@/features/admin/components/ReceiptAiVerdictBadge';
+import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
   workflowUploadButtonClass,
@@ -103,6 +108,12 @@ export function GuestBalanceSettlementForm({
   );
   const [receiptImgSrc, setReceiptImgSrc] = useState<string | null>(null);
   const [receiptImgFailed, setReceiptImgFailed] = useState(false);
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
+    () => booking.balance_receipt_ai_verdict ?? null,
+  );
+  const [receiptAiSummary, setReceiptAiSummary] = useState(
+    () => booking.balance_receipt_ai_summary?.trim() ?? '',
+  );
 
   useEffect(() => {
     if (!receiptUrl.trim()) {
@@ -129,6 +140,11 @@ export function GuestBalanceSettlementForm({
     const fromBooking = booking.guest_balance_payment_receipt_url?.trim() ?? '';
     if (fromBooking && !initialDraft) setReceiptUrl(fromBooking);
   }, [booking.guest_balance_payment_receipt_url, initialDraft]);
+
+  useEffect(() => {
+    setReceiptAiVerdict(booking.balance_receipt_ai_verdict ?? null);
+    setReceiptAiSummary(booking.balance_receipt_ai_summary?.trim() ?? '');
+  }, [booking.balance_receipt_ai_verdict, booking.balance_receipt_ai_summary]);
 
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
@@ -195,12 +211,16 @@ export function GuestBalanceSettlementForm({
       onChange(null);
       return;
     }
+    if (receipt && receiptAiVerdictBlocksAdmin(receiptAiVerdict)) {
+      onChange(null);
+      return;
+    }
 
     onChange({
       guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
       guest_balance_payment_receipt_url: receipt,
     });
-  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange, readOnly]);
+  }, [totalDue, paidInput, receiptUrl, receiptRequired, receiptAiVerdict, onChange, readOnly]);
 
   const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi =
@@ -235,7 +255,20 @@ export function GuestBalanceSettlementForm({
         file,
       });
       setReceiptUrl(result.url);
-      toast.success('Payment balance receipt uploaded');
+      const validation = result.receiptValidation;
+      if (validation) {
+        setReceiptAiVerdict(validation.verdict);
+        setReceiptAiSummary(validation.summary);
+        if (validation.verdict === 'invalid') {
+          toast.error('Receipt failed AI check — upload a valid payment screenshot');
+        } else if (validation.verdict === 'unclear') {
+          toast.warning('Receipt AI check unclear — review before proceeding');
+        } else {
+          toast.success('Payment balance receipt uploaded');
+        }
+      } else {
+        toast.success('Payment balance receipt uploaded');
+      }
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : 'Failed to upload receipt',
@@ -395,6 +428,17 @@ export function GuestBalanceSettlementForm({
           </>
           ) : null}
         </div>
+        {receiptAiVerdict ? (
+          <ReceiptAiVerdictBadge
+            verdict={receiptAiVerdict}
+            summary={receiptAiSummary}
+          />
+        ) : null}
+        {receiptAiVerdictBlocksAdmin(receiptAiVerdict) ? (
+          <p className="text-xs font-medium text-red-600 dark:text-red-400">
+            This receipt did not pass AI validation. Upload a valid payment screenshot to proceed.
+          </p>
+        ) : null}
       </div>
     </WorkflowSubFormCard>
   );

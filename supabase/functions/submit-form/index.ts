@@ -9,6 +9,10 @@ import { notifyTelegramAdminNewBooking } from '../_shared/telegramAdmin.ts'
 import { notifyTelegramStaffSameDayCheckIn } from '../_shared/telegramStaff.ts'
 import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
+import {
+  dbPatchForReceiptValidation,
+  validateReceiptFile,
+} from '../_shared/receiptValidationService.ts'
 import type { GuestSubmission } from '../_shared/types.ts'
 
 serve(async (req) => {
@@ -159,13 +163,36 @@ serve(async (req) => {
         revertReadyForCheckinToPendingReview,
       );
 
+    let notifyBooking = submissionData as GuestSubmission;
+
+    // AI downpayment receipt check (non-blocking for guest submit).
+    const paymentReceiptFile = formData.get('paymentReceipt') as File | null;
+    if (
+      isSaveToDatabaseEnabled &&
+      submissionData?.id &&
+      paymentReceiptFile &&
+      paymentReceiptFile.size > 0
+    ) {
+      try {
+        const receiptValidation = await validateReceiptFile(paymentReceiptFile);
+        const aiPatch = dbPatchForReceiptValidation('downpayment', receiptValidation);
+        await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
+        notifyBooking = { ...submissionData, ...aiPatch } as GuestSubmission;
+        console.log(
+          `[submit-form] Downpayment receipt AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`,
+        );
+      } catch (aiErr) {
+        console.error('[submit-form] Downpayment receipt AI validation failed (non-fatal):', aiErr);
+      }
+    }
+
     // Workflow emails (GAF, acknowledgement, pet, parking) are only sent by
     // WorkflowOrchestrator on admin transitions. Optional **New Booking Request**
     // notify (`sendEmail` query; default on) — non-fatal if it fails.
 
     if (isSendEmailEnabled && isSaveToDatabaseEnabled && submissionData?.id) {
       try {
-        const notifyResult = await sendNewBookingRequestNotify(submissionData as GuestSubmission);
+        const notifyResult = await sendNewBookingRequestNotify(notifyBooking);
         console.log(
           '[submit-form] New booking request notify ok, Resend id:',
           (notifyResult as { id?: string })?.id ?? JSON.stringify(notifyResult),
@@ -188,7 +215,7 @@ serve(async (req) => {
       }
       try {
         const adminTg = await notifyTelegramAdminNewBooking(
-          submissionData as Record<string, unknown>,
+          notifyBooking as Record<string, unknown>,
         );
         console.log('[submit-form] Telegram admin new-booking:', JSON.stringify(adminTg));
       } catch (adminTgErr) {

@@ -26,6 +26,17 @@ import {
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
+import {
+  dbPatchForReceiptValidation,
+  type ReceiptValidationResult,
+  validateReceiptFile,
+} from '../_shared/receiptValidationService.ts';
+import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
+
+const PAYMENT_RECEIPT_ASSET_TYPES = new Set([
+  'payment_receipt',
+  'guest_balance_payment_receipt',
+]);
 
 const ASSET_CONFIG = {
   // ── Workflow assets (set during transitions) ──────────────────────────────
@@ -131,6 +142,24 @@ serve(async (req) => {
     const workflowUpdate: Record<string, unknown> = {
       [config.column]: safePublicUrl,
     };
+
+    let receiptValidation: ReceiptValidationResult | undefined;
+    if (PAYMENT_RECEIPT_ASSET_TYPES.has(assetType)) {
+      try {
+        receiptValidation = await validateReceiptFile(file);
+        const kind = assetType === 'payment_receipt' ? 'downpayment' : 'balance';
+        Object.assign(
+          workflowUpdate,
+          dbPatchForReceiptValidation(kind, receiptValidation),
+        );
+        console.log(
+          `[upload-booking-asset] ${assetType} AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`,
+        );
+      } catch (aiErr) {
+        console.error('[upload-booking-asset] Receipt AI validation failed (non-fatal):', aiErr);
+      }
+    }
+
     if (
       shouldRevertGuestFieldEditsToPendingReview(booking.status) &&
       isGuestDocRevertAssetType(assetType)
@@ -144,6 +173,19 @@ serve(async (req) => {
     }
     await DatabaseService.setWorkflowFields(bookingId, workflowUpdate);
 
+    if (assetType === 'guest_balance_payment_receipt') {
+      try {
+        const refreshed = await DatabaseService.getBookingById(bookingId);
+        if (refreshed) {
+          await notifyTelegramAdminBalanceReceiptUploaded(
+            refreshed as Record<string, unknown>,
+          );
+        }
+      } catch (tgErr) {
+        console.error('[upload-booking-asset] Telegram balance receipt notify failed (non-fatal):', tgErr);
+      }
+    }
+
     console.log(`[upload-booking-asset] Uploaded ${assetType} for ${bookingId}: ${safePublicUrl}`);
 
     return new Response(
@@ -154,6 +196,7 @@ serve(async (req) => {
           bucket: config.bucket,
           path: storagePath,
           column: config.column,
+          receiptValidation: receiptValidation ?? null,
         },
       }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },

@@ -100,6 +100,10 @@ export type BookingRow = {
   sd_refund_receipt_url?: string | null;
   guest_balance_paid_amount?: number | string | null;
   guest_balance_payment_receipt_url?: string | null;
+  dp_receipt_ai_verdict?: string | null;
+  dp_receipt_ai_summary?: string | null;
+  balance_receipt_ai_verdict?: string | null;
+  balance_receipt_ai_summary?: string | null;
   sd_refund_guest_feedback?: string | null;
   sd_refund_method?: "same_phone" | "other_bank" | "cash" | null;
   sd_refund_phone_confirmed?: boolean | null;

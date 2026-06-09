@@ -13,6 +13,7 @@ import { DatabaseService } from './databaseService.ts';
 import {
   checkGuestBalanceSettlement,
 } from './totalGuestBalance.ts';
+import { receiptVerdictBlocksAdminTransition } from './receiptValidationService.ts';
 import { CalendarService } from './calendarService.ts';
 import { SheetsService } from './sheetsService.ts';
 import { generatePDF, generatePetPDF } from './pdfService.ts';
@@ -408,6 +409,15 @@ export class WorkflowOrchestrator {
       }
       workflowFields.guest_balance_paid_amount = settlement.paidAmount;
       workflowFields.guest_balance_payment_receipt_url = settlement.receiptUrl;
+
+      if (
+        settlement.receiptUrl &&
+        receiptVerdictBlocksAdminTransition(booking.balance_receipt_ai_verdict)
+      ) {
+        throw new Error(
+          'Balance payment receipt failed AI validation. Upload a valid payment screenshot before advancing.',
+        );
+      }
     }
 
     // 5. Persist workflow fields + update status
