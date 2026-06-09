@@ -249,6 +249,9 @@ verify_jwt = false
 [functions.app-settings]
 verify_jwt = false
 
+[functions.dashboard-stats]
+verify_jwt = false
+
 [functions.finance-summary]
 verify_jwt = false
 
