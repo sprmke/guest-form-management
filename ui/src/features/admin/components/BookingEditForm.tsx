@@ -59,6 +59,7 @@ import {
   getNextDay,
   normalizeDateString,
   stringToDate,
+  DATE_PICKER_DISPLAY_FORMAT,
   type BookedDateRange,
 } from '@/utils/dates';
 
@@ -423,7 +424,7 @@ export function BookingEditForm({
                   )(date);
                 }}
                 minDate={new Date()}
-                placeholder="Select check-in date"
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
               />
             </Field>
             <Field label="Check-out Date (MM-DD-YYYY)" required>
@@ -458,7 +459,7 @@ export function BookingEditForm({
                     ? stringToDate(getNextDay(watchCheckInDate))
                     : new Date()
                 }
-                placeholder="Select check-out date"
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
               />
             </Field>
           </Row2>
@@ -581,7 +582,7 @@ export function BookingEditForm({
                         { shouldDirty: true },
                       );
                     }}
-                    placeholder="Select vaccination date"
+                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
                   />
                 </Field>
               </Row3>
@@ -683,7 +684,7 @@ export function BookingEditForm({
             ? 'Saving…'
             : showSensitiveRevertHint
               ? 'Save & Revert Status'
-              : 'Save Changes'}
+              : 'Save'}
         </Button>
       </div>
     </form>
