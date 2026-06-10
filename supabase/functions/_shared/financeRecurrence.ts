@@ -82,6 +82,47 @@ export function addRecurrenceInterval(
   }
 }
 
+export function subtractRecurrenceInterval(
+  iso: string,
+  interval: RecurrenceInterval,
+): string {
+  const { y, m, d } = parseIso(iso);
+  switch (interval) {
+    case 'daily': {
+      const t = Date.UTC(y, m - 1, d - 1);
+      const nd = new Date(t);
+      return formatIso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
+    }
+    case 'weekly': {
+      const t = Date.UTC(y, m - 1, d - 7);
+      const nd = new Date(t);
+      return formatIso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
+    }
+    case 'monthly': {
+      let nm = m - 1;
+      let ny = y;
+      if (nm < 1) {
+        nm = 12;
+        ny -= 1;
+      }
+      const nd = Math.min(d, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
+    case 'quarterly': {
+      let nm = m - 3;
+      let ny = y;
+      while (nm < 1) {
+        nm += 12;
+        ny -= 1;
+      }
+      const nd = Math.min(d, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
+    case 'yearly':
+      return formatIso(y - 1, m, Math.min(d, daysInMonth(y - 1, m)));
+  }
+}
+
 export function defaultRecurrenceUntil(
   start: string,
   interval: RecurrenceInterval,
@@ -138,4 +179,38 @@ export function generateRecurrenceDates(
     cur = next;
   }
   return dates;
+}
+
+/** Dates stepping backward from `anchor` down to `until` (inclusive). */
+export function generateRecurrenceDatesBackward(
+  anchor: string,
+  interval: RecurrenceInterval,
+  until: string,
+  maxCount = 500,
+): string[] {
+  if (until > anchor) return [];
+  const dates: string[] = [];
+  let cur = subtractRecurrenceInterval(anchor, interval);
+  while (cur >= until && dates.length < maxCount) {
+    dates.unshift(cur);
+    const prev = subtractRecurrenceInterval(cur, interval);
+    if (prev >= cur) break;
+    cur = prev;
+  }
+  return dates;
+}
+
+/** Signed day delta between two ISO dates (to − from). */
+export function daysBetweenIso(from: string, to: string): number {
+  const a = parseIso(from.slice(0, 10));
+  const b = parseIso(to.slice(0, 10));
+  const ta = Date.UTC(a.y, a.m - 1, a.d);
+  const tb = Date.UTC(b.y, b.m - 1, b.d);
+  return Math.round((tb - ta) / 86_400_000);
+}
+
+export function addDaysToIso(iso: string, days: number): string {
+  const { y, m, d } = parseIso(iso.slice(0, 10));
+  const nd = new Date(Date.UTC(y, m - 1, d + days));
+  return formatIso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
 }

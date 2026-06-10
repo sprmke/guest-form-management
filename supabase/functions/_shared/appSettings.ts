@@ -62,6 +62,8 @@ export type AppSettingsDto = AppSettingsResolved & {
     telegramBotTokenConfigured: boolean;
     telegramChatIdConfigured: boolean;
     telegramStaffChatIdConfigured: boolean;
+    telegramAdminChatIdConfigured: boolean;
+    telegramFinanceChatIdConfigured: boolean;
     gmailEncryptionKeyConfigured: boolean;
     gmailWebClientConfigured: boolean;
   };
@@ -334,6 +336,7 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
       telegramChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_CHAT_ID')),
       telegramStaffChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_STAFF_CHAT_ID')),
       telegramAdminChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_ADMIN_CHAT_ID')),
+      telegramFinanceChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_FINANCE_CHAT_ID')),
       gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
       gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
     },

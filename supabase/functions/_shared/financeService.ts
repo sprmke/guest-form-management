@@ -11,13 +11,24 @@ import {
   type FinancePeriodBasis,
 } from './financePeriodFilter.ts';
 import {
+  addDaysToIso,
+  addRecurrenceInterval,
+  daysBetweenIso,
   defaultRecurrenceUntilForInterval,
   generateRecurrenceDates,
+  generateRecurrenceDatesBackward,
   isRecurrenceEditScope,
   isRecurrenceInterval,
   type RecurrenceEditScope,
   type RecurrenceInterval,
 } from './financeRecurrence.ts';
+import {
+  type FinanceTelegramReminderInput,
+  normalizeFinanceReminderInterval,
+  reminderFieldsForInsert,
+  reminderFieldsForRecurringRow,
+  reminderFieldsForUpdate,
+} from './telegramFinance.ts';
 
 export type FinanceLineItemKind = 'expense' | 'income';
 
@@ -32,6 +43,18 @@ export type FinanceLineItemRow = {
   receipt_path: string | null;
   recurrence_series_id: string | null;
   recurrence_interval: RecurrenceInterval | null;
+  telegram_reminder_enabled: boolean;
+  telegram_due_date: string | null;
+  telegram_days_before: number;
+  telegram_reminder_interval:
+    | 'hourly'
+    | 'every_2_hours'
+    | 'every_4_hours'
+    | 'every_12_hours'
+    | 'daily_noon'
+    | 'until_paid';
+  telegram_message_template: string | null;
+  paid_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -52,6 +75,18 @@ function mapFinanceLineItemRow(row: Record<string, unknown>): FinanceLineItemRow
       ? String(row.recurrence_series_id)
       : null,
     recurrence_interval: isRecurrenceInterval(interval) ? interval : null,
+    telegram_reminder_enabled: Boolean(row.telegram_reminder_enabled),
+    telegram_due_date: row.telegram_due_date
+      ? String(row.telegram_due_date).slice(0, 10)
+      : null,
+    telegram_days_before: Number(row.telegram_days_before ?? 3),
+    telegram_reminder_interval: normalizeFinanceReminderInterval(
+      row.telegram_reminder_interval,
+    ),
+    telegram_message_template: row.telegram_message_template
+      ? String(row.telegram_message_template)
+      : null,
+    paid_at: row.paid_at ? String(row.paid_at) : null,
     created_by: row.created_by ? String(row.created_by) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
@@ -210,6 +245,90 @@ export async function listOperatingLineItems(params: {
     mapFinanceLineItemRow(row as Record<string, unknown>)
   );
   return filterOperatingLineItems(rows, params.q);
+}
+
+export async function listRecurringSeriesItems(
+  seriesId: string,
+): Promise<FinanceLineItemRow[]> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('finance_line_items')
+    .select('*')
+    .eq('recurrence_series_id', seriesId)
+    .order('occurred_on', { ascending: true });
+  if (error) {
+    throw new Error(`finance_line_items series query failed: ${error.message}`);
+  }
+  return (data ?? []).map((row) =>
+    mapFinanceLineItemRow(row as Record<string, unknown>)
+  );
+}
+
+export async function extendRecurringSeries(
+  seriesId: string,
+  direction: 'before' | 'after',
+  extendUntil: string,
+  createdBy: string,
+): Promise<{ rows: FinanceLineItemRow[]; created_count: number }> {
+  const supabase = getSupabase();
+  const existing = await listRecurringSeriesItems(seriesId);
+  if (existing.length === 0) throw new Error('recurrence_series_not_found');
+
+  const template = existing[0];
+  const interval = template.recurrence_interval;
+  if (!interval || !isRecurrenceInterval(interval)) {
+    throw new Error('recurrence_series_not_recurring');
+  }
+
+  const existingDates = new Set(existing.map((r) => r.occurred_on));
+  const minDate = existing[0].occurred_on;
+  const maxDate = existing[existing.length - 1].occurred_on;
+  const until = extendUntil.slice(0, 10);
+
+  let candidateDates: string[] = [];
+  if (direction === 'after') {
+    if (until <= maxDate) throw new Error('extend_until_must_be_after_series_end');
+    const firstNew = addRecurrenceInterval(maxDate, interval);
+    candidateDates = generateRecurrenceDates(firstNew, interval, until);
+  } else {
+    if (until >= minDate) throw new Error('extend_until_must_be_before_series_start');
+    candidateDates = generateRecurrenceDatesBackward(minDate, interval, until);
+  }
+
+  const newDates = candidateDates.filter((d) => !existingDates.has(d));
+  if (newDates.length === 0) {
+    return { rows: existing, created_count: 0 };
+  }
+
+  const now = new Date().toISOString();
+  const rows = newDates.map((occurred_on) => ({
+    kind: template.kind,
+    label: template.label,
+    amount: template.amount,
+    category: template.category,
+    notes: template.notes,
+    receipt_path: template.receipt_path,
+    occurred_on,
+    recurrence_series_id: seriesId,
+    recurrence_interval: interval,
+    created_by: createdBy,
+    created_at: now,
+    updated_at: now,
+  }));
+
+  const { data, error } = await supabase
+    .from('finance_line_items')
+    .insert(rows)
+    .select('*');
+  if (error) {
+    throw new Error(`extend recurring finance_line_items failed: ${error.message}`);
+  }
+
+  const inserted = ((data ?? []) as Record<string, unknown>[]).map(mapFinanceLineItemRow);
+  const merged = [...existing, ...inserted].sort((a, b) =>
+    a.occurred_on.localeCompare(b.occurred_on)
+  );
+  return { rows: merged, created_count: inserted.length };
 }
 
 export function summarizeOperating(items: FinanceLineItemRow[]): FinanceOperatingSummary {
@@ -398,6 +517,7 @@ export async function createFinanceLineItem(
     receipt_path?: string | null;
     recurrence_interval?: RecurrenceInterval | null;
     recurrence_until?: string | null;
+    telegramReminder?: FinanceTelegramReminderInput;
   },
   createdBy: string,
 ): Promise<{ row: FinanceLineItemRow; created_count: number }> {
@@ -424,6 +544,7 @@ export async function createFinanceLineItem(
         occurred_on: input.occurred_on,
         recurrence_series_id: null,
         recurrence_interval: null,
+        ...reminderFieldsForInsert(input.telegramReminder, input.occurred_on),
       })
       .select('*')
       .single();
@@ -447,6 +568,7 @@ export async function createFinanceLineItem(
     occurred_on,
     recurrence_series_id: seriesId,
     recurrence_interval: interval,
+    ...reminderFieldsForRecurringRow(input.telegramReminder, occurred_on),
   }));
 
   const { data, error } = await supabase
@@ -474,6 +596,7 @@ export async function updateFinanceLineItem(
     occurred_on: string;
     notes: string | null;
     receipt_path: string | null;
+    telegramReminder?: FinanceTelegramReminderInput;
   }>,
   scope: RecurrenceEditScope = 'this',
 ): Promise<{ row: FinanceLineItemRow; updated_count: number }> {
@@ -499,6 +622,8 @@ export async function updateFinanceLineItem(
   }
   if (patch.notes !== undefined) update.notes = patch.notes?.slice(0, 2000) ?? null;
   if (patch.receipt_path !== undefined) update.receipt_path = patch.receipt_path;
+  const reminderUpdate = reminderFieldsForUpdate(patch.telegramReminder);
+  if (reminderUpdate) Object.assign(update, reminderUpdate);
 
   if (effectiveScope === 'this') {
     if (patch.occurred_on) update.occurred_on = patch.occurred_on;
@@ -515,8 +640,20 @@ export async function updateFinanceLineItem(
     };
   }
 
-  if (patch.occurred_on) {
-    throw new Error('cannot_change_date_on_series_batch');
+  const dateChanged =
+    Boolean(patch.occurred_on) && patch.occurred_on !== row.occurred_on;
+  const interval = row.recurrence_interval;
+
+  if (dateChanged && interval) {
+    return await reshiftRecurringSeriesDates({
+      supabase,
+      id,
+      row,
+      patch,
+      update,
+      effectiveScope,
+      interval,
+    });
   }
 
   let q = supabase
@@ -535,6 +672,119 @@ export async function updateFinanceLineItem(
   return {
     row: mapFinanceLineItemRow(anchor as Record<string, unknown>),
     updated_count: updated.length,
+  };
+}
+
+async function reshiftRecurringSeriesDates(params: {
+  supabase: ReturnType<typeof getSupabase>;
+  id: string;
+  row: FinanceLineItemRow;
+  patch: Partial<{ occurred_on: string }>;
+  update: Record<string, unknown>;
+  effectiveScope: RecurrenceEditScope;
+  interval: RecurrenceInterval;
+}): Promise<{ row: FinanceLineItemRow; updated_count: number }> {
+  const { supabase, id, row, patch, update, effectiveScope, interval } = params;
+  const seriesId = row.recurrence_series_id;
+  if (!seriesId || !patch.occurred_on) {
+    throw new Error('invalid_recurring_date_shift');
+  }
+
+  let seriesQuery = supabase
+    .from('finance_line_items')
+    .select('*')
+    .eq('recurrence_series_id', seriesId)
+    .order('occurred_on', { ascending: true });
+  if (effectiveScope === 'this_and_future') {
+    seriesQuery = seriesQuery.gte('occurred_on', row.occurred_on);
+  }
+
+  const { data: scopedRows, error: fetchErr } = await seriesQuery;
+  if (fetchErr) {
+    throw new Error(`fetch finance_line_items series failed: ${fetchErr.message}`);
+  }
+
+  const rows = (scopedRows ?? []) as Record<string, unknown>[];
+  if (rows.length === 0) throw new Error('finance_line_item_not_found');
+
+  let newDates: string[];
+  if (effectiveScope === 'all') {
+    const delta = daysBetweenIso(row.occurred_on, patch.occurred_on);
+    newDates = rows.map((r) =>
+      addDaysToIso(String(r.occurred_on).slice(0, 10), delta)
+    );
+  } else {
+    const { data: allSeriesRows, error: allErr } = await supabase
+      .from('finance_line_items')
+      .select('occurred_on')
+      .eq('recurrence_series_id', seriesId)
+      .order('occurred_on', { ascending: false })
+      .limit(1);
+    if (allErr) {
+      throw new Error(`fetch finance_line_items series end failed: ${allErr.message}`);
+    }
+    const seriesEnd = String(allSeriesRows?.[0]?.occurred_on ?? row.occurred_on).slice(0, 10);
+    newDates = generateRecurrenceDates(patch.occurred_on, interval, seriesEnd);
+    if (newDates.length === 0) throw new Error('recurrence_generated_no_dates');
+  }
+
+  const now = String(update.updated_at);
+  let anchor: Record<string, unknown> | null = null;
+  const idsToDelete: string[] = [];
+
+  for (let i = 0; i < rows.length; i += 1) {
+    const existingRow = rows[i];
+    const rowId = String(existingRow.id);
+    const newDate = newDates[i];
+
+    if (!newDate) {
+      idsToDelete.push(rowId);
+      continue;
+    }
+
+    const rowUpdate = {
+      ...update,
+      occurred_on: newDate,
+      updated_at: now,
+    };
+    const { data, error } = await supabase
+      .from('finance_line_items')
+      .update(rowUpdate)
+      .eq('id', rowId)
+      .select('*')
+      .single();
+    if (error) {
+      throw new Error(`update finance_line_item date shift failed: ${error.message}`);
+    }
+    if (rowId === id) anchor = data as Record<string, unknown>;
+  }
+
+  if (idsToDelete.length > 0) {
+    const { error: deleteErr } = await supabase
+      .from('finance_line_items')
+      .delete()
+      .in('id', idsToDelete);
+    if (deleteErr) {
+      throw new Error(`delete finance_line_items after date shift failed: ${deleteErr.message}`);
+    }
+  }
+
+  const updatedCount = rows.length - idsToDelete.length;
+  if (!anchor) {
+    const { data: refetched, error: refetchErr } = await supabase
+      .from('finance_line_items')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (refetchErr) {
+      throw new Error(`fetch finance_line_item anchor failed: ${refetchErr.message}`);
+    }
+    anchor = (refetched as Record<string, unknown> | null) ?? rows[0];
+  }
+
+  return {
+    row: mapFinanceLineItemRow(anchor as Record<string, unknown>),
+    updated_count: updatedCount,
   };
 }
 

@@ -870,6 +870,57 @@ export class DatabaseService {
     return { ok: false, error: 'unexpected rpc response' };
   }
 
+  static async getTelegramFinanceSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_finance_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramFinanceSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260710120000_finance_telegram_reminders.sql on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramFinanceSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_finance_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramFinanceSettings:', error);
+      throw new Error('Failed to update Telegram finance settings');
+    }
+    return data;
+  }
+
+  static async syncTelegramFinanceDailyCronJob(
+    slot: { hour: number; minute: number },
+  ): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
+    const { data, error } = await this.supabase.rpc('sync_telegram_finance_daily_cron_job', {
+      p_slot: slot as never,
+    });
+    if (error) {
+      console.error('syncTelegramFinanceDailyCronJob rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; cronExpr?: string };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
+  }
+
   static async getTelegramAdminSettings(): Promise<Record<string, unknown> | null> {
     const { data, error } = await this.supabase
       .from('telegram_admin_settings')
