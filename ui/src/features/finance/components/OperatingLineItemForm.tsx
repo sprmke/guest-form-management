@@ -12,6 +12,7 @@ import {
 } from '@/features/finance/lib/recurrence';
 import type { FinanceLineItem } from '@/features/finance/lib/types';
 import { CategoryCombobox } from '@/features/finance/components/CategoryCombobox';
+import { NativeSelect } from '@/components/ui/native-select';
 import { cn } from '@/lib/utils';
 
 const schema = z
@@ -206,16 +207,13 @@ export function OperatingLineItemForm({
       {!isEdit ? (
         <>
           <Field label="Repeat" error={errors.recurrence_interval?.message}>
-            <select
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              {...register('recurrence_interval')}
-            >
+            <NativeSelect {...register('recurrence_interval')}>
               {RECURRENCE_INTERVAL_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
               ))}
-            </select>
+            </NativeSelect>
           </Field>
 
           {recurrenceInterval !== 'none' ? (

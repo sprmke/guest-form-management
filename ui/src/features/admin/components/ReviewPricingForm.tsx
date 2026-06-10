@@ -15,7 +15,11 @@ import { useEffect, useMemo } from 'react';
 import { useForm, type DefaultValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  WorkflowFormShell,
+  workflowFormEditTitle,
+  type WorkflowFormVariant,
+} from '@/features/admin/components/WorkflowFormShell';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import {
   optionalNonNegativeMoney,
@@ -58,6 +62,9 @@ type Props = {
   onChange: (values: ReviewPricingFormValues | null) => void;
   /** Read-only preview when browsing a completed pipeline step. */
   readOnly?: boolean;
+  /** Booking edit form: always emit current values (skip strict validation gate). */
+  editMode?: boolean;
+  variant?: WorkflowFormVariant;
 };
 
 const WEEKDAY_RATE = 2799;
@@ -72,6 +79,8 @@ export function ReviewPricingForm({
   initialDraft = null,
   onChange,
   readOnly = false,
+  editMode = false,
+  variant = 'workflow',
 }: Props) {
   const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
   const needParking = booking.need_parking === true;
@@ -119,13 +128,14 @@ export function ReviewPricingForm({
 
   useEffect(() => {
     if (readOnly) return;
-    if (isValid) {
+    if (editMode || isValid) {
       onChange(getValues() as ReviewPricingFormValues);
     } else {
       onChange(null);
     }
   }, [
     readOnly,
+    editMode,
     bookingRate,
     downPayment,
     securityDeposit,
@@ -135,8 +145,13 @@ export function ReviewPricingForm({
     isValid,
   ]);
 
+  const cardTitle =
+    variant === 'edit'
+      ? workflowFormEditTitle('Review pricing')
+      : 'Review pricing';
+
   return (
-    <WorkflowSubFormCard title="Review pricing">
+    <WorkflowFormShell title={cardTitle} variant={variant}>
       <div className="grid grid-cols-2 gap-3">
         <Field
           label="Booking Rate"
@@ -265,7 +280,7 @@ export function ReviewPricingForm({
           {formatMoney(totalGuestBalance)}
         </span>
       </div>
-    </WorkflowSubFormCard>
+    </WorkflowFormShell>
   );
 }
 

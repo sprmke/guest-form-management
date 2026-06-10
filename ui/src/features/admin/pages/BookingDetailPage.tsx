@@ -246,7 +246,7 @@ export function BookingDetailPage() {
                   />
 
                   {editMode ? (
-                    <div className="rounded-xl border border-blue-200/80 bg-blue-50/40 p-4 sm:p-5 dark:border-blue-500/25 dark:bg-blue-950/25">
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
                       <h2 className="mb-4 text-sm font-bold text-foreground">
                         Edit Booking Details
                       </h2>
@@ -1067,8 +1067,12 @@ function DocPreview({
   );
 }
 
-/** PDF iframe height inside the preview modal body. */
-const ASSET_PREVIEW_PDF_H = "h-[min(78dvh,calc(100dvh-8.5rem))]";
+/** Modal shell height — shared by image + PDF preview bodies. */
+const ASSET_PREVIEW_MODAL_H =
+  "h-[min(90dvh,calc(100dvh-1.5rem))] max-h-[min(90dvh,calc(100dvh-1.5rem))]";
+
+/** PDF iframe fills the scrollable body below the header. */
+const ASSET_PREVIEW_PDF_H = "h-full min-h-[min(50dvh,20rem)]";
 
 function AssetPreviewModal({
   asset,
@@ -1094,17 +1098,20 @@ function AssetPreviewModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex min-h-[100dvh] items-center justify-center overflow-y-auto bg-background/80 backdrop-blur-[1px] p-3 sm:p-4"
+      className="fixed inset-0 z-[200] flex items-center justify-center overflow-hidden bg-background/80 backdrop-blur-[1px] p-3 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={asset ? `Preview ${asset.label}` : "Loading preview"}
       onClick={onClose}
     >
       <div
-        className="mx-auto flex max-h-[min(90dvh,calc(100dvh-1.5rem))] w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+        className={cn(
+          "mx-auto flex w-full max-w-[min(calc(100vw-1.5rem),56rem)] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl",
+          ASSET_PREVIEW_MODAL_H,
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex min-h-[52px] items-center justify-between border-b border-separator px-2.5 sm:min-h-[56px] sm:px-4">
+        <div className="flex shrink-0 min-h-[52px] items-center justify-between border-b border-separator px-2.5 sm:min-h-[56px] sm:px-4">
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {asset?.label ?? "Loading preview..."}
@@ -1131,20 +1138,20 @@ function AssetPreviewModal({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted p-1.5 sm:p-3">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto overscroll-contain bg-muted p-1.5 sm:min-h-[12rem] sm:p-3">
           {loading && (
-            <div className="flex min-h-[min(50dvh,20rem)] items-center justify-center gap-2 text-muted-foreground">
+            <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground">
               <Loader2 className="size-5 animate-spin" />
               <span className="text-sm">Loading preview...</span>
             </div>
           )}
 
           {!loading && asset?.type === "image" && (
-            <div className="flex justify-center rounded-lg bg-card p-2">
+            <div className="flex h-full min-h-0 w-full items-center justify-center rounded-lg bg-card p-2">
               <img
                 src={asset.url}
                 alt={asset.label}
-                className="h-auto max-w-full w-auto object-contain"
+                className="max-h-full max-w-full object-contain"
               />
             </div>
           )}

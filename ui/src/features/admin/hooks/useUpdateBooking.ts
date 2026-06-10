@@ -18,6 +18,7 @@ import {
   toGuestSubmissionTime,
 } from '@/utils/dates';
 import { BOOKING_QUERY_KEY } from './useBooking';
+import type { SdBank } from '@/features/sd-form/lib/sdFormSchema';
 import type { BookingRow } from '../lib/types';
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
@@ -41,6 +42,14 @@ function patchGuestSubmissionForDb(
     out.check_out_time = toGuestSubmissionTime(out.check_out_time);
   }
   return out;
+}
+
+function computeBalance(
+  bookingRate?: number | null,
+  downPayment?: number | null,
+): number | null {
+  if (bookingRate == null || downPayment == null) return null;
+  return Math.round((bookingRate - downPayment) * 100) / 100;
 }
 
 const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
@@ -142,6 +151,32 @@ export type UpdateBookingPayload = {
   find_us_details?: string | null;
   guest_special_requests?: string | null;
   guest_requests_surprise_decor?: boolean;
+
+  // Progress / workflow fields (admin edit form)
+  booking_rate?: number;
+  down_payment?: number;
+  balance?: number | null;
+  security_deposit?: number;
+  pet_fee?: number;
+  parking_rate_guest?: number;
+  guest_additional_fee?: number;
+  parking_owner?: string | null;
+  parking_rate_paid?: number;
+  parking_endorsement_url?: string | null;
+  guest_balance_paid_amount?: number;
+  guest_balance_payment_receipt_url?: string | null;
+  sd_additional_expense_items?: Array<{ label: string; amount: number }>;
+  sd_additional_profit_items?: Array<{ label: string; amount: number }>;
+  sd_additional_expenses?: number[];
+  sd_additional_profits?: number[];
+  sd_refund_amount?: number;
+  sd_refund_receipt_url?: string | null;
+  sd_refund_method?: 'same_phone' | 'other_bank' | 'cash';
+  sd_refund_phone_confirmed?: boolean | null;
+  sd_refund_bank?: SdBank | null;
+  sd_refund_account_name?: string | null;
+  sd_refund_account_number?: string | null;
+  sd_refund_guest_feedback?: string | null;
 };
 
 type MutationArgs = {
@@ -167,6 +202,17 @@ export function useUpdateBooking() {
         ...payload,
         updated_at: new Date().toISOString(),
       };
+
+      if (
+        payload.booking_rate != null &&
+        payload.down_payment != null &&
+        payload.balance === undefined
+      ) {
+        patch.balance = computeBalance(
+          payload.booking_rate,
+          payload.down_payment,
+        );
+      }
 
       patch = patchGuestSubmissionForDb(patch);
 

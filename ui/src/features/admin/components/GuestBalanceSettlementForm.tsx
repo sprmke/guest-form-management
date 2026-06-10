@@ -21,7 +21,11 @@ import {
 } from '@/features/admin/lib/totalGuestBalance';
 import { resolveAssetUrlForBrowser } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
-import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  WorkflowFormShell,
+  workflowFormEditTitle,
+  type WorkflowFormVariant,
+} from '@/features/admin/components/WorkflowFormShell';
 import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
@@ -40,6 +44,9 @@ type Props = {
   initialDraft?: GuestBalanceSettlementValues | null;
   onChange: (values: GuestBalanceSettlementValues | null) => void;
   readOnly?: boolean;
+  /** Booking edit form: skip RFCI auto-save and strict settlement validation. */
+  editMode?: boolean;
+  variant?: WorkflowFormVariant;
 };
 
 function defaultPaidFromBooking(booking: BookingRow): number {
@@ -65,6 +72,8 @@ export function GuestBalanceSettlementForm({
   initialDraft = null,
   onChange,
   readOnly = false,
+  editMode = false,
+  variant = 'workflow',
 }: Props) {
   const qc = useQueryClient();
   const uploadMut = useUploadBookingAsset();
@@ -132,7 +141,7 @@ export function GuestBalanceSettlementForm({
 
   // Persist paid amount on RFCI so sd-refund-cron can auto-advance status once settlement matches total.
   useEffect(() => {
-    if (readOnly) return;
+    if (readOnly || editMode) return;
     if (booking.status !== 'READY_FOR_CHECKIN') return;
     const paidParsed = parsePaidInput(paidInput);
     if (paidParsed === null || paidParsed < 0 || totalDue === null) return;
@@ -170,7 +179,10 @@ export function GuestBalanceSettlementForm({
     let paidParsed = parsePaidInput(paidInput);
     if (paidParsed === null) {
       if (balCents === 0) paidParsed = 0;
-      else {
+      else if (editMode) {
+        onChange(null);
+        return;
+      } else {
         onChange(null);
         return;
       }
@@ -181,6 +193,15 @@ export function GuestBalanceSettlementForm({
     }
 
     const paidCents = Math.round(paidParsed * 100);
+    if (editMode) {
+      const receipt = receiptUrl.trim();
+      onChange({
+        guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
+        guest_balance_payment_receipt_url: receipt,
+      });
+      return;
+    }
+
     if (paidCents > balCents) {
       onChange(null);
       return;
@@ -200,7 +221,7 @@ export function GuestBalanceSettlementForm({
       guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
       guest_balance_payment_receipt_url: receipt,
     });
-  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange, readOnly]);
+  }, [totalDue, paidInput, receiptUrl, receiptRequired, onChange, readOnly, editMode]);
 
   const paidUi = parsePaidInput(paidInput) ?? NaN;
   const paidCentsUi =
@@ -245,9 +266,15 @@ export function GuestBalanceSettlementForm({
     }
   }
 
+  const cardTitle =
+    variant === 'edit'
+      ? workflowFormEditTitle('Guest balance settlement')
+      : 'Guest balance settlement';
+
   return (
-    <WorkflowSubFormCard
-      title="Guest balance settlement"
+    <WorkflowFormShell
+      title={cardTitle}
+      variant={variant}
       bodyClassName="space-y-4"
     >
       <div className="flex flex-wrap gap-2 items-center justify-between">
@@ -396,6 +423,6 @@ export function GuestBalanceSettlementForm({
           ) : null}
         </div>
       </div>
-    </WorkflowSubFormCard>
+    </WorkflowFormShell>
   );
 }

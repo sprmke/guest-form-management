@@ -19,7 +19,11 @@ import { toast } from 'sonner';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
-import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  WorkflowFormShell,
+  workflowFormEditTitle,
+  type WorkflowFormVariant,
+} from '@/features/admin/components/WorkflowFormShell';
 import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
@@ -52,6 +56,8 @@ type Props = {
   initialDraft?: ParkingRequestValues | null;
   onChange: (values: ParkingRequestValues | null) => void;
   readOnly?: boolean;
+  editMode?: boolean;
+  variant?: WorkflowFormVariant;
 };
 
 export function ParkingRequestForm({
@@ -59,6 +65,8 @@ export function ParkingRequestForm({
   initialDraft = null,
   onChange,
   readOnly = false,
+  editMode = false,
+  variant = 'workflow',
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -95,12 +103,12 @@ export function ParkingRequestForm({
 
   useEffect(() => {
     if (readOnly) return;
-    if (isValid) {
+    if (editMode || isValid) {
       onChange(getValues());
     } else {
       onChange(null);
     }
-  }, [JSON.stringify(watched), isValid, readOnly]);
+  }, [JSON.stringify(watched), isValid, readOnly, editMode]);
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -129,8 +137,13 @@ export function ParkingRequestForm({
     }
   }
 
+  const cardTitle =
+    variant === 'edit'
+      ? workflowFormEditTitle('Parking request')
+      : 'Parking request';
+
   return (
-    <WorkflowSubFormCard title="Parking request">
+    <WorkflowFormShell title={cardTitle} variant={variant}>
       {!readOnly ? (
       <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-500/30">
         Parking fee is <strong>non-refundable</strong> and cannot be rescheduled
@@ -259,7 +272,7 @@ export function ParkingRequestForm({
           ) : null}
         </div>
       </Field>
-    </WorkflowSubFormCard>
+    </WorkflowFormShell>
   );
 }
 
