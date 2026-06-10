@@ -25,6 +25,8 @@ type Props = {
   onClearDate: () => void;
   /** Filters sit on the right beside tabs (Finance controls card). */
   align?: 'start' | 'end';
+  /** Hide period/search controls (Settings tab). */
+  hideDateFilter?: boolean;
 };
 
 export function FinancePeriodToolbar({
@@ -35,6 +37,7 @@ export function FinancePeriodToolbar({
   dateNav,
   onClearDate,
   align = 'end',
+  hideDateFilter = false,
 }: Props) {
   const isBelowMd = useIsBelowMd();
   const [basisOpen, setBasisOpen] = useState(false);
@@ -229,6 +232,8 @@ export function FinancePeriodToolbar({
       </div>
     </div>
   );
+
+  if (hideDateFilter) return null;
 
   return (
     <div

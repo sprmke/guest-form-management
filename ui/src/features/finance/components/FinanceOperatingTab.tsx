@@ -30,9 +30,13 @@ import { formatIsoDate, formatMoney } from '@/features/admin/lib/formatters';
 import { FinanceKpiCard } from '@/features/finance/components/FinanceKpiCard';
 import {
   OperatingLineItemForm,
+  telegramReminderPayloadFromForm,
   type OperatingLineItemFormValues,
 } from '@/features/finance/components/OperatingLineItemForm';
 import { RecurringDeleteDialog } from '@/features/finance/components/RecurringDeleteDialog';
+import { RecurringSeriesModal } from '@/features/finance/components/RecurringSeriesModal';
+import { useTelegramFinanceSettings } from '@/features/admin/hooks/useTelegramFinanceSettings';
+import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/finance/lib/financeReminderTemplate';
 import { useFinanceLineItemMutations } from '@/features/finance/hooks/useFinanceLineItems';
 import { recurrenceIntervalLabel } from '@/features/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/finance/lib/types';
@@ -46,9 +50,13 @@ type Props = {
 
 export function FinanceOperatingTab({ query, items, isLoading }: Props) {
   const { create, update, remove } = useFinanceLineItemMutations(query);
+  const { data: financeSettings } = useTelegramFinanceSettings();
+  const globalDefaultMessageTemplate =
+    financeSettings?.defaultReminderTemplate ?? FINANCE_DEFAULT_REMINDER_TEMPLATE;
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<FinanceLineItem | null>(null);
   const [deleting, setDeleting] = useState<FinanceLineItem | null>(null);
+  const [seriesAnchor, setSeriesAnchor] = useState<FinanceLineItem | null>(null);
 
   function openCreate() {
     setEditing(null);
@@ -65,14 +73,24 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
     setEditing(null);
   }
 
+  function openSeries(item: FinanceLineItem) {
+    if (!item.recurrence_series_id) return;
+    setSeriesAnchor(item);
+  }
+
+  function closeSeries() {
+    setSeriesAnchor(null);
+  }
+
   function handleSubmit(values: OperatingLineItemFormValues) {
     const payload = {
       kind: values.kind,
       label: values.label.trim(),
       amount: values.amount,
-      category: values.category?.trim() || null,
+      category: values.category.trim(),
       occurred_on: values.occurred_on,
       notes: values.notes?.trim() || null,
+      ...telegramReminderPayloadFromForm(values, globalDefaultMessageTemplate),
     };
     if (editing) {
       update.mutate(
@@ -261,15 +279,25 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                       </span>
                     </td>
                     <td className={adminTableCell.body}>
-                      <p className="max-w-[220px] truncate text-data-primary">
-                        {item.label}
-                      </p>
                       {item.recurrence_series_id ? (
-                        <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          <Repeat className="size-3 shrink-0" aria-hidden />
-                          {recurrenceIntervalLabel(item.recurrence_interval)}
-                        </span>
-                      ) : null}
+                        <button
+                          type="button"
+                          className="max-w-[220px] text-left transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md"
+                          onClick={() => openSeries(item)}
+                        >
+                          <p className="truncate text-data-primary underline-offset-2 hover:underline">
+                            {item.label}
+                          </p>
+                          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            <Repeat className="size-3 shrink-0" aria-hidden />
+                            {recurrenceIntervalLabel(item.recurrence_interval)}
+                          </span>
+                        </button>
+                      ) : (
+                        <p className="max-w-[220px] truncate text-data-primary">
+                          {item.label}
+                        </p>
+                      )}
                       {item.notes ? (
                         <p className="mt-0.5 max-w-[220px] truncate text-data-secondary">
                           {item.notes}
@@ -298,6 +326,16 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                     </td>
                     <td className={adminTableCell.action}>
                       <div className="flex justify-end gap-0.5">
+                        {item.recurrence_series_id ? (
+                          <button
+                            type="button"
+                            className={adminTableIconButtonClass}
+                            aria-label="View recurring series"
+                            onClick={() => openSeries(item)}
+                          >
+                            <Repeat className="size-4" />
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className={adminTableIconButtonClass}
@@ -332,8 +370,13 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
         }}
       >
         <DialogContent
-          className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] sm:p-5"
+          className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
           onPointerDownOutside={(e) => {
+            const target = e.target as Element | null;
+            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault();
+              return;
+            }
             if (create.isPending || update.isPending) e.preventDefault();
           }}
           onEscapeKeyDown={(e) => {
@@ -353,6 +396,13 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
           />
         </DialogContent>
       </Dialog>
+
+      <RecurringSeriesModal
+        anchor={seriesAnchor}
+        open={seriesAnchor != null}
+        onClose={closeSeries}
+        query={query}
+      />
 
       <RecurringDeleteDialog
         item={deleting}

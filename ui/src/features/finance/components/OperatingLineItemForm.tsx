@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,21 +6,33 @@ import { ArrowDownRight, ArrowUpRight, Loader2 } from 'lucide-react';
 import { manilaTodayIso } from '@/features/finance/lib/financePeriod';
 import {
   defaultRecurrenceUntil,
+  FINANCE_REMINDER_INTERVAL_OPTIONS,
+  normalizeFinanceReminderInterval,
   RECURRENCE_INTERVAL_OPTIONS,
   RECURRENCE_SCOPE_OPTIONS,
-  recurrenceIntervalLabel,
 } from '@/features/finance/lib/recurrence';
+import {
+  FINANCE_DEFAULT_REMINDER_TEMPLATE,
+  financeMessageTemplateForApi,
+  financeMessageTemplateForForm,
+} from '@/features/finance/lib/financeReminderTemplate';
+import { useTelegramFinanceSettings } from '@/features/admin/hooks/useTelegramFinanceSettings';
 import type { FinanceLineItem } from '@/features/finance/lib/types';
+import { requiredPositiveMoney } from '@/features/admin/lib/moneyFieldSchema';
 import { CategoryCombobox } from '@/features/finance/components/CategoryCombobox';
 import { NativeSelect } from '@/components/ui/native-select';
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
 
 const schema = z
   .object({
     kind: z.enum(['expense', 'income']),
-    label: z.string().min(1, 'Label is required').max(200),
-    amount: z.coerce.number().min(0, 'Amount must be zero or positive'),
-    category: z.string().max(80).optional(),
+    label: z.string().trim().min(1, 'Label is required').max(200),
+    amount: requiredPositiveMoney({
+      requiredError: 'Amount is required',
+      positiveError: 'Amount must be greater than 0',
+    }),
+    category: z.string().trim().min(1, 'Category is required').max(80),
     occurred_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Valid date required'),
     notes: z.string().max(2000).optional(),
     recurrence_interval: z.enum([
@@ -33,8 +45,33 @@ const schema = z
     ]),
     recurrence_until: z.string().optional(),
     edit_scope: z.enum(['this', 'this_and_future', 'all']),
+    telegram_reminder_enabled: z.boolean(),
+    telegram_due_date: z.string().optional(),
+    telegram_days_before: z.coerce.number().int().min(0).max(90),
+    telegram_reminder_interval: z.enum([
+      'hourly',
+      'every_2_hours',
+      'every_4_hours',
+      'every_12_hours',
+      'daily_noon',
+      'until_paid',
+    ]),
+    telegram_message_template: z.string().max(4000).optional(),
+    marked_paid: z.boolean(),
   })
   .superRefine((data, ctx) => {
+    if (data.telegram_reminder_enabled) {
+      if (
+        data.telegram_due_date &&
+        !/^\d{4}-\d{2}-\d{2}$/.test(data.telegram_due_date)
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Valid due date required',
+          path: ['telegram_due_date'],
+        });
+      }
+    }
     if (data.recurrence_interval !== 'none') {
       if (!data.recurrence_until?.match(/^\d{4}-\d{2}-\d{2}$/)) {
         ctx.addIssue({
@@ -54,8 +91,29 @@ const schema = z
 
 export type OperatingLineItemFormValues = z.infer<typeof schema>;
 
+export function telegramReminderPayloadFromForm(
+  values: OperatingLineItemFormValues,
+  globalDefaultMessageTemplate = FINANCE_DEFAULT_REMINDER_TEMPLATE,
+) {
+  return {
+    telegram_reminder_enabled: values.telegram_reminder_enabled,
+    telegram_due_date: values.telegram_reminder_enabled
+      ? values.telegram_due_date?.trim() || values.occurred_on
+      : null,
+    telegram_days_before: values.telegram_days_before,
+    telegram_reminder_interval: values.telegram_reminder_interval,
+    telegram_message_template: financeMessageTemplateForApi(
+      values.telegram_message_template,
+      values.telegram_reminder_enabled,
+      globalDefaultMessageTemplate,
+    ),
+    marked_paid: values.marked_paid,
+  };
+}
+
 const CATEGORY_SUGGESTIONS = [
   'Rent',
+  'Amortization',
   'Utilities',
   'Supplies',
   'Maintenance',
@@ -71,7 +129,10 @@ type Props = {
   isPending?: boolean;
 };
 
-function defaultValues(initial?: FinanceLineItem | null): OperatingLineItemFormValues {
+function defaultValues(
+  initial: FinanceLineItem | null | undefined,
+  globalDefaultMessageTemplate: string,
+): OperatingLineItemFormValues {
   const start = initial?.occurred_on ?? manilaTodayIso();
   const interval = initial?.recurrence_interval ?? 'none';
   return {
@@ -87,6 +148,18 @@ function defaultValues(initial?: FinanceLineItem | null): OperatingLineItemFormV
         ? defaultRecurrenceUntil(start, interval)
         : '',
     edit_scope: 'this',
+    telegram_reminder_enabled: initial?.telegram_reminder_enabled ?? false,
+    telegram_due_date:
+      initial?.telegram_due_date ?? initial?.occurred_on ?? start,
+    telegram_days_before: initial?.telegram_days_before ?? 3,
+    telegram_reminder_interval: normalizeFinanceReminderInterval(
+      initial?.telegram_reminder_interval,
+    ),
+    telegram_message_template: financeMessageTemplateForForm(
+      initial?.telegram_message_template,
+      globalDefaultMessageTemplate,
+    ),
+    marked_paid: Boolean(initial?.paid_at),
   };
 }
 
@@ -98,6 +171,10 @@ export function OperatingLineItemForm({
 }: Props) {
   const isRecurringEdit = Boolean(initial?.recurrence_series_id);
   const isEdit = Boolean(initial);
+  const { data: financeSettings } = useTelegramFinanceSettings();
+  const globalDefaultMessageTemplate =
+    financeSettings?.defaultReminderTemplate ??
+    FINANCE_DEFAULT_REMINDER_TEMPLATE;
 
   const {
     register,
@@ -106,20 +183,38 @@ export function OperatingLineItemForm({
     reset,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<OperatingLineItemFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(initial),
+    defaultValues: defaultValues(initial, globalDefaultMessageTemplate),
   });
 
   useEffect(() => {
-    reset(defaultValues(initial));
-  }, [initial, reset]);
+    reset(defaultValues(initial, globalDefaultMessageTemplate));
+  }, [initial, globalDefaultMessageTemplate, reset]);
 
   const kind = watch('kind');
   const recurrenceInterval = watch('recurrence_interval');
   const occurredOn = watch('occurred_on');
   const editScope = watch('edit_scope');
+  const telegramReminderEnabled = watch('telegram_reminder_enabled');
+  const telegramDueDate = watch('telegram_due_date');
+  const telegramReminderInterval = watch('telegram_reminder_interval');
+  const prevOccurredOnRef = useRef(occurredOn);
+
+  useEffect(() => {
+    if (!telegramReminderEnabled) return;
+    const current = getValues('telegram_message_template')?.trim();
+    if (!current) {
+      setValue('telegram_message_template', globalDefaultMessageTemplate);
+    }
+  }, [
+    telegramReminderEnabled,
+    globalDefaultMessageTemplate,
+    getValues,
+    setValue,
+  ]);
 
   useEffect(() => {
     if (!isEdit && recurrenceInterval !== 'none' && occurredOn) {
@@ -129,6 +224,27 @@ export function OperatingLineItemForm({
       );
     }
   }, [recurrenceInterval, occurredOn, isEdit, setValue]);
+
+  useEffect(() => {
+    if (!telegramReminderEnabled || !occurredOn) return;
+    if (!telegramDueDate?.trim()) {
+      setValue('telegram_due_date', occurredOn);
+    }
+  }, [telegramReminderEnabled, occurredOn, telegramDueDate, setValue]);
+
+  useEffect(() => {
+    if (!telegramReminderEnabled || !occurredOn) {
+      prevOccurredOnRef.current = occurredOn;
+      return;
+    }
+    const prev = prevOccurredOnRef.current;
+    prevOccurredOnRef.current = occurredOn;
+    if (!prev || prev === occurredOn) return;
+    const due = telegramDueDate?.trim();
+    if (!due || due === prev) {
+      setValue('telegram_due_date', occurredOn);
+    }
+  }, [occurredOn, telegramReminderEnabled, telegramDueDate, setValue]);
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -141,11 +257,11 @@ export function OperatingLineItemForm({
               key={k}
               type="button"
               className={cn(
-                'flex min-h-[44px] items-center justify-center gap-2 rounded-xl text-ui font-semibold capitalize transition-all',
+                'flex gap-2 justify-center items-center font-semibold capitalize rounded-xl transition-all min-h-[44px] text-ui',
                 active
                   ? isIncome
-                    ? 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-red-500/10 text-red-600 ring-1 ring-red-500/25 dark:bg-red-500/15 dark:text-red-400'
+                    ? 'text-emerald-700 ring-1 bg-emerald-500/10 ring-emerald-500/25 dark:bg-emerald-500/15 dark:text-emerald-300'
+                    : 'text-red-600 ring-1 bg-red-500/10 ring-red-500/25 dark:bg-red-500/15 dark:text-red-400'
                   : 'border border-border bg-muted/40 text-muted-foreground hover:bg-muted/60',
               )}
               onClick={() => reset({ ...watch(), kind: k })}
@@ -161,27 +277,27 @@ export function OperatingLineItemForm({
         })}
       </div>
 
-      <Field label="Label" error={errors.label?.message}>
+      <Field label="Label" required error={errors.label?.message}>
         <input
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="px-3 w-full h-10 text-sm rounded-lg border transition-colors border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="e.g. Monthly rent"
           {...register('label')}
         />
       </Field>
 
-      <Field label="Amount (₱)" error={errors.amount?.message}>
+      <Field label="Amount (₱)" required error={errors.amount?.message}>
         <input
           type="number"
           step="0.01"
           min={0}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm tabular-nums text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="px-3 w-full h-10 text-sm tabular-nums rounded-lg border transition-colors border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="0.00"
           {...register('amount')}
         />
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Category" error={errors.category?.message}>
+        <Field label="Category" required error={errors.category?.message}>
           <Controller
             name="category"
             control={control}
@@ -196,10 +312,10 @@ export function OperatingLineItemForm({
         </Field>
 
         <Field label="Date" error={errors.occurred_on?.message}>
-          <input
-            type="date"
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            {...register('occurred_on')}
+          <Controller
+            name="occurred_on"
+            control={control}
+            render={({ field }) => <IsoDateInput {...field} />}
           />
         </Field>
       </div>
@@ -217,28 +333,25 @@ export function OperatingLineItemForm({
           </Field>
 
           {recurrenceInterval !== 'none' ? (
-            <Field label="Repeats until" error={errors.recurrence_until?.message}>
-              <input
-                type="date"
-                className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                {...register('recurrence_until')}
+            <Field
+              label="Repeats until"
+              error={errors.recurrence_until?.message}
+            >
+              <Controller
+                name="recurrence_until"
+                control={control}
+                render={({ field }) => <IsoDateInput {...field} />}
               />
             </Field>
           ) : null}
         </>
-      ) : isRecurringEdit ? (
-        <p className="rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-caption text-muted-foreground">
-          Part of a{' '}
-          <span className="font-semibold text-foreground">
-            {recurrenceIntervalLabel(initial?.recurrence_interval)}
-          </span>{' '}
-          series. Choose how changes apply below.
-        </p>
       ) : null}
 
       {isEdit && isRecurringEdit ? (
         <fieldset className="space-y-2">
-          <legend className="mb-1.5 block text-overline">Apply changes to</legend>
+          <legend className="mb-1.5 block text-overline">
+            Apply changes to
+          </legend>
           {RECURRENCE_SCOPE_OPTIONS.map((opt) => {
             const active = editScope === opt.value;
             return (
@@ -274,11 +387,106 @@ export function OperatingLineItemForm({
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
           rows={2}
-          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className="px-3 py-2 w-full text-sm rounded-lg border transition-colors border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="Optional notes…"
           {...register('notes')}
         />
       </Field>
+
+      <fieldset className="p-3 space-y-3 rounded-xl border border-border/50 bg-muted/20">
+        <legend className="sr-only">Telegram reminders</legend>
+        <p className="text-overline">Telegram reminders</p>
+        <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 shrink-0 accent-primary"
+            {...register('telegram_reminder_enabled')}
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-foreground">
+              Send payment due reminders
+            </span>
+            <span className="mt-0.5 block text-caption text-muted-foreground">
+              Posts to your Finance Telegram group.
+            </span>
+          </span>
+        </label>
+
+        {telegramReminderEnabled ? (
+          <div className="space-y-4">
+            <Field label="Due date" error={errors.telegram_due_date?.message}>
+              <Controller
+                name="telegram_due_date"
+                control={control}
+                render={({ field }) => (
+                  <IsoDateInput
+                    value={field.value ?? ''}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
+                )}
+              />
+            </Field>
+
+            <Field
+              label="Days before due"
+              error={errors.telegram_days_before?.message}
+            >
+              <input
+                type="number"
+                min={0}
+                max={90}
+                className="px-3 w-full h-10 text-sm rounded-lg border border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                {...register('telegram_days_before', { valueAsNumber: true })}
+              />
+            </Field>
+
+            <Field
+              label="How often to remind"
+              error={errors.telegram_reminder_interval?.message}
+            >
+              <NativeSelect {...register('telegram_reminder_interval')}>
+                {FINANCE_REMINDER_INTERVAL_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+
+            <Field
+              label="Message"
+              error={errors.telegram_message_template?.message}
+            >
+              <textarea
+                rows={9}
+                className="px-3 py-2 w-full font-mono text-xs rounded-lg border border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                {...register('telegram_message_template')}
+              />
+            </Field>
+
+            <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                className="mt-1 size-4 shrink-0 accent-primary"
+                {...register('marked_paid')}
+              />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold text-foreground">
+                  Mark as paid
+                </span>
+                <span className="mt-0.5 block text-caption text-muted-foreground">
+                  Stops reminders for this transaction.
+                  {telegramReminderInterval === 'until_paid'
+                    ? ' Keeps reminding after the due date until you check this.'
+                    : null}
+                </span>
+              </span>
+            </label>
+          </div>
+        ) : null}
+      </fieldset>
 
       <div className="flex gap-2 pt-1">
         <button
@@ -293,8 +501,8 @@ export function OperatingLineItemForm({
           disabled={isPending}
           className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl gradient-primary text-sm font-semibold text-primary-foreground shadow-soft disabled:opacity-50"
         >
-          {isPending && <Loader2 className="size-4 animate-spin" aria-hidden />}
-          {initial ? 'Save changes' : 'Add transaction'}
+          {isPending && <Loader2 className="animate-spin size-4" aria-hidden />}
+          {initial ? 'Save' : 'Add transaction'}
         </button>
       </div>
     </form>
@@ -303,20 +511,37 @@ export function OperatingLineItemForm({
 
 function Field({
   label,
+  required,
+  hint,
   error,
   children,
 }: {
   label: string;
+  required?: boolean;
+  hint?: string;
   error?: string;
   children: ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 block text-overline">{label}</span>
+    <div className="block min-w-0">
+      <span className="mb-1.5 block text-overline">
+        {label}
+        {required ? (
+          <>
+            {' '}
+            <span className="text-destructive" aria-hidden>
+              *
+            </span>
+          </>
+        ) : null}
+      </span>
       {children}
-      {error && (
+      {hint ? (
+        <p className="mt-1 text-caption text-muted-foreground">{hint}</p>
+      ) : null}
+      {error ? (
         <p className="mt-1 text-xs font-medium text-destructive">{error}</p>
-      )}
-    </label>
+      ) : null}
+    </div>
   );
 }
