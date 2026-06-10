@@ -246,6 +246,12 @@ verify_jwt = false
 [functions.telegram-admin-settings]
 verify_jwt = false
 
+[functions.telegram-finance-cron]
+verify_jwt = false
+
+[functions.telegram-finance-settings]
+verify_jwt = false
+
 [functions.app-settings]
 verify_jwt = false
 

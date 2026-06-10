@@ -89,6 +89,9 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 | `TELEGRAM_ADMIN_BOT_TOKEN`             | edge  | _(Optional)_ Bot token for admin operations group. Falls back to `TELEGRAM_BOT_TOKEN` if unset.                                                                                                              |
 | `TELEGRAM_ADMIN_CHAT_ID`               | edge  | Numeric Telegram chat id for the admin operations group (different from marketing/staff). Required for operations alerts.                                                                                  |
 | `TELEGRAM_ADMIN_CRON_SECRET`           | edge  | _(Optional)_ When set, `telegram-admin-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                  |
+| `TELEGRAM_FINANCE_BOT_TOKEN`           | edge  | _(Optional)_ Bot token for finance operating due-date reminders. Falls back to `TELEGRAM_BOT_TOKEN` if unset.                                                                                               |
+| `TELEGRAM_FINANCE_CHAT_ID`             | edge  | Numeric Telegram chat id for the finance group (Finance Operating reminders). Required for finance Telegram alerts.                                                                                        |
+| `TELEGRAM_FINANCE_CRON_SECRET`         | edge  | _(Optional)_ When set, `telegram-finance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                 |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 
