@@ -1,5 +1,6 @@
 import * as React from "react"
 import { format, startOfDay } from "date-fns"
+import { DATE_FNS_PICKER_DISPLAY_FORMAT, DATE_PICKER_DISPLAY_FORMAT } from "@/utils/dates"
 import { Calendar as CalendarIcon } from "lucide-react"
 import type { Matcher } from "react-day-picker"
 import { cn } from "@/lib/utils"
@@ -46,7 +47,7 @@ export function DatePicker({
   date,
   onSelect,
   disabled,
-  placeholder = "Pick a date",
+  placeholder = DATE_PICKER_DISPLAY_FORMAT,
   minDate,
   maxDate,
   className,
@@ -78,7 +79,7 @@ export function DatePicker({
             aria-hidden
           />
           {date ? (
-            <span className="truncate">{format(date, 'MMM-dd-yyyy')}</span>
+            <span className="truncate">{format(date, DATE_FNS_PICKER_DISPLAY_FORMAT)}</span>
           ) : (
             <span className="truncate">{placeholder}</span>
           )}

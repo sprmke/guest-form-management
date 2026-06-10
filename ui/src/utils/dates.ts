@@ -12,8 +12,22 @@ dayjs.extend(timezone);
 // Set timezone to Asia/Manila
 dayjs.tz.setDefault('Asia/Manila');
 
+/** User-facing date in pickers and ISO date inputs (slashes). */
+export const DATE_PICKER_DISPLAY_FORMAT = 'MM/DD/YYYY';
+
+/** date-fns pattern matching {@link DATE_PICKER_DISPLAY_FORMAT}. */
+export const DATE_FNS_PICKER_DISPLAY_FORMAT = 'MM/dd/yyyy';
+
 // Format date to YYYY-MM-DD
 export const formatDateToYYYYMMDD = (date: Date) => dayjs(date).format('YYYY-MM-DD');
+
+/** ISO `YYYY-MM-DD` → `MM/DD/YYYY` for date picker display. */
+export function formatIsoDateForDisplay(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = dayjs(iso.slice(0, 10), 'YYYY-MM-DD', true);
+  if (!d.isValid()) return '';
+  return d.format(DATE_PICKER_DISPLAY_FORMAT);
+}
 
 export const formatDateToMMDDYYYY = (dateString: string): string => {
   try {
