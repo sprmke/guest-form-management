@@ -10,11 +10,8 @@ import {
 } from '@/lib/pagination';
 
 export function manilaTodayIso(): string {
-  return new Date(
-    new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }),
-  )
-    .toISOString()
-    .slice(0, 10);
+  const { y, m, d } = manilaDateParts();
+  return isoFromParts(y, m, d);
 }
 
 function manilaDateParts(): { y: number; m: number; d: number } {

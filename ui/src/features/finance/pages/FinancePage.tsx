@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, BedDouble, Building2, DollarSign, Settings } from 'lucide-react';
+import {
+  BarChart3,
+  BedDouble,
+  Building2,
+  DollarSign,
+  Settings,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
@@ -104,7 +110,7 @@ export function FinancePage() {
   return (
     <AdminLayout>
       <div className="space-y-3 sm:space-y-4">
-        <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+        <section className="px-3 py-3 w-full surface-card sm:px-4 sm:py-4">
           <AdminPageHeader
             id="finance-heading"
             variant="compact"
@@ -122,9 +128,13 @@ export function FinancePage() {
         </section>
 
         <section className="surface-card w-full overflow-visible px-3 py-2.5 sm:px-4 sm:py-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-3 2xl:items-center">
             <div
-              className="flex min-w-0 w-full gap-1 lg:w-auto lg:shrink-0"
+              className={cn(
+                'flex w-full min-w-0 gap-1',
+                'overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+                'xl:w-auto xl:shrink-0 xl:overflow-visible xl:pb-0',
+              )}
               role="tablist"
               aria-label="Finance sections"
             >
@@ -138,8 +148,8 @@ export function FinancePage() {
                     role="tab"
                     aria-selected={active}
                     className={cn(
-                      'inline-flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[13px] font-semibold transition-colors sm:px-3',
-                      'lg:flex-none lg:shrink-0 lg:justify-start',
+                      'inline-flex min-h-[44px] shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold transition-colors',
+                      'max-sm:min-w-[4.5rem] max-sm:flex-1',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
@@ -161,13 +171,11 @@ export function FinancePage() {
               })}
             </div>
 
-            <div className="min-w-0 w-full lg:flex-1">
+            <div className="w-full min-w-0 xl:min-w-0 xl:flex-1">
               <FinancePeriodToolbar
                 query={query}
                 onChange={setQuery}
-                showSearch={
-                  query.tab === 'stays' || query.tab === 'operating'
-                }
+                showSearch={query.tab === 'stays' || query.tab === 'operating'}
                 searchPlaceholder={
                   query.tab === 'stays'
                     ? 'Search guest…'

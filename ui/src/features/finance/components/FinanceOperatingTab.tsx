@@ -39,7 +39,10 @@ import { useTelegramFinanceSettings } from '@/features/admin/hooks/useTelegramFi
 import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/finance/lib/financeReminderTemplate';
 import { useFinanceLineItemMutations } from '@/features/finance/hooks/useFinanceLineItems';
 import { recurrenceIntervalLabel } from '@/features/finance/lib/recurrence';
-import type { FinanceLineItem, FinanceQuery } from '@/features/finance/lib/types';
+import type {
+  FinanceLineItem,
+  FinanceQuery,
+} from '@/features/finance/lib/types';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -52,14 +55,19 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
   const { create, update, remove } = useFinanceLineItemMutations(query);
   const { data: financeSettings } = useTelegramFinanceSettings();
   const globalDefaultMessageTemplate =
-    financeSettings?.defaultReminderTemplate ?? FINANCE_DEFAULT_REMINDER_TEMPLATE;
+    financeSettings?.defaultReminderTemplate ??
+    FINANCE_DEFAULT_REMINDER_TEMPLATE;
   const [modalOpen, setModalOpen] = useState(false);
+  const [createSession, setCreateSession] = useState(0);
   const [editing, setEditing] = useState<FinanceLineItem | null>(null);
   const [deleting, setDeleting] = useState<FinanceLineItem | null>(null);
-  const [seriesAnchor, setSeriesAnchor] = useState<FinanceLineItem | null>(null);
+  const [seriesAnchor, setSeriesAnchor] = useState<FinanceLineItem | null>(
+    null,
+  );
 
   function openCreate() {
     setEditing(null);
+    setCreateSession((n) => n + 1);
     setModalOpen(true);
   }
 
@@ -112,7 +120,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
           recurrence_until:
             values.recurrence_interval === 'none'
               ? null
-              : values.recurrence_until ?? null,
+              : (values.recurrence_until ?? null),
         },
         { onSuccess: closeModal },
       );
@@ -137,20 +145,6 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <FinanceKpiCard
-          label="Income"
-          value={formatMoney(incomeTotal)}
-          icon={ArrowUpRight}
-          iconColor="text-emerald-600 dark:text-emerald-400"
-          valueClassName="text-emerald-700 dark:text-emerald-300"
-        />
-        <FinanceKpiCard
-          label="Expenses"
-          value={formatMoney(expenseTotal)}
-          icon={ArrowDownRight}
-          iconColor="text-red-600 dark:text-red-400"
-          valueClassName="text-red-600 dark:text-red-400"
-        />
-        <FinanceKpiCard
           label="Net"
           value={formatMoney(net)}
           icon={CircleDollarSign}
@@ -164,6 +158,16 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
               ? 'text-emerald-700 dark:text-emerald-300'
               : 'text-red-600 dark:text-red-400',
           )}
+        />
+        <FinanceKpiCard
+          label="Income"
+          value={formatMoney(incomeTotal)}
+          icon={ArrowUpRight}
+        />
+        <FinanceKpiCard
+          label="Expenses"
+          value={formatMoney(expenseTotal)}
+          icon={ArrowDownRight}
         />
       </div>
 
@@ -201,165 +205,160 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
           <AdminTableTh className="px-3 sm:px-4">Type</AdminTableTh>
           <AdminTableTh className="px-3 sm:px-4">Description</AdminTableTh>
           <AdminTableTh className="hidden md:table-cell">Category</AdminTableTh>
-          <AdminTableTh className="text-right">Amount</AdminTableTh>
-          <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
+          <AdminTableTh className="px-3 sm:px-4">Amount</AdminTableTh>
+          <AdminTableTh className="pr-3 pl-2 text-left sm:pr-4 sm:pl-3">
             <span className="sr-only">Actions</span>
           </AdminTableTh>
         </AdminTableHeadRow>
         <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
-                      <div className="icon-well-sm bg-muted/80">
-                        <Receipt
-                          className="size-[18px] text-muted-foreground"
-                          aria-hidden
-                        />
-                      </div>
-                      <div>
-                        <p className="text-section-title font-bold text-foreground">
-                          {hasSearch
-                            ? 'No transactions match your search'
-                            : 'No operating transactions yet'}
-                        </p>
-                        <p className="mx-auto mt-1 max-w-[280px] text-caption">
-                          {hasSearch
-                            ? 'Try a different keyword or clear the search filter.'
-                            : 'Add rent, utilities, or other property costs to track operating profit alongside stay revenue.'}
-                        </p>
-                      </div>
-                      {!hasSearch ? (
-                        <button
-                          type="button"
-                          className={cn(
-                            'mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-4',
-                            'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
-                          )}
-                          onClick={openCreate}
-                        >
-                          <Plus className="size-4" aria-hidden />
-                          Add first transaction
-                        </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                items.map((item, index) => (
-                  <tr
-                    key={item.id}
-                    className={adminTableRowClass(index, { interactive: false })}
+          {items.length === 0 ? (
+            <tr>
+              <td colSpan={6}>
+                <div className="flex flex-col gap-3 justify-center items-center px-4 py-20 text-center">
+                  <div className="icon-well-sm bg-muted/80">
+                    <Receipt
+                      className="size-[18px] text-muted-foreground"
+                      aria-hidden
+                    />
+                  </div>
+                  <div>
+                    <p className="font-bold text-section-title text-foreground">
+                      {hasSearch
+                        ? 'No transactions match your search'
+                        : 'No operating transactions yet'}
+                    </p>
+                    <p className="mx-auto mt-1 max-w-[280px] text-caption">
+                      {hasSearch
+                        ? 'Try a different keyword or clear the search filter.'
+                        : 'Add rent, utilities, or other property costs to track operating profit alongside stay revenue.'}
+                    </p>
+                  </div>
+                  {!hasSearch ? (
+                    <button
+                      type="button"
+                      className={cn(
+                        'mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-4',
+                        'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+                      )}
+                      onClick={openCreate}
+                    >
+                      <Plus className="size-4" aria-hidden />
+                      Add first transaction
+                    </button>
+                  ) : null}
+                </div>
+              </td>
+            </tr>
+          ) : (
+            items.map((item, index) => (
+              <tr
+                key={item.id}
+                className={adminTableRowClass(index, { interactive: false })}
+              >
+                <td className={cn('whitespace-nowrap', adminTableCell.status)}>
+                  <p className="text-data-primary">
+                    {formatIsoDate(item.occurred_on)}
+                  </p>
+                </td>
+                <td className={adminTableCell.body}>
+                  <span
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                      item.kind === 'income'
+                        ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
+                        : 'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
+                    )}
                   >
-                    <td
-                      className={cn(
-                        'whitespace-nowrap',
-                        adminTableCell.status,
-                      )}
+                    {item.kind === 'income' ? (
+                      <ArrowUpRight className="size-3" aria-hidden />
+                    ) : (
+                      <ArrowDownRight className="size-3" aria-hidden />
+                    )}
+                    {item.kind}
+                  </span>
+                </td>
+                <td className={adminTableCell.body}>
+                  {item.recurrence_series_id ? (
+                    <button
+                      type="button"
+                      className="max-w-[220px] text-left transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md"
+                      onClick={() => openSeries(item)}
                     >
-                      <p className="text-data-primary">
-                        {formatIsoDate(item.occurred_on)}
+                      <p className="truncate text-data-primary underline-offset-2 hover:underline">
+                        {item.label}
                       </p>
-                    </td>
-                    <td className={adminTableCell.body}>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide',
-                          item.kind === 'income'
-                            ? 'bg-emerald-500/10 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300'
-                            : 'bg-red-500/10 text-red-600 dark:bg-red-500/15 dark:text-red-400',
-                        )}
-                      >
-                        {item.kind === 'income' ? (
-                          <ArrowUpRight className="size-3" aria-hidden />
-                        ) : (
-                          <ArrowDownRight className="size-3" aria-hidden />
-                        )}
-                        {item.kind}
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <Repeat className="size-3 shrink-0" aria-hidden />
+                        {recurrenceIntervalLabel(item.recurrence_interval)}
                       </span>
-                    </td>
-                    <td className={adminTableCell.body}>
-                      {item.recurrence_series_id ? (
-                        <button
-                          type="button"
-                          className="max-w-[220px] text-left transition-colors hover:text-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 rounded-md"
-                          onClick={() => openSeries(item)}
-                        >
-                          <p className="truncate text-data-primary underline-offset-2 hover:underline">
-                            {item.label}
-                          </p>
-                          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                            <Repeat className="size-3 shrink-0" aria-hidden />
-                            {recurrenceIntervalLabel(item.recurrence_interval)}
-                          </span>
-                        </button>
-                      ) : (
-                        <p className="max-w-[220px] truncate text-data-primary">
-                          {item.label}
-                        </p>
-                      )}
-                      {item.notes ? (
-                        <p className="mt-0.5 max-w-[220px] truncate text-data-secondary">
-                          {item.notes}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td
-                      className={cn(
-                        'hidden text-data-secondary md:table-cell',
-                        adminTableCell.body,
-                      )}
+                    </button>
+                  ) : (
+                    <p className="max-w-[220px] truncate text-data-primary">
+                      {item.label}
+                    </p>
+                  )}
+                  {item.notes ? (
+                    <p className="mt-0.5 max-w-[220px] truncate text-data-secondary">
+                      {item.notes}
+                    </p>
+                  ) : null}
+                </td>
+                <td
+                  className={cn(
+                    'hidden text-data-secondary md:table-cell',
+                    adminTableCell.body,
+                  )}
+                >
+                  {item.category ?? '—'}
+                </td>
+                <td className={adminTableCell.money}>
+                  <span
+                    className={adminTableMoneyClass(
+                      item.kind === 'income'
+                        ? 'text-emerald-700 dark:text-emerald-300'
+                        : 'text-red-600 dark:text-red-400',
+                    )}
+                  >
+                    {item.kind === 'income' ? '+' : '−'}
+                    {formatMoney(item.amount)}
+                  </span>
+                </td>
+                <td className={adminTableCell.action}>
+                  <div className="flex justify-end gap-0.5">
+                    {item.recurrence_series_id ? (
+                      <button
+                        type="button"
+                        className={adminTableIconButtonClass}
+                        aria-label="View recurring series"
+                        onClick={() => openSeries(item)}
+                      >
+                        <Repeat className="size-4" />
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className={adminTableIconButtonClass}
+                      aria-label="Edit"
+                      onClick={() => openEdit(item)}
                     >
-                      {item.category ?? '—'}
-                    </td>
-                    <td className={adminTableCell.money}>
-                      <span
-                        className={adminTableMoneyClass(
-                          item.kind === 'income'
-                            ? 'text-emerald-700 dark:text-emerald-300'
-                            : 'text-red-600 dark:text-red-400',
-                        )}
-                      >
-                        {item.kind === 'income' ? '+' : '−'}
-                        {formatMoney(item.amount)}
-                      </span>
-                    </td>
-                    <td className={adminTableCell.action}>
-                      <div className="flex justify-end gap-0.5">
-                        {item.recurrence_series_id ? (
-                          <button
-                            type="button"
-                            className={adminTableIconButtonClass}
-                            aria-label="View recurring series"
-                            onClick={() => openSeries(item)}
-                          >
-                            <Repeat className="size-4" />
-                          </button>
-                        ) : null}
-                        <button
-                          type="button"
-                          className={adminTableIconButtonClass}
-                          aria-label="Edit"
-                          onClick={() => openEdit(item)}
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          className={cn(
-                            adminTableIconButtonClass,
-                            'hover:bg-destructive/10 hover:text-destructive',
-                          )}
-                          aria-label="Delete"
-                          onClick={() => setDeleting(item)}
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        adminTableIconButtonClass,
+                        'hover:bg-destructive/10 hover:text-destructive',
+                      )}
+                      aria-label="Delete"
+                      onClick={() => setDeleting(item)}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </AdminDataTable>
 
@@ -389,6 +388,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
             </DialogTitle>
           </DialogHeader>
           <OperatingLineItemForm
+            key={editing?.id ?? `new-${createSession}`}
             initial={editing}
             onSubmit={handleSubmit}
             onCancel={closeModal}

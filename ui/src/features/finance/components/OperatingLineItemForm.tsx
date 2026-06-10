@@ -129,6 +129,14 @@ type Props = {
   isPending?: boolean;
 };
 
+function isCustomDueDate(
+  due: string | null | undefined,
+  occurredOn: string,
+): boolean {
+  const normalizedDue = due?.trim().slice(0, 10);
+  return Boolean(normalizedDue && normalizedDue !== occurredOn);
+}
+
 function defaultValues(
   initial: FinanceLineItem | null | undefined,
   globalDefaultMessageTemplate: string,
@@ -149,8 +157,7 @@ function defaultValues(
         : '',
     edit_scope: 'this',
     telegram_reminder_enabled: initial?.telegram_reminder_enabled ?? false,
-    telegram_due_date:
-      initial?.telegram_due_date ?? initial?.occurred_on ?? start,
+    telegram_due_date: initial?.telegram_due_date?.trim().slice(0, 10) || start,
     telegram_days_before: initial?.telegram_days_before ?? 3,
     telegram_reminder_interval: normalizeFinanceReminderInterval(
       initial?.telegram_reminder_interval,
@@ -190,8 +197,16 @@ export function OperatingLineItemForm({
     defaultValues: defaultValues(initial, globalDefaultMessageTemplate),
   });
 
+  const dueDateCustomRef = useRef(
+    isCustomDueDate(initial?.telegram_due_date, initial?.occurred_on ?? ''),
+  );
+
   useEffect(() => {
-    reset(defaultValues(initial, globalDefaultMessageTemplate));
+    const next = defaultValues(initial, globalDefaultMessageTemplate);
+    reset(next);
+    dueDateCustomRef.current = initial
+      ? isCustomDueDate(initial.telegram_due_date, next.occurred_on)
+      : false;
   }, [initial, globalDefaultMessageTemplate, reset]);
 
   const kind = watch('kind');
@@ -199,9 +214,7 @@ export function OperatingLineItemForm({
   const occurredOn = watch('occurred_on');
   const editScope = watch('edit_scope');
   const telegramReminderEnabled = watch('telegram_reminder_enabled');
-  const telegramDueDate = watch('telegram_due_date');
   const telegramReminderInterval = watch('telegram_reminder_interval');
-  const prevOccurredOnRef = useRef(occurredOn);
 
   useEffect(() => {
     if (!telegramReminderEnabled) return;
@@ -226,25 +239,9 @@ export function OperatingLineItemForm({
   }, [recurrenceInterval, occurredOn, isEdit, setValue]);
 
   useEffect(() => {
-    if (!telegramReminderEnabled || !occurredOn) return;
-    if (!telegramDueDate?.trim()) {
-      setValue('telegram_due_date', occurredOn);
-    }
-  }, [telegramReminderEnabled, occurredOn, telegramDueDate, setValue]);
-
-  useEffect(() => {
-    if (!telegramReminderEnabled || !occurredOn) {
-      prevOccurredOnRef.current = occurredOn;
-      return;
-    }
-    const prev = prevOccurredOnRef.current;
-    prevOccurredOnRef.current = occurredOn;
-    if (!prev || prev === occurredOn) return;
-    const due = telegramDueDate?.trim();
-    if (!due || due === prev) {
-      setValue('telegram_due_date', occurredOn);
-    }
-  }, [occurredOn, telegramReminderEnabled, telegramDueDate, setValue]);
+    if (!occurredOn || dueDateCustomRef.current) return;
+    setValue('telegram_due_date', occurredOn);
+  }, [occurredOn, setValue]);
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -315,7 +312,14 @@ export function OperatingLineItemForm({
           <Controller
             name="occurred_on"
             control={control}
-            render={({ field }) => <IsoDateInput {...field} />}
+            render={({ field }) => (
+              <IsoDateInput
+                value={field.value ?? ''}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+              />
+            )}
           />
         </Field>
       </div>
@@ -414,14 +418,23 @@ export function OperatingLineItemForm({
 
         {telegramReminderEnabled ? (
           <div className="space-y-4">
-            <Field label="Due date" error={errors.telegram_due_date?.message}>
+            <Field
+              label="Due date"
+              hint="Matches the transaction date unless you pick a different due date."
+              error={errors.telegram_due_date?.message}
+            >
               <Controller
                 name="telegram_due_date"
                 control={control}
                 render={({ field }) => (
                   <IsoDateInput
                     value={field.value ?? ''}
-                    onChange={field.onChange}
+                    onChange={(event) => {
+                      const nextDue = event.target.value;
+                      dueDateCustomRef.current =
+                        nextDue.trim().slice(0, 10) !== occurredOn;
+                      field.onChange(event);
+                    }}
                     onBlur={field.onBlur}
                     name={field.name}
                   />

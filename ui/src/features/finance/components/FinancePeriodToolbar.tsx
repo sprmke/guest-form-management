@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useIsBelowMd } from '@/hooks/useMediaQuery';
+import { useIsBelowMd, useIsBelowXl } from '@/hooks/useMediaQuery';
 import { BookingDateRangeFilter } from '@/features/admin/components/BookingDateRangeFilter';
 import type { DateNavigationState } from '@/lib/dateNavigation';
 import type { FinancePeriodBasis, FinanceQuery } from '@/features/finance/lib/types';
@@ -40,6 +40,7 @@ export function FinancePeriodToolbar({
   hideDateFilter = false,
 }: Props) {
   const isBelowMd = useIsBelowMd();
+  const isBelowXl = useIsBelowXl();
   const [basisOpen, setBasisOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [searchDraft, setSearchDraft] = useState(query.q);
@@ -86,12 +87,15 @@ export function FinancePeriodToolbar({
   const filterCluster = (
     <div
       className={cn(
-        'flex items-center gap-1.5',
-        isBelowMd ? 'w-full min-w-0' : 'shrink-0',
+        'flex shrink-0 items-center gap-1.5',
+        isBelowMd ? 'w-full min-w-0' : 'flex-wrap',
       )}
     >
       <div
-        className={cn('relative min-w-0', isBelowMd ? 'flex-1' : 'shrink-0')}
+        className={cn(
+          'relative min-w-0',
+          isBelowMd ? 'min-w-0 flex-1' : 'max-w-full shrink-0',
+        )}
         ref={basisRef}
       >
         <button
@@ -100,15 +104,15 @@ export function FinancePeriodToolbar({
           aria-expanded={basisOpen}
           aria-haspopup="listbox"
           className={cn(
-            'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
+            'inline-flex min-h-[44px] max-w-full items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
             'transition-all duration-100',
-            isBelowMd ? 'w-full justify-between' : 'shrink-0 whitespace-nowrap',
+            isBelowMd ? 'w-full justify-between' : 'justify-between sm:justify-start',
             basisOpen
               ? 'border-primary bg-primary/10 text-primary'
               : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60',
           )}
         >
-          <span>{basisLabel(query.basis)}</span>
+          <span className="truncate">{basisLabel(query.basis)}</span>
           <ChevronDown
             className={cn(
               'size-3.5 shrink-0 transition-transform duration-150',
@@ -239,13 +243,13 @@ export function FinancePeriodToolbar({
     <div
       className={cn(
         'flex w-full min-w-0 flex-col gap-2.5',
-        'lg:flex-row lg:items-center lg:gap-2',
-        align === 'end' && 'lg:justify-end',
-        align === 'start' && 'lg:justify-start',
+        'xl:flex-row xl:items-center xl:gap-2',
+        align === 'end' && 'xl:justify-end',
+        align === 'start' && 'xl:justify-start',
       )}
     >
       {showSearch && (
-        <div className="relative w-full min-w-0 lg:max-w-[24rem] lg:flex-1 xl:max-w-[28rem]">
+        <div className="relative w-full min-w-0 xl:max-w-[24rem] xl:flex-1 2xl:max-w-[28rem]">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             aria-hidden
@@ -279,16 +283,21 @@ export function FinancePeriodToolbar({
       <div
         className={cn(
           'flex w-full min-w-0 flex-col gap-2',
-          'md:flex-row md:items-center md:gap-2',
-          'lg:w-auto lg:shrink-0',
+          'sm:flex-row sm:flex-wrap sm:items-center sm:gap-2',
+          'xl:w-auto xl:shrink-0 xl:flex-nowrap',
         )}
       >
-        <div className={cn('min-w-0', isBelowMd ? 'w-full' : 'shrink-0')}>
+        <div
+          className={cn(
+            'min-w-0',
+            isBelowMd || isBelowXl ? 'w-full' : 'shrink-0',
+          )}
+        >
           <BookingDateRangeFilter
             {...dateNav}
             isActive={isDateActive}
             onClear={onClearDate}
-            fullWidth={isBelowMd}
+            fullWidth={isBelowMd || isBelowXl}
           />
         </div>
 

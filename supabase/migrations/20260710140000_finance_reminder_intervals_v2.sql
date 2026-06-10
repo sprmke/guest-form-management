@@ -1,14 +1,15 @@
 -- Finance reminder intervals v2: hourly cadences + daily noon + until_paid.
 
+-- Drop old CHECK before rewriting values (v1 allowed once/daily/weekly/until_paid only).
+ALTER TABLE public.finance_line_items
+  DROP CONSTRAINT IF EXISTS finance_line_items_telegram_reminder_interval_check;
+
 UPDATE public.finance_line_items
 SET telegram_reminder_interval = 'daily_noon'
 WHERE telegram_reminder_interval IN ('once', 'daily', 'weekly');
 
 ALTER TABLE public.finance_line_items
   ALTER COLUMN telegram_reminder_interval SET DEFAULT 'daily_noon';
-
-ALTER TABLE public.finance_line_items
-  DROP CONSTRAINT IF EXISTS finance_line_items_telegram_reminder_interval_check;
 
 ALTER TABLE public.finance_line_items
   ADD CONSTRAINT finance_line_items_telegram_reminder_interval_check

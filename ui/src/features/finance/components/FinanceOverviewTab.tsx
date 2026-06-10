@@ -133,13 +133,11 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
             label="Income"
             value={formatMoney(o.income)}
             icon={ArrowUpRight}
-            iconColor="text-emerald-600 dark:text-emerald-400"
           />
           <FinanceKpiCard
             label="Expenses"
             value={formatMoney(o.expenses)}
             icon={ArrowDownRight}
-            iconColor="text-red-600 dark:text-red-400"
           />
         </div>
       </section>
