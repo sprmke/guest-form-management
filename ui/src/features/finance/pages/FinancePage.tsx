@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, BedDouble, Building2, DollarSign } from 'lucide-react';
+import { BarChart3, BedDouble, Building2, DollarSign, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
@@ -9,6 +9,7 @@ import { FinanceExportMenu } from '@/features/finance/components/FinanceExportMe
 import { FinanceOverviewTab } from '@/features/finance/components/FinanceOverviewTab';
 import { FinanceStaysTab } from '@/features/finance/components/FinanceStaysTab';
 import { FinanceOperatingTab } from '@/features/finance/components/FinanceOperatingTab';
+import { FinanceSettingsTab } from '@/features/finance/components/FinanceSettingsTab';
 import { useFinanceSummary } from '@/features/finance/hooks/useFinanceSummary';
 import { useFinanceBookings } from '@/features/finance/hooks/useFinanceBookings';
 import { useFinanceLineItems } from '@/features/finance/hooks/useFinanceLineItems';
@@ -34,6 +35,7 @@ const TABS: {
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'stays', label: 'Stays', icon: BedDouble },
   { id: 'operating', label: 'Operating', icon: Building2 },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 export function FinancePage() {
@@ -169,8 +171,11 @@ export function FinancePage() {
                 searchPlaceholder={
                   query.tab === 'stays'
                     ? 'Search guest…'
-                    : 'Search transactions…'
+                    : query.tab === 'operating'
+                      ? 'Search transactions…'
+                      : undefined
                 }
+                hideDateFilter={query.tab === 'settings'}
                 dateNav={dateNav}
                 onClearDate={handleClearDate}
                 align="end"
@@ -204,6 +209,8 @@ export function FinancePage() {
             isLoading={lineItemsQuery.isLoading}
           />
         ) : null}
+
+        {query.tab === 'settings' ? <FinanceSettingsTab /> : null}
       </div>
     </AdminLayout>
   );

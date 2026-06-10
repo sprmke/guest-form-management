@@ -1,5 +1,4 @@
 import { useEffect, useMemo } from 'react';
-import dayjs from 'dayjs';
 import type { UseFormReturn } from 'react-hook-form';
 
 import {
@@ -21,11 +20,12 @@ import {
   dateToString,
   stringToDate,
   toGuestSubmissionDate,
+  DATE_PICKER_DISPLAY_FORMAT,
+  formatIsoDateForDisplay,
 } from '@/utils/dates';
 
 function formatGuestFormDisplayDate(ymd: string): string {
-  const d = dayjs(ymd, 'YYYY-MM-DD', true);
-  return d.isValid() ? d.format('MMM D, YYYY') : ymd;
+  return formatIsoDateForDisplay(ymd) || ymd;
 }
 
 type Props = {
@@ -147,7 +147,7 @@ export function GuestFormParkingDates({ form }: Props) {
                     }
                     minDate={stayBounds.minDate}
                     maxDate={stayBounds.maxDate}
-                    placeholder="Select parking check-in"
+                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
                     onSelect={(date) => {
                       if (!date) return;
                       const dateStr = dateToString(date);
@@ -198,7 +198,7 @@ export function GuestFormParkingDates({ form }: Props) {
                       }
                       return false;
                     }}
-                    placeholder="Select parking check-out"
+                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
                     onSelect={(date) => {
                       if (date) field.onChange(dateToString(date));
                     }}

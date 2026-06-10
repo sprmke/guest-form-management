@@ -51,6 +51,7 @@ import {
   dateToString,
   normalizeDateString,
   getManilaYmdToday,
+  DATE_PICKER_DISPLAY_FORMAT,
   type BookedDateRange,
 } from '@/utils/dates';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -64,6 +65,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DatePicker } from '@/components/ui/date-picker';
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import {
   formatBookingInfoForClipboard,
   parseBookingInfoFromClipboard,
@@ -1193,7 +1195,7 @@ export function GuestForm() {
                             )(date);
                           }}
                           minDate={new Date()}
-                          placeholder="Select check-in date"
+                          placeholder={DATE_PICKER_DISPLAY_FORMAT}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1286,7 +1288,7 @@ export function GuestForm() {
                                 )
                               : new Date()
                           }
-                          placeholder="Select check-out date"
+                          placeholder={DATE_PICKER_DISPLAY_FORMAT}
                         />
                       </FormControl>
                       <FormMessage />
@@ -1954,7 +1956,10 @@ export function GuestForm() {
                           )}
                         </FormLabel>
                         <FormControl>
-                          <Input type="date" {...field} />
+                          <IsoDateInput
+                            {...field}
+                            className="h-11 rounded-2xl border-border/50 bg-muted/40 focus-within:border-primary/40 focus-within:bg-background focus-within:ring-ring/30"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

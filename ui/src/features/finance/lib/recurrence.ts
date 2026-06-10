@@ -8,6 +8,46 @@ export type RecurrenceInterval =
 
 export type RecurrenceEditScope = 'this' | 'this_and_future' | 'all';
 
+export type FinanceReminderInterval =
+  | 'hourly'
+  | 'every_2_hours'
+  | 'every_4_hours'
+  | 'every_12_hours'
+  | 'daily_noon'
+  | 'until_paid';
+
+export const FINANCE_REMINDER_INTERVAL_OPTIONS: {
+  value: FinanceReminderInterval;
+  label: string;
+}[] = [
+  { value: 'hourly', label: 'Hourly' },
+  { value: 'every_2_hours', label: 'Every 2 hours' },
+  { value: 'every_4_hours', label: 'Every 4 hours' },
+  { value: 'every_12_hours', label: 'Every 12 hours' },
+  { value: 'daily_noon', label: 'Everyday at 12noon' },
+  { value: 'until_paid', label: 'Until mark as paid' },
+];
+
+/** Coerce API/legacy values to a supported reminder interval. */
+export function normalizeFinanceReminderInterval(
+  interval: string | null | undefined,
+): FinanceReminderInterval {
+  if (
+    interval === 'hourly' ||
+    interval === 'every_2_hours' ||
+    interval === 'every_4_hours' ||
+    interval === 'every_12_hours' ||
+    interval === 'daily_noon' ||
+    interval === 'until_paid'
+  ) {
+    return interval;
+  }
+  if (interval === 'once' || interval === 'daily' || interval === 'weekly') {
+    return 'daily_noon';
+  }
+  return 'daily_noon';
+}
+
 export const RECURRENCE_INTERVAL_OPTIONS: {
   value: RecurrenceInterval;
   label: string;
@@ -91,6 +131,60 @@ function addInterval(iso: string, interval: Exclude<RecurrenceInterval, 'none'>)
       break;
   }
   return formatIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function subtractInterval(
+  iso: string,
+  interval: Exclude<RecurrenceInterval, 'none'>,
+): string {
+  const { y, m, d } = parseIso(iso);
+  const date = new Date(y, m - 1, d);
+  switch (interval) {
+    case 'daily':
+      date.setDate(date.getDate() - 1);
+      break;
+    case 'weekly':
+      date.setDate(date.getDate() - 7);
+      break;
+    case 'monthly': {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() - 1);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
+    case 'quarterly': {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() - 3);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
+    case 'yearly':
+      date.setFullYear(date.getFullYear() - 1);
+      break;
+  }
+  return formatIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+/** Default target when extending a series earlier (12 steps back). */
+export function suggestExtendBefore(
+  seriesStart: string,
+  interval: Exclude<RecurrenceInterval, 'none'>,
+): string {
+  let cur = seriesStart;
+  for (let i = 0; i < 12; i += 1) cur = subtractInterval(cur, interval);
+  return cur;
+}
+
+/** Default target when extending a series later (12 steps forward). */
+export function suggestExtendAfter(
+  seriesEnd: string,
+  interval: Exclude<RecurrenceInterval, 'none'>,
+): string {
+  let cur = seriesEnd;
+  for (let i = 0; i < 12; i += 1) cur = addInterval(cur, interval);
+  return cur;
 }
 
 /** Suggested end date when creating a new recurring series. */

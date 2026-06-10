@@ -4,6 +4,7 @@ import type {
   FinanceExportType,
   FinanceLineItem,
   FinanceQuery,
+  FinanceReminderInterval,
   FinanceSummary,
   RecurrenceEditScope,
   RecurrenceInterval,
@@ -66,6 +67,47 @@ export async function fetchFinanceLineItems(query: FinanceQuery): Promise<Financ
   return json.data as FinanceLineItem[];
 }
 
+export async function fetchRecurringSeriesItems(
+  recurrenceSeriesId: string,
+): Promise<FinanceLineItem[]> {
+  const params = new URLSearchParams({ recurrence_series_id: recurrenceSeriesId });
+  const res = await adminFetch(`/finance-line-items?${params.toString()}`);
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? 'Failed to load recurring series');
+  }
+  return json.data as FinanceLineItem[];
+}
+
+export async function extendRecurringSeriesApi(input: {
+  recurrence_series_id: string;
+  direction: 'before' | 'after';
+  extend_until: string;
+}): Promise<{ rows: FinanceLineItem[]; created_count: number }> {
+  const res = await adminFetch('/finance-line-items', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'extend_series', ...input }),
+  });
+  const json = await res.json();
+  if (!res.ok || !json.success) {
+    throw new Error(json.error ?? 'Failed to extend recurring series');
+  }
+  return {
+    rows: json.data as FinanceLineItem[],
+    created_count: (json.created_count as number) ?? 0,
+  };
+}
+
+export type FinanceTelegramReminderPayload = {
+  telegram_reminder_enabled: boolean;
+  telegram_due_date?: string | null;
+  telegram_days_before?: number;
+  telegram_reminder_interval?: FinanceReminderInterval;
+  telegram_message_template?: string | null;
+  marked_paid?: boolean;
+};
+
 export async function createFinanceLineItemApi(input: {
   kind: 'expense' | 'income';
   label: string;
@@ -75,7 +117,7 @@ export async function createFinanceLineItemApi(input: {
   notes?: string | null;
   recurrence_interval?: RecurrenceInterval | null;
   recurrence_until?: string | null;
-}): Promise<{ row: FinanceLineItem; created_count: number }> {
+} & FinanceTelegramReminderPayload): Promise<{ row: FinanceLineItem; created_count: number }> {
   const res = await adminFetch('/finance-line-items', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -100,7 +142,7 @@ export async function updateFinanceLineItemApi(
     category: string | null;
     occurred_on: string;
     notes: string | null;
-  }>,
+  } & FinanceTelegramReminderPayload>,
   scope: RecurrenceEditScope = 'this',
 ): Promise<{ row: FinanceLineItem; updated_count: number }> {
   const res = await adminFetch('/finance-line-items', {

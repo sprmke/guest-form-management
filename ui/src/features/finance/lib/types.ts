@@ -1,13 +1,13 @@
 import type { BookingFinancials } from '@/features/admin/lib/bookingFinance';
 import type { BookingPricingSummarySource } from '@/features/admin/components/BookingPricingSummary';
 import type {
-  RecurrenceEditScope,
   RecurrenceInterval,
+  FinanceReminderInterval,
 } from '@/features/finance/lib/recurrence';
 
 export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
-export type FinanceTab = 'overview' | 'stays' | 'operating';
+export type FinanceTab = 'overview' | 'stays' | 'operating' | 'settings';
 
 export type FinanceStaysView = 'table' | 'card';
 
@@ -98,11 +98,18 @@ export type FinanceLineItem = {
   receipt_path: string | null;
   recurrence_series_id: string | null;
   recurrence_interval: Exclude<RecurrenceInterval, 'none'> | null;
+  telegram_reminder_enabled: boolean;
+  telegram_due_date: string | null;
+  telegram_days_before: number;
+  telegram_reminder_interval: FinanceReminderInterval;
+  telegram_message_template: string | null;
+  /** When set, Telegram reminders stop (especially for until_paid interval). */
+  paid_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type { RecurrenceEditScope, RecurrenceInterval };
+export type { RecurrenceEditScope, RecurrenceInterval, FinanceReminderInterval } from '@/features/finance/lib/recurrence';
 
 export type FinanceExportType = 'overview' | 'stays' | 'operating' | 'combined';
