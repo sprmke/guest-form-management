@@ -89,8 +89,11 @@ export function parseFinanceQueryFromParams(
     sortRaw === 'host_net:asc'
       ? sortRaw
       : DEFAULT_FINANCE_QUERY.sort;
-  const staysView =
-    params.get('view') === 'card' ? 'card' : DEFAULT_FINANCE_QUERY.staysView;
+  const viewRaw = params.get('view');
+  const staysView: FinanceQuery['staysView'] =
+    viewRaw === 'card' || viewRaw === 'calendar'
+      ? viewRaw
+      : DEFAULT_FINANCE_QUERY.staysView;
 
   return {
     tab,
@@ -126,8 +129,8 @@ export function writeFinanceQueryToParams(
     p.set('limit', String(query.limit));
   }
   if (query.sort !== DEFAULT_FINANCE_QUERY.sort) p.set('sort', query.sort);
-  if (query.tab === 'stays' && query.staysView === 'card') {
-    p.set('view', 'card');
+  if (query.tab === 'stays' && query.staysView !== 'table') {
+    p.set('view', query.staysView);
   }
   if (preset && preset !== 'this_month') p.set('preset', preset);
   return p;

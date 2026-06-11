@@ -1,7 +1,7 @@
 import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { AdminTableFlagsCell } from '@/features/admin/components/AdminDataTable';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
-import { financeDisplayNet } from '@/features/admin/lib/bookingFinance';
+import { financeDisplayNet, hostNetToneClass } from '@/features/admin/lib/bookingFinance';
 import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
 import {
   formatBookingDate,
@@ -137,14 +137,7 @@ function FinanceStayCard({
     }
   };
 
-  const netClass =
-    netDisplay == null
-      ? 'text-foreground'
-      : isRealized
-        ? netDisplay >= 0
-          ? 'text-emerald-700 dark:text-emerald-300'
-          : 'text-red-600 dark:text-red-400'
-        : 'text-amber-700 dark:text-amber-300';
+  const netClass = hostNetToneClass(netDisplay, isRealized);
 
   return (
     <div

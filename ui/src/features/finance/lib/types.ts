@@ -9,7 +9,7 @@ export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
 export type FinanceTab = 'overview' | 'stays' | 'transactions' | 'settings';
 
-export type FinanceStaysView = 'table' | 'card';
+export type FinanceStaysView = 'table' | 'card' | 'calendar';
 
 export type FinanceQuery = {
   tab: FinanceTab;

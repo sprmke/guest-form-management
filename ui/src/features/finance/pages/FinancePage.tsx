@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { endOfMonth, format, startOfMonth } from 'date-fns';
 import {
   BarChart3,
   BedDouble,
@@ -18,6 +19,7 @@ import { FinanceOperatingTab } from '@/features/finance/components/FinanceOperat
 import { FinanceSettingsTab } from '@/features/finance/components/FinanceSettingsTab';
 import { useFinanceSummary } from '@/features/finance/hooks/useFinanceSummary';
 import { useFinanceBookings } from '@/features/finance/hooks/useFinanceBookings';
+import { CALENDAR_OCCUPANCY_LIMIT } from '@/features/admin/components/calendar/OccupancyCalendarView';
 import { useFinanceLineItems } from '@/features/finance/hooks/useFinanceLineItems';
 import {
   parseFinanceQueryFromParams,
@@ -84,6 +86,15 @@ export function FinancePage() {
     setQuery({ ...query, page: 1, from: null, to: null });
   }, [query, setQuery]);
 
+  const staysListQuery = useMemo((): FinanceQuery => {
+    if (query.tab !== 'stays' || query.staysView !== 'calendar') return query;
+    return {
+      ...query,
+      limit: CALENDAR_OCCUPANCY_LIMIT,
+      page: 1,
+    };
+  }, [query]);
+
   // Table is desktop-only on Stays; switch away when the viewport narrows.
   useEffect(() => {
     if (!isMobileLayout) return;
@@ -103,8 +114,33 @@ export function FinancePage() {
     );
   }, [isMobileLayout, setSearchParams]);
 
+  // Calendar view loads the full month grid (higher row cap, page 1).
+  useEffect(() => {
+    if (query.tab !== 'stays' || query.staysView !== 'calendar') return;
+    const needsPatch =
+      query.limit !== CALENDAR_OCCUPANCY_LIMIT || query.page !== 1;
+    if (!needsPatch) return;
+    setQuery({
+      ...query,
+      limit: CALENDAR_OCCUPANCY_LIMIT,
+      page: 1,
+    });
+  }, [query, setQuery]);
+
+  const handleCalendarMonthChange = useCallback(
+    (month: Date) => {
+      setQuery({
+        ...query,
+        from: format(startOfMonth(month), 'yyyy-MM-dd'),
+        to: format(endOfMonth(month), 'yyyy-MM-dd'),
+        page: 1,
+      });
+    },
+    [query, setQuery],
+  );
+
   const summaryQuery = useFinanceSummary(query);
-  const bookingsQuery = useFinanceBookings(query);
+  const bookingsQuery = useFinanceBookings(staysListQuery);
   const lineItemsQuery = useFinanceLineItems(query);
 
   return (
@@ -206,6 +242,13 @@ export function FinancePage() {
             total={bookingsQuery.data?.total ?? 0}
             isLoading={bookingsQuery.isLoading}
             isFetching={bookingsQuery.isFetching}
+            error={
+              bookingsQuery.error
+                ? (bookingsQuery.error as Error).message
+                : null
+            }
+            calendarInitialMonth={dateNav.dateRange.from ?? undefined}
+            onCalendarMonthChange={handleCalendarMonthChange}
             onQueryChange={setQuery}
           />
         ) : null}
