@@ -13,19 +13,38 @@ export type FinanceReminderInterval =
   | 'every_2_hours'
   | 'every_4_hours'
   | 'every_12_hours'
-  | 'daily_noon'
-  | 'until_paid';
+  | 'daily_noon';
 
 export const FINANCE_REMINDER_INTERVAL_OPTIONS: {
   value: FinanceReminderInterval;
   label: string;
+  description: string;
 }[] = [
-  { value: 'hourly', label: 'Hourly' },
-  { value: 'every_2_hours', label: 'Every 2 hours' },
-  { value: 'every_4_hours', label: 'Every 4 hours' },
-  { value: 'every_12_hours', label: 'Every 12 hours' },
-  { value: 'daily_noon', label: 'Everyday at 12noon' },
-  { value: 'until_paid', label: 'Until mark as paid' },
+  {
+    value: 'hourly',
+    label: 'Every hour',
+    description: 'Up to one reminder per hour in the days-before window through the due date.',
+  },
+  {
+    value: 'every_2_hours',
+    label: 'Every 2 hours',
+    description: 'Up to one reminder every 2 hours in that window.',
+  },
+  {
+    value: 'every_4_hours',
+    label: 'Every 4 hours',
+    description: 'Up to one reminder every 4 hours in that window.',
+  },
+  {
+    value: 'every_12_hours',
+    label: 'Every 12 hours',
+    description: 'Up to one reminder every 12 hours in that window.',
+  },
+  {
+    value: 'daily_noon',
+    label: 'Daily at 12:00 PM',
+    description: 'One reminder each day at noon, Manila time.',
+  },
 ];
 
 /** Coerce API/legacy values to a supported reminder interval. */
@@ -37,12 +56,16 @@ export function normalizeFinanceReminderInterval(
     interval === 'every_2_hours' ||
     interval === 'every_4_hours' ||
     interval === 'every_12_hours' ||
-    interval === 'daily_noon' ||
-    interval === 'until_paid'
+    interval === 'daily_noon'
   ) {
     return interval;
   }
-  if (interval === 'once' || interval === 'daily' || interval === 'weekly') {
+  if (
+    interval === 'once' ||
+    interval === 'daily' ||
+    interval === 'weekly' ||
+    interval === 'until_paid'
+  ) {
     return 'daily_noon';
   }
   return 'daily_noon';

@@ -103,7 +103,7 @@ export type FinanceLineItem = {
   telegram_days_before: number;
   telegram_reminder_interval: FinanceReminderInterval;
   telegram_message_template: string | null;
-  /** When set, Telegram reminders stop (especially for until_paid interval). */
+  /** When set, Telegram reminders stop for every reminder interval. */
   paid_at: string | null;
   created_by: string | null;
   created_at: string;

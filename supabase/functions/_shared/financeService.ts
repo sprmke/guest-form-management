@@ -51,8 +51,7 @@ export type FinanceLineItemRow = {
     | 'every_2_hours'
     | 'every_4_hours'
     | 'every_12_hours'
-    | 'daily_noon'
-    | 'until_paid';
+    | 'daily_noon';
   telegram_message_template: string | null;
   paid_at: string | null;
   created_by: string | null;

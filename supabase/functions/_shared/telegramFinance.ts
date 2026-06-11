@@ -12,8 +12,7 @@ export type FinanceReminderInterval =
   | 'every_2_hours'
   | 'every_4_hours'
   | 'every_12_hours'
-  | 'daily_noon'
-  | 'until_paid';
+  | 'daily_noon';
 
 export type TelegramFinanceSettings = {
   id: number;
@@ -103,15 +102,21 @@ export function isFinanceReminderInterval(v: unknown): v is FinanceReminderInter
     v === 'every_2_hours' ||
     v === 'every_4_hours' ||
     v === 'every_12_hours' ||
-    v === 'daily_noon' ||
-    v === 'until_paid'
+    v === 'daily_noon'
   );
 }
 
-/** Map legacy DB values from before intervals v2. */
+/** Map legacy DB values from before intervals v2 (and removed until_paid). */
 export function normalizeFinanceReminderInterval(v: unknown): FinanceReminderInterval {
   if (isFinanceReminderInterval(v)) return v;
-  if (v === 'once' || v === 'daily' || v === 'weekly') return 'daily_noon';
+  if (
+    v === 'once' ||
+    v === 'daily' ||
+    v === 'weekly' ||
+    v === 'until_paid'
+  ) {
+    return 'daily_noon';
+  }
   return 'daily_noon';
 }
 
@@ -172,7 +177,6 @@ export function manilaDateTimeParts(now = new Date()): {
 function intervalMinGapMs(interval: FinanceReminderInterval): number | null {
   switch (interval) {
     case 'hourly':
-    case 'until_paid':
       return 60 * 60 * 1000;
     case 'every_2_hours':
       return 2 * 60 * 60 * 1000;
@@ -196,7 +200,6 @@ function isInReminderWindow(
   const due = effectiveDueDate(row);
   const windowStart = addDaysToIso(due, -daysBefore);
   if (today < windowStart) return false;
-  if (interval === 'until_paid') return true;
   if (today > due) return false;
   return true;
 }
@@ -370,7 +373,8 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
   const { data: items, error } = await supabase
     .from('finance_line_items')
     .select('*')
-    .eq('telegram_reminder_enabled', true);
+    .eq('telegram_reminder_enabled', true)
+    .is('paid_at', null);
   if (error) throw new Error(`finance reminders query failed: ${error.message}`);
 
   const rows = (items ?? []) as Record<string, unknown>[];

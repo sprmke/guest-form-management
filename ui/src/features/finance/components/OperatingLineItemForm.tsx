@@ -54,7 +54,6 @@ const schema = z
       'every_4_hours',
       'every_12_hours',
       'daily_noon',
-      'until_paid',
     ]),
     telegram_message_template: z.string().max(4000).optional(),
     marked_paid: z.boolean(),
@@ -459,13 +458,41 @@ export function OperatingLineItemForm({
               label="How often to remind"
               error={errors.telegram_reminder_interval?.message}
             >
-              <NativeSelect {...register('telegram_reminder_interval')}>
-                {FINANCE_REMINDER_INTERVAL_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </NativeSelect>
+              <div
+                className="space-y-2"
+                role="radiogroup"
+                aria-label="How often to remind"
+              >
+                {FINANCE_REMINDER_INTERVAL_OPTIONS.map((opt) => {
+                  const active = telegramReminderInterval === opt.value;
+                  return (
+                    <label
+                      key={opt.value}
+                      className={cn(
+                        'flex min-h-[44px] cursor-pointer items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors',
+                        active
+                          ? 'border-primary/40 bg-primary/5'
+                          : 'border-border bg-muted/30 hover:bg-muted/50',
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        className="mt-1 size-4 shrink-0 accent-primary"
+                        value={opt.value}
+                        {...register('telegram_reminder_interval')}
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-foreground">
+                          {opt.label}
+                        </span>
+                        <span className="mt-0.5 block text-caption text-muted-foreground">
+                          {opt.description}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             </Field>
 
             <Field
@@ -491,9 +518,6 @@ export function OperatingLineItemForm({
                 </span>
                 <span className="mt-0.5 block text-caption text-muted-foreground">
                   Stops reminders for this transaction.
-                  {telegramReminderInterval === 'until_paid'
-                    ? ' Keeps reminding after the due date until you check this.'
-                    : null}
                 </span>
               </span>
             </label>
