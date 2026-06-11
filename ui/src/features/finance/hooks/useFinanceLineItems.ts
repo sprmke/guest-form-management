@@ -31,7 +31,7 @@ export function useFinanceLineItems(query: FinanceQuery) {
   return useQuery({
     queryKey: [...FINANCE_LINE_ITEMS_KEY, query.from, query.to, query.q] as const,
     queryFn: () => fetchFinanceLineItems(query),
-    enabled: query.tab === 'operating' || query.tab === 'overview',
+    enabled: query.tab === 'transactions' || query.tab === 'overview',
   });
 }
 

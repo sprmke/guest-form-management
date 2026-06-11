@@ -180,7 +180,7 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
           isLoading,
           emptyLabel: hasSearch
             ? 'No transactions match your search'
-            : 'No operating transactions yet',
+            : 'No transactions yet',
         }}
         showPerPage={false}
         actionsSlot={
@@ -225,12 +225,12 @@ export function FinanceOperatingTab({ query, items, isLoading }: Props) {
                     <p className="font-bold text-section-title text-foreground">
                       {hasSearch
                         ? 'No transactions match your search'
-                        : 'No operating transactions yet'}
+                        : 'No transactions yet'}
                     </p>
                     <p className="mx-auto mt-1 max-w-[280px] text-caption">
                       {hasSearch
                         ? 'Try a different keyword or clear the search filter.'
-                        : 'Add rent, utilities, or other property costs to track operating profit alongside stay revenue.'}
+                        : 'Add rent, utilities, or other property costs to track profit alongside stay revenue.'}
                     </p>
                   </div>
                   {!hasSearch ? (

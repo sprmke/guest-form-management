@@ -409,15 +409,15 @@ Use **Finance** in the admin sidebar when you need totals across many stays or p
 
 | Tab | What it shows |
 | --- | --- |
-| **Overview** | KPI cards: grand net (completed stays + operating), guest collected, parking margin, outstanding balances, pipeline estimates |
+| **Overview** | KPI cards: grand net (completed stays + transactions), guest collected, parking margin, outstanding balances, pipeline estimates |
 | **Stays** | One row per booking with collected amount, parking margin, and net (realized when **Completed**, projected otherwise) |
-| **Operating** | Rent, utilities, supplies, marketing, etc. — add **expense** or **income** lines with a date and optional category |
+| **Transactions** | Rent, utilities, supplies, marketing, etc. — add **expense** or **income** lines with a date and optional category |
 
 **Period basis** (toolbar): filter by **check-in**, **check-out**, or **completed** date. Presets: This month, Last month, YTD, All time.
 
 **Per-booking SD lines** (damage, extra cleaning, etc.) stay on the booking detail **Pricing** card and **Pending SD Refund** workflow — Finance **Stays** reads those totals but does not replace that form.
 
-**Export** (top right): **Export report** opens a menu — full report (all sections), overview summary, stays ledger, or operating lines only.
+**Export** (top right): **Export report** opens a menu — full report (all sections), overview summary, stays ledger, or transactions only.
 
 ---
 

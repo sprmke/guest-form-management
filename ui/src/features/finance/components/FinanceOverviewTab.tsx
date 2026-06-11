@@ -112,10 +112,10 @@ export function FinanceOverviewTab({ summary, isLoading }: Props) {
       </section>
 
       <section>
-        <p className="section-eyebrow mb-3 px-0.5">Operating</p>
+        <p className="section-eyebrow mb-3 px-0.5">Transactions</p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           <FinanceKpiCard
-            label="Operating net"
+            label="Transactions net"
             value={formatMoney(o.net)}
             icon={CircleDollarSign}
             iconColor={

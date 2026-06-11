@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom';
 import {
   BarChart3,
   BedDouble,
-  Building2,
   DollarSign,
+  Receipt,
   Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ const TABS: {
 }[] = [
   { id: 'overview', label: 'Overview', icon: BarChart3 },
   { id: 'stays', label: 'Stays', icon: BedDouble },
-  { id: 'operating', label: 'Operating', icon: Building2 },
+  { id: 'transactions', label: 'Transactions', icon: Receipt },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -115,7 +115,7 @@ export function FinancePage() {
             id="finance-heading"
             variant="compact"
             title="Finance"
-            subtitle="Revenue, profit, and operating costs."
+            subtitle="Revenue, profit, and property transactions."
             icon={DollarSign}
             actions={
               <FinanceExportMenu
@@ -175,11 +175,11 @@ export function FinancePage() {
               <FinancePeriodToolbar
                 query={query}
                 onChange={setQuery}
-                showSearch={query.tab === 'stays' || query.tab === 'operating'}
+                showSearch={query.tab === 'stays' || query.tab === 'transactions'}
                 searchPlaceholder={
                   query.tab === 'stays'
                     ? 'Search guest…'
-                    : query.tab === 'operating'
+                    : query.tab === 'transactions'
                       ? 'Search transactions…'
                       : undefined
                 }
@@ -210,7 +210,7 @@ export function FinancePage() {
           />
         ) : null}
 
-        {query.tab === 'operating' ? (
+        {query.tab === 'transactions' ? (
           <FinanceOperatingTab
             query={query}
             items={lineItemsQuery.data ?? []}

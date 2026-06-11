@@ -94,7 +94,7 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
       q: params.q,
     });
     return {
-      filename: `finance-operating-${periodLabel}.csv`,
+      filename: `finance-transactions-${periodLabel}.csv`,
       body: operatingItemsToCsv(items),
     };
   }
@@ -153,7 +153,7 @@ export async function buildFinanceExportCsv(params: FinanceExportParams): Promis
     '# Stays',
     staysBody,
     '',
-    '# Operating',
+    '# Transactions',
     operatingBody,
   ].join('\r\n');
   return { filename: `finance-combined-${periodLabel}.csv`, body };

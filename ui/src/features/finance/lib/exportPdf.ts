@@ -31,7 +31,7 @@ const REPORT_TYPE_LABEL: Record<FinanceExportType, string> = {
   combined: 'Full finance report',
   overview: 'Overview summary',
   stays: 'Stays ledger',
-  operating: 'Operating lines',
+  operating: 'Transactions',
 };
 
 function paintPageBackground(doc: jsPDF): void {
@@ -258,12 +258,12 @@ function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload
     { label: 'Stays in period', value: String(s.count) },
     { label: 'Completed stays', value: String(s.completedCount) },
     {
-      label: 'Operating net',
+      label: 'Transactions net',
       value: pdfMoney(o.net),
       accent: o.net >= 0 ? 'positive' : 'negative',
     },
-    { label: 'Operating income', value: pdfMoney(o.income), accent: 'positive' },
-    { label: 'Operating expenses', value: pdfMoney(o.expenses), accent: 'negative' },
+    { label: 'Transactions income', value: pdfMoney(o.income), accent: 'positive' },
+    { label: 'Transactions expenses', value: pdfMoney(o.expenses), accent: 'negative' },
   ];
   if (s.projectedNetPipeline !== 0) {
     overviewKpis.push({
@@ -429,8 +429,8 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
   y = drawSectionEyebrow(
     doc,
     y,
-    'Operating',
-    `${operating.length} line${operating.length === 1 ? '' : 's'} in period`,
+    'Transactions',
+    `${operating.length} transaction${operating.length === 1 ? '' : 's'} in period`,
   );
 
   y = drawKpiGrid(
@@ -440,7 +440,7 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
       { label: 'Income', value: pdfMoney(incomeTotal), accent: 'positive' },
       { label: 'Expenses', value: pdfMoney(expenseTotal), accent: 'negative' },
       {
-        label: 'Operating net',
+        label: 'Transactions net',
         value: pdfMoney(operatingNet),
         accent: operatingNet >= 0 ? 'positive' : 'negative',
       },
@@ -466,7 +466,7 @@ function appendOperatingSection(doc: jsPDF, y: number, payload: FinancePdfPayloa
     body:
       opRows.length > 0
         ? opRows
-        : [['No operating lines in this period.', '', '', '', '']],
+        : [['No transactions in this period.', '', '', '', '']],
     foot:
       opRows.length > 0
         ? [
@@ -538,7 +538,7 @@ function appendReportDefinitions(doc: jsPDF, y: number): number {
     'Booking rate = down payment + guest balance (booking rate − down payment).',
     'Other fees = pet fee + parking margin + additional guest fee + (security deposit − SD refund), when applicable.',
     'Host net (completed) = booking rate + other fees. Matches the stay Breakdown net (Income, security deposit adjustments, Expenses including parking owner rate and SD refund).',
-    'Total net = sum of completed host net plus operating net for this period. Pipeline estimates exclude SD refund until the stay is completed.',
+    'Total net = sum of completed host net plus transactions net for this period. Pipeline estimates exclude SD refund until the stay is completed.',
   ];
 
   setPdfFont(doc, 'normal', PDF_TYPE.caption);
@@ -576,7 +576,7 @@ function addPageFooter(doc: jsPDF) {
 const PDF_FILENAME_PREFIX: Record<FinanceExportType, string> = {
   overview: 'kame-finance-overview',
   stays: 'kame-finance-stays',
-  operating: 'kame-finance-operating',
+  operating: 'kame-finance-transactions',
   combined: 'kame-finance-report',
 };
 

@@ -92,7 +92,7 @@ export function TelegramFinanceSettingsCard() {
         <AdminPageHeader
           id="finance-telegram-heading"
           title="Finance Telegram reminders"
-          subtitle="Payment-due alerts for operating expenses and income."
+          subtitle="Payment-due alerts for property expenses and income."
           icon={Bell}
         />
 

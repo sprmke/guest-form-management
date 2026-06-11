@@ -320,7 +320,7 @@
     @apply text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground;
   }
 
-  /** Admin list tables (Bookings, Finance Stays/Operating) — solid card surface in light + dark. */
+  /** Admin list tables (Bookings, Finance Stays/Transactions) — solid card surface in light + dark. */
   .admin-data-table thead tr,
   .admin-data-table tbody tr {
     @apply bg-card;

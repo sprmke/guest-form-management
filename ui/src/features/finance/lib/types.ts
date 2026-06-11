@@ -7,7 +7,7 @@ import type {
 
 export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
-export type FinanceTab = 'overview' | 'stays' | 'operating' | 'settings';
+export type FinanceTab = 'overview' | 'stays' | 'transactions' | 'settings';
 
 export type FinanceStaysView = 'table' | 'card';
 

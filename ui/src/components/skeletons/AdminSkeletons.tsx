@@ -643,7 +643,7 @@ export function FinanceStaysTableSkeleton() {
 
 export function FinanceOperatingTabSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading operating transactions">
+    <div className="space-y-4" aria-busy="true" aria-label="Loading transactions">
       <FinanceKpiGridSkeleton count={3} />
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />

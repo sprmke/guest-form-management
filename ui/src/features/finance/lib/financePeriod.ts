@@ -74,9 +74,11 @@ export function parseFinanceQueryFromParams(
 ): FinanceQuery {
   const tabRaw = params.get('tab');
   const tab: FinanceTab =
-    tabRaw === 'stays' || tabRaw === 'operating' || tabRaw === 'settings'
+    tabRaw === 'stays' || tabRaw === 'transactions' || tabRaw === 'settings'
       ? tabRaw
-      : 'overview';
+      : tabRaw === 'operating'
+        ? 'transactions'
+        : 'overview';
   const basisRaw = params.get('basis');
   const basis: FinancePeriodBasis =
     basisRaw === 'check_in' || basisRaw === 'check_out' ? basisRaw : 'completed';
