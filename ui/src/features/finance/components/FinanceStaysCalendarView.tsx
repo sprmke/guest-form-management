@@ -1,16 +1,21 @@
-import { financeDisplayNet, hostNetToneClass } from '@/features/admin/lib/bookingFinance';
-import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
-import { statusLabel } from '@/features/admin/lib/bookingStatus';
-import { formatMoney } from '@/features/admin/lib/formatters';
 import {
-  CalendarDayBookingCard,
-} from '@/features/admin/components/calendar/CalendarDayBookingCard';
+  financeDisplayNet,
+  hostNetToneClass,
+} from "@/features/admin/lib/bookingFinance";
+import { bookingListDisplayName } from "@/features/admin/lib/bookingListDisplay";
+import { statusLabel } from "@/features/admin/lib/bookingStatus";
+import {
+  formatMoney,
+  formatMoneyCompact,
+} from "@/features/admin/lib/formatters";
+import { CalendarDayBookingCard } from "@/features/admin/components/calendar/CalendarDayBookingCard";
 import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
-} from '@/features/admin/components/calendar/OccupancyCalendarView';
-import type { FinanceBookingLedgerRow } from '@/features/finance/lib/types';
-import { cn } from '@/lib/utils';
+} from "@/features/admin/components/calendar/OccupancyCalendarView";
+import { amountPerOccupiedNight } from "@/features/admin/components/calendar/calendarStayAmounts";
+import type { FinanceBookingLedgerRow } from "@/features/finance/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   rows: FinanceBookingLedgerRow[];
@@ -22,7 +27,7 @@ type Props = {
   onOpenRow: (row: FinanceBookingLedgerRow) => void;
 };
 
-function netPillLabelClass(fin: FinanceBookingLedgerRow['financials']): string {
+function netPillLabelClass(fin: FinanceBookingLedgerRow["financials"]): string {
   return hostNetToneClass(financeDisplayNet(fin), fin.isCompleted);
 }
 
@@ -47,17 +52,21 @@ export function FinanceStaysCalendarView({
         const fin = row.financials;
         const netDisplay = financeDisplayNet(fin);
         const guestName = bookingListDisplayName(row);
+        const perNight = amountPerOccupiedNight(
+          netDisplay,
+          row.number_of_nights,
+        );
         const label =
-          netDisplay == null
-            ? '—'
-            : `${formatMoney(netDisplay)}${!fin.isCompleted ? ' est' : ''}`;
+          perNight == null
+            ? "—"
+            : `${formatMoneyCompact(perNight)}${!fin.isCompleted ? " est" : ""}`;
 
         return (
           <CalendarOccupancyPill
             status={row.status}
             label={label}
-            title={`${guestName} · ${formatMoney(netDisplay)} host net · ${statusLabel(row.status)}`}
-            labelClassName={cn('tabular-nums', netPillLabelClass(fin))}
+            title={`${guestName} · ${formatMoney(netDisplay)} total host net · ${statusLabel(row.status)}`}
+            labelClassName={cn("tabular-nums", netPillLabelClass(fin))}
           />
         );
       }}
@@ -68,7 +77,7 @@ export function FinanceStaysCalendarView({
           <CalendarDayBookingCard
             row={row}
             amount={{
-              mode: 'host_net',
+              mode: "host_net",
               amount: netDisplay,
               isRealized: fin.isCompleted,
             }}

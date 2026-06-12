@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -10,14 +10,14 @@ import {
   Repeat,
   Tag,
   Trash2,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { IsoDateInput } from '@/components/ui/iso-date-input';
+} from "@/components/ui/dialog";
+import { IsoDateInput } from "@/components/ui/iso-date-input";
 import {
   AdminDataTable,
   AdminTableHeadRow,
@@ -26,31 +26,31 @@ import {
   adminTableIconButtonClass,
   adminTableMoneyClass,
   adminTableRowClass,
-} from '@/features/admin/components/AdminDataTable';
-import { formatIsoDate, formatMoney } from '@/features/admin/lib/formatters';
-import { formatIsoDateForDisplay } from '@/utils/dates';
+} from "@/features/admin/components/AdminDataTable";
+import { formatIsoDate, formatMoney } from "@/features/admin/lib/formatters";
+import { formatIsoDateForDisplay } from "@/utils/dates";
 import {
   OperatingLineItemForm,
   telegramReminderPayloadFromForm,
   type OperatingLineItemFormValues,
-} from '@/features/finance/components/OperatingLineItemForm';
-import { RecurringDeleteDialog } from '@/features/finance/components/RecurringDeleteDialog';
-import { useTelegramFinanceSettings } from '@/features/admin/hooks/useTelegramFinanceSettings';
-import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/finance/lib/financeReminderTemplate';
+} from "@/features/finance/components/OperatingLineItemForm";
+import { RecurringDeleteDialog } from "@/features/finance/components/RecurringDeleteDialog";
+import { useTelegramFinanceSettings } from "@/features/admin/hooks/useTelegramFinanceSettings";
+import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from "@/features/finance/lib/financeReminderTemplate";
 import {
   useRecurringSeries,
   useRecurringSeriesMutations,
-} from '@/features/finance/hooks/useFinanceLineItems';
+} from "@/features/finance/hooks/useFinanceLineItems";
 import {
   recurrenceIntervalLabel,
   suggestExtendAfter,
   suggestExtendBefore,
-} from '@/features/finance/lib/recurrence';
+} from "@/features/finance/lib/recurrence";
 import type {
   FinanceLineItem,
   FinanceQuery,
-} from '@/features/finance/lib/types';
-import { cn } from '@/lib/utils';
+} from "@/features/finance/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   anchor: FinanceLineItem | null;
@@ -72,10 +72,11 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
   );
   const { data: financeSettings } = useTelegramFinanceSettings();
   const globalDefaultMessageTemplate =
-    financeSettings?.defaultReminderTemplate ?? FINANCE_DEFAULT_REMINDER_TEMPLATE;
+    financeSettings?.defaultReminderTemplate ??
+    FINANCE_DEFAULT_REMINDER_TEMPLATE;
 
-  const [extendBeforeUntil, setExtendBeforeUntil] = useState('');
-  const [extendAfterUntil, setExtendAfterUntil] = useState('');
+  const [extendBeforeUntil, setExtendBeforeUntil] = useState("");
+  const [extendAfterUntil, setExtendAfterUntil] = useState("");
   const [editing, setEditing] = useState<FinanceLineItem | null>(null);
   const [deleting, setDeleting] = useState<FinanceLineItem | null>(null);
 
@@ -117,7 +118,10 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
           category: values.category.trim(),
           occurred_on: values.occurred_on,
           notes: values.notes?.trim() || null,
-          ...telegramReminderPayloadFromForm(values, globalDefaultMessageTemplate),
+          ...telegramReminderPayloadFromForm(
+            values,
+            globalDefaultMessageTemplate,
+          ),
         },
         scope: values.edit_scope,
       },
@@ -142,7 +146,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
           className="flex max-h-[min(90dvh,44rem)] w-full max-w-[min(calc(100vw-1.5rem),36rem)] flex-col gap-0 overflow-hidden p-0 pb-0 pt-0 sm:max-w-[min(90vw,42rem)] sm:p-0 md:max-w-[min(90vw,48rem)] lg:max-h-[min(90dvh,52rem)] lg:max-w-[min(calc(100vw-3rem),56rem)])]"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
-            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+            if (target?.closest("[data-radix-popper-content-wrapper]")) {
               e.preventDefault();
               return;
             }
@@ -196,7 +200,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                       if (!seriesId || extendBeforeUntil >= seriesStart) return;
                       extend.mutate({
                         recurrence_series_id: seriesId,
-                        direction: 'before',
+                        direction: "before",
                         extend_until: extendBeforeUntil,
                       });
                     }}
@@ -213,7 +217,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                       if (!seriesId || extendAfterUntil <= seriesEnd) return;
                       extend.mutate({
                         recurrence_series_id: seriesId,
-                        direction: 'after',
+                        direction: "after",
                         extend_until: extendAfterUntil,
                       });
                     }}
@@ -269,7 +273,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                     >
                       <td
                         className={cn(
-                          'whitespace-nowrap',
+                          "whitespace-nowrap",
                           adminTableCell.status,
                         )}
                       >
@@ -285,22 +289,22 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                       <td className={adminTableCell.money}>
                         <span
                           className={adminTableMoneyClass(
-                            item.kind === 'income'
-                              ? 'text-emerald-700 dark:text-emerald-300'
-                              : 'text-red-600 dark:text-red-400',
+                            item.kind === "income"
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-red-600 dark:text-red-400",
                           )}
                         >
-                          {item.kind === 'income' ? '+' : '−'}
+                          {item.kind === "income" ? "+" : "−"}
                           {formatMoney(item.amount)}
                         </span>
                       </td>
                       <td
                         className={cn(
-                          'hidden max-w-[140px] truncate text-data-secondary sm:table-cell lg:max-w-[280px]',
+                          "hidden max-w-[140px] truncate text-data-secondary sm:table-cell lg:max-w-[280px]",
                           adminTableCell.body,
                         )}
                       >
-                        {item.notes ?? '—'}
+                        {item.notes ?? "—"}
                       </td>
                       <td className={adminTableCell.action}>
                         <div className="flex justify-end gap-0.5">
@@ -316,7 +320,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                             type="button"
                             className={cn(
                               adminTableIconButtonClass,
-                              'hover:bg-destructive/10 hover:text-destructive',
+                              "hover:bg-destructive/10 hover:text-destructive",
                             )}
                             aria-label={`Delete ${formatIsoDate(item.occurred_on)}`}
                             onClick={() => setDeleting(item)}
@@ -344,7 +348,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
           className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
-            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+            if (target?.closest("[data-radix-popper-content-wrapper]")) {
               e.preventDefault();
               return;
             }
@@ -356,6 +360,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
           </DialogHeader>
           {editing ? (
             <OperatingLineItemForm
+              key={`${editing.id}:${editing.telegram_reminder_interval}`}
               initial={editing}
               onSubmit={handleEditSubmit}
               onCancel={() => setEditing(null)}
@@ -391,7 +396,7 @@ function SeriesSummaryGrid({
   seriesEnd,
 }: {
   category: string | null;
-  kind: 'expense' | 'income';
+  kind: "expense" | "income";
   defaultAmount: number;
   totalAmount: number;
   amountsVary: boolean;
@@ -399,25 +404,25 @@ function SeriesSummaryGrid({
   seriesStart: string;
   seriesEnd: string;
 }) {
-  const isIncome = kind === 'income';
+  const isIncome = kind === "income";
   const moneyClass = isIncome
-    ? 'text-emerald-700 dark:text-emerald-300'
-    : 'text-red-600 dark:text-red-400';
+    ? "text-emerald-700 dark:text-emerald-300"
+    : "text-red-600 dark:text-red-400";
 
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <SummaryStat icon={Tag} label="Category" value={category ?? '—'} />
+        <SummaryStat icon={Tag} label="Category" value={category ?? "—"} />
         <SummaryStat
           icon={isIncome ? ArrowUpRight : ArrowDownRight}
           label="Type"
           value={
             <span
               className={cn(
-                'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide",
                 isIncome
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-red-500/10 text-red-600 dark:text-red-400',
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                  : "bg-red-500/10 text-red-600 dark:text-red-400",
               )}
             >
               {kind}
@@ -425,10 +430,10 @@ function SeriesSummaryGrid({
           }
         />
         <SummaryStat
-          label={amountsVary ? 'Typical amount' : 'Amount'}
+          label={amountsVary ? "Typical amount" : "Amount"}
           value={
-            <span className={cn('tabular-nums', moneyClass)}>
-              {isIncome ? '+' : '−'}
+            <span className={cn("tabular-nums", moneyClass)}>
+              {isIncome ? "+" : "−"}
               {formatMoney(defaultAmount)}
             </span>
           }
@@ -454,15 +459,15 @@ function SeriesSummaryGrid({
         </div>
         <div className="shrink-0 sm:text-right sm:pl-4">
           <p className="text-overline">
-            {amountsVary ? 'Series total' : 'Total value'}
+            {amountsVary ? "Series total" : "Total value"}
           </p>
           <p
             className={cn(
-              'mt-0.5 text-sm font-bold tabular-nums sm:text-base',
+              "mt-0.5 text-sm font-bold tabular-nums sm:text-base",
               moneyClass,
             )}
           >
-            {isIncome ? '+' : '−'}
+            {isIncome ? "+" : "−"}
             {formatMoney(totalAmount)}
           </p>
         </div>
