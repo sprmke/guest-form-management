@@ -1,16 +1,13 @@
 /**
- * Admin dashboard aggregates — pipeline counts, attention items, trends.
+ * Admin dashboard aggregates — pipeline counts, attention items, period KPIs.
  * Keep response shape in sync with `ui/src/features/dashboard/lib/types.ts`.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { computeBookingFinancials } from './bookingFinance.ts';
-import {
-  checkInDateToIso,
-  manilaTodayIso,
-} from './bookingsListSort.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { computeBookingFinancials } from "./bookingFinance.ts";
+import { checkInDateToIso, manilaTodayIso } from "./bookingsListSort.ts";
 
-export type DashboardAttentionSeverity = 'critical' | 'warning' | 'info';
+export type DashboardAttentionSeverity = "critical" | "warning" | "info";
 
 export type DashboardAttentionItem = {
   id: string;
@@ -25,25 +22,10 @@ export type DashboardPipelineSlice = {
   count: number;
 };
 
-export type DashboardTrendPoint = {
-  month: string;
-  label: string;
-  net: number;
-  stays: number;
-};
-
-export type DashboardCheckInPoint = {
-  month: string;
-  label: string;
-  checkIns: number;
-  nights: number;
-};
-
 export type DashboardTrendWindow = {
   from: string;
   to: string;
   label: string;
-  granularity: 'day' | 'week' | 'month';
 };
 
 export type DashboardUpcomingStay = {
@@ -63,8 +45,6 @@ export type DashboardStats = {
   manilaDate: string;
   attention: DashboardAttentionItem[];
   pipeline: DashboardPipelineSlice[];
-  revenueTrend: DashboardTrendPoint[];
-  checkInTrend: DashboardCheckInPoint[];
   trendWindow: DashboardTrendWindow;
   upcoming: DashboardUpcomingStay[];
   finance: {
@@ -80,42 +60,46 @@ export type DashboardStats = {
     checkInsToday: number;
     checkOutsToday: number;
   };
+  kpis: {
+    netProfit: { value: number; changePercent: number };
+    totalBookings: { value: number; changePercent: number };
+    occupancyRate: { value: number; changePoints: number };
+    avgNightlyRate: { value: number; changePercent: number };
+    totalGuests: { value: number; changePercent: number };
+    nightsBooked: { value: number; periodDays: number };
+  };
 };
 
 export type DashboardStatsParams = {
-  /** Inclusive chart range (YYYY-MM-DD, Asia/Manila calendar days). */
+  /** Inclusive period range (YYYY-MM-DD, Asia/Manila calendar days). */
   from?: string | null;
   to?: string | null;
 };
 
-const CANCELLED = new Set(['CANCELLED', 'canceled']);
+const CANCELLED = new Set(["CANCELLED", "canceled"]);
 
 const PIPELINE_STATUSES = [
-  'PENDING_REVIEW',
-  'PENDING_DOCUMENTS',
-  'PENDING_GAF',
-  'PENDING_PARKING_REQUEST',
-  'PENDING_PET_REQUEST',
-  'READY_FOR_CHECKIN',
-  'READY_FOR_CHECKOUT',
-  'PENDING_SD_REFUND',
+  "PENDING_REVIEW",
+  "PENDING_DOCUMENTS",
+  "PENDING_GAF",
+  "PENDING_PARKING_REQUEST",
+  "PENDING_PET_REQUEST",
+  "READY_FOR_CHECKIN",
+  "READY_FOR_CHECKOUT",
+  "PENDING_SD_REFUND",
 ] as const;
 
 const DOCUMENTS_STATUSES = new Set([
-  'PENDING_DOCUMENTS',
-  'PENDING_GAF',
-  'PENDING_PARKING_REQUEST',
-  'PENDING_PET_REQUEST',
+  "PENDING_DOCUMENTS",
+  "PENDING_GAF",
+  "PENDING_PARKING_REQUEST",
+  "PENDING_PET_REQUEST",
 ]);
-
-type TrendGranularity = 'day' | 'week' | 'month';
-
-type TrendBucket = { key: string; label: string };
 
 function getSupabase() {
   return createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 }
 
@@ -129,57 +113,118 @@ function addDaysIso(iso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function monthKeyFromIso(iso: string): string {
-  return iso.slice(0, 7);
-}
-
 function daysInclusive(from: string, to: string): number {
   const a = new Date(`${from}T12:00:00`);
   const b = new Date(`${to}T12:00:00`);
   return Math.round((b.getTime() - a.getTime()) / 86_400_000) + 1;
 }
 
-function startOfWeekIso(iso: string): string {
-  const d = new Date(`${iso}T12:00:00`);
-  d.setDate(d.getDate() - d.getDay());
-  return d.toISOString().slice(0, 10);
+function previousPeriodRange(
+  from: string,
+  to: string,
+): { from: string; to: string } {
+  const length = daysInclusive(from, to);
+  const prevTo = addDaysIso(from, -1);
+  const prevFrom = addDaysIso(prevTo, -(length - 1));
+  return { from: prevFrom, to: prevTo };
 }
 
-function pickGranularity(from: string, to: string): TrendGranularity {
-  const days = daysInclusive(from, to);
-  if (days <= 31) return 'day';
-  if (days <= 120) return 'week';
-  return 'month';
+function calculatePercentageChange(current: number, previous: number): number {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
 }
 
-function bucketKeyForDate(iso: string, granularity: TrendGranularity): string {
-  if (granularity === 'day') return iso;
-  if (granularity === 'week') return startOfWeekIso(iso);
-  return monthKeyFromIso(iso);
+function occupiedNightsOverlap(
+  checkInIso: string,
+  checkOutIso: string,
+  from: string,
+  to: string,
+): number {
+  if (!checkInIso || !checkOutIso) return 0;
+  const rangeStart = checkInIso > from ? checkInIso : from;
+  const rangeEnd = checkOutIso < to ? checkOutIso : to;
+  if (rangeStart >= rangeEnd) return 0;
+  const a = new Date(`${rangeStart}T12:00:00`);
+  const b = new Date(`${rangeEnd}T12:00:00`);
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
 }
 
-function bucketLabel(key: string, granularity: TrendGranularity): string {
-  if (granularity === 'month') return monthLabelFromKey(key);
-  const d = new Date(`${key}T12:00:00`);
-  if (granularity === 'day') {
-    return new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: 'numeric',
-      timeZone: 'Asia/Manila',
-    }).format(d);
+type PeriodKpiSnapshot = {
+  netProfit: number;
+  occupiedNights: number;
+  totalGuests: number;
+  totalBookings: number;
+  periodDays: number;
+  /** Completed-stay revenue and nights with host net &gt; 0 (avg nightly rate). */
+  ratedRevenue: number;
+  ratedNights: number;
+};
+
+function computePeriodKpiSnapshot(
+  rows: Record<string, unknown>[],
+  from: string,
+  to: string,
+): PeriodKpiSnapshot {
+  let netProfit = 0;
+  let occupiedNights = 0;
+  let totalGuests = 0;
+  let totalBookings = 0;
+  let ratedRevenue = 0;
+  let ratedNights = 0;
+  const periodDays = daysInclusive(from, to);
+
+  for (const row of rows) {
+    const status = String(row.status ?? "");
+    if (CANCELLED.has(status)) continue;
+
+    const checkInIso = checkInDateToIso(String(row.check_in_date ?? ""));
+    const checkOutIso = checkInDateToIso(String(row.check_out_date ?? ""));
+    if (!checkInIso) continue;
+
+    const checkInInRange = checkInIso >= from && checkInIso <= to;
+    if (checkInInRange) {
+      totalBookings += 1;
+      totalGuests +=
+        Number(row.number_of_adults ?? 0) +
+        (Number(row.number_of_children ?? 0) || 0);
+    }
+
+    if (checkOutIso && checkInIso <= to && checkOutIso >= from) {
+      occupiedNights += occupiedNightsOverlap(
+        checkInIso,
+        checkOutIso,
+        from,
+        to,
+      );
+    }
+
+    if (status === "COMPLETED" && checkInInRange) {
+      const fin = computeBookingFinancials(row);
+      netProfit = roundMoney(netProfit + fin.hostNet);
+      const nights = Number(row.number_of_nights ?? 0) || 0;
+      if (fin.hostNet > 0 && nights > 0) {
+        ratedRevenue = roundMoney(ratedRevenue + fin.hostNet);
+        ratedNights += nights;
+      }
+    }
   }
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'Asia/Manila',
-  }).format(d);
+
+  return {
+    netProfit,
+    occupiedNights,
+    totalGuests,
+    totalBookings,
+    periodDays,
+    ratedRevenue,
+    ratedNights,
+  };
 }
 
 function defaultTrendRange(today: string): { from: string; to: string } {
-  const [y, m] = today.split('-').map(Number);
-  const from = `${y}-${String(m).padStart(2, '0')}-01`;
+  const [y, m] = today.split("-").map(Number);
+  const from = `${y}-${String(m).padStart(2, "0")}-01`;
   const lastDay = new Date(y, m, 0).getDate();
-  const to = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  const to = `${y}-${String(m).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
   return { from, to };
 }
 
@@ -187,53 +232,25 @@ function trendRangeLabel(from: string, to: string): string {
   const start = new Date(`${from}T12:00:00`);
   const end = new Date(`${to}T12:00:00`);
   const fmt = (d: Date, withYear: boolean) =>
-    new Intl.DateTimeFormat('en-US', {
-      month: 'short',
-      day: withYear ? 'numeric' : undefined,
-      year: withYear ? 'numeric' : undefined,
-      timeZone: 'Asia/Manila',
+    new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: withYear ? "numeric" : undefined,
+      year: withYear ? "numeric" : undefined,
+      timeZone: "Asia/Manila",
     }).format(d);
   if (from === to) return fmt(end, true);
   const sameYear = start.getFullYear() === end.getFullYear();
   return `${fmt(start, !sameYear)} – ${fmt(end, true)}`;
 }
 
-function enumerateTrendBuckets(
-  from: string,
-  to: string,
-  granularity: TrendGranularity,
-): TrendBucket[] {
-  const buckets: TrendBucket[] = [];
-  const seen = new Set<string>();
-  let cursor = from;
-  while (cursor <= to) {
-    const key = bucketKeyForDate(cursor, granularity);
-    if (!seen.has(key)) {
-      seen.add(key);
-      buckets.push({ key, label: bucketLabel(key, granularity) });
-    }
-    cursor = addDaysIso(cursor, 1);
-  }
-  return buckets;
-}
-
-function monthLabelFromKey(key: string): string {
-  const [y, m] = key.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    year: '2-digit',
-    timeZone: 'Asia/Manila',
-  }).format(new Date(y, m - 1, 1));
-}
-
 function guestDisplayName(row: Record<string, unknown>): string {
-  const fb = String(row.guest_facebook_name ?? '').trim();
-  const primary = String(row.primary_guest_name ?? '').trim();
-  return fb || primary || 'Guest';
+  const fb = String(row.guest_facebook_name ?? "").trim();
+  const primary = String(row.primary_guest_name ?? "").trim();
+  return fb || primary || "Guest";
 }
 
 function flagTrue(v: unknown): boolean {
-  return v === true || v === 'true';
+  return v === true || v === "true";
 }
 
 function bookingsLink(params: Record<string, string>): string {
@@ -246,20 +263,20 @@ export async function computeDashboardStats(
 ): Promise<DashboardStats> {
   const today = manilaTodayIso();
   const fallback = defaultTrendRange(today);
-  const trendFrom = params.from && /^\d{4}-\d{2}-\d{2}$/.test(params.from)
-    ? params.from
-    : fallback.from;
-  const trendTo = params.to && /^\d{4}-\d{2}-\d{2}$/.test(params.to)
-    ? params.to
-    : fallback.to;
+  const trendFrom =
+    params.from && /^\d{4}-\d{2}-\d{2}$/.test(params.from)
+      ? params.from
+      : fallback.from;
+  const trendTo =
+    params.to && /^\d{4}-\d{2}-\d{2}$/.test(params.to)
+      ? params.to
+      : fallback.to;
   const from = trendFrom <= trendTo ? trendFrom : trendTo;
   const to = trendFrom <= trendTo ? trendTo : trendFrom;
-  const granularity = pickGranularity(from, to);
-  const trendBuckets = enumerateTrendBuckets(from, to, granularity);
   const trendLabel = trendRangeLabel(from, to);
 
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('guest_submissions').select('*');
+  const { data, error } = await supabase.from("guest_submissions").select("*");
   if (error) {
     throw new Error(`dashboard bookings query failed: ${error.message}`);
   }
@@ -284,21 +301,14 @@ export async function computeDashboardStats(
 
   const todayInRange = today >= from && today <= to;
 
-  const revenueByBucket = new Map<string, { net: number; stays: number }>();
-  const checkInsByBucket = new Map<string, { checkIns: number; nights: number }>();
-  for (const b of trendBuckets) {
-    revenueByBucket.set(b.key, { net: 0, stays: 0 });
-    checkInsByBucket.set(b.key, { checkIns: 0, nights: 0 });
-  }
-
   const periodStays: DashboardUpcomingStay[] = [];
 
   for (const row of rows) {
-    const status = String(row.status ?? '');
+    const status = String(row.status ?? "");
     if (CANCELLED.has(status)) continue;
 
-    const checkInIso = checkInDateToIso(String(row.check_in_date ?? ''));
-    const checkOutIso = checkInDateToIso(String(row.check_out_date ?? ''));
+    const checkInIso = checkInDateToIso(String(row.check_in_date ?? ""));
+    const checkOutIso = checkInDateToIso(String(row.check_out_date ?? ""));
     if (!checkInIso) continue;
 
     const checkInInRange = checkInIso >= from && checkInIso <= to;
@@ -313,14 +323,15 @@ export async function computeDashboardStats(
         checkOutIso,
         status,
         nights: Number(row.number_of_nights ?? 0) || 0,
-        pax: Number(row.number_of_adults ?? 0) +
+        pax:
+          Number(row.number_of_adults ?? 0) +
           (Number(row.number_of_children ?? 0) || 0),
         needParking: flagTrue(row.need_parking),
         hasPets: flagTrue(row.has_pets),
         guestRequestsSurpriseDecor: flagTrue(row.guest_requests_surprise_decor),
       });
 
-      if (status !== 'COMPLETED') {
+      if (status !== "COMPLETED") {
         activeBookings += 1;
         if (pipelineCounts.has(status)) {
           pipelineCounts.set(status, (pipelineCounts.get(status) ?? 0) + 1);
@@ -330,14 +341,14 @@ export async function computeDashboardStats(
         }
       }
 
-      if (status === 'PENDING_REVIEW') pendingReview += 1;
+      if (status === "PENDING_REVIEW") pendingReview += 1;
       if (DOCUMENTS_STATUSES.has(status)) pendingDocuments += 1;
-      if (status === 'PENDING_SD_REFUND') pendingSdRefund += 1;
+      if (status === "PENDING_SD_REFUND") pendingSdRefund += 1;
 
       if (
         fin.guestUnpaid != null &&
         fin.guestUnpaid > 0 &&
-        status !== 'COMPLETED'
+        status !== "COMPLETED"
       ) {
         unpaidBalanceCount += 1;
         outstandingBalance += fin.guestUnpaid;
@@ -347,27 +358,9 @@ export async function computeDashboardStats(
     if (todayInRange && checkInIso === today) checkInsToday += 1;
     if (todayInRange && checkOutIso === today) checkOutsToday += 1;
 
-    // Check-in volume within the selected range.
-    if (checkInInRange) {
-      const ciKey = bucketKeyForDate(checkInIso, granularity);
-      if (checkInsByBucket.has(ciKey)) {
-        const bucket = checkInsByBucket.get(ciKey)!;
-        bucket.checkIns += 1;
-        bucket.nights += Number(row.number_of_nights ?? 0) || 0;
-      }
-    }
-
-    // Completed revenue bucketed by check-in date — aligns with bookings list,
-    // total bookings KPI, and check-in volume when filtering by period.
-    if (status === 'COMPLETED' && checkInIso >= from && checkInIso <= to) {
+    if (status === "COMPLETED" && checkInInRange) {
       periodNet = roundMoney(periodNet + fin.hostNet);
       periodCompletedStays += 1;
-      const revenueKey = bucketKeyForDate(checkInIso, granularity);
-      if (revenueByBucket.has(revenueKey)) {
-        const bucket = revenueByBucket.get(revenueKey)!;
-        bucket.net = roundMoney(bucket.net + fin.hostNet);
-        bucket.stays += 1;
-      }
     }
   }
 
@@ -380,100 +373,106 @@ export async function computeDashboardStats(
 
   if (pendingReview > 0) {
     attention.push({
-      id: 'pending-review',
-      label: 'Pending review',
+      id: "pending-review",
+      label: "Pending review",
       count: pendingReview,
-      href: bookingsLink({ status: 'PENDING_REVIEW', ...periodLink }),
-      severity: 'critical',
+      href: bookingsLink({ status: "PENDING_REVIEW", ...periodLink }),
+      severity: "critical",
     });
   }
   if (pendingDocuments > 0) {
     attention.push({
-      id: 'pending-documents',
-      label: 'Awaiting documents',
+      id: "pending-documents",
+      label: "Awaiting documents",
       count: pendingDocuments,
       href: bookingsLink({
-        status: 'PENDING_DOCUMENTS,PENDING_GAF,PENDING_PARKING_REQUEST,PENDING_PET_REQUEST',
+        status:
+          "PENDING_DOCUMENTS,PENDING_GAF,PENDING_PARKING_REQUEST,PENDING_PET_REQUEST",
         ...periodLink,
       }),
-      severity: 'warning',
+      severity: "warning",
     });
   }
   if (checkInsToday > 0) {
     attention.push({
-      id: 'check-ins-today',
-      label: 'Check-ins today',
+      id: "check-ins-today",
+      label: "Check-ins today",
       count: checkInsToday,
       href: bookingsLink({ from: today, to: today }),
-      severity: 'critical',
+      severity: "critical",
     });
   }
   if (checkOutsToday > 0) {
     attention.push({
-      id: 'check-outs-today',
-      label: 'Check-outs today',
+      id: "check-outs-today",
+      label: "Check-outs today",
       count: checkOutsToday,
       href: bookingsLink({ from: today, to: today }),
-      severity: 'warning',
+      severity: "warning",
     });
   }
   if (pendingSdRefund > 0) {
     attention.push({
-      id: 'pending-sd-refund',
-      label: 'SD refunds pending',
+      id: "pending-sd-refund",
+      label: "SD refunds pending",
       count: pendingSdRefund,
-      href: bookingsLink({ status: 'PENDING_SD_REFUND', ...periodLink }),
-      severity: 'warning',
+      href: bookingsLink({ status: "PENDING_SD_REFUND", ...periodLink }),
+      severity: "warning",
     });
   }
   if (unpaidBalanceCount > 0) {
     attention.push({
-      id: 'unpaid-balance',
-      label: 'Unpaid guest balance',
+      id: "unpaid-balance",
+      label: "Unpaid guest balance",
       count: unpaidBalanceCount,
       href: `/finance?tab=stays&from=${from}&to=${to}`,
-      severity: 'info',
+      severity: "info",
     });
   }
 
-  const pipeline: DashboardPipelineSlice[] = PIPELINE_STATUSES.map((status) => ({
-    status,
-    count: pipelineCounts.get(status) ?? 0,
-  }));
-
-  const revenueTrend: DashboardTrendPoint[] = trendBuckets.map((b) => {
-    const bucket = revenueByBucket.get(b.key)!;
-    return {
-      month: b.key,
-      label: b.label,
-      net: bucket.net,
-      stays: bucket.stays,
-    };
-  });
-
-  const checkInTrend: DashboardCheckInPoint[] = trendBuckets.map((b) => {
-    const bucket = checkInsByBucket.get(b.key)!;
-    return {
-      month: b.key,
-      label: b.label,
-      checkIns: bucket.checkIns,
-      nights: bucket.nights,
-    };
-  });
+  const pipeline: DashboardPipelineSlice[] = PIPELINE_STATUSES.map(
+    (status) => ({
+      status,
+      count: pipelineCounts.get(status) ?? 0,
+    }),
+  );
 
   const periodDays = daysInclusive(from, to);
+  const prevRange = previousPeriodRange(from, to);
+  const currentKpis = computePeriodKpiSnapshot(rows, from, to);
+  const previousKpis = computePeriodKpiSnapshot(
+    rows,
+    prevRange.from,
+    prevRange.to,
+  );
+
+  const occupancyRate =
+    currentKpis.periodDays > 0
+      ? Math.round((currentKpis.occupiedNights / currentKpis.periodDays) * 100)
+      : 0;
+  const prevOccupancyRate =
+    previousKpis.periodDays > 0
+      ? Math.round(
+          (previousKpis.occupiedNights / previousKpis.periodDays) * 100,
+        )
+      : 0;
+  const avgNightlyRate =
+    currentKpis.ratedNights > 0
+      ? Math.round(currentKpis.ratedRevenue / currentKpis.ratedNights)
+      : 0;
+  const prevAvgNightlyRate =
+    previousKpis.ratedNights > 0
+      ? Math.round(previousKpis.ratedRevenue / previousKpis.ratedNights)
+      : 0;
 
   return {
     manilaDate: today,
     attention,
     pipeline,
-    revenueTrend,
-    checkInTrend,
     trendWindow: {
       from,
       to,
       label: trendLabel,
-      granularity,
     },
     upcoming: periodStays,
     finance: {
@@ -488,6 +487,44 @@ export async function computeDashboardStats(
       periodDays,
       checkInsToday,
       checkOutsToday,
+    },
+    kpis: {
+      netProfit: {
+        value: currentKpis.netProfit,
+        changePercent: calculatePercentageChange(
+          currentKpis.netProfit,
+          previousKpis.netProfit,
+        ),
+      },
+      totalBookings: {
+        value: currentKpis.totalBookings,
+        changePercent: calculatePercentageChange(
+          currentKpis.totalBookings,
+          previousKpis.totalBookings,
+        ),
+      },
+      occupancyRate: {
+        value: occupancyRate,
+        changePoints: occupancyRate - prevOccupancyRate,
+      },
+      avgNightlyRate: {
+        value: avgNightlyRate,
+        changePercent: calculatePercentageChange(
+          avgNightlyRate,
+          prevAvgNightlyRate,
+        ),
+      },
+      totalGuests: {
+        value: currentKpis.totalGuests,
+        changePercent: calculatePercentageChange(
+          currentKpis.totalGuests,
+          previousKpis.totalGuests,
+        ),
+      },
+      nightsBooked: {
+        value: currentKpis.occupiedNights,
+        periodDays: currentKpis.periodDays,
+      },
     },
   };
 }

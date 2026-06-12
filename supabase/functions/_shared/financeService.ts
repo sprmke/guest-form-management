@@ -2,14 +2,17 @@
  * Finance aggregations and finance_line_items CRUD.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { computeBookingFinancials, financeDisplayNet } from './bookingFinance.ts';
-import { checkInDateToIso } from './bookingsListSort.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import {
+  computeBookingFinancials,
+  financeDisplayNet,
+} from "./bookingFinance.ts";
+import { checkInDateToIso } from "./bookingsListSort.ts";
 import {
   isCancelledBooking,
   passesFinancePeriodFilter,
   type FinancePeriodBasis,
-} from './financePeriodFilter.ts';
+} from "./financePeriodFilter.ts";
 import {
   addDaysToIso,
   addRecurrenceInterval,
@@ -21,16 +24,16 @@ import {
   isRecurrenceInterval,
   type RecurrenceEditScope,
   type RecurrenceInterval,
-} from './financeRecurrence.ts';
+} from "./financeRecurrence.ts";
 import {
   type FinanceTelegramReminderInput,
   normalizeFinanceReminderInterval,
   reminderFieldsForInsert,
   reminderFieldsForRecurringRow,
   reminderFieldsForUpdate,
-} from './telegramFinance.ts';
+} from "./telegramFinance.ts";
 
-export type FinanceLineItemKind = 'expense' | 'income';
+export type FinanceLineItemKind = "expense" | "income";
 
 export type FinanceLineItemRow = {
   id: string;
@@ -47,11 +50,11 @@ export type FinanceLineItemRow = {
   telegram_due_date: string | null;
   telegram_days_before: number;
   telegram_reminder_interval:
-    | 'hourly'
-    | 'every_2_hours'
-    | 'every_4_hours'
-    | 'every_12_hours'
-    | 'daily_noon';
+    | "hourly"
+    | "every_2_hours"
+    | "every_4_hours"
+    | "every_12_hours"
+    | "daily_noon";
   telegram_message_template: string | null;
   paid_at: string | null;
   created_by: string | null;
@@ -59,7 +62,9 @@ export type FinanceLineItemRow = {
   updated_at: string;
 };
 
-function mapFinanceLineItemRow(row: Record<string, unknown>): FinanceLineItemRow {
+function mapFinanceLineItemRow(
+  row: Record<string, unknown>,
+): FinanceLineItemRow {
   const interval = row.recurrence_interval;
   return {
     id: String(row.id),
@@ -129,14 +134,16 @@ function roundMoney(n: number): number {
 
 function getSupabase() {
   return createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 }
 
-async function fetchAllBookingsForFinance(): Promise<Record<string, unknown>[]> {
+async function fetchAllBookingsForFinance(): Promise<
+  Record<string, unknown>[]
+> {
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('guest_submissions').select('*');
+  const { data, error } = await supabase.from("guest_submissions").select("*");
   if (error) throw new Error(`finance bookings query failed: ${error.message}`);
   return (data ?? []) as Record<string, unknown>[];
 }
@@ -152,10 +159,10 @@ function filterBookings(
     q?: string;
   },
 ): Record<string, unknown>[] {
-  const needle = params.q?.trim().toLowerCase() ?? '';
+  const needle = params.q?.trim().toLowerCase() ?? "";
   return rows.filter((row) => {
     if (!params.includeCancelled && isCancelledBooking(row)) return false;
-    if (params.completedOnly && row.status !== 'COMPLETED') return false;
+    if (params.completedOnly && row.status !== "COMPLETED") return false;
     if (!passesFinancePeriodFilter(row, params.from, params.to, params.basis)) {
       return false;
     }
@@ -165,15 +172,17 @@ function filterBookings(
         row.primary_guest_name,
         row.guest_email,
       ]
-        .map((v) => String(v ?? '').toLowerCase())
-        .join(' ');
+        .map((v) => String(v ?? "").toLowerCase())
+        .join(" ");
       if (!hay.includes(needle)) return false;
     }
     return true;
   });
 }
 
-export function summarizeStays(rows: Record<string, unknown>[]): FinanceStaysSummary {
+export function summarizeStays(
+  rows: Record<string, unknown>[],
+): FinanceStaysSummary {
   let bookingRate = 0;
   let otherFees = 0;
   let parkingMargin = 0;
@@ -217,12 +226,12 @@ function filterOperatingLineItems(
   items: FinanceLineItemRow[],
   q?: string,
 ): FinanceLineItemRow[] {
-  const needle = q?.trim().toLowerCase() ?? '';
+  const needle = q?.trim().toLowerCase() ?? "";
   if (!needle) return items;
   return items.filter((item) => {
     const hay = [item.label, item.category, item.notes, item.kind]
-      .map((v) => String(v ?? '').toLowerCase())
-      .join(' ');
+      .map((v) => String(v ?? "").toLowerCase())
+      .join(" ");
     return hay.includes(needle);
   });
 }
@@ -231,19 +240,47 @@ export async function listOperatingLineItems(params: {
   from: string | null;
   to: string | null;
   q?: string;
+  /** Also return rows whose telegram_due_date falls in range (merged, deduped). */
+  includeDueInRange?: boolean;
 }): Promise<FinanceLineItemRow[]> {
   const supabase = getSupabase();
-  let query = supabase.from('finance_line_items').select('*').order('occurred_on', {
-    ascending: false,
-  });
-  if (params.from) query = query.gte('occurred_on', params.from);
-  if (params.to) query = query.lte('occurred_on', params.to);
+  let query = supabase
+    .from("finance_line_items")
+    .select("*")
+    .order("occurred_on", {
+      ascending: false,
+    });
+  if (params.from) query = query.gte("occurred_on", params.from);
+  if (params.to) query = query.lte("occurred_on", params.to);
   const { data, error } = await query;
-  if (error) throw new Error(`finance_line_items query failed: ${error.message}`);
-  const rows = (data ?? []).map((row) =>
-    mapFinanceLineItemRow(row as Record<string, unknown>)
+  if (error)
+    throw new Error(`finance_line_items query failed: ${error.message}`);
+  const byOccurred = (data ?? []).map((row) =>
+    mapFinanceLineItemRow(row as Record<string, unknown>),
   );
-  return filterOperatingLineItems(rows, params.q);
+
+  if (!params.includeDueInRange || !params.from || !params.to) {
+    return filterOperatingLineItems(byOccurred, params.q);
+  }
+
+  const { data: dueData, error: dueError } = await supabase
+    .from("finance_line_items")
+    .select("*")
+    .gte("telegram_due_date", params.from)
+    .lte("telegram_due_date", params.to)
+    .order("telegram_due_date", { ascending: true });
+  if (dueError) {
+    throw new Error(`finance_line_items due query failed: ${dueError.message}`);
+  }
+
+  const merged = new Map<string, FinanceLineItemRow>();
+  for (const row of byOccurred) merged.set(row.id, row);
+  for (const raw of dueData ?? []) {
+    const row = mapFinanceLineItemRow(raw as Record<string, unknown>);
+    merged.set(row.id, row);
+  }
+
+  return filterOperatingLineItems([...merged.values()], params.q);
 }
 
 export async function listRecurringSeriesItems(
@@ -251,32 +288,32 @@ export async function listRecurringSeriesItems(
 ): Promise<FinanceLineItemRow[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
-    .from('finance_line_items')
-    .select('*')
-    .eq('recurrence_series_id', seriesId)
-    .order('occurred_on', { ascending: true });
+    .from("finance_line_items")
+    .select("*")
+    .eq("recurrence_series_id", seriesId)
+    .order("occurred_on", { ascending: true });
   if (error) {
     throw new Error(`finance_line_items series query failed: ${error.message}`);
   }
   return (data ?? []).map((row) =>
-    mapFinanceLineItemRow(row as Record<string, unknown>)
+    mapFinanceLineItemRow(row as Record<string, unknown>),
   );
 }
 
 export async function extendRecurringSeries(
   seriesId: string,
-  direction: 'before' | 'after',
+  direction: "before" | "after",
   extendUntil: string,
   createdBy: string,
 ): Promise<{ rows: FinanceLineItemRow[]; created_count: number }> {
   const supabase = getSupabase();
   const existing = await listRecurringSeriesItems(seriesId);
-  if (existing.length === 0) throw new Error('recurrence_series_not_found');
+  if (existing.length === 0) throw new Error("recurrence_series_not_found");
 
   const template = existing[0];
   const interval = template.recurrence_interval;
   if (!interval || !isRecurrenceInterval(interval)) {
-    throw new Error('recurrence_series_not_recurring');
+    throw new Error("recurrence_series_not_recurring");
   }
 
   const existingDates = new Set(existing.map((r) => r.occurred_on));
@@ -285,12 +322,14 @@ export async function extendRecurringSeries(
   const until = extendUntil.slice(0, 10);
 
   let candidateDates: string[] = [];
-  if (direction === 'after') {
-    if (until <= maxDate) throw new Error('extend_until_must_be_after_series_end');
+  if (direction === "after") {
+    if (until <= maxDate)
+      throw new Error("extend_until_must_be_after_series_end");
     const firstNew = addRecurrenceInterval(maxDate, interval);
     candidateDates = generateRecurrenceDates(firstNew, interval, until);
   } else {
-    if (until >= minDate) throw new Error('extend_until_must_be_before_series_start');
+    if (until >= minDate)
+      throw new Error("extend_until_must_be_before_series_start");
     candidateDates = generateRecurrenceDatesBackward(minDate, interval, until);
   }
 
@@ -316,25 +355,31 @@ export async function extendRecurringSeries(
   }));
 
   const { data, error } = await supabase
-    .from('finance_line_items')
+    .from("finance_line_items")
     .insert(rows)
-    .select('*');
+    .select("*");
   if (error) {
-    throw new Error(`extend recurring finance_line_items failed: ${error.message}`);
+    throw new Error(
+      `extend recurring finance_line_items failed: ${error.message}`,
+    );
   }
 
-  const inserted = ((data ?? []) as Record<string, unknown>[]).map(mapFinanceLineItemRow);
+  const inserted = ((data ?? []) as Record<string, unknown>[]).map(
+    mapFinanceLineItemRow,
+  );
   const merged = [...existing, ...inserted].sort((a, b) =>
-    a.occurred_on.localeCompare(b.occurred_on)
+    a.occurred_on.localeCompare(b.occurred_on),
   );
   return { rows: merged, created_count: inserted.length };
 }
 
-export function summarizeOperating(items: FinanceLineItemRow[]): FinanceOperatingSummary {
+export function summarizeOperating(
+  items: FinanceLineItemRow[],
+): FinanceOperatingSummary {
   let income = 0;
   let expenses = 0;
   for (const item of items) {
-    if (item.kind === 'income') income += item.amount;
+    if (item.kind === "income") income += item.amount;
     else expenses += item.amount;
   }
   return {
@@ -416,6 +461,7 @@ export type FinanceBookingRow = {
   number_of_nights: number;
   status: string;
   pricing: FinanceBookingPricingSnapshot;
+  status_updated_at: string | null;
   financials: ReturnType<typeof computeBookingFinancials>;
 };
 
@@ -460,20 +506,24 @@ export async function listFinanceBookings(params: {
   q?: string;
   page: number;
   limit: number;
-  sort: 'check_in_date:asc' | 'check_in_date:desc' | 'host_net:desc' | 'host_net:asc';
+  sort:
+    | "check_in_date:asc"
+    | "check_in_date:desc"
+    | "host_net:desc"
+    | "host_net:asc";
 }): Promise<{ rows: FinanceBookingRow[]; total: number }> {
   const all = await fetchAllBookingsForFinance();
   let filtered = filterBookings(all, params);
 
   filtered.sort((a, b) => {
-    if (params.sort === 'host_net:desc' || params.sort === 'host_net:asc') {
+    if (params.sort === "host_net:desc" || params.sort === "host_net:asc") {
       const na = financeDisplayNet(computeBookingFinancials(a)) ?? -Infinity;
       const nb = financeDisplayNet(computeBookingFinancials(b)) ?? -Infinity;
-      return params.sort === 'host_net:desc' ? nb - na : na - nb;
+      return params.sort === "host_net:desc" ? nb - na : na - nb;
     }
-    const ia = checkInDateToIso(String(a.check_in_date ?? ''));
-    const ib = checkInDateToIso(String(b.check_in_date ?? ''));
-    return params.sort === 'check_in_date:desc'
+    const ia = checkInDateToIso(String(a.check_in_date ?? ""));
+    const ib = checkInDateToIso(String(b.check_in_date ?? ""));
+    return params.sort === "check_in_date:desc"
       ? ib.localeCompare(ia)
       : ia.localeCompare(ib);
   });
@@ -484,20 +534,22 @@ export async function listFinanceBookings(params: {
 
   const rows: FinanceBookingRow[] = pageRows.map((row) => ({
     id: String(row.id),
-    guest_facebook_name: String(row.guest_facebook_name ?? ''),
-    primary_guest_name: String(row.primary_guest_name ?? ''),
-    guest_email: String(row.guest_email ?? ''),
+    guest_facebook_name: String(row.guest_facebook_name ?? ""),
+    primary_guest_name: String(row.primary_guest_name ?? ""),
+    guest_email: String(row.guest_email ?? ""),
     valid_id_url:
-      typeof row.valid_id_url === 'string' && row.valid_id_url.trim()
+      typeof row.valid_id_url === "string" && row.valid_id_url.trim()
         ? row.valid_id_url
         : null,
     need_parking: row.need_parking === true,
     has_pets: row.has_pets === true,
     guest_requests_surprise_decor: row.guest_requests_surprise_decor,
-    check_in_date: String(row.check_in_date ?? ''),
-    check_out_date: String(row.check_out_date ?? ''),
+    check_in_date: String(row.check_in_date ?? ""),
+    check_out_date: String(row.check_out_date ?? ""),
     number_of_nights: Math.max(1, Number(row.number_of_nights) || 1),
-    status: String(row.status ?? ''),
+    status: String(row.status ?? ""),
+    status_updated_at:
+      typeof row.status_updated_at === "string" ? row.status_updated_at : null,
     pricing: pricingSnapshotFromRow(row),
     financials: computeBookingFinancials(row),
   }));
@@ -537,7 +589,7 @@ export async function createFinanceLineItem(
   const interval = input.recurrence_interval;
   if (!interval || !isRecurrenceInterval(interval)) {
     const { data, error } = await supabase
-      .from('finance_line_items')
+      .from("finance_line_items")
       .insert({
         ...base,
         occurred_on: input.occurred_on,
@@ -545,9 +597,10 @@ export async function createFinanceLineItem(
         recurrence_interval: null,
         ...reminderFieldsForInsert(input.telegramReminder, input.occurred_on),
       })
-      .select('*')
+      .select("*")
       .single();
-    if (error) throw new Error(`create finance_line_item failed: ${error.message}`);
+    if (error)
+      throw new Error(`create finance_line_item failed: ${error.message}`);
     const row = mapFinanceLineItemRow(data as Record<string, unknown>);
     return { row, created_count: 1 };
   }
@@ -558,7 +611,7 @@ export async function createFinanceLineItem(
       : defaultRecurrenceUntilForInterval(input.occurred_on, interval);
   const dates = generateRecurrenceDates(input.occurred_on, interval, until);
   if (dates.length === 0) {
-    throw new Error('recurrence_generated_no_dates');
+    throw new Error("recurrence_generated_no_dates");
   }
 
   const seriesId = crypto.randomUUID();
@@ -571,14 +624,18 @@ export async function createFinanceLineItem(
   }));
 
   const { data, error } = await supabase
-    .from('finance_line_items')
+    .from("finance_line_items")
     .insert(rows)
-    .select('*');
-  if (error) throw new Error(`create recurring finance_line_items failed: ${error.message}`);
+    .select("*");
+  if (error)
+    throw new Error(
+      `create recurring finance_line_items failed: ${error.message}`,
+    );
   const inserted = ((data ?? []) as Record<string, unknown>[]).sort((a, b) =>
-    String(a.occurred_on).localeCompare(String(b.occurred_on))
+    String(a.occurred_on).localeCompare(String(b.occurred_on)),
   );
-  if (inserted.length === 0) throw new Error('create recurring finance_line_items empty');
+  if (inserted.length === 0)
+    throw new Error("create recurring finance_line_items empty");
   return {
     row: mapFinanceLineItemRow(inserted[0]),
     created_count: inserted.length,
@@ -597,42 +654,48 @@ export async function updateFinanceLineItem(
     receipt_path: string | null;
     telegramReminder?: FinanceTelegramReminderInput;
   }>,
-  scope: RecurrenceEditScope = 'this',
+  scope: RecurrenceEditScope = "this",
 ): Promise<{ row: FinanceLineItemRow; updated_count: number }> {
   const supabase = getSupabase();
   const { data: existing, error: fetchErr } = await supabase
-    .from('finance_line_items')
-    .select('*')
-    .eq('id', id)
+    .from("finance_line_items")
+    .select("*")
+    .eq("id", id)
     .maybeSingle();
-  if (fetchErr) throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
-  if (!existing) throw new Error('finance_line_item_not_found');
+  if (fetchErr)
+    throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
+  if (!existing) throw new Error("finance_line_item_not_found");
 
   const row = mapFinanceLineItemRow(existing as Record<string, unknown>);
   const effectiveScope =
-    row.recurrence_series_id && isRecurrenceEditScope(scope) ? scope : 'this';
+    row.recurrence_series_id && isRecurrenceEditScope(scope) ? scope : "this";
 
-  const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  const update: Record<string, unknown> = {
+    updated_at: new Date().toISOString(),
+  };
   if (patch.kind) update.kind = patch.kind;
   if (patch.label != null) update.label = patch.label.slice(0, 200);
   if (patch.amount != null) update.amount = patch.amount;
   if (patch.category !== undefined) {
     update.category = patch.category?.slice(0, 80) ?? null;
   }
-  if (patch.notes !== undefined) update.notes = patch.notes?.slice(0, 2000) ?? null;
-  if (patch.receipt_path !== undefined) update.receipt_path = patch.receipt_path;
+  if (patch.notes !== undefined)
+    update.notes = patch.notes?.slice(0, 2000) ?? null;
+  if (patch.receipt_path !== undefined)
+    update.receipt_path = patch.receipt_path;
   const reminderUpdate = reminderFieldsForUpdate(patch.telegramReminder);
   if (reminderUpdate) Object.assign(update, reminderUpdate);
 
-  if (effectiveScope === 'this') {
+  if (effectiveScope === "this") {
     if (patch.occurred_on) update.occurred_on = patch.occurred_on;
     const { data, error } = await supabase
-      .from('finance_line_items')
+      .from("finance_line_items")
       .update(update)
-      .eq('id', id)
-      .select('*')
+      .eq("id", id)
+      .select("*")
       .single();
-    if (error) throw new Error(`update finance_line_item failed: ${error.message}`);
+    if (error)
+      throw new Error(`update finance_line_item failed: ${error.message}`);
     return {
       row: mapFinanceLineItemRow(data as Record<string, unknown>),
       updated_count: 1,
@@ -656,15 +719,18 @@ export async function updateFinanceLineItem(
   }
 
   let q = supabase
-    .from('finance_line_items')
+    .from("finance_line_items")
     .update(update)
-    .eq('recurrence_series_id', row.recurrence_series_id);
-  if (effectiveScope === 'this_and_future') {
-    q = q.gte('occurred_on', row.occurred_on);
+    .eq("recurrence_series_id", row.recurrence_series_id);
+  if (effectiveScope === "this_and_future") {
+    q = q.gte("occurred_on", row.occurred_on);
   }
 
-  const { data, error } = await q.select('*');
-  if (error) throw new Error(`update finance_line_items series failed: ${error.message}`);
+  const { data, error } = await q.select("*");
+  if (error)
+    throw new Error(
+      `update finance_line_items series failed: ${error.message}`,
+    );
   const updated = (data ?? []) as Record<string, unknown>[];
   const anchor =
     updated.find((r) => String(r.id) === id) ?? updated[0] ?? existing;
@@ -686,45 +752,51 @@ async function reshiftRecurringSeriesDates(params: {
   const { supabase, id, row, patch, update, effectiveScope, interval } = params;
   const seriesId = row.recurrence_series_id;
   if (!seriesId || !patch.occurred_on) {
-    throw new Error('invalid_recurring_date_shift');
+    throw new Error("invalid_recurring_date_shift");
   }
 
   let seriesQuery = supabase
-    .from('finance_line_items')
-    .select('*')
-    .eq('recurrence_series_id', seriesId)
-    .order('occurred_on', { ascending: true });
-  if (effectiveScope === 'this_and_future') {
-    seriesQuery = seriesQuery.gte('occurred_on', row.occurred_on);
+    .from("finance_line_items")
+    .select("*")
+    .eq("recurrence_series_id", seriesId)
+    .order("occurred_on", { ascending: true });
+  if (effectiveScope === "this_and_future") {
+    seriesQuery = seriesQuery.gte("occurred_on", row.occurred_on);
   }
 
   const { data: scopedRows, error: fetchErr } = await seriesQuery;
   if (fetchErr) {
-    throw new Error(`fetch finance_line_items series failed: ${fetchErr.message}`);
+    throw new Error(
+      `fetch finance_line_items series failed: ${fetchErr.message}`,
+    );
   }
 
   const rows = (scopedRows ?? []) as Record<string, unknown>[];
-  if (rows.length === 0) throw new Error('finance_line_item_not_found');
+  if (rows.length === 0) throw new Error("finance_line_item_not_found");
 
   let newDates: string[];
-  if (effectiveScope === 'all') {
+  if (effectiveScope === "all") {
     const delta = daysBetweenIso(row.occurred_on, patch.occurred_on);
     newDates = rows.map((r) =>
-      addDaysToIso(String(r.occurred_on).slice(0, 10), delta)
+      addDaysToIso(String(r.occurred_on).slice(0, 10), delta),
     );
   } else {
     const { data: allSeriesRows, error: allErr } = await supabase
-      .from('finance_line_items')
-      .select('occurred_on')
-      .eq('recurrence_series_id', seriesId)
-      .order('occurred_on', { ascending: false })
+      .from("finance_line_items")
+      .select("occurred_on")
+      .eq("recurrence_series_id", seriesId)
+      .order("occurred_on", { ascending: false })
       .limit(1);
     if (allErr) {
-      throw new Error(`fetch finance_line_items series end failed: ${allErr.message}`);
+      throw new Error(
+        `fetch finance_line_items series end failed: ${allErr.message}`,
+      );
     }
-    const seriesEnd = String(allSeriesRows?.[0]?.occurred_on ?? row.occurred_on).slice(0, 10);
+    const seriesEnd = String(
+      allSeriesRows?.[0]?.occurred_on ?? row.occurred_on,
+    ).slice(0, 10);
     newDates = generateRecurrenceDates(patch.occurred_on, interval, seriesEnd);
-    if (newDates.length === 0) throw new Error('recurrence_generated_no_dates');
+    if (newDates.length === 0) throw new Error("recurrence_generated_no_dates");
   }
 
   const now = String(update.updated_at);
@@ -747,36 +819,42 @@ async function reshiftRecurringSeriesDates(params: {
       updated_at: now,
     };
     const { data, error } = await supabase
-      .from('finance_line_items')
+      .from("finance_line_items")
       .update(rowUpdate)
-      .eq('id', rowId)
-      .select('*')
+      .eq("id", rowId)
+      .select("*")
       .single();
     if (error) {
-      throw new Error(`update finance_line_item date shift failed: ${error.message}`);
+      throw new Error(
+        `update finance_line_item date shift failed: ${error.message}`,
+      );
     }
     if (rowId === id) anchor = data as Record<string, unknown>;
   }
 
   if (idsToDelete.length > 0) {
     const { error: deleteErr } = await supabase
-      .from('finance_line_items')
+      .from("finance_line_items")
       .delete()
-      .in('id', idsToDelete);
+      .in("id", idsToDelete);
     if (deleteErr) {
-      throw new Error(`delete finance_line_items after date shift failed: ${deleteErr.message}`);
+      throw new Error(
+        `delete finance_line_items after date shift failed: ${deleteErr.message}`,
+      );
     }
   }
 
   const updatedCount = rows.length - idsToDelete.length;
   if (!anchor) {
     const { data: refetched, error: refetchErr } = await supabase
-      .from('finance_line_items')
-      .select('*')
-      .eq('id', id)
+      .from("finance_line_items")
+      .select("*")
+      .eq("id", id)
       .maybeSingle();
     if (refetchErr) {
-      throw new Error(`fetch finance_line_item anchor failed: ${refetchErr.message}`);
+      throw new Error(
+        `fetch finance_line_item anchor failed: ${refetchErr.message}`,
+      );
     }
     anchor = (refetched as Record<string, unknown> | null) ?? rows[0];
   }
@@ -789,39 +867,47 @@ async function reshiftRecurringSeriesDates(params: {
 
 export async function deleteFinanceLineItem(
   id: string,
-  scope: RecurrenceEditScope = 'this',
+  scope: RecurrenceEditScope = "this",
 ): Promise<{ deleted_count: number }> {
   const supabase = getSupabase();
   const { data: existing, error: fetchErr } = await supabase
-    .from('finance_line_items')
-    .select('id, recurrence_series_id, occurred_on')
-    .eq('id', id)
+    .from("finance_line_items")
+    .select("id, recurrence_series_id, occurred_on")
+    .eq("id", id)
     .maybeSingle();
-  if (fetchErr) throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
-  if (!existing) throw new Error('finance_line_item_not_found');
+  if (fetchErr)
+    throw new Error(`fetch finance_line_item failed: ${fetchErr.message}`);
+  if (!existing) throw new Error("finance_line_item_not_found");
 
   const seriesId = existing.recurrence_series_id
     ? String(existing.recurrence_series_id)
     : null;
   const occurredOn = String(existing.occurred_on).slice(0, 10);
   const effectiveScope =
-    seriesId && isRecurrenceEditScope(scope) ? scope : 'this';
+    seriesId && isRecurrenceEditScope(scope) ? scope : "this";
 
-  if (effectiveScope === 'this' || !seriesId) {
-    const { error } = await supabase.from('finance_line_items').delete().eq('id', id);
-    if (error) throw new Error(`delete finance_line_item failed: ${error.message}`);
+  if (effectiveScope === "this" || !seriesId) {
+    const { error } = await supabase
+      .from("finance_line_items")
+      .delete()
+      .eq("id", id);
+    if (error)
+      throw new Error(`delete finance_line_item failed: ${error.message}`);
     return { deleted_count: 1 };
   }
 
   let q = supabase
-    .from('finance_line_items')
+    .from("finance_line_items")
     .delete()
-    .eq('recurrence_series_id', seriesId);
-  if (effectiveScope === 'this_and_future') {
-    q = q.gte('occurred_on', occurredOn);
+    .eq("recurrence_series_id", seriesId);
+  if (effectiveScope === "this_and_future") {
+    q = q.gte("occurred_on", occurredOn);
   }
 
-  const { data, error } = await q.select('id');
-  if (error) throw new Error(`delete finance_line_items series failed: ${error.message}`);
+  const { data, error } = await q.select("id");
+  if (error)
+    throw new Error(
+      `delete finance_line_items series failed: ${error.message}`,
+    );
   return { deleted_count: (data ?? []).length };
 }

@@ -2,17 +2,17 @@
  * Finance operating Telegram due-date reminders.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { DatabaseService } from './databaseService.ts';
-import { addDaysToIso, daysBetweenIso } from './financeRecurrence.ts';
-import { normalizeTelegramChatId } from './telegramMarketing.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { DatabaseService } from "./databaseService.ts";
+import { addDaysToIso, daysBetweenIso } from "./financeRecurrence.ts";
+import { normalizeTelegramChatId } from "./telegramMarketing.ts";
 
 export type FinanceReminderInterval =
-  | 'hourly'
-  | 'every_2_hours'
-  | 'every_4_hours'
-  | 'every_12_hours'
-  | 'daily_noon';
+  | "hourly"
+  | "every_2_hours"
+  | "every_4_hours"
+  | "every_12_hours"
+  | "daily_noon";
 
 export type TelegramFinanceSettings = {
   id: number;
@@ -25,33 +25,33 @@ export type TelegramFinanceSettings = {
 export type FinanceManilaTimeSlot = { hour: number; minute: number };
 
 export const FINANCE_REMINDER_PLACEHOLDERS = [
-  'label',
-  'amount',
-  'category',
-  'due_date',
-  'occurred_on',
-  'days_until_due',
-  'notes',
-  'kind',
+  "label",
+  "amount",
+  "category",
+  "due_date",
+  "occurred_on",
+  "days_until_due",
+  "notes",
+  "kind",
 ] as const;
 
 export const FINANCE_DEFAULT_REMINDER_TEMPLATE =
-  'Your {{label}} is due on {{due_date}} ({{days_until_due}} day(s) left).\n\nAmount: {{amount}} · {{category}}\n\nPlease pay at your earliest convenience.';
+  "Your {{label}} is due on {{due_date}} ({{days_until_due}} day(s) left).\n\nAmount: {{amount}} · {{category}}\n\nPlease pay at your earliest convenience.";
 
-const MANILA_TZ = 'Asia/Manila';
+const MANILA_TZ = "Asia/Manila";
 
 function getSupabase() {
   return createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 }
 
 export function parseFinanceSlot(raw: unknown): FinanceManilaTimeSlot {
-  if (raw && typeof raw === 'object' && raw !== null) {
+  if (raw && typeof raw === "object" && raw !== null) {
     const o = raw as Record<string, unknown>;
-    const h = typeof o.hour === 'number' ? o.hour : 9;
-    const m = typeof o.minute === 'number' ? o.minute : 0;
+    const h = typeof o.hour === "number" ? o.hour : 9;
+    const m = typeof o.minute === "number" ? o.minute : 0;
     return {
       hour: Math.max(0, Math.min(23, Math.round(h))),
       minute: Math.max(0, Math.min(59, Math.round(m))),
@@ -60,64 +60,66 @@ export function parseFinanceSlot(raw: unknown): FinanceManilaTimeSlot {
   return { hour: 9, minute: 0 };
 }
 
-export function formatFinanceManilaTimeLabel(slot: FinanceManilaTimeSlot): string {
+export function formatFinanceManilaTimeLabel(
+  slot: FinanceManilaTimeSlot,
+): string {
   const d = new Date(2000, 0, 1, slot.hour, slot.minute);
-  return d.toLocaleTimeString('en-PH', {
-    hour: 'numeric',
-    minute: '2-digit',
+  return d.toLocaleTimeString("en-PH", {
+    hour: "numeric",
+    minute: "2-digit",
     hour12: true,
   });
 }
 
 export function manilaTodayYmd(now = new Date()): string {
-  return new Intl.DateTimeFormat('en-CA', {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: MANILA_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
   }).format(now);
 }
 
 function formatDisplayDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split('-');
+  const [y, m, d] = iso.slice(0, 10).split("-");
   if (!y || !m || !d) return iso;
   return `${m}/${d}/${y}`;
 }
 
 function formatMoney(amount: number): string {
-  return new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
+  return new Intl.NumberFormat("en-PH", {
+    style: "currency",
+    currency: "PHP",
     minimumFractionDigits: 2,
   }).format(amount);
 }
 
 export function sanitizeFinanceReminderTemplate(text: string): string {
-  return text.replace(/\r\n/g, '\n').trim();
+  return text.replace(/\r\n/g, "\n").trim();
 }
 
-export function isFinanceReminderInterval(v: unknown): v is FinanceReminderInterval {
+export function isFinanceReminderInterval(
+  v: unknown,
+): v is FinanceReminderInterval {
   return (
-    v === 'hourly' ||
-    v === 'every_2_hours' ||
-    v === 'every_4_hours' ||
-    v === 'every_12_hours' ||
-    v === 'daily_noon'
+    v === "hourly" ||
+    v === "every_2_hours" ||
+    v === "every_4_hours" ||
+    v === "every_12_hours" ||
+    v === "daily_noon"
   );
 }
 
 /** Map legacy DB values from before intervals v2 (and removed until_paid). */
-export function normalizeFinanceReminderInterval(v: unknown): FinanceReminderInterval {
-  if (isFinanceReminderInterval(v)) return v;
-  if (
-    v === 'once' ||
-    v === 'daily' ||
-    v === 'weekly' ||
-    v === 'until_paid'
-  ) {
-    return 'daily_noon';
+export function normalizeFinanceReminderInterval(
+  v: unknown,
+): FinanceReminderInterval {
+  const raw = typeof v === "string" ? v.trim().toLowerCase() : v;
+  if (isFinanceReminderInterval(raw)) return raw;
+  if (v === "once" || v === "daily" || v === "weekly" || v === "until_paid") {
+    return "daily_noon";
   }
-  return 'daily_noon';
+  return "daily_noon";
 }
 
 function isLineItemPaid(row: Record<string, unknown>): boolean {
@@ -130,7 +132,7 @@ export function serializeFinanceSettings(row: TelegramFinanceSettings) {
     enabled: row.enabled,
     defaultReminderTemplate: row.default_reminder_template,
     dailyCheckTimeManila: slot,
-    dailyCheckUtcCronPreview: '0 * * * *',
+    dailyCheckUtcCronPreview: "0 * * * *",
     placeholdersReference: [...FINANCE_REMINDER_PLACEHOLDERS],
   };
 }
@@ -138,12 +140,12 @@ export function serializeFinanceSettings(row: TelegramFinanceSettings) {
 export async function ensureFinanceSettingsRow(): Promise<void> {
   const supabase = getSupabase();
   const { data } = await supabase
-    .from('telegram_finance_settings')
-    .select('id')
-    .eq('id', 1)
+    .from("telegram_finance_settings")
+    .select("id")
+    .eq("id", 1)
     .maybeSingle();
   if (data) return;
-  await supabase.from('telegram_finance_settings').insert({
+  await supabase.from("telegram_finance_settings").insert({
     id: 1,
     default_reminder_template: FINANCE_DEFAULT_REMINDER_TEMPLATE,
   });
@@ -163,28 +165,28 @@ export function manilaDateTimeParts(now = new Date()): {
   ms: number;
 } {
   const date = manilaTodayYmd(now);
-  const parts = new Intl.DateTimeFormat('en-US', {
+  const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: MANILA_TZ,
-    hour: 'numeric',
-    minute: 'numeric',
+    hour: "numeric",
+    minute: "numeric",
     hour12: false,
   }).formatToParts(now);
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? 0);
+  const hour = Number(parts.find((p) => p.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((p) => p.type === "minute")?.value ?? 0);
   return { date, hour, minute, ms: now.getTime() };
 }
 
 function intervalMinGapMs(interval: FinanceReminderInterval): number | null {
   switch (interval) {
-    case 'hourly':
+    case "hourly":
       return 60 * 60 * 1000;
-    case 'every_2_hours':
+    case "every_2_hours":
       return 2 * 60 * 60 * 1000;
-    case 'every_4_hours':
+    case "every_4_hours":
       return 4 * 60 * 60 * 1000;
-    case 'every_12_hours':
+    case "every_12_hours":
       return 12 * 60 * 60 * 1000;
-    case 'daily_noon':
+    case "daily_noon":
       return null;
   }
 }
@@ -211,7 +213,13 @@ export function shouldSendFinanceReminderToday(
   interval: FinanceReminderInterval,
   daysBefore: number,
 ): boolean {
-  return shouldSendFinanceReminderNow(row, new Date(), interval, daysBefore, null);
+  return shouldSendFinanceReminderNow(
+    row,
+    new Date(),
+    interval,
+    daysBefore,
+    null,
+  );
 }
 
 export function shouldSendFinanceReminderNow(
@@ -224,9 +232,10 @@ export function shouldSendFinanceReminderNow(
   const { date: today, hour, ms } = manilaDateTimeParts(now);
   if (!isInReminderWindow(row, today, interval, daysBefore)) return false;
 
-  if (interval === 'daily_noon') {
+  if (interval === "daily_noon") {
     if (hour !== 12) return false;
-    if (lastSentAt && manilaTodayYmd(new Date(lastSentAt)) === today) return false;
+    if (lastSentAt && manilaTodayYmd(new Date(lastSentAt)) === today)
+      return false;
     return true;
   }
 
@@ -244,14 +253,14 @@ export function renderFinanceReminderMessage(
   const due = effectiveDueDate(row);
   const daysUntil = daysBetweenIso(today, due);
   const replacements: Record<string, string> = {
-    label: String(row.label ?? ''),
+    label: String(row.label ?? ""),
     amount: formatMoney(Number(row.amount ?? 0)),
-    category: String(row.category ?? '—'),
+    category: String(row.category ?? "—"),
     due_date: formatDisplayDate(due),
     occurred_on: formatDisplayDate(String(row.occurred_on).slice(0, 10)),
     days_until_due: String(Math.max(0, daysUntil)),
-    notes: String(row.notes ?? '').trim() || '—',
-    kind: String(row.kind ?? ''),
+    notes: String(row.notes ?? "").trim() || "—",
+    kind: String(row.kind ?? ""),
   };
   let out = template;
   for (const [key, value] of Object.entries(replacements)) {
@@ -264,25 +273,31 @@ async function sendFinanceTelegramMessage(
   text: string,
 ): Promise<{ ok: boolean; error?: string }> {
   const token = (
-    Deno.env.get('TELEGRAM_FINANCE_BOT_TOKEN') ??
-    Deno.env.get('TELEGRAM_BOT_TOKEN') ??
-    ''
+    Deno.env.get("TELEGRAM_FINANCE_BOT_TOKEN") ??
+    Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+    ""
   ).trim();
-  const rawChat = Deno.env.get('TELEGRAM_FINANCE_CHAT_ID');
+  const rawChat = Deno.env.get("TELEGRAM_FINANCE_CHAT_ID");
   if (!token) {
-    return { ok: false, error: 'TELEGRAM_FINANCE_BOT_TOKEN (or TELEGRAM_BOT_TOKEN) unset' };
+    return {
+      ok: false,
+      error: "TELEGRAM_FINANCE_BOT_TOKEN (or TELEGRAM_BOT_TOKEN) unset",
+    };
   }
   if (!rawChat?.trim()) {
-    return { ok: false, error: 'TELEGRAM_FINANCE_CHAT_ID unset' };
+    return { ok: false, error: "TELEGRAM_FINANCE_CHAT_ID unset" };
   }
   const chatId = normalizeTelegramChatId(rawChat);
   if (!chatId.ok || chatId.chatId === undefined) {
-    return { ok: false, error: chatId.error ?? 'Invalid TELEGRAM_FINANCE_CHAT_ID' };
+    return {
+      ok: false,
+      error: chatId.error ?? "Invalid TELEGRAM_FINANCE_CHAT_ID",
+    };
   }
 
   const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       chat_id: chatId.chatId,
       text,
@@ -291,27 +306,30 @@ async function sendFinanceTelegramMessage(
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok || !(body as { ok?: boolean }).ok) {
-    const desc = (body as { description?: string }).description ?? res.statusText;
+    const desc =
+      (body as { description?: string }).description ?? res.statusText;
     return { ok: false, error: desc };
   }
   return { ok: true };
 }
 
 export function verifyFinanceCronSecret(req: Request): boolean {
-  const expected = Deno.env.get('TELEGRAM_FINANCE_CRON_SECRET')?.trim();
+  const expected = Deno.env.get("TELEGRAM_FINANCE_CRON_SECRET")?.trim();
   if (!expected) return true;
-  const got = req.headers.get('X-Telegram-Cron-Secret')?.trim();
+  const got = req.headers.get("X-Telegram-Cron-Secret")?.trim();
   return got === expected;
 }
 
 export async function verifyFinanceTelegramEnv() {
   const token = (
-    Deno.env.get('TELEGRAM_FINANCE_BOT_TOKEN') ??
-    Deno.env.get('TELEGRAM_BOT_TOKEN') ??
-    ''
+    Deno.env.get("TELEGRAM_FINANCE_BOT_TOKEN") ??
+    Deno.env.get("TELEGRAM_BOT_TOKEN") ??
+    ""
   ).trim();
-  const rawChat = Deno.env.get('TELEGRAM_FINANCE_CHAT_ID')?.trim() ?? '';
-  const chatNorm = rawChat ? normalizeTelegramChatId(rawChat) : { ok: false as const };
+  const rawChat = Deno.env.get("TELEGRAM_FINANCE_CHAT_ID")?.trim() ?? "";
+  const chatNorm = rawChat
+    ? normalizeTelegramChatId(rawChat)
+    : { ok: false as const };
 
   const result: Record<string, unknown> = {
     credentials: {
@@ -328,22 +346,37 @@ export async function verifyFinanceTelegramEnv() {
 
   const meRes = await fetch(`https://api.telegram.org/bot${token}/getMe`);
   const meBody = await meRes.json().catch(() => ({}));
-  result.getMe = meRes.ok && (meBody as { ok?: boolean }).ok
-    ? { ok: true, username: (meBody as { result?: { username?: string } }).result?.username }
-    : { ok: false, error: (meBody as { description?: string }).description ?? 'getMe failed' };
+  result.getMe =
+    meRes.ok && (meBody as { ok?: boolean }).ok
+      ? {
+          ok: true,
+          username: (meBody as { result?: { username?: string } }).result
+            ?.username,
+        }
+      : {
+          ok: false,
+          error:
+            (meBody as { description?: string }).description ?? "getMe failed",
+        };
 
   if (chatNorm.ok && chatNorm.chatId !== undefined) {
     const chatRes = await fetch(
       `https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(String(chatNorm.chatId))}`,
     );
     const chatBody = await chatRes.json().catch(() => ({}));
-    result.getChat = chatRes.ok && (chatBody as { ok?: boolean }).ok
-      ? {
-        ok: true,
-        type: (chatBody as { result?: { type?: string } }).result?.type,
-        title: (chatBody as { result?: { title?: string } }).result?.title,
-      }
-      : { ok: false, error: (chatBody as { description?: string }).description ?? 'getChat failed' };
+    result.getChat =
+      chatRes.ok && (chatBody as { ok?: boolean }).ok
+        ? {
+            ok: true,
+            type: (chatBody as { result?: { type?: string } }).result?.type,
+            title: (chatBody as { result?: { title?: string } }).result?.title,
+          }
+        : {
+            ok: false,
+            error:
+              (chatBody as { description?: string }).description ??
+              "getChat failed",
+          };
   }
 
   return result;
@@ -351,7 +384,8 @@ export async function verifyFinanceTelegramEnv() {
 
 export async function sendFinanceDraftPreview(text: string) {
   const trimmed = sanitizeFinanceReminderTemplate(text);
-  if (!trimmed) return { sent: false, error: 'text is required', messageCharCount: 0 };
+  if (!trimmed)
+    return { sent: false, error: "text is required", messageCharCount: 0 };
   const r = await sendFinanceTelegramMessage(trimmed.slice(0, 4096));
   return {
     sent: r.ok,
@@ -364,18 +398,19 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
   await ensureFinanceSettingsRow();
   const settingsRow = await DatabaseService.getTelegramFinanceSettings();
   if (!settingsRow?.enabled && !options?.force) {
-    return { skipped: true, reason: 'disabled', sent: 0, matched: 0 };
+    return { skipped: true, reason: "disabled", sent: 0, matched: 0 };
   }
 
   const today = manilaTodayYmd();
   const now = new Date();
   const supabase = getSupabase();
   const { data: items, error } = await supabase
-    .from('finance_line_items')
-    .select('*')
-    .eq('telegram_reminder_enabled', true)
-    .is('paid_at', null);
-  if (error) throw new Error(`finance reminders query failed: ${error.message}`);
+    .from("finance_line_items")
+    .select("*")
+    .eq("telegram_reminder_enabled", true)
+    .is("paid_at", null);
+  if (error)
+    throw new Error(`finance reminders query failed: ${error.message}`);
 
   const rows = (items ?? []) as Record<string, unknown>[];
   const lineItemIds = rows.map((row) => String(row.id));
@@ -383,17 +418,20 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
 
   if (lineItemIds.length > 0) {
     const { data: logs, error: logErr } = await supabase
-      .from('finance_telegram_reminder_log')
-      .select('line_item_id, sent_at')
-      .in('line_item_id', lineItemIds)
-      .order('sent_at', { ascending: false });
+      .from("finance_telegram_reminder_log")
+      .select("line_item_id, sent_at")
+      .in("line_item_id", lineItemIds)
+      .order("sent_at", { ascending: false });
     if (logErr) {
       throw new Error(`finance reminder log query failed: ${logErr.message}`);
     }
     for (const log of logs ?? []) {
       const id = String((log as Record<string, unknown>).line_item_id);
       if (!lastSentByItem.has(id)) {
-        lastSentByItem.set(id, String((log as Record<string, unknown>).sent_at));
+        lastSentByItem.set(
+          id,
+          String((log as Record<string, unknown>).sent_at),
+        );
       }
     }
   }
@@ -407,13 +445,17 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
   const errors: string[] = [];
 
   for (const row of rows) {
-    const interval = normalizeFinanceReminderInterval(row.telegram_reminder_interval);
+    const interval = normalizeFinanceReminderInterval(
+      row.telegram_reminder_interval,
+    );
     const daysBefore = Math.max(
       0,
       Math.min(90, Number(row.telegram_days_before ?? 3)),
     );
     const lastSentAt = lastSentByItem.get(String(row.id)) ?? null;
-    if (!shouldSendFinanceReminderNow(row, now, interval, daysBefore, lastSentAt)) {
+    if (
+      !shouldSendFinanceReminderNow(row, now, interval, daysBefore, lastSentAt)
+    ) {
       continue;
     }
     matched += 1;
@@ -426,11 +468,11 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
     const message = renderFinanceReminderMessage(row, template, today);
     const result = await sendFinanceTelegramMessage(message);
     if (!result.ok) {
-      errors.push(`${lineItemId}: ${result.error ?? 'send failed'}`);
+      errors.push(`${lineItemId}: ${result.error ?? "send failed"}`);
       continue;
     }
 
-    await supabase.from('finance_telegram_reminder_log').insert({
+    await supabase.from("finance_telegram_reminder_log").insert({
       line_item_id: lineItemId,
       sent_on_date: today,
     });
@@ -475,13 +517,16 @@ export function parseFinanceTelegramReminderInput(
       telegram_reminder_enabled: false,
       telegram_due_date: null,
       telegram_days_before: 3,
-      telegram_reminder_interval: 'daily_noon',
+      telegram_reminder_interval: "daily_noon",
       telegram_message_template: null,
       marked_paid: body.marked_paid === true,
     };
   }
 
-  if (body.telegram_reminder_enabled === undefined && body.marked_paid !== undefined) {
+  if (
+    body.telegram_reminder_enabled === undefined &&
+    body.marked_paid !== undefined
+  ) {
     return {
       marked_paid: body.marked_paid === true,
     };
@@ -491,16 +536,18 @@ export function parseFinanceTelegramReminderInput(
   const daysBefore = Number.isFinite(daysRaw)
     ? Math.max(0, Math.min(90, Math.round(daysRaw)))
     : 3;
-  const interval = normalizeFinanceReminderInterval(body.telegram_reminder_interval);
+  const interval = normalizeFinanceReminderInterval(
+    body.telegram_reminder_interval,
+  );
 
   let dueDate: string | null = null;
-  if (typeof body.telegram_due_date === 'string' && body.telegram_due_date) {
+  if (typeof body.telegram_due_date === "string" && body.telegram_due_date) {
     const d = body.telegram_due_date.slice(0, 10);
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dueDate = d;
   }
 
   let template: string | null = null;
-  if (typeof body.telegram_message_template === 'string') {
+  if (typeof body.telegram_message_template === "string") {
     const t = sanitizeFinanceReminderTemplate(body.telegram_message_template);
     template = t ? t.slice(0, 4000) : null;
   }
@@ -526,7 +573,7 @@ export function reminderFieldsForInsert(
       telegram_reminder_enabled: false,
       telegram_due_date: null,
       telegram_days_before: 3,
-      telegram_reminder_interval: 'daily_noon',
+      telegram_reminder_interval: "daily_noon",
       telegram_message_template: null,
       ...(input?.marked_paid ? { paid_at: new Date().toISOString() } : {}),
     };
@@ -535,7 +582,8 @@ export function reminderFieldsForInsert(
     telegram_reminder_enabled: true,
     telegram_due_date: input.telegram_due_date ?? null,
     telegram_days_before: input.telegram_days_before ?? 3,
-    telegram_reminder_interval: input.telegram_reminder_interval ?? 'daily_noon',
+    telegram_reminder_interval:
+      input.telegram_reminder_interval ?? "daily_noon",
     telegram_message_template: input.telegram_message_template ?? null,
     ...(input.marked_paid ? { paid_at: new Date().toISOString() } : {}),
   };
@@ -553,7 +601,8 @@ export function reminderFieldsForRecurringRow(
     telegram_reminder_enabled: true,
     telegram_due_date: input.telegram_due_date ?? occurredOn,
     telegram_days_before: input.telegram_days_before ?? 3,
-    telegram_reminder_interval: input.telegram_reminder_interval ?? 'daily_noon',
+    telegram_reminder_interval:
+      input.telegram_reminder_interval ?? "daily_noon",
     telegram_message_template: input.telegram_message_template ?? null,
   };
 }
@@ -571,7 +620,7 @@ export function reminderFieldsForUpdate(
         telegram_reminder_enabled: false,
         telegram_due_date: null,
         telegram_days_before: 3,
-        telegram_reminder_interval: 'daily_noon',
+        telegram_reminder_interval: "daily_noon",
         telegram_message_template: null,
       });
     } else {
@@ -579,7 +628,8 @@ export function reminderFieldsForUpdate(
         telegram_reminder_enabled: true,
         telegram_due_date: input.telegram_due_date ?? null,
         telegram_days_before: input.telegram_days_before ?? 3,
-        telegram_reminder_interval: input.telegram_reminder_interval ?? 'daily_noon',
+        telegram_reminder_interval:
+          input.telegram_reminder_interval ?? "daily_noon",
         telegram_message_template: input.telegram_message_template ?? null,
       });
     }
@@ -592,7 +642,8 @@ export function reminderFieldsForUpdate(
     Object.assign(patch, {
       telegram_due_date: input.telegram_due_date ?? null,
       telegram_days_before: input.telegram_days_before ?? 3,
-      telegram_reminder_interval: input.telegram_reminder_interval ?? 'daily_noon',
+      telegram_reminder_interval:
+        input.telegram_reminder_interval ?? "daily_noon",
       telegram_message_template: input.telegram_message_template ?? null,
     });
   }
