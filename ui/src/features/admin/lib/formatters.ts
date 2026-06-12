@@ -1,16 +1,23 @@
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
-import relativeTime from 'dayjs/plugin/relativeTime';
-import { formatTimeToAMPM } from '@/utils/dates';
+import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
+import relativeTime from "dayjs/plugin/relativeTime";
+import { formatTimeToAMPM } from "@/utils/dates";
 
 dayjs.extend(customParseFormat);
 dayjs.extend(relativeTime);
 
-const PESO = new Intl.NumberFormat('en-PH', {
-  style: 'currency',
-  currency: 'PHP',
+const PESO = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
+});
+
+const PESO_COMPACT = new Intl.NumberFormat("en-PH", {
+  style: "currency",
+  currency: "PHP",
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 0,
 });
 
 /**
@@ -19,10 +26,20 @@ const PESO = new Intl.NumberFormat('en-PH', {
  * Pass `null` / `undefined` to render a muted em-dash sentinel ("—").
  */
 export function formatMoney(value: number | string | null | undefined): string {
-  if (value === null || value === undefined || value === '') return '—';
-  const n = typeof value === 'string' ? Number(value) : value;
-  if (Number.isNaN(n)) return '—';
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "string" ? Number(value) : value;
+  if (Number.isNaN(n)) return "—";
   return PESO.format(n);
+}
+
+/** Whole-peso display for tight UI (calendar pills, chips). */
+export function formatMoneyCompact(
+  value: number | string | null | undefined,
+): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = typeof value === "string" ? Number(value) : value;
+  if (Number.isNaN(n)) return "—";
+  return PESO_COMPACT.format(n);
 }
 
 /**
@@ -30,26 +47,28 @@ export function formatMoney(value: number | string | null | undefined): string {
  * `MM-DD-YYYY` text. Convert to a compact display (e.g. `Apr 20, 2026`).
  */
 export function formatBookingDate(mmddyyyy: string | null | undefined): string {
-  if (!mmddyyyy) return '—';
-  const d = dayjs(mmddyyyy, 'MM-DD-YYYY');
+  if (!mmddyyyy) return "—";
+  const d = dayjs(mmddyyyy, "MM-DD-YYYY");
   if (!d.isValid()) return mmddyyyy;
-  return d.format('MMM D, YYYY');
+  return d.format("MMM D, YYYY");
 }
 
 /** ISO `YYYY-MM-DD` (e.g. finance_line_items.occurred_on) → `Apr 20, 2026`. */
 export function formatIsoDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return "—";
   const d = dayjs(iso.slice(0, 10));
   if (!d.isValid()) return iso;
-  return d.format('MMM D, YYYY');
+  return d.format("MMM D, YYYY");
 }
 
 /** Short e.g. "Apr 20" — handy inside tight table cells when the year is obvious. */
-export function formatBookingDateShort(mmddyyyy: string | null | undefined): string {
-  if (!mmddyyyy) return '—';
-  const d = dayjs(mmddyyyy, 'MM-DD-YYYY');
+export function formatBookingDateShort(
+  mmddyyyy: string | null | undefined,
+): string {
+  if (!mmddyyyy) return "—";
+  const d = dayjs(mmddyyyy, "MM-DD-YYYY");
   if (!d.isValid()) return mmddyyyy;
-  return d.format('MMM D');
+  return d.format("MMM D");
 }
 
 /** 12-hour display for `guest_submissions.check_*_time` (DB stores 24h `HH:mm`). */
@@ -57,7 +76,7 @@ export function formatBookingTime(
   time: string | null | undefined,
   isCheckIn = false,
 ): string {
-  if (!time?.trim()) return '';
+  if (!time?.trim()) return "";
   return formatTimeToAMPM(time, isCheckIn);
 }
 
@@ -74,8 +93,8 @@ export function formatBookingDateTime(
 }
 
 export function formatRelative(iso: string | null | undefined): string {
-  if (!iso) return '—';
+  if (!iso) return "—";
   const d = dayjs(iso);
-  if (!d.isValid()) return '—';
+  if (!d.isValid()) return "—";
   return d.fromNow();
 }

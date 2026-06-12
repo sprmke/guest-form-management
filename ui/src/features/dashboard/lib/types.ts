@@ -1,6 +1,6 @@
 /** Mirror of `supabase/functions/_shared/dashboardService.ts` response shape. */
 
-export type DashboardAttentionSeverity = 'critical' | 'warning' | 'info';
+export type DashboardAttentionSeverity = "critical" | "warning" | "info";
 
 export type DashboardAttentionItem = {
   id: string;
@@ -15,25 +15,10 @@ export type DashboardPipelineSlice = {
   count: number;
 };
 
-export type DashboardTrendPoint = {
-  month: string;
-  label: string;
-  net: number;
-  stays: number;
-};
-
-export type DashboardCheckInPoint = {
-  month: string;
-  label: string;
-  checkIns: number;
-  nights: number;
-};
-
 export type DashboardTrendWindow = {
   from: string;
   to: string;
   label: string;
-  granularity: 'day' | 'week' | 'month';
 };
 
 export type DashboardUpcomingStay = {
@@ -53,8 +38,6 @@ export type DashboardStats = {
   manilaDate: string;
   attention: DashboardAttentionItem[];
   pipeline: DashboardPipelineSlice[];
-  revenueTrend: DashboardTrendPoint[];
-  checkInTrend: DashboardCheckInPoint[];
   trendWindow: DashboardTrendWindow;
   upcoming: DashboardUpcomingStay[];
   finance: {
@@ -69,5 +52,13 @@ export type DashboardStats = {
     periodDays: number;
     checkInsToday: number;
     checkOutsToday: number;
+  };
+  kpis: {
+    netProfit: { value: number; changePercent: number };
+    totalBookings: { value: number; changePercent: number };
+    occupancyRate: { value: number; changePoints: number };
+    avgNightlyRate: { value: number; changePercent: number };
+    totalGuests: { value: number; changePercent: number };
+    nightsBooked: { value: number; periodDays: number };
   };
 };

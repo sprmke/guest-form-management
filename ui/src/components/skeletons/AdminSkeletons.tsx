@@ -1,14 +1,14 @@
-import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function AdminSurfaceCard({
   className,
   children,
   ...props
-}: React.ComponentProps<'section'>) {
+}: React.ComponentProps<"section">) {
   return (
     <section
-      className={cn('surface-card w-full px-3 py-3 sm:px-4 sm:py-4', className)}
+      className={cn("surface-card w-full px-3 py-3 sm:px-4 sm:py-4", className)}
       {...props}
     >
       {children}
@@ -24,8 +24,8 @@ export function AdminPageHeaderSkeleton({
   return (
     <div
       className={cn(
-        'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
-        compact && 'sm:items-center',
+        "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
+        compact && "sm:items-center",
       )}
     >
       <div className="min-w-0 space-y-2">
@@ -51,13 +51,15 @@ function CollapsibleSectionSkeleton({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-2xl border border-border/50 bg-muted/30',
-        nested && 'rounded-lg bg-background/80',
+        "overflow-hidden rounded-2xl border border-border/50 bg-muted/30",
+        nested && "rounded-lg bg-background/80",
       )}
     >
       <div className="flex min-h-[44px] items-center gap-3 px-3 py-2.5">
         <Skeleton className="h-4 max-w-[160px] flex-1" />
-        {showBadge ? <Skeleton className="h-4 w-14 shrink-0 rounded-full" /> : null}
+        {showBadge ? (
+          <Skeleton className="h-4 w-14 shrink-0 rounded-full" />
+        ) : null}
         <Skeleton className="size-4 shrink-0 rounded" />
       </div>
       <div className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4">
@@ -108,7 +110,10 @@ function TemplateEditorSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <div className="space-y-2">
       <Skeleton className="h-3 w-32" />
-      <Skeleton className="min-h-[96px] w-full rounded-2xl" style={{ height: rows * 12 }} />
+      <Skeleton
+        className="min-h-[96px] w-full rounded-2xl"
+        style={{ height: rows * 12 }}
+      />
       <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
     </div>
   );
@@ -175,7 +180,11 @@ export function TelegramStaffSettingsSkeleton() {
         <CollapsibleSectionSkeleton>
           <div className="space-y-2">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-3 w-full" style={{ maxWidth: `${90 - i * 8}%` }} />
+              <Skeleton
+                key={i}
+                className="h-3 w-full"
+                style={{ maxWidth: `${90 - i * 8}%` }}
+              />
             ))}
           </div>
         </CollapsibleSectionSkeleton>
@@ -211,7 +220,11 @@ export function TelegramMarketingSettingsSkeleton() {
         <CollapsibleSectionSkeleton>
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-3 w-full" style={{ maxWidth: `${88 - i * 6}%` }} />
+              <Skeleton
+                key={i}
+                className="h-3 w-full"
+                style={{ maxWidth: `${88 - i * 6}%` }}
+              />
             ))}
           </div>
         </CollapsibleSectionSkeleton>
@@ -368,7 +381,10 @@ export function BookingDetailPageSkeleton() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Skeleton className="size-6 shrink-0 rounded-full" />
-                  <Skeleton className="h-3 flex-1" style={{ maxWidth: `${100 - i * 8}%` }} />
+                  <Skeleton
+                    className="h-3 flex-1"
+                    style={{ maxWidth: `${100 - i * 8}%` }}
+                  />
                 </div>
               ))}
             </div>
@@ -383,7 +399,11 @@ export function BookingDetailPageSkeleton() {
 
 export function BookingsTableSkeleton() {
   return (
-    <div className="surface-card overflow-hidden" aria-busy="true" aria-label="Loading bookings">
+    <div
+      className="surface-card overflow-hidden"
+      aria-busy="true"
+      aria-label="Loading bookings"
+    >
       <div className="overflow-x-auto">
         <div className="min-w-[560px]">
           <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3 sm:px-5">
@@ -391,10 +411,10 @@ export function BookingsTableSkeleton() {
               <Skeleton
                 key={i}
                 className={cn(
-                  'h-2.5 shrink-0 rounded-full',
-                  i === 3 && 'hidden md:block',
-                  i === 4 && 'hidden sm:block',
-                  i === 5 && 'hidden lg:block',
+                  "h-2.5 shrink-0 rounded-full",
+                  i === 3 && "hidden md:block",
+                  i === 4 && "hidden sm:block",
+                  i === 5 && "hidden lg:block",
                 )}
                 style={{ width: w }}
               />
@@ -404,8 +424,8 @@ export function BookingsTableSkeleton() {
             <div
               key={i}
               className={cn(
-                'flex items-center gap-3 bg-card px-4 py-4 sm:gap-4 sm:px-5',
-                i > 0 && 'border-t border-separator',
+                "flex items-center gap-3 bg-card px-4 py-4 sm:gap-4 sm:px-5",
+                i > 0 && "border-t border-separator",
               )}
               style={{ opacity: 1 - i * 0.08 }}
             >
@@ -495,10 +515,10 @@ function FinanceKpiGridSkeleton({
   return (
     <div
       className={cn(
-        'grid gap-3',
-        count === 3 && 'grid-cols-2 lg:grid-cols-3',
-        count === 4 && 'grid-cols-2 lg:grid-cols-4',
-        count === 2 && 'grid-cols-2',
+        "grid gap-3",
+        count === 3 && "grid-cols-2 lg:grid-cols-3",
+        count === 4 && "grid-cols-2 lg:grid-cols-4",
+        count === 2 && "grid-cols-2",
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
@@ -523,18 +543,19 @@ function FinanceKpiGridSkeleton({
 
 export function FinanceOverviewSkeleton() {
   return (
-    <div className="space-y-4 sm:space-y-5" aria-busy="true" aria-label="Loading finance overview">
-      <div className="surface-card p-3 sm:p-4">
-        <FinanceKpiGridSkeleton hero />
-      </div>
+    <div
+      className="space-y-4 sm:space-y-5"
+      aria-busy="true"
+      aria-label="Loading finance overview"
+    >
       <div className="space-y-3">
         <Skeleton className="h-3 w-32" />
         <FinanceKpiGridSkeleton count={4} />
-        <FinanceKpiGridSkeleton count={3} />
       </div>
       <div className="space-y-3">
         <Skeleton className="h-3 w-24" />
-        <FinanceKpiGridSkeleton count={3} />
+        <Skeleton className="h-3 w-full max-w-md" />
+        <FinanceKpiGridSkeleton count={4} />
       </div>
     </div>
   );
@@ -592,21 +613,29 @@ export function FinanceStaysCardGridSkeleton() {
 
 export function FinanceStaysTableSkeleton() {
   return (
-    <div className="space-y-3" aria-busy="true" aria-label="Loading stays ledger">
+    <div
+      className="space-y-3"
+      aria-busy="true"
+      aria-label="Loading stays ledger"
+    >
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[640px]">
             <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3">
               {[56, 120, 88, 40, 56, 48, 48, 40].map((w, i) => (
-                <Skeleton key={i} className="h-2.5 shrink-0 rounded-full" style={{ width: w }} />
+                <Skeleton
+                  key={i}
+                  className="h-2.5 shrink-0 rounded-full"
+                  style={{ width: w }}
+                />
               ))}
             </div>
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className={cn(
-                  'flex items-center gap-3 bg-card px-4 py-4',
-                  i > 0 && 'border-t border-separator',
+                  "flex items-center gap-3 bg-card px-4 py-4",
+                  i > 0 && "border-t border-separator",
                 )}
                 style={{ opacity: 1 - i * 0.08 }}
               >
@@ -643,7 +672,11 @@ export function FinanceStaysTableSkeleton() {
 
 export function FinanceOperatingTabSkeleton() {
   return (
-    <div className="space-y-4" aria-busy="true" aria-label="Loading transactions">
+    <div
+      className="space-y-4"
+      aria-busy="true"
+      aria-label="Loading transactions"
+    >
       <FinanceKpiGridSkeleton count={3} />
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
@@ -656,7 +689,10 @@ export function FinanceOperatingTabSkeleton() {
               {[48, 40, 120, 64, 56].map((w, i) => (
                 <Skeleton
                   key={i}
-                  className={cn('h-2.5 shrink-0 rounded-full', i === 2 && 'flex-1')}
+                  className={cn(
+                    "h-2.5 shrink-0 rounded-full",
+                    i === 2 && "flex-1",
+                  )}
                   style={{ width: i === 2 ? undefined : w }}
                 />
               ))}
@@ -665,8 +701,8 @@ export function FinanceOperatingTabSkeleton() {
               <div
                 key={i}
                 className={cn(
-                  'flex items-center gap-3 bg-card px-4 py-3.5',
-                  i > 0 && 'border-t border-separator',
+                  "flex items-center gap-3 bg-card px-4 py-3.5",
+                  i > 0 && "border-t border-separator",
                 )}
               >
                 <Skeleton className="h-3 w-20" />
@@ -683,36 +719,61 @@ export function FinanceOperatingTabSkeleton() {
   );
 }
 
-export function BookingsCalendarSkeleton() {
+export function BookingsCalendarSkeleton({
+  gridOnly = false,
+  compact = false,
+}: {
+  gridOnly?: boolean;
+  compact?: boolean;
+} = {}) {
+  const cellClass = compact
+    ? "aspect-square rounded-lg sm:min-h-[72px] sm:aspect-auto"
+    : "aspect-square rounded-lg sm:min-h-[88px] sm:aspect-auto";
+
+  const grid = (
+    <div
+      className={
+        gridOnly
+          ? "overflow-hidden"
+          : "overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm dark:shadow-none lg:col-span-2"
+      }
+    >
+      <div className="flex items-center justify-between border-b border-separator bg-muted/30 px-3 py-3 sm:px-4">
+        <Skeleton className="h-4 w-28" />
+        <div className="flex gap-1">
+          <Skeleton className="size-9 rounded-lg" />
+          <Skeleton className="h-9 w-14 rounded-lg" />
+          <Skeleton className="size-9 rounded-lg" />
+        </div>
+      </div>
+      <div className="grid grid-cols-7 gap-1 px-2 pb-1 pt-3 sm:px-3">
+        {Array.from({ length: 7 }).map((_, i) => (
+          <Skeleton key={i} className="mx-auto h-3 w-6 rounded-full" />
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
+        {Array.from({ length: 35 }).map((_, i) => (
+          <Skeleton key={i} className={cellClass} />
+        ))}
+      </div>
+    </div>
+  );
+
+  if (gridOnly) {
+    return (
+      <div aria-busy="true" aria-label="Loading calendar">
+        {grid}
+      </div>
+    );
+  }
+
   return (
     <div
       className="grid gap-3 sm:gap-4 lg:grid-cols-3"
       aria-busy="true"
       aria-label="Loading calendar"
     >
-      <div className="overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm dark:shadow-none lg:col-span-2">
-        <div className="flex items-center justify-between border-b border-separator bg-muted/30 px-3 py-3 sm:px-4">
-          <Skeleton className="h-4 w-28" />
-          <div className="flex gap-1">
-            <Skeleton className="size-9 rounded-lg" />
-            <Skeleton className="h-9 w-14 rounded-lg" />
-            <Skeleton className="size-9 rounded-lg" />
-          </div>
-        </div>
-        <div className="grid grid-cols-7 gap-1 px-2 pb-1 pt-3 sm:px-3">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <Skeleton key={i} className="mx-auto h-3 w-6 rounded-full" />
-          ))}
-        </div>
-        <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
-          {Array.from({ length: 35 }).map((_, i) => (
-            <Skeleton
-              key={i}
-              className="aspect-square rounded-lg sm:min-h-[88px] sm:aspect-auto"
-            />
-          ))}
-        </div>
-      </div>
+      {grid}
       <div className="overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm dark:shadow-none">
         <div className="border-b border-separator bg-muted/30 px-4 py-3">
           <Skeleton className="h-4 w-24" />
@@ -730,24 +791,19 @@ export function BookingsCalendarSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading dashboard">
-      <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-[72px] rounded-2xl" />
+    <div
+      className="space-y-3 sm:space-y-4"
+      aria-busy="true"
+      aria-label="Loading dashboard"
+    >
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={`trend-${i}`} className="h-[108px] rounded-2xl" />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-[88px] rounded-2xl" />
-        ))}
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Skeleton className="h-[300px] rounded-2xl" />
-        <Skeleton className="h-[300px] rounded-2xl" />
-      </div>
-      <div className="grid gap-3 lg:grid-cols-5">
-        <Skeleton className="h-[300px] rounded-2xl lg:col-span-2" />
-        <Skeleton className="h-[300px] rounded-2xl lg:col-span-3" />
+      <div className="grid min-w-0 gap-3 lg:grid-cols-2 xl:gap-4">
+        <Skeleton className="h-[420px] rounded-2xl lg:col-span-1" />
+        <Skeleton className="h-[420px] rounded-2xl lg:col-span-1" />
       </div>
     </div>
   );
