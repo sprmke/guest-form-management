@@ -1,69 +1,77 @@
-import { Link } from 'react-router-dom';
-import {
-  BedDouble,
-  CircleDollarSign,
-  TrendingUp,
-  Users,
-} from 'lucide-react';
-import { formatMoney } from '@/features/admin/lib/formatters';
-import { FinanceKpiCard } from '@/features/finance/components/FinanceKpiCard';
-import type { DashboardStats } from '@/features/dashboard/lib/types';
-import { cn } from '@/lib/utils';
+import type { ReactNode } from "react";
+import { Link } from "react-router-dom";
+import { BedDouble, DollarSign, FileText, Percent, Users } from "lucide-react";
+import { formatMoney } from "@/features/admin/lib/formatters";
+import { DashboardTrendStatCard } from "@/features/dashboard/components/DashboardTrendStatCard";
+import type { DashboardStats } from "@/features/dashboard/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   stats: DashboardStats;
   periodLabel: string;
 };
 
+function TrendCardLink({ to, children }: { to?: string; children: ReactNode }) {
+  if (!to) return <>{children}</>;
+  return (
+    <Link to={to} className="block min-w-0">
+      {children}
+    </Link>
+  );
+}
+
 export function DashboardStatCards({ stats, periodLabel }: Props) {
-  const { totals, finance, trendWindow } = stats;
-  const financeHref = `/finance?tab=overview&from=${trendWindow.from}&to=${trendWindow.to}`;
+  const { totals, trendWindow, kpis } = stats;
+  const bookingsHref = `/bookings?from=${trendWindow.from}&to=${trendWindow.to}`;
 
   return (
     <section aria-label="Key metrics">
       <p className="section-eyebrow mb-3 px-0.5">{periodLabel}</p>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
-        <FinanceKpiCard
-          label="Net profit"
-          value={formatMoney(finance.monthNet)}
-          icon={TrendingUp}
-          iconColor="text-primary"
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <DashboardTrendStatCard
+          title="Net profit"
+          value={formatMoney(kpis.netProfit.value)}
+          change={kpis.netProfit.changePercent}
+          icon={DollarSign}
+          iconBgClassName="bg-emerald-500"
           valueClassName={cn(
-            finance.monthNet >= 0
-              ? 'text-emerald-700 dark:text-emerald-300'
-              : 'text-red-600 dark:text-red-400',
+            kpis.netProfit.value >= 0
+              ? "text-emerald-700 dark:text-emerald-300"
+              : "text-red-600 dark:text-red-400",
           )}
         />
-        <FinanceKpiCard
-          label="Active pipeline"
-          value={String(totals.activeBookings)}
-          icon={Users}
-          iconColor="text-primary"
-        />
-        <Link
-          to={`/bookings?from=${trendWindow.from}&to=${trendWindow.to}`}
-          className="block min-w-0"
-        >
-          <FinanceKpiCard
-            label="Total bookings"
+        <TrendCardLink to={bookingsHref}>
+          <DashboardTrendStatCard
+            title="Total bookings"
             value={`${totals.totalBookings} / ${totals.periodDays}`}
-            icon={BedDouble}
-            iconColor="text-amber-600 dark:text-amber-400"
+            change={kpis.totalBookings.changePercent}
+            icon={FileText}
+            iconBgClassName="bg-sky-500"
           />
-        </Link>
-        <Link to={financeHref} className="block min-w-0">
-          <FinanceKpiCard
-            label="Outstanding"
-            value={formatMoney(finance.outstandingBalance)}
-            icon={CircleDollarSign}
-            iconColor="text-amber-600 dark:text-amber-400"
-            valueClassName={cn(
-              finance.outstandingBalance > 0
-                ? 'text-amber-700 dark:text-amber-300'
-                : undefined,
-            )}
-          />
-        </Link>
+        </TrendCardLink>
+        <DashboardTrendStatCard
+          title="Occupancy rate"
+          value={`${kpis.occupancyRate.value}%`}
+          change={kpis.occupancyRate.changePoints}
+          changeLabel="pts"
+          changeIsPoints
+          icon={Percent}
+          iconBgClassName="bg-violet-500"
+        />
+        <DashboardTrendStatCard
+          title="Average nightly rate"
+          value={formatMoney(kpis.avgNightlyRate.value)}
+          change={kpis.avgNightlyRate.changePercent}
+          icon={BedDouble}
+          iconBgClassName="bg-amber-500"
+        />
+        <DashboardTrendStatCard
+          title="Total guests"
+          value={String(kpis.totalGuests.value)}
+          change={kpis.totalGuests.changePercent}
+          icon={Users}
+          iconBgClassName="bg-indigo-500"
+        />
       </div>
     </section>
   );
