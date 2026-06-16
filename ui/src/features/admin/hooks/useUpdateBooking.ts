@@ -163,6 +163,8 @@ export type UpdateBookingPayload = {
   parking_owner?: string | null;
   parking_rate_paid?: number;
   parking_endorsement_url?: string | null;
+  parking_fee_included_in_downpayment?: boolean;
+  parking_payment_receipt_url?: string | null;
   guest_balance_paid_amount?: number;
   guest_balance_payment_receipt_url?: string | null;
   sd_additional_expense_items?: Array<{ label: string; amount: number }>;

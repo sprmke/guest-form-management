@@ -123,15 +123,11 @@ function computeTotalGuestBalance(booking: BookingRow): number | null {
   const petFee = bookingFlagTrue(booking.has_pets)
     ? toMoneyNumber(booking.pet_fee)
     : 0;
-  const parkingFee = bookingFlagTrue(booking.need_parking)
-    ? toMoneyNumber(booking.parking_rate_guest)
-    : 0;
   return (
     rate -
     toMoneyNumber(booking.down_payment) +
     toMoneyNumber(booking.security_deposit) +
     petFee +
-    parkingFee +
     toMoneyNumber(booking.guest_additional_fee)
   );
 }

@@ -4,7 +4,7 @@
  *
  * Expects multipart/form-data with:
  *   bookingId   — string (UUID)
- *   assetType   — 'parking_endorsement' | 'approved_gaf' | 'approved_pet' | 'sd_refund_receipt'
+ *   assetType   — 'parking_endorsement' | 'parking_payment_receipt' | 'approved_gaf' | 'approved_pet' | 'sd_refund_receipt'
  *                 | 'guest_balance_payment_receipt'
  *   file        — the file to upload
  *   fileName    — original filename
@@ -32,6 +32,10 @@ const ASSET_CONFIG = {
   parking_endorsement: {
     bucket: 'parking-endorsements',
     column: 'parking_endorsement_url',
+  },
+  parking_payment_receipt: {
+    bucket: 'payment-receipts',
+    column: 'parking_payment_receipt_url',
   },
   approved_gaf: {
     bucket: 'approved-gafs',

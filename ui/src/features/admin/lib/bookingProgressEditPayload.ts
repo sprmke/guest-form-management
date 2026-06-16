@@ -3,7 +3,10 @@
  */
 
 import type { GuestBalanceSettlementValues } from '@/features/admin/components/GuestBalanceSettlementForm';
-import type { ParkingRequestValues } from '@/features/admin/components/ParkingRequestForm';
+import {
+  resolveParkingFeeIncludedDefault,
+  type ParkingRequestValues,
+} from '@/features/admin/components/ParkingRequestForm';
 import type { ReviewPricingFormValues } from '@/features/admin/components/ReviewPricingForm';
 import type { SdRefundValues } from '@/features/admin/components/SdRefundForm';
 import {
@@ -98,7 +101,17 @@ export function isProgressFormDirty(
     if (
       !strEqual(pk.parking_owner, booking.parking_owner) ||
       !numsEqual(pk.parking_rate_paid, booking.parking_rate_paid) ||
-      !strEqual(pk.parking_endorsement_url, booking.parking_endorsement_url)
+      !strEqual(pk.parking_endorsement_url, booking.parking_endorsement_url) ||
+      pk.parking_fee_included_in_downpayment !==
+        resolveParkingFeeIncludedDefault(booking) ||
+      !strEqual(
+        pk.parking_fee_included_in_downpayment
+          ? ''
+          : pk.parking_payment_receipt_url,
+        booking.parking_fee_included_in_downpayment !== false
+          ? ''
+          : booking.parking_payment_receipt_url,
+      )
     ) {
       return true;
     }
@@ -170,6 +183,12 @@ export function progressFormPayloadFromState(
     patch.parking_rate_paid = state.parking.parking_rate_paid;
     patch.parking_endorsement_url =
       state.parking.parking_endorsement_url || null;
+    patch.parking_fee_included_in_downpayment =
+      state.parking.parking_fee_included_in_downpayment;
+    patch.parking_payment_receipt_url =
+      state.parking.parking_fee_included_in_downpayment
+        ? null
+        : state.parking.parking_payment_receipt_url || null;
   }
 
   if (state.guestBalance) {

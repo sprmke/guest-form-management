@@ -6,7 +6,7 @@
  * and returns it; we then invalidate the booking cache so the UI refreshes.
  *
  * Supported assetTypes:
- *   Workflow:  parking_endorsement | approved_gaf | approved_pet | sd_refund_receipt
+ *   Workflow:  parking_endorsement | parking_payment_receipt | approved_gaf | approved_pet | sd_refund_receipt
  *              | guest_balance_payment_receipt
  *   Guest docs: valid_id | payment_receipt (downpayment) | pet_vaccination | pet_image
  */
@@ -24,6 +24,7 @@ export type GuestDocAssetType =
 
 export type WorkflowAssetType =
   | 'parking_endorsement'
+  | 'parking_payment_receipt'
   | 'approved_gaf'
   | 'approved_pet'
   | 'sd_refund_receipt'

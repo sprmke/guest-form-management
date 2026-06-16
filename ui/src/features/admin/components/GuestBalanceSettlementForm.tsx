@@ -1,8 +1,9 @@
 /**
  * GuestBalanceSettlementForm — Shown when advancing READY_FOR_CHECKIN →
  * READY_FOR_CHECKOUT. Requires **balance amount paid** to **equal** total
- * guest balance (same formula as pricing: rate − down + SD + pet + parking guest
- * + additional). Payment balance receipt is required only when total > ₱0
+ * guest balance (same formula as pricing: rate − down + SD + pet + additional;
+ * parking excluded — settled on Parking Request). Payment balance receipt is
+ * required only when total > ₱0
  * (free stays may proceed with paid = 0 and no receipt; sd-refund-cron uses the
  * same rules server-side).
  */

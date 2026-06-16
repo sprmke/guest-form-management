@@ -789,6 +789,48 @@ export function BookingsCalendarSkeleton({
   );
 }
 
+function DashboardChartCardHeaderSkeleton({
+  showAction = false,
+}: {
+  showAction?: boolean;
+}) {
+  return (
+    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 items-start gap-2">
+        <Skeleton className="icon-well-sm shrink-0 rounded-lg" />
+        <div className="min-w-0 space-y-1.5">
+          <Skeleton className="h-4 w-28" />
+          <Skeleton className="h-3 w-40 max-w-full" />
+        </div>
+      </div>
+      {showAction ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Skeleton className="h-9 w-[7.5rem] rounded-lg" />
+          <Skeleton className="h-9 w-28 rounded-lg" />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DashboardTrendStatCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-border/50 bg-card p-3.5 sm:p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-2">
+          <Skeleton className="h-4 w-24" />
+          <Skeleton className="h-8 w-32" />
+          <div className="space-y-1 pt-0.5">
+            <Skeleton className="h-6 w-14 rounded-full" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        </div>
+        <Skeleton className="size-10 shrink-0 rounded-xl sm:size-11 sm:rounded-2xl" />
+      </div>
+    </div>
+  );
+}
+
 export function DashboardSkeleton() {
   return (
     <div
@@ -796,14 +838,61 @@ export function DashboardSkeleton() {
       aria-busy="true"
       aria-label="Loading dashboard"
     >
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={`trend-${i}`} className="h-[108px] rounded-2xl" />
-        ))}
-      </div>
-      <div className="grid min-w-0 gap-3 lg:grid-cols-2 xl:gap-4">
-        <Skeleton className="h-[420px] rounded-2xl lg:col-span-1" />
-        <Skeleton className="h-[420px] rounded-2xl lg:col-span-1" />
+      <section aria-hidden>
+        <Skeleton className="section-eyebrow mb-3 h-3 w-28 px-0.5" />
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <DashboardTrendStatCardSkeleton key={`trend-${i}`} />
+          ))}
+        </div>
+      </section>
+
+      <div className="min-w-0 space-y-3 sm:space-y-4">
+        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-5 xl:gap-4">
+          <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-3">
+            <DashboardChartCardHeaderSkeleton />
+            <Skeleton className="h-[220px] w-full min-w-0 rounded-xl sm:h-[300px]" />
+            <div className="mt-4 flex justify-center gap-6">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+            </div>
+          </section>
+
+          <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
+            <DashboardChartCardHeaderSkeleton showAction />
+            <div className="flex justify-center py-2">
+              <Skeleton className="size-40 rounded-full sm:size-48" />
+            </div>
+          </section>
+
+          <section className="surface-card flex min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-3 lg:col-start-1 lg:row-start-2">
+            <DashboardChartCardHeaderSkeleton showAction />
+            <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+              {Array.from({ length: 7 }).map((_, i) => (
+                <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6" />
+              ))}
+              {Array.from({ length: 35 }).map((_, i) => (
+                <Skeleton
+                  key={`day-${i}`}
+                  className="aspect-square w-full rounded-lg"
+                />
+              ))}
+            </div>
+          </section>
+
+          <section className="surface-card flex min-h-[280px] min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-2 lg:col-start-4 lg:row-start-2 sm:min-h-[320px]">
+            <DashboardChartCardHeaderSkeleton showAction />
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Skeleton className="h-7 w-16 rounded-full" />
+              <Skeleton className="h-7 w-24 rounded-full" />
+            </div>
+            <div className="min-h-0 flex-1 space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={`txn-${i}`} className="h-[72px] rounded-xl" />
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

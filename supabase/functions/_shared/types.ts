@@ -160,6 +160,8 @@ export interface GuestSubmission {
   parking_check_in_date?: string | null; // MM-DD-YYYY — guest-paid parking window start
   parking_check_out_date?: string | null; // MM-DD-YYYY — guest-paid parking window end
   parking_endorsement_url?: string | null;
+  parking_fee_included_in_downpayment?: boolean | null;
+  parking_payment_receipt_url?: string | null;
   parking_owner_email?: string | null;
   parking_owner?: string | null;
 

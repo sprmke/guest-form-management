@@ -4,9 +4,8 @@
  *
  * Captures: booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest,
  * guest_additional_fee.
- * Computes total guest balance:
- * booking_rate - down_payment + security_deposit + pet_fee + parking_rate_guest
- * + guest_additional_fee.
+ * Computes total guest balance (excludes parking — settled on Parking Request):
+ * booking_rate - down_payment + security_deposit + pet_fee + guest_additional_fee.
  *
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
@@ -114,16 +113,12 @@ export function ReviewPricingForm({
   const downPayment = toNullableNumber(watch('down_payment')) ?? 0;
   const securityDeposit = toNullableNumber(watch('security_deposit')) ?? 0;
   const petFee = hasPets ? (toNullableNumber(watch('pet_fee')) ?? 0) : 0;
-  const parkingFee = needParking
-    ? (toNullableNumber(watch('parking_rate_guest')) ?? 0)
-    : 0;
   const additionalFee = toNullableNumber(watch('guest_additional_fee')) ?? 0;
   const totalGuestBalance =
     bookingRate -
     downPayment +
     securityDeposit +
     petFee +
-    parkingFee +
     additionalFee;
 
   useEffect(() => {
@@ -140,7 +135,6 @@ export function ReviewPricingForm({
     downPayment,
     securityDeposit,
     petFee,
-    parkingFee,
     additionalFee,
     isValid,
   ]);

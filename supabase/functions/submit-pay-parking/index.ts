@@ -17,6 +17,7 @@ import { SheetsService } from "../_shared/sheetsService.ts";
 import { sendParkingBroadcast } from "../_shared/emailService.ts";
 import {
   isBookingStatus,
+  isPostPendingDocumentsStatus,
   STATUS_HUMAN_LABEL,
   type BookingStatus,
 } from "../_shared/statusMachine.ts";
@@ -97,6 +98,14 @@ serve(async (req) => {
       parking_rate_guest: parkingRateGuest,
     };
 
+    const rawStatus = existing.status as string;
+    if (
+      existing.parking_completed_at ||
+      (isBookingStatus(rawStatus) && isPostPendingDocumentsStatus(rawStatus))
+    ) {
+      patch.parking_completed_at = null;
+    }
+
     const updated = await DatabaseService.setWorkflowFields(bookingId, patch);
 
     const shouldSendBroadcast = body!.sendParkingBroadcast !== false;
@@ -126,9 +135,9 @@ serve(async (req) => {
       );
     }
 
-    const rawStatus = updated.status as string;
-    if (isBookingStatus(rawStatus)) {
-      const status = rawStatus as BookingStatus;
+    const rawStatusAfter = updated.status as string;
+    if (isBookingStatus(rawStatusAfter)) {
+      const status = rawStatusAfter as BookingStatus;
       const { pax, nights } = buildPaxNights(
         updated as Record<string, unknown>,
       );

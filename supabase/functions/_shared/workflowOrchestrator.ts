@@ -59,6 +59,10 @@ export type TransitionPayload = {
   /** Owner or agent display name (who parking was obtained from). */
   parking_owner?: string | null;
   parking_endorsement_url?: string | null;
+  /** Default true — parking fee bundled in downpayment receipt. */
+  parking_fee_included_in_downpayment?: boolean | null;
+  /** Required when parking_fee_included_in_downpayment is false. */
+  parking_payment_receipt_url?: string | null;
 
   // SD Refund (PENDING_SD_REFUND → COMPLETED)
   sd_additional_expenses?: number[] | null;
@@ -138,6 +142,20 @@ function buildPaxNights(booking: any): { pax: number; nights: number } {
   const pax = (booking.number_of_adults || 1) + (booking.number_of_children || 0);
   const nights = booking.number_of_nights || 1;
   return { pax, nights };
+}
+
+function assertParkingPaymentReceiptIfRequired(payload: TransitionPayload): void {
+  const included = payload.parking_fee_included_in_downpayment !== false;
+  if (included) return;
+  const receipt =
+    typeof payload.parking_payment_receipt_url === 'string'
+      ? payload.parking_payment_receipt_url.trim()
+      : '';
+  if (!receipt) {
+    throw new Error(
+      'Upload a parking payment receipt before completing parking',
+    );
+  }
 }
 
 // ─── Orchestrator ─────────────────────────────────────────────────────────────
@@ -318,6 +336,10 @@ export class WorkflowOrchestrator {
         isPostPendingDocumentsStatus(fromStatus) &&
         docComplete === 'PENDING_PARKING_REQUEST';
 
+      if (docComplete === 'PENDING_PARKING_REQUEST' && manual) {
+        assertParkingPaymentReceiptIfRequired(payload);
+      }
+
       if (
         fromStatus === 'PENDING_DOCUMENTS' &&
         toStatus === 'PENDING_DOCUMENTS'
@@ -340,6 +362,9 @@ export class WorkflowOrchestrator {
       fromStatus === 'PENDING_PARKING_REQUEST' ||
       (docComplete === 'PENDING_PARKING_REQUEST' && manual)
     ) {
+      if (fromStatus === 'PENDING_PARKING_REQUEST') {
+        assertParkingPaymentReceiptIfRequired(payload);
+      }
       if (payload.parking_rate_paid != null) workflowFields.parking_rate_paid = payload.parking_rate_paid;
       if (payload.parking_owner_email) workflowFields.parking_owner_email = payload.parking_owner_email;
       if (payload.parking_owner !== undefined) {
@@ -349,7 +374,23 @@ export class WorkflowOrchestrator {
             : '';
         workflowFields.parking_owner = po || null;
       }
-      if (payload.parking_endorsement_url) workflowFields.parking_endorsement_url = payload.parking_endorsement_url;
+      if (payload.parking_endorsement_url) {
+        workflowFields.parking_endorsement_url = payload.parking_endorsement_url;
+      }
+      if (payload.parking_fee_included_in_downpayment !== undefined) {
+        workflowFields.parking_fee_included_in_downpayment =
+          payload.parking_fee_included_in_downpayment !== false;
+        if (payload.parking_fee_included_in_downpayment !== false) {
+          workflowFields.parking_payment_receipt_url = null;
+        }
+      }
+      if (payload.parking_payment_receipt_url !== undefined) {
+        const receipt =
+          typeof payload.parking_payment_receipt_url === 'string'
+            ? payload.parking_payment_receipt_url.trim()
+            : '';
+        workflowFields.parking_payment_receipt_url = receipt || null;
+      }
     }
 
     // Guest /sd-form submit includes sd_refund_method; admin "skip details" advance omits it.

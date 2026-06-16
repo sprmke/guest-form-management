@@ -543,6 +543,12 @@ export function WorkflowPanel({ booking }: Props) {
         parking_owner: parkingValues.parking_owner.trim() || null,
         parking_rate_paid: parkingValues.parking_rate_paid,
         parking_endorsement_url: parkingValues.parking_endorsement_url || null,
+        parking_fee_included_in_downpayment:
+          parkingValues.parking_fee_included_in_downpayment,
+        parking_payment_receipt_url:
+          parkingValues.parking_fee_included_in_downpayment
+            ? null
+            : parkingValues.parking_payment_receipt_url || null,
       };
     }
     if (subForm === 'sd_refund' && sdRefundValues) {
@@ -626,6 +632,12 @@ export function WorkflowPanel({ booking }: Props) {
         payload.parking_rate_paid = parkingValues.parking_rate_paid;
         payload.parking_endorsement_url =
           parkingValues.parking_endorsement_url || null;
+        payload.parking_fee_included_in_downpayment =
+          parkingValues.parking_fee_included_in_downpayment;
+        payload.parking_payment_receipt_url =
+          parkingValues.parking_fee_included_in_downpayment
+            ? null
+            : parkingValues.parking_payment_receipt_url || null;
       }
       await transitionMut.mutateAsync({
         bookingId: booking.id,

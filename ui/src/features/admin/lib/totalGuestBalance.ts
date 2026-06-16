@@ -21,19 +21,20 @@ export function petFeeForGuestBalance(booking: BookingFinanceInput): number {
     : 0;
 }
 
-/** Parking fee counts toward guest balance only when the guest needs parking. */
-export function parkingFeeForGuestBalance(booking: BookingFinanceInput): number {
-  return bookingFlagTrue(booking.need_parking)
-    ? toMoneyNumber(booking.parking_rate_guest)
-    : 0;
+/**
+ * Parking is settled separately via the Parking Request form (downpayment
+ * bundle or separate parking payment receipt) — never included here.
+ */
+export function parkingFeeForGuestBalance(_booking: BookingFinanceInput): number {
+  return 0;
 }
 
 /**
  * Total amount due from the guest before check-in (matches `ReviewPricingForm`
  * live total and `PricingSummaryCard` on the booking detail page).
  *
- * `guest_submissions.balance` is the recorded “balance” line item only; this sum
- * is what admins mean by **Total guest balance** for settlement.
+ * Excludes parking — pay parking is recorded and verified on the Parking Request
+ * sub-step. `guest_submissions.balance` is the recorded “balance” line item only.
  */
 /** Payment receipt is required only when the guest owes a positive balance. */
 export function guestBalancePaymentReceiptRequired(totalDue: number): boolean {
