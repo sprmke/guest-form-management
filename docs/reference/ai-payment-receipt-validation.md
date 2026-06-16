@@ -13,7 +13,7 @@ Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and 
 | **Provider** | Google **Gemini 2.5 Flash** (`generativelanguage.googleapis.com`) |
 | **Runtime** | Supabase Edge Functions (Deno) — `supabase/functions/_shared/receiptValidationService.ts` |
 | **Secret** | `GEMINI_API_KEY` (Google AI Studio; optional) |
-| **When key missing / API fails** | Verdict `skipped`; **uploads and guest submit always succeed** |
+| **When key missing / API fails** | Verdict `skipped` for config/storage issues only; **Gemini/network failures are not persisted** — admin sees a toast on `/bookings/:id` and may retry |
 | **Re-runs** | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a receipt URL exists but verdict columns are empty (non-terminal bookings only). |
 
 The AI does **not** verify that the amount matches the booking total. It only judges whether the image appears to be legitimate payment proof (digital transfer screenshot or visible PHP cash).
@@ -43,7 +43,7 @@ Parking AI runs only when the admin uploads a **separate** parking receipt (`Par
 | `likely_valid` | Probably payment proof; some fields blurry or cropped | Allowed | Allowed |
 | `unclear` | Cannot confidently classify | Allowed | Allowed (UI warns) |
 | `invalid` | Clearly not payment proof (not a transfer screenshot or cash photo) | Allowed | **Blocked** on balance settlement and parking completion |
-| `skipped` | No API key, API error, or unreadable response | Allowed | Allowed |
+| `skipped` | No API key, storage/URL issue, or empty image (not a Gemini model failure) | Allowed | Allowed (no badge) |
 
 **Blocking rules (admin only):**
 
@@ -94,7 +94,8 @@ Admin opens /bookings/:bookingId
   → useReceiptAiBackfill (client) when receipt URL exists but *_receipt_ai_verdict is empty
   → POST validate-booking-receipts { bookingId }  [once per page visit; skips COMPLETED / CANCELLED]
   → download image from Storage → validateReceiptFromStorageUrl
-  → PATCH dp / balance / parking AI columns
+  → PATCH dp / balance / parking AI columns (only when Gemini returns a real verdict or config `skipped`)
+  → On Gemini/network failure: no DB write; Sonner error toast with API message; retry on next page visit
   → Booking detail Pricing card DocPreview shows compact AI pill on receipt label
 ```
 
@@ -209,7 +210,8 @@ Required migrations: `20260717120000_receipt_ai_validation_columns.sql`, `202607
 
 ## 9. Operational notes
 
-- **False positives/negatives:** Treat AI as a first-pass filter, not proof of payment. Admins can still proceed when verdict is `unclear` or `likely_valid`; only `invalid` blocks workflow steps that require a receipt.
+- **Gemini outages (503 / rate limits):** Verdict columns stay empty; booking detail shows an error toast with the API message. Refresh the page to retry backfill, or re-upload the receipt.
+- **Legacy `skipped` rows from API errors:** If a booking already has `dp_receipt_ai_verdict = 'skipped'` from before this change, clear those columns in SQL once, then reopen the booking or re-upload.
 - **Replacing a receipt:** Uploading a new image re-runs validation and overwrites the previous verdict/summary.
 - **Included parking:** Checking **Included from downpayment receipt** clears `parking_payment_receipt_url` and parking AI columns on the next parking transition that sets `parking_fee_included_in_downpayment` to true.
 - **Guest form updates without new file:** If the guest updates the booking without re-uploading `paymentReceipt`, downpayment AI is **not** re-run (no new file in `FormData`).

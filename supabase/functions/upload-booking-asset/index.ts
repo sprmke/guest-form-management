@@ -30,6 +30,7 @@ import {
   dbPatchForReceiptValidation,
   type ReceiptValidationResult,
   receiptKindForAssetType,
+  shouldPersistReceiptValidation,
   validateReceiptFile,
 } from '../_shared/receiptValidationService.ts';
 import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
@@ -148,10 +149,12 @@ serve(async (req) => {
     if (receiptKind) {
       try {
         receiptValidation = await validateReceiptFile(file);
-        Object.assign(
-          workflowUpdate,
-          dbPatchForReceiptValidation(receiptKind, receiptValidation),
-        );
+        if (shouldPersistReceiptValidation(receiptValidation)) {
+          Object.assign(
+            workflowUpdate,
+            dbPatchForReceiptValidation(receiptKind, receiptValidation),
+          );
+        }
         console.log(
           `[upload-booking-asset] ${assetType} AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`,
         );

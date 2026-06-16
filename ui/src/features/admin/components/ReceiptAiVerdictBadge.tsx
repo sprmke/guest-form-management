@@ -171,7 +171,15 @@ export function ReceiptAiVerdictBadge({
 /** Short toast after upload — keeps forms consistent. */
 export function receiptAiUploadToastMessage(
   verdict: string | null | undefined,
-): { type: 'success' | 'warning' | 'error'; message: string } | null {
+  aiModelError?: string | null,
+): { type: 'success' | 'warning' | 'error'; message: string; description?: string } | null {
+  if (aiModelError?.trim()) {
+    return {
+      type: 'error',
+      message: 'AI could not check this receipt',
+      description: aiModelError.trim(),
+    };
+  }
   switch (String(verdict ?? '').toLowerCase()) {
     case 'invalid':
       return {

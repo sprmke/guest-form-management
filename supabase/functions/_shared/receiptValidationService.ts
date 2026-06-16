@@ -19,6 +19,8 @@ export type ReceiptValidationResult = {
   has_amount: boolean;
   has_date: boolean;
   has_reference: boolean;
+  /** Gemini/network failure — do not persist verdict; surface to admin for retry. */
+  aiModelError?: string;
 };
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -126,6 +128,31 @@ function skipped(summary = 'AI validation unavailable'): ReceiptValidationResult
   };
 }
 
+function aiModelFailure(summary: string, detail?: string): ReceiptValidationResult {
+  return {
+    ...skipped(summary),
+    aiModelError: detail ?? summary,
+  };
+}
+
+function parseGeminiApiError(status: number, errText: string): string {
+  let message = `Gemini API returned ${status}`;
+  try {
+    const parsed = JSON.parse(errText) as { error?: { message?: string } };
+    if (parsed.error?.message) message = parsed.error.message;
+  } catch {
+    if (errText.trim()) message = errText.trim().slice(0, 240);
+  }
+  return message;
+}
+
+/** True when a real verdict was produced and may be written to guest_submissions. */
+export function shouldPersistReceiptValidation(
+  result: ReceiptValidationResult,
+): boolean {
+  return !result.aiModelError;
+}
+
 function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunk = 0x8000;
@@ -209,8 +236,9 @@ export async function validateReceiptImage(
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
+      const detail = parseGeminiApiError(res.status, errText);
       console.error('[receipt-validation] Gemini API error:', res.status, errText);
-      return skipped('AI validation failed');
+      return aiModelFailure('AI validation failed', detail);
     }
 
     const body = await res.json() as {
@@ -222,7 +250,10 @@ export async function validateReceiptImage(
     const parsed = parseGeminiJson(text);
     if (!parsed) {
       console.warn('[receipt-validation] Could not parse Gemini response:', text.slice(0, 200));
-      return skipped('AI validation returned unreadable result');
+      return aiModelFailure(
+        'AI validation returned unreadable result',
+        'The AI model returned a response we could not parse. Try again.',
+      );
     }
 
     console.log(
@@ -231,7 +262,8 @@ export async function validateReceiptImage(
     return parsed;
   } catch (err) {
     console.error('[receipt-validation] Unexpected error:', err);
-    return skipped('AI validation failed');
+    const detail = err instanceof Error ? err.message : String(err);
+    return aiModelFailure('AI validation failed', detail);
   }
 }
 
@@ -304,6 +336,16 @@ export type ReceiptBackfillItem = {
   summary: string;
 };
 
+export type ReceiptBackfillError = {
+  kind: ReceiptBackfillKind;
+  message: string;
+};
+
+export type ReceiptBackfillResult = {
+  validated: ReceiptBackfillItem[];
+  errors: ReceiptBackfillError[];
+};
+
 /** Returns true when a receipt URL exists but AI verdict was never persisted. */
 export function receiptUrlNeedsAiBackfill(
   url: string | null | undefined,
@@ -320,10 +362,10 @@ const TERMINAL_BOOKING_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
  */
 export async function backfillMissingReceiptAiVerdicts(
   booking: Record<string, unknown>,
-): Promise<ReceiptBackfillItem[]> {
+): Promise<ReceiptBackfillResult> {
   const status = String(booking.status ?? '');
   if (TERMINAL_BOOKING_STATUSES.has(status)) {
-    return [];
+    return { validated: [], errors: [] };
   }
 
   const targets: Array<{ kind: ReceiptBackfillKind; url: string }> = [];
@@ -353,16 +395,24 @@ export async function backfillMissingReceiptAiVerdicts(
     targets.push({ kind: 'parking', url: parkingUrl });
   }
 
-  const results: ReceiptBackfillItem[] = [];
+  const validated: ReceiptBackfillItem[] = [];
+  const errors: ReceiptBackfillError[] = [];
   for (const target of targets) {
     const validation = await validateReceiptFromStorageUrl(target.url);
-    results.push({
+    if (validation.aiModelError) {
+      errors.push({
+        kind: target.kind,
+        message: validation.aiModelError,
+      });
+      continue;
+    }
+    validated.push({
       kind: target.kind,
       verdict: validation.verdict,
       summary: validation.summary,
     });
   }
-  return results;
+  return { validated, errors };
 }
 
 export function dbPatchFromReceiptBackfillItems(

@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { BOOKING_QUERY_KEY } from './useBooking';
@@ -12,6 +13,12 @@ import { BOOKING_QUERY_KEY } from './useBooking';
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
+
+const RECEIPT_KIND_LABELS: Record<string, string> = {
+  downpayment: 'Downpayment receipt',
+  balance: 'Balance receipt',
+  parking: 'Parking receipt',
+};
 
 function receiptUrlNeedsAiBackfill(
   url: string | null | undefined,
@@ -68,11 +75,31 @@ export function receiptAiPreviewLoading(
   return isBackfilling && receiptUrlNeedsAiBackfill(url, verdict);
 }
 
+type ReceiptBackfillError = {
+  kind: string;
+  message: string;
+};
+
+type ReceiptBackfillResponse = {
+  validated: unknown[];
+  errors: ReceiptBackfillError[];
+};
+
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
   if (!token) throw new Error('No active session — please sign in');
   return token;
+}
+
+function toastReceiptAiBackfillErrors(errors: ReceiptBackfillError[]) {
+  for (const err of errors) {
+    const label = RECEIPT_KIND_LABELS[err.kind] ?? 'Receipt';
+    toast.error(`AI could not check ${label}`, {
+      description: err.message,
+      duration: 8000,
+    });
+  }
 }
 
 export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
@@ -94,10 +121,23 @@ export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
       if (!res.ok || !json.success) {
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
-      return json.data as { validated: unknown[] };
+      return json.data as ReceiptBackfillResponse;
     },
-    onSuccess: async (_, bookingId) => {
-      await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+    onSuccess: async (data, bookingId) => {
+      if (data.errors?.length) {
+        toastReceiptAiBackfillErrors(data.errors);
+        attemptedForId.current = null;
+      }
+      if (data.validated?.length) {
+        await qc.invalidateQueries({ queryKey: BOOKING_QUERY_KEY(bookingId) });
+      }
+    },
+    onError: (err) => {
+      attemptedForId.current = null;
+      toast.error('Receipt AI check failed', {
+        description: err instanceof Error ? err.message : String(err),
+        duration: 8000,
+      });
     },
   });
 

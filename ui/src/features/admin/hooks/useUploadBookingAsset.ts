@@ -44,6 +44,7 @@ export type UploadAssetResult = {
     has_amount: boolean;
     has_date: boolean;
     has_reference: boolean;
+    aiModelError?: string;
   } | null;
 };
 

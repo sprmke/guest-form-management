@@ -189,3 +189,6 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - ✅ Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
 - Add quick edit on bookings page
 - Support free booking (payment related steps/action not required, etc)
+- Triple check security measures on our app
+- Find other AI provider when we encounter issues with Gemini AI
+- Implement AI validations to valid id

@@ -291,9 +291,13 @@ export function GuestBalanceSettlementForm({
       if (validation) {
         setReceiptAiVerdict(validation.verdict);
         setReceiptAiSummary(validation.summary);
-        const toastMsg = receiptAiUploadToastMessage(validation.verdict);
-        if (toastMsg?.type === 'error') toast.error(toastMsg.message);
-        else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
+        const toastMsg = receiptAiUploadToastMessage(
+          validation.verdict,
+          validation.aiModelError,
+        );
+        if (toastMsg?.type === 'error') {
+          toast.error(toastMsg.message, { description: toastMsg.description });
+        } else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
         else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
         else toast.success('Payment balance receipt uploaded');
       } else {

@@ -11,6 +11,7 @@ import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
 import {
   dbPatchForReceiptValidation,
+  shouldPersistReceiptValidation,
   validateReceiptFile,
 } from '../_shared/receiptValidationService.ts'
 import type { GuestSubmission } from '../_shared/types.ts'
@@ -175,9 +176,11 @@ serve(async (req) => {
     ) {
       try {
         const receiptValidation = await validateReceiptFile(paymentReceiptFile);
-        const aiPatch = dbPatchForReceiptValidation('downpayment', receiptValidation);
-        await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
-        notifyBooking = { ...submissionData, ...aiPatch } as GuestSubmission;
+        if (shouldPersistReceiptValidation(receiptValidation)) {
+          const aiPatch = dbPatchForReceiptValidation('downpayment', receiptValidation);
+          await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
+          notifyBooking = { ...submissionData, ...aiPatch } as GuestSubmission;
+        }
         console.log(
           `[submit-form] Downpayment receipt AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`,
         );

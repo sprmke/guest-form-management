@@ -38,7 +38,7 @@ serve(async (req) => {
     const booking = await DatabaseService.getBookingById(bookingId);
     if (!booking) throw new Error(`Booking not found: ${bookingId}`);
 
-    const validated = await backfillMissingReceiptAiVerdicts(
+    const { validated, errors } = await backfillMissingReceiptAiVerdicts(
       booking as Record<string, unknown>,
     );
 
@@ -52,10 +52,17 @@ serve(async (req) => {
       );
     }
 
+    if (errors.length > 0) {
+      console.warn(
+        `[validate-booking-receipts] ${bookingId}: AI model errors for ${errors.length} receipt(s)`,
+        errors,
+      );
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        data: { validated },
+        data: { validated, errors },
       }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
