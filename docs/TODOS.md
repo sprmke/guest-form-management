@@ -157,11 +157,11 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Review edit booking info form
 
 - Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
-- - Update google calendar summary info with new guest form and processes
+- Update google calendar summary info with new guest form and processes
 - Review and improve form UI validation on workflow status forms
 - Review bucket policy to check public buckets and convert them to private?
 - On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
-- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- ✅ Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
 - Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ? Only display Sensitive edit warning on edit booking detail page
@@ -169,7 +169,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update Review process to deduct P50-P100 pesos on SD?
 - Add settings page on dashboard to customized form values: Discount vouchers, etc
 - Update Check-in Details email to add check-in instructions
-- Add Gcash number and name to Check-in email
+- ✅ Add Gcash number and name to Check-in email
 - Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
 - Cleanup isDevMode. This is unnecessary since we have admin dashboard now
 - Update booking confirmed UI and display the complete booking details
@@ -183,5 +183,8 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - ✅ Improve SD form to include chance to win free staycation if you leave a review (`KAME-STAY` at **0.5%** via `VOUCHER_WIN_WEIGHTS`; `VoucherReveal` copy + slot reel)
 - Support same-day check-in
 - Add password or faceid when accessing settings page?
-- Update GAF details to be configurable via settings
+- ✅ Update GAF details to be configurable via settings — **Admin → Settings → GAF Details** with live PDF preview; guest submit + `submit-form` use resolved values
 - Improve light theme colors
+- Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
+- Add quick edit on bookings page
+- Support free booking (payment related steps/action not required, etc)
