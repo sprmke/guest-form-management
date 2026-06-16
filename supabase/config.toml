@@ -196,6 +196,9 @@ verify_jwt = false
 [functions.google-mail-oauth-disconnect]
 verify_jwt = false
 
+[functions.backfill-calendar-event-dates]
+verify_jwt = false
+
 [functions.gmail-backfill-approvals]
 verify_jwt = false
 # Orchestrator may auto-advance to READY_FOR_CHECKIN and send RFCI (same as gmail-listener).
