@@ -42,6 +42,7 @@ import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailI
 import { GeminiIntegrationCard } from '@/features/admin/components/GeminiIntegrationCard';
 import { CalendarEventDatesBackfillCard } from '@/features/admin/components/CalendarEventDatesBackfillCard';
 import { GafDetailsSettingsSection } from '@/features/admin/components/GafDetailsSettingsSection';
+import { PetDetailsSettingsSection } from '@/features/admin/components/PetDetailsSettingsSection';
 
 function CollapsibleSection({
   id,
@@ -721,6 +722,17 @@ export function AppSettingsCard() {
             signatureSource={sources?.gafUnitOwnerSignatureUrl}
             disabled={busy}
             fieldSources={sources}
+            onChange={(key, value) => set(key, value)}
+          />
+
+          <PetDetailsSettingsSection
+            values={{
+              gafUnitOwner: draft.gafUnitOwner,
+              gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
+            }}
+            signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+            signatureSource={sources?.gafUnitOwnerSignatureUrl}
+            disabled={busy}
             onChange={(key, value) => set(key, value)}
           />
 

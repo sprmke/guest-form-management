@@ -6,6 +6,8 @@ import {
   applyGafOwnerSignatureBlock,
   GAF_PDF_FIELD_CARPARK_SLOT_NUMBER,
 } from './gafPdfSignature.ts'
+import { applyPetOwnerSignatureBlock } from './petPdfSignature.ts'
+import { extractTowerAndUnit } from './petPdfDefaults.ts'
 
 async function getTemplateBytes(templateName: string = 'guest-form-template.pdf'): Promise<Uint8Array> {
   console.log(`Fetching PDF template from Supabase Storage: ${templateName}...`);
@@ -26,25 +28,6 @@ async function getTemplateBytes(templateName: string = 'guest-form-template.pdf'
   }
 
   return new Uint8Array(await templateData.arrayBuffer())
-}
-
-/**
- * Helper function to extract tower and unit number from towerAndUnitNumber field
- * Example: "Monaco 2604" -> { tower: "Monaco", unitNumber: "2604" }
- */
-function extractTowerAndUnit(towerAndUnitNumber: string): { tower: string; unitNumber: string } {
-  const match = towerAndUnitNumber.match(/^(.+?)\s+(\d+)$/)
-  if (match) {
-    return {
-      tower: match[1].trim(),
-      unitNumber: match[2].trim()
-    }
-  }
-  // Fallback if pattern doesn't match
-  return {
-    tower: towerAndUnitNumber,
-    unitNumber: ''
-  }
 }
 
 export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> {
@@ -129,9 +112,10 @@ export async function generatePetPDF(formData: GuestFormData): Promise<Uint8Arra
     const pdfDoc = await PDFDocument.load(templateBytes)
     const form = pdfDoc.getForm()
 
+    // Always use current Settings → GAF/Pet Details (not stale booking row snapshot).
     const fd = await applyGafDefaultsToFormData(formData)
+    const appSettings = await resolveAppSettings()
 
-    // Extract tower and unit number
     const { tower, unitNumber } = extractTowerAndUnit(fd.towerAndUnitNumber)
 
     const fieldMappings: Record<string, string | undefined> = {
@@ -139,7 +123,6 @@ export async function generatePetPDF(formData: GuestFormData): Promise<Uint8Arra
       'unitNumber': unitNumber,
       'unitTower': tower,
       'checkInDate': fd.checkInDate,
-      'unitOwnerSignatureName': fd.unitOwner,
       'petName': fd.petName,
       'petType': fd.petType,
       'petAge': fd.petAge,
@@ -157,6 +140,11 @@ export async function generatePetPDF(formData: GuestFormData): Promise<Uint8Arra
         console.warn(`⚠️ Could not set field "${fieldName}":`, error instanceof Error ? error.message : 'Unknown error')
       }
     }
+
+    await applyPetOwnerSignatureBlock(pdfDoc, {
+      unitOwner: fd.unitOwner || appSettings.gafUnitOwner,
+      signatureUrl: appSettings.gafUnitOwnerSignatureUrl,
+    })
 
     form.flatten()
     const pdfBytes = await pdfDoc.save()
