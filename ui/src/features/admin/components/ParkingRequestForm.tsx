@@ -26,11 +26,18 @@ import {
   type WorkflowFormVariant,
 } from '@/features/admin/components/WorkflowFormShell';
 import {
+  ReceiptAiVerdictBadge,
+  receiptAiUploadToastMessage,
+  receiptAiVerdictBlocksAdmin,
+  type ReceiptAiVerdict,
+} from '@/features/admin/components/ReceiptAiVerdictBadge';
+import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
   workflowUploadButtonClass,
 } from '@/features/admin/lib/workflowActionButtonStyles';
 import { isPostPendingDocumentsStatus } from '@/features/admin/lib/workflow';
+import { withStorageUrlCacheBust } from '@/features/admin/lib/storageUrls';
 
 export const parkingRequestFormSchema = z
   .object({
@@ -73,15 +80,25 @@ export type ParkingRequestValues = z.infer<typeof parkingRequestFormSchema>;
 export function resolveParkingFeeIncludedDefault(
   booking: Pick<
     BookingRow,
-    'status' | 'parking_completed_at' | 'parking_fee_included_in_downpayment'
+    | 'status'
+    | 'parking_completed_at'
+    | 'parking_fee_included_in_downpayment'
+    | 'parking_payment_receipt_url'
   >,
   initialDraft?: Pick<
     ParkingRequestValues,
-    'parking_fee_included_in_downpayment'
+    'parking_fee_included_in_downpayment' | 'parking_payment_receipt_url'
   > | null,
 ): boolean {
   if (initialDraft?.parking_fee_included_in_downpayment !== undefined) {
     return initialDraft.parking_fee_included_in_downpayment;
+  }
+  const receiptUrl =
+    initialDraft?.parking_payment_receipt_url?.trim() ||
+    booking.parking_payment_receipt_url?.trim() ||
+    '';
+  if (receiptUrl) {
+    return false;
   }
   if (booking.parking_completed_at) {
     return booking.parking_fee_included_in_downpayment !== false;
@@ -115,8 +132,19 @@ export function ParkingRequestForm({
   variant = 'workflow',
 }: Props) {
   const uploadMut = useUploadBookingAsset();
+  const [uploadingField, setUploadingField] = useState<
+    'endorsement' | 'receipt' | null
+  >(null);
   const endorsementInputRef = useRef<HTMLInputElement>(null);
   const receiptInputRef = useRef<HTMLInputElement>(null);
+  const stashedReceiptRef = useRef<{
+    url: string;
+    previewBust: number;
+    verdict: ReceiptAiVerdict;
+    summary: string;
+  } | null>(null);
+  const endorsementUploading = uploadingField === 'endorsement';
+  const receiptUploading = uploadingField === 'receipt';
   const [currentEndorsementUrl, setCurrentEndorsementUrl] = useState(() => {
     if (initialDraft?.parking_endorsement_url)
       return initialDraft.parking_endorsement_url;
@@ -127,6 +155,14 @@ export function ParkingRequestForm({
       return initialDraft.parking_payment_receipt_url;
     return booking.parking_payment_receipt_url ?? '';
   });
+  const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
+    () => booking.parking_receipt_ai_verdict ?? null,
+  );
+  const [receiptAiSummary, setReceiptAiSummary] = useState(
+    () => booking.parking_receipt_ai_summary?.trim() ?? '',
+  );
+  const [endorsementPreviewBust, setEndorsementPreviewBust] = useState(0);
+  const [receiptPreviewBust, setReceiptPreviewBust] = useState(0);
 
   const {
     register,
@@ -163,13 +199,36 @@ export function ParkingRequestForm({
   const includedInDownpayment = watch('parking_fee_included_in_downpayment');
 
   useEffect(() => {
+    setReceiptAiVerdict(booking.parking_receipt_ai_verdict ?? null);
+    setReceiptAiSummary(booking.parking_receipt_ai_summary?.trim() ?? '');
+  }, [booking.parking_receipt_ai_verdict, booking.parking_receipt_ai_summary]);
+
+  useEffect(() => {
     if (readOnly) return;
     if (editMode || isValid) {
+      if (
+        !editMode &&
+        !includedInDownpayment &&
+        currentReceiptUrl.trim() &&
+        receiptAiVerdictBlocksAdmin(receiptAiVerdict)
+      ) {
+        onChange(null);
+        return;
+      }
       onChange(getValues());
     } else {
       onChange(null);
     }
-  }, [JSON.stringify(watched), isValid, readOnly, editMode]);
+  }, [
+    JSON.stringify(watched),
+    isValid,
+    readOnly,
+    editMode,
+    includedInDownpayment,
+    currentReceiptUrl,
+    receiptAiVerdict,
+    onChange,
+  ]);
 
   async function handleEndorsementFileChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -177,6 +236,7 @@ export function ParkingRequestForm({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadingField('endorsement');
     try {
       const result = await uploadMut.mutateAsync({
         bookingId: booking.id,
@@ -184,6 +244,7 @@ export function ParkingRequestForm({
         file,
       });
       setCurrentEndorsementUrl(result.url);
+      setEndorsementPreviewBust(Date.now());
       setValue('parking_endorsement_url', result.url, {
         shouldValidate: true,
         shouldDirty: true,
@@ -196,6 +257,7 @@ export function ParkingRequestForm({
           : 'Failed to upload parking endorsement',
       );
     } finally {
+      setUploadingField(null);
       if (endorsementInputRef.current) endorsementInputRef.current.value = '';
     }
   }
@@ -206,18 +268,38 @@ export function ParkingRequestForm({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setUploadingField('receipt');
     try {
       const result = await uploadMut.mutateAsync({
         bookingId: booking.id,
         assetType: 'parking_payment_receipt',
         file,
       });
+      const validation = result.receiptValidation;
+      const previewBust = Date.now();
       setCurrentReceiptUrl(result.url);
+      setReceiptPreviewBust(previewBust);
+      stashedReceiptRef.current = {
+        url: result.url,
+        previewBust,
+        verdict: validation?.verdict ?? null,
+        summary: validation?.summary ?? '',
+      };
       setValue('parking_payment_receipt_url', result.url, {
         shouldValidate: true,
         shouldDirty: true,
       });
-      toast.success('Parking payment receipt uploaded');
+      if (validation) {
+        setReceiptAiVerdict(validation.verdict);
+        setReceiptAiSummary(validation.summary);
+        const toastMsg = receiptAiUploadToastMessage(validation.verdict);
+        if (toastMsg?.type === 'error') toast.error(toastMsg.message);
+        else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
+        else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
+        else toast.success('Parking payment receipt uploaded');
+      } else {
+        toast.success('Parking payment receipt uploaded');
+      }
     } catch (err: unknown) {
       toast.error(
         err instanceof Error
@@ -225,6 +307,7 @@ export function ParkingRequestForm({
           : 'Failed to upload parking payment receipt',
       );
     } finally {
+      setUploadingField(null);
       if (receiptInputRef.current) receiptInputRef.current.value = '';
     }
   }
@@ -299,14 +382,21 @@ export function ParkingRequestForm({
         <div className="space-y-2">
           {currentEndorsementUrl ? (
             <a
-              href={currentEndorsementUrl}
+              href={withStorageUrlCacheBust(
+                currentEndorsementUrl,
+                endorsementPreviewBust || null,
+              )}
               target="_blank"
               rel="noopener noreferrer"
               className={workflowAssetPreviewCard}
             >
               <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
                 <img
-                  src={currentEndorsementUrl}
+                  key={endorsementPreviewBust}
+                  src={withStorageUrlCacheBust(
+                    currentEndorsementUrl,
+                    endorsementPreviewBust || null,
+                  )}
                   alt="Parking endorsement"
                   className="object-cover w-full h-full"
                 />
@@ -338,15 +428,15 @@ export function ParkingRequestForm({
                 accept="image/*"
                 className="hidden"
                 onChange={handleEndorsementFileChange}
-                disabled={uploadMut.isPending}
+                disabled={endorsementUploading}
               />
               <button
                 type="button"
-                disabled={uploadMut.isPending}
+                disabled={endorsementUploading}
                 onClick={() => endorsementInputRef.current?.click()}
-                className={workflowUploadButtonClass(uploadMut.isPending)}
+                className={workflowUploadButtonClass(endorsementUploading)}
               >
-                {uploadMut.isPending ? (
+                {endorsementUploading ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" />
                     Uploading image...
@@ -380,11 +470,45 @@ export function ParkingRequestForm({
                   shouldDirty: true,
                 });
                 if (checked) {
+                  const url = currentReceiptUrl.trim();
+                  if (url) {
+                    stashedReceiptRef.current = {
+                      url,
+                      previewBust: receiptPreviewBust,
+                      verdict: receiptAiVerdict,
+                      summary: receiptAiSummary,
+                    };
+                  }
                   setValue('parking_payment_receipt_url', '', {
                     shouldValidate: true,
                     shouldDirty: true,
                   });
                   setCurrentReceiptUrl('');
+                  setReceiptPreviewBust(0);
+                  setReceiptAiVerdict(null);
+                  setReceiptAiSummary('');
+                } else {
+                  const stash = stashedReceiptRef.current;
+                  const restoreUrl =
+                    stash?.url.trim() ||
+                    booking.parking_payment_receipt_url?.trim() ||
+                    '';
+                  if (restoreUrl) {
+                    setCurrentReceiptUrl(restoreUrl);
+                    setReceiptPreviewBust(stash?.previewBust ?? 0);
+                    setReceiptAiVerdict(
+                      stash?.verdict ?? booking.parking_receipt_ai_verdict ?? null,
+                    );
+                    setReceiptAiSummary(
+                      stash?.summary ??
+                        booking.parking_receipt_ai_summary?.trim() ??
+                        '',
+                    );
+                    setValue('parking_payment_receipt_url', restoreUrl, {
+                      shouldValidate: true,
+                      shouldDirty: true,
+                    });
+                  }
                 }
               }}
             />
@@ -420,14 +544,21 @@ export function ParkingRequestForm({
           <div className="space-y-2">
             {currentReceiptUrl ? (
               <a
-                href={currentReceiptUrl}
+                href={withStorageUrlCacheBust(
+                  currentReceiptUrl,
+                  receiptPreviewBust || null,
+                )}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={workflowAssetPreviewCard}
               >
                 <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
                   <img
-                    src={currentReceiptUrl}
+                    key={receiptPreviewBust}
+                    src={withStorageUrlCacheBust(
+                      currentReceiptUrl,
+                      receiptPreviewBust || null,
+                    )}
                     alt="Parking payment receipt"
                     className="object-cover w-full h-full"
                   />
@@ -459,15 +590,15 @@ export function ParkingRequestForm({
                   accept="image/*"
                   className="hidden"
                   onChange={handleReceiptFileChange}
-                  disabled={uploadMut.isPending}
+                  disabled={receiptUploading}
                 />
                 <button
                   type="button"
-                  disabled={uploadMut.isPending}
+                  disabled={receiptUploading}
                   onClick={() => receiptInputRef.current?.click()}
-                  className={workflowUploadButtonClass(uploadMut.isPending)}
+                  className={workflowUploadButtonClass(receiptUploading)}
                 >
-                  {uploadMut.isPending ? (
+                  {receiptUploading ? (
                     <>
                       <Loader2 className="size-3.5 animate-spin" />
                       Uploading image...
@@ -482,6 +613,12 @@ export function ParkingRequestForm({
                   )}
                 </button>
               </>
+            ) : null}
+            {receiptAiVerdict ? (
+              <ReceiptAiVerdictBadge
+                verdict={receiptAiVerdict}
+                summary={receiptAiSummary}
+              />
             ) : null}
           </div>
         </Field>

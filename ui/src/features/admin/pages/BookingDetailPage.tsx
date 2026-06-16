@@ -25,7 +25,7 @@
  * Plan: docs/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -63,6 +63,10 @@ import { BookingEditForm } from "@/features/admin/components/BookingEditForm";
 import { useIsBelowMd } from "@/hooks/useMediaQuery";
 import { useBooking } from "@/features/admin/hooks/useBooking";
 import {
+  receiptAiPreviewLoading,
+  useReceiptAiBackfill,
+} from "@/features/admin/hooks/useReceiptAiBackfill";
+import {
   formatBookingDate,
   formatBookingDateTime,
   formatMoney,
@@ -74,9 +78,10 @@ import {
   parseStorageUrl,
   PRIVATE_STORAGE_BUCKETS,
   resolveAssetUrlForBrowser,
+  isStorageObjectNotFoundError,
 } from "@/features/admin/lib/storageUrls";
 import { BookingPricingSummary } from "@/features/admin/components/BookingPricingSummary";
-import { ReceiptAiVerdictBadge } from "@/features/admin/components/ReceiptAiVerdictBadge";
+import { ReceiptAiVerdictBadge, type ReceiptAiVerdict } from "@/features/admin/components/ReceiptAiVerdictBadge";
 import {
   PayParkingHeaderButton,
   PayParkingModal,
@@ -93,11 +98,13 @@ export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { data: booking, isLoading, error } = useBooking(bookingId);
+  const { isBackfilling: isReceiptAiBackfilling } = useReceiptAiBackfill(booking);
   const [editMode, setEditMode] = useState(false);
   const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<{
     label: string;
     url: string;
+    rawUrl: string;
     type: "image" | "pdf" | "file";
   } | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -157,11 +164,16 @@ export function BookingDetailPage() {
       setPreviewAsset({
         label,
         url: resolved,
+        rawUrl,
         type: getDocType(resolved),
       });
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to open document",
+        isStorageObjectNotFoundError(err)
+          ? "This file is no longer in storage"
+          : err instanceof Error
+            ? err.message
+            : "Failed to open document",
       );
     } finally {
       setPreviewLoading(false);
@@ -269,6 +281,7 @@ export function BookingDetailPage() {
                       <PricingSummaryCard
                         booking={booking}
                         onPreview={handlePreview}
+                        isReceiptAiBackfilling={isReceiptAiBackfilling}
                       />
                       {booking.need_parking && (
                         <ParkingCard
@@ -325,6 +338,8 @@ export function BookingDetailPage() {
       </div>
       <AssetPreviewModal
         asset={previewAsset}
+        booking={booking}
+        isReceiptAiBackfilling={isReceiptAiBackfilling}
         loading={previewLoading}
         onClose={() => {
           if (!previewLoading) setPreviewAsset(null);
@@ -740,9 +755,11 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
 function PricingSummaryCard({
   booking,
   onPreview,
+  isReceiptAiBackfilling = false,
 }: {
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
+  isReceiptAiBackfilling?: boolean;
 }) {
   if (booking.status === "PENDING_REVIEW") return null;
 
@@ -763,32 +780,30 @@ function PricingSummaryCard({
           </p>
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
             {hasPaymentReceipt && (
-              <div className="space-y-2">
-                <DocPreview
-                  label="Downpayment receipt"
-                  url={booking.payment_receipt_url!.trim()}
-                  onPreview={onPreview}
-                />
-                <ReceiptAiVerdictBadge
-                  verdict={booking.dp_receipt_ai_verdict}
-                  summary={booking.dp_receipt_ai_summary}
-                  compact
-                />
-              </div>
+              <DocPreview
+                label="Downpayment receipt"
+                url={booking.payment_receipt_url!.trim()}
+                onPreview={onPreview}
+                receiptAiVerdict={booking.dp_receipt_ai_verdict}
+                receiptAiLoading={receiptAiPreviewLoading(
+                  isReceiptAiBackfilling,
+                  booking.payment_receipt_url,
+                  booking.dp_receipt_ai_verdict,
+                )}
+              />
             )}
             {hasBalanceReceipt && (
-              <div className="space-y-2">
-                <DocPreview
-                  label="Payment balance receipt"
-                  url={booking.guest_balance_payment_receipt_url!.trim()}
-                  onPreview={onPreview}
-                />
-                <ReceiptAiVerdictBadge
-                  verdict={booking.balance_receipt_ai_verdict}
-                  summary={booking.balance_receipt_ai_summary}
-                  compact
-                />
-              </div>
+              <DocPreview
+                label="Payment balance receipt"
+                url={booking.guest_balance_payment_receipt_url!.trim()}
+                onPreview={onPreview}
+                receiptAiVerdict={booking.balance_receipt_ai_verdict}
+                receiptAiLoading={receiptAiPreviewLoading(
+                  isReceiptAiBackfilling,
+                  booking.guest_balance_payment_receipt_url,
+                  booking.balance_receipt_ai_verdict,
+                )}
+              />
             )}
           </div>
         </div>
@@ -913,14 +928,45 @@ function docPreviewOuterWidth() {
   return "min-w-0 w-full max-w-full lg:max-w-[255px]";
 }
 
+function docPreviewLabelRow(
+  label: string,
+  icon: ReactNode,
+  receiptAiVerdict?: ReceiptAiVerdict,
+  receiptAiLoading?: boolean,
+) {
+  return (
+    <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-caption font-medium">
+      {icon}
+      <span className="truncate">{label}</span>
+      {receiptAiLoading ? (
+        <Loader2
+          className="size-3 shrink-0 animate-spin text-muted-foreground"
+          aria-label="Checking receipt"
+        />
+      ) : receiptAiVerdict &&
+        String(receiptAiVerdict).toLowerCase() !== 'skipped' ? (
+        <ReceiptAiVerdictBadge
+          verdict={receiptAiVerdict}
+          compact
+          className="shrink-0"
+        />
+      ) : null}
+    </span>
+  );
+}
+
 function DocPreview({
   label,
   url,
   onPreview,
+  receiptAiVerdict,
+  receiptAiLoading = false,
 }: {
   label: string;
   url: string;
   onPreview: (label: string, rawUrl: string) => void;
+  receiptAiVerdict?: ReceiptAiVerdict;
+  receiptAiLoading?: boolean;
 }) {
   const normalized = normalizeStoragePublicUrl(url) ?? url;
   const parsed = parseStorageUrl(normalized);
@@ -928,31 +974,41 @@ function DocPreview({
     parsed && PRIVATE_STORAGE_BUCKETS.has(parsed.bucket),
   );
   const layoutType = getDocType(normalized);
-  /** Private objects may omit a recognizable extension; still resolve a signed URL. */
-  const needsResolve =
-    inPrivateBucket || layoutType === "image" || layoutType === "pdf";
-  const [displayUrl, setDisplayUrl] = useState<string | null>(null);
+  /** Only private buckets need a signed URL from the edge function. */
+  const needsSignedUrl = inPrivateBucket;
+  const [displayUrl, setDisplayUrl] = useState<string | null>(() =>
+    needsSignedUrl ? null : normalized,
+  );
   const [imgError, setImgError] = useState(false);
+  const [missingInStorage, setMissingInStorage] = useState(false);
 
   useEffect(() => {
     const n = normalizeStoragePublicUrl(url) ?? url;
     const loc = parseStorageUrl(n);
     const priv = Boolean(loc && PRIVATE_STORAGE_BUCKETS.has(loc.bucket));
-    const t = getDocType(n);
-    if (!priv && t === "file") {
+    if (!priv) {
       setDisplayUrl(n);
       setImgError(false);
+      setMissingInStorage(false);
       return;
     }
     let cancelled = false;
     setDisplayUrl(null);
     setImgError(false);
+    setMissingInStorage(false);
     resolveAssetUrlForBrowser(url)
       .then((u) => {
         if (!cancelled) setDisplayUrl(u);
       })
-      .catch(() => {
-        if (!cancelled) setDisplayUrl(n);
+      .catch((err) => {
+        if (cancelled) return;
+        if (isStorageObjectNotFoundError(err)) {
+          setDisplayUrl(null);
+          setMissingInStorage(true);
+          setImgError(true);
+          return;
+        }
+        setDisplayUrl(n);
       });
     return () => {
       cancelled = true;
@@ -961,7 +1017,7 @@ function DocPreview({
 
   const hrefForOpen = displayUrl ?? normalized;
 
-  if (needsResolve && !displayUrl) {
+  if (needsSignedUrl && !displayUrl && !missingInStorage) {
     return (
       <div
         className={`flex flex-col overflow-hidden rounded-xl border border-border bg-card ${docPreviewOuterWidth()}`}
@@ -969,10 +1025,39 @@ function DocPreview({
         <div className="relative flex aspect-video items-center justify-center bg-muted">
           <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
         </div>
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="truncate text-caption font-medium">
-            {label}
-          </span>
+        <div className="flex items-center justify-between gap-2 px-3 py-2">
+          {docPreviewLabelRow(
+            label,
+            <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
+            receiptAiVerdict,
+            receiptAiLoading,
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (missingInStorage) {
+    return (
+      <div
+        className={`flex flex-col overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 ${docPreviewOuterWidth()}`}
+      >
+        <div className="relative flex aspect-video items-center justify-center bg-muted px-3 text-center">
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            File missing from storage
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-card">
+          {docPreviewLabelRow(
+            label,
+            layoutType === "pdf" ? (
+              <FileText className="size-3 shrink-0 text-rose-500" />
+            ) : (
+              <ImageIcon className="size-3 shrink-0 text-muted-foreground" />
+            ),
+            receiptAiVerdict,
+            receiptAiLoading,
+          )}
         </div>
       </div>
     );
@@ -980,21 +1065,23 @@ function DocPreview({
 
   if (layoutType === "image" && imgError) {
     return (
-      <a
-        href={hrefForOpen}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => {
-          e.preventDefault();
-          onPreview(label, url);
-        }}
-        className={`flex items-center gap-2 rounded-xl border border-border bg-muted/50 px-3 py-2.5 transition-colors hover:bg-muted ${docPreviewOuterWidth()}`}
+      <div
+        className={`flex flex-col overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 ${docPreviewOuterWidth()}`}
       >
-        <ExternalLink className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate text-xs font-medium text-foreground">
-          {label}
-        </span>
-      </a>
+        <div className="relative flex aspect-video items-center justify-center bg-muted px-3 text-center">
+          <p className="text-[11px] leading-snug text-muted-foreground">
+            Preview unavailable
+          </p>
+        </div>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-card">
+          {docPreviewLabelRow(
+            label,
+            <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
+            receiptAiVerdict,
+            receiptAiLoading,
+          )}
+        </div>
+      </div>
     );
   }
 
@@ -1021,11 +1108,13 @@ function DocPreview({
             <ExternalLink className="size-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
           </div>
         </div>
-        <div className="flex items-center justify-between px-3 py-2 bg-card">
-          <span className="inline-flex truncate items-center gap-1 text-caption font-medium">
-            <ImageIcon className="size-3 shrink-0 text-muted-foreground" />
-            <span className="truncate">{label}</span>
-          </span>
+        <div className="flex items-center justify-between gap-2 px-3 py-2 bg-card">
+          {docPreviewLabelRow(
+            label,
+            <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
+            receiptAiVerdict,
+            receiptAiLoading,
+          )}
           <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
         </div>
       </a>
@@ -1089,16 +1178,87 @@ const ASSET_PREVIEW_MODAL_H =
 /** PDF iframe fills the scrollable body below the header. */
 const ASSET_PREVIEW_PDF_H = "h-full min-h-[min(50dvh,20rem)]";
 
+function receiptAiMetaForPreviewAsset(
+  booking: BookingRow | null | undefined,
+  asset: { label: string; rawUrl: string } | null,
+  isBackfilling: boolean,
+): { verdict: ReceiptAiVerdict; loading: boolean } | null {
+  if (!booking || !asset) return null;
+
+  const raw = asset.rawUrl.trim();
+  const matches = (stored: string | null | undefined) =>
+    Boolean(stored?.trim() && stored.trim() === raw);
+
+  if (
+    asset.label === "Downpayment receipt" ||
+    matches(booking.payment_receipt_url)
+  ) {
+    return {
+      verdict: booking.dp_receipt_ai_verdict,
+      loading: receiptAiPreviewLoading(
+        isBackfilling,
+        booking.payment_receipt_url,
+        booking.dp_receipt_ai_verdict,
+      ),
+    };
+  }
+
+  if (
+    asset.label === "Payment balance receipt" ||
+    matches(booking.guest_balance_payment_receipt_url)
+  ) {
+    return {
+      verdict: booking.balance_receipt_ai_verdict,
+      loading: receiptAiPreviewLoading(
+        isBackfilling,
+        booking.guest_balance_payment_receipt_url,
+        booking.balance_receipt_ai_verdict,
+      ),
+    };
+  }
+
+  if (
+    asset.label === "Parking Payment Receipt" ||
+    asset.label === "Parking payment receipt" ||
+    matches(booking.parking_payment_receipt_url)
+  ) {
+    return {
+      verdict: booking.parking_receipt_ai_verdict,
+      loading: receiptAiPreviewLoading(
+        isBackfilling,
+        booking.parking_payment_receipt_url,
+        booking.parking_receipt_ai_verdict,
+      ),
+    };
+  }
+
+  return null;
+}
+
 function AssetPreviewModal({
   asset,
+  booking,
+  isReceiptAiBackfilling,
   loading,
   onClose,
 }: {
-  asset: { label: string; url: string; type: "image" | "pdf" | "file" } | null;
+  asset: {
+    label: string;
+    url: string;
+    rawUrl: string;
+    type: "image" | "pdf" | "file";
+  } | null;
+  booking: BookingRow | null | undefined;
+  isReceiptAiBackfilling: boolean;
   loading: boolean;
   onClose: () => void;
 }) {
   const open = Boolean(asset || loading);
+  const receiptAi = receiptAiMetaForPreviewAsset(
+    booking,
+    asset,
+    isReceiptAiBackfilling,
+  );
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return;
@@ -1126,11 +1286,24 @@ function AssetPreviewModal({
         )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex shrink-0 min-h-[52px] items-center justify-between border-b border-separator px-2.5 sm:min-h-[56px] sm:px-4">
-          <div className="min-w-0">
+        <div className="flex shrink-0 min-h-[52px] items-center justify-between gap-2 border-b border-separator px-2.5 sm:min-h-[56px] sm:px-4">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <p className="truncate text-xs font-semibold text-foreground sm:text-sm">
               {asset?.label ?? "Loading preview..."}
             </p>
+            {receiptAi?.loading ? (
+              <Loader2
+                className="size-3.5 shrink-0 animate-spin text-muted-foreground"
+                aria-label="Checking receipt"
+              />
+            ) : receiptAi?.verdict &&
+              String(receiptAi.verdict).toLowerCase() !== "skipped" ? (
+              <ReceiptAiVerdictBadge
+                verdict={receiptAi.verdict}
+                compact
+                className="shrink-0"
+              />
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             {asset && (

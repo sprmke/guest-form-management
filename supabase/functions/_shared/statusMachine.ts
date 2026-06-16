@@ -119,6 +119,8 @@ export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
     parking_endorsement_url: null,
     parking_fee_included_in_downpayment: null,
     parking_payment_receipt_url: null,
+    parking_receipt_ai_verdict: null,
+    parking_receipt_ai_summary: null,
     guest_balance_paid_amount: null,
     guest_balance_payment_receipt_url: null,
     surprise_decor_staff_acknowledged: false,

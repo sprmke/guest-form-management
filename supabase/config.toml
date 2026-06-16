@@ -157,6 +157,9 @@ verify_jwt = false
 [functions.upload-booking-asset]
 verify_jwt = false
 
+[functions.validate-booking-receipts]
+verify_jwt = false
+
 [functions.get-booking-asset-url]
 verify_jwt = false
 

@@ -14,6 +14,7 @@ import {
   adminTableMoneyClass,
   adminTableRowClass,
 } from '@/features/admin/components/AdminDataTable';
+import { bookingHasInvalidReceiptAi } from '@/features/admin/lib/bookingFlags';
 import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import { BookingStayDatesCell } from '@/features/admin/components/BookingStayDatesCell';
@@ -192,6 +193,7 @@ function BookingTableRow({
           need_parking={row.need_parking}
           has_pets={row.has_pets}
           guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+          has_invalid_receipt_ai={bookingHasInvalidReceiptAi(row)}
         />
       </td>
 

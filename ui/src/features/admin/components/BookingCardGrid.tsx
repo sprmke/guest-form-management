@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
-import { Car, Dog, PartyPopper } from 'lucide-react';
 import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
+import { AdminTableFlagsCell } from '@/features/admin/components/AdminDataTable';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import { GuestAvatar } from '@/features/admin/components/GuestAvatar';
 import {
@@ -9,7 +9,10 @@ import {
   formatBookingDateShort,
   formatMoney,
 } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor, bookingFlagIconChipClass } from '@/features/admin/lib/bookingFlags';
+import {
+  bookingHasInvalidReceiptAi,
+  bookingRequestsSurpriseDecor,
+} from '@/features/admin/lib/bookingFlags';
 import type { BookingRow } from '@/features/admin/lib/types';
 
 type Props = {
@@ -97,6 +100,12 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
     row.guest_email ||
     'Guest';
   const pax = (row.number_of_adults ?? 0) + (row.number_of_children ?? 0);
+  const hasInvalidReceiptAi = bookingHasInvalidReceiptAi(row);
+  const hasAnyFlags =
+    Boolean(row.need_parking) ||
+    Boolean(row.has_pets) ||
+    bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) ||
+    hasInvalidReceiptAi;
 
   const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -167,37 +176,15 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
 
       {/* Footer: flags + amount */}
       <div className="flex items-center justify-between gap-2 border-t border-separator bg-muted/20 px-4 py-3 dark:bg-muted/30">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {row.need_parking ? (
-            <span
-              title="Needs parking"
-              aria-label="Needs parking"
-              className={cn('size-7', bookingFlagIconChipClass.parking)}
-            >
-              <Car className="size-4" aria-hidden />
-            </span>
-          ) : null}
-          {row.has_pets ? (
-            <span
-              title="Has pets"
-              aria-label="Has pets"
-              className={cn('size-7', bookingFlagIconChipClass.pet)}
-            >
-              <Dog className="size-4" aria-hidden />
-            </span>
-          ) : null}
-          {bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) ? (
-            <span
-              title="Surprise decor setup"
-              aria-label="Surprise decor setup"
-              className={cn('size-7', bookingFlagIconChipClass.decor)}
-            >
-              <PartyPopper className="size-4" aria-hidden />
-            </span>
-          ) : null}
-          {!row.need_parking &&
-            !row.has_pets &&
-            !bookingRequestsSurpriseDecor(row.guest_requests_surprise_decor) && (
+        <div className="flex min-w-0 items-center gap-1.5">
+          {hasAnyFlags ? (
+            <AdminTableFlagsCell
+              need_parking={row.need_parking}
+              has_pets={row.has_pets}
+              guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+              has_invalid_receipt_ai={hasInvalidReceiptAi}
+            />
+          ) : (
             <span className="text-caption text-muted-foreground/50">No flags</span>
           )}
         </div>

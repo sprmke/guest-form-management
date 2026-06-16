@@ -149,7 +149,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Notification for guest check-out
 
 - Display carousel on the top background that auto slides to show different unit pictures/amenities
-- ✅ **AI payment receipt validation** — Gemini Flash vision on downpayment receipt (`submit-form`) and balance receipt (`upload-booking-asset`); results in New Booking Request email, admin Telegram templates, and admin UI. Invalid balance receipts block RFCI → RFCO transition.
+- ✅ **AI payment receipt validation** — Gemini Flash vision on downpayment receipt (`submit-form`), balance receipt (`upload-booking-asset`), and parking payment receipt (`ParkingRequestForm` / `parking_payment_receipt`); results in New Booking Request email, admin Telegram templates, and admin UI. Invalid balance and parking receipts block workflow transitions.
 - Use AI to analyze and validate other guest uploaded assets (valid ID, pet docs, etc.)
 - Persist dev query parameters on booking summary and booking detail pages on route change (optional polish)
 - Combine GAF request and pet request in one email when sending to Azure

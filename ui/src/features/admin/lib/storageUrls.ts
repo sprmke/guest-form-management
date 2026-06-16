@@ -41,6 +41,20 @@ export function normalizeStoragePublicUrl(
   return normalized;
 }
 
+/**
+ * Append a cache-bust query param so replaced storage objects (same public URL)
+ * reload in `<img>` previews after upsert uploads.
+ */
+export function withStorageUrlCacheBust(
+  url: string,
+  version: number | string | null | undefined,
+): string {
+  const trimmed = url?.trim();
+  if (!trimmed || version == null || version === '') return url;
+  const sep = trimmed.includes('?') ? '&' : '?';
+  return `${trimmed}${sep}v=${encodeURIComponent(String(version))}`;
+}
+
 export function parseStorageUrl(
   url: string | null | undefined,
 ): { bucket: string; path: string } | null {
@@ -55,6 +69,19 @@ export function parseStorageUrl(
 }
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
+
+export class StorageObjectNotFoundError extends Error {
+  constructor() {
+    super('Object not found');
+    this.name = 'StorageObjectNotFoundError';
+  }
+}
+
+export function isStorageObjectNotFoundError(
+  err: unknown,
+): err is StorageObjectNotFoundError {
+  return err instanceof StorageObjectNotFoundError;
+}
 
 /**
  * Returns a URL the browser can load in `<img>` / a new tab.
@@ -79,6 +106,9 @@ export async function resolveAssetUrlForBrowser(url: string): Promise<string> {
     body: JSON.stringify({ url: normalized }),
   });
   const json = await res.json();
+  if (res.status === 404 || json.code === 'STORAGE_OBJECT_NOT_FOUND') {
+    throw new StorageObjectNotFoundError();
+  }
   if (!res.ok || !json.success || !json.data?.url) {
     throw new Error(json.error ?? 'Failed to resolve asset URL');
   }

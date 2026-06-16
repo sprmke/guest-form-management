@@ -188,6 +188,8 @@ export interface GuestSubmission {
   dp_receipt_ai_summary?: string | null;
   balance_receipt_ai_verdict?: string | null;
   balance_receipt_ai_summary?: string | null;
+  parking_receipt_ai_verdict?: string | null;
+  parking_receipt_ai_summary?: string | null;
 }
 
 // Helper function to convert string to boolean

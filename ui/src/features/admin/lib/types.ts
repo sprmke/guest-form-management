@@ -45,6 +45,8 @@ export type BookingRow = {
   parking_endorsement_url: string | null;
   parking_fee_included_in_downpayment?: boolean | null;
   parking_payment_receipt_url?: string | null;
+  parking_receipt_ai_verdict?: string | null;
+  parking_receipt_ai_summary?: string | null;
 
   // ── Pets ──────────────────────────────────────────────────────────────────
   has_pets: boolean | null;

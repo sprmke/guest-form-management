@@ -145,7 +145,10 @@ function buildPaxNights(booking: any): { pax: number; nights: number } {
   return { pax, nights };
 }
 
-function assertParkingPaymentReceiptIfRequired(payload: TransitionPayload): void {
+function assertParkingPaymentReceiptIfRequired(
+  payload: TransitionPayload,
+  booking?: Record<string, unknown>,
+): void {
   const included = payload.parking_fee_included_in_downpayment !== false;
   if (included) return;
   const receipt =
@@ -155,6 +158,14 @@ function assertParkingPaymentReceiptIfRequired(payload: TransitionPayload): void
   if (!receipt) {
     throw new Error(
       'Upload a parking payment receipt before completing parking',
+    );
+  }
+  if (
+    booking &&
+    receiptVerdictBlocksAdminTransition(booking.parking_receipt_ai_verdict)
+  ) {
+    throw new Error(
+      'Parking payment receipt failed AI validation. Upload a valid payment screenshot before completing parking.',
     );
   }
 }
@@ -338,7 +349,7 @@ export class WorkflowOrchestrator {
         docComplete === 'PENDING_PARKING_REQUEST';
 
       if (docComplete === 'PENDING_PARKING_REQUEST' && manual) {
-        assertParkingPaymentReceiptIfRequired(payload);
+        assertParkingPaymentReceiptIfRequired(payload, booking as Record<string, unknown>);
       }
 
       if (
@@ -364,7 +375,7 @@ export class WorkflowOrchestrator {
       (docComplete === 'PENDING_PARKING_REQUEST' && manual)
     ) {
       if (fromStatus === 'PENDING_PARKING_REQUEST') {
-        assertParkingPaymentReceiptIfRequired(payload);
+        assertParkingPaymentReceiptIfRequired(payload, booking as Record<string, unknown>);
       }
       if (payload.parking_rate_paid != null) workflowFields.parking_rate_paid = payload.parking_rate_paid;
       if (payload.parking_owner_email) workflowFields.parking_owner_email = payload.parking_owner_email;
@@ -383,6 +394,8 @@ export class WorkflowOrchestrator {
           payload.parking_fee_included_in_downpayment !== false;
         if (payload.parking_fee_included_in_downpayment !== false) {
           workflowFields.parking_payment_receipt_url = null;
+          workflowFields.parking_receipt_ai_verdict = null;
+          workflowFields.parking_receipt_ai_summary = null;
         }
       }
       if (payload.parking_payment_receipt_url !== undefined) {

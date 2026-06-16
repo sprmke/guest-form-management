@@ -29,14 +29,10 @@ import { formatPublicUrl } from '../_shared/utils.ts';
 import {
   dbPatchForReceiptValidation,
   type ReceiptValidationResult,
+  receiptKindForAssetType,
   validateReceiptFile,
 } from '../_shared/receiptValidationService.ts';
 import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
-
-const PAYMENT_RECEIPT_ASSET_TYPES = new Set([
-  'payment_receipt',
-  'guest_balance_payment_receipt',
-]);
 
 const ASSET_CONFIG = {
   // ── Workflow assets (set during transitions) ──────────────────────────────
@@ -148,13 +144,13 @@ serve(async (req) => {
     };
 
     let receiptValidation: ReceiptValidationResult | undefined;
-    if (PAYMENT_RECEIPT_ASSET_TYPES.has(assetType)) {
+    const receiptKind = receiptKindForAssetType(assetType);
+    if (receiptKind) {
       try {
         receiptValidation = await validateReceiptFile(file);
-        const kind = assetType === 'payment_receipt' ? 'downpayment' : 'balance';
         Object.assign(
           workflowUpdate,
-          dbPatchForReceiptValidation(kind, receiptValidation),
+          dbPatchForReceiptValidation(receiptKind, receiptValidation),
         );
         console.log(
           `[upload-booking-asset] ${assetType} AI: ${receiptValidation.verdict} — ${receiptValidation.summary}`,

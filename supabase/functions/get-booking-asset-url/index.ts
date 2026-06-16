@@ -83,9 +83,24 @@ serve(async (req) => {
       .createSignedUrl(loc.path, SIGNED_URL_TTL_SEC);
 
     if (error || !data?.signedUrl) {
-      throw new Error(
-        error?.message ?? 'Failed to create signed URL for storage object',
-      );
+      const msg = error?.message ?? 'Failed to create signed URL for storage object';
+      if (/not found/i.test(msg)) {
+        console.warn(
+          `[get-booking-asset-url] Storage object missing: ${loc.bucket}/${loc.path}`,
+        );
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Object not found',
+            code: 'STORAGE_OBJECT_NOT_FOUND',
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          },
+        );
+      }
+      throw new Error(msg);
     }
 
     const signed = formatPublicUrl(data.signedUrl);

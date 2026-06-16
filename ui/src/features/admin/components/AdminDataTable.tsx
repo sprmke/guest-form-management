@@ -240,19 +240,22 @@ type FlagsCellProps = {
   need_parking?: boolean | null;
   has_pets?: boolean | null;
   guest_requests_surprise_decor?: unknown;
+  has_invalid_receipt_ai?: boolean;
   /** Omit the empty placeholder (e.g. inline flags on mobile finance cards). */
   hideEmpty?: boolean;
 };
 
-/** Flags column — parking / pet / decor chips (Bookings + Finance stays). */
+/** Flags column — parking / pet / decor / invalid receipt chips (Bookings + Finance stays). */
 export function AdminTableFlagsCell({
   need_parking,
   has_pets,
   guest_requests_surprise_decor,
+  has_invalid_receipt_ai = false,
   hideEmpty = false,
 }: FlagsCellProps) {
   const decor = bookingRequestsSurpriseDecor(guest_requests_surprise_decor);
-  const hasAny = need_parking || has_pets || decor;
+  const hasAny =
+    need_parking || has_pets || decor || has_invalid_receipt_ai;
 
   if (!hasAny && hideEmpty) return null;
 
@@ -283,6 +286,17 @@ export function AdminTableFlagsCell({
           className={cn('size-7', bookingFlagIconChipClass.decor)}
         >
           <PartyPopper className="size-4" aria-hidden />
+        </span>
+      ) : null}
+      {has_invalid_receipt_ai ? (
+        <span
+          title="AI: Invalid payment receipt"
+          aria-label="AI detected invalid payment receipt"
+          className={cn('size-7', bookingFlagIconChipClass.invalidReceipt)}
+        >
+          <span className="text-sm font-black leading-none" aria-hidden>
+            !
+          </span>
         </span>
       ) : null}
       {!hasAny ? (

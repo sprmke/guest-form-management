@@ -20,7 +20,7 @@ import {
   computeTotalGuestBalance,
   guestBalancePaymentReceiptRequired,
 } from '@/features/admin/lib/totalGuestBalance';
-import { resolveAssetUrlForBrowser } from '@/features/admin/lib/storageUrls';
+import { resolveAssetUrlForBrowser, isStorageObjectNotFoundError } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
 import {
   WorkflowFormShell,
@@ -29,6 +29,7 @@ import {
 } from '@/features/admin/components/WorkflowFormShell';
 import {
   ReceiptAiVerdictBadge,
+  receiptAiUploadToastMessage,
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/admin/components/ReceiptAiVerdictBadge';
@@ -118,6 +119,7 @@ export function GuestBalanceSettlementForm({
   );
   const [receiptImgSrc, setReceiptImgSrc] = useState<string | null>(null);
   const [receiptImgFailed, setReceiptImgFailed] = useState(false);
+  const [receiptPreviewBust, setReceiptPreviewBust] = useState(0);
   const [receiptAiVerdict, setReceiptAiVerdict] = useState<ReceiptAiVerdict>(
     () => booking.balance_receipt_ai_verdict ?? null,
   );
@@ -138,13 +140,20 @@ export function GuestBalanceSettlementForm({
       .then((u) => {
         if (!cancelled) setReceiptImgSrc(u);
       })
-      .catch(() => {
-        if (!cancelled) setReceiptImgSrc(receiptUrl);
+      .catch((err) => {
+        if (!cancelled) {
+          if (isStorageObjectNotFoundError(err)) {
+            setReceiptImgSrc(null);
+            setReceiptImgFailed(true);
+            return;
+          }
+          setReceiptImgSrc(receiptUrl);
+        }
       });
     return () => {
       cancelled = true;
     };
-  }, [receiptUrl]);
+  }, [receiptUrl, receiptPreviewBust]);
 
   useEffect(() => {
     const fromBooking = booking.guest_balance_payment_receipt_url?.trim() ?? '';
@@ -277,17 +286,16 @@ export function GuestBalanceSettlementForm({
         file,
       });
       setReceiptUrl(result.url);
+      setReceiptPreviewBust(Date.now());
       const validation = result.receiptValidation;
       if (validation) {
         setReceiptAiVerdict(validation.verdict);
         setReceiptAiSummary(validation.summary);
-        if (validation.verdict === 'invalid') {
-          toast.error('Receipt failed AI check — upload a valid payment screenshot');
-        } else if (validation.verdict === 'unclear') {
-          toast.warning('Receipt AI check unclear — review before proceeding');
-        } else {
-          toast.success('Payment balance receipt uploaded');
-        }
+        const toastMsg = receiptAiUploadToastMessage(validation.verdict);
+        if (toastMsg?.type === 'error') toast.error(toastMsg.message);
+        else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
+        else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
+        else toast.success('Payment balance receipt uploaded');
       } else {
         toast.success('Payment balance receipt uploaded');
       }
@@ -390,6 +398,7 @@ export function GuestBalanceSettlementForm({
                   </div>
                 ) : (
                   <img
+                    key={receiptPreviewBust}
                     src={receiptImgSrc}
                     alt=""
                     className="h-full w-full shrink-0 object-cover"
@@ -461,11 +470,6 @@ export function GuestBalanceSettlementForm({
             verdict={receiptAiVerdict}
             summary={receiptAiSummary}
           />
-        ) : null}
-        {receiptAiVerdictBlocksAdmin(receiptAiVerdict) ? (
-          <p className="text-xs font-medium text-red-600 dark:text-red-400">
-            This receipt did not pass AI validation. Upload a valid payment screenshot to proceed.
-          </p>
         ) : null}
       </div>
     </WorkflowFormShell>

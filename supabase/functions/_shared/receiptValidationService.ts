@@ -3,6 +3,8 @@
  * Non-blocking when GEMINI_API_KEY is missing or the API errors.
  */
 
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+
 export type ReceiptValidationVerdict =
   | 'valid'
   | 'likely_valid'
@@ -168,6 +170,147 @@ export async function validateReceiptFile(file: File | Blob): Promise<ReceiptVal
   return validateReceiptImage(bytes, mimeType);
 }
 
+const STORAGE_OBJECT_PATH_RE =
+  /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
+
+function parseStorageUrl(url: string): { bucket: string; path: string } | null {
+  const trimmed = url?.trim();
+  if (!trimmed || trimmed === 'dev-mode-skipped' || trimmed === 'test-mode-skipped') {
+    return null;
+  }
+  const match = trimmed.match(STORAGE_OBJECT_PATH_RE);
+  if (!match) return null;
+  const bucket = match[1];
+  const rawPath = match[2]?.split('?')[0] ?? '';
+  if (!bucket || !rawPath) return null;
+  return { bucket, path: decodeURIComponent(rawPath) };
+}
+
+function mimeTypeFromPath(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
+/** Download a stored receipt image and run Gemini validation (admin backfill). */
+export async function validateReceiptFromStorageUrl(
+  url: string,
+): Promise<ReceiptValidationResult> {
+  const loc = parseStorageUrl(url);
+  if (!loc) {
+    return skipped('Could not parse receipt URL');
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+  );
+
+  try {
+    const { data, error } = await supabase.storage.from(loc.bucket).download(loc.path);
+    if (error || !data) {
+      console.error('[receipt-validation] Storage download failed:', error?.message);
+      return skipped('Could not download receipt image');
+    }
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    const mimeType = data.type?.startsWith('image/')
+      ? data.type
+      : mimeTypeFromPath(loc.path);
+    return await validateReceiptImage(bytes, mimeType);
+  } catch (err) {
+    console.error('[receipt-validation] Storage download error:', err);
+    return skipped('Could not download receipt image');
+  }
+}
+
+export type ReceiptBackfillKind = 'downpayment' | 'balance' | 'parking';
+
+export type ReceiptBackfillItem = {
+  kind: ReceiptBackfillKind;
+  verdict: ReceiptValidationVerdict;
+  summary: string;
+};
+
+/** Returns true when a receipt URL exists but AI verdict was never persisted. */
+export function receiptUrlNeedsAiBackfill(
+  url: string | null | undefined,
+  verdict: string | null | undefined,
+): boolean {
+  return Boolean(url?.trim()) && !String(verdict ?? '').trim();
+}
+
+const TERMINAL_BOOKING_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
+
+/**
+ * One-shot backfill for legacy rows: validate stored receipt images that never
+ * received an AI verdict during submit/upload.
+ */
+export async function backfillMissingReceiptAiVerdicts(
+  booking: Record<string, unknown>,
+): Promise<ReceiptBackfillItem[]> {
+  const status = String(booking.status ?? '');
+  if (TERMINAL_BOOKING_STATUSES.has(status)) {
+    return [];
+  }
+
+  const targets: Array<{ kind: ReceiptBackfillKind; url: string }> = [];
+
+  const dpUrl = String(booking.payment_receipt_url ?? '').trim();
+  if (receiptUrlNeedsAiBackfill(dpUrl, booking.dp_receipt_ai_verdict as string)) {
+    targets.push({ kind: 'downpayment', url: dpUrl });
+  }
+
+  const balanceUrl = String(booking.guest_balance_payment_receipt_url ?? '').trim();
+  if (
+    receiptUrlNeedsAiBackfill(
+      balanceUrl,
+      booking.balance_receipt_ai_verdict as string,
+    )
+  ) {
+    targets.push({ kind: 'balance', url: balanceUrl });
+  }
+
+  const parkingUrl = String(booking.parking_payment_receipt_url ?? '').trim();
+  if (
+    receiptUrlNeedsAiBackfill(
+      parkingUrl,
+      booking.parking_receipt_ai_verdict as string,
+    )
+  ) {
+    targets.push({ kind: 'parking', url: parkingUrl });
+  }
+
+  const results: ReceiptBackfillItem[] = [];
+  for (const target of targets) {
+    const validation = await validateReceiptFromStorageUrl(target.url);
+    results.push({
+      kind: target.kind,
+      verdict: validation.verdict,
+      summary: validation.summary,
+    });
+  }
+  return results;
+}
+
+export function dbPatchFromReceiptBackfillItems(
+  items: ReceiptBackfillItem[],
+): Record<string, string> {
+  const patch: Record<string, string> = {};
+  for (const item of items) {
+    Object.assign(patch, dbPatchForReceiptValidation(item.kind, {
+      verdict: item.verdict,
+      confidence: null,
+      summary: item.summary,
+      has_amount: false,
+      has_date: false,
+      has_reference: false,
+    }));
+  }
+  return patch;
+}
+
 export function formatReceiptVerdictLabel(verdict: ReceiptValidationVerdict | string | null | undefined): string {
   switch (String(verdict ?? '').toLowerCase()) {
     case 'valid':
@@ -199,10 +342,14 @@ export type ReceiptValidationDbPatch =
   | {
     balance_receipt_ai_verdict: string;
     balance_receipt_ai_summary: string;
+  }
+  | {
+    parking_receipt_ai_verdict: string;
+    parking_receipt_ai_summary: string;
   };
 
 export function dbPatchForReceiptValidation(
-  kind: 'downpayment' | 'balance',
+  kind: 'downpayment' | 'balance' | 'parking',
   result: ReceiptValidationResult,
 ): ReceiptValidationDbPatch {
   if (kind === 'downpayment') {
@@ -211,8 +358,29 @@ export function dbPatchForReceiptValidation(
       dp_receipt_ai_summary: result.summary,
     };
   }
+  if (kind === 'parking') {
+    return {
+      parking_receipt_ai_verdict: result.verdict,
+      parking_receipt_ai_summary: result.summary,
+    };
+  }
   return {
     balance_receipt_ai_verdict: result.verdict,
     balance_receipt_ai_summary: result.summary,
   };
+}
+
+export function receiptKindForAssetType(
+  assetType: string,
+): 'downpayment' | 'balance' | 'parking' | null {
+  switch (assetType) {
+    case 'payment_receipt':
+      return 'downpayment';
+    case 'guest_balance_payment_receipt':
+      return 'balance';
+    case 'parking_payment_receipt':
+      return 'parking';
+    default:
+      return null;
+  }
 }
