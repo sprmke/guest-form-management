@@ -14,6 +14,8 @@ export type CalendarEventDatesBackfillInput = {
   dryRun?: boolean;
   limit?: number;
   bookingId?: string;
+  /** When true, only stays with check-out today or later (Manila). Default false includes completed stays. */
+  futureStaysOnly?: boolean;
 };
 
 export type CalendarEventDatesBackfillPreviewItem = {
@@ -39,6 +41,11 @@ export type CalendarEventDatesBackfillResult = {
   count?: number;
   preview?: CalendarEventDatesBackfillPreviewItem[];
   summary?: CalendarEventDatesBackfillSummary;
+  message?: string;
+  filter?: {
+    multiNightOnly: boolean;
+    futureStaysOnly: boolean;
+  };
 };
 
 export function useCalendarEventDatesBackfill() {

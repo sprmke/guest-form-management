@@ -27,11 +27,14 @@ export type CalendarEventDatesBackfillDialogProps = {
 };
 
 function buildToastSummary(r: CalendarEventDatesBackfillResult): string {
+  if (r.message && (r.count === 0 || !r.preview?.length)) {
+    return r.message;
+  }
   if (r.dryRun) {
     return [
       'Preview',
-      r.count != null ? `${r.count} booking(s)` : null,
-      'calendar end dates computed',
+      r.count != null ? `${r.count} multi-night stay(s)` : null,
+      'would update Google Calendar',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -73,7 +76,11 @@ export function CalendarEventDatesBackfillDialog({
 
   const runBackfill = (dryRun: boolean) => {
     backfill.mutate(
-      { dryRun, limit: DEFAULT_BATCH_LIMIT },
+      {
+        dryRun,
+        limit: DEFAULT_BATCH_LIMIT,
+        futureStaysOnly: false,
+      },
       {
         onSuccess: (r) => {
           if (r.dryRun) {
@@ -112,12 +119,8 @@ export function CalendarEventDatesBackfillDialog({
         <DialogHeader>
           <DialogTitle>Fix Google Calendar stay dates</DialogTitle>
           <DialogDescription>
-            Multi-night bookings used to end on checkout morning, so Google
-            Calendar showed one extra day. This tool re-syncs event windows to
-            occupied nights only (ends 23:59 on the last night). Run{' '}
-            <span className="font-medium">Preview only</span> first, then Apply.
-            Processes up to {DEFAULT_BATCH_LIMIT} non-cancelled bookings per
-            run — repeat Apply until all rows are done.
+            Re-sync Google Calendar for 2+ night stays (including completed)
+            that show an extra day. Preview first, then Apply.
           </DialogDescription>
         </DialogHeader>
 
@@ -152,8 +155,8 @@ export function CalendarEventDatesBackfillDialog({
                     Preview only
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground sm:text-[11px] leading-snug">
-                    Dry run: lists bookings and new calendar end times. No
-                    Google changes.
+                    Dry run: lists all multi-night stays (including completed)
+                    that would get a new calendar end time. No Google changes.
                   </span>
                 </span>
               </span>
@@ -207,18 +210,26 @@ export function CalendarEventDatesBackfillDialog({
                 htmlFor="calendar-backfill-apply-ack"
                 className="text-xs font-normal leading-snug text-sidebar-foreground sm:text-[11px] cursor-pointer"
               >
-                I ran preview or understand this updates Google Calendar for up
-                to {DEFAULT_BATCH_LIMIT} bookings per run.
+                I ran preview or understand this PATCHes Google Calendar for
+                the multi-night stays shown in preview.
               </Label>
             </div>
           </div>
         )}
 
-        {lastPreview && lastPreview.preview && lastPreview.preview.length > 0 ? (
+        {lastPreview ? (
           <div className="rounded-lg border border-separator bg-muted/20 px-3 py-2.5 space-y-2">
             <p className="text-xs font-semibold text-foreground">
-              Preview: {lastPreview.count ?? lastPreview.preview.length} booking(s)
+              {lastPreview.count === 0
+                ? 'Nothing to fix'
+                : `Preview: ${lastPreview.count ?? lastPreview.preview?.length ?? 0} multi-night stay(s)`}
             </p>
+            {lastPreview.message ? (
+              <p className="text-xs text-muted-foreground leading-snug">
+                {lastPreview.message}
+              </p>
+            ) : null}
+            {lastPreview.preview && lastPreview.preview.length > 0 ? (
             <div className="max-h-40 overflow-y-auto overscroll-contain text-xs text-muted-foreground space-y-1">
               {lastPreview.preview.slice(0, 8).map((row) => (
                 <p key={row.bookingId} className="font-mono text-[11px] leading-snug">
@@ -228,10 +239,11 @@ export function CalendarEventDatesBackfillDialog({
               ))}
               {(lastPreview.preview.length ?? 0) > 8 ? (
                 <p className="text-[11px] italic">
-                  +{(lastPreview.preview.length ?? 0) - 8} more in this batch
+                  +{(lastPreview.preview.length ?? 0) - 8} more
                 </p>
               ) : null}
             </div>
+            ) : null}
           </div>
         ) : null}
 

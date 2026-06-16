@@ -34,9 +34,8 @@ export function CalendarEventDatesBackfillCard({ calendarConfigured }: Props) {
               Google Calendar stay dates
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5 sm:text-[11px] leading-snug">
-              One-time fix for multi-night bookings that span an extra day on
-              Google Calendar. New bookings use the correct window automatically
-              after deploy.
+              One-time fix for multi-night stays (including completed) that show
+              an extra day on Google Calendar. Only updates calendar events.
             </p>
             {!calendarConfigured ? (
               <p className="text-xs text-amber-800/90 mt-1.5 sm:text-[11px] dark:text-amber-200">

@@ -18,13 +18,33 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { CalendarService } from '../_shared/calendarService.ts';
-import { buildGoogleCalendarOccupiedEndDateTime } from '../_shared/utils.ts';
+import {
+  buildGoogleCalendarOccupiedEndDateTime,
+} from '../_shared/utils.ts';
+import {
+  manilaTodayYmd,
+  normalizeBookingDateToYmd,
+} from '../_shared/calendarAvailabilityManila.ts';
 
 type BackfillRequest = {
   dryRun?: boolean;
   limit?: number;
   bookingId?: string;
+  /** When true, only stays with check-out today or later (Manila). Default false — includes completed stays. */
+  futureStaysOnly?: boolean;
 };
+
+function isEligibleForCalendarWindowFix(
+  row: { number_of_nights?: number | null; check_out_date?: string | null },
+  futureStaysOnly: boolean,
+): boolean {
+  const nights = Number(row.number_of_nights) || 1;
+  if (nights < 2) return false;
+  if (!futureStaysOnly) return true;
+  const checkoutYmd = normalizeBookingDateToYmd(String(row.check_out_date ?? ''));
+  if (!checkoutYmd) return false;
+  return checkoutYmd >= manilaTodayYmd();
+}
 
 function supabaseAdmin() {
   return createClient(
@@ -49,6 +69,7 @@ serve(async (req) => {
     const dryRun = body.dryRun !== false;
     const limit = Math.min(Math.max(1, Number(body.limit) || 200), 500);
     const scopedBookingId = body.bookingId?.trim() || '';
+    const futureStaysOnly = body.futureStaysOnly === true;
 
     const supabase = supabaseAdmin();
     let query = supabase
@@ -61,13 +82,39 @@ serve(async (req) => {
     if (scopedBookingId) {
       query = query.eq('id', scopedBookingId);
     } else {
-      query = query.limit(limit);
+      query = query.gt('number_of_nights', 1);
     }
 
     const { data: bookings, error } = await query;
     if (error) throw new Error(error.message);
 
-    const rows = bookings ?? [];
+    let rows = bookings ?? [];
+    if (scopedBookingId) {
+      if (rows.length === 0) {
+        throw new Error('Booking not found');
+      }
+      if ((Number(rows[0].number_of_nights) || 1) < 2) {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            dryRun,
+            count: 0,
+            preview: [],
+            message: 'Single-night stays were already correct on Google Calendar — nothing to fix.',
+            filter: { multiNightOnly: true, futureStaysOnly: false },
+          }),
+          { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        );
+      }
+    } else {
+      rows = rows.filter((row) => isEligibleForCalendarWindowFix(row, futureStaysOnly));
+      rows.sort((a, b) => {
+        const aCi = normalizeBookingDateToYmd(String(a.check_in_date ?? '')) ?? '';
+        const bCi = normalizeBookingDateToYmd(String(b.check_in_date ?? '')) ?? '';
+        return bCi.localeCompare(aCi);
+      });
+      rows = rows.slice(0, limit);
+    }
     const preview: Array<{
       bookingId: string;
       checkIn: string;
@@ -98,6 +145,13 @@ serve(async (req) => {
           dryRun: true,
           count: preview.length,
           preview,
+          filter: {
+            multiNightOnly: !scopedBookingId,
+            futureStaysOnly: scopedBookingId ? false : futureStaysOnly,
+          },
+          message: preview.length === 0
+            ? 'No multi-night stays need a calendar window fix.'
+            : undefined,
         }),
         { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
@@ -128,7 +182,16 @@ serve(async (req) => {
     };
 
     return new Response(
-      JSON.stringify({ success: true, dryRun: false, summary, results }),
+      JSON.stringify({
+        success: true,
+        dryRun: false,
+        summary,
+        results,
+        filter: {
+          multiNightOnly: !scopedBookingId,
+          futureStaysOnly: scopedBookingId ? false : futureStaysOnly,
+        },
+      }),
       { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
     );
   } catch (error) {
