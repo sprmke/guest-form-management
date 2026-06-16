@@ -1,11 +1,12 @@
 /**
  * Telegram staff/cleaner daily booking summary.
- * Sends today's booking details + next 3 days to the staff Telegram group.
+ * Sends active today's bookings (check-ins, in-house stays, check-outs) + next 3 days to the staff Telegram group.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { DatabaseService } from './databaseService.ts';
 import {
+  bookingActiveForStaffOnDay,
   manilaTodayYmd,
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
@@ -332,6 +333,18 @@ export async function notifyTelegramStaffSameDayCheckIn(
   return { sent: true };
 }
 
+/** Bookings active today for staff: new check-ins, in-house multi-night stays, and check-outs today. */
+export function bookingIsActiveForStaffToday(
+  booking: BookingRow,
+  todayYmd: string,
+): boolean {
+  if (isCancelledStatus(booking.status)) return false;
+  const ciYmd = normalizeBookingDateToYmd(String(booking.check_in_date ?? ''));
+  const coYmd = normalizeBookingDateToYmd(String(booking.check_out_date ?? ''));
+  if (!ciYmd || !coYmd) return false;
+  return bookingActiveForStaffOnDay(ciYmd, coYmd, todayYmd);
+}
+
 export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -349,9 +362,18 @@ export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]
     throw new Error(`Failed to query bookings: ${error.message}`);
   }
 
-  return (data ?? []).filter((r: BookingRow) => {
-    const ciYmd = normalizeBookingDateToYmd(String(r.check_in_date ?? ''));
-    return ciYmd === todayYmd;
+  const active = (data ?? []).filter((r: BookingRow) =>
+    bookingIsActiveForStaffToday(r, todayYmd),
+  );
+
+  // New check-ins today first, then ongoing stays by check-in date.
+  return active.sort((a, b) => {
+    const aCi = normalizeBookingDateToYmd(String(a.check_in_date ?? '')) ?? '';
+    const bCi = normalizeBookingDateToYmd(String(b.check_in_date ?? '')) ?? '';
+    const aNewToday = aCi === todayYmd ? 0 : 1;
+    const bNewToday = bCi === todayYmd ? 0 : 1;
+    if (aNewToday !== bNewToday) return aNewToday - bNewToday;
+    return aCi.localeCompare(bCi);
   });
 }
 
@@ -519,7 +541,7 @@ export async function sendStaffDraftPreview(template: string): Promise<StaffDraf
     return {
       sent: false,
       error:
-        'No bookings checking in today. Preview needs at least one today check-in (same data source as the daily cron).',
+        'No active bookings for today. Preview needs at least one in-house or check-in-today booking (same data source as the daily cron).',
     };
   }
 
