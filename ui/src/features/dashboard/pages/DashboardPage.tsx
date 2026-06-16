@@ -97,7 +97,7 @@ export function DashboardPage() {
           <AdminPageHeader
             id="dashboard-heading"
             title="Dashboard"
-            subtitle={`${greeting}, ${displayName}. Overview for ${data ? formatIsoDate(data.manilaDate) : "today"}.`}
+            subtitle={`${greeting}, ${displayName}.`}
             icon={LayoutDashboard}
             actions={
               <BookingDateRangeFilter

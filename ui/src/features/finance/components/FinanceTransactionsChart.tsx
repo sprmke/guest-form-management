@@ -22,6 +22,7 @@ import {
   formatChartMoneyAxis,
 } from "@/components/charts/chartStyles";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/features/admin/lib/formatters";
 import {
   combineFinanceCategoryBreakdown,
@@ -38,6 +39,8 @@ type Props = {
   className?: string;
   /** When true, children join a parent `lg:grid-cols-5` (dashboard layout). */
   embedded?: boolean;
+  /** Show chart skeletons instead of empty states while data is loading. */
+  isLoading?: boolean;
 };
 
 type BreakdownFilter = "all" | "income" | "expenses";
@@ -150,12 +153,46 @@ function CashFlowTooltip({ active, payload, label }: CashFlowTooltipProps) {
   );
 }
 
+function CashFlowChartSkeleton() {
+  return (
+    <div aria-busy="true" aria-label="Loading cash flow chart">
+      <Skeleton className={`${CHART_HEIGHT_CLASS} w-full rounded-xl`} />
+      <div className="mt-4 flex justify-center gap-6">
+        <Skeleton className="h-4 w-16" />
+        <Skeleton className="h-4 w-20" />
+      </div>
+    </div>
+  );
+}
+
+function BreakdownChartSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      aria-busy="true"
+      aria-label="Loading breakdown chart"
+    >
+      <div className="flex min-h-[160px] flex-1 items-center justify-center px-2 pb-10 sm:min-h-[200px]">
+        <Skeleton className="size-40 rounded-full sm:size-48" />
+      </div>
+      <div className="shrink-0 border-t border-border/50 pt-2">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-4 w-full" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function FinanceTransactionsChart({
   cashFlowData,
   incomeBreakdown,
   expenseBreakdown,
   className,
   embedded = false,
+  isLoading = false,
 }: Props) {
   const isMobile = useIsBelowMd();
   const [pieChartType, setPieChartType] = useState<BreakdownFilter>("all");
@@ -190,7 +227,9 @@ export function FinanceTransactionsChart({
         title="Cash flow"
         description="Stay net, transactions, and expenses over time"
       >
-        {hasCashFlow ? (
+        {isLoading ? (
+          <CashFlowChartSkeleton />
+        ) : hasCashFlow ? (
           <>
             <div className={CHART_HEIGHT_CLASS}>
               <ResponsiveContainer width="100%" height="100%">
@@ -346,7 +385,9 @@ export function FinanceTransactionsChart({
           </div>
         }
       >
-        {pieData.length > 0 ? (
+        {isLoading ? (
+          <BreakdownChartSkeleton />
+        ) : pieData.length > 0 ? (
           <div className="flex flex-col flex-1 min-h-0">
             <div className="flex min-h-[160px] flex-1 items-center justify-center px-2 pb-10 sm:min-h-[200px]">
               <div className={cn("translate-y-1 shrink-0", breakdownChartSize)}>

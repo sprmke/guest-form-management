@@ -56,7 +56,7 @@ export function DashboardTrendStatCard({
             {value}
           </p>
           {hasChange ? (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="space-y-1">
               <span
                 className={cn(
                   "inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium",
@@ -72,9 +72,7 @@ export function DashboardTrendStatCard({
                 )}
                 {formatChange(change, changeIsPoints)}
               </span>
-              <span className="text-xs text-muted-foreground">
-                {changeLabel}
-              </span>
+              <p className="text-xs text-muted-foreground">{changeLabel}</p>
             </div>
           ) : null}
         </div>

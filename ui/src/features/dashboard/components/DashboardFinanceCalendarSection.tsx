@@ -94,6 +94,9 @@ export function DashboardFinanceCalendarSection({
     ],
   );
 
+  const financeChartsLoading =
+    lineItemsQuery.isPending || financeBookingsQuery.isPending;
+
   const financeHref = `/finance?from=${from}&to=${to}`;
   const bookingsCalendarHref = `/bookings?from=${from}&to=${to}&view=calendar&showCompletedBookings=true`;
   const isBelowLg = useIsBelowLg();
@@ -131,20 +134,10 @@ export function DashboardFinanceCalendarSection({
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="section-eyebrow px-0.5">Finance</p>
-        <Link
-          to={financeHref}
-          className="inline-flex min-h-[44px] items-center gap-1 self-start rounded-lg px-2 text-xs font-semibold text-primary hover:bg-primary/10 sm:min-h-[36px]"
-        >
-          Open finance
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
-      </div>
-
       <div className="grid min-w-0 items-start gap-3 lg:grid-cols-5 xl:gap-4">
         <FinanceTransactionsChart
           embedded
+          isLoading={financeChartsLoading}
           cashFlowData={chartData.cashFlowData}
           incomeBreakdown={chartData.incomeBreakdown}
           expenseBreakdown={chartData.expenseBreakdown}
