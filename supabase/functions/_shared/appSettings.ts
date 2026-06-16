@@ -85,6 +85,7 @@ export type AppSettingsDto = AppSettingsResolved & {
     telegramFinanceChatIdConfigured: boolean;
     gmailEncryptionKeyConfigured: boolean;
     gmailWebClientConfigured: boolean;
+    geminiApiKeyConfigured: boolean;
   };
 };
 
@@ -432,6 +433,7 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
       telegramFinanceChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_FINANCE_CHAT_ID')),
       gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
       gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
+      geminiApiKeyConfigured: !!trimOrEmpty(Deno.env.get('GEMINI_API_KEY')),
     },
   };
 }

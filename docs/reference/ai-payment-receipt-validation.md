@@ -161,6 +161,15 @@ GEMINI_API_KEY=your_google_ai_studio_key
 
 Get a key from [Google AI Studio](https://aistudio.google.com). Free tier is sufficient for typical booking volume.
 
+### Settings integration check
+
+On **Admin → Settings → Integrations → AI**:
+
+- **`secretsStatus.geminiApiKeyConfigured`** — whether `GEMINI_API_KEY` is present in the Edge runtime (no value exposed).
+- **Test connection** — `POST app-settings` with `{ "action": "verify_gemini" }`; pings **`gemini-2.5-flash`** with a minimal text request (same model as receipt validation). Success means the key is valid and the API responds; failure surfaces the Google error message (e.g. invalid key, quota).
+
+After changing secrets locally, restart **`functions serve`**. On hosted Supabase, redeploy is not required for secret-only changes — allow a minute for Dashboard secret propagation.
+
 ### Migrations
 
 Apply after deploy:

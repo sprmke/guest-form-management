@@ -1,6 +1,7 @@
 /**
- * app-settings — Admin GET/PATCH for operator config (app_settings table).
+ * app-settings — Admin GET/PATCH/POST for operator config (app_settings table).
  * Auth: verifyAdminJwt. Secrets remain in Edge env only.
+ * POST action: verify_gemini — ping Gemini Flash (receipt AI integration check).
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -20,6 +21,7 @@ import {
   validateGafTextField,
   validateGafContactNumber,
 } from '../_shared/appSettings.ts';
+import { verifyGeminiIntegration } from '../_shared/receiptValidationService.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -34,6 +36,24 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: true, data }), {
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
       });
+    }
+
+    if (req.method === 'POST') {
+      const body = await req.json().catch(() => ({}));
+      const action = typeof body.action === 'string' ? body.action.trim() : '';
+
+      if (action === 'verify_gemini') {
+        const verify = await verifyGeminiIntegration();
+        return new Response(JSON.stringify({ success: true, verify }), {
+          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        });
+      }
+
+      return jsonError(
+        req,
+        400,
+        `Unknown action: ${action || '(missing)'}. Use verify_gemini`,
+      );
     }
 
     if (req.method === 'PATCH') {

@@ -21,9 +21,76 @@ export type ReceiptValidationResult = {
   has_reference: boolean;
 };
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+export const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+export type GeminiIntegrationVerifyResult = {
+  apiKeyConfigured: boolean;
+  model: string;
+  ok: boolean;
+  latencyMs?: number;
+  statusCode?: number;
+  error?: string;
+};
+
+/** Admin-only: ping Gemini with a minimal text request using the same model as receipt validation. */
+export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerifyResult> {
+  const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
+  const base: GeminiIntegrationVerifyResult = {
+    apiKeyConfigured: !!apiKey,
+    model: GEMINI_MODEL,
+    ok: false,
+  };
+
+  if (!apiKey) {
+    return {
+      ...base,
+      error: 'GEMINI_API_KEY is not set in Edge secrets',
+    };
+  }
+
+  const started = Date.now();
+  try {
+    const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{ text: 'Reply with exactly: ok' }],
+        }],
+        generationConfig: {
+          temperature: 0,
+          maxOutputTokens: 8,
+        },
+      }),
+    });
+
+    const latencyMs = Date.now() - started;
+    const statusCode = res.status;
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      let message = `Gemini API returned ${statusCode}`;
+      try {
+        const parsed = JSON.parse(errText) as { error?: { message?: string } };
+        if (parsed.error?.message) message = parsed.error.message;
+      } catch {
+        if (errText.trim()) message = errText.trim().slice(0, 240);
+      }
+      return { ...base, latencyMs, statusCode, error: message };
+    }
+
+    await res.json().catch(() => ({}));
+    return { ...base, ok: true, latencyMs, statusCode };
+  } catch (err) {
+    return {
+      ...base,
+      latencyMs: Date.now() - started,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
 
 const RECEIPT_PROMPT = `You are validating a payment receipt image for a vacation rental booking in the Philippines.
 Analyze the image and return ONLY valid JSON (no markdown) with this exact shape:

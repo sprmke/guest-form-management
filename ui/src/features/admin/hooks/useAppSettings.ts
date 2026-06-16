@@ -17,6 +17,7 @@ export type AppSettingsSecretsStatus = {
   telegramFinanceChatIdConfigured: boolean;
   gmailEncryptionKeyConfigured: boolean;
   gmailWebClientConfigured: boolean;
+  geminiApiKeyConfigured: boolean;
 };
 
 export type AppSettingsDto = {

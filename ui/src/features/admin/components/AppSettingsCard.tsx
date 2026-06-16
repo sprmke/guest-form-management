@@ -39,6 +39,7 @@ import {
   type AppSettingsAssetType,
 } from '@/features/admin/hooks/useUploadAppSettingsAsset';
 import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
+import { GeminiIntegrationCard } from '@/features/admin/components/GeminiIntegrationCard';
 import { CalendarEventDatesBackfillCard } from '@/features/admin/components/CalendarEventDatesBackfillCard';
 import { GafDetailsSettingsSection } from '@/features/admin/components/GafDetailsSettingsSection';
 
@@ -254,6 +255,20 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         <SecretBadge
           label="Finance group"
           configured={status.telegramFinanceChatIdConfigured}
+        />
+      </SecretGroup>
+
+      <SecretGroup
+        title="AI"
+        footer={
+          <GeminiIntegrationCard
+            apiKeyConfigured={status.geminiApiKeyConfigured}
+          />
+        }
+      >
+        <SecretBadge
+          label="Gemini API key"
+          configured={status.geminiApiKeyConfigured}
         />
       </SecretGroup>
     </div>
