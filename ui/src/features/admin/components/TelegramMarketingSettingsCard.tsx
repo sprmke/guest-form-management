@@ -20,6 +20,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -526,11 +527,10 @@ export function TelegramMarketingSettingsCard() {
                   <Label htmlFor="tg-test-ci" className="text-xs">
                     Check-in
                   </Label>
-                  <Input
+                  <IsoDateInput
                     id="tg-test-ci"
-                    type="date"
                     disabled={busy}
-                    className="h-10 w-full min-w-0"
+                    className="min-w-0 w-full"
                     value={testCancelCheckIn}
                     onChange={(e) => setTestCancelCheckIn(e.target.value)}
                   />
@@ -539,11 +539,10 @@ export function TelegramMarketingSettingsCard() {
                   <Label htmlFor="tg-test-co" className="text-xs">
                     Check-out
                   </Label>
-                  <Input
+                  <IsoDateInput
                     id="tg-test-co"
-                    type="date"
                     disabled={busy}
-                    className="h-10 w-full min-w-0"
+                    className="min-w-0 w-full"
                     value={testCancelCheckOut}
                     onChange={(e) => setTestCancelCheckOut(e.target.value)}
                   />

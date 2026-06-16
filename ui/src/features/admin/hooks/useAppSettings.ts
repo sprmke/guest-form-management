@@ -14,6 +14,7 @@ export type AppSettingsSecretsStatus = {
   telegramChatIdConfigured: boolean;
   telegramStaffChatIdConfigured: boolean;
   telegramAdminChatIdConfigured: boolean;
+  telegramFinanceChatIdConfigured: boolean;
   gmailEncryptionKeyConfigured: boolean;
   gmailWebClientConfigured: boolean;
 };
@@ -31,6 +32,11 @@ export type AppSettingsDto = {
   gcashName: string;
   gcashNumber: string;
   gcashQrImageUrl: string;
+  gafUnitOwner: string;
+  gafTowerAndUnitNumber: string;
+  gafGuestsOnsiteContactPerson: string;
+  gafOwnerContactNumber: string;
+  gafUnitOwnerSignatureUrl: string;
   updatedAt: string | null;
   fieldSources: Record<
     | 'emailTo'
@@ -44,7 +50,12 @@ export type AppSettingsDto = {
     | 'defaultParkingRateGuest'
     | 'gcashName'
     | 'gcashNumber'
-    | 'gcashQrImageUrl',
+    | 'gcashQrImageUrl'
+    | 'gafUnitOwner'
+    | 'gafTowerAndUnitNumber'
+    | 'gafGuestsOnsiteContactPerson'
+    | 'gafOwnerContactNumber'
+    | 'gafUnitOwnerSignatureUrl',
     AppSettingsFieldSource
   >;
   secretsStatus: AppSettingsSecretsStatus;
@@ -61,6 +72,10 @@ export type AppSettingsFormValues = {
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
+  gafUnitOwner: string;
+  gafTowerAndUnitNumber: string;
+  gafGuestsOnsiteContactPerson: string;
+  gafOwnerContactNumber: string;
 };
 
 /** DB/env store minutes; Settings UI uses hours (max 168 h = 10080 min). */
@@ -88,6 +103,10 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     defaultParkingRateGuest: data.defaultParkingRateGuest,
     gcashName: data.gcashName,
     gcashNumber: data.gcashNumber,
+    gafUnitOwner: data.gafUnitOwner,
+    gafTowerAndUnitNumber: data.gafTowerAndUnitNumber,
+    gafGuestsOnsiteContactPerson: data.gafGuestsOnsiteContactPerson,
+    gafOwnerContactNumber: data.gafOwnerContactNumber,
   };
 }
 
@@ -141,6 +160,10 @@ export function useUpdateAppSettings() {
           defaultParkingRateGuest: values.defaultParkingRateGuest,
           gcashName: values.gcashName,
           gcashNumber: values.gcashNumber,
+          gafUnitOwner: values.gafUnitOwner,
+          gafTowerAndUnitNumber: values.gafTowerAndUnitNumber,
+          gafGuestsOnsiteContactPerson: values.gafGuestsOnsiteContactPerson,
+          gafOwnerContactNumber: values.gafOwnerContactNumber,
         }),
       });
       const json = (await res.json()) as {
@@ -155,11 +178,12 @@ export function useUpdateAppSettings() {
     },
     onSuccess: (data) => {
       qc.setQueryData(['app-settings'], data);
+      qc.invalidateQueries({ queryKey: ['guest-payment-info'] });
     },
   });
 }
 
-export type AppSettingsImageField = 'gcashQrImageUrl' | 'emailLogoUrl';
+export type AppSettingsImageField = 'gcashQrImageUrl' | 'emailLogoUrl' | 'gafUnitOwnerSignatureUrl';
 
 export function useClearAppSettingsImage() {
   const qc = useQueryClient();

@@ -20,7 +20,7 @@ const FULL_REPORT = { type: 'combined' as const, label: 'Full report' };
 const SECTION_OPTIONS: { type: FinanceExportType; label: string }[] = [
   { type: 'overview', label: 'Overview summary' },
   { type: 'stays', label: 'Stays ledger' },
-  { type: 'operating', label: 'Operating lines' },
+  { type: 'operating', label: 'Transactions' },
 ];
 
 const menuItemClass =

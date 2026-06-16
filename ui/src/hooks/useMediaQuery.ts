@@ -30,3 +30,8 @@ export function useIsBelowMd(): boolean {
 export function useIsBelowLg(): boolean {
   return useMediaQuery('(max-width: 1023px)');
 }
+
+/** Matches Tailwind `xl` — below 1280px keeps finance controls stacked / wrapped. */
+export function useIsBelowXl(): boolean {
+  return useMediaQuery('(max-width: 1279px)');
+}

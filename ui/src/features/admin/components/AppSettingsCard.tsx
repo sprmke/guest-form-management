@@ -39,6 +39,8 @@ import {
   type AppSettingsAssetType,
 } from '@/features/admin/hooks/useUploadAppSettingsAsset';
 import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
+import { CalendarEventDatesBackfillCard } from '@/features/admin/components/CalendarEventDatesBackfillCard';
+import { GafDetailsSettingsSection } from '@/features/admin/components/GafDetailsSettingsSection';
 
 function CollapsibleSection({
   id,
@@ -198,7 +200,17 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
 
       <SecretGroup
         title="Google"
-        footer={<GmailMailIntegrationCard variant="embedded" />}
+        footer={
+          <div className="space-y-3">
+            <GmailMailIntegrationCard variant="embedded" />
+            <CalendarEventDatesBackfillCard
+              calendarConfigured={
+                status.googleCalendarIdConfigured &&
+                status.googleServiceAccountConfigured
+              }
+            />
+          </div>
+        }
       >
         <SecretBadge
           label="Google account"
@@ -238,6 +250,10 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         <SecretBadge
           label="Operations group"
           configured={status.telegramAdminChatIdConfigured}
+        />
+        <SecretBadge
+          label="Finance group"
+          configured={status.telegramFinanceChatIdConfigured}
         />
       </SecretGroup>
     </div>
@@ -678,6 +694,20 @@ export function AppSettingsCard() {
               </FieldSpan>
             </FieldGrid>
           </CollapsibleSection>
+
+          <GafDetailsSettingsSection
+            values={{
+              gafUnitOwner: draft.gafUnitOwner,
+              gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
+              gafGuestsOnsiteContactPerson: draft.gafGuestsOnsiteContactPerson,
+              gafOwnerContactNumber: draft.gafOwnerContactNumber,
+            }}
+            signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+            signatureSource={sources?.gafUnitOwnerSignatureUrl}
+            disabled={busy}
+            fieldSources={sources}
+            onChange={(key, value) => set(key, value)}
+          />
 
           <CollapsibleSection
             id="env-secrets"

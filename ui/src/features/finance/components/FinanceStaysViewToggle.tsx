@@ -1,4 +1,4 @@
-import { LayoutGrid, LayoutList } from 'lucide-react';
+import { CalendarDays, LayoutGrid, LayoutList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { FinanceStaysView } from '@/features/finance/lib/types';
 
@@ -9,12 +9,13 @@ const VIEW_OPTIONS: {
 }[] = [
   { value: 'table', label: 'Table', Icon: LayoutList },
   { value: 'card', label: 'Card', Icon: LayoutGrid },
+  { value: 'calendar', label: 'Calendar', Icon: CalendarDays },
 ];
 
 type Props = {
   value: FinanceStaysView;
   onChange: (next: FinanceStaysView) => void;
-  /** Hide table view (mobile — cards only). */
+  /** Hide table view (mobile — cards/calendar only). */
   hideTableView?: boolean;
   className?: string;
 };

@@ -438,10 +438,10 @@ function AdminProfileFooter({
         {!collapsed && (
           <>
             <div className="min-w-0 flex-1 text-left">
-              <p className="truncate text-ui font-semibold capitalize leading-none text-foreground">
+              <p className="truncate text-xs font-semibold capitalize leading-tight text-foreground">
                 {displayName}
               </p>
-              <p className="mt-0.5 truncate text-caption leading-none">
+              <p className="mt-0.5 truncate text-[11px] leading-tight text-muted-foreground">
                 {email}
               </p>
             </div>

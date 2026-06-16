@@ -18,6 +18,7 @@ import {
   formatDateRangeDisplay,
   isCurrentPeriod,
 } from '@/lib/dateNavigation';
+import { DATE_FNS_PICKER_DISPLAY_FORMAT } from '@/utils/dates';
 
 type Props = DateNavigationState & {
   /** Whether a date range is currently applied to the booking query. */
@@ -336,13 +337,13 @@ export function BookingDateRangeFilter({
                 {localRange?.from ? (
                   <>
                     <span className="font-semibold text-foreground">
-                      {format(localRange.from, 'MMM d, yyyy')}
+                      {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
                     </span>
                     {localRange.to ? (
                       <>
                         <span className="mx-1.5 text-muted-foreground/50">→</span>
                         <span className="font-semibold text-foreground">
-                          {format(localRange.to, 'MMM d, yyyy')}
+                          {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
                         </span>
                       </>
                     ) : (

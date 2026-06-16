@@ -543,6 +543,12 @@ export function WorkflowPanel({ booking }: Props) {
         parking_owner: parkingValues.parking_owner.trim() || null,
         parking_rate_paid: parkingValues.parking_rate_paid,
         parking_endorsement_url: parkingValues.parking_endorsement_url || null,
+        parking_fee_included_in_downpayment:
+          parkingValues.parking_fee_included_in_downpayment,
+        parking_payment_receipt_url:
+          parkingValues.parking_fee_included_in_downpayment
+            ? null
+            : parkingValues.parking_payment_receipt_url || null,
       };
     }
     if (subForm === 'sd_refund' && sdRefundValues) {
@@ -626,6 +632,12 @@ export function WorkflowPanel({ booking }: Props) {
         payload.parking_rate_paid = parkingValues.parking_rate_paid;
         payload.parking_endorsement_url =
           parkingValues.parking_endorsement_url || null;
+        payload.parking_fee_included_in_downpayment =
+          parkingValues.parking_fee_included_in_downpayment;
+        payload.parking_payment_receipt_url =
+          parkingValues.parking_fee_included_in_downpayment
+            ? null
+            : parkingValues.parking_payment_receipt_url || null;
       }
       await transitionMut.mutateAsync({
         bookingId: booking.id,
@@ -712,14 +724,12 @@ export function WorkflowPanel({ booking }: Props) {
           });
         }}
       />
-      <aside className="flex overflow-hidden flex-col gap-0 bg-card rounded-xl border shadow-sm border-border">
+      <aside className="flex overflow-hidden flex-col gap-0 rounded-xl border shadow-sm bg-card border-border">
         {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
         {pipeline.length > 0 && status !== 'CANCELLED' ? (
           <div className="px-4 py-4 border-b border-separator">
             <div className="flex flex-wrap gap-2 justify-between items-center mb-3">
-              <p className="text-overline">
-                Progress
-              </p>
+              <p className="text-overline">Progress</p>
               <StatusBadge status={booking.status} />
             </div>
             <PipelineStepper
@@ -736,9 +746,7 @@ export function WorkflowPanel({ booking }: Props) {
         ) : status === 'CANCELLED' ? (
           <div className="px-4 py-4 border-b border-separator">
             <div className="flex flex-wrap gap-2 justify-between items-center">
-              <p className="text-overline">
-                Status
-              </p>
+              <p className="text-overline">Status</p>
               <StatusBadge status={booking.status} />
             </div>
           </div>
@@ -759,7 +767,8 @@ export function WorkflowPanel({ booking }: Props) {
                 <p className="min-w-0 text-[12px] leading-snug text-blue-950 dark:text-blue-100 sm:text-[13px]">
                   Quick view of previously completed steps is read-only. To make
                   changes to them, use the{' '}
-                  <span className="font-semibold">Actions</span> section.
+                  <span className="font-semibold">Edit Booking Details</span>{' '}
+                  section.
                 </p>
               </div>
             ) : null}
@@ -794,7 +803,10 @@ export function WorkflowPanel({ booking }: Props) {
                   type="button"
                   disabled={recheckSdGuestSubmitPending}
                   onClick={() => void recheckGuestSdSubmission()}
-                  className={cn(workflowNeutralActionClass(), 'justify-center gap-2')}
+                  className={cn(
+                    workflowNeutralActionClass(),
+                    'gap-2 justify-center',
+                  )}
                 >
                   {recheckSdGuestSubmitPending ? (
                     <Loader2
@@ -876,7 +888,7 @@ export function WorkflowPanel({ booking }: Props) {
                   className="size-3.5 shrink-0 text-muted-foreground"
                   aria-hidden
                 />
-                <span className="text-overline font-semibold text-muted-foreground">
+                <span className="font-semibold text-overline text-muted-foreground">
                   Automation Triggers
                 </span>
               </span>
@@ -931,7 +943,9 @@ export function WorkflowPanel({ booking }: Props) {
                       </span>{' '}
                       only sends the email again in case the guest didn't
                       receive it. This does{' '}
-                      <span className="font-medium text-muted-foreground">not</span>{' '}
+                      <span className="font-medium text-muted-foreground">
+                        not
+                      </span>{' '}
                       change booking status automatically.
                     </p>
                   </>
@@ -1051,225 +1065,228 @@ export function WorkflowPanel({ booking }: Props) {
                   type="button"
                   disabled={transitionMut.isPending}
                   onClick={returnToLiveStep}
-                  className={workflowPrimaryActionClass(!transitionMut.isPending)}
+                  className={workflowPrimaryActionClass(
+                    !transitionMut.isPending,
+                  )}
                 >
-                  <span className="min-w-0 pr-2 text-left">
+                  <span className="pr-2 min-w-0 text-left">
                     Return to {statusLabel(status)}
                   </span>
                   <ChevronRight className="size-4 shrink-0" aria-hidden />
                 </button>
               </div>
             ) : (
-            <div className="flex flex-col gap-4">
-            <p className="text-overline">
-              Actions
-            </p>
-              {inPendingDocuments && viewingPendingDocSub && (
-                <>
-                  {prev && (
-                    <button
-                      disabled={transitionMut.isPending}
-                      onClick={() =>
-                        setConfirm({
-                          toStatus: prev,
-                          label: `Back to ${statusLabel(prev)}`,
-                        })
-                      }
-                      className={workflowBackActionClass()}
-                    >
-                      <span className="min-w-0 pr-2 text-left">
-                        Back to {statusLabel(prev)}
-                      </span>
-                      {transitionMut.isPending ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin" />
-                      ) : (
-                        <ArrowLeft className="size-4 shrink-0" aria-hidden />
-                      )}
-                    </button>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    {selectedPendingDocCanMarkIncomplete ? (
+              <div className="flex flex-col gap-4">
+                <p className="text-overline">Actions</p>
+                {inPendingDocuments && viewingPendingDocSub && (
+                  <>
+                    {prev && (
                       <button
-                        type="button"
                         disabled={transitionMut.isPending}
                         onClick={() =>
-                          handleMarkPendingDocSubStatusIncomplete(
-                            activePendingDocSubStatus,
-                          )
+                          setConfirm({
+                            toStatus: prev,
+                            label: `Back to ${statusLabel(prev)}`,
+                          })
                         }
-                        className={workflowWarningActionClass()}
+                        className={workflowBackActionClass()}
                       >
-                        <span className="min-w-0 pr-2 text-left">
-                          Mark as Incomplete -{' '}
-                          {statusLabel(activePendingDocSubStatus)}
-                        </span>
-                        {transitionMut.isPending ? (
-                          <Loader2 className="text-amber-700 animate-spin size-4 shrink-0" />
-                        ) : (
-                          <RotateCcw
-                            className="text-amber-700 size-4 shrink-0"
-                            aria-hidden
-                          />
-                        )}
-                      </button>
-                    ) : !selectedPendingDocRequired ? (
-                      <p className="flex min-h-[44px] items-center rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5 text-sm text-muted-foreground">
-                        {statusLabel(activePendingDocSubStatus)} is not required
-                        for this booking.
-                      </p>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={
-                          !selectedPendingDocCanMarkComplete ||
-                          transitionMut.isPending
-                        }
-                        onClick={() =>
-                          handleMarkPendingDocSubStatusComplete(
-                            activePendingDocSubStatus,
-                          )
-                        }
-                        className={workflowPrimaryActionClass(
-                          selectedPendingDocCanMarkComplete &&
-                            !transitionMut.isPending,
-                        )}
-                      >
-                        <span className="min-w-0 pr-2 text-left">
-                          Mark as Complete -{' '}
-                          {statusLabel(activePendingDocSubStatus)}
+                        <span className="pr-2 min-w-0 text-left">
+                          Back to {statusLabel(prev)}
                         </span>
                         {transitionMut.isPending ? (
                           <Loader2 className="animate-spin size-4 shrink-0" />
                         ) : (
-                          <ChevronRight className="size-4 shrink-0" />
+                          <ArrowLeft className="size-4 shrink-0" aria-hidden />
                         )}
                       </button>
                     )}
-                  </div>
-                  {showProceedToReadyForCheckin && (
+                    <div className="flex flex-col gap-2">
+                      {selectedPendingDocCanMarkIncomplete ? (
+                        <button
+                          type="button"
+                          disabled={transitionMut.isPending}
+                          onClick={() =>
+                            handleMarkPendingDocSubStatusIncomplete(
+                              activePendingDocSubStatus,
+                            )
+                          }
+                          className={workflowWarningActionClass()}
+                        >
+                          <span className="pr-2 min-w-0 text-left">
+                            Mark as Incomplete -{' '}
+                            {statusLabel(activePendingDocSubStatus)}
+                          </span>
+                          {transitionMut.isPending ? (
+                            <Loader2 className="text-amber-700 animate-spin size-4 shrink-0" />
+                          ) : (
+                            <RotateCcw
+                              className="text-amber-700 size-4 shrink-0"
+                              aria-hidden
+                            />
+                          )}
+                        </button>
+                      ) : !selectedPendingDocRequired ? (
+                        <p className="flex min-h-[44px] items-center rounded-xl border border-border/50 bg-muted/50 px-3.5 py-2.5 text-sm text-muted-foreground">
+                          {statusLabel(activePendingDocSubStatus)} is not
+                          required for this booking.
+                        </p>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={
+                            !selectedPendingDocCanMarkComplete ||
+                            transitionMut.isPending
+                          }
+                          onClick={() =>
+                            handleMarkPendingDocSubStatusComplete(
+                              activePendingDocSubStatus,
+                            )
+                          }
+                          className={workflowPrimaryActionClass(
+                            selectedPendingDocCanMarkComplete &&
+                              !transitionMut.isPending,
+                          )}
+                        >
+                          <span className="pr-2 min-w-0 text-left">
+                            Mark as Complete -{' '}
+                            {statusLabel(activePendingDocSubStatus)}
+                          </span>
+                          {transitionMut.isPending ? (
+                            <Loader2 className="animate-spin size-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="size-4 shrink-0" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                    {showProceedToReadyForCheckin && (
+                      <button
+                        disabled={
+                          !pendingDocumentsComplete || transitionMut.isPending
+                        }
+                        onClick={() =>
+                          openForwardProceedConfirm(
+                            'READY_FOR_CHECKIN',
+                            'Proceed to Ready for Check-in',
+                          )
+                        }
+                        className={workflowPrimaryActionClass(
+                          pendingDocumentsComplete && !transitionMut.isPending,
+                        )}
+                      >
+                        <span className="pr-2 min-w-0 text-left">
+                          Proceed to Ready for Check-in
+                        </span>
+                        {transitionMut.isPending ? (
+                          <Loader2 className="animate-spin size-4 shrink-0" />
+                        ) : (
+                          <ChevronRight
+                            className="size-4 shrink-0"
+                            aria-hidden
+                          />
+                        )}
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {showLateParkingActions && (
+                  <div className="flex flex-col gap-2">
                     <button
+                      type="button"
                       disabled={
-                        !pendingDocumentsComplete || transitionMut.isPending
+                        !selectedPendingDocCanMarkComplete ||
+                        transitionMut.isPending
                       }
                       onClick={() =>
-                        openForwardProceedConfirm(
-                          'READY_FOR_CHECKIN',
-                          'Proceed to Ready for Check-in',
+                        handleMarkPendingDocSubStatusComplete(
+                          'PENDING_PARKING_REQUEST',
                         )
                       }
                       className={workflowPrimaryActionClass(
-                        pendingDocumentsComplete && !transitionMut.isPending,
+                        selectedPendingDocCanMarkComplete &&
+                          !transitionMut.isPending,
                       )}
                     >
-                      <span className="min-w-0 pr-2 text-left">
-                        Proceed to Ready for Check-in
+                      <span className="pr-2 min-w-0 text-left">
+                        Mark as Complete -{' '}
+                        {statusLabel('PENDING_PARKING_REQUEST')}
                       </span>
                       {transitionMut.isPending ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin" />
+                        <Loader2 className="animate-spin size-4 shrink-0" />
                       ) : (
-                        <ChevronRight className="size-4 shrink-0" aria-hidden />
+                        <ChevronRight className="size-4 shrink-0" />
                       )}
                     </button>
-                  )}
-                </>
-              )}
+                  </div>
+                )}
 
-              {showLateParkingActions && (
-                <div className="flex flex-col gap-2">
+                {/* Backward — secondary recovery action. */}
+                {livePipelineActions && prev && (
                   <button
-                    type="button"
-                    disabled={
-                      !selectedPendingDocCanMarkComplete ||
-                      transitionMut.isPending
-                    }
+                    disabled={transitionMut.isPending}
                     onClick={() =>
-                      handleMarkPendingDocSubStatusComplete(
-                        'PENDING_PARKING_REQUEST',
-                      )
+                      setConfirm({
+                        toStatus: prev,
+                        label: `Back to ${statusLabel(prev)}`,
+                      })
                     }
-                    className={workflowPrimaryActionClass(
-                      selectedPendingDocCanMarkComplete &&
-                        !transitionMut.isPending,
-                    )}
+                    className={workflowBackActionClass()}
                   >
-                    <span className="min-w-0 pr-2 text-left">
-                      Mark as Complete -{' '}
-                      {statusLabel('PENDING_PARKING_REQUEST')}
+                    <span className="pr-2 min-w-0 text-left">
+                      Back to {statusLabel(prev)}
                     </span>
                     {transitionMut.isPending ? (
                       <Loader2 className="animate-spin size-4 shrink-0" />
                     ) : (
-                      <ChevronRight className="size-4 shrink-0" />
+                      <ArrowLeft className="size-4 shrink-0" aria-hidden />
                     )}
                   </button>
-                </div>
-              )}
+                )}
 
-              {/* Backward — secondary recovery action. */}
-              {livePipelineActions && prev && (
+                {/* Forward — primary CTA. */}
+                {livePipelineActions && next && (
+                  <button
+                    disabled={
+                      isTransitionDisabled(next) || transitionMut.isPending
+                    }
+                    onClick={() =>
+                      openForwardProceedConfirm(
+                        next,
+                        `Proceed to ${statusLabel(next)}`,
+                      )
+                    }
+                    className={workflowPrimaryActionClass(
+                      !isTransitionDisabled(next) && !transitionMut.isPending,
+                    )}
+                  >
+                    <span className="pr-2 min-w-0 text-left">
+                      Proceed to {statusLabel(next)}
+                    </span>
+                    {transitionMut.isPending ? (
+                      <Loader2 className="animate-spin size-4 shrink-0" />
+                    ) : (
+                      <ChevronRight className="size-4 shrink-0" aria-hidden />
+                    )}
+                  </button>
+                )}
+
                 <button
-                  disabled={transitionMut.isPending}
-                  onClick={() =>
-                    setConfirm({
-                      toStatus: prev,
-                      label: `Back to ${statusLabel(prev)}`,
-                    })
-                  }
-                  className={workflowBackActionClass()}
+                  disabled={cancelMut.isPending}
+                  onClick={() => setCancelConfirm(true)}
+                  className={workflowDestructiveActionClass()}
                 >
-                  <span className="min-w-0 pr-2 text-left">
-                    Back to {statusLabel(prev)}
-                  </span>
-                  {transitionMut.isPending ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" />
-                  ) : (
-                    <ArrowLeft className="size-4 shrink-0" aria-hidden />
-                  )}
+                  <span className="pr-2 min-w-0 text-left">Cancel Booking</span>
+                  <X className="size-4 shrink-0" aria-hidden />
                 </button>
-              )}
 
-              {/* Forward — primary CTA. */}
-              {livePipelineActions && next && (
-                <button
-                  disabled={
-                    isTransitionDisabled(next) || transitionMut.isPending
-                  }
-                  onClick={() =>
-                    openForwardProceedConfirm(
-                      next,
-                      `Proceed to ${statusLabel(next)}`,
-                    )
-                  }
-                  className={workflowPrimaryActionClass(
-                    !isTransitionDisabled(next) && !transitionMut.isPending,
-                  )}
-                >
-                  <span className="min-w-0 pr-2 text-left">
-                    Proceed to {statusLabel(next)}
-                  </span>
-                  {transitionMut.isPending ? (
-                    <Loader2 className="size-4 shrink-0 animate-spin" />
-                  ) : (
-                    <ChevronRight className="size-4 shrink-0" aria-hidden />
-                  )}
-                </button>
-              )}
-
-              <button
-                disabled={cancelMut.isPending}
-                onClick={() => setCancelConfirm(true)}
-                className={workflowDestructiveActionClass()}
-              >
-                <span className="min-w-0 pr-2 text-left">Cancel Booking</span>
-                <X className="size-4 shrink-0" aria-hidden />
-              </button>
-
-              {!inPendingDocuments && !next && !prev && (
-                <p className="text-caption text-muted-foreground">
-                  No further pipeline steps are available for this booking.
-                </p>
-              )}
-            </div>
+                {!inPendingDocuments && !next && !prev && (
+                  <p className="text-caption text-muted-foreground">
+                    No further pipeline steps are available for this booking.
+                  </p>
+                )}
+              </div>
             )}
           </div>
         )}
@@ -1386,22 +1403,22 @@ function PipelineStepper({
 
         return (
           <li key={step} className="flex gap-3">
-            <div className="flex w-6 shrink-0 flex-col items-center">
-              <div className="flex size-6 shrink-0 items-center justify-center">
+            <div className="flex flex-col items-center w-6 shrink-0">
+              <div className="flex justify-center items-center size-6 shrink-0">
                 <div
                   className={cn(
-                    'flex items-center justify-center rounded-full transition-colors',
+                    'flex justify-center items-center rounded-full transition-colors',
                     isCurrent
-                      ? 'size-6 bg-primary/10 ring-2 ring-primary'
+                      ? 'ring-2 size-6 bg-primary/10 ring-primary'
                       : isCompleted
                         ? 'size-5 bg-primary text-primary-foreground'
-                        : 'size-5 bg-card ring-1 ring-border/60',
+                        : 'ring-1 size-5 bg-card ring-border/60',
                   )}
                 >
                   {isCompleted ? (
                     <Check className="size-3" strokeWidth={3} />
                   ) : isCurrent ? (
-                    <span className="size-2 rounded-full bg-primary" />
+                    <span className="rounded-full size-2 bg-primary" />
                   ) : null}
                 </div>
               </div>
@@ -1417,11 +1434,11 @@ function PipelineStepper({
 
             <div
               className={cn(
-                'flex flex-1 flex-col gap-3',
+                'flex flex-col flex-1 gap-3',
                 isLast ? 'pb-0' : 'pb-3',
               )}
             >
-              <div className="flex min-h-6 items-center">
+              <div className="flex items-center min-h-6">
                 {isReachable ? (
                   <button
                     type="button"
@@ -1516,7 +1533,7 @@ function PendingDocumentsSubTree({
   }
 
   return (
-    <ul className={cn('relative flex flex-col gap-3', className)}>
+    <ul className={cn('flex relative flex-col gap-3', className)}>
       {statuses.length > 1 ? (
         <div
           aria-hidden
@@ -1559,7 +1576,7 @@ function PendingDocumentsSubTree({
             </div>
 
             {subInteractive ? (
-              <div className="flex min-h-6 min-w-0 flex-1 items-center justify-between gap-3">
+              <div className="flex flex-1 gap-3 justify-between items-center min-w-0 min-h-6">
                 <button
                   type="button"
                   onClick={() => {
@@ -1567,7 +1584,7 @@ function PendingDocumentsSubTree({
                   }}
                   disabled={!!transitionPending}
                   className={cn(
-                    'inline-flex min-h-[44px] min-w-0 flex-1 items-center py-2 text-left -my-[10px]',
+                    'inline-flex flex-1 items-center py-2 min-w-0 text-left min-h-[44px] -my-[10px]',
                     labelClass,
                   )}
                   aria-label={`View ${statusLabel(sub)}`}
@@ -1577,7 +1594,7 @@ function PendingDocumentsSubTree({
                 </button>
                 <span
                   className={cn(
-                    'shrink-0 text-xs font-semibold leading-4',
+                    'text-xs font-semibold leading-4 shrink-0',
                     completed ? 'text-primary' : 'text-amber-600',
                   )}
                 >
@@ -1587,7 +1604,7 @@ function PendingDocumentsSubTree({
             ) : (
               <div
                 className={cn(
-                  'flex min-h-6 flex-1 items-center text-xs leading-4',
+                  'flex flex-1 items-center text-xs leading-4 min-h-6',
                   completed
                     ? 'font-medium text-emerald-700'
                     : 'text-muted-foreground',
@@ -1617,7 +1634,7 @@ function PendingDocSubStatusCard({
   return (
     <WorkflowSubFormCard title={statusLabel(sub)}>
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2 justify-between items-center">
           <span className="text-xs text-muted-foreground">Status</span>
           <span
             className={cn(
@@ -1638,7 +1655,10 @@ function PendingDocSubStatusCard({
                 ? 'Azure returned an approved GAF. The booking sub-step is marked complete.'
                 : 'Waiting for Azure to return an approved GAF. Use Run Gmail poll in Automation triggers if an approval email was missed.'}
             </p>
-            <DocLinkRow label="GAF request PDF" url={booking.gaf_request_pdf_url} />
+            <DocLinkRow
+              label="GAF request PDF"
+              url={booking.gaf_request_pdf_url}
+            />
             <DocLinkRow
               label="Approved GAF"
               url={booking.approved_gaf_pdf_url}
@@ -1674,22 +1694,16 @@ function PendingDocSubStatusCard({
   );
 }
 
-function DocLinkRow({
-  label,
-  url,
-}: {
-  label: string;
-  url?: string | null;
-}) {
+function DocLinkRow({ label, url }: { label: string; url?: string | null }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+    <div className="flex flex-wrap gap-2 justify-between items-center text-xs">
       <span className="text-muted-foreground">{label}</span>
       {url ? (
         <a
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          className={cn(workflowInlineLink, 'inline-flex items-center gap-1')}
+          className={cn(workflowInlineLink, 'inline-flex gap-1 items-center')}
         >
           View
           <ExternalLink className="size-3 shrink-0" aria-hidden />
@@ -1741,7 +1755,7 @@ function ConfirmModal({
           <div className="flex gap-3 items-start">
             {destructive && (
               <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                <AlertTriangle className="size-4 text-rose-600" />
+                <AlertTriangle className="text-rose-600 size-4" />
               </div>
             )}
             <div className="flex-1 min-w-0">
@@ -1763,7 +1777,7 @@ function ConfirmModal({
             </div>
           </div>
         </div>
-        <div className="mt-5 flex shrink-0 justify-end gap-2 border-t border-separator pt-4">
+        <div className="flex gap-2 justify-end pt-4 mt-5 border-t shrink-0 border-separator">
           <button
             type="button"
             onClick={onCancel}

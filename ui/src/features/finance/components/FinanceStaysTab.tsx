@@ -22,11 +22,12 @@ import {
   adminTableMoneyClass,
   adminTableRowClass,
 } from '@/features/admin/components/AdminDataTable';
-import { financeDisplayNet } from '@/features/admin/lib/bookingFinance';
+import { financeDisplayNet, hostNetToneClass } from '@/features/admin/lib/bookingFinance';
 import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import { BookingStayDatesCell } from '@/features/admin/components/BookingStayDatesCell';
 import { FinanceStaysCardGrid } from '@/features/finance/components/FinanceStaysCardGrid';
+import { FinanceStaysCalendarView } from '@/features/finance/components/FinanceStaysCalendarView';
 import { FinanceStaysSortMenu } from '@/features/finance/components/FinanceStaysSortMenu';
 import { FinanceStaysViewToggle } from '@/features/finance/components/FinanceStaysViewToggle';
 import { StayFinanceModal } from '@/features/finance/components/StayFinanceModal';
@@ -40,6 +41,9 @@ type Props = {
   total: number;
   isLoading: boolean;
   isFetching?: boolean;
+  error?: string | null;
+  calendarInitialMonth?: Date;
+  onCalendarMonthChange?: (month: Date) => void;
   onQueryChange: (next: FinanceQuery) => void;
 };
 
@@ -49,6 +53,9 @@ export function FinanceStaysTab({
   total,
   isLoading,
   isFetching = false,
+  error = null,
+  calendarInitialMonth,
+  onCalendarMonthChange,
   onQueryChange,
 }: Props) {
   const isMobileLayout = useIsBelowLg();
@@ -62,19 +69,56 @@ export function FinanceStaysTab({
     () => buildPageItems(query.page, pageCount),
     [query.page, pageCount],
   );
-  const showPagination = pageCount > 1;
+  const showCalendarView = query.staysView === 'calendar';
   const showTableView = query.staysView === 'table' && !isMobileLayout;
-  const showCardView = query.staysView === 'card' || isMobileLayout;
+  const showCardView =
+    query.staysView === 'card' ||
+    (isMobileLayout && query.staysView !== 'calendar');
+  const showPagination = !showCalendarView && pageCount > 1;
 
   const handleViewChange = (staysView: FinanceQuery['staysView']) => {
     onQueryChange({ ...query, staysView, page: 1 });
   };
 
-  if (isLoading && rows.length === 0) {
+  if (isLoading && rows.length === 0 && !showCalendarView) {
     return showCardView ? (
       <FinanceStaysCardGridSkeleton />
     ) : (
       <FinanceStaysTableSkeleton />
+    );
+  }
+
+  if (showCalendarView) {
+    return (
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
+          <p className="text-[12px] font-medium text-muted-foreground tabular-nums">
+            {total === 0
+              ? 'No stays in this period'
+              : `${total} ${total === 1 ? 'stay' : 'stays'} in period`}
+          </p>
+          <FinanceStaysViewToggle
+            value={query.staysView}
+            onChange={handleViewChange}
+            hideTableView={isMobileLayout}
+          />
+        </div>
+
+        <FinanceStaysCalendarView
+          rows={rows}
+          isLoading={isLoading}
+          error={error}
+          isRefreshing={isFetching}
+          initialMonth={calendarInitialMonth}
+          onMonthChange={onCalendarMonthChange}
+          onOpenRow={setDrawerRow}
+        />
+
+        <StayFinanceModal
+          row={drawerRow}
+          onClose={() => setDrawerRow(null)}
+        />
+      </div>
     );
   }
 
@@ -254,13 +298,7 @@ export function FinanceStaysTab({
                     <td className={adminTableCell.money}>
                       <span
                         className={adminTableMoneyClass(
-                          netDisplay == null
-                            ? undefined
-                            : isRealized
-                              ? netDisplay >= 0
-                                ? 'text-emerald-700 dark:text-emerald-300'
-                                : 'text-red-600 dark:text-red-400'
-                              : 'text-amber-700 dark:text-amber-300',
+                          hostNetToneClass(netDisplay, isRealized),
                         )}
                       >
                         {formatMoney(netDisplay)}

@@ -22,6 +22,20 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import {
+  CollapsibleGroup,
+  Field,
+  Input,
+  Row2,
+  Row3,
+  Section,
+  inputClass,
+} from '@/features/admin/components/bookingEditLayout';
+import { BookingProgressFormsEdit } from '@/features/admin/components/BookingProgressFormsEdit';
+import {
+  progressFormPayloadFromState,
+  type ProgressFormEditState,
+} from '@/features/admin/lib/bookingProgressEditPayload';
 import { cn } from '@/lib/utils';
 import {
   useUpdateBooking,
@@ -37,6 +51,7 @@ import {
 import type { BookingRow } from '@/features/admin/lib/types';
 import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
 import { DatePicker } from '@/components/ui/date-picker';
+import { Button } from '@/components/ui/button';
 import {
   createDisabledCheckoutDateMatcher,
   createDisabledDateMatcher,
@@ -44,6 +59,7 @@ import {
   getNextDay,
   normalizeDateString,
   stringToDate,
+  DATE_PICKER_DISPLAY_FORMAT,
   type BookedDateRange,
 } from '@/utils/dates';
 
@@ -170,6 +186,15 @@ export function BookingEditForm({
   const updateMut = useUpdateBooking();
   const apiUrl = import.meta.env.VITE_API_URL;
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
+  const [progressFormState, setProgressFormState] =
+    useState<ProgressFormEditState>({
+      pricing: null,
+      parking: null,
+      guestBalance: null,
+      sdSettlement: null,
+      sdRefundGuest: null,
+    });
+  const [progressTouched, setProgressTouched] = useState(false);
 
   const {
     register,
@@ -229,6 +254,8 @@ export function BookingEditForm({
       booking,
       bookingEditPayloadFromValues(formSnapshot),
     );
+  const progressDirty = progressTouched;
+  const canSave = isDirty || progressDirty;
 
   React.useEffect(() => {
     let mounted = true;
@@ -265,7 +292,12 @@ export function BookingEditForm({
   }, [apiUrl]);
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    const payload = bookingEditPayloadFromValues(values);
+    const payload = {
+      ...bookingEditPayloadFromValues(values),
+      ...(progressTouched
+        ? progressFormPayloadFromState(booking, progressFormState)
+        : {}),
+    };
     const revertToPendingReview =
       guestEditRevertPipeline &&
       hasWorkflowSensitiveGuestFieldDiff(booking, payload);
@@ -290,322 +322,345 @@ export function BookingEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
 
-      {/* ── Guest Identity ─────────────────────────────────────────────────── */}
-      <Section title="Guest Identity">
-        <Row2>
-          <Field label="Facebook / Airbnb Name" required>
-            <Input {...register('guest_facebook_name', { required: true })} />
-          </Field>
-          <Field label="Primary Guest Name" required>
-            <Input {...register('primary_guest_name', { required: true })} />
-          </Field>
-        </Row2>
-        <Row2>
-          <Field label="Email" required>
-            <Input
-              type="email"
-              {...register('guest_email', { required: true })}
-            />
-          </Field>
-          <Field label="Phone Number" required>
-            <Input {...register('guest_phone_number', { required: true })} />
-          </Field>
-        </Row2>
-        <Row2>
-          <Field label="Address">
-            <Input {...register('guest_address')} />
-          </Field>
-          <Field label="Nationality">
-            <Input {...register('nationality')} />
-          </Field>
-        </Row2>
-      </Section>
-
-      {/* ── Additional Guests ─────────────────────────────────────────────── */}
-      <Section title="Additional Guests">
-        <Row2>
-          <Field label="Guest 2">
-            <Input
-              {...register('guest2_name')}
-              placeholder="Full name (optional)"
-            />
-          </Field>
-          <Field label="Guest 3">
-            <Input
-              {...register('guest3_name')}
-              placeholder="Full name (optional)"
-            />
-          </Field>
-        </Row2>
-        <Row2>
-          <Field label="Guest 4">
-            <Input
-              {...register('guest4_name')}
-              placeholder="Full name (optional)"
-            />
-          </Field>
-          <Field label="Guest 5">
-            <Input
-              {...register('guest5_name')}
-              placeholder="Full name (optional)"
-            />
-          </Field>
-        </Row2>
-      </Section>
-
-      {/* ── Stay Details ──────────────────────────────────────────────────── */}
-      <Section title="Stay Details">
-        <Row2>
-          <Field label="Check-in Date (MM-DD-YYYY)" required>
-            <DatePicker
-              date={
-                watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
-              }
-              rangeEnd={
-                formSnapshot.check_out_date
-                  ? stringToDate(formSnapshot.check_out_date)
-                  : undefined
-              }
-              onSelect={(date) => {
-                if (!date) return;
-                const selected = dateToString(date);
-                setValue('check_in_date', selected, { shouldDirty: true });
-                setValue('check_out_date', getNextDay(selected), {
-                  shouldDirty: true,
-                });
-              }}
-              disabled={(date) => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (date < today) return true;
-                return createDisabledDateMatcher(bookedDates, booking.id)(date);
-              }}
-              minDate={new Date()}
-              placeholder="Select check-in date"
-            />
-          </Field>
-          <Field label="Check-out Date (MM-DD-YYYY)" required>
-            <DatePicker
-              date={
-                formSnapshot.check_out_date
-                  ? stringToDate(formSnapshot.check_out_date)
-                  : undefined
-              }
-              rangeEnd={
-                watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
-              }
-              onSelect={(date) => {
-                if (!date) return;
-                setValue('check_out_date', dateToString(date), {
-                  shouldDirty: true,
-                });
-              }}
-              disabled={(date) => {
-                const isBooked = createDisabledCheckoutDateMatcher(
-                  bookedDates,
-                  booking.id,
-                )(date);
-                if (watchCheckInDate) {
-                  const checkIn = stringToDate(watchCheckInDate);
-                  if (date <= checkIn) return true;
-                }
-                return isBooked;
-              }}
-              minDate={
-                watchCheckInDate
-                  ? stringToDate(getNextDay(watchCheckInDate))
-                  : new Date()
-              }
-              placeholder="Select check-out date"
-            />
-          </Field>
-        </Row2>
-        <Row2>
-          <Field label="Check-in Time">
-            <Input
-              type="time"
-              {...register('check_in_time')}
-              placeholder="14:00"
-            />
-          </Field>
-          <Field label="Check-out Time">
-            <Input
-              type="time"
-              {...register('check_out_time')}
-              placeholder="11:00"
-            />
-          </Field>
-        </Row2>
-        <Row3>
-          <Field label="Adults" required>
-            <Input
-              type="number"
-              min={1}
-              {...register('number_of_adults', {
-                required: true,
-                valueAsNumber: true,
-              })}
-            />
-          </Field>
-          <Field label="Children">
-            <Input
-              type="number"
-              min={0}
-              {...register('number_of_children', { valueAsNumber: true })}
-            />
-          </Field>
-          <Field label="Nights" required>
-            <Input
-              type="number"
-              min={1}
-              {...register('number_of_nights', {
-                required: true,
-                valueAsNumber: true,
-              })}
-            />
-          </Field>
-        </Row3>
-      </Section>
-
-      {/* ── Parking ───────────────────────────────────────────────────────── */}
-      <Section title="Parking">
-        <label className="flex items-center gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            {...register('need_parking')}
-            className="text-blue-600 rounded border-border focus:ring-blue-500"
-          />
-          <span className="text-sm text-foreground">Needs parking</span>
-        </label>
-        {watchParking && (
-          <Row3>
-            <Field label="Plate Number">
-              <Input {...register('car_plate_number')} placeholder="ABC 123" />
+      <CollapsibleGroup
+        id="booking-details"
+        title="Guest Form Details"
+        defaultOpen
+      >
+        {/* ── Guest Identity ─────────────────────────────────────────────────── */}
+        <Section title="Guest Identity">
+          <Row2>
+            <Field label="Facebook / Airbnb Name" required>
+              <Input {...register('guest_facebook_name', { required: true })} />
             </Field>
-            <Field label="Brand / Model">
+            <Field label="Primary Guest Name" required>
+              <Input {...register('primary_guest_name', { required: true })} />
+            </Field>
+          </Row2>
+          <Row2>
+            <Field label="Email" required>
               <Input
-                {...register('car_brand_model')}
-                placeholder="Toyota Vios"
+                type="email"
+                {...register('guest_email', { required: true })}
               />
             </Field>
-            <Field label="Color">
-              <Input {...register('car_color')} placeholder="White" />
+            <Field label="Phone Number" required>
+              <Input {...register('guest_phone_number', { required: true })} />
+            </Field>
+          </Row2>
+          <Row2>
+            <Field label="Address">
+              <Input {...register('guest_address')} />
+            </Field>
+            <Field label="Nationality">
+              <Input {...register('nationality')} />
+            </Field>
+          </Row2>
+        </Section>
+
+        {/* ── Additional Guests ─────────────────────────────────────────────── */}
+        <Section title="Additional Guests">
+          <Row2>
+            <Field label="Guest 2">
+              <Input
+                {...register('guest2_name')}
+                placeholder="Full name (optional)"
+              />
+            </Field>
+            <Field label="Guest 3">
+              <Input
+                {...register('guest3_name')}
+                placeholder="Full name (optional)"
+              />
+            </Field>
+          </Row2>
+          <Row2>
+            <Field label="Guest 4">
+              <Input
+                {...register('guest4_name')}
+                placeholder="Full name (optional)"
+              />
+            </Field>
+            <Field label="Guest 5">
+              <Input
+                {...register('guest5_name')}
+                placeholder="Full name (optional)"
+              />
+            </Field>
+          </Row2>
+        </Section>
+
+        {/* ── Stay Details ──────────────────────────────────────────────────── */}
+        <Section title="Stay Details">
+          <Row2>
+            <Field label="Check-in Date (MM-DD-YYYY)" required>
+              <DatePicker
+                date={
+                  watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
+                }
+                rangeEnd={
+                  formSnapshot.check_out_date
+                    ? stringToDate(formSnapshot.check_out_date)
+                    : undefined
+                }
+                onSelect={(date) => {
+                  if (!date) return;
+                  const selected = dateToString(date);
+                  setValue('check_in_date', selected, { shouldDirty: true });
+                  setValue('check_out_date', getNextDay(selected), {
+                    shouldDirty: true,
+                  });
+                }}
+                disabled={(date) => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  if (date < today) return true;
+                  return createDisabledDateMatcher(
+                    bookedDates,
+                    booking.id,
+                  )(date);
+                }}
+                minDate={new Date()}
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
+              />
+            </Field>
+            <Field label="Check-out Date (MM-DD-YYYY)" required>
+              <DatePicker
+                date={
+                  formSnapshot.check_out_date
+                    ? stringToDate(formSnapshot.check_out_date)
+                    : undefined
+                }
+                rangeEnd={
+                  watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
+                }
+                onSelect={(date) => {
+                  if (!date) return;
+                  setValue('check_out_date', dateToString(date), {
+                    shouldDirty: true,
+                  });
+                }}
+                disabled={(date) => {
+                  const isBooked = createDisabledCheckoutDateMatcher(
+                    bookedDates,
+                    booking.id,
+                  )(date);
+                  if (watchCheckInDate) {
+                    const checkIn = stringToDate(watchCheckInDate);
+                    if (date <= checkIn) return true;
+                  }
+                  return isBooked;
+                }}
+                minDate={
+                  watchCheckInDate
+                    ? stringToDate(getNextDay(watchCheckInDate))
+                    : new Date()
+                }
+                placeholder={DATE_PICKER_DISPLAY_FORMAT}
+              />
+            </Field>
+          </Row2>
+          <Row2>
+            <Field label="Check-in Time">
+              <Input
+                type="time"
+                {...register('check_in_time')}
+                placeholder="14:00"
+              />
+            </Field>
+            <Field label="Check-out Time">
+              <Input
+                type="time"
+                {...register('check_out_time')}
+                placeholder="11:00"
+              />
+            </Field>
+          </Row2>
+          <Row3>
+            <Field label="Adults" required>
+              <Input
+                type="number"
+                min={1}
+                {...register('number_of_adults', {
+                  required: true,
+                  valueAsNumber: true,
+                })}
+              />
+            </Field>
+            <Field label="Children">
+              <Input
+                type="number"
+                min={0}
+                {...register('number_of_children', { valueAsNumber: true })}
+              />
+            </Field>
+            <Field label="Nights" required>
+              <Input
+                type="number"
+                min={1}
+                {...register('number_of_nights', {
+                  required: true,
+                  valueAsNumber: true,
+                })}
+              />
             </Field>
           </Row3>
-        )}
-      </Section>
+        </Section>
 
-      {/* ── Pet Information ───────────────────────────────────────────────── */}
-      <Section title="Pet Information">
-        <label className="flex items-center gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            {...register('has_pets')}
-            className="text-blue-600 rounded border-border focus:ring-blue-500"
-          />
-          <span className="text-sm text-foreground">Has pets</span>
-        </label>
-        {watchPets && (
-          <>
-            <Row2>
-              <Field label="Pet Name">
-                <Input {...register('pet_name')} />
-              </Field>
-              <Field label="Pet Type">
-                <Input {...register('pet_type')} placeholder="Dog / Cat" />
-              </Field>
-            </Row2>
+        {/* ── Parking ───────────────────────────────────────────────────────── */}
+        <Section title="Parking">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register('need_parking')}
+              className="text-blue-600 rounded border-border focus:ring-blue-500"
+            />
+            <span className="text-sm text-foreground">Needs parking</span>
+          </label>
+          {watchParking && (
             <Row3>
-              <Field label="Breed">
-                <Input {...register('pet_breed')} />
-              </Field>
-              <Field label="Age">
-                <Input {...register('pet_age')} placeholder="2 years" />
-              </Field>
-              <Field label="Vaccination Date">
-                <DatePicker
-                  date={
-                    formSnapshot.pet_vaccination_date
-                      ? stringToDate(formSnapshot.pet_vaccination_date)
-                      : undefined
-                  }
-                  onSelect={(date) => {
-                    setValue(
-                      'pet_vaccination_date',
-                      date ? dateToString(date) : '',
-                      { shouldDirty: true },
-                    );
-                  }}
-                  placeholder="Select vaccination date"
+              <Field label="Plate Number">
+                <Input
+                  {...register('car_plate_number')}
+                  placeholder="ABC 123"
                 />
               </Field>
+              <Field label="Brand / Model">
+                <Input
+                  {...register('car_brand_model')}
+                  placeholder="Toyota Vios"
+                />
+              </Field>
+              <Field label="Color">
+                <Input {...register('car_color')} placeholder="White" />
+              </Field>
             </Row3>
-          </>
-        )}
-      </Section>
+          )}
+        </Section>
 
-      {/* ── Surprise decor ───────────────────────────────────────────────── */}
-      <Section title="Surprise decor">
-        <label className="flex items-center gap-2.5 min-h-[44px] cursor-pointer py-1">
-          <input
-            type="checkbox"
-            {...register('guest_requests_surprise_decor')}
-            className="text-blue-600 rounded border-border focus:ring-blue-500"
-          />
-          <span className="text-sm text-foreground">
-            Guest requested a surprise decor / room setup
-          </span>
-        </label>
-        {surpriseDecorChangedFromSaved && (
-          <div
-            role="status"
-            className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-100 sm:text-[13px]"
-          >
-            <Info
-              className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
-              aria-hidden
+        {/* ── Pet Information ───────────────────────────────────────────────── */}
+        <Section title="Pet Information">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              {...register('has_pets')}
+              className="text-blue-600 rounded border-border focus:ring-blue-500"
             />
-            <p className="min-w-0">
-              Please update the <strong>Additional fee</strong> field from{' '}
-              <strong>Pricing Form</strong> in{' '}
-              <strong>Pending Review step</strong> if you will update this
-              checkbox.
-            </p>
-          </div>
-        )}
-      </Section>
+            <span className="text-sm text-foreground">Has pets</span>
+          </label>
+          {watchPets && (
+            <>
+              <Row2>
+                <Field label="Pet Name">
+                  <Input {...register('pet_name')} />
+                </Field>
+                <Field label="Pet Type">
+                  <Input {...register('pet_type')} placeholder="Dog / Cat" />
+                </Field>
+              </Row2>
+              <Row3>
+                <Field label="Breed">
+                  <Input {...register('pet_breed')} />
+                </Field>
+                <Field label="Age">
+                  <Input {...register('pet_age')} placeholder="2 years" />
+                </Field>
+                <Field label="Vaccination Date">
+                  <DatePicker
+                    date={
+                      formSnapshot.pet_vaccination_date
+                        ? stringToDate(formSnapshot.pet_vaccination_date)
+                        : undefined
+                    }
+                    onSelect={(date) => {
+                      setValue(
+                        'pet_vaccination_date',
+                        date ? dateToString(date) : '',
+                        { shouldDirty: true },
+                      );
+                    }}
+                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                  />
+                </Field>
+              </Row3>
+            </>
+          )}
+        </Section>
 
-      {/* ── Other ─────────────────────────────────────────────────────────── */}
-      <Section title="How They Found Us">
-        <Row2>
-          <Field label="Channel">
-            <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
-          </Field>
-          <Field label="Details">
-            <Input
-              {...register('find_us_details')}
-              placeholder="Referred by…"
+        {/* ── Surprise decor ───────────────────────────────────────────────── */}
+        <Section title="Surprise decor">
+          <label className="flex items-center gap-2.5 min-h-[44px] cursor-pointer py-1">
+            <input
+              type="checkbox"
+              {...register('guest_requests_surprise_decor')}
+              className="text-blue-600 rounded border-border focus:ring-blue-500"
+            />
+            <span className="text-sm text-foreground">
+              Guest requested a surprise decor / room setup
+            </span>
+          </label>
+          {surpriseDecorChangedFromSaved && (
+            <div
+              role="status"
+              className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-100 sm:text-[13px]"
+            >
+              <Info
+                className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
+                aria-hidden
+              />
+              <p className="min-w-0">
+                Please update the <strong>Additional fee</strong> field under{' '}
+                <strong>Workflow Details → Review Pricing</strong> if you change
+                this checkbox.
+              </p>
+            </div>
+          )}
+        </Section>
+
+        {/* ── Other ─────────────────────────────────────────────────────────── */}
+        <Section title="How They Found Us">
+          <Row2>
+            <Field label="Channel">
+              <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
+            </Field>
+            <Field label="Details">
+              <Input
+                {...register('find_us_details')}
+                placeholder="Referred by…"
+              />
+            </Field>
+          </Row2>
+        </Section>
+
+        <Section title="Special Requests">
+          <Field label="Requests / Notes">
+            <textarea
+              {...register('guest_special_requests')}
+              rows={3}
+              placeholder="Any special requests from the guest…"
+              className={inputClass}
             />
           </Field>
-        </Row2>
-      </Section>
+        </Section>
 
-      <Section title="Special Requests">
-        <Field label="Requests / Notes">
-          <textarea
-            {...register('guest_special_requests')}
-            rows={3}
-            placeholder="Any special requests from the guest…"
-            className={inputClass}
-          />
-        </Field>
-      </Section>
+        {/* ── Documents ─────────────────────────────────────────────────────── */}
+        <DocumentsSection booking={booking} onPreview={onPreview} />
+      </CollapsibleGroup>
 
-      {/* ── Documents ─────────────────────────────────────────────────────── */}
-      <DocumentsSection booking={booking} onPreview={onPreview} />
+      <CollapsibleGroup
+        id="progress-forms"
+        title="Workflow Details"
+        defaultOpen={false}
+      >
+        <BookingProgressFormsEdit
+          booking={booking}
+          onStateChange={setProgressFormState}
+          onTouchedChange={setProgressTouched}
+        />
+      </CollapsibleGroup>
 
       {/* Actions */}
       <div className="flex gap-3 justify-end items-center pt-4 border-t border-separator">
@@ -618,18 +673,19 @@ export function BookingEditForm({
           <X className="size-3.5" aria-hidden />
           Cancel
         </button>
-        <button
+        <Button
           type="submit"
-          disabled={updateMut.isPending || !isDirty}
-          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          disabled={updateMut.isPending || !canSave}
+          size="sm"
+          className="min-h-[44px] rounded-lg px-5"
         >
           <Save className="size-3.5" />
           {updateMut.isPending
             ? 'Saving…'
             : showSensitiveRevertHint
               ? 'Save & Revert Status'
-              : 'Save Changes'}
-        </button>
+              : 'Save'}
+        </Button>
       </div>
     </form>
   );
@@ -683,7 +739,7 @@ function DocumentsSection({
   ];
 
   return (
-    <div className="p-4 space-y-3 rounded-xl border border-border/60 bg-background/80 shadow-sm dark:bg-muted/30">
+    <div className="p-4 space-y-3 rounded-xl border shadow-sm border-border/60 bg-background/80 dark:bg-muted/30">
       <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
         Documents
       </h3>
@@ -773,8 +829,8 @@ function DocumentReplacer({
               />
             </div>
           ) : (
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-red-50 dark:bg-red-500/15">
-              <FileText className="size-6 text-red-400 dark:text-red-300" />
+            <div className="flex justify-center items-center w-14 h-14 bg-red-50 rounded-md shrink-0 dark:bg-red-500/15">
+              <FileText className="text-red-400 size-6 dark:text-red-300" />
             </div>
           )}
           <div className="flex-1 min-w-0">
@@ -787,7 +843,7 @@ function DocumentReplacer({
           </div>
         </button>
       ) : (
-        <div className="flex justify-center items-center h-16 text-xs bg-card rounded-lg border border-dashed border-border text-muted-foreground">
+        <div className="flex justify-center items-center h-16 text-xs rounded-lg border border-dashed bg-card border-border text-muted-foreground">
           No file uploaded
         </div>
       )}
@@ -839,67 +895,3 @@ function getDocType(url: string): 'image' | 'pdf' | 'file' {
   if (/\.pdf$/.test(path)) return 'pdf';
   return 'file';
 }
-
-// ─── Layout helpers ───────────────────────────────────────────────────────────
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="p-4 space-y-3 rounded-xl border border-border/60 bg-background/80 shadow-sm dark:bg-muted/30">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
-}
-
-function Row2({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
-  );
-}
-
-function Row3({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">{children}</div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted-foreground">
-        {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
-      </span>
-      {children}
-    </label>
-  );
-}
-
-const inputClass =
-  'w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring transition-colors resize-none';
-
-// forwardRef is required so React Hook Form's ref callback reaches the DOM <input>
-// and can apply defaultValues. Without it React strips `ref` at the component boundary.
-const Input = React.forwardRef<
-  HTMLInputElement,
-  React.InputHTMLAttributes<HTMLInputElement>
->(({ className, ...props }, ref) => (
-  <input ref={ref} {...props} className={cn(inputClass, className)} />
-));
-Input.displayName = 'Input';

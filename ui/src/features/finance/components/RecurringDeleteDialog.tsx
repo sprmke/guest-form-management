@@ -11,6 +11,7 @@ import {
   recurrenceIntervalLabel,
 } from '@/features/finance/lib/recurrence';
 import type { FinanceLineItem, RecurrenceEditScope } from '@/features/finance/lib/types';
+import { formatIsoDate } from '@/features/admin/lib/formatters';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -19,6 +20,8 @@ type Props = {
   onClose: () => void;
   onConfirm: (scope: RecurrenceEditScope) => void;
   isPending?: boolean;
+  /** Hide batch delete options — always delete this row only. */
+  singleOccurrenceOnly?: boolean;
 };
 
 export function RecurringDeleteDialog({
@@ -27,12 +30,13 @@ export function RecurringDeleteDialog({
   onClose,
   onConfirm,
   isPending,
+  singleOccurrenceOnly = false,
 }: Props) {
   const [scope, setScope] = useState<RecurrenceEditScope>('this');
 
   if (!item) return null;
 
-  const isSeries = Boolean(item.recurrence_series_id);
+  const isSeries = Boolean(item.recurrence_series_id) && !singleOccurrenceOnly;
 
   return (
     <Dialog
@@ -47,7 +51,9 @@ export function RecurringDeleteDialog({
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
           Delete <span className="font-semibold text-foreground">{item.label}</span>
-          {isSeries ? (
+          {singleOccurrenceOnly ? (
+            <> on {formatIsoDate(item.occurred_on)}?</>
+          ) : isSeries ? (
             <>
               {' '}
               from this{' '}

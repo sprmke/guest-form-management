@@ -10,21 +10,44 @@ import {
 import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
 import { cn } from '@/lib/utils';
 
-/** Shared admin list table shell (Bookings, Finance Stays, Finance Operating, …). */
+/** Shared admin list table shell (Bookings, Finance Stays, Finance Transactions, …). */
 export function AdminDataTable({
   children,
   minWidth = 560,
   className,
+  stickyHeader = false,
 }: {
   children: React.ReactNode;
   minWidth?: number;
   className?: string;
+  /** Keep column headers visible while tbody scrolls (use in flex + min-h-0 parents). */
+  stickyHeader?: boolean;
 }) {
+  if (stickyHeader) {
+    return (
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl surface-card',
+          className,
+        )}
+      >
+        <div className="min-h-0 flex-1 overflow-auto overscroll-contain">
+          <table
+            className="w-full border-collapse admin-data-table bg-card"
+            style={{ minWidth: `${minWidth}px` }}
+          >
+            {children}
+          </table>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('surface-card overflow-hidden', className)}>
+    <div className={cn('overflow-hidden surface-card', className)}>
       <div className="overflow-x-auto">
         <table
-          className="admin-data-table w-full border-collapse bg-card"
+          className="w-full border-collapse admin-data-table bg-card"
           style={{ minWidth: `${minWidth}px` }}
         >
           {children}
@@ -34,10 +57,24 @@ export function AdminDataTable({
   );
 }
 
-export function AdminTableHeadRow({ children }: { children: React.ReactNode }) {
+export function AdminTableHeadRow({
+  children,
+  sticky = false,
+}: {
+  children: React.ReactNode;
+  sticky?: boolean;
+}) {
   return (
     <thead>
-      <tr className="border-b border-separator bg-card">{children}</tr>
+      <tr
+        className={cn(
+          'border-b border-separator bg-card',
+          sticky &&
+            '[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_0_hsl(var(--border))] [&_th:first-child]:rounded-tl-3xl [&_th:last-child]:rounded-tr-3xl',
+        )}
+      >
+        {children}
+      </tr>
     </thead>
   );
 }
@@ -56,7 +93,7 @@ export function AdminTableTh({
   );
 }
 
-/** Data row hover/border; set `interactive: false` for action-only rows (e.g. Operating). */
+/** Data row hover/border; set `interactive: false` for action-only rows (e.g. Transactions). */
 export function adminTableRowClass(
   index: number,
   options: { interactive?: boolean } = {},
@@ -75,17 +112,14 @@ export function adminTableRowClass(
 export const adminTableCell = {
   status: 'pl-4 pr-3 py-3 align-middle sm:pl-5 sm:py-3.5',
   body: 'px-3 py-3 align-middle sm:px-4 sm:py-3.5',
-  money: 'px-3 py-3 text-right align-middle sm:px-4 sm:py-3.5',
+  money: 'px-3 py-3 text-left align-middle sm:px-4 sm:py-3.5',
   action: 'py-2 pr-3 pl-2 text-right align-middle sm:pr-4 sm:py-3.5',
 } as const;
 
 /** Trailing affordance on clickable rows (Bookings list, Finance stays). */
 export function AdminTableRowAffordance() {
   return (
-    <span
-      aria-hidden
-      className={adminTableRowAffordanceClass}
-    >
+    <span aria-hidden className={adminTableRowAffordanceClass}>
       <ArrowUpRight className="size-4" />
     </span>
   );
@@ -120,7 +154,7 @@ export function AdminTableRowLink({
   );
 }
 
-/** Icon button in table action cells (Operating edit/delete). */
+/** Icon button in table action cells (Transactions edit/delete). */
 export const adminTableIconButtonClass = cn(
   'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg',
   'text-muted-foreground transition-colors duration-150',
@@ -177,12 +211,22 @@ export function AdminTableGuestCell({
   return (
     <div className="flex min-w-[140px] items-center gap-2.5 sm:min-w-[160px] sm:gap-3">
       <GuestAvatar name={name} validIdUrl={valid_id_url} size="md" />
-      <div className="min-w-0 space-y-1">
-        <p className={cn('truncate font-bold leading-snug', adminTableBodyText.primary)}>
+      <div className="space-y-1 min-w-0">
+        <p
+          className={cn(
+            'truncate font-bold leading-snug',
+            adminTableBodyText.primary,
+          )}
+        >
           {name}
         </p>
         {guest_email ? (
-          <p className={cn('truncate leading-snug', adminTableBodyText.secondary)}>
+          <p
+            className={cn(
+              'truncate leading-snug',
+              adminTableBodyText.secondary,
+            )}
+          >
             {guest_email}
           </p>
         ) : null}
@@ -242,7 +286,12 @@ export function AdminTableFlagsCell({
         </span>
       ) : null}
       {!hasAny ? (
-        <span className={cn(adminTableBodyText.secondary, 'text-muted-foreground/40')}>
+        <span
+          className={cn(
+            adminTableBodyText.secondary,
+            'text-muted-foreground/40',
+          )}
+        >
           —
         </span>
       ) : null}

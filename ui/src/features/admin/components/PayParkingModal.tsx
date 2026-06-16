@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { DatePicker } from '@/components/ui/date-picker';
+import { DATE_PICKER_DISPLAY_FORMAT } from '@/utils/dates';
 import { useSaveParkingRateGuest } from '@/features/admin/hooks/useSaveParkingRateGuest';
 import type { BookingRow } from '@/features/admin/lib/types';
 import {
@@ -145,6 +146,8 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
         parkingRateGuest: rate,
         parkingCheckInDate: bookingDateToMmDdYyyy(dates.checkIn),
         parkingCheckOutDate: bookingDateToMmDdYyyy(dates.checkOut),
+        bookingStatus: booking.status,
+        parkingCompletedAt: booking.parking_completed_at,
       });
       return true;
     } catch (err) {
@@ -225,7 +228,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
                   minDate={stayBounds.minDate}
                   maxDate={stayBounds.maxDate}
                   disabled={() => isSaving}
-                  placeholder="Select parking check-in"
+                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
                   onSelect={(date) => {
                     if (!date) return;
                     setParkingCheckIn(date);
@@ -253,7 +256,7 @@ export function PayParkingModal({ booking, open, onOpenChange }: Props) {
                     if (parkingCheckIn && date <= parkingCheckIn) return true;
                     return false;
                   }}
-                  placeholder="Select parking check-out"
+                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
                   onSelect={(date) => {
                     if (date) setParkingCheckOut(date);
                   }}

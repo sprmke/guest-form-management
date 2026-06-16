@@ -1,6 +1,11 @@
 import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import { formatDateToMMDDYYYY, formatTimeToAMPM } from "./dates";
 import dayjs from "dayjs";
+import {
+  DEFAULT_GAF_DETAILS,
+  gafDetailsToFormSubmitFields,
+  type GafDetailsValues,
+} from "@/lib/gafDefaults";
 
 export const toCapitalCase = (text: string): string => {
   if (!text) return text;
@@ -16,7 +21,10 @@ export const handleEmptyString = (value: string | undefined): string | undefined
   return value;
 };
 
-export const transformFieldValues = (values: GuestFormData) => {
+export const transformFieldValues = (
+  values: GuestFormData,
+  gafDetails: GafDetailsValues = DEFAULT_GAF_DETAILS,
+) => {
   // Calculate number of nights
   const checkIn = dayjs(values.checkInDate);
   const checkOut = dayjs(values.checkOutDate);
@@ -28,11 +36,8 @@ export const transformFieldValues = (values: GuestFormData) => {
 
   return {
     ...values,
-    // Unit and Owner Information (with defaults)
-    unitOwner: 'Arianna Perez',
-    towerAndUnitNumber: 'Monaco 2604',
-    ownerOnsiteContactPerson: 'Arianna Perez',
-    ownerContactNumber: '0962 541 2941',
+    // Unit and Owner Information (from Settings → GAF Details)
+    ...gafDetailsToFormSubmitFields(gafDetails),
     
     // Primary Guest Information
     guestFacebookName: toCapitalCase(values.guestFacebookName),

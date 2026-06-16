@@ -39,7 +39,8 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 - ✅ **Phase 5 — `submit-form` cleanup + removal of test-booking pipeline.**
   - ✅ `submit-form` no longer sends workflow emails; no `?testing=true`, no `is_test_booking`, no `cleanup-test-data`, no `[TEST]`/`TEST_` prefixes. Guest `/form` keeps optional **dev API toggles** when `!production` or `?dev=true` (save DB, storage, calendar, sheet) — no separate Test Submit.
   - ✅ Parent status `PENDING_DOCUMENTS` added for parallel document work. `WorkflowPanel` shows sub-status progress (`PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST`) with "Mark as Complete" actions.
-- ✅ **Calendar time + sync prevention** — `guest_submissions.check_*_time` stored as 24h `HH:mm` (migration `20260623120000_normalize_time_columns_to_24h.sql`); `formatTime` / `buildGoogleCalendarDateTime` parse AM/PM safely; workflow + edit-save calendar patches use `check_out_date` for event end and update all matched Google events.
+- ✅ **Calendar time + sync prevention** — `guest_submissions.check_*_time` stored as 24h `HH:mm` (migration `20260623120000_normalize_time_columns_to_24h.sql`); `formatTime` / `buildGoogleCalendarDateTime` parse AM/PM safely; workflow + edit-save calendar patches update all matched Google events.
+- ✅ **Calendar occupied-night window** — multi-night Google Calendar events end **23:59 on the last occupied night** (not checkout morning), matching admin calendar availability; migration `20260709120000_backfill_calendar_event_dates.sql` + admin **`backfill-calendar-event-dates`** edge function for legacy events.
 
 ---
 
@@ -123,7 +124,7 @@ Todos
 - ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
-- ✅ **Finance dashboard (`/finance`)** — Overview KPIs, Stays ledger (period basis check-in / check-out / completed), Operating CRUD (`finance_line_items`), PDF export (client-side; `finance-export` CSV edge function retained for scripts). Shared formulas in `bookingFinance.ts` (UI + edge). Admin nav **Finance** replaces Reports placeholder.
+- ✅ **Finance dashboard (`/finance`)** — Overview KPIs, Stays ledger (period basis check-in / check-out / completed), **Transactions** CRUD (`finance_line_items`), PDF export (client-side; `finance-export` CSV edge function retained for scripts). Shared formulas in `bookingFinance.ts` (UI + edge). Admin nav **Finance** replaces Reports placeholder.
 - Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
 - ✅ Automatic run cron job functions (specify here) after page refresh
 - ✅ If booking date is already past on the date today and the booking status is still either PENDING_REVIEW, PENDING_DOCS and READY_FOR_CHECKIN, display a modal warning that says that the booking date is already passed every time we click the "Proceed to.." button. If they confirm, proceed to next step, if cancel, do not proceed.
@@ -169,21 +170,22 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update Review process to deduct P50-P100 pesos on SD?
 - Add settings page on dashboard to customized form values: Discount vouchers, etc
 - Update Check-in Details email to add check-in instructions
-- Add Gcash number and name to Check-in email
+- ✅ Add Gcash number and name to Check-in email
 - Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
 - Cleanup isDevMode. This is unnecessary since we have admin dashboard now
 - Update booking confirmed UI and display the complete booking details
 - Improve Other information section UI / cols
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
 - Update additional guests and ask if adult or child (below 5 years old) per field
--  ✅ Support slack and telegram notifications for important booking events
-  - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
--  ✅ If we received a same day booking, notify on Staff telegram group — instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
+- ✅ Support slack and telegram notifications for important booking events
+- New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
+- ✅ If we received a same day booking, notify on Staff telegram group — instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
 - ✅ Make the QR code image configurable via settings using image uploader. Update public guest form and check-in email to use this uploaded QR image
 - ✅ Improve SD form to include chance to win free staycation if you leave a review (`KAME-STAY` at **0.5%** via `VOUCHER_WIN_WEIGHTS`; `VoucherReveal` copy + slot reel)
 - Support same-day check-in
 - Add password or faceid when accessing settings page?
-- Update GAF details to be configurable via settings
-- Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
+- ✅ Update GAF details to be configurable via settings — **Admin → Settings → GAF Details** with live PDF preview; guest submit + `submit-form` use resolved values
+- Improve light theme colors
+- ✅ Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
 - Add quick edit on bookings page
 - Support free booking (payment related steps/action not required, etc)

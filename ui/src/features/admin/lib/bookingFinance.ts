@@ -277,6 +277,20 @@ export function financeDisplayNet(fin: BookingFinancials): number | null {
   return fin.projectedNet;
 }
 
+/** Tailwind text color for host-net display (tables, cards, calendar). */
+export function hostNetToneClass(
+  net: number | null,
+  isRealized: boolean,
+): string {
+  if (net == null || net === 0) return 'text-muted-foreground';
+  if (isRealized) {
+    return net > 0
+      ? 'text-emerald-700 dark:text-emerald-300'
+      : 'text-red-600 dark:text-red-400';
+  }
+  return 'text-amber-700 dark:text-amber-300';
+}
+
 function toMoneyNumber(value: number | string | null | undefined): number {
   if (value === null || value === undefined || value === '') return 0;
   const n = typeof value === 'string' ? Number(value) : value;

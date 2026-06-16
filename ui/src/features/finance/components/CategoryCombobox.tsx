@@ -75,7 +75,7 @@ export function CategoryCombobox({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverAnchor asChild>
         <div ref={anchorRef} className="relative w-full">
           <input
@@ -141,11 +141,21 @@ export function CategoryCombobox({
       <PopoverContent
         align="start"
         sideOffset={6}
-        className="max-h-[min(60vh,16rem)] overflow-y-auto p-1"
-        style={panelWidth ? { width: panelWidth } : undefined}
+        className="overflow-hidden p-0"
+        style={
+          panelWidth
+            ? { width: panelWidth, maxHeight: 'min(60vh, 16rem)' }
+            : { maxHeight: 'min(60vh, 16rem)' }
+        }
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onWheel={(e) => e.stopPropagation()}
       >
-        <ul id={listboxId} role="listbox" className="space-y-0.5">
+        <div
+          className="max-h-[min(60vh,16rem)] overflow-y-auto overscroll-contain p-1 touch-pan-y [-webkit-overflow-scrolling:touch]"
+          onWheel={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
+        >
+          <ul id={listboxId} role="listbox" className="space-y-0.5">
           {filtered.map((item) => {
             const selected = normalizedValue === item.toLowerCase();
             return (
@@ -191,7 +201,8 @@ export function CategoryCombobox({
               No matching categories
             </li>
           ) : null}
-        </ul>
+          </ul>
+        </div>
       </PopoverContent>
     </Popover>
   );

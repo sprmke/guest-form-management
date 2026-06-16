@@ -9,7 +9,7 @@
  * Plan: docs/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Copy,
   ExternalLink,
@@ -26,7 +26,12 @@ import type {
   SdSettlementLineItem,
 } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
-import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import {
+  WorkflowFormShell,
+  workflowFormEditTitle,
+  type WorkflowFormVariant,
+} from '@/features/admin/components/WorkflowFormShell';
+import { GuestSdRefundDetailsSection } from '@/features/admin/components/GuestSdRefundDetailsSection';
 import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
@@ -134,15 +139,6 @@ function phoneDigitsOnly(raw: string | null | undefined): string {
   return raw.replace(/\D/g, '');
 }
 
-function methodLabel(
-  method: NonNullable<BookingRow['sd_refund_method']>,
-): string {
-  if (method === 'same_phone')
-    return 'GCash (same as provided phone number from GAF)';
-  if (method === 'cash') return 'Cash pickup';
-  return 'Bank / e-wallet transfer';
-}
-
 /** 18×18px icon-only copy control, inline after value text. */
 export function InlineCopyIconButton({
   'aria-label': ariaLabel,
@@ -172,33 +168,6 @@ export function InlineCopyIconButton({
   );
 }
 
-function RefundSummaryRow({
-  label,
-  children,
-  mono,
-}: {
-  label: string;
-  children: ReactNode;
-  mono?: boolean;
-}) {
-  return (
-    <div className="grid gap-1.5 py-3.5 sm:grid-cols-[minmax(0,5.75rem)_minmax(0,1fr)] sm:items-start sm:gap-x-3 sm:gap-y-0 sm:py-3.5">
-      <dt className="text-left text-xs font-semibold leading-snug text-muted-foreground sm:pt-[2px] sm:text-[11px]">
-        {label}
-      </dt>
-      <dd
-        className={cn(
-          'min-w-0 text-sm font-medium leading-relaxed text-foreground break-words sm:text-[13px] sm:leading-relaxed sm:font-normal',
-          mono &&
-            'font-mono text-[13px] tracking-tight text-foreground sm:font-mono',
-        )}
-      >
-        {children}
-      </dd>
-    </div>
-  );
-}
-
 export type SdRefundValues = {
   sd_additional_expense_items: SdSettlementLineItem[];
   sd_additional_profit_items: SdSettlementLineItem[];
@@ -211,6 +180,10 @@ type Props = {
   initialDraft?: SdRefundValues | null;
   onChange: (values: SdRefundValues | null) => void;
   readOnly?: boolean;
+  editMode?: boolean;
+  variant?: WorkflowFormVariant;
+  /** When false, guest SD refund submission is omitted (shown separately in edit form). */
+  showGuestDetails?: boolean;
 };
 
 const SD_DEFAULT = 1500;
@@ -220,6 +193,9 @@ export function SdRefundForm({
   initialDraft = null,
   onChange,
   readOnly = false,
+  editMode = false,
+  variant = 'workflow',
+  showGuestDetails = true,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
   const receiptFileRef = useRef<HTMLInputElement>(null);
@@ -257,7 +233,6 @@ export function SdRefundForm({
   /** Refund = base SD + additional expenses charged to guest − profits retained from guest. */
   const netSD = baseSd + totalExpenses - totalProfits;
 
-  const phoneDisplay = booking.guest_phone_number?.trim() ?? '';
   const phoneDigits = phoneDigitsOnly(booking.guest_phone_number);
   const otherBankGcashDigits = phoneDigitsOnly(
     booking.sd_refund_account_number,
@@ -278,41 +253,6 @@ export function SdRefundForm({
       ? `gcash://send?mobile=${gcashDestinationDigits}&amount=${refundAmountForGcash}`
       : null;
 
-  const accountNameForCopy = booking.sd_refund_account_name?.trim() ?? '';
-  const accountNumberForCopy =
-    phoneDigitsOnly(booking.sd_refund_account_number) ||
-    (booking.sd_refund_account_number ?? '').trim();
-
-  async function copyGuestPhone() {
-    if (!phoneDisplay) return;
-    try {
-      await navigator.clipboard.writeText(phoneDisplay);
-      toast.success('Phone number copied');
-    } catch {
-      toast.error('Could not copy to clipboard');
-    }
-  }
-
-  async function copyAccountName() {
-    if (!accountNameForCopy) return;
-    try {
-      await navigator.clipboard.writeText(accountNameForCopy);
-      toast.success('Account name copied');
-    } catch {
-      toast.error('Could not copy to clipboard');
-    }
-  }
-
-  async function copyAccountNumber() {
-    if (!accountNumberForCopy) return;
-    try {
-      await navigator.clipboard.writeText(accountNumberForCopy);
-      toast.success('Account number copied');
-    } catch {
-      toast.error('Could not copy to clipboard');
-    }
-  }
-
   useEffect(() => {
     const url = booking.sd_refund_receipt_url;
     if (url) setReceiptUrl(url);
@@ -320,7 +260,7 @@ export function SdRefundForm({
 
   useEffect(() => {
     if (readOnly) return;
-    if (netSD >= 0) {
+    if (editMode || netSD >= 0) {
       onChange({
         sd_additional_expense_items: expenseItems,
         sd_additional_profit_items: profitItems,
@@ -330,7 +270,7 @@ export function SdRefundForm({
     } else {
       onChange(null);
     }
-  }, [expenseItems, profitItems, netSD, receiptUrl]);
+  }, [expenseItems, profitItems, netSD, receiptUrl, readOnly, editMode]);
 
   async function handleReceiptFileChange(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -377,92 +317,20 @@ export function SdRefundForm({
     );
   }
 
+  const cardTitle =
+    variant === 'edit'
+      ? workflowFormEditTitle('SD settlement')
+      : 'Security deposit settlement';
+
   return (
-    <WorkflowSubFormCard
-      title="Security deposit settlement"
+    <WorkflowFormShell
+      title={cardTitle}
+      variant={variant}
       bodyClassName="space-y-4"
     >
-      {guestMethod && (
-        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ring-1 ring-slate-950/[0.04]">
-          <div className="border-b border-separator bg-muted/50/80 px-4 py-3.5 sm:px-5">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Guest refund details
-            </h3>
-          </div>
-          <dl className="min-w-0 divide-y divide-separator px-4 sm:px-5">
-            <RefundSummaryRow label="Method">
-              {methodLabel(guestMethod)}
-            </RefundSummaryRow>
-            {guestMethod === 'same_phone' && (
-              <RefundSummaryRow label="Phone Number">
-                <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                  <span
-                    className={cn(
-                      'min-w-0 break-words font-mono text-[13px] leading-snug tracking-tight text-foreground sm:leading-normal',
-                      !phoneDisplay && 'text-muted-foreground',
-                    )}
-                  >
-                    {phoneDisplay || '—'}
-                  </span>
-                  <InlineCopyIconButton
-                    aria-label="Copy phone number to clipboard"
-                    disabled={!phoneDisplay}
-                    onClick={() => void copyGuestPhone()}
-                  />
-                </span>
-              </RefundSummaryRow>
-            )}
-            {guestMethod === 'other_bank' && (
-              <>
-                <RefundSummaryRow label="Bank">
-                  {booking.sd_refund_bank ?? '—'}
-                </RefundSummaryRow>
-                <RefundSummaryRow label="Account name">
-                  <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                    <span
-                      className={cn(
-                        'min-w-0 break-words text-sm leading-snug text-foreground sm:text-[13px] sm:font-normal sm:leading-normal',
-                        !accountNameForCopy && 'text-muted-foreground',
-                      )}
-                    >
-                      {accountNameForCopy || '—'}
-                    </span>
-                    <InlineCopyIconButton
-                      aria-label="Copy account name to clipboard"
-                      disabled={!accountNameForCopy}
-                      onClick={() => void copyAccountName()}
-                    />
-                  </span>
-                </RefundSummaryRow>
-                <RefundSummaryRow label="Account number" mono>
-                  <span className="inline-flex max-w-full flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                    <span
-                      className={cn(
-                        'min-w-0 break-all font-mono text-[13px] leading-snug tracking-tight text-foreground sm:font-mono sm:leading-normal',
-                        !accountNumberForCopy && 'text-muted-foreground',
-                      )}
-                    >
-                      {booking.sd_refund_account_number?.trim() || '—'}
-                    </span>
-                    <InlineCopyIconButton
-                      aria-label="Copy account number to clipboard"
-                      disabled={!accountNumberForCopy}
-                      onClick={() => void copyAccountNumber()}
-                    />
-                  </span>
-                </RefundSummaryRow>
-              </>
-            )}
-            {booking.sd_refund_guest_feedback && (
-              <RefundSummaryRow label="Guest feedback">
-                <span className="whitespace-pre-wrap font-normal text-foreground">
-                  {booking.sd_refund_guest_feedback}
-                </span>
-              </RefundSummaryRow>
-            )}
-          </dl>
-        </div>
-      )}
+      {showGuestDetails && guestMethod ? (
+        <GuestSdRefundDetailsSection booking={booking} variant="workflow" />
+      ) : null}
 
       <div className="flex justify-between items-center text-sm">
         <span className="text-muted-foreground">Security Deposit (base)</span>
@@ -602,7 +470,7 @@ export function SdRefundForm({
           ) : null}
         </div>
       </div>
-    </WorkflowSubFormCard>
+    </WorkflowFormShell>
   );
 }
 

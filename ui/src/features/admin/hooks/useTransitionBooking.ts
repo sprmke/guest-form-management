@@ -17,6 +17,8 @@ export type TransitionPayload = {
   parking_owner_email?: string | null;
   parking_owner?: string | null;
   parking_endorsement_url?: string | null;
+  parking_fee_included_in_downpayment?: boolean | null;
+  parking_payment_receipt_url?: string | null;
   sd_additional_expense_items?: Array<{ label: string; amount: number }> | null;
   sd_additional_profit_items?: Array<{ label: string; amount: number }> | null;
   sd_additional_expenses?: number[] | null;

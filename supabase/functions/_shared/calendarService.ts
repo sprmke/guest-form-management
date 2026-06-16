@@ -1,14 +1,14 @@
 import {
   buildGoogleCalendarDateTime,
+  buildGoogleCalendarOccupiedEndDateTime,
   DEFAULT_CHECK_IN_TIME,
-  DEFAULT_CHECK_OUT_TIME,
   formatPublicUrl,
   formatTimeForDisplay,
   isDevelopment,
   normalizeDateToYYYYMMDD,
 } from './utils.ts';
 import { GuestFormData } from './types.ts';
-import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary } from './statusMachine.ts';
+import { BookingStatus, STATUS_CALENDAR_META, buildCalendarSummary, isBookingStatus } from './statusMachine.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 export class CalendarService {
@@ -219,6 +219,87 @@ export class CalendarService {
   }
 
   /**
+   * Re-sync a booking's Google Calendar event window (start/end) and dedupe extras.
+   * Used by backfill-calendar-event-dates after fixing occupied-night end logic.
+   */
+  static async resyncCalendarEventWindow(
+    bookingId: string,
+    booking: Record<string, unknown>,
+  ): Promise<{
+    success: boolean;
+    updated: number;
+    deleted: number;
+    skipped?: boolean;
+    created?: boolean;
+    error?: string;
+  }> {
+    try {
+      const credentials = this.getCredentialsSafe();
+      if (!credentials) {
+        return { success: true, updated: 0, deleted: 0, skipped: true };
+      }
+
+      const rawStatus = booking.status as string;
+      if (!rawStatus || rawStatus === 'CANCELLED' || rawStatus === 'canceled') {
+        return { success: true, updated: 0, deleted: 0, skipped: true };
+      }
+      if (!isBookingStatus(rawStatus)) {
+        return {
+          success: false,
+          updated: 0,
+          deleted: 0,
+          error: `Unsupported status "${rawStatus}"`,
+        };
+      }
+
+      const accessToken = await this.getAccessToken(credentials.serviceAccount);
+      const eventIds = await this.collectAllEventIds(
+        { calendarId: credentials.calendarId },
+        accessToken,
+        bookingId,
+        booking,
+      );
+
+      let deleted = 0;
+      if (eventIds.length > 1) {
+        for (const eventId of eventIds.slice(1)) {
+          if (await this.deleteCalendarEvent(credentials, eventId)) deleted++;
+        }
+      }
+
+      const pax =
+        (Number(booking.number_of_adults) || 1) + (Number(booking.number_of_children) || 0);
+      const nights = Number(booking.number_of_nights) || 1;
+      const guestName = String(booking.guest_facebook_name ?? '');
+
+      const result = await this.updateCalendarEventStatus(
+        bookingId,
+        rawStatus,
+        pax,
+        nights,
+        guestName,
+        booking,
+      );
+
+      return {
+        success: result.success,
+        updated: result.updated,
+        deleted,
+        skipped: result.skipped,
+        created: result.created,
+      };
+    } catch (error) {
+      console.error(`Error resyncing calendar for booking ${bookingId}:`, error);
+      return {
+        success: false,
+        updated: 0,
+        deleted: 0,
+        error: (error as Error).message,
+      };
+    }
+  }
+
+  /**
    * Builds a Google Calendar event body from a raw DB booking row.
    * Used when creating a brand-new event during a transition (no prior event exists).
    */
@@ -301,11 +382,8 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
   ) {
     const description = this.buildGoogleCalendarDescriptionFromDbBooking(booking, nights);
 
-    // DB stores MM-DD-YYYY dates; prefer check_out_date so 1-night stays end on checkout day (not check-in day).
     const checkInDateMdy = String(booking.check_in_date ?? '');
     const checkoutRaw = String(booking.check_out_date ?? '').trim();
-    const endDateMdy = checkoutRaw
-      || dayjs(checkInDateMdy, 'MM-DD-YYYY', true).add(Math.max(1, nights), 'day').format('MM-DD-YYYY');
 
     return {
       summary,
@@ -319,7 +397,11 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
         timeZone: 'Asia/Manila',
       },
       end: {
-        dateTime: buildGoogleCalendarDateTime(endDateMdy, booking.check_out_time, '23:59'),
+        dateTime: buildGoogleCalendarOccupiedEndDateTime(
+          checkInDateMdy,
+          checkoutRaw || undefined,
+          nights,
+        ),
         timeZone: 'Asia/Manila',
       },
       colorId: STATUS_CALENDAR_META[status].colorId,
@@ -425,7 +507,7 @@ ${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No 
     if (checkInYmd) {
       const nights = Math.max(1, Number(row?.number_of_nights) || 1);
       const timeMin = dayjs(checkInYmd, 'YYYY-MM-DD', true).subtract(1, 'day').startOf('day').toISOString();
-      const timeMax = dayjs(checkInYmd, 'YYYY-MM-DD', true).add(nights + 2, 'day').endOf('day').toISOString();
+      const timeMax = dayjs(checkInYmd, 'YYYY-MM-DD', true).add(nights + 1, 'day').endOf('day').toISOString();
       addMatches(await this.listCalendarEvents(calendarId, accessToken, {
         timeMin,
         timeMax,
@@ -517,14 +599,10 @@ Special Requests: ${formData.guestSpecialRequests || 'None'}
       DEFAULT_CHECK_IN_TIME,
     );
 
-    const checkoutDateMdy = formData.checkOutDate?.trim()
-      || dayjs(formData.checkInDate, 'MM-DD-YYYY', true)
-        .add(Math.max(1, formData.numberOfNights || 1), 'day')
-        .format('MM-DD-YYYY');
-    const endDateTime = buildGoogleCalendarDateTime(
-      checkoutDateMdy,
-      formData.checkOutTime,
-      DEFAULT_CHECK_OUT_TIME,
+    const endDateTime = buildGoogleCalendarOccupiedEndDateTime(
+      formData.checkInDate,
+      formData.checkOutDate?.trim() || undefined,
+      nights,
     );
 
     return {

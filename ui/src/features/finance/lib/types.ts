@@ -1,15 +1,15 @@
-import type { BookingFinancials } from '@/features/admin/lib/bookingFinance';
-import type { BookingPricingSummarySource } from '@/features/admin/components/BookingPricingSummary';
+import type { BookingFinancials } from "@/features/admin/lib/bookingFinance";
+import type { BookingPricingSummarySource } from "@/features/admin/components/BookingPricingSummary";
 import type {
-  RecurrenceEditScope,
   RecurrenceInterval,
-} from '@/features/finance/lib/recurrence';
+  FinanceReminderInterval,
+} from "@/features/finance/lib/recurrence";
 
-export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
+export type FinancePeriodBasis = "check_in" | "check_out" | "completed";
 
-export type FinanceTab = 'overview' | 'stays' | 'operating';
+export type FinanceTab = "overview" | "stays" | "transactions" | "settings";
 
-export type FinanceStaysView = 'table' | 'card';
+export type FinanceStaysView = "table" | "card" | "calendar";
 
 export type FinanceQuery = {
   tab: FinanceTab;
@@ -21,23 +21,27 @@ export type FinanceQuery = {
   q: string;
   page: number;
   limit: number;
-  sort: 'check_in_date:asc' | 'check_in_date:desc' | 'host_net:desc' | 'host_net:asc';
+  sort:
+    | "check_in_date:asc"
+    | "check_in_date:desc"
+    | "host_net:desc"
+    | "host_net:asc";
   /** Stays ledger layout — table on desktop; card default on mobile. */
   staysView: FinanceStaysView;
 };
 
 export const DEFAULT_FINANCE_QUERY: FinanceQuery = {
-  tab: 'overview',
-  basis: 'completed',
+  tab: "overview",
+  basis: "completed",
   from: null,
   to: null,
   includeCancelled: false,
   completedOnly: false,
-  q: '',
+  q: "",
   page: 1,
   limit: 31,
-  sort: 'check_in_date:desc',
-  staysView: 'table',
+  sort: "check_in_date:desc",
+  staysView: "table",
 };
 
 export type FinanceStaysSummary = {
@@ -82,14 +86,18 @@ export type FinanceBookingLedgerRow = {
   check_out_date: string;
   number_of_nights: number;
   status: string;
+  status_updated_at?: string | null;
   /** Raw pricing / SD fields for `BookingPricingSummary` (same as booking detail). */
-  pricing: Omit<BookingPricingSummarySource, 'status' | 'has_pets' | 'need_parking'>;
+  pricing: Omit<
+    BookingPricingSummarySource,
+    "status" | "has_pets" | "need_parking"
+  >;
   financials: BookingFinancials;
 };
 
 export type FinanceLineItem = {
   id: string;
-  kind: 'expense' | 'income';
+  kind: "expense" | "income";
   label: string;
   amount: number;
   category: string | null;
@@ -97,12 +105,23 @@ export type FinanceLineItem = {
   notes: string | null;
   receipt_path: string | null;
   recurrence_series_id: string | null;
-  recurrence_interval: Exclude<RecurrenceInterval, 'none'> | null;
+  recurrence_interval: Exclude<RecurrenceInterval, "none"> | null;
+  telegram_reminder_enabled: boolean;
+  telegram_due_date: string | null;
+  telegram_days_before: number;
+  telegram_reminder_interval: FinanceReminderInterval;
+  telegram_message_template: string | null;
+  /** When set, Telegram reminders stop for every reminder interval. */
+  paid_at: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
 };
 
-export type { RecurrenceEditScope, RecurrenceInterval };
+export type {
+  RecurrenceEditScope,
+  RecurrenceInterval,
+  FinanceReminderInterval,
+} from "@/features/finance/lib/recurrence";
 
-export type FinanceExportType = 'overview' | 'stays' | 'operating' | 'combined';
+export type FinanceExportType = "overview" | "stays" | "operating" | "combined";

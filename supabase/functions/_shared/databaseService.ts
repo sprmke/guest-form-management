@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts'
+import { applyGafDefaultsToFormData } from './appSettings.ts'
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
@@ -302,8 +303,10 @@ export class DatabaseService {
 
       // Create the final data object
       const data = {
-        ...(formDataObj as GuestFormData)
+        ...(formDataObj as GuestFormData),
       };
+
+      const dataWithGafDefaults = await applyGafDefaultsToFormData(data);
 
       console.log('Form data processed successfully');
       
@@ -317,7 +320,7 @@ export class DatabaseService {
       }
       
       const dbData = transformFormToSubmission(
-        data,
+        dataWithGafDefaults,
         paymentReceiptUrl,
         validIdUrl,
         petVaccinationUrl,
@@ -348,7 +351,7 @@ export class DatabaseService {
       }
 
       return {
-        data,
+        data: dataWithGafDefaults,
         submissionData,
         petVaccinationUrl: formatPublicUrl(petVaccinationUrl),
         petImageUrl: formatPublicUrl(petImageUrl),
@@ -862,6 +865,57 @@ export class DatabaseService {
     });
     if (error) {
       console.error('syncTelegramStaffDailyCronJob rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; cronExpr?: string };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
+  }
+
+  static async getTelegramFinanceSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_finance_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramFinanceSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260710120000_finance_telegram_reminders.sql on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramFinanceSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_finance_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramFinanceSettings:', error);
+      throw new Error('Failed to update Telegram finance settings');
+    }
+    return data;
+  }
+
+  static async syncTelegramFinanceDailyCronJob(
+    slot: { hour: number; minute: number },
+  ): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
+    const { data, error } = await this.supabase.rpc('sync_telegram_finance_daily_cron_job', {
+      p_slot: slot as never,
+    });
+    if (error) {
+      console.error('syncTelegramFinanceDailyCronJob rpc:', error);
       return { ok: false, error: error.message ?? 'rpc failed' };
     }
     if (data && typeof data === 'object' && data !== null) {

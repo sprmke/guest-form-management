@@ -149,7 +149,7 @@ async function resolveReadyForCheckinPaymentQr(
   settings: Awaited<ReturnType<typeof resolveAppSettings>>,
 ): Promise<ReadyForCheckinQrAsset> {
   const originBase = settings.publicGuestAppOrigin.replace(/\/+$/, "");
-  const defaultUrl = `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
+  const defaultUrl = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
   const fallbackUrl = settings.gcashQrImageUrl || defaultUrl;
   const isCustomUpload =
     !!settings.gcashQrImageUrl && settings.gcashQrImageUrl !== defaultUrl;
@@ -881,7 +881,6 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const totalDueAtCheckin =
     (Number.isFinite(balanceNum) ? balanceNum : 0) +
     (Number(booking.security_deposit ?? 0) || 0) +
-    (booking.need_parking ? Number(booking.parking_rate_guest ?? 0) || 0 : 0) +
     (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0) +
     additionalGuestFee;
   const totalBalanceDue = pesoFormat(totalDueAtCheckin);

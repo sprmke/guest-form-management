@@ -1,6 +1,6 @@
 /**
- * get-guest-payment-info — Public GET for GCash details on guest form Payment step.
- * Trigger: guest SPA on step 5. Auth: anon key only (verify_jwt = false).
+ * get-guest-payment-info — Public GET for GCash + GAF defaults on the guest form.
+ * Trigger: guest SPA on load (Payment step + submit). Auth: anon key only (verify_jwt = false).
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';

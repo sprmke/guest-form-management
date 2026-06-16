@@ -497,6 +497,60 @@ export function isLiveWorkflowView(
   return viewed.status === currentStatus;
 }
 
+// ─── Workflow Details edit form (BookingEditForm) ─────────────────────────────
+
+/** Sub-forms shown under Edit booking → Workflow Details. */
+export type ProgressEditFormKind =
+  | 'pricing'
+  | 'parking'
+  | 'guest_balance'
+  | 'sd_refund_guest'
+  | 'sd_settlement';
+
+/** Pipeline stage when each Workflow Details form first becomes editable. */
+export const PROGRESS_EDIT_FORM_UNLOCK: Record<
+  ProgressEditFormKind,
+  BookingStatus
+> = {
+  pricing: 'PENDING_REVIEW',
+  parking: 'PENDING_DOCUMENTS',
+  guest_balance: 'READY_FOR_CHECKIN',
+  sd_refund_guest: 'READY_FOR_CHECKOUT',
+  sd_settlement: 'PENDING_SD_REFUND',
+};
+
+/** Map legacy / nested statuses onto the main pipeline for ordering. */
+function progressEditStatusRank(status: string): number {
+  if (status === 'CANCELLED' || status === 'canceled') return -1;
+  const direct = PIPELINE_ORDER.indexOf(status as BookingStatus);
+  if (direct >= 0) return direct;
+  if (
+    status === 'PENDING_GAF' ||
+    status === 'PENDING_PARKING_REQUEST' ||
+    status === 'PENDING_PET_REQUEST'
+  ) {
+    return PIPELINE_ORDER.indexOf('PENDING_DOCUMENTS');
+  }
+  if (status === 'booked') return PIPELINE_ORDER.indexOf('READY_FOR_CHECKIN');
+  return -1;
+}
+
+/** True when the booking has reached the pipeline stage for this Workflow Details form. */
+export function isProgressEditFormEnabled(
+  booking: ApplicabilityFlags & { status?: string | null },
+  form: ProgressEditFormKind,
+): boolean {
+  const status = (booking.status ?? '').trim();
+  if (!status || status === 'CANCELLED' || status === 'canceled') return false;
+
+  const currentRank = progressEditStatusRank(status);
+  const unlockRank = progressEditStatusRank(
+    PROGRESS_EDIT_FORM_UNLOCK[form],
+  );
+  if (currentRank < 0 || unlockRank < 0) return false;
+  return currentRank >= unlockRank;
+}
+
 // ─── Terminal status check ────────────────────────────────────────────────────
 
 export const TERMINAL_STATUSES = new Set<string>(['COMPLETED', 'CANCELLED']);

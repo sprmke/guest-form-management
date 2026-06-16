@@ -1,6 +1,6 @@
 /**
  * finance-export — Admin CSV download for finance reports.
- * GET ?type=overview|stays|operating|combined&basis=&from=&to=...
+ * GET ?type=overview|stays|operating|transactions|combined&basis=&from=&to=...
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
@@ -15,6 +15,7 @@ function parseBasis(raw: string | null): FinancePeriodBasis {
 }
 
 function parseType(raw: string | null): 'overview' | 'stays' | 'operating' | 'combined' {
+  if (raw === 'transactions') return 'operating';
   if (raw === 'stays' || raw === 'operating' || raw === 'combined') return raw;
   return 'overview';
 }
