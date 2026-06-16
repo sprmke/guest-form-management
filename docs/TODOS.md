@@ -192,3 +192,6 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Triple check security measures on our app
 - Find other AI provider when we encounter issues with Gemini AI
 - Implement AI validations to valid id
+- When the booking is from Airbnb, we need to hide the payment step and review other flows
+- Validate the receipt amount based on the type. Meaning, validate down payment receipt and it should match the 1500 min amount. Apply for others.
+- Improve valid id validation to match the primary guest name, facebook name or additional guest names.

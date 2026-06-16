@@ -284,11 +284,7 @@ export function FinancePage() {
         ) : null}
 
         {query.tab === "transactions" ? (
-          <FinanceOperatingTab
-            query={query}
-            items={lineItemsQuery.data ?? []}
-            isLoading={lineItemsQuery.isLoading}
-          />
+          <FinanceOperatingTab query={query} />
         ) : null}
 
         {query.tab === "settings" ? <FinanceSettingsTab /> : null}

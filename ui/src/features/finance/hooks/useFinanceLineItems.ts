@@ -1,6 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import type {
+  FinanceLineItem,
   FinanceQuery,
   RecurrenceEditScope,
 } from "@/features/finance/lib/types";
@@ -18,6 +24,52 @@ export const FINANCE_LINE_ITEMS_KEY = ["finance-line-items"] as const;
 export const FINANCE_RECURRING_SERIES_KEY = [
   "finance-recurring-series",
 ] as const;
+
+export function financeLineItemsQueryKey(
+  query: FinanceQuery,
+  options?: { includeDueInRange?: boolean },
+) {
+  return [
+    ...FINANCE_LINE_ITEMS_KEY,
+    query.from,
+    query.to,
+    query.q,
+    options?.includeDueInRange ?? false,
+  ] as const;
+}
+
+function sortLineItems(items: FinanceLineItem[]): FinanceLineItem[] {
+  return [...items].sort((a, b) => b.occurred_on.localeCompare(a.occurred_on));
+}
+
+function lineItemMatchesQuery(
+  item: FinanceLineItem,
+  query: FinanceQuery,
+): boolean {
+  if (query.q.trim()) return false;
+  if (query.from && item.occurred_on < query.from) return false;
+  if (query.to && item.occurred_on > query.to) return false;
+  return true;
+}
+
+async function refreshFinanceLineItemCaches(
+  qc: QueryClient,
+  query?: FinanceQuery,
+) {
+  const tasks: Promise<unknown>[] = [
+    qc.invalidateQueries({ queryKey: FINANCE_LINE_ITEMS_KEY }),
+    qc.invalidateQueries({ queryKey: FINANCE_SUMMARY_KEY }),
+  ];
+  if (query) {
+    tasks.push(
+      qc.refetchQueries({
+        queryKey: financeLineItemsQueryKey(query),
+        type: "active",
+      }),
+    );
+  }
+  await Promise.all(tasks);
+}
 
 function financeMutationErrorMessage(error: Error): string {
   switch (error.message) {
@@ -37,13 +89,7 @@ export function useFinanceLineItems(
   options?: { enabled?: boolean; includeDueInRange?: boolean },
 ) {
   return useQuery({
-    queryKey: [
-      ...FINANCE_LINE_ITEMS_KEY,
-      query.from,
-      query.to,
-      query.q,
-      options?.includeDueInRange ?? false,
-    ] as const,
+    queryKey: financeLineItemsQueryKey(query, options),
     queryFn: () =>
       fetchFinanceLineItems(query, {
         includeDueInRange: options?.includeDueInRange,
@@ -54,22 +100,29 @@ export function useFinanceLineItems(
   });
 }
 
-export function useFinanceLineItemMutations(_query: FinanceQuery) {
+export function useFinanceLineItemMutations(query: FinanceQuery) {
   const qc = useQueryClient();
-  const invalidate = () => {
-    void qc.invalidateQueries({ queryKey: FINANCE_LINE_ITEMS_KEY });
-    void qc.invalidateQueries({ queryKey: FINANCE_SUMMARY_KEY });
-  };
+  const listKey = financeLineItemsQueryKey(query);
 
   const create = useMutation({
     mutationFn: createFinanceLineItemApi,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(
         result.created_count > 1
           ? `${result.created_count} recurring transactions created`
           : "Transaction saved",
       );
-      invalidate();
+      if (
+        result.created_count === 1 &&
+        lineItemMatchesQuery(result.row, query)
+      ) {
+        qc.setQueryData<FinanceLineItem[]>(listKey, (current) => {
+          if (!current) return [result.row];
+          if (current.some((item) => item.id === result.row.id)) return current;
+          return sortLineItems([...current, result.row]);
+        });
+      }
+      await refreshFinanceLineItemCaches(qc, query);
     },
     onError: (e: Error) => toast.error(financeMutationErrorMessage(e)),
   });
@@ -84,13 +137,22 @@ export function useFinanceLineItemMutations(_query: FinanceQuery) {
       patch: Parameters<typeof updateFinanceLineItemApi>[1];
       scope?: RecurrenceEditScope;
     }) => updateFinanceLineItemApi(id, patch, scope),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(
         result.updated_count > 1
           ? `${result.updated_count} transactions updated`
           : "Transaction updated",
       );
-      invalidate();
+      if (result.updated_count === 1) {
+        qc.setQueryData<FinanceLineItem[]>(listKey, (current) => {
+          if (!current) return current;
+          const inRange = lineItemMatchesQuery(result.row, query);
+          const without = current.filter((item) => item.id !== result.row.id);
+          if (!inRange) return without;
+          return sortLineItems([...without, result.row]);
+        });
+      }
+      await refreshFinanceLineItemCaches(qc, query);
     },
     onError: (e: Error) => toast.error(financeMutationErrorMessage(e)),
   });
@@ -98,13 +160,18 @@ export function useFinanceLineItemMutations(_query: FinanceQuery) {
   const remove = useMutation({
     mutationFn: ({ id, scope }: { id: string; scope?: RecurrenceEditScope }) =>
       deleteFinanceLineItemApi(id, scope),
-    onSuccess: (result) => {
+    onSuccess: async (result, { id }) => {
       toast.success(
         result.deleted_count > 1
           ? `${result.deleted_count} transactions deleted`
           : "Transaction deleted",
       );
-      invalidate();
+      if (result.deleted_count === 1) {
+        qc.setQueryData<FinanceLineItem[]>(listKey, (current) =>
+          current ? current.filter((item) => item.id !== id) : current,
+        );
+      }
+      await refreshFinanceLineItemCaches(qc, query);
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -122,24 +189,26 @@ export function useRecurringSeries(seriesId: string | null) {
 
 export function useRecurringSeriesMutations(
   seriesId: string | null,
-  _query: FinanceQuery,
+  query: FinanceQuery,
 ) {
   const qc = useQueryClient();
-  const invalidate = () => {
-    void qc.invalidateQueries({ queryKey: FINANCE_LINE_ITEMS_KEY });
-    void qc.invalidateQueries({ queryKey: FINANCE_RECURRING_SERIES_KEY });
-    void qc.invalidateQueries({ queryKey: FINANCE_SUMMARY_KEY });
+
+  const refresh = async () => {
+    await Promise.all([
+      refreshFinanceLineItemCaches(qc, query),
+      qc.invalidateQueries({ queryKey: FINANCE_RECURRING_SERIES_KEY }),
+    ]);
   };
 
   const extend = useMutation({
     mutationFn: extendRecurringSeriesApi,
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(
         result.created_count > 0
           ? `Added ${result.created_count} occurrence${result.created_count === 1 ? "" : "s"}`
           : "No new occurrences to add",
       );
-      invalidate();
+      await refresh();
     },
     onError: (e: Error) => toast.error(financeMutationErrorMessage(e)),
   });
@@ -154,22 +223,22 @@ export function useRecurringSeriesMutations(
       patch: Parameters<typeof updateFinanceLineItemApi>[1];
       scope?: RecurrenceEditScope;
     }) => updateFinanceLineItemApi(id, patch, scope ?? "this"),
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       toast.success(
         result.updated_count > 1
           ? `${result.updated_count} transactions updated`
           : "Occurrence updated",
       );
-      invalidate();
+      await refresh();
     },
     onError: (e: Error) => toast.error(financeMutationErrorMessage(e)),
   });
 
   const remove = useMutation({
     mutationFn: (id: string) => deleteFinanceLineItemApi(id, "this"),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Occurrence deleted");
-      invalidate();
+      await refresh();
     },
     onError: (e: Error) => toast.error(financeMutationErrorMessage(e)),
   });

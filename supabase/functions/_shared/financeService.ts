@@ -339,6 +339,14 @@ export async function extendRecurringSeries(
   }
 
   const now = new Date().toISOString();
+  const seriesReminderInput = template.telegram_reminder_enabled
+    ? {
+        telegram_reminder_enabled: true as const,
+        telegram_days_before: template.telegram_days_before,
+        telegram_reminder_interval: template.telegram_reminder_interval,
+        telegram_message_template: template.telegram_message_template,
+      }
+    : { telegram_reminder_enabled: false as const };
   const rows = newDates.map((occurred_on) => ({
     kind: template.kind,
     label: template.label,
@@ -352,6 +360,7 @@ export async function extendRecurringSeries(
     created_by: createdBy,
     created_at: now,
     updated_at: now,
+    ...reminderFieldsForRecurringRow(seriesReminderInput, occurred_on),
   }));
 
   const { data, error } = await supabase
@@ -684,7 +693,13 @@ export async function updateFinanceLineItem(
   if (patch.receipt_path !== undefined)
     update.receipt_path = patch.receipt_path;
   const reminderUpdate = reminderFieldsForUpdate(patch.telegramReminder);
-  if (reminderUpdate) Object.assign(update, reminderUpdate);
+  if (reminderUpdate) {
+    if (effectiveScope !== "this") {
+      // Bulk series edits share interval/template only — each occurrence keeps its own due date.
+      delete reminderUpdate.telegram_due_date;
+    }
+    Object.assign(update, reminderUpdate);
+  }
 
   if (effectiveScope === "this") {
     if (patch.occurred_on) update.occurred_on = patch.occurred_on;

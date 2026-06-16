@@ -39,7 +39,7 @@ import { RecurringDeleteDialog } from "@/features/finance/components/RecurringDe
 import { RecurringSeriesModal } from "@/features/finance/components/RecurringSeriesModal";
 import { useTelegramFinanceSettings } from "@/features/admin/hooks/useTelegramFinanceSettings";
 import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from "@/features/finance/lib/financeReminderTemplate";
-import { useFinanceLineItemMutations } from "@/features/finance/hooks/useFinanceLineItems";
+import { useFinanceLineItemMutations, useFinanceLineItems } from "@/features/finance/hooks/useFinanceLineItems";
 import { recurrenceIntervalLabel } from "@/features/finance/lib/recurrence";
 import type {
   FinanceLineItem,
@@ -49,11 +49,10 @@ import { cn } from "@/lib/utils";
 
 type Props = {
   query: FinanceQuery;
-  items: FinanceLineItem[];
-  isLoading: boolean;
 };
 
-export function FinanceOperatingTab({ query, items, isLoading }: Props) {
+export function FinanceOperatingTab({ query }: Props) {
+  const { data: items = [], isLoading } = useFinanceLineItems(query);
   const { create, update, remove } = useFinanceLineItemMutations(query);
   const { data: financeSettings } = useTelegramFinanceSettings();
   const globalDefaultMessageTemplate =

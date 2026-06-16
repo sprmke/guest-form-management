@@ -81,7 +81,11 @@ import {
   isStorageObjectNotFoundError,
 } from "@/features/admin/lib/storageUrls";
 import { BookingPricingSummary } from "@/features/admin/components/BookingPricingSummary";
-import { ReceiptAiVerdictBadge, type ReceiptAiVerdict } from "@/features/admin/components/ReceiptAiVerdictBadge";
+import {
+  ReceiptAiVerdictBadge,
+  type DocumentAiVerdictVariant,
+  type ReceiptAiVerdict,
+} from "@/features/admin/components/ReceiptAiVerdictBadge";
 import {
   PayParkingHeaderButton,
   PayParkingModal,
@@ -275,6 +279,7 @@ export function BookingDetailPage() {
                       <GuestInfoCard
                         booking={booking}
                         onPreview={handlePreview}
+                        isDocumentAiBackfilling={isReceiptAiBackfilling}
                       />
                       <AdditionalGuestsCard booking={booking} />
                       <StayDetailsCard booking={booking} />
@@ -457,9 +462,11 @@ function BookingHeader({
 function GuestInfoCard({
   booking,
   onPreview,
+  isDocumentAiBackfilling = false,
 }: {
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
+  isDocumentAiBackfilling?: boolean;
 }) {
   return (
     <Card title="Guest Information" icon={<User className="size-3.5" />}>
@@ -500,6 +507,13 @@ function GuestInfoCard({
               label="Valid ID"
               url={booking.valid_id_url}
               onPreview={onPreview}
+              receiptAiVerdict={booking.valid_id_ai_verdict}
+              receiptAiLoading={receiptAiPreviewLoading(
+                isDocumentAiBackfilling,
+                booking.valid_id_url,
+                booking.valid_id_ai_verdict,
+              )}
+              receiptAiVariant="valid_id"
             />
           )}
         </div>
@@ -933,6 +947,7 @@ function docPreviewLabelRow(
   icon: ReactNode,
   receiptAiVerdict?: ReceiptAiVerdict,
   receiptAiLoading?: boolean,
+  receiptAiVariant: DocumentAiVerdictVariant = "receipt",
 ) {
   return (
     <span className="inline-flex min-w-0 flex-1 items-center gap-1.5 text-caption font-medium">
@@ -941,7 +956,7 @@ function docPreviewLabelRow(
       {receiptAiLoading ? (
         <Loader2
           className="size-3 shrink-0 animate-spin text-muted-foreground"
-          aria-label="Checking receipt"
+          aria-label={receiptAiVariant === "valid_id" ? "Checking valid ID" : "Checking receipt"}
         />
       ) : receiptAiVerdict &&
         String(receiptAiVerdict).toLowerCase() !== 'skipped' ? (
@@ -949,6 +964,7 @@ function docPreviewLabelRow(
           verdict={receiptAiVerdict}
           compact
           className="shrink-0"
+          variant={receiptAiVariant}
         />
       ) : null}
     </span>
@@ -961,12 +977,14 @@ function DocPreview({
   onPreview,
   receiptAiVerdict,
   receiptAiLoading = false,
+  receiptAiVariant = "receipt",
 }: {
   label: string;
   url: string;
   onPreview: (label: string, rawUrl: string) => void;
   receiptAiVerdict?: ReceiptAiVerdict;
   receiptAiLoading?: boolean;
+  receiptAiVariant?: DocumentAiVerdictVariant;
 }) {
   const normalized = normalizeStoragePublicUrl(url) ?? url;
   const parsed = parseStorageUrl(normalized);
@@ -1031,6 +1049,7 @@ function DocPreview({
             <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
             receiptAiVerdict,
             receiptAiLoading,
+            receiptAiVariant,
           )}
         </div>
       </div>
@@ -1057,6 +1076,7 @@ function DocPreview({
             ),
             receiptAiVerdict,
             receiptAiLoading,
+            receiptAiVariant,
           )}
         </div>
       </div>
@@ -1079,6 +1099,7 @@ function DocPreview({
             <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
             receiptAiVerdict,
             receiptAiLoading,
+            receiptAiVariant,
           )}
         </div>
       </div>
@@ -1114,6 +1135,7 @@ function DocPreview({
             <ImageIcon className="size-3 shrink-0 text-muted-foreground" />,
             receiptAiVerdict,
             receiptAiLoading,
+            receiptAiVariant,
           )}
           <ExternalLink className="size-3 shrink-0 text-muted-foreground" />
         </div>
@@ -1182,7 +1204,11 @@ function receiptAiMetaForPreviewAsset(
   booking: BookingRow | null | undefined,
   asset: { label: string; rawUrl: string } | null,
   isBackfilling: boolean,
-): { verdict: ReceiptAiVerdict; loading: boolean } | null {
+): {
+  verdict: ReceiptAiVerdict;
+  loading: boolean;
+  variant: DocumentAiVerdictVariant;
+} | null {
   if (!booking || !asset) return null;
 
   const raw = asset.rawUrl.trim();
@@ -1200,6 +1226,7 @@ function receiptAiMetaForPreviewAsset(
         booking.payment_receipt_url,
         booking.dp_receipt_ai_verdict,
       ),
+      variant: "receipt",
     };
   }
 
@@ -1214,6 +1241,7 @@ function receiptAiMetaForPreviewAsset(
         booking.guest_balance_payment_receipt_url,
         booking.balance_receipt_ai_verdict,
       ),
+      variant: "receipt",
     };
   }
 
@@ -1229,6 +1257,22 @@ function receiptAiMetaForPreviewAsset(
         booking.parking_payment_receipt_url,
         booking.parking_receipt_ai_verdict,
       ),
+      variant: "receipt",
+    };
+  }
+
+  if (
+    asset.label === "Valid ID" ||
+    matches(booking.valid_id_url)
+  ) {
+    return {
+      verdict: booking.valid_id_ai_verdict,
+      loading: receiptAiPreviewLoading(
+        isBackfilling,
+        booking.valid_id_url,
+        booking.valid_id_ai_verdict,
+      ),
+      variant: "valid_id",
     };
   }
 
@@ -1302,6 +1346,7 @@ function AssetPreviewModal({
                 verdict={receiptAi.verdict}
                 compact
                 className="shrink-0"
+                variant={receiptAi.variant}
               />
             ) : null}
           </div>

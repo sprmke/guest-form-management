@@ -1,6 +1,6 @@
 /**
- * One-shot AI receipt backfill when opening a booking that has receipt URLs
- * but no persisted verdict (legacy rows before validation shipped).
+ * One-shot AI document backfill when opening a booking that has receipt or valid ID
+ * URLs but no persisted verdict (legacy rows before validation shipped).
  */
 
 import { useEffect, useRef } from 'react';
@@ -14,13 +14,14 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
 
-const RECEIPT_KIND_LABELS: Record<string, string> = {
+const DOCUMENT_KIND_LABELS: Record<string, string> = {
   downpayment: 'Downpayment receipt',
   balance: 'Balance receipt',
   parking: 'Parking receipt',
+  valid_id: 'Valid ID',
 };
 
-function receiptUrlNeedsAiBackfill(
+function documentUrlNeedsAiBackfill(
   url: string | null | undefined,
   verdict: string | null | undefined,
 ): boolean {
@@ -37,11 +38,13 @@ export function bookingNeedsReceiptAiBackfill(
     | 'balance_receipt_ai_verdict'
     | 'parking_payment_receipt_url'
     | 'parking_receipt_ai_verdict'
+    | 'valid_id_url'
+    | 'valid_id_ai_verdict'
   >,
 ): boolean {
   if (TERMINAL_STATUSES.has(String(booking.status ?? ''))) return false;
   if (
-    receiptUrlNeedsAiBackfill(
+    documentUrlNeedsAiBackfill(
       booking.payment_receipt_url,
       booking.dp_receipt_ai_verdict,
     )
@@ -49,7 +52,7 @@ export function bookingNeedsReceiptAiBackfill(
     return true;
   }
   if (
-    receiptUrlNeedsAiBackfill(
+    documentUrlNeedsAiBackfill(
       booking.guest_balance_payment_receipt_url,
       booking.balance_receipt_ai_verdict,
     )
@@ -57,9 +60,17 @@ export function bookingNeedsReceiptAiBackfill(
     return true;
   }
   if (
-    receiptUrlNeedsAiBackfill(
+    documentUrlNeedsAiBackfill(
       booking.parking_payment_receipt_url,
       booking.parking_receipt_ai_verdict,
+    )
+  ) {
+    return true;
+  }
+  if (
+    documentUrlNeedsAiBackfill(
+      booking.valid_id_url,
+      booking.valid_id_ai_verdict,
     )
   ) {
     return true;
@@ -72,7 +83,7 @@ export function receiptAiPreviewLoading(
   url: string | null | undefined,
   verdict: string | null | undefined,
 ): boolean {
-  return isBackfilling && receiptUrlNeedsAiBackfill(url, verdict);
+  return isBackfilling && documentUrlNeedsAiBackfill(url, verdict);
 }
 
 type ReceiptBackfillError = {
@@ -92,9 +103,9 @@ async function getAdminJwt(): Promise<string> {
   return token;
 }
 
-function toastReceiptAiBackfillErrors(errors: ReceiptBackfillError[]) {
+function toastDocumentAiBackfillErrors(errors: ReceiptBackfillError[]) {
   for (const err of errors) {
-    const label = RECEIPT_KIND_LABELS[err.kind] ?? 'Receipt';
+    const label = DOCUMENT_KIND_LABELS[err.kind] ?? 'Document';
     toast.error(`AI could not check ${label}`, {
       description: err.message,
       duration: 8000,
@@ -125,7 +136,7 @@ export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
     },
     onSuccess: async (data, bookingId) => {
       if (data.errors?.length) {
-        toastReceiptAiBackfillErrors(data.errors);
+        toastDocumentAiBackfillErrors(data.errors);
         attemptedForId.current = null;
       }
       if (data.validated?.length) {
@@ -134,7 +145,7 @@ export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
     },
     onError: (err) => {
       attemptedForId.current = null;
-      toast.error('Receipt AI check failed', {
+      toast.error('Document AI check failed', {
         description: err instanceof Error ? err.message : String(err),
         duration: 8000,
       });
@@ -157,6 +168,8 @@ export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
     booking?.balance_receipt_ai_verdict,
     booking?.parking_payment_receipt_url,
     booking?.parking_receipt_ai_verdict,
+    booking?.valid_id_url,
+    booking?.valid_id_ai_verdict,
     mutation.mutate,
   ]);
 

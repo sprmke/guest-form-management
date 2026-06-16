@@ -1,6 +1,6 @@
 /**
- * AI payment receipt validation via Google Gemini Flash (vision).
- * Non-blocking when GEMINI_API_KEY is missing or the API errors.
+ * AI document validation via Google Gemini Flash (vision).
+ * Payment receipts and guest valid ID. Non-blocking when GEMINI_API_KEY is missing.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -117,6 +117,31 @@ Rules:
 - For cash photos: set has_amount true when bill denominations are visible; has_date and has_reference are usually false — that is OK.
 - summary must be plain English, max 120 characters, no line breaks.`;
 
+const VALID_ID_PROMPT = `You are validating a government-issued photo ID image for a vacation rental guest check-in in the Philippines.
+Analyze the image or PDF and return ONLY valid JSON (no markdown) with this exact shape:
+{
+  "verdict": "valid" | "likely_valid" | "unclear" | "invalid",
+  "confidence": number between 0 and 1,
+  "summary": "one short sentence for an admin",
+  "has_amount": boolean,
+  "has_date": boolean,
+  "has_reference": boolean
+}
+
+Accept common Philippine and travel IDs, including:
+- Philippine National ID (PhilSys / ePhilID)
+- Passport (Philippine or foreign)
+- Driver's license
+- UMID, SSS, PhilHealth, postal ID, voter's ID, PRC ID, and similar government photo IDs
+
+Rules:
+- "valid": clear government-issued photo ID with recognizable ID document layout (name and/or photo visible; rotation is OK).
+- "likely_valid": ID appears genuine but is blurry, cropped, glare-heavy, or rotated — still recognizable as an ID document.
+- "unclear": too blurry or ambiguous to tell if it is a government ID.
+- "invalid": clearly NOT an ID (selfie only, payment receipt, scenery, meme, blank image, random object, chat screenshot without ID).
+- Set has_amount false. Set has_date true when a birth date or expiry is visible. Set has_reference true when an ID number is visible.
+- summary must be plain English, max 120 characters, no line breaks. Mention ID type when confident (e.g. "PhilSys ID", "passport").`;
+
 function skipped(summary = 'AI validation unavailable'): ReceiptValidationResult {
   return {
     verdict: 'skipped',
@@ -170,7 +195,10 @@ function normalizeVerdict(raw: unknown): ReceiptValidationVerdict {
   return 'unclear';
 }
 
-function parseGeminiJson(text: string): ReceiptValidationResult | null {
+function parseGeminiJson(
+  text: string,
+  defaultSummary = 'Document analyzed.',
+): ReceiptValidationResult | null {
   const trimmed = text.trim();
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
   if (!jsonMatch) return null;
@@ -181,7 +209,7 @@ function parseGeminiJson(text: string): ReceiptValidationResult | null {
       ? Math.min(1, Math.max(0, confidenceRaw))
       : null;
     const summary = String(parsed.summary ?? '').trim().slice(0, 200) ||
-      'Receipt analyzed.';
+      defaultSummary;
     return {
       verdict: normalizeVerdict(parsed.verdict),
       confidence,
@@ -195,20 +223,34 @@ function parseGeminiJson(text: string): ReceiptValidationResult | null {
   }
 }
 
-export async function validateReceiptImage(
+function normalizeVisionMimeType(mimeType: string, path?: string): string {
+  if (mimeType?.startsWith('image/')) return mimeType;
+  if (mimeType === 'application/pdf') return mimeType;
+  const ext = path?.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
+}
+
+async function callGeminiVision(
+  prompt: string,
   imageBytes: Uint8Array,
   mimeType: string,
+  logTag: string,
+  defaultSummary: string,
 ): Promise<ReceiptValidationResult> {
   const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
   if (!apiKey) {
-    console.warn('[receipt-validation] GEMINI_API_KEY not set — skipping');
+    console.warn(`[${logTag}] GEMINI_API_KEY not set — skipping`);
     return skipped();
   }
   if (!imageBytes?.length) {
     return skipped('No image data to validate');
   }
 
-  const safeMime = mimeType?.startsWith('image/') ? mimeType : 'image/jpeg';
+  const safeMime = normalizeVisionMimeType(mimeType);
   const base64 = bytesToBase64(imageBytes);
 
   try {
@@ -218,7 +260,7 @@ export async function validateReceiptImage(
       body: JSON.stringify({
         contents: [{
           parts: [
-            { text: RECEIPT_PROMPT },
+            { text: prompt },
             {
               inline_data: {
                 mime_type: safeMime,
@@ -237,7 +279,7 @@ export async function validateReceiptImage(
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
       const detail = parseGeminiApiError(res.status, errText);
-      console.error('[receipt-validation] Gemini API error:', res.status, errText);
+      console.error(`[${logTag}] Gemini API error:`, res.status, errText);
       return aiModelFailure('AI validation failed', detail);
     }
 
@@ -247,9 +289,9 @@ export async function validateReceiptImage(
       }>;
     };
     const text = body.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    const parsed = parseGeminiJson(text);
+    const parsed = parseGeminiJson(text, defaultSummary);
     if (!parsed) {
-      console.warn('[receipt-validation] Could not parse Gemini response:', text.slice(0, 200));
+      console.warn(`[${logTag}] Could not parse Gemini response:`, text.slice(0, 200));
       return aiModelFailure(
         'AI validation returned unreadable result',
         'The AI model returned a response we could not parse. Try again.',
@@ -257,20 +299,56 @@ export async function validateReceiptImage(
     }
 
     console.log(
-      `[receipt-validation] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
+      `[${logTag}] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
     );
     return parsed;
   } catch (err) {
-    console.error('[receipt-validation] Unexpected error:', err);
+    console.error(`[${logTag}] Unexpected error:`, err);
     const detail = err instanceof Error ? err.message : String(err);
     return aiModelFailure('AI validation failed', detail);
   }
+}
+
+export async function validateReceiptImage(
+  imageBytes: Uint8Array,
+  mimeType: string,
+): Promise<ReceiptValidationResult> {
+  return callGeminiVision(
+    RECEIPT_PROMPT,
+    imageBytes,
+    mimeType,
+    'receipt-validation',
+    'Receipt analyzed.',
+  );
+}
+
+export async function validateValidIdImage(
+  imageBytes: Uint8Array,
+  mimeType: string,
+  path?: string,
+): Promise<ReceiptValidationResult> {
+  return callGeminiVision(
+    VALID_ID_PROMPT,
+    imageBytes,
+    normalizeVisionMimeType(mimeType, path),
+    'valid-id-validation',
+    'ID analyzed.',
+  );
 }
 
 export async function validateReceiptFile(file: File | Blob): Promise<ReceiptValidationResult> {
   const mimeType = file instanceof File ? (file.type || 'image/jpeg') : 'image/jpeg';
   const bytes = new Uint8Array(await file.arrayBuffer());
   return validateReceiptImage(bytes, mimeType);
+}
+
+export async function validateValidIdFile(file: File | Blob): Promise<ReceiptValidationResult> {
+  const fileName = file instanceof File ? file.name : '';
+  const mimeType = file instanceof File
+    ? (file.type || mimeTypeFromPath(fileName))
+    : 'image/jpeg';
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  return validateValidIdImage(bytes, mimeType, fileName);
 }
 
 const STORAGE_OBJECT_PATH_RE =
@@ -291,19 +369,22 @@ function parseStorageUrl(url: string): { bucket: string; path: string } | null {
 
 function mimeTypeFromPath(path: string): string {
   const ext = path.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf') return 'application/pdf';
   if (ext === 'png') return 'image/png';
   if (ext === 'webp') return 'image/webp';
   if (ext === 'gif') return 'image/gif';
   return 'image/jpeg';
 }
 
-/** Download a stored receipt image and run Gemini validation (admin backfill). */
-export async function validateReceiptFromStorageUrl(
+async function validateDocumentFromStorageUrl(
   url: string,
+  validate: (bytes: Uint8Array, mimeType: string, path: string) => Promise<ReceiptValidationResult>,
+  parseErrorSummary: string,
+  downloadErrorSummary: string,
 ): Promise<ReceiptValidationResult> {
   const loc = parseStorageUrl(url);
   if (!loc) {
-    return skipped('Could not parse receipt URL');
+    return skipped(parseErrorSummary);
   }
 
   const supabase = createClient(
@@ -314,21 +395,45 @@ export async function validateReceiptFromStorageUrl(
   try {
     const { data, error } = await supabase.storage.from(loc.bucket).download(loc.path);
     if (error || !data) {
-      console.error('[receipt-validation] Storage download failed:', error?.message);
-      return skipped('Could not download receipt image');
+      console.error('[document-validation] Storage download failed:', error?.message);
+      return skipped(downloadErrorSummary);
     }
     const bytes = new Uint8Array(await data.arrayBuffer());
-    const mimeType = data.type?.startsWith('image/')
+    const mimeType = data.type?.startsWith('image/') || data.type === 'application/pdf'
       ? data.type
       : mimeTypeFromPath(loc.path);
-    return await validateReceiptImage(bytes, mimeType);
+    return await validate(bytes, mimeType, loc.path);
   } catch (err) {
-    console.error('[receipt-validation] Storage download error:', err);
-    return skipped('Could not download receipt image');
+    console.error('[document-validation] Storage download error:', err);
+    return skipped(downloadErrorSummary);
   }
 }
 
-export type ReceiptBackfillKind = 'downpayment' | 'balance' | 'parking';
+/** Download a stored receipt image and run Gemini validation (admin backfill). */
+export async function validateReceiptFromStorageUrl(
+  url: string,
+): Promise<ReceiptValidationResult> {
+  return validateDocumentFromStorageUrl(
+    url,
+    (bytes, mimeType) => validateReceiptImage(bytes, mimeType),
+    'Could not parse receipt URL',
+    'Could not download receipt image',
+  );
+}
+
+/** Download a stored valid ID and run Gemini validation (admin backfill). */
+export async function validateValidIdFromStorageUrl(
+  url: string,
+): Promise<ReceiptValidationResult> {
+  return validateDocumentFromStorageUrl(
+    url,
+    (bytes, mimeType, path) => validateValidIdImage(bytes, mimeType, path),
+    'Could not parse valid ID URL',
+    'Could not download valid ID image',
+  );
+}
+
+export type ReceiptBackfillKind = 'downpayment' | 'balance' | 'parking' | 'valid_id';
 
 export type ReceiptBackfillItem = {
   kind: ReceiptBackfillKind;
@@ -395,10 +500,22 @@ export async function backfillMissingReceiptAiVerdicts(
     targets.push({ kind: 'parking', url: parkingUrl });
   }
 
+  const validIdUrl = String(booking.valid_id_url ?? '').trim();
+  if (
+    receiptUrlNeedsAiBackfill(
+      validIdUrl,
+      booking.valid_id_ai_verdict as string,
+    )
+  ) {
+    targets.push({ kind: 'valid_id', url: validIdUrl });
+  }
+
   const validated: ReceiptBackfillItem[] = [];
   const errors: ReceiptBackfillError[] = [];
   for (const target of targets) {
-    const validation = await validateReceiptFromStorageUrl(target.url);
+    const validation = target.kind === 'valid_id'
+      ? await validateValidIdFromStorageUrl(target.url)
+      : await validateReceiptFromStorageUrl(target.url);
     if (validation.aiModelError) {
       errors.push({
         kind: target.kind,
@@ -420,7 +537,7 @@ export function dbPatchFromReceiptBackfillItems(
 ): Record<string, string> {
   const patch: Record<string, string> = {};
   for (const item of items) {
-    Object.assign(patch, dbPatchForReceiptValidation(item.kind, {
+    Object.assign(patch, dbPatchForDocumentAiValidation(item.kind, {
       verdict: item.verdict,
       confidence: null,
       summary: item.summary,
@@ -467,10 +584,14 @@ export type ReceiptValidationDbPatch =
   | {
     parking_receipt_ai_verdict: string;
     parking_receipt_ai_summary: string;
+  }
+  | {
+    valid_id_ai_verdict: string;
+    valid_id_ai_summary: string;
   };
 
-export function dbPatchForReceiptValidation(
-  kind: 'downpayment' | 'balance' | 'parking',
+export function dbPatchForDocumentAiValidation(
+  kind: ReceiptBackfillKind,
   result: ReceiptValidationResult,
 ): ReceiptValidationDbPatch {
   if (kind === 'downpayment') {
@@ -485,10 +606,24 @@ export function dbPatchForReceiptValidation(
       parking_receipt_ai_summary: result.summary,
     };
   }
+  if (kind === 'valid_id') {
+    return {
+      valid_id_ai_verdict: result.verdict,
+      valid_id_ai_summary: result.summary,
+    };
+  }
   return {
     balance_receipt_ai_verdict: result.verdict,
     balance_receipt_ai_summary: result.summary,
   };
+}
+
+/** @deprecated Use dbPatchForDocumentAiValidation */
+export function dbPatchForReceiptValidation(
+  kind: 'downpayment' | 'balance' | 'parking',
+  result: ReceiptValidationResult,
+): ReceiptValidationDbPatch {
+  return dbPatchForDocumentAiValidation(kind, result);
 }
 
 export function receiptKindForAssetType(
@@ -504,4 +639,11 @@ export function receiptKindForAssetType(
     default:
       return null;
   }
+}
+
+export function documentAiKindForAssetType(
+  assetType: string,
+): ReceiptBackfillKind | null {
+  if (assetType === 'valid_id') return 'valid_id';
+  return receiptKindForAssetType(assetType);
 }

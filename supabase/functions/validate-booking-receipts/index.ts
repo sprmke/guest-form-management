@@ -1,5 +1,6 @@
 /**
- * validate-booking-receipts — Admin one-shot AI backfill for payment receipts.
+ * validate-booking-receipts — Admin one-shot AI backfill for payment receipts
+ * and guest valid ID.
  *
  * When a booking already has receipt image URLs but no persisted AI verdict
  * (e.g. legacy rows before validation shipped), download each image from

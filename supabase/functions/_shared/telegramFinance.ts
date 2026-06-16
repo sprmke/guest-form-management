@@ -151,11 +151,66 @@ export async function ensureFinanceSettingsRow(): Promise<void> {
   });
 }
 
-function effectiveDueDate(row: Record<string, unknown>): string {
+export function effectiveDueDate(row: Record<string, unknown>): string {
   const due = row.telegram_due_date
     ? String(row.telegram_due_date).slice(0, 10)
     : String(row.occurred_on).slice(0, 10);
   return due;
+}
+
+function reminderSeriesKey(row: Record<string, unknown>): string {
+  const seriesId = row.recurrence_series_id;
+  if (seriesId) return `series:${String(seriesId)}`;
+  return `item:${String(row.id)}`;
+}
+
+/** One reminder per recurring series per cron tick — earliest in-window occurrence wins. */
+export function selectFinanceReminderRows(
+  rows: Record<string, unknown>[],
+  now: Date,
+  lastSentByItem: Map<string, string>,
+): Record<string, unknown>[] {
+  const eligible: Record<string, unknown>[] = [];
+
+  for (const row of rows) {
+    const interval = normalizeFinanceReminderInterval(
+      row.telegram_reminder_interval,
+    );
+    const daysBefore = Math.max(
+      0,
+      Math.min(90, Number(row.telegram_days_before ?? 3)),
+    );
+    const lastSentAt = lastSentByItem.get(String(row.id)) ?? null;
+    if (
+      shouldSendFinanceReminderNow(row, now, interval, daysBefore, lastSentAt)
+    ) {
+      eligible.push(row);
+    }
+  }
+
+  const bySeries = new Map<string, Record<string, unknown>[]>();
+  for (const row of eligible) {
+    const key = reminderSeriesKey(row);
+    const group = bySeries.get(key) ?? [];
+    group.push(row);
+    bySeries.set(key, group);
+  }
+
+  const selected: Record<string, unknown>[] = [];
+  for (const group of bySeries.values()) {
+    if (group.length === 1) {
+      selected.push(group[0]);
+      continue;
+    }
+    group.sort((a, b) => {
+      const dueCmp = effectiveDueDate(a).localeCompare(effectiveDueDate(b));
+      if (dueCmp !== 0) return dueCmp;
+      return String(a.occurred_on).localeCompare(String(b.occurred_on));
+    });
+    selected.push(group[0]);
+  }
+
+  return selected;
 }
 
 export function manilaDateTimeParts(now = new Date()): {
@@ -440,25 +495,13 @@ export async function runFinanceDueReminders(options?: { force?: boolean }) {
     settingsRow?.default_reminder_template ?? FINANCE_DEFAULT_REMINDER_TEMPLATE,
   );
 
-  let matched = 0;
+  const toSend = selectFinanceReminderRows(rows, now, lastSentByItem);
+
+  let matched = toSend.length;
   let sent = 0;
   const errors: string[] = [];
 
-  for (const row of rows) {
-    const interval = normalizeFinanceReminderInterval(
-      row.telegram_reminder_interval,
-    );
-    const daysBefore = Math.max(
-      0,
-      Math.min(90, Number(row.telegram_days_before ?? 3)),
-    );
-    const lastSentAt = lastSentByItem.get(String(row.id)) ?? null;
-    if (
-      !shouldSendFinanceReminderNow(row, now, interval, daysBefore, lastSentAt)
-    ) {
-      continue;
-    }
-    matched += 1;
+  for (const row of toSend) {
 
     const lineItemId = String(row.id);
 
@@ -589,7 +632,7 @@ export function reminderFieldsForInsert(
   };
 }
 
-/** Per recurring row: default due date to each occurrence when not explicitly set. */
+/** Per recurring row: due date always follows that occurrence's transaction date. */
 export function reminderFieldsForRecurringRow(
   input: FinanceTelegramReminderInput | undefined,
   occurredOn: string,
@@ -599,7 +642,7 @@ export function reminderFieldsForRecurringRow(
   }
   return {
     telegram_reminder_enabled: true,
-    telegram_due_date: input.telegram_due_date ?? occurredOn,
+    telegram_due_date: occurredOn,
     telegram_days_before: input.telegram_days_before ?? 3,
     telegram_reminder_interval:
       input.telegram_reminder_interval ?? "daily_noon",

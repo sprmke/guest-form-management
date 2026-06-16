@@ -37,11 +37,45 @@ type NoticeCopy = {
   detail?: string;
 };
 
+export type DocumentAiVerdictVariant = 'receipt' | 'valid_id';
+
 function noticeCopy(
   verdict: ReceiptAiVerdict,
   summary?: string | null,
+  variant: DocumentAiVerdictVariant = 'receipt',
 ): NoticeCopy | null {
   const v = String(verdict ?? '').toLowerCase();
+  if (variant === 'valid_id') {
+    switch (v) {
+      case 'valid':
+        return {
+          title: 'Looks like a government ID',
+          detail: summary?.trim() || undefined,
+        };
+      case 'likely_valid':
+        return {
+          title: 'Probably a valid ID',
+          detail:
+            summary?.trim() ||
+            'Some details were hard to read — review if unsure.',
+        };
+      case 'unclear':
+        return {
+          title: "Couldn't verify this ID",
+          detail: 'Review it yourself or upload a clearer photo or PDF.',
+        };
+      case 'invalid':
+        return {
+          title: "Doesn't look like a valid ID",
+          detail:
+            'Upload a clear photo or scan of a government-issued photo ID.',
+        };
+      case 'skipped':
+        return null;
+      default:
+        return null;
+    }
+  }
   switch (v) {
     case 'valid':
       return {
@@ -117,6 +151,7 @@ type Props = {
   className?: string;
   /** Pricing card: small pill only */
   compact?: boolean;
+  variant?: DocumentAiVerdictVariant;
 };
 
 export function ReceiptAiVerdictBadge({
@@ -124,10 +159,11 @@ export function ReceiptAiVerdictBadge({
   summary,
   className,
   compact = false,
+  variant = 'receipt',
 }: Props) {
   if (!verdict || String(verdict).toLowerCase() === 'skipped') return null;
 
-  const copy = noticeCopy(verdict, summary);
+  const copy = noticeCopy(verdict, summary, variant);
   if (!copy) return null;
 
   if (compact) {
@@ -172,13 +208,35 @@ export function ReceiptAiVerdictBadge({
 export function receiptAiUploadToastMessage(
   verdict: string | null | undefined,
   aiModelError?: string | null,
+  variant: DocumentAiVerdictVariant = 'receipt',
 ): { type: 'success' | 'warning' | 'error'; message: string; description?: string } | null {
   if (aiModelError?.trim()) {
     return {
       type: 'error',
-      message: 'AI could not check this receipt',
+      message: variant === 'valid_id'
+        ? 'AI could not check this ID'
+        : 'AI could not check this receipt',
       description: aiModelError.trim(),
     };
+  }
+  if (variant === 'valid_id') {
+    switch (String(verdict ?? '').toLowerCase()) {
+      case 'invalid':
+        return {
+          type: 'error',
+          message: "That image doesn't look like a valid ID",
+        };
+      case 'unclear':
+        return {
+          type: 'warning',
+          message: "Couldn't verify the ID — please review",
+        };
+      case 'valid':
+      case 'likely_valid':
+        return { type: 'success', message: 'Valid ID uploaded' };
+      default:
+        return null;
+    }
   }
   switch (String(verdict ?? '').toLowerCase()) {
     case 'invalid':

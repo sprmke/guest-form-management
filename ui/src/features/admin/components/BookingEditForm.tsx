@@ -48,6 +48,7 @@ import {
   useUploadBookingAsset,
   type GuestDocAssetType,
 } from '@/features/admin/hooks/useUploadBookingAsset';
+import { receiptAiUploadToastMessage } from '@/features/admin/components/ReceiptAiVerdictBadge';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -789,9 +790,27 @@ function DocumentReplacer({
     if (!file) return;
 
     try {
-      await uploadMut.mutateAsync({ bookingId, assetType, file });
+      const result = await uploadMut.mutateAsync({ bookingId, assetType, file });
       setJustUploaded(true);
-      toast.success(`${label} replaced successfully`);
+      const validation = result.receiptValidation;
+      if (validation && assetType === 'valid_id') {
+        const toastMsg = receiptAiUploadToastMessage(
+          validation.verdict,
+          validation.aiModelError,
+          'valid_id',
+        );
+        if (toastMsg?.type === 'error') {
+          toast.error(toastMsg.message, { description: toastMsg.description });
+        } else if (toastMsg?.type === 'warning') {
+          toast.warning(toastMsg.message);
+        } else if (toastMsg?.type === 'success') {
+          toast.success(toastMsg.message);
+        } else {
+          toast.success(`${label} replaced successfully`);
+        }
+      } else {
+        toast.success(`${label} replaced successfully`);
+      }
       setTimeout(() => setJustUploaded(false), 3000);
     } catch (err: unknown) {
       toast.error(

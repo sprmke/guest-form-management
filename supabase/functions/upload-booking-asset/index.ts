@@ -27,11 +27,12 @@ import {
 } from '../_shared/statusMachine.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 import {
-  dbPatchForReceiptValidation,
+  dbPatchForDocumentAiValidation,
+  documentAiKindForAssetType,
   type ReceiptValidationResult,
-  receiptKindForAssetType,
   shouldPersistReceiptValidation,
   validateReceiptFile,
+  validateValidIdFile,
 } from '../_shared/receiptValidationService.ts';
 import { notifyTelegramAdminBalanceReceiptUploaded } from '../_shared/telegramAdmin.ts';
 
@@ -145,14 +146,16 @@ serve(async (req) => {
     };
 
     let receiptValidation: ReceiptValidationResult | undefined;
-    const receiptKind = receiptKindForAssetType(assetType);
-    if (receiptKind) {
+    const docAiKind = documentAiKindForAssetType(assetType);
+    if (docAiKind) {
       try {
-        receiptValidation = await validateReceiptFile(file);
+        receiptValidation = docAiKind === 'valid_id'
+          ? await validateValidIdFile(file)
+          : await validateReceiptFile(file);
         if (shouldPersistReceiptValidation(receiptValidation)) {
           Object.assign(
             workflowUpdate,
-            dbPatchForReceiptValidation(receiptKind, receiptValidation),
+            dbPatchForDocumentAiValidation(docAiKind, receiptValidation),
           );
         }
         console.log(

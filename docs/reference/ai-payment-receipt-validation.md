@@ -1,6 +1,6 @@
-# AI payment receipt validation
+# AI document validation (payment receipts + valid ID)
 
-Server-side **Gemini Flash vision** checks whether uploaded payment images look like real payment proof: digital receipts (GCash, Maya, bank transfer screenshots, etc.) **or photos of Philippine peso cash** shown as payment. Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.
+Server-side **Gemini Flash vision** checks whether uploaded payment images look like real payment proof (digital receipts, PHP cash photos) and whether guest **valid ID** uploads look like government-issued photo ID. Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.
 
 Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and §11.
 
@@ -14,7 +14,7 @@ Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and 
 | **Runtime** | Supabase Edge Functions (Deno) — `supabase/functions/_shared/receiptValidationService.ts` |
 | **Secret** | `GEMINI_API_KEY` (Google AI Studio; optional) |
 | **When key missing / API fails** | Verdict `skipped` for config/storage issues only; **Gemini/network failures are not persisted** — admin sees a toast on `/bookings/:id` and may retry |
-| **Re-runs** | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a receipt URL exists but verdict columns are empty (non-terminal bookings only). |
+| **Re-runs** | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a document URL exists but verdict columns are empty (non-terminal bookings only). |
 
 The AI does **not** verify that the amount matches the booking total. It only judges whether the image appears to be legitimate payment proof (digital transfer screenshot or visible PHP cash).
 
@@ -31,7 +31,16 @@ The AI does **not** verify that the amount matches the booking total. It only ju
 
 Parking AI runs only when the admin uploads a **separate** parking receipt (`ParkingRequestForm` with **Included from downpayment receipt** unchecked). When parking is included in the downpayment, no parking receipt URL is stored and parking AI columns are cleared on transition.
 
-**Migrations:** `20260717120000_receipt_ai_validation_columns.sql` (downpayment + balance), `20260718120000_parking_receipt_ai_validation.sql` (parking).
+**Migrations:** `20260717120000_receipt_ai_validation_columns.sql` (downpayment + balance), `20260718120000_parking_receipt_ai_validation.sql` (parking), `20260719120000_valid_id_ai_validation.sql` (valid ID).
+
+### 2.1 Valid ID (guest document)
+
+| Document | Upload path | DB URL column | AI verdict column | AI summary column |
+| --- | --- | --- | --- | --- |
+| **Valid ID** (guest form) | `submit-form` (`validId` file) | `valid_id_url` | `valid_id_ai_verdict` | `valid_id_ai_summary` |
+| **Valid ID** (admin replace) | `upload-booking-asset` → `valid_id` | `valid_id_url` | `valid_id_ai_verdict` | `valid_id_ai_summary` |
+
+Accepts **images and PDF** (PhilSys, passport, driver's license, UMID, and similar government photo IDs). **Non-blocking** — invalid verdict is informational only (does not gate workflow). UI: **Guest Information** card `DocPreview` + preview modal compact pill (same as payment receipts).
 
 ---
 
@@ -91,9 +100,9 @@ transition-booking → WorkflowOrchestrator
 
 ```
 Admin opens /bookings/:bookingId
-  → useReceiptAiBackfill (client) when receipt URL exists but *_receipt_ai_verdict is empty
+  → useReceiptAiBackfill (client) when receipt or valid ID URL exists but `*_ai_verdict` is empty
   → POST validate-booking-receipts { bookingId }  [once per page visit; skips COMPLETED / CANCELLED]
-  → download image from Storage → validateReceiptFromStorageUrl
+  → download image/PDF from Storage → validateReceiptFromStorageUrl / validateValidIdFromStorageUrl
   → PATCH dp / balance / parking AI columns (only when Gemini returns a real verdict or config `skipped`)
   → On Gemini/network failure: no DB write; Sonner error toast with API message; retry on next page visit
   → Booking detail Pricing card DocPreview shows compact AI pill on receipt label
@@ -221,7 +230,7 @@ Required migrations: `20260717120000_receipt_ai_validation_columns.sql`, `202607
 
 ## 10. Future extensions (not implemented)
 
-- AI validation for valid ID, pet documents, or SD refund receipts
+- AI validation for pet documents or SD refund receipts
 - Telegram template placeholders for `{{parking_receipt_ai_verdict}}`
 - Amount matching against `down_payment` / `parking_rate_guest` / computed guest balance
 - Re-run validation from admin “Re-check receipt” button without re-upload

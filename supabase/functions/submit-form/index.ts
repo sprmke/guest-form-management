@@ -10,9 +10,11 @@ import { notifyTelegramStaffSameDayCheckIn } from '../_shared/telegramStaff.ts'
 import { compareFormData, shouldRevertReadyForCheckinToPendingReview } from '../_shared/utils.ts'
 import { shouldRevertGuestFieldEditsToPendingReview } from '../_shared/statusMachine.ts'
 import {
+  dbPatchForDocumentAiValidation,
   dbPatchForReceiptValidation,
   shouldPersistReceiptValidation,
   validateReceiptFile,
+  validateValidIdFile,
 } from '../_shared/receiptValidationService.ts'
 import type { GuestSubmission } from '../_shared/types.ts'
 
@@ -186,6 +188,29 @@ serve(async (req) => {
         );
       } catch (aiErr) {
         console.error('[submit-form] Downpayment receipt AI validation failed (non-fatal):', aiErr);
+      }
+    }
+
+    // AI valid ID check (non-blocking for guest submit).
+    const validIdFile = formData.get('validId') as File | null;
+    if (
+      isSaveToDatabaseEnabled &&
+      submissionData?.id &&
+      validIdFile &&
+      validIdFile.size > 0
+    ) {
+      try {
+        const validIdValidation = await validateValidIdFile(validIdFile);
+        if (shouldPersistReceiptValidation(validIdValidation)) {
+          const aiPatch = dbPatchForDocumentAiValidation('valid_id', validIdValidation);
+          await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
+          notifyBooking = { ...notifyBooking, ...aiPatch } as GuestSubmission;
+        }
+        console.log(
+          `[submit-form] Valid ID AI: ${validIdValidation.verdict} — ${validIdValidation.summary}`,
+        );
+      } catch (aiErr) {
+        console.error('[submit-form] Valid ID AI validation failed (non-fatal):', aiErr);
       }
     }
 
