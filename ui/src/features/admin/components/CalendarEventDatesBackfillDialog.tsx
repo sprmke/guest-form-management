@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { CalendarRange, ScanSearch, Zap } from 'lucide-react';
+import { ScanSearch, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
