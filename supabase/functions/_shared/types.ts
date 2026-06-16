@@ -62,6 +62,8 @@ export interface GuestFormData {
   carPlateNumber?: string;
   carBrandModel?: string;
   carColor?: string;
+  /** Assigned carpark slot (GAF PDF `carparkSlotNumber`); optional until parking is confirmed. */
+  carparkSlotNumber?: string;
 
   // Pet related fields
   hasPets: boolean;
@@ -266,10 +268,9 @@ export const transformFormToSubmission = (
     pet_image_url: petImageUrl,
     payment_receipt_url: paymentReceiptUrl,
     valid_id_url: validIdUrl,
-    unit_owner: formData.unitOwner || "Arianna Perez",
-    tower_and_unit_number: formData.towerAndUnitNumber || "Monaco 2604",
-    owner_onsite_contact_person:
-      formData.ownerOnsiteContactPerson || "Arianna Perez",
-    owner_contact_number: formData.ownerContactNumber || "0962 541 2941",
+    unit_owner: formData.unitOwner,
+    tower_and_unit_number: formData.towerAndUnitNumber,
+    owner_onsite_contact_person: formData.ownerOnsiteContactPerson,
+    owner_contact_number: formData.ownerContactNumber,
   };
 };

@@ -1,6 +1,11 @@
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { GuestFormData } from './types.ts'
+import { applyGafDefaultsToFormData, resolveAppSettings } from './appSettings.ts'
+import {
+  applyGafOwnerSignatureBlock,
+  GAF_PDF_FIELD_CARPARK_SLOT_NUMBER,
+} from './gafPdfSignature.ts'
 
 async function getTemplateBytes(templateName: string = 'guest-form-template.pdf'): Promise<Uint8Array> {
   console.log(`Fetching PDF template from Supabase Storage: ${templateName}...`);
@@ -49,41 +54,46 @@ export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> 
     const pdfDoc = await PDFDocument.load(templateBytes)
     const form = pdfDoc.getForm()
 
+    // Always use current Settings → GAF Details (not stale booking row snapshot).
+    const fd = await applyGafDefaultsToFormData(formData)
+    const appSettings = await resolveAppSettings()
+
     const fieldMappings: Record<string, string | undefined> = {
       // Unit and Owner Information
-      'unitOwner': formData.unitOwner,
-      'towerAndUnitNumber': formData.towerAndUnitNumber,
-      'ownerOnsiteContactPerson': formData.ownerOnsiteContactPerson,
-      'ownerContactNumber': formData.ownerContactNumber,
+      'unitOwner': fd.unitOwner,
+      'towerAndUnitNumber': fd.towerAndUnitNumber,
+      'ownerOnsiteContactPerson': fd.ownerOnsiteContactPerson,
+      'ownerContactNumber': fd.ownerContactNumber,
       
       // Primary Guest Information
-      'primaryGuestName': formData.primaryGuestName,
-      'guestEmail': formData.guestEmail,
-      'guestPhoneNumber': formData.guestPhoneNumber,
-      'guestAddress': formData.guestAddress,
-      'nationality': formData.nationality,
+      'primaryGuestName': fd.primaryGuestName,
+      'guestEmail': fd.guestEmail,
+      'guestPhoneNumber': fd.guestPhoneNumber,
+      'guestAddress': fd.guestAddress,
+      'nationality': fd.nationality,
       
       // Check-in/out Information
-      'checkInDate': formData.checkInDate,
-      'checkOutDate': formData.checkOutDate,
-      'checkInTime': formData.checkInTime,
-      'checkOutTime': formData.checkOutTime,
-      'numberOfNights': String(formData.numberOfNights),
+      'checkInDate': fd.checkInDate,
+      'checkOutDate': fd.checkOutDate,
+      'checkInTime': fd.checkInTime,
+      'checkOutTime': fd.checkOutTime,
+      'numberOfNights': String(fd.numberOfNights),
       
       // Guest Count
-      'numberOfAdults': String(formData.numberOfAdults),
-      'numberOfChildren': String(formData.numberOfChildren),
+      'numberOfAdults': String(fd.numberOfAdults),
+      'numberOfChildren': String(fd.numberOfChildren),
       
       // Additional Guests
-      'guest2Name': formData.guest2Name,
-      'guest3Name': formData.guest3Name,
-      'guest4Name': formData.guest4Name,
-      'guest5Name': formData.guest5Name,
+      'guest2Name': fd.guest2Name,
+      'guest3Name': fd.guest3Name,
+      'guest4Name': fd.guest4Name,
+      'guest5Name': fd.guest5Name,
       
       // Parking Information
-      'carPlateNumber': formData.carPlateNumber,
-      'carBrandModel': formData.carBrandModel,
-      'carColor': formData.carColor,
+      'carPlateNumber': fd.carPlateNumber,
+      'carBrandModel': fd.carBrandModel,
+      'carColor': fd.carColor,
+      [GAF_PDF_FIELD_CARPARK_SLOT_NUMBER]: fd.carparkSlotNumber,
     }
 
     for (const [fieldName, value] of Object.entries(fieldMappings)) {
@@ -96,6 +106,11 @@ export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> 
         console.warn(`⚠️ Could not set field "${fieldName}":`, error instanceof Error ? error.message : 'Unknown error')
       }
     }
+
+    await applyGafOwnerSignatureBlock(pdfDoc, {
+      unitOwner: fd.unitOwner || appSettings.gafUnitOwner,
+      signatureUrl: appSettings.gafUnitOwnerSignatureUrl,
+    })
 
     form.flatten()
     const pdfBytes = await pdfDoc.save()
@@ -114,20 +129,22 @@ export async function generatePetPDF(formData: GuestFormData): Promise<Uint8Arra
     const pdfDoc = await PDFDocument.load(templateBytes)
     const form = pdfDoc.getForm()
 
+    const fd = await applyGafDefaultsToFormData(formData)
+
     // Extract tower and unit number
-    const { tower, unitNumber } = extractTowerAndUnit(formData.towerAndUnitNumber)
+    const { tower, unitNumber } = extractTowerAndUnit(fd.towerAndUnitNumber)
 
     const fieldMappings: Record<string, string | undefined> = {
-      'unitOwner': formData.unitOwner,
+      'unitOwner': fd.unitOwner,
       'unitNumber': unitNumber,
       'unitTower': tower,
-      'checkInDate': formData.checkInDate,
-      'unitOwnerSignatureName': formData.unitOwner,
-      'petName': formData.petName,
-      'petType': formData.petType,
-      'petAge': formData.petAge,
-      'petBreed': formData.petBreed,
-      'petVaccinationDate': formData.petVaccinationDate,
+      'checkInDate': fd.checkInDate,
+      'unitOwnerSignatureName': fd.unitOwner,
+      'petName': fd.petName,
+      'petType': fd.petType,
+      'petAge': fd.petAge,
+      'petBreed': fd.petBreed,
+      'petVaccinationDate': fd.petVaccinationDate,
     }
 
     for (const [fieldName, value] of Object.entries(fieldMappings)) {

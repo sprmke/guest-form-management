@@ -17,6 +17,8 @@ import {
   validateGcashName,
   validateGcashNumber,
   formatGcashNumberDisplay,
+  validateGafTextField,
+  validateGafContactNumber,
 } from '../_shared/appSettings.ts';
 
 serve(async (req) => {
@@ -154,6 +156,57 @@ serve(async (req) => {
           );
         }
         patch.gcash_qr_image_url = null;
+      }
+      if (typeof body.gafUnitOwner === 'string') {
+        const trimmed = body.gafUnitOwner.trim();
+        if (trimmed) {
+          const err = validateGafTextField(trimmed, 'Unit owner');
+          if (err) return jsonError(req, 400, err);
+          patch.gaf_unit_owner = trimmed;
+        } else {
+          patch.gaf_unit_owner = null;
+        }
+      }
+      if (typeof body.gafTowerAndUnitNumber === 'string') {
+        const trimmed = body.gafTowerAndUnitNumber.trim();
+        if (trimmed) {
+          const err = validateGafTextField(trimmed, 'Tower and unit number');
+          if (err) return jsonError(req, 400, err);
+          patch.gaf_tower_and_unit_number = trimmed;
+        } else {
+          patch.gaf_tower_and_unit_number = null;
+        }
+      }
+      if (typeof body.gafGuestsOnsiteContactPerson === 'string') {
+        const trimmed = body.gafGuestsOnsiteContactPerson.trim();
+        if (trimmed) {
+          const err = validateGafTextField(trimmed, "Guests' on-site contact person");
+          if (err) return jsonError(req, 400, err);
+          patch.gaf_guests_onsite_contact_person = trimmed;
+        } else {
+          patch.gaf_guests_onsite_contact_person = null;
+        }
+      }
+      if (typeof body.gafOwnerContactNumber === 'string') {
+        const trimmed = body.gafOwnerContactNumber.trim();
+        if (trimmed) {
+          const err = validateGafContactNumber(trimmed);
+          if (err) return jsonError(req, 400, err);
+          patch.gaf_owner_contact_number = trimmed;
+        } else {
+          patch.gaf_owner_contact_number = null;
+        }
+      }
+      if (typeof body.gafUnitOwnerSignatureUrl === 'string') {
+        const trimmed = body.gafUnitOwnerSignatureUrl.trim();
+        if (trimmed) {
+          return jsonError(
+            req,
+            400,
+            'Unit Owner signature can only be updated via upload-app-settings-asset',
+          );
+        }
+        patch.gaf_unit_owner_signature_url = null;
       }
 
       if (Object.keys(patch).length === 0) {

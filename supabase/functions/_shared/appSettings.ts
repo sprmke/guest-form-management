@@ -21,12 +21,31 @@ export type AppSettingsRow = {
   gcash_name: string | null;
   gcash_number: string | null;
   gcash_qr_image_url: string | null;
+  gaf_unit_owner: string | null;
+  gaf_tower_and_unit_number: string | null;
+  gaf_guests_onsite_contact_person: string | null;
+  gaf_owner_contact_number: string | null;
+  gaf_unit_owner_signature_url: string | null;
+};
+
+export const DEFAULT_GAF_UNIT_OWNER = 'Arianna Perez';
+export const DEFAULT_GAF_TOWER_AND_UNIT_NUMBER = 'Monaco 2604';
+export const DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON = 'Arianna Perez';
+export const DEFAULT_GAF_OWNER_CONTACT_NUMBER = '0962 541 2941';
+
+export type GafDetailsResolved = {
+  gafUnitOwner: string;
+  gafTowerAndUnitNumber: string;
+  gafGuestsOnsiteContactPerson: string;
+  gafOwnerContactNumber: string;
+  gafUnitOwnerSignatureUrl: string;
 };
 
 export const DEFAULT_GCASH_NAME = 'Arianna Perez';
 export const DEFAULT_GCASH_NUMBER = '0962 564 7541';
+/** Path segment after public guest app origin (no leading slash — avoids Supabase CLI false import scan). */
 export const DEFAULT_GCASH_QR_RELATIVE_PATH =
-  '/images/kame-home-gcash-qr-payment.jpg';
+  'images/kame-home-gcash-qr-payment.jpg';
 
 export type AppSettingsResolved = {
   emailTo: string;
@@ -41,13 +60,13 @@ export type AppSettingsResolved = {
   gcashName: string;
   gcashNumber: string;
   gcashQrImageUrl: string;
-};
+} & GafDetailsResolved;
 
 export type GuestPaymentInfoDto = {
   gcashName: string;
   gcashNumber: string;
   gcashQrImageUrl: string;
-};
+} & GafDetailsResolved;
 
 export type AppSettingsFieldSource = 'db' | 'env' | 'default';
 
@@ -115,8 +134,19 @@ function pickString(
 ): { value: string; source: AppSettingsFieldSource } {
   const fromDb = trimOrEmpty(dbVal);
   if (fromDb) return { value: fromDb, source: 'db' };
-  const fromEnv = trimOrEmpty(Deno.env.get(envKey));
-  if (fromEnv) return { value: fromEnv, source: 'env' };
+  if (envKey.trim()) {
+    const fromEnv = trimOrEmpty(Deno.env.get(envKey));
+    if (fromEnv) return { value: fromEnv, source: 'env' };
+  }
+  return { value: '', source: 'default' };
+}
+
+/** DB-only optional URL (no env fallback). */
+function pickOptionalUrl(
+  dbVal: string | null | undefined,
+): { value: string; source: AppSettingsFieldSource } {
+  const fromDb = trimOrEmpty(dbVal);
+  if (fromDb) return { value: fromDb, source: 'db' };
   return { value: '', source: 'default' };
 }
 
@@ -154,6 +184,57 @@ function pickMoney(
     }
   }
   return { value: fallback, source: 'default' };
+}
+
+function pickGafString(
+  dbVal: string | null | undefined,
+  fallback: string,
+): { value: string; source: AppSettingsFieldSource } {
+  const fromDb = trimOrEmpty(dbVal);
+  if (fromDb) return { value: fromDb, source: 'db' };
+  return { value: fallback, source: 'default' };
+}
+
+function resolveGafDetailsFromRow(
+  row: AppSettingsRow | null,
+): {
+  resolved: GafDetailsResolved;
+  picks: Record<keyof GafDetailsResolved, { value: string; source: AppSettingsFieldSource }>;
+} {
+  const unitOwner = pickGafString(row?.gaf_unit_owner, DEFAULT_GAF_UNIT_OWNER);
+  const tower = pickGafString(
+    row?.gaf_tower_and_unit_number,
+    DEFAULT_GAF_TOWER_AND_UNIT_NUMBER,
+  );
+  const guestsOnsite = pickGafString(
+    row?.gaf_guests_onsite_contact_person,
+    DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON,
+  );
+  const contact = pickGafString(
+    row?.gaf_owner_contact_number,
+    DEFAULT_GAF_OWNER_CONTACT_NUMBER,
+  );
+  const signatureUrl = pickOptionalUrl(row?.gaf_unit_owner_signature_url);
+
+  return {
+    resolved: {
+      gafUnitOwner: unitOwner.value,
+      gafTowerAndUnitNumber: tower.value,
+      gafGuestsOnsiteContactPerson: guestsOnsite.value,
+      gafOwnerContactNumber: contact.value,
+      gafUnitOwnerSignatureUrl: signatureUrl.value,
+    },
+    picks: {
+      gafUnitOwner: unitOwner,
+      gafTowerAndUnitNumber: tower,
+      gafGuestsOnsiteContactPerson: guestsOnsite,
+      gafOwnerContactNumber: contact,
+      gafUnitOwnerSignatureUrl: {
+        value: signatureUrl.value,
+        source: signatureUrl.source,
+      },
+    },
+  };
 }
 
 export function parseCommaSeparatedEmails(raw: string): string[] {
@@ -198,6 +279,7 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
     /\/+$/,
     '',
   );
+  const gaf = resolveGafDetailsFromRow(row);
 
   return {
     emailTo: emailTo.value,
@@ -214,7 +296,8 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
       gcashNumber.value || DEFAULT_GCASH_NUMBER,
     ),
     gcashQrImageUrl:
-      gcashQr.value || `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`,
+      gcashQr.value || `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`,
+    ...gaf.resolved,
   };
 }
 
@@ -224,6 +307,10 @@ export async function serializeGuestPaymentInfo(): Promise<GuestPaymentInfoDto> 
     gcashName: s.gcashName,
     gcashNumber: s.gcashNumber,
     gcashQrImageUrl: s.gcashQrImageUrl,
+    gafUnitOwner: s.gafUnitOwner,
+    gafTowerAndUnitNumber: s.gafTowerAndUnitNumber,
+    gafGuestsOnsiteContactPerson: s.gafGuestsOnsiteContactPerson,
+    gafOwnerContactNumber: s.gafOwnerContactNumber,
   };
 }
 
@@ -265,7 +352,8 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
     /\/+$/,
     '',
   );
-  const defaultGcashQrUrl = `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
+  const defaultGcashQrUrl = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
+  const gaf = resolveGafDetailsFromRow(row);
 
   const listSource = (
     items: string[],
@@ -326,6 +414,11 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
         defaultGcashQrUrl,
         resolved.gcashQrImageUrl,
       ),
+      gafUnitOwner: gaf.picks.gafUnitOwner.source,
+      gafTowerAndUnitNumber: gaf.picks.gafTowerAndUnitNumber.source,
+      gafGuestsOnsiteContactPerson: gaf.picks.gafGuestsOnsiteContactPerson.source,
+      gafOwnerContactNumber: gaf.picks.gafOwnerContactNumber.source,
+      gafUnitOwnerSignatureUrl: gaf.picks.gafUnitOwnerSignatureUrl.source,
     },
     secretsStatus: {
       resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),
@@ -421,4 +514,40 @@ export function validateGcashNumber(raw: string): string | null {
     return 'GCash number should start with 09';
   }
   return null;
+}
+
+export function validateGafTextField(
+  raw: string,
+  label: string,
+  maxLen = 120,
+): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (v.length > maxLen) return `${label} is too long (max ${maxLen} characters)`;
+  return null;
+}
+
+export function validateGafContactNumber(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  if (v.length > 40) return 'Owner contact number is too long (max 40 characters)';
+  const digits = v.replace(/\D/g, '');
+  if (digits.length > 0 && digits.length < 7) {
+    return 'Owner contact number looks too short';
+  }
+  return null;
+}
+
+/** Apply operator GAF defaults — server always wins over client-submitted values. */
+export async function applyGafDefaultsToFormData<T extends Record<string, unknown>>(
+  data: T,
+): Promise<T> {
+  const s = await resolveAppSettings();
+  return {
+    ...data,
+    unitOwner: s.gafUnitOwner,
+    towerAndUnitNumber: s.gafTowerAndUnitNumber,
+    ownerOnsiteContactPerson: s.gafGuestsOnsiteContactPerson,
+    ownerContactNumber: s.gafOwnerContactNumber,
+  };
 }

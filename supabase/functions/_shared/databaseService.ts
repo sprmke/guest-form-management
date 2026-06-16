@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts'
+import { applyGafDefaultsToFormData } from './appSettings.ts'
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
@@ -302,8 +303,10 @@ export class DatabaseService {
 
       // Create the final data object
       const data = {
-        ...(formDataObj as GuestFormData)
+        ...(formDataObj as GuestFormData),
       };
+
+      const dataWithGafDefaults = await applyGafDefaultsToFormData(data);
 
       console.log('Form data processed successfully');
       
@@ -317,7 +320,7 @@ export class DatabaseService {
       }
       
       const dbData = transformFormToSubmission(
-        data,
+        dataWithGafDefaults,
         paymentReceiptUrl,
         validIdUrl,
         petVaccinationUrl,
@@ -348,7 +351,7 @@ export class DatabaseService {
       }
 
       return {
-        data,
+        data: dataWithGafDefaults,
         submissionData,
         petVaccinationUrl: formatPublicUrl(petVaccinationUrl),
         petImageUrl: formatPublicUrl(petImageUrl),

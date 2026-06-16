@@ -148,7 +148,7 @@ async function resolveReadyForCheckinPaymentQr(
   settings: Awaited<ReturnType<typeof resolveAppSettings>>,
 ): Promise<ReadyForCheckinQrAsset> {
   const originBase = settings.publicGuestAppOrigin.replace(/\/+$/, "");
-  const defaultUrl = `${originBase}${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
+  const defaultUrl = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
   const fallbackUrl = settings.gcashQrImageUrl || defaultUrl;
   const isCustomUpload =
     !!settings.gcashQrImageUrl && settings.gcashQrImageUrl !== defaultUrl;

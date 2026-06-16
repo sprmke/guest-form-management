@@ -1,5 +1,5 @@
 /**
- * upload-app-settings-asset — Admin upload for operator-level assets (GCash QR, team logo).
+ * upload-app-settings-asset — Admin upload for operator-level assets (GCash QR, team logo, GAF signature).
  * Auth: verifyAdminJwt. Writes public URL to app_settings.
  */
 
@@ -22,7 +22,19 @@ const ASSET_CONFIG = {
     column: 'email_logo_url',
     storagePrefix: 'team-logo',
   },
-} as const;
+  gaf_unit_owner_signature: {
+    column: 'gaf_unit_owner_signature_url',
+    storagePrefix: 'gaf-unit-owner-signature',
+    allowedMime: new Set(['image/jpeg', 'image/png']),
+  },
+} as const satisfies Record<
+  string,
+  {
+    column: string;
+    storagePrefix: string;
+    allowedMime?: Set<string>;
+  }
+>;
 
 type AssetType = keyof typeof ASSET_CONFIG;
 
@@ -52,8 +64,13 @@ serve(async (req) => {
     if (!fileName) throw new Error('fileName is required');
 
     const mime = (file.type || '').toLowerCase();
-    if (!ALLOWED_MIME.has(mime)) {
-      throw new Error('File must be JPEG, PNG, or WebP');
+    const allowedMime = ASSET_CONFIG[assetType].allowedMime ?? ALLOWED_MIME;
+    if (!allowedMime.has(mime)) {
+      throw new Error(
+        assetType === 'gaf_unit_owner_signature'
+          ? 'Signature must be PNG or JPEG'
+          : 'File must be JPEG, PNG, or WebP',
+      );
     }
     if (file.size > 5 * 1024 * 1024) {
       throw new Error('File must be 5 MB or smaller');
