@@ -15,7 +15,6 @@ import { useDashboardStats } from "@/features/dashboard/hooks/useDashboardStats"
 import { DashboardAttentionStrip } from "@/features/dashboard/components/DashboardAttentionStrip";
 import { DashboardStatCards } from "@/features/dashboard/components/DashboardStatCards";
 import { DashboardFinanceCalendarSection } from "@/features/dashboard/components/DashboardFinanceCalendarSection";
-import { formatIsoDate } from "@/features/admin/lib/formatters";
 import { detectPresetFromRange, fromIsoDate } from "@/lib/dateNavigation";
 import {
   defaultDashboardPeriod,

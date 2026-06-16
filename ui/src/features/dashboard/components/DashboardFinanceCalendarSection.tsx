@@ -97,7 +97,6 @@ export function DashboardFinanceCalendarSection({
   const financeChartsLoading =
     lineItemsQuery.isPending || financeBookingsQuery.isPending;
 
-  const financeHref = `/finance?from=${from}&to=${to}`;
   const bookingsCalendarHref = `/bookings?from=${from}&to=${to}&view=calendar&showCompletedBookings=true`;
   const isBelowLg = useIsBelowLg();
   const calendarCardRef = useRef<HTMLElement>(null);
