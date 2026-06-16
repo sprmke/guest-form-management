@@ -72,6 +72,10 @@ import {
 } from '@/utils/bookingFormatter';
 import { GuestFormParkingDates } from '@/features/guest-form/components/GuestFormParkingDates';
 import { GuestFormPaymentStepContent } from '@/features/guest-form/components/GuestFormPaymentStepContent';
+import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest-form/hooks/useGuestPaymentInfo';
 import { GuestFormStepper } from '@/features/guest-form/components/GuestFormStepper';
 import { GuestFormStepNavigation } from '@/features/guest-form/components/GuestFormStepNavigation';
 import {
@@ -117,6 +121,8 @@ export function GuestForm() {
   const [searchParams] = useSearchParams();
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
+  const { data: guestFormSettings = DEFAULT_GUEST_PAYMENT_INFO } =
+    useGuestPaymentInfo();
 
   /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
   const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
@@ -501,7 +507,12 @@ export function GuestForm() {
     setIsSubmitting(true);
 
     try {
-      const transformedValues = transformFieldValues(values);
+      const transformedValues = transformFieldValues(values, {
+        gafUnitOwner: guestFormSettings.gafUnitOwner,
+        gafTowerAndUnitNumber: guestFormSettings.gafTowerAndUnitNumber,
+        gafGuestsOnsiteContactPerson: guestFormSettings.gafGuestsOnsiteContactPerson,
+        gafOwnerContactNumber: guestFormSettings.gafOwnerContactNumber,
+      });
       const formData = new FormData();
 
       // Add the booking ID to form data
@@ -521,11 +532,6 @@ export function GuestForm() {
         }
       });
 
-      // Add additional fixed values
-      formData.append('unitOwner', 'Arianna Perez');
-      formData.append('towerAndUnitNumber', 'Monaco 2604');
-      formData.append('ownerOnsiteContactPerson', 'Arianna Perez');
-      formData.append('ownerContactNumber', '0962 541 2941');
       formData.append('bookingSource', bookingSource);
 
       // Handle file uploads with standardized naming

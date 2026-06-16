@@ -39,6 +39,7 @@ import {
   type AppSettingsAssetType,
 } from '@/features/admin/hooks/useUploadAppSettingsAsset';
 import { GmailMailIntegrationCard } from '@/features/admin/components/GmailMailIntegrationCard';
+import { GafDetailsSettingsSection } from '@/features/admin/components/GafDetailsSettingsSection';
 
 function CollapsibleSection({
   id,
@@ -682,6 +683,20 @@ export function AppSettingsCard() {
               </FieldSpan>
             </FieldGrid>
           </CollapsibleSection>
+
+          <GafDetailsSettingsSection
+            values={{
+              gafUnitOwner: draft.gafUnitOwner,
+              gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
+              gafGuestsOnsiteContactPerson: draft.gafGuestsOnsiteContactPerson,
+              gafOwnerContactNumber: draft.gafOwnerContactNumber,
+            }}
+            signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+            signatureSource={sources?.gafUnitOwnerSignatureUrl}
+            disabled={busy}
+            fieldSources={sources}
+            onChange={(key, value) => set(key, value)}
+          />
 
           <CollapsibleSection
             id="env-secrets"

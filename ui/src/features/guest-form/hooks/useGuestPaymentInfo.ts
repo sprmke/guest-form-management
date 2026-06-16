@@ -2,16 +2,23 @@ import { useQuery } from '@tanstack/react-query';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
+import { DEFAULT_GAF_DETAILS } from '@/lib/gafDefaults';
+
 export type GuestPaymentInfo = {
   gcashName: string;
   gcashNumber: string;
   gcashQrImageUrl: string;
+  gafUnitOwner: string;
+  gafTowerAndUnitNumber: string;
+  gafGuestsOnsiteContactPerson: string;
+  gafOwnerContactNumber: string;
 };
 
 export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   gcashName: 'Arianna Perez',
   gcashNumber: '0962 564 7541',
   gcashQrImageUrl: '/images/kame-home-gcash-qr-payment.jpg',
+  ...DEFAULT_GAF_DETAILS,
 };
 
 export function useGuestPaymentInfo() {

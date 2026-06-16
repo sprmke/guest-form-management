@@ -5,7 +5,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 
-export type AppSettingsAssetType = 'gcash_qr' | 'team_logo';
+export type AppSettingsAssetType = 'gcash_qr' | 'team_logo' | 'gaf_unit_owner_signature';
 
 export type UploadAppSettingsAssetResult = {
   url: string;
