@@ -39,7 +39,8 @@ New booking flow — phase tracker (see `docs/NEW_FLOW_PLAN.md` §5):
 - ✅ **Phase 5 — `submit-form` cleanup + removal of test-booking pipeline.**
   - ✅ `submit-form` no longer sends workflow emails; no `?testing=true`, no `is_test_booking`, no `cleanup-test-data`, no `[TEST]`/`TEST_` prefixes. Guest `/form` keeps optional **dev API toggles** when `!production` or `?dev=true` (save DB, storage, calendar, sheet) — no separate Test Submit.
   - ✅ Parent status `PENDING_DOCUMENTS` added for parallel document work. `WorkflowPanel` shows sub-status progress (`PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST`) with "Mark as Complete" actions.
-- ✅ **Calendar time + sync prevention** — `guest_submissions.check_*_time` stored as 24h `HH:mm` (migration `20260623120000_normalize_time_columns_to_24h.sql`); `formatTime` / `buildGoogleCalendarDateTime` parse AM/PM safely; workflow + edit-save calendar patches use `check_out_date` for event end and update all matched Google events.
+- ✅ **Calendar time + sync prevention** — `guest_submissions.check_*_time` stored as 24h `HH:mm` (migration `20260623120000_normalize_time_columns_to_24h.sql`); `formatTime` / `buildGoogleCalendarDateTime` parse AM/PM safely; workflow + edit-save calendar patches update all matched Google events.
+- ✅ **Calendar occupied-night window** — multi-night Google Calendar events end **23:59 on the last occupied night** (not checkout morning), matching admin calendar availability; migration `20260709120000_backfill_calendar_event_dates.sql` + admin **`backfill-calendar-event-dates`** edge function for legacy events.
 
 ---
 
@@ -157,11 +158,11 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Review edit booking info form
 
 - Automatically move PENDING_DOCUMENTS to READY_CHECKIN once all sub booking status is completed. Meaning, if we submit the parking request form, and notice that all other sub status are completed, we should automatically transition to READY_CHECKIN without manually clicking "Proceed to Ready for Check-in" button
-- - Update google calendar summary info with new guest form and processes
+- Update google calendar summary info with new guest form and processes
 - Review and improve form UI validation on workflow status forms
 - Review bucket policy to check public buckets and convert them to private?
 - On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
-- Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
+- ✅ Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
 - Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
 - Remove dev=true query parameter on google calendar event to prevent any issues
 - ? Only display Sensitive edit warning on edit booking detail page
@@ -184,3 +185,5 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Support same-day check-in
 - Add password or faceid when accessing settings page?
 - Update GAF details to be configurable via settings
+- ✅ Fix issue where google calendar is taking up more than 1 date for multiple nights booking. Meaning, if we have 2nights, it should only take 2 calendar dates instead of 3
+- Add quick edit on bookings page

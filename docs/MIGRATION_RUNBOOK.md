@@ -71,7 +71,7 @@ Supabase applies migrations in **filename sort order**. Among workflow redesign 
 | `20260606120000_next_stay_voucher.sql`                                    | Next-stay voucher columns                             |
 | `20260607120000_drop_sd_refund_cash_pickup_note.sql`                      | Drops legacy cash pickup note column                  |
 | `20260607130000_sd_refund_bank_gotyme.sql`                                | SD refund bank allow-list (GCash / GoTyme / Maribank) |
-| `20260608120000_drop_is_test_booking.sql`                                 | Drops `is_test_booking`                               |
+| `20260709120000_backfill_calendar_event_dates.sql`                        | Documents Google Calendar occupied-night window fix; run **`backfill-calendar-event-dates`** edge function after deploy |
 
 See also **§9** for SD bank allow-list rollback notes.
 

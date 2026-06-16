@@ -38,6 +38,30 @@ export const buildGoogleCalendarDateTime = (
 };
 
 /**
+ * Google Calendar event end for occupied stay nights.
+ * Checkout morning is not an occupied calendar date — the event ends 23:59 on the last night.
+ * 1-night (Mon check-in, Tue checkout) → Mon 23:59 (one calendar date).
+ * 2-night (Mon check-in, Wed checkout) → Tue 23:59 (Mon + Tue).
+ */
+export function buildGoogleCalendarOccupiedEndDateTime(
+  checkInDate: string,
+  checkOutDate: string | null | undefined,
+  nights?: number,
+): string {
+  const checkInYmd = normalizeDateToYYYYMMDD(checkInDate);
+  if (!checkInYmd) return '';
+
+  const checkoutYmd = checkOutDate ? normalizeDateToYYYYMMDD(checkOutDate) : '';
+  const lastNightYmd = checkoutYmd
+    ? dayjs(checkoutYmd, 'YYYY-MM-DD', true).subtract(1, 'day').format('YYYY-MM-DD')
+    : dayjs(checkInYmd, 'YYYY-MM-DD', true)
+      .add(Math.max(1, nights ?? 1) - 1, 'day')
+      .format('YYYY-MM-DD');
+
+  return buildGoogleCalendarDateTime(lastNightYmd, '23:59', '23:59');
+}
+
+/**
  * @deprecated Prefer {@link buildGoogleCalendarDateTime}; kept for call sites that pass explicit HH:mm.
  */
 export const formatDateTime = (date: string, time: string): string => {
