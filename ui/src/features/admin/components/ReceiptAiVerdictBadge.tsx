@@ -45,12 +45,12 @@ function noticeCopy(
   switch (v) {
     case 'valid':
       return {
-        title: 'Looks like a payment receipt',
+        title: 'Looks like payment proof',
         detail: summary?.trim() || undefined,
       };
     case 'likely_valid':
       return {
-        title: 'Probably a payment receipt',
+        title: 'Probably payment proof',
         detail:
           summary?.trim() ||
           'Some details were hard to read — review if unsure.',
@@ -58,13 +58,14 @@ function noticeCopy(
     case 'unclear':
       return {
         title: "Couldn't verify this image",
-        detail: 'Review it yourself or upload a clearer screenshot.',
+        detail:
+          'Review it yourself or upload a clearer screenshot or cash photo.',
       };
     case 'invalid':
       return {
-        title: "Doesn't look like a payment receipt",
+        title: "Doesn't look like payment proof",
         detail:
-          'Upload a GCash, Maya, or bank transfer screenshot that shows the amount sent.',
+          'Upload a GCash/Maya/bank transfer screenshot or a clear photo of the cash paid.',
       };
     case 'skipped':
       return null;
@@ -175,7 +176,7 @@ export function receiptAiUploadToastMessage(
     case 'invalid':
       return {
         type: 'error',
-        message: "That image doesn't look like a payment receipt",
+        message: "That image doesn't look like payment proof",
       };
     case 'unclear':
       return {

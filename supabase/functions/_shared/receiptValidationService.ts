@@ -92,7 +92,7 @@ export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerify
   }
 }
 
-const RECEIPT_PROMPT = `You are validating a payment receipt image for a vacation rental booking in the Philippines.
+const RECEIPT_PROMPT = `You are validating a payment proof image for a vacation rental booking in the Philippines.
 Analyze the image and return ONLY valid JSON (no markdown) with this exact shape:
 {
   "verdict": "valid" | "likely_valid" | "unclear" | "invalid",
@@ -103,12 +103,16 @@ Analyze the image and return ONLY valid JSON (no markdown) with this exact shape
   "has_reference": boolean
 }
 
+Accept TWO forms of payment proof:
+1) Digital — GCash, Maya, InstaPay, bank transfer, or similar e-wallet/bank app screenshots showing money sent (amount plus date or reference when visible).
+2) Cash — a photo clearly showing Philippine peso (PHP) banknotes as payment proof (e.g. bills held in hand, fanned out, or on a table). Recognizable PHP denominations (₱20–₱1000) count as valid proof even without a transaction reference or date.
+
 Rules:
-- "valid": clearly a real payment/transfer receipt or bank/e-wallet screenshot showing money sent with amount and reference or date.
-- "likely_valid": looks like a payment screenshot but some fields are blurry, cropped, or partially visible.
-- "unclear": image is too blurry, unrelated, or cannot tell if it is a payment receipt.
-- "invalid": clearly NOT a payment receipt (random photo, meme, blank, ID only, chat without payment proof, etc.).
-- Prefer GCash, Maya, bank transfer, or similar payment app screenshots as valid when they show transaction details.
+- "valid": clear digital transfer receipt/screenshot with transaction details, OR a clear photo of PHP cash bills as payment proof.
+- "likely_valid": payment screenshot or cash photo that is partly blurry/cropped but still recognizable as payment proof.
+- "unclear": too blurry or ambiguous to tell if it is digital payment proof or PHP cash payment proof.
+- "invalid": clearly NOT payment proof (random photo, scenery, meme, blank, ID only, chat without payment proof, unrelated objects with no visible transfer details or PHP cash).
+- For cash photos: set has_amount true when bill denominations are visible; has_date and has_reference are usually false — that is OK.
 - summary must be plain English, max 120 characters, no line breaks.`;
 
 function skipped(summary = 'AI validation unavailable'): ReceiptValidationResult {

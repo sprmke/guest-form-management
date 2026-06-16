@@ -20,8 +20,8 @@ export function FinanceChartCard({
   className,
 }: Props) {
   return (
-    <section className={cn('p-3 min-w-0 surface-card sm:p-4', className)}>
-      <div className="flex flex-col gap-3 mb-3 sm:flex-row sm:items-start sm:justify-between">
+    <section className={cn('flex flex-col p-3 min-w-0 surface-card sm:p-4', className)}>
+      <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-2 items-start min-w-0">
           <div className="icon-well-sm shrink-0 bg-muted/80">
             <Icon className="size-[18px] text-muted-foreground" aria-hidden />
@@ -35,7 +35,7 @@ export function FinanceChartCard({
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      {children}
+      <div className="flex min-h-0 flex-1 flex-col">{children}</div>
     </section>
   );
 }

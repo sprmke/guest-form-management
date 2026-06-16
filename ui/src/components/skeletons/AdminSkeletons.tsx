@@ -848,20 +848,31 @@ export function DashboardSkeleton() {
       </section>
 
       <div className="min-w-0 space-y-3 sm:space-y-4">
-        <div className="grid min-w-0 items-start gap-3 lg:grid-cols-5 xl:gap-4">
-          <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-3">
+        <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-5 xl:gap-4">
+          <section className="surface-card flex min-w-0 flex-col p-3 sm:p-4 lg:col-span-3">
             <DashboardChartCardHeaderSkeleton />
-            <Skeleton className="h-[220px] w-full min-w-0 rounded-xl sm:h-[300px]" />
-            <div className="mt-4 flex justify-center gap-6">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-20" />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <Skeleton className="h-[220px] w-full min-w-0 rounded-xl sm:h-[300px]" />
+              <div className="mt-4 flex justify-center gap-6">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-20" />
+              </div>
             </div>
           </section>
 
-          <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
+          <section className="surface-card flex min-w-0 flex-col p-3 sm:p-4 lg:col-span-2">
             <DashboardChartCardHeaderSkeleton showAction />
-            <div className="flex justify-center py-2">
-              <Skeleton className="size-40 rounded-full sm:size-48" />
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-10">
+                <Skeleton className="size-40 shrink-0 rounded-full sm:size-48" />
+              </div>
+              <div className="shrink-0 border-t border-border/50 pt-2">
+                <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={`breakdown-legend-${i}`} className="h-4 w-full" />
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
 

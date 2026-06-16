@@ -1,6 +1,6 @@
 # AI payment receipt validation
 
-Server-side **Gemini Flash vision** checks whether uploaded payment images look like real transaction receipts (GCash, Maya, bank transfer screenshots, etc.). Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.
+Server-side **Gemini Flash vision** checks whether uploaded payment images look like real payment proof: digital receipts (GCash, Maya, bank transfer screenshots, etc.) **or photos of Philippine peso cash** shown as payment. Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.
 
 Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and §11.
 
@@ -16,7 +16,7 @@ Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and 
 | **When key missing / API fails** | Verdict `skipped`; **uploads and guest submit always succeed** |
 | **Re-runs** | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a receipt URL exists but verdict columns are empty (non-terminal bookings only). |
 
-The AI does **not** verify that the amount matches the booking total. It only judges whether the image appears to be a legitimate payment receipt screenshot.
+The AI does **not** verify that the amount matches the booking total. It only judges whether the image appears to be legitimate payment proof (digital transfer screenshot or visible PHP cash).
 
 ---
 
@@ -39,10 +39,10 @@ Parking AI runs only when the admin uploads a **separate** parking receipt (`Par
 
 | Verdict | Meaning | Guest form submit | Admin workflow |
 | --- | --- | --- | --- |
-| `valid` | Clear payment / transfer screenshot with amount and date or reference | Allowed | Allowed |
-| `likely_valid` | Probably a receipt; some fields blurry or cropped | Allowed | Allowed |
+| `valid` | Clear transfer screenshot **or** clear PHP cash payment photo | Allowed | Allowed |
+| `likely_valid` | Probably payment proof; some fields blurry or cropped | Allowed | Allowed |
 | `unclear` | Cannot confidently classify | Allowed | Allowed (UI warns) |
-| `invalid` | Clearly not a payment receipt | Allowed | **Blocked** on balance settlement and parking completion |
+| `invalid` | Clearly not payment proof (not a transfer screenshot or cash photo) | Allowed | **Blocked** on balance settlement and parking completion |
 | `skipped` | No API key, API error, or unreadable response | Allowed | Allowed |
 
 **Blocking rules (admin only):**

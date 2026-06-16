@@ -133,7 +133,7 @@ export function DashboardFinanceCalendarSection({
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-4">
-      <div className="grid min-w-0 items-start gap-3 lg:grid-cols-5 xl:gap-4">
+      <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-5 xl:gap-4">
         <FinanceTransactionsChart
           embedded
           isLoading={financeChartsLoading}
