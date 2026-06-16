@@ -224,6 +224,18 @@ Migration history repair / **`--include-all`**: **§5.1** ibid., **§3** above t
 
 ## Quick command reference
 
+From repo root you can run the bundled deploy script (runs **`db push`** then **`functions deploy`** on the linked project):
+
+```bash
+npm run deploy:supabase
+# migration history repair only:
+npm run deploy:supabase -- --include-all
+npm run deploy:supabase:db
+npm run deploy:supabase:functions
+```
+
+Or invoke the Supabase CLI directly:
+
 ```bash
 supabase login
 supabase link --project-ref <prod-ref>

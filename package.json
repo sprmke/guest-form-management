@@ -23,7 +23,10 @@
     "sync:prod-data:restore": "RESTORE_ONLY=1 ./scripts/sync-prod-public-data-to-local.sh",
     "build:ui": "cd ui && npm run build",
     "build:api": "cd api && npm run build",
-    "build": "npm run build:ui && npm run build:api"
+    "build": "npm run build:ui && npm run build:api",
+    "deploy:supabase": "./scripts/deploy-supabase.sh",
+    "deploy:supabase:db": "./scripts/deploy-supabase.sh --db-only",
+    "deploy:supabase:functions": "./scripts/deploy-supabase.sh --functions-only"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.49.1",
