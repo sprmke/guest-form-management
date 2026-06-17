@@ -235,8 +235,12 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
         }
       >
         <SecretBadge
-          label="Gemini API key"
+          label="Gemini API key(s)"
           configured={status.geminiApiKeyConfigured}
+        />
+        <SecretBadge
+          label="Groq API key (fallback)"
+          configured={status.groqApiKeyConfigured}
         />
       </SecretGroup>
     </div>

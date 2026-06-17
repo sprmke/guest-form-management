@@ -10,6 +10,8 @@ export type GeminiIntegrationVerifyDto = {
   latencyMs?: number;
   statusCode?: number;
   error?: string;
+  geminiKeysCount?: number;
+  groqConfigured?: boolean;
 };
 
 async function getAdminJwt(): Promise<string> {

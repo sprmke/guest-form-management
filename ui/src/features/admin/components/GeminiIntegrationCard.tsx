@@ -48,15 +48,11 @@ export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
             Gemini receipt AI
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 sm:text-[11px] leading-snug">
-            AI-checks receipt uploads via Gemini Flash. Set{' '}
-            <span className="font-mono text-[10px] sm:text-[11px]">
-              GEMINI_API_KEY
-            </span>{' '}
-            in Edge secrets.
+            AI-checks receipt uploads via Gemini Flash + Groq fallback.
           </p>
           {!apiKeyConfigured ? (
             <p className="text-xs text-amber-800/90 mt-1.5 sm:text-[11px] dark:text-amber-200">
-              API key not configured — receipt AI is skipped on upload.
+              No API keys configured — receipt AI is skipped on upload.
             </p>
           ) : null}
           {apiKeyConfigured && !tested ? (
@@ -69,6 +65,12 @@ export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
               Connection OK
               {lastResult.latencyMs != null
                 ? ` (${lastResult.latencyMs} ms)`
+                : ''}
+              {lastResult.geminiKeysCount != null && lastResult.geminiKeysCount > 1
+                ? ` · ${lastResult.geminiKeysCount} Gemini keys`
+                : ''}
+              {lastResult.groqConfigured
+                ? ' · Groq fallback ready'
                 : ''}
             </p>
           ) : null}
@@ -100,7 +102,7 @@ export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
         title={
           apiKeyConfigured
             ? 'Ping Gemini Flash with the configured API key'
-            : 'Set GEMINI_API_KEY in Edge secrets first'
+            : 'Set GEMINI_API_KEYS or GEMINI_API_KEY in Edge secrets first'
         }
         className={cn(
           'inline-flex gap-2 justify-center items-center px-3 rounded-lg min-h-[44px] sm:px-4',

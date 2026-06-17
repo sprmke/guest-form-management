@@ -2,12 +2,14 @@ import * as React from 'react';
 import {
   Activity,
   Braces,
+  ChevronDown,
   Clock,
   Megaphone,
   MessageSquare,
   Send,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import {
   AdminSection,
   AdminSectionNavLayout,
@@ -18,6 +20,11 @@ import { ManilaReminderTimesEditor, sanitizeReminderSlots } from '@/features/adm
 import { TelegramPlaceholdersReference } from '@/features/admin/components/TelegramPlaceholdersReference';
 import { TelegramMarketingSettingsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TelegramTemplateEditor } from '@/features/admin/components/TelegramTemplateEditor';
@@ -382,74 +389,68 @@ export function TelegramMarketingSettingsCard() {
             icon={MessageSquare}
           >
             <div className="space-y-3 sm:space-y-4">
-              <TelegramTemplateEditor
-                id="tpl-daily-default"
-                label="Daily Default"
-                rows={3}
-                value={draft.dailyDefaultTemplate}
-                disabled={busy}
-                previewSampleSet="marketing"
-                validPlaceholderKeys={validPlaceholderKeys}
-                previewContext={marketingPreviewContext(draft.dailyDefaultTemplate)}
-                onChange={(v) =>
-                  setDraft((d) => (d ? { ...d, dailyDefaultTemplate: v } : d))
-                }
-                sendPreviewTitle="Send test with live calendar data."
-                onSendDraft={() =>
-                  runDraftPreview(draft.dailyDefaultTemplate, 'Daily default')
-                }
-              />
-              <TelegramTemplateEditor
-                id="tpl-daily-urgency"
-                label="Daily Urgency"
-                rows={3}
-                value={draft.dailyUrgencyTemplate}
-                disabled={busy}
-                previewSampleSet="marketing"
-                validPlaceholderKeys={validPlaceholderKeys}
-                previewContext={marketingPreviewContext(draft.dailyUrgencyTemplate)}
-                onChange={(v) =>
-                  setDraft((d) => (d ? { ...d, dailyUrgencyTemplate: v } : d))
-                }
-                sendPreviewTitle="Send test with live calendar data."
-                onSendDraft={() =>
-                  runDraftPreview(draft.dailyUrgencyTemplate, 'Daily urgency')
-                }
-              />
-              <TelegramTemplateEditor
-                id="tpl-new"
-                label="New Booking"
-                rows={3}
-                value={draft.newBookingTemplate}
-                disabled={busy}
-                previewSampleSet="marketing"
-                validPlaceholderKeys={validPlaceholderKeys}
-                previewContext={marketingPreviewContext(draft.newBookingTemplate)}
-                onChange={(v) =>
-                  setDraft((d) => (d ? { ...d, newBookingTemplate: v } : d))
-                }
-                sendPreviewTitle="Send test with live calendar data."
-                onSendDraft={() =>
-                  runDraftPreview(draft.newBookingTemplate, 'New booking')
-                }
-              />
-              <TelegramTemplateEditor
-                id="tpl-cancel"
-                label="Cancellation"
-                rows={3}
-                value={draft.cancellationTemplate}
-                disabled={busy}
-                previewSampleSet="marketing"
-                validPlaceholderKeys={validPlaceholderKeys}
-                previewContext={marketingPreviewContext(draft.cancellationTemplate)}
-                onChange={(v) =>
-                  setDraft((d) => (d ? { ...d, cancellationTemplate: v } : d))
-                }
-                sendPreviewTitle="Send test with live calendar data."
-                onSendDraft={() =>
-                  runDraftPreview(draft.cancellationTemplate, 'Cancellation')
-                }
-              />
+              {([
+                { id: 'tpl-daily-default', label: 'Daily Default', badge: 'Daily', templateKey: 'dailyDefaultTemplate' as const, previewLabel: 'Daily default' },
+                { id: 'tpl-daily-urgency', label: 'Daily Urgency', badge: 'Daily', templateKey: 'dailyUrgencyTemplate' as const, previewLabel: 'Daily urgency' },
+                { id: 'tpl-new', label: 'New Booking', badge: 'Instant', templateKey: 'newBookingTemplate' as const, previewLabel: 'New booking' },
+                { id: 'tpl-cancel', label: 'Cancellation', badge: 'Instant', templateKey: 'cancellationTemplate' as const, previewLabel: 'Cancellation' },
+              ] as const).map(({ id, label, badge, templateKey, previewLabel }) => (
+                <Collapsible
+                  key={id}
+                  defaultOpen
+                  className="group rounded-lg border border-border/50 bg-background/80"
+                >
+                  <CollapsibleTrigger
+                    type="button"
+                    className={cn(
+                      'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
+                      'text-foreground hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2',
+                    )}
+                    aria-controls={`${id}-panel`}
+                  >
+                    <span className="min-w-0 flex-1 text-sm font-semibold">{label}</span>
+                    <span
+                      className={cn(
+                        'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                        badge === 'Instant'
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-amber-500/15 text-amber-800 dark:text-amber-200',
+                      )}
+                    >
+                      {badge}
+                    </span>
+                    <ChevronDown
+                      className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180"
+                      aria-hidden
+                    />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div
+                      id={`${id}-panel`}
+                      className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4"
+                    >
+                      <TelegramTemplateEditor
+                        id={id}
+                        label={label}
+                        labelClassName="sr-only"
+                        rows={3}
+                        value={draft[templateKey]}
+                        disabled={busy}
+                        previewSampleSet="marketing"
+                        validPlaceholderKeys={validPlaceholderKeys}
+                        previewContext={marketingPreviewContext(draft[templateKey])}
+                        onChange={(v) =>
+                          setDraft((d) => (d ? { ...d, [templateKey]: v } : d))
+                        }
+                        sendPreviewTitle="Send test with live calendar data."
+                        onSendDraft={() =>
+                          runDraftPreview(draft[templateKey], previewLabel)
+                        }
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              ))}
             </div>
           </AdminSection>
 

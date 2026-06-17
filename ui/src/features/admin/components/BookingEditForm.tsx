@@ -30,7 +30,8 @@ import {
   Row2,
   Row3,
   Section,
-  inputClass,
+  CheckboxOption,
+  fieldControlClass,
 } from '@/features/admin/components/bookingEditLayout';
 import { BookingProgressFormsEdit } from '@/features/admin/components/BookingProgressFormsEdit';
 import {
@@ -55,6 +56,11 @@ import {
 } from '@/features/admin/components/ReceiptAiVerdictBadge';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
+import {
+  BOOKING_SOURCE_OPTIONS,
+  normalizeBookingSource,
+} from '@/features/guest-form/lib/bookingSourceFromSearchParams';
+import { NativeSelect } from '@/components/ui/native-select';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Button } from '@/components/ui/button';
 import {
@@ -68,6 +74,9 @@ import {
   type BookedDateRange,
 } from '@/utils/dates';
 
+const bookingEditDatePickerClass =
+  'h-11 border-border/50 bg-muted/40 font-medium hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-ring/30';
+
 type Props = {
   booking: BookingRow;
   onClose: () => void;
@@ -77,6 +86,7 @@ type Props = {
 };
 
 type FormValues = {
+  booking_source: string;
   guest_facebook_name: string;
   primary_guest_name: string;
   guest_email: string;
@@ -118,6 +128,7 @@ function bookingEditPayloadFromValues(
   values: FormValues,
 ): UpdateBookingPayload {
   return {
+    booking_source: normalizeBookingSource(values.booking_source),
     guest_facebook_name: values.guest_facebook_name,
     primary_guest_name: values.primary_guest_name,
     guest_email: values.guest_email,
@@ -209,6 +220,7 @@ export function BookingEditForm({
     formState: { isDirty },
   } = useForm<FormValues>({
     defaultValues: {
+      booking_source: normalizeBookingSource(booking.booking_source),
       guest_facebook_name: toStr(booking.guest_facebook_name),
       primary_guest_name: toStr(booking.primary_guest_name),
       guest_email: toStr(booking.guest_email),
@@ -327,7 +339,7 @@ export function BookingEditForm({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
 
       <CollapsibleGroup
@@ -430,6 +442,7 @@ export function BookingEditForm({
                 }}
                 minDate={new Date()}
                 placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                className={bookingEditDatePickerClass}
               />
             </Field>
             <Field label="Check-out Date (MM-DD-YYYY)" required>
@@ -465,6 +478,7 @@ export function BookingEditForm({
                     : new Date()
                 }
                 placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                className={bookingEditDatePickerClass}
               />
             </Field>
           </Row2>
@@ -517,14 +531,7 @@ export function BookingEditForm({
 
         {/* ── Parking ───────────────────────────────────────────────────────── */}
         <Section title="Parking">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              {...register('need_parking')}
-              className="text-blue-600 rounded border-border focus:ring-blue-500"
-            />
-            <span className="text-sm text-foreground">Needs parking</span>
-          </label>
+          <CheckboxOption label="Needs parking" {...register('need_parking')} />
           {watchParking && (
             <Row3>
               <Field label="Plate Number">
@@ -548,14 +555,7 @@ export function BookingEditForm({
 
         {/* ── Pet Information ───────────────────────────────────────────────── */}
         <Section title="Pet Information">
-          <label className="flex items-center gap-2.5 cursor-pointer">
-            <input
-              type="checkbox"
-              {...register('has_pets')}
-              className="text-blue-600 rounded border-border focus:ring-blue-500"
-            />
-            <span className="text-sm text-foreground">Has pets</span>
-          </label>
+          <CheckboxOption label="Has pets" {...register('has_pets')} />
           {watchPets && (
             <>
               <Row2>
@@ -588,6 +588,7 @@ export function BookingEditForm({
                       );
                     }}
                     placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                    className={bookingEditDatePickerClass}
                   />
                 </Field>
               </Row3>
@@ -597,16 +598,10 @@ export function BookingEditForm({
 
         {/* ── Surprise decor ───────────────────────────────────────────────── */}
         <Section title="Surprise decor">
-          <label className="flex items-center gap-2.5 min-h-[44px] cursor-pointer py-1">
-            <input
-              type="checkbox"
-              {...register('guest_requests_surprise_decor')}
-              className="text-blue-600 rounded border-border focus:ring-blue-500"
-            />
-            <span className="text-sm text-foreground">
-              Guest requested a surprise decor / room setup
-            </span>
-          </label>
+          <CheckboxOption
+            label="Guest requested a surprise decor / room setup"
+            {...register('guest_requests_surprise_decor')}
+          />
           {surpriseDecorChangedFromSaved && (
             <div
               role="status"
@@ -628,7 +623,7 @@ export function BookingEditForm({
         {/* ── Other ─────────────────────────────────────────────────────────── */}
         <Section title="How They Found Us">
           <Row2>
-            <Field label="Channel">
+            <Field label="Referral channel">
               <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
             </Field>
             <Field label="Details">
@@ -646,9 +641,23 @@ export function BookingEditForm({
               {...register('guest_special_requests')}
               rows={3}
               placeholder="Any special requests from the guest…"
-              className={inputClass}
+              className={fieldControlClass}
             />
           </Field>
+        </Section>
+
+        <Section title="Booking Source">
+          <Row2>
+            <Field label="Platform">
+              <NativeSelect {...register('booking_source', { required: true })}>
+                {BOOKING_SOURCE_OPTIONS.map((source) => (
+                  <option key={source} value={source}>
+                    {source}
+                  </option>
+                ))}
+              </NativeSelect>
+            </Field>
+          </Row2>
         </Section>
 
         {/* ── Documents ─────────────────────────────────────────────────────── */}
@@ -668,7 +677,7 @@ export function BookingEditForm({
       </CollapsibleGroup>
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end items-center pt-4 border-t border-separator">
+      <div className="flex items-center justify-end gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-3 sm:px-4">
         <button
           type="button"
           onClick={onClose}
@@ -744,14 +753,11 @@ function DocumentsSection({
   ];
 
   return (
-    <div className="p-4 space-y-3 rounded-xl border shadow-sm border-border/60 bg-background/80 dark:bg-muted/30">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Documents
-      </h3>
-      <p className="text-xs text-muted-foreground">
+    <Section title="Documents" className="space-y-4">
+      <p className="text-xs font-medium text-muted-foreground">
         Replacing a file uploads it immediately — no need to press Save.
       </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         {docs.map((doc) => (
           <DocumentReplacer
             key={doc.assetType}
@@ -761,7 +767,7 @@ function DocumentsSection({
           />
         ))}
       </div>
-    </div>
+    </Section>
   );
 }
 
@@ -833,8 +839,8 @@ function DocumentReplacer({
   const showImageThumb = docType === 'image' && !thumbFailed;
 
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-xl border border-border bg-muted/50">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="flex flex-col gap-2.5 rounded-xl border border-border/60 bg-muted/20 p-3.5 ring-1 ring-border/20">
+      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70">
         {label}
       </p>
 
@@ -843,7 +849,7 @@ function DocumentReplacer({
           type="button"
           aria-label={`Preview ${label}`}
           onClick={() => void onPreview(label, currentUrl)}
-          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border bg-card p-2 text-left transition-colors hover:border-blue-300"
+          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border/55 bg-card p-2 text-left transition-colors hover:border-primary/30 hover:bg-muted/20"
         >
           {showImageThumb ? (
             <div className="overflow-hidden w-14 h-14 rounded-md shrink-0 bg-muted">
@@ -869,7 +875,7 @@ function DocumentReplacer({
           </div>
         </button>
       ) : (
-        <div className="flex justify-center items-center h-16 text-xs rounded-lg border border-dashed bg-card border-border text-muted-foreground">
+        <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border/70 bg-card/80 text-xs text-muted-foreground">
           No file uploaded
         </div>
       )}
@@ -889,8 +895,8 @@ function DocumentReplacer({
         className={cn(
           'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
-            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
-            : 'bg-card text-muted-foreground ring-1 ring-border/50 hover:bg-muted/50 hover:text-foreground dark:ring-border/60',
+            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30'
+            : 'bg-card text-foreground ring-1 ring-border/50 hover:bg-muted/40 hover:ring-primary/20 dark:ring-border/60',
           isLoading && 'opacity-60 cursor-not-allowed',
         )}
       >

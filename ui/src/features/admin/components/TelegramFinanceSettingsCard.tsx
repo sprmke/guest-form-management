@@ -1,7 +1,6 @@
 import * as React from 'react';
-import { Bell, Wifi } from 'lucide-react';
+import { Wifi } from 'lucide-react';
 import { toast } from 'sonner';
-import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { TelegramTemplateEditor } from '@/features/admin/components/TelegramTemplateEditor';
 import { buildValidPlaceholderKeySet } from '@/features/admin/lib/telegramPlaceholderGroups';
 import { Button } from '@/components/ui/button';
@@ -59,22 +58,13 @@ export function TelegramFinanceSettingsCard() {
   }
 
   return (
-    <div className="space-y-4" aria-labelledby="finance-telegram-heading">
-      <AdminPageHeader
-        id="finance-telegram-heading"
-        variant="compact"
-        sticky
-        title="Finance Telegram reminders"
-        subtitle="Payment-due alerts for property expenses and income."
-        icon={Bell}
-      />
-
+    <div className="space-y-4 rounded-xl border border-separator bg-card px-3 py-4 sm:px-4" aria-labelledby="finance-telegram-heading">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <Button
             type="button"
             variant="outline"
             disabled={busy}
-            className="min-h-[44px] w-full gap-2 sm:w-auto"
+            className="min-h-[44px] gap-2 sm:w-auto"
             onClick={() =>
               testSend.mutate(
                 { action: 'verify_finance_telegram_env' },
@@ -95,40 +85,6 @@ export function TelegramFinanceSettingsCard() {
           >
             <Wifi className="size-4 shrink-0" aria-hidden />
             Test connection
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy}
-            className="min-h-[44px] w-full sm:w-auto"
-            onClick={() =>
-              testSend.mutate(
-                { action: 'send_test_due_reminders' },
-                {
-                  onSuccess: (j) => {
-                    const r = j.result as
-                      | { sent?: number; matched?: number; skipped?: boolean }
-                      | undefined;
-                    if (r?.skipped) {
-                      toast.message('Reminders are off');
-                      return;
-                    }
-                    const sent = r?.sent ?? 0;
-                    if (sent === 0) {
-                      toast.message('Nothing to send right now');
-                      return;
-                    }
-                    toast.success(
-                      sent === 1 ? 'Sent 1 reminder' : `Sent ${sent} reminders`,
-                    );
-                  },
-                  onError: (e) =>
-                    toast.error(friendlyToastError(e, 'Could not send reminders')),
-                },
-              )
-            }
-          >
-            Send due reminders now
           </Button>
         </div>
 

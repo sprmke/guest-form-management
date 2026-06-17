@@ -2,6 +2,7 @@ import * as React from 'react';
 import {
   Activity,
   Braces,
+  ChevronDown,
   Clock,
   HardHat,
   MessageSquare,
@@ -19,6 +20,11 @@ import { ManilaTimeField, formatManilaTimeLabel } from '@/features/admin/compone
 import { TelegramPlaceholdersReference } from '@/features/admin/components/TelegramPlaceholdersReference';
 import { TelegramStaffSettingsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { TelegramTemplateEditor } from '@/features/admin/components/TelegramTemplateEditor';
 import { buildValidPlaceholderKeySet } from '@/features/admin/lib/telegramPlaceholderGroups';
 import {
@@ -331,40 +337,59 @@ export function TelegramStaffSettingsCard() {
                 const templateValue = String(draft[templateKey] ?? '');
 
                 return (
-                  <div
+                  <Collapsible
                     key={id}
-                    className="space-y-3 rounded-lg border border-border/70 bg-background/60 p-3 sm:p-4"
+                    defaultOpen
+                    className="group rounded-lg border border-border/50 bg-background/80"
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">{label}</p>
+                    <CollapsibleTrigger
+                      type="button"
+                      className={cn(
+                        'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
+                        'text-foreground hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2',
+                      )}
+                      aria-controls={`staff-${id}-panel`}
+                    >
+                      <span className="min-w-0 flex-1 text-sm font-semibold">{label}</span>
                       {meta ? <ScenarioBadge type={meta.type} /> : null}
-                    </div>
-                    {meta && (
-                      <p className="text-xs text-muted-foreground leading-snug rounded-md bg-muted/30 px-2.5 py-2">
-                        {meta.trigger}
-                      </p>
-                    )}
-                    <TelegramTemplateEditor
-                      id={`staff-template-${id}`}
-                      label={label}
-                      labelClassName="sr-only"
-                      value={templateValue}
-                      disabled={busy}
-                      rows={id === 'daily_summary' ? 14 : 10}
-                      minHeightClassName="min-h-[160px]"
-                      mono
-                      previewSampleSet="staff"
-                      validPlaceholderKeys={validPlaceholderKeys}
-                      previewContext={{ bot: 'staff', scenario }}
-                      sendPreviewTitle="Send test with live booking data."
-                      onChange={(v) =>
-                        setDraft((d) => (d ? { ...d, [templateKey]: v } : d))
-                      }
-                      onSendDraft={() =>
-                        onSendDraftPreview(scenario, templateValue)
-                      }
-                    />
-                  </div>
+                      <ChevronDown
+                        className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180"
+                        aria-hidden
+                      />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div
+                        id={`staff-${id}-panel`}
+                        className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4"
+                      >
+                        {meta && (
+                          <p className="text-xs text-muted-foreground leading-snug rounded-md bg-muted/30 px-2.5 py-2">
+                            {meta.trigger}
+                          </p>
+                        )}
+                        <TelegramTemplateEditor
+                          id={`staff-template-${id}`}
+                          label={label}
+                          labelClassName="sr-only"
+                          value={templateValue}
+                          disabled={busy}
+                          rows={id === 'daily_summary' ? 14 : 10}
+                          minHeightClassName="min-h-[160px]"
+                          mono
+                          previewSampleSet="staff"
+                          validPlaceholderKeys={validPlaceholderKeys}
+                          previewContext={{ bot: 'staff', scenario }}
+                          sendPreviewTitle="Send test with live booking data."
+                          onChange={(v) =>
+                            setDraft((d) => (d ? { ...d, [templateKey]: v } : d))
+                          }
+                          onSendDraft={() =>
+                            onSendDraftPreview(scenario, templateValue)
+                          }
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
                 );
               })}
             </div>

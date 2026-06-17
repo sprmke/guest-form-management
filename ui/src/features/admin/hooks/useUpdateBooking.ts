@@ -150,6 +150,7 @@ export type UpdateBookingPayload = {
   pet_vaccination_date?: string | null;
 
   // Other
+  booking_source?: string;
   find_us?: string | null;
   find_us_details?: string | null;
   guest_special_requests?: string | null;

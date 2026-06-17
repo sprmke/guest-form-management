@@ -398,7 +398,9 @@ Run in the Supabase Dashboard SQL editor (or `psql`). After the guest submits th
 - **`TELEGRAM_ADMIN_BOT_TOKEN`** _(optional)_ — Bot token for the admin operations Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
 - **`TELEGRAM_ADMIN_CHAT_ID`** — Numeric Telegram chat id for the admin ops group (often negative for supergroups). Required for operations alerts.
 - **`TELEGRAM_ADMIN_CRON_SECRET`** _(optional)_ — When set, `telegram-admin-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`GEMINI_API_KEY`** _(optional)_ — Google AI Studio API key for Gemini Flash vision receipt validation (`submit-form` downpayment, `upload-booking-asset` for `payment_receipt`, `guest_balance_payment_receipt`, `parking_payment_receipt`). When unset, validation is skipped (`verdict: skipped`) and uploads still succeed. See **`docs/reference/ai-payment-receipt-validation.md`**.
+- **`GEMINI_API_KEYS`** _(optional)_ — Comma-separated Google AI Studio API keys for Gemini Flash vision document validation. Keys must come from **different Google Cloud projects** (same-project keys share quota). The service round-robins across keys and skips exhausted ones (429). When unset, falls back to single `GEMINI_API_KEY`. See **`docs/reference/ai-payment-receipt-validation.md`**.
+- **`GEMINI_API_KEY`** _(optional, legacy)_ — Single Gemini key fallback. Used only when `GEMINI_API_KEYS` is not set.
+- **`GROQ_API_KEY`** _(optional)_ — Groq free-tier API key (Llama 4 Scout vision model). Acts as **fallback** when all Gemini keys are rate-limited or unavailable. Sign up free at `https://console.groq.com`. When unset and all Gemini keys fail, validation returns `aiModelError`.
 - Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
 
 **UI (`ui/.env` / Vercel):** `VITE_SUPABASE_URL`, `VITE_API_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_NODE_ENV`, `VITE_ADMIN_ALLOWED_EMAILS` (UX gate only). Local only: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` for GoTrue sign-in.

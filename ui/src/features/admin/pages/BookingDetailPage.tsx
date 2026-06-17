@@ -263,17 +263,12 @@ export function BookingDetailPage() {
                   />
 
                   {editMode ? (
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
-                      <h2 className="mb-4 text-sm font-bold text-foreground">
-                        Edit Booking Details
-                      </h2>
-                      <BookingEditForm
-                        booking={booking}
-                        onClose={() => setEditMode(false)}
-                        onSaved={() => setEditMode(false)}
-                        onPreview={handlePreview}
-                      />
-                    </div>
+                    <BookingEditForm
+                      booking={booking}
+                      onClose={() => setEditMode(false)}
+                      onSaved={() => setEditMode(false)}
+                      onPreview={handlePreview}
+                    />
                   ) : (
                     <>
                       <GuestInfoCard

@@ -351,7 +351,7 @@ export async function renderFinanceDraftPreview(
     .select("*")
     .eq("telegram_reminder_enabled", true)
     .is("paid_at", null)
-    .order("due_date", { ascending: true })
+    .order("telegram_due_date", { ascending: true })
     .limit(50);
 
   if (error) return { error: error.message };

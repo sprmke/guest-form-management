@@ -18,6 +18,7 @@ export type AppSettingsSecretsStatus = {
   gmailEncryptionKeyConfigured: boolean;
   gmailWebClientConfigured: boolean;
   geminiApiKeyConfigured: boolean;
+  groqApiKeyConfigured: boolean;
 };
 
 export type AppSettingsDto = {

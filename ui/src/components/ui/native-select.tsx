@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 /** Matches booking edit inputs; hides the OS chevron and centers a custom icon. */
 export const nativeSelectClassName =
-  'h-10 w-full appearance-none rounded-lg border border-input bg-background py-2 pl-3 pr-10 text-sm text-foreground transition-colors focus:border-ring focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50';
+  'h-11 w-full appearance-none rounded-lg border border-border/50 bg-muted/40 py-2 pl-4 pr-10 text-sm font-medium text-foreground ring-offset-background transition-colors focus:border-primary/40 focus:bg-background focus:outline-none focus:ring-2 focus:ring-ring/30 disabled:cursor-not-allowed disabled:opacity-50 hover:border-primary/25';
 
 export const NativeSelect = React.forwardRef<
   HTMLSelectElement,

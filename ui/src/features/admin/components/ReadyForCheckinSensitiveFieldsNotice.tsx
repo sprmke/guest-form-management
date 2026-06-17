@@ -33,9 +33,8 @@ export function ReadyForCheckinSensitiveFieldsNotice({
         aria-hidden
       />
       <p className="min-w-0 text-[13px] leading-snug text-amber-950 dark:text-amber-100 sm:text-sm">
-        Saving returns this booking to{' '}
-        <span className="font-semibold">Pending Review</span>. You changed fields
-        that need re-approval.
+        You changed fields that need re-approval. Saving returns this booking to{' '}
+        <span className="font-semibold">Pending Review</span> status.
       </p>
     </div>
   );

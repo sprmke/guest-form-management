@@ -296,7 +296,7 @@ export function TelegramTemplateEditor({
             {previewFooter ? (
               <p
                 className={cn(
-                  'text-caption text-muted-foreground',
+                  'text-caption text-xs text-muted-foreground',
                   livePreview.isError &&
                     previewContext &&
                     !previewSampleSet &&

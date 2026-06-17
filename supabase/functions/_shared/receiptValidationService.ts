@@ -1,6 +1,12 @@
 /**
- * AI document validation via Google Gemini Flash (vision).
- * Payment receipts and guest valid ID. Non-blocking when GEMINI_API_KEY is missing.
+ * AI document validation via Google Gemini Flash (vision) with multi-key rotation
+ * and Groq (Llama 4 Scout) fallback. Non-blocking when no API keys are configured.
+ *
+ * Provider chain:
+ *  1. Gemini keys (round-robin from GEMINI_API_KEYS or single GEMINI_API_KEY)
+ *  2. Groq Llama 4 Scout (GROQ_API_KEY) — fallback when all Gemini keys fail
+ *
+ * Rate-limit (429) or server errors on one key immediately try the next.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
@@ -21,11 +27,39 @@ export type ReceiptValidationResult = {
   has_reference: boolean;
   /** Gemini/network failure — do not persist verdict; surface to admin for retry. */
   aiModelError?: string;
+  /** Which provider produced the result (for logging/debugging). */
+  provider?: 'gemini' | 'groq';
 };
 
 export const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// --- Multi-key rotation state (in-memory, per isolate) ---
+
+let geminiKeyIndex = 0;
+
+function getGeminiApiKeys(): string[] {
+  const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
+  if (multi) {
+    return multi.split(',').map((k) => k.trim()).filter(Boolean);
+  }
+  const single = Deno.env.get('GEMINI_API_KEY')?.trim();
+  return single ? [single] : [];
+}
+
+function getGroqApiKey(): string | null {
+  return Deno.env.get('GROQ_API_KEY')?.trim() || null;
+}
+
+function shouldTryNextProvider(status: number): boolean {
+  return status === 429 || status === 403 || status >= 500;
+}
+
+// --- Verify integration ---
 
 export type GeminiIntegrationVerifyResult = {
   apiKeyConfigured: boolean;
@@ -34,24 +68,30 @@ export type GeminiIntegrationVerifyResult = {
   latencyMs?: number;
   statusCode?: number;
   error?: string;
+  geminiKeysCount?: number;
+  groqConfigured?: boolean;
 };
 
-/** Admin-only: ping Gemini with a minimal text request using the same model as receipt validation. */
+/** Admin-only: ping Gemini with a minimal text request + report Groq availability. */
 export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerifyResult> {
-  const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
+  const keys = getGeminiApiKeys();
+  const groqKey = getGroqApiKey();
   const base: GeminiIntegrationVerifyResult = {
-    apiKeyConfigured: !!apiKey,
+    apiKeyConfigured: keys.length > 0,
     model: GEMINI_MODEL,
     ok: false,
+    geminiKeysCount: keys.length,
+    groqConfigured: !!groqKey,
   };
 
-  if (!apiKey) {
+  if (keys.length === 0) {
     return {
       ...base,
-      error: 'GEMINI_API_KEY is not set in Edge secrets',
+      error: 'No Gemini API keys configured (set GEMINI_API_KEYS or GEMINI_API_KEY)',
     };
   }
 
+  const apiKey = keys[0];
   const started = Date.now();
   try {
     const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
@@ -234,25 +274,15 @@ function normalizeVisionMimeType(mimeType: string, path?: string): string {
   return 'image/jpeg';
 }
 
-async function callGeminiVision(
+/** Try a single Gemini key. Returns result or null if rate-limited/server-error (caller should try next). */
+async function tryGeminiKey(
+  apiKey: string,
   prompt: string,
-  imageBytes: Uint8Array,
-  mimeType: string,
+  base64: string,
+  safeMime: string,
   logTag: string,
   defaultSummary: string,
-): Promise<ReceiptValidationResult> {
-  const apiKey = Deno.env.get('GEMINI_API_KEY')?.trim();
-  if (!apiKey) {
-    console.warn(`[${logTag}] GEMINI_API_KEY not set — skipping`);
-    return skipped();
-  }
-  if (!imageBytes?.length) {
-    return skipped('No image data to validate');
-  }
-
-  const safeMime = normalizeVisionMimeType(mimeType);
-  const base64 = bytesToBase64(imageBytes);
-
+): Promise<ReceiptValidationResult | null> {
   try {
     const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
@@ -261,12 +291,7 @@ async function callGeminiVision(
         contents: [{
           parts: [
             { text: prompt },
-            {
-              inline_data: {
-                mime_type: safeMime,
-                data: base64,
-              },
-            },
+            { inline_data: { mime_type: safeMime, data: base64 } },
           ],
         }],
         generationConfig: {
@@ -278,6 +303,10 @@ async function callGeminiVision(
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
+      if (shouldTryNextProvider(res.status)) {
+        console.warn(`[${logTag}] Gemini key exhausted/error (${res.status}), trying next...`);
+        return null; // signal: try next key/provider
+      }
       const detail = parseGeminiApiError(res.status, errText);
       console.error(`[${logTag}] Gemini API error:`, res.status, errText);
       return aiModelFailure('AI validation failed', detail);
@@ -299,14 +328,147 @@ async function callGeminiVision(
     }
 
     console.log(
-      `[${logTag}] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
+      `[${logTag}] [gemini] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
     );
-    return parsed;
+    return { ...parsed, provider: 'gemini' };
   } catch (err) {
-    console.error(`[${logTag}] Unexpected error:`, err);
-    const detail = err instanceof Error ? err.message : String(err);
-    return aiModelFailure('AI validation failed', detail);
+    console.warn(`[${logTag}] Gemini key threw (network?):`, err instanceof Error ? err.message : err);
+    return null; // treat network errors as transient → try next
   }
+}
+
+const GROQ_SUPPORTED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+]);
+
+/** Groq (Llama 4 Scout) fallback — OpenAI-compatible vision API. */
+async function tryGroq(
+  groqKey: string,
+  prompt: string,
+  base64: string,
+  safeMime: string,
+  logTag: string,
+  defaultSummary: string,
+): Promise<ReceiptValidationResult | null> {
+  if (!GROQ_SUPPORTED_MIME_TYPES.has(safeMime)) {
+    console.warn(`[${logTag}] Groq skipped — unsupported MIME type: ${safeMime}`);
+    return null;
+  }
+
+  try {
+    const res = await fetch(GROQ_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey}`,
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: { url: `data:${safeMime};base64,${base64}` },
+            },
+          ],
+        }],
+        temperature: 0.1,
+        max_tokens: 512,
+        response_format: { type: 'json_object' },
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      if (shouldTryNextProvider(res.status)) {
+        console.warn(`[${logTag}] Groq rate-limited/error (${res.status})`);
+        return null;
+      }
+      console.error(`[${logTag}] Groq API error:`, res.status, errText);
+      return aiModelFailure('AI validation failed (fallback)', `Groq returned ${res.status}`);
+    }
+
+    const body = await res.json() as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const text = body.choices?.[0]?.message?.content ?? '';
+    const parsed = parseGeminiJson(text, defaultSummary);
+    if (!parsed) {
+      console.warn(`[${logTag}] Could not parse Groq response:`, text.slice(0, 200));
+      return aiModelFailure(
+        'AI validation returned unreadable result',
+        'Fallback AI model returned a response we could not parse.',
+      );
+    }
+
+    console.log(
+      `[${logTag}] [groq] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
+    );
+    return { ...parsed, provider: 'groq' };
+  } catch (err) {
+    console.error(`[${logTag}] Groq unexpected error:`, err);
+    return null;
+  }
+}
+
+/**
+ * Multi-provider vision validation:
+ *  1. Round-robin through Gemini keys (skip 429/5xx → next key)
+ *  2. Fallback to Groq if all Gemini keys are exhausted
+ *  3. Return aiModelError only when ALL providers fail
+ */
+async function callGeminiVision(
+  prompt: string,
+  imageBytes: Uint8Array,
+  mimeType: string,
+  logTag: string,
+  defaultSummary: string,
+): Promise<ReceiptValidationResult> {
+  const geminiKeys = getGeminiApiKeys();
+  const groqKey = getGroqApiKey();
+
+  if (geminiKeys.length === 0 && !groqKey) {
+    console.warn(`[${logTag}] No AI API keys configured — skipping`);
+    return skipped();
+  }
+  if (!imageBytes?.length) {
+    return skipped('No image data to validate');
+  }
+
+  const safeMime = normalizeVisionMimeType(mimeType);
+  const base64 = bytesToBase64(imageBytes);
+
+  // Layer 1: Try all Gemini keys (round-robin starting from last successful index)
+  if (geminiKeys.length > 0) {
+    const startIdx = geminiKeyIndex % geminiKeys.length;
+    for (let i = 0; i < geminiKeys.length; i++) {
+      const idx = (startIdx + i) % geminiKeys.length;
+      const result = await tryGeminiKey(
+        geminiKeys[idx], prompt, base64, safeMime, logTag, defaultSummary,
+      );
+      if (result) {
+        geminiKeyIndex = (idx + 1) % geminiKeys.length; // advance for next call
+        return result;
+      }
+    }
+    console.warn(`[${logTag}] All ${geminiKeys.length} Gemini key(s) failed, trying Groq fallback...`);
+  }
+
+  // Layer 2: Groq fallback
+  if (groqKey) {
+    const result = await tryGroq(groqKey, prompt, base64, safeMime, logTag, defaultSummary);
+    if (result) return result;
+  }
+
+  // All providers exhausted
+  const providers = [];
+  if (geminiKeys.length > 0) providers.push(`Gemini (${geminiKeys.length} key${geminiKeys.length > 1 ? 's' : ''})`);
+  if (groqKey) providers.push('Groq');
+  const detail = `All AI providers exhausted: ${providers.join(', ')}. Try again later.`;
+  console.error(`[${logTag}] ${detail}`);
+  return aiModelFailure('AI validation temporarily unavailable', detail);
 }
 
 export async function validateReceiptImage(

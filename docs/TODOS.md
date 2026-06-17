@@ -190,8 +190,10 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Add quick edit on bookings page
 - Support free booking (payment related steps/action not required, etc)
 - Triple check security measures on our app
-- Find other AI provider when we encounter issues with Gemini AI
+- ✅ **AI validation multi-provider fallback** — multi-key Gemini rotation (`GEMINI_API_KEYS`, comma-separated from different Google Cloud projects) + Groq Llama 4 Scout fallback (`GROQ_API_KEY`). Round-robin across Gemini keys; 429/5xx on one key skips to next; when all Gemini keys exhausted, falls back to Groq free tier. Same prompts + JSON schema across both providers.
 - ✅ Implement AI validations to valid id
 - When the booking is from Airbnb, we need to hide the payment step and review other flows
 - Validate the receipt amount based on the type. Meaning, validate down payment receipt and it should match the 1500 min amount. Apply for others.
 - Improve valid id validation to match the primary guest name, facebook name or additional guest names.
+- When we receive we need to reconnect to our gmail, we should automatically display a modal with reconnect gmail button
+- Instead of having 2 separate sections for GAF and Pet Details, we can use tab for the preview and use one form

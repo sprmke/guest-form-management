@@ -171,7 +171,7 @@ function ScenarioCollapsible({
 }) {
   return (
     <Collapsible
-      defaultOpen={false}
+      defaultOpen
       className="group rounded-lg border border-border/50 bg-background/80"
     >
       <CollapsibleTrigger
