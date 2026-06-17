@@ -487,15 +487,23 @@ export type StaffDraftPreviewResult = {
   error?: string;
 };
 
-/** Admin preview: fill placeholders from a qualifying same-day check-in booking. */
-export async function sendStaffSameDayCheckinDraftPreview(
+export type StaffDraftRenderResult = {
+  renderedText?: string;
+  placeholders?: Record<string, string>;
+  previewGuestName?: string;
+  todayBookingCount?: number;
+  error?: string;
+};
+
+/** In-app preview: fill placeholders from a qualifying same-day check-in booking. */
+export async function renderStaffSameDayCheckinDraftPreview(
   template: string,
-): Promise<StaffDraftPreviewResult> {
+): Promise<StaffDraftRenderResult> {
   const trimmed = template.trim();
-  if (!trimmed) return { sent: false, error: 'empty_message' };
+  if (!trimmed) return { error: 'empty_message' };
 
   const settings = await loadStaffSettings();
-  if (!settings) return { sent: false, error: 'no_settings_row' };
+  if (!settings) return { error: 'no_settings_row' };
 
   const todayYmd = manilaTodayYmd();
   const todayBookings = await queryTodayBookings(todayYmd);
@@ -505,37 +513,35 @@ export async function sendStaffSameDayCheckinDraftPreview(
   );
   if (!booking) {
     return {
-      sent: false,
       error:
         `No same-day check-in booking qualifies for preview (needs check-in today after ${formatStaffManilaTimeLabel(cutoff)} Manila, or use test send with force).`,
     };
   }
 
-  const filled = applyPlaceholders(
+  const placeholders = buildBookingPlaceholders(booking);
+  const renderedText = applyPlaceholders(
     sanitizeStaffDailySummaryTemplate(trimmed),
-    buildBookingPlaceholders(booking),
+    placeholders,
   );
-  const r = await sendStaffAdminPreview(filled);
-  if (!r.ok) return { sent: false, error: r.error ?? 'send_failed' };
-
   return {
-    sent: true,
-    messageCharCount: filled.length,
+    renderedText,
+    placeholders,
     previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
     todayBookingCount: todayBookings.length,
   };
 }
 
-/** Admin preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
-export async function sendStaffDraftPreview(template: string): Promise<StaffDraftPreviewResult> {
+/** In-app preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
+export async function renderStaffDraftPreview(
+  template: string,
+): Promise<StaffDraftRenderResult> {
   const trimmed = template.trim();
-  if (!trimmed) return { sent: false, error: 'empty_message' };
+  if (!trimmed) return { error: 'empty_message' };
 
   const todayYmd = manilaTodayYmd();
   const todayBookings = await queryTodayBookings(todayYmd);
   if (todayBookings.length === 0) {
     return {
-      sent: false,
       error:
         'No active bookings for today. Preview needs at least one in-house or check-in-today booking (same data source as the daily cron).',
     };
@@ -544,25 +550,62 @@ export async function sendStaffDraftPreview(template: string): Promise<StaffDraf
   const nextBookings = await queryNextDaysBookings(todayYmd, 3);
   const nextBookingsText = buildNextBookingsText(nextBookings);
   const booking = todayBookings[0]!;
-  const vars = buildBookingPlaceholders(booking);
-  vars.next_bookings = nextBookingsText;
+  const placeholders = buildBookingPlaceholders(booking);
+  placeholders.next_bookings = nextBookingsText;
 
-  const filled = applyPlaceholders(sanitizeStaffDailySummaryTemplate(trimmed), vars);
-  const unresolved = filled.match(/\{\{[^}]+\}\}/g);
+  const renderedText = applyPlaceholders(
+    sanitizeStaffDailySummaryTemplate(trimmed),
+    placeholders,
+  );
+  const unresolved = renderedText.match(/\{\{[^}]+\}\}/g);
   if (unresolved?.length) {
     console.warn('[telegram-staff] draft preview unresolved:', unresolved.join(', '));
   }
 
-  const r = await sendStaffAdminPreview(filled);
+  return {
+    renderedText,
+    placeholders,
+    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
+    todayBookingCount: todayBookings.length,
+  };
+}
+
+/** Admin preview: fill placeholders from a qualifying same-day check-in booking. */
+export async function sendStaffSameDayCheckinDraftPreview(
+  template: string,
+): Promise<StaffDraftPreviewResult> {
+  const rendered = await renderStaffSameDayCheckinDraftPreview(template);
+  if (rendered.error || !rendered.renderedText) {
+    return { sent: false, error: rendered.error ?? 'empty_message' };
+  }
+  const r = await sendStaffAdminPreview(rendered.renderedText);
+  if (!r.ok) return { sent: false, error: r.error ?? 'send_failed' };
+
+  return {
+    sent: true,
+    messageCharCount: rendered.renderedText.length,
+    previewGuestName: rendered.previewGuestName,
+    todayBookingCount: rendered.todayBookingCount,
+  };
+}
+
+/** Admin preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
+export async function sendStaffDraftPreview(template: string): Promise<StaffDraftPreviewResult> {
+  const rendered = await renderStaffDraftPreview(template);
+  if (rendered.error || !rendered.renderedText) {
+    return { sent: false, error: rendered.error ?? 'empty_message' };
+  }
+
+  const r = await sendStaffAdminPreview(rendered.renderedText);
   if (!r.ok) {
     return { sent: false, error: r.error ?? 'send_failed' };
   }
 
   return {
     sent: true,
-    messageCharCount: filled.length,
-    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
-    todayBookingCount: todayBookings.length,
+    messageCharCount: rendered.renderedText.length,
+    previewGuestName: rendered.previewGuestName,
+    todayBookingCount: rendered.todayBookingCount,
   };
 }
 
@@ -735,36 +778,36 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
     dailySummaryTimeManila: slot,
     dailySummaryUtcCronPreview: `${utcM} ${utcH} * * *`,
     placeholdersReference: [
-      '{{check_in_date}} — check-in date (e.g. May 23, 2026)',
-      '{{check_out_date}} — check-out date (e.g. May 25, 2026)',
-      '{{check_in_time}} — check-in time (e.g. 2:00 PM)',
-      '{{check_out_time}} — check-out time (e.g. 11:00 AM)',
+      '{{check_in_date}} — check-in date',
+      '{{check_out_date}} — check-out date',
+      '{{check_in_time}} — check-in time',
+      '{{check_out_time}} — check-out time',
       '{{nights}} — number of nights',
       '{{pax}} — number of guests',
-      '{{primary_guest_name}} — primary guest full name',
-      '{{guest_phone}} — guest phone number',
-      '{{decor_status}} — "🎉 Yes" or "No" (surprise decor)',
-      '{{pet_status}} — "🐶 Yes" or "No"',
-      '{{has_decor}} — "Yes" or "No" (plain, for "Has Decor:" labels)',
-      '{{has_pets}} — "Yes" or "No" (plain, for "Has Pets:" labels)',
-      '{{decor_flag}} — "🎉 Has decor" when requested, else empty',
-      '{{pet_flag}} — "🐶 Has pets" when applicable, else empty',
-      '{{special_requests}} — guest special requests or "None"',
-      '{{total_guest_balance}} — total amount due from guest (₱ formatted)',
-      '{{next_bookings}} — next 3 days; only 🎉 decor + 🐶 pets flags (no parking)',
+      '{{primary_guest_name}} — primary guest name',
+      '{{guest_phone}} — guest phone',
+      '{{decor_status}} — decor: "🎉 Yes" or "No"',
+      '{{pet_status}} — pets: "🐶 Yes" or "No"',
+      '{{has_decor}} — plain "Yes" or "No" for decor labels',
+      '{{has_pets}} — plain "Yes" or "No" for pet labels',
+      '{{decor_flag}} — "🎉 Has decor" or empty',
+      '{{pet_flag}} — "🐶 Has pets" or empty',
+      '{{special_requests}} — guest requests or "None"',
+      '{{total_guest_balance}} — guest balance due (₱ formatted)',
+      '{{next_bookings}} — next 3 days (decor + pet flags only)',
     ],
     scenarios: [
       {
         id: 'daily_summary',
         label: 'Daily summary',
-        trigger: 'Scheduled once per day at the configured Manila time',
+        trigger: 'Once daily at the configured Manila time',
         type: 'scheduled',
       },
       {
         id: 'same_day_checkin',
         label: 'Same-day check-in alert',
         trigger:
-          `Instant once when a guest submits a booking checking in today at or after the daily summary time (${formatStaffManilaTimeLabel(slot)} Manila)`,
+          `Instant for same-day check-ins at or after ${formatStaffManilaTimeLabel(slot)} Manila`,
         type: 'event',
       },
     ],

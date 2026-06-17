@@ -850,17 +850,20 @@ export async function runAdminHourlyAlerts(opts?: {
   };
 }
 
-export async function sendAdminDraftPreview(
+export type AdminDraftRenderResult = {
+  renderedText?: string;
+  placeholders?: Record<string, string>;
+  previewGuestName?: string;
+  error?: string;
+};
+
+/** In-app preview: resolve placeholders from a matching booking without sending Telegram. */
+export async function renderAdminDraftPreview(
   template: string,
   scenario: AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
-): Promise<{
-  sent: boolean;
-  error?: string;
-  messageCharCount?: number;
-  previewGuestName?: string;
-}> {
+): Promise<AdminDraftRenderResult> {
   const trimmed = template.trim();
-  if (!trimmed) return { sent: false, error: 'empty_message' };
+  if (!trimmed) return { error: 'empty_message' };
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -875,7 +878,7 @@ export async function sendAdminDraftPreview(
     .limit(50);
 
   if (error) {
-    return { sent: false, error: error.message };
+    return { error: error.message };
   }
 
   const todayYmd = manilaTodayYmd();
@@ -896,19 +899,40 @@ export async function sendAdminDraftPreview(
 
   if (!booking) {
     return {
-      sent: false,
       error: `No booking matches scenario "${scenario}" for preview. Try to execute Run hourly cron.`,
     };
   }
 
-  const text = applyPlaceholders(trimmed, buildAdminBookingPlaceholders(booking));
-  const r = await sendAdminTelegramMessage(text);
+  const placeholders = buildAdminBookingPlaceholders(booking);
+  const renderedText = applyPlaceholders(trimmed, placeholders);
+  return {
+    renderedText,
+    placeholders,
+    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
+  };
+}
+
+export async function sendAdminDraftPreview(
+  template: string,
+  scenario: AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+): Promise<{
+  sent: boolean;
+  error?: string;
+  messageCharCount?: number;
+  previewGuestName?: string;
+}> {
+  const rendered = await renderAdminDraftPreview(template, scenario);
+  if (rendered.error || !rendered.renderedText) {
+    return { sent: false, error: rendered.error ?? 'empty_message' };
+  }
+
+  const r = await sendAdminTelegramMessage(rendered.renderedText);
   if (!r.ok) return { sent: false, error: r.error ?? 'send_failed' };
 
   return {
     sent: true,
-    messageCharCount: text.length,
-    previewGuestName: String(booking.primary_guest_name ?? 'Guest'),
+    messageCharCount: rendered.renderedText.length,
+    previewGuestName: rendered.previewGuestName,
   };
 }
 
@@ -999,20 +1023,20 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
         id: 'new_booking',
         label: 'New booking',
         trigger:
-          'Instant when a guest submits, then every hour while status is Pending Review (stops after Proceed to Pending Documents)',
+          'Instant on submit, then hourly while Pending Review',
         type: 'hourly',
       },
       {
         id: 'pending_docs',
         label: 'Pending documents on check-in day',
-        trigger: 'Every hour while check-in is today and GAF / parking / pet docs are incomplete',
+        trigger: 'Hourly on check-in day while GAF, parking, or pet docs wait',
         type: 'hourly',
       },
       {
         id: 'balance_receipt',
         label: 'Balance receipt needed',
         trigger:
-          'Every hour during the stay (check-in day after check-in time through check-out) until receipt uploaded',
+          'Hourly during stay until balance receipt is uploaded',
         type: 'hourly',
       },
       {
@@ -1024,7 +1048,7 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
       {
         id: 'sd_refund_pending',
         label: 'SD refund awaiting processing',
-        trigger: 'Every hour while status is Pending SD Refund and guest details are on file',
+        trigger: 'Hourly while Pending SD Refund with guest details on file',
         type: 'hourly',
       },
     ],

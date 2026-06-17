@@ -179,8 +179,23 @@ export async function prepareTelegramTemplateMessage(
   settings: TelegramMarketingSettings,
   opts?: { checkInYmd?: string; checkOutYmd?: string },
 ): Promise<string> {
-  const vars = await resolveTemplatePlaceholderVars(template, settings, opts);
-  return renderTelegramTemplate(template, vars);
+  const { renderedText } = await renderMarketingDraftPreview(template, settings, opts);
+  return renderedText;
+}
+
+/** In-app preview: resolve placeholders without sending Telegram. */
+export async function renderMarketingDraftPreview(
+  template: string,
+  settings: TelegramMarketingSettings,
+  opts?: { checkInYmd?: string; checkOutYmd?: string },
+): Promise<{ renderedText: string; placeholders: Record<string, string> }> {
+  const trimmed = template.trim().slice(0, 4000);
+  if (!trimmed) {
+    throw new TelegramTemplateError('text is required');
+  }
+  const placeholders = await resolveTemplatePlaceholderVars(trimmed, settings, opts);
+  const renderedText = renderTelegramTemplate(trimmed, placeholders);
+  return { renderedText, placeholders };
 }
 
 /**
@@ -650,10 +665,10 @@ export function serializeTelegramSettings(row: TelegramMarketingSettings) {
     newBookingTemplate: row.new_booking_template,
     cancellationTemplate: row.cancellation_template,
     placeholdersReference: [
-      '{{available_dates}} — human-readable list of free check-ins from the live booking calendar (urgency: next dates; new booking: same dates as {{dates_list}})',
-      '{{month_name}} — current calendar month name from the booking calendar',
-      '{{dates_list}} — free check-in day numbers for this month from the booking calendar',
-      '{{cancellation_dates}} — freed stay window from the cancellation check-in / check-out fields (not from the calendar)',
+      '{{available_dates}} — free check-in dates from the live calendar',
+      '{{month_name}} — current month name from the booking calendar',
+      '{{dates_list}} — free check-in day numbers this month',
+      '{{cancellation_dates}} — freed dates from the cancelled stay window',
     ],
   };
 }

@@ -300,14 +300,13 @@ export function shouldSendFinanceReminderNow(
   return ms - new Date(lastSentAt).getTime() >= minGap;
 }
 
-export function renderFinanceReminderMessage(
+export function buildFinanceReminderPlaceholders(
   row: Record<string, unknown>,
-  template: string,
   today: string,
-): string {
+): Record<string, string> {
   const due = effectiveDueDate(row);
   const daysUntil = daysBetweenIso(today, due);
-  const replacements: Record<string, string> = {
+  return {
     label: String(row.label ?? ""),
     amount: formatMoney(Number(row.amount ?? 0)),
     category: String(row.category ?? "—"),
@@ -317,11 +316,68 @@ export function renderFinanceReminderMessage(
     notes: String(row.notes ?? "").trim() || "—",
     kind: String(row.kind ?? ""),
   };
+}
+
+export function renderFinanceReminderMessage(
+  row: Record<string, unknown>,
+  template: string,
+  today: string,
+): string {
+  const replacements = buildFinanceReminderPlaceholders(row, today);
   let out = template;
   for (const [key, value] of Object.entries(replacements)) {
     out = out.replaceAll(`{{${key}}}`, value);
   }
   return out.trim().slice(0, 4096);
+}
+
+export type FinanceDraftRenderResult = {
+  renderedText?: string;
+  placeholders?: Record<string, string>;
+  error?: string;
+};
+
+/** In-app preview: resolve placeholders from an unpaid finance line item. */
+export async function renderFinanceDraftPreview(
+  template: string,
+): Promise<FinanceDraftRenderResult> {
+  const trimmed = sanitizeFinanceReminderTemplate(template);
+  if (!trimmed) return { error: "text is required" };
+
+  const today = manilaTodayYmd();
+  const supabase = getSupabase();
+  const { data: items, error } = await supabase
+    .from("finance_line_items")
+    .select("*")
+    .eq("telegram_reminder_enabled", true)
+    .is("paid_at", null)
+    .order("due_date", { ascending: true })
+    .limit(50);
+
+  if (error) return { error: error.message };
+
+  const rows = (items ?? []) as Record<string, unknown>[];
+  const row = rows.find((candidate) => {
+    const interval = normalizeFinanceReminderInterval(
+      candidate.telegram_reminder_interval,
+    );
+    const daysBefore = Math.max(
+      0,
+      Math.min(90, Number(candidate.telegram_days_before ?? 3)),
+    );
+    return isInReminderWindow(candidate, today, interval, daysBefore);
+  }) ?? rows[0];
+
+  if (!row) {
+    return {
+      error:
+        "No unpaid finance line item with Telegram reminders enabled for preview.",
+    };
+  }
+
+  const placeholders = buildFinanceReminderPlaceholders(row, today);
+  const renderedText = renderFinanceReminderMessage(row, trimmed, today);
+  return { renderedText, placeholders };
 }
 
 async function sendFinanceTelegramMessage(
@@ -438,14 +494,19 @@ export async function verifyFinanceTelegramEnv() {
 }
 
 export async function sendFinanceDraftPreview(text: string) {
-  const trimmed = sanitizeFinanceReminderTemplate(text);
-  if (!trimmed)
-    return { sent: false, error: "text is required", messageCharCount: 0 };
-  const r = await sendFinanceTelegramMessage(trimmed.slice(0, 4096));
+  const rendered = await renderFinanceDraftPreview(text);
+  if (rendered.error || !rendered.renderedText) {
+    return {
+      sent: false,
+      error: rendered.error ?? "text is required",
+      messageCharCount: 0,
+    };
+  }
+  const r = await sendFinanceTelegramMessage(rendered.renderedText);
   return {
     sent: r.ok,
     error: r.error,
-    messageCharCount: trimmed.length,
+    messageCharCount: rendered.renderedText.length,
   };
 }
 
