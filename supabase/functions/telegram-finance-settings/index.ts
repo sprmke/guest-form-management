@@ -9,6 +9,7 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   ensureFinanceSettingsRow,
   parseFinanceSlot,
+  renderFinanceDraftPreview,
   runFinanceDueReminders,
   sanitizeFinanceReminderTemplate,
   sendFinanceDraftPreview,
@@ -136,11 +137,39 @@ serve(async (req) => {
         );
       }
 
+      if (action === 'render_draft_preview') {
+        const text = typeof body.text === 'string' ? body.text : '';
+        if (!text.trim()) {
+          return new Response(JSON.stringify({ success: false, error: 'text is required' }), {
+            status: 400,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          });
+        }
+        const rendered = await renderFinanceDraftPreview(text.slice(0, 8000));
+        if (rendered.error || !rendered.renderedText) {
+          return new Response(
+            JSON.stringify({ success: false, error: rendered.error ?? 'render_failed' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            renderedText: rendered.renderedText,
+            placeholders: rendered.placeholders,
+          }),
+          { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        );
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
           error:
-            `Unknown action: ${action || '(missing)'}. Use verify_finance_telegram_env | send_test_due_reminders | send_draft_preview`,
+            `Unknown action: ${action || '(missing)'}. Use verify_finance_telegram_env | send_test_due_reminders | send_draft_preview | render_draft_preview`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );

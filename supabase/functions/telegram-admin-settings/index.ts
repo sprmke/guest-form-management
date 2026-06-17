@@ -9,9 +9,7 @@ import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   ensureAdminSettingsRow,
-  notifyTelegramAdminNewBooking,
-  notifyTelegramAdminSdFormSubmitted,
-  runAdminHourlyAlerts,
+  renderAdminDraftPreview,
   sendAdminDraftPreview,
   serializeAdminSettings,
   verifyAdminTelegramEnv,
@@ -128,44 +126,6 @@ serve(async (req) => {
         });
       }
 
-      if (action === 'run_hourly_cron_now') {
-        const result = await runAdminHourlyAlerts({ force: true });
-        return new Response(JSON.stringify({ success: true, result }), {
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (action === 'send_test_new_booking') {
-        const supabase = DatabaseService;
-        const row = await supabase.getBookingById(String(body.bookingId ?? '').trim());
-        if (!row) {
-          return new Response(JSON.stringify({ success: false, error: 'bookingId not found' }), {
-            status: 404,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          });
-        }
-        const result = await notifyTelegramAdminNewBooking(row, { force: true });
-        return new Response(JSON.stringify({ success: result.sent, result }), {
-          status: result.sent ? 200 : 400,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (action === 'send_test_sd_form_submitted') {
-        const row = await DatabaseService.getBookingById(String(body.bookingId ?? '').trim());
-        if (!row) {
-          return new Response(JSON.stringify({ success: false, error: 'bookingId not found' }), {
-            status: 404,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          });
-        }
-        const result = await notifyTelegramAdminSdFormSubmitted(row, { force: true });
-        return new Response(JSON.stringify({ success: result.sent, result }), {
-          status: result.sent ? 200 : 400,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
       if (action === 'send_draft_preview') {
         const text = typeof body.text === 'string' ? body.text : '';
         const scenario = typeof body.scenario === 'string' ? body.scenario : '';
@@ -204,11 +164,54 @@ serve(async (req) => {
         );
       }
 
+      if (action === 'render_draft_preview') {
+        const text = typeof body.text === 'string' ? body.text : '';
+        const scenario = typeof body.scenario === 'string' ? body.scenario : '';
+        const allowed = [
+          'new_booking',
+          'pending_docs',
+          'balance_receipt',
+          'sd_form_submitted',
+          'sd_refund_pending',
+        ];
+        if (!text.trim() || !allowed.includes(scenario)) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'text and valid scenario are required' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            },
+          );
+        }
+        const rendered = await renderAdminDraftPreview(
+          text.slice(0, 8000),
+          scenario as AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+        );
+        if (rendered.error || !rendered.renderedText) {
+          return new Response(
+            JSON.stringify({ success: false, error: rendered.error ?? 'render_failed' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            renderedText: rendered.renderedText,
+            placeholders: rendered.placeholders,
+            previewGuestName: rendered.previewGuestName,
+          }),
+          { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        );
+      }
+
       return new Response(
         JSON.stringify({
           success: false,
           error:
-            `Unknown action: ${action || '(missing)'}. Use verify_admin_telegram_env | run_hourly_cron_now | send_draft_preview | send_test_new_booking | send_test_sd_form_submitted`,
+            `Unknown action: ${action || '(missing)'}. Use verify_admin_telegram_env | send_draft_preview | render_draft_preview`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );

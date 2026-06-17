@@ -8,12 +8,9 @@ import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
-  bookingQualifiesForSameDayCheckinStaffAlert,
   ensureStaffSettingsRow,
-  notifyTelegramStaffSameDayCheckIn,
-  parseStaffSlot,
-  queryTodayBookings,
-  runStaffDailySummary,
+  renderStaffDraftPreview,
+  renderStaffSameDayCheckinDraftPreview,
   sanitizeStaffDailySummaryTemplate,
   sendStaffDraftPreview,
   sendStaffSameDayCheckinDraftPreview,
@@ -21,7 +18,6 @@ import {
   verifyStaffTelegramEnv,
   type TelegramStaffSettings,
 } from '../_shared/telegramStaff.ts';
-import { manilaTodayYmd } from '../_shared/calendarAvailabilityManila.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -111,13 +107,6 @@ serve(async (req) => {
       const body = await req.json().catch(() => ({}));
       const action = typeof body.action === 'string' ? body.action : '';
 
-      if (action === 'send_test_daily_summary') {
-        const result = await runStaffDailySummary({ force: true });
-        return new Response(JSON.stringify({ success: true, result }), {
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
       if (action === 'verify_staff_telegram_env') {
         const verify = await verifyStaffTelegramEnv();
         return new Response(JSON.stringify({ success: true, verify }), {
@@ -155,50 +144,46 @@ serve(async (req) => {
         );
       }
 
-      if (action === 'send_test_same_day_checkin') {
-        const bookingId = String(body.bookingId ?? '').trim();
-        let row: Record<string, unknown> | null = null;
-        if (bookingId) {
-          row = await DatabaseService.getBookingById(bookingId);
-          if (!row) {
-            return new Response(JSON.stringify({ success: false, error: 'bookingId not found' }), {
-              status: 404,
-              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-            });
-          }
-        } else {
-          const settingsRow = await DatabaseService.getTelegramStaffSettings();
-          const cutoff = parseStaffSlot(settingsRow?.daily_summary_time_manila);
-          const today = await queryTodayBookings(manilaTodayYmd());
-          row =
-            today.find((b) => bookingQualifiesForSameDayCheckinStaffAlert(b, cutoff)) ??
-            today[0] ??
-            null;
-          if (!row) {
-            return new Response(
-              JSON.stringify({
-                success: false,
-                error: 'No booking checking in today for test send',
-              }),
-              {
-                status: 404,
-                headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-              },
-            );
-          }
+      if (action === 'render_draft_preview') {
+        const text = typeof body.text === 'string' ? body.text : '';
+        const scenario =
+          typeof body.scenario === 'string' ? body.scenario : 'daily_summary';
+        if (!text.trim()) {
+          return new Response(JSON.stringify({ success: false, error: 'text is required' }), {
+            status: 400,
+            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+          });
         }
-        const result = await notifyTelegramStaffSameDayCheckIn(row, { force: true });
-        return new Response(JSON.stringify({ success: result.sent, result }), {
-          status: result.sent ? 200 : 400,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
+        const rendered =
+          scenario === 'same_day_checkin'
+            ? await renderStaffSameDayCheckinDraftPreview(text.slice(0, 8000))
+            : await renderStaffDraftPreview(text.slice(0, 8000));
+        if (rendered.error || !rendered.renderedText) {
+          return new Response(
+            JSON.stringify({ success: false, error: rendered.error ?? 'render_failed' }),
+            {
+              status: 400,
+              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+            },
+          );
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            renderedText: rendered.renderedText,
+            placeholders: rendered.placeholders,
+            previewGuestName: rendered.previewGuestName,
+            todayBookingCount: rendered.todayBookingCount,
+          }),
+          { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        );
       }
 
       return new Response(
         JSON.stringify({
           success: false,
           error:
-            `Unknown action: ${action || '(missing)'}. Use verify_staff_telegram_env | send_test_daily_summary | send_test_same_day_checkin | send_draft_preview`,
+            `Unknown action: ${action || '(missing)'}. Use verify_staff_telegram_env | send_draft_preview | render_draft_preview`,
         }),
         { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
       );
