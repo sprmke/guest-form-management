@@ -867,13 +867,7 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const displayCheckInDate = formatDateForEmail(booking.check_in_date);
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
-  const isUrgent = isUrgentBooking(booking.check_in_date);
-  const urgentBlock = buildUrgentSameDayCallout(isUrgent);
-  if (isUrgent) {
-    console.log("🚨 URGENT same-day check-in — ready for check-in email");
-  }
-
-  const balance =
+  const urgentBlock = '';
     booking.balance ??
     (booking.booking_rate ?? 0) - (booking.down_payment ?? 0);
   const balanceNum = Number(balance);
