@@ -1,0 +1,43 @@
+---
+description: Keep UI copy minimal — no extra labels, descriptions, or helper text unless requested or required.
+globs:
+  - "ui/src/**/*.tsx"
+  - "ui/src/**/*.ts"
+alwaysApply: true
+---
+
+# UI minimal copy — agent reference
+
+**Default:** do not add UI text. Extra labels, subtitles, helper paragraphs, card descriptions, and explanatory banners make the app noisy and harder to maintain.
+
+Unless the user asks for copy or it is **really needed**, add **no** new text.
+
+## Really needed (allowed)
+
+- **Form field labels** — short; required for usability and WCAG (`accessibility` skill).
+- **Primary actions** — short button text (`Save`, `Send`, `Cancel`).
+- **Errors / validation** — only when something failed or input is invalid.
+- **Destructive confirms** — one short line stating what will happen.
+- **Legal / compliance** — only when product requires it.
+- **Icon-only controls** — `aria-label` / `title` (short, not a paragraph).
+
+## Do not add unless asked
+
+- Page or section subtitles under an already-clear title
+- `CardDescription`, helper text under fields, "tip" callouts
+- Empty-state essays — prefer icon + one short line, or nothing
+- Inline "this lets you…" / "use this to…" explanations
+- Duplicating data already visible (dates, names, status badges)
+- Marketing-style microcopy on admin or operational screens
+
+## When building or editing UI
+
+1. Ship layout, hierarchy, icons, and data first.
+2. Add text only where the screen would be unusable without it.
+3. If unsure, **omit** — the user will ask for copy when they want it.
+4. Read the `minimal-ui-copy` skill for patterns and examples.
+
+## Conflicts
+
+- `accessibility` still requires labels for inputs and icon buttons — keep those **short**.
+- `frontend-design` density guidance stands; this rule wins on **verbosity**, not structure.

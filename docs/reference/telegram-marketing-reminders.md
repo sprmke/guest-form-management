@@ -42,17 +42,17 @@ Default rows are seeded in migration **`20260614120000_telegram_marketing_settin
 | **`telegram-marketing-cron`**     | `verify_jwt = false`                       | `POST` with `{}` body. If **`TELEGRAM_CRON_SECRET`** is set in Edge secrets, require header **`X-Telegram-Cron-Secret: <same>`**. Otherwise only the usual anon **`Authorization`** from `pg_net` is required.                                                                            |
 | **`telegram-marketing-settings`** | `verify_jwt = false`; **`verifyAdminJwt`** | **GET** / **PATCH** as above. **PATCH** with **`dailyReminderTimesManila`** updates **`daily_reminder_times_manila`** and calls **`sync_telegram_marketing_daily_cron_jobs`** (drops legacy **`telegram-marketing-daily-manila`** when present). **POST** = manual Telegram tests — §3.1. |
 
-### 3.1 Manual tests (`POST telegram-marketing-settings`)
+### 3.1 Admin diagnostics & previews (`POST telegram-marketing-settings`)
 
-JSON body must include **`action`**. Scenario tests use **saved** DB templates and **ignore** `enabled` / `notify_*` so you can verify wiring without turning automation on.
+JSON body must include **`action`**.
 
 | `action`                                                            | Extra fields                                                                                                           | Behavior                                                                                                                    |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `verify_telegram_env`                                               | —                                                                                                                      | Calls Telegram **`getMe`** + **`getChat`** using normalized **`TELEGRAM_*`** from Edge env (admin diagnostics).             |
-| `send_test_daily_reminder`                                          | —                                                                                                                      | Same decision path as **`telegram-marketing-cron`**.                                                                        |
-| `send_test_new_booking`                                             | —                                                                                                                      | Same as real new-booking notify (`force`). Response may include `skip: no_dates`.                                           |
-| `send_test_cancellation`                                            | Optional `checkInYmd`, `checkOutYmd` (`YYYY-MM-DD`) — **supply both** or **omit both** (single date alone returns 400) | Saved cancellation template. If both omitted, uses Manila **today → checkout +2 nights** as a demo.                         |
-| `send_draft_preview` (alias: `send_draft_with_sample_placeholders`) | **`text`** (required, ≤4000); optional **`checkInYmd` / `checkOutYmd`** for `{{cancellation_dates}}`                   | Resolves `{{placeholders}}` from the **live booking calendar** (Manila); **400** if data is missing — no sample/fake dates. |
+| `send_draft_preview` (alias: `send_draft_with_sample_placeholders`) | **`text`** (required, ≤4000); optional **`checkInYmd` / `checkOutYmd`** for `{{cancellation_dates}}`                   | Resolves `{{placeholders}}` from the **live booking calendar** (Manila); **400** if data is missing — no sample/fake dates. UI **Send preview** on each template; cancellation uses Manila today → tomorrow when dates are omitted. |
+| `render_draft_preview`                                              | Same body as **`send_draft_preview`**                                                                                  | Same resolution path as **`send_draft_preview`**, but returns **`{ renderedText, placeholders? }`** without sending Telegram. Powers the in-app **Preview** tab on **Admin → Marketing**.                                              |
+
+Scenario **Send preview** ignores automation toggles so you can verify wiring without turning sends on.
 
 ---
 

@@ -95,6 +95,7 @@ For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, lo
 - `.cursor/rules/admin-auth.mdc` — **read before any /bookings or auth task**.
 - `.cursor/rules/supabase-edge-functions.mdc` — conventions for new edge functions.
 - `.cursor/rules/documentation-maintenance.mdc` — when and what docs to update.
+- `.cursor/rules/ui-minimal-copy.mdc` — no extra UI labels or descriptions unless asked or required.
 
 ## Related skills (in `.cursor/skills/`)
 
@@ -103,4 +104,5 @@ For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, lo
 - `gmail-listener` — Gmail OAuth + idempotency for Azure approval emails.
 - `bookings-table` — table UI patterns for the admin list.
 - `frontend-design` — project-aware design guidance.
+- `minimal-ui-copy` — no extra labels, descriptions, or helper text unless asked or required.
 - `accessibility` — WCAG 2.1 AA rules for UI work.

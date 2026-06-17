@@ -14,6 +14,7 @@ Create **distinctive, production-grade** frontend interfaces. Avoid generic AI a
 - **Theme**: Single light theme today. If you add dark-mode variants, do it for **every component in the change**, not half.
 - **Semantic classes**: `bg-background`, `text-foreground`, `text-muted-foreground`, `border-border`, `bg-card` etc. Reach for the shadcn primitives in `ui/src/components/ui/**`; don't duplicate them.
 - **Accessibility**: Always WCAG 2.1 AA. See the `accessibility` skill.
+- **Copy**: No extra labels, descriptions, or helper text unless the user asks or it is required. See the `minimal-ui-copy` skill and `ui-minimal-copy.mdc` rule.
 
 ## Design thinking (before coding)
 
