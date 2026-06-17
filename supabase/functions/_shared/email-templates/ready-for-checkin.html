@@ -658,6 +658,40 @@
         margin: 0 0 12px 0;
       }
 
+      .gcash-payment-label {
+        margin: 0 0 4px 0;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #64748b;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      .gcash-payment-value {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #1e293b;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+      .gcash-payment-value-spaced {
+        margin: 0 0 14px 0;
+      }
+      .gcash-payment-copy {
+        margin: 0 0 14px 0;
+        font-size: 14px;
+        line-height: 1.55;
+        color: #475569;
+        font-family:
+          -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          'Helvetica Neue', Arial, sans-serif;
+      }
+
       .body-lead-p {
         margin: 0 0 20px 0;
       }
@@ -970,6 +1004,15 @@
         }
         .doc-reminders-card__cell strong {
           color: #f8fafc !important;
+        }
+        .gcash-payment-label {
+          color: #94a3b8 !important;
+        }
+        .gcash-payment-value {
+          color: #f1f5f9 !important;
+        }
+        .gcash-payment-copy {
+          color: #cbd5e1 !important;
         }
         .url-fallback {
           color: #affd93 !important;
@@ -1458,12 +1501,7 @@
                               line-height: 1.45;
                               vertical-align: top;
                             "
-                          >
-                            <em class="italic-note"
-                              >Payable on or before check-in. Please pay via
-                              online or bank transfer.</em
-                            >
-                          </td>
+                          ></td>
                         </tr>
                         <tr>
                           <td
@@ -1589,17 +1627,7 @@
                             >
                               Total balance payment
                             </p>
-                            <p
-                              style="
-                                margin: 0 0 14px 0;
-                                font-size: 14px;
-                                line-height: 1.55;
-                                color: #475569;
-                                font-family:
-                                  -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                                  Roboto, 'Helvetica Neue', Arial, sans-serif;
-                              "
-                            >
+                            <p class="gcash-payment-copy">
                               Save and scan the QR code or send to the GCash
                               account beside it to pay your total balance upon
                               check-in.
@@ -1618,18 +1646,18 @@
                                   valign="top"
                                   style="
                                     padding: 0 16px 0 0;
-                                    width: 150px;
+                                    width: 250px;
                                     vertical-align: top;
                                   "
                                 >
                                   <img
                                     src="{{paymentQrImageUrl}}"
-                                    width="150"
+                                    width="250"
                                     alt="Kame Home — GCash and InstaPay QR code for payments"
                                     style="
                                       display: block;
                                       width: 100%;
-                                      max-width: 150px;
+                                      max-width: 250px;
                                       height: auto;
                                       border: 1px solid #e2e8f0;
                                       border-radius: 12px;
@@ -1641,66 +1669,14 @@
                                   valign="middle"
                                   style="padding: 0; vertical-align: middle"
                                 >
+                                  <p class="gcash-payment-label">GCash Name</p>
                                   <p
-                                    style="
-                                      margin: 0 0 4px 0;
-                                      font-size: 11px;
-                                      font-weight: 600;
-                                      letter-spacing: 0.06em;
-                                      text-transform: uppercase;
-                                      color: #64748b;
-                                      font-family:
-                                        -apple-system, BlinkMacSystemFont,
-                                        'Segoe UI', Roboto, 'Helvetica Neue',
-                                        Arial, sans-serif;
-                                    "
-                                  >
-                                    GCash Name
-                                  </p>
-                                  <p
-                                    style="
-                                      margin: 0 0 14px 0;
-                                      font-size: 16px;
-                                      font-weight: 700;
-                                      line-height: 1.35;
-                                      color: #1e293b;
-                                      font-family:
-                                        -apple-system, BlinkMacSystemFont,
-                                        'Segoe UI', Roboto, 'Helvetica Neue',
-                                        Arial, sans-serif;
-                                    "
+                                    class="gcash-payment-value gcash-payment-value-spaced"
                                   >
                                     {{gcashName}}
                                   </p>
-                                  <p
-                                    style="
-                                      margin: 0 0 4px 0;
-                                      font-size: 11px;
-                                      font-weight: 600;
-                                      letter-spacing: 0.06em;
-                                      text-transform: uppercase;
-                                      color: #64748b;
-                                      font-family:
-                                        -apple-system, BlinkMacSystemFont,
-                                        'Segoe UI', Roboto, 'Helvetica Neue',
-                                        Arial, sans-serif;
-                                    "
-                                  >
-                                    GCash Number
-                                  </p>
-                                  <p
-                                    style="
-                                      margin: 0;
-                                      font-size: 16px;
-                                      font-weight: 700;
-                                      line-height: 1.35;
-                                      color: #1e293b;
-                                      font-family:
-                                        -apple-system, BlinkMacSystemFont,
-                                        'Segoe UI', Roboto, 'Helvetica Neue',
-                                        Arial, sans-serif;
-                                    "
-                                  >
+                                  <p class="gcash-payment-label">GCash Number</p>
+                                  <p class="gcash-payment-value">
                                     {{gcashNumber}}
                                   </p>
                                 </td>
