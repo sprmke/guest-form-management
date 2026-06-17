@@ -990,6 +990,8 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
       petPaymentRow,
       additionalFeeRow,
       paymentQrImageUrl,
+      gcashName: escapeHtml(settings.gcashName),
+      gcashNumber: escapeHtml(settings.gcashNumber),
     }),
   );
 

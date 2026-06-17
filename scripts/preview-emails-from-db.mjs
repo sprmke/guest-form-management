@@ -559,6 +559,40 @@ function petBodyParagraphs(booking) {
 
 const URGENT_BLOCK = '';
 
+const DEFAULT_GCASH_NAME = 'Arianna Perez';
+const DEFAULT_GCASH_NUMBER = '0962 564 7541';
+const DEFAULT_GCASH_QR_URL =
+  'https://kamehomes.space/images/kame-home-gcash-qr-payment.jpg';
+
+async function loadPaymentSettings(supabase) {
+  const defaults = {
+    gcashName: DEFAULT_GCASH_NAME,
+    gcashNumber: DEFAULT_GCASH_NUMBER,
+    gcashQrImageUrl: DEFAULT_GCASH_QR_URL,
+  };
+  if (!supabase) return defaults;
+  try {
+    const { data, error } = await supabase
+      .from('app_settings')
+      .select('gcash_name, gcash_number, gcash_qr_image_url, public_guest_app_origin')
+      .eq('id', 1)
+      .maybeSingle();
+    if (error || !data) return defaults;
+    const origin = (data.public_guest_app_origin || 'https://kamehomes.space').replace(
+      /\/+$/,
+      '',
+    );
+    return {
+      gcashName: (data.gcash_name || DEFAULT_GCASH_NAME).trim(),
+      gcashNumber: (data.gcash_number || DEFAULT_GCASH_NUMBER).trim(),
+      gcashQrImageUrl:
+        (data.gcash_qr_image_url || `${origin}/images/kame-home-gcash-qr-payment.jpg`).trim(),
+    };
+  } catch {
+    return defaults;
+  }
+}
+
 async function pickBooking(supabase) {
   const base = () =>
     supabase
@@ -596,7 +630,7 @@ async function pickBooking(supabase) {
   return { row: null, label: null };
 }
 
-function renderAll(booking, meta, emailLogoUrl) {
+function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
 
   const emailHeaderLogo = buildEmailHeaderLogoHtml(emailLogoUrl);
@@ -761,6 +795,9 @@ function renderAll(booking, meta, emailLogoUrl) {
       petPaymentRow: buildPetPaymentRow(booking),
       additionalFeeRow: buildAdditionalFeeRow(booking),
       houseRulesSection,
+      paymentQrImageUrl: escapeHtml(paymentSettings.gcashQrImageUrl),
+      gcashName: escapeHtml(paymentSettings.gcashName),
+      gcashNumber: escapeHtml(paymentSettings.gcashNumber),
     }),
   );
   fs.writeFileSync(
@@ -803,9 +840,15 @@ async function main() {
 
   let booking;
   let meta = { source: 'demo', queryLabel: null };
+  let paymentSettings = {
+    gcashName: DEFAULT_GCASH_NAME,
+    gcashNumber: DEFAULT_GCASH_NUMBER,
+    gcashQrImageUrl: DEFAULT_GCASH_QR_URL,
+  };
 
   if (url && key) {
     const supabase = createClient(url, key);
+    paymentSettings = await loadPaymentSettings(supabase);
     try {
       const { row, label } = await pickBooking(supabase);
       if (row) {
@@ -828,7 +871,7 @@ async function main() {
     console.log('Using built-in DEMO_BOOKING (no DB row).');
   }
 
-  renderAll(booking, meta, emailLogoUrl);
+  renderAll(booking, meta, emailLogoUrl, paymentSettings);
   console.log(`Wrote filled previews to ${path.relative(ROOT, OUT_DIR)}/`);
   console.log(
     'Open http://localhost:3334/ and use the "Filled from database" links (run npm run preview:emails:serve if the server is not up).',
