@@ -868,6 +868,8 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   const displayCheckOutDate = formatDateForEmail(booking.check_out_date);
 
   const urgentBlock = '';
+
+  const balance =
     booking.balance ??
     (booking.booking_rate ?? 0) - (booking.down_payment ?? 0);
   const balanceNum = Number(balance);
