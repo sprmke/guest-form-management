@@ -59,19 +59,6 @@ export function bookingOccupiesNight(
   return checkInYmd <= dayYmd && checkOutYmd > dayYmd;
 }
 
-/**
- * True when staff should treat the booking as active on `dayYmd`.
- * Includes check-out day (guest may still be in-unit before departure).
- */
-export function bookingActiveForStaffOnDay(
-  checkInYmd: string,
-  checkOutYmd: string,
-  dayYmd: string,
-): boolean {
-  if (!checkInYmd || !checkOutYmd || checkInYmd >= checkOutYmd) return false;
-  return checkInYmd <= dayYmd && checkOutYmd >= dayYmd;
-}
-
 /** First YYYY-MM-DD >= startYmd where that night is not blocked; null if none within maxSteps. */
 export function earliestAvailableCheckInYmd(
   blocked: Set<string>,

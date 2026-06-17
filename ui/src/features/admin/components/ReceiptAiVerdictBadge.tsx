@@ -1,5 +1,52 @@
 import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
+/** Dedupes AI service failure toasts (backfill + upload). */
+export const DOCUMENT_AI_ERROR_TOAST_ID = 'document-ai-error';
+
+/** User-facing copy for raw Gemini / network errors. */
+export function simplifyAiModelErrorMessage(raw: string): string {
+  const msg = raw.trim();
+  if (!msg) return 'Try again in a minute.';
+
+  const lower = msg.toLowerCase();
+  if (
+    lower.includes('quota') ||
+    lower.includes('rate limit') ||
+    lower.includes('rate-limit') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('exceeded')
+  ) {
+    const retryMatch = msg.match(/retry in (\d+(?:\.\d+)?)/i);
+    if (retryMatch) {
+      const secs = Math.ceil(Number(retryMatch[1]));
+      if (Number.isFinite(secs) && secs > 0 && secs <= 120) {
+        return `Service limit reached. Try again in about ${secs} seconds.`;
+      }
+    }
+    return 'Service limit reached. Try again in a minute.';
+  }
+  if (lower.includes('high demand') || lower.includes('overloaded')) {
+    return 'Service is busy. Try again later.';
+  }
+  if (
+    lower.includes('api key') ||
+    lower.includes('unauthorized') ||
+    lower.includes('permission denied')
+  ) {
+    return 'AI is not configured. Check Settings.';
+  }
+  return 'Try again in a minute.';
+}
+
+export function showDocumentAiModelErrorToast(rawError?: string | null): void {
+  toast.error('AI document check unavailable', {
+    id: DOCUMENT_AI_ERROR_TOAST_ID,
+    description: simplifyAiModelErrorMessage(rawError?.trim() ?? ''),
+    duration: 8000,
+  });
+}
 
 export type ReceiptAiVerdict =
   | 'valid'
@@ -207,18 +254,8 @@ export function ReceiptAiVerdictBadge({
 /** Short toast after upload — keeps forms consistent. */
 export function receiptAiUploadToastMessage(
   verdict: string | null | undefined,
-  aiModelError?: string | null,
   variant: DocumentAiVerdictVariant = 'receipt',
 ): { type: 'success' | 'warning' | 'error'; message: string; description?: string } | null {
-  if (aiModelError?.trim()) {
-    return {
-      type: 'error',
-      message: variant === 'valid_id'
-        ? 'AI could not check this ID'
-        : 'AI could not check this receipt',
-      description: aiModelError.trim(),
-    };
-  }
   if (variant === 'valid_id') {
     switch (String(verdict ?? '').toLowerCase()) {
       case 'invalid':

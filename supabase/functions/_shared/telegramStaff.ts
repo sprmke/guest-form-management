@@ -1,12 +1,12 @@
 /**
  * Telegram staff/cleaner daily booking summary.
- * Sends active today's bookings (check-ins, in-house stays, check-outs) + next 3 days to the staff Telegram group.
+ * Sends active today's bookings (check-ins and in-house multi-night stays) + next 3 days to the staff Telegram group.
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { DatabaseService } from './databaseService.ts';
 import {
-  bookingActiveForStaffOnDay,
+  bookingOccupiesNight,
   manilaTodayYmd,
   normalizeBookingDateToYmd,
 } from './calendarAvailabilityManila.ts';
@@ -329,7 +329,7 @@ export async function notifyTelegramStaffSameDayCheckIn(
   return { sent: true };
 }
 
-/** Bookings active today for staff: new check-ins, in-house multi-night stays, and check-outs today. */
+/** Bookings active today for staff: check-in day and each occupied overnight night (not checkout day). */
 export function bookingIsActiveForStaffToday(
   booking: BookingRow,
   todayYmd: string,
@@ -338,7 +338,7 @@ export function bookingIsActiveForStaffToday(
   const ciYmd = normalizeBookingDateToYmd(String(booking.check_in_date ?? ''));
   const coYmd = normalizeBookingDateToYmd(String(booking.check_out_date ?? ''));
   if (!ciYmd || !coYmd) return false;
-  return bookingActiveForStaffOnDay(ciYmd, coYmd, todayYmd);
+  return bookingOccupiesNight(ciYmd, coYmd, todayYmd);
 }
 
 export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {

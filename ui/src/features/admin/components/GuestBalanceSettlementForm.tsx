@@ -30,6 +30,7 @@ import {
 import {
   ReceiptAiVerdictBadge,
   receiptAiUploadToastMessage,
+  showDocumentAiModelErrorToast,
   receiptAiVerdictBlocksAdmin,
   type ReceiptAiVerdict,
 } from '@/features/admin/components/ReceiptAiVerdictBadge';
@@ -291,15 +292,16 @@ export function GuestBalanceSettlementForm({
       if (validation) {
         setReceiptAiVerdict(validation.verdict);
         setReceiptAiSummary(validation.summary);
-        const toastMsg = receiptAiUploadToastMessage(
-          validation.verdict,
-          validation.aiModelError,
-        );
-        if (toastMsg?.type === 'error') {
-          toast.error(toastMsg.message, { description: toastMsg.description });
-        } else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
-        else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
-        else toast.success('Payment balance receipt uploaded');
+        if (validation.aiModelError) {
+          showDocumentAiModelErrorToast(validation.aiModelError);
+        } else {
+          const toastMsg = receiptAiUploadToastMessage(validation.verdict);
+          if (toastMsg?.type === 'error') {
+            toast.error(toastMsg.message, { description: toastMsg.description });
+          } else if (toastMsg?.type === 'warning') toast.warning(toastMsg.message);
+          else if (toastMsg?.type === 'success') toast.success(toastMsg.message);
+          else toast.success('Payment balance receipt uploaded');
+        }
       } else {
         toast.success('Payment balance receipt uploaded');
       }

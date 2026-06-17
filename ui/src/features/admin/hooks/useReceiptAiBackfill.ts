@@ -5,21 +5,14 @@
 
 import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
+import { showDocumentAiModelErrorToast } from '@/features/admin/components/ReceiptAiVerdictBadge';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { BOOKING_QUERY_KEY } from './useBooking';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
-
-const DOCUMENT_KIND_LABELS: Record<string, string> = {
-  downpayment: 'Downpayment receipt',
-  balance: 'Balance receipt',
-  parking: 'Parking receipt',
-  valid_id: 'Valid ID',
-};
 
 function documentUrlNeedsAiBackfill(
   url: string | null | undefined,
@@ -104,13 +97,8 @@ async function getAdminJwt(): Promise<string> {
 }
 
 function toastDocumentAiBackfillErrors(errors: ReceiptBackfillError[]) {
-  for (const err of errors) {
-    const label = DOCUMENT_KIND_LABELS[err.kind] ?? 'Document';
-    toast.error(`AI could not check ${label}`, {
-      description: err.message,
-      duration: 8000,
-    });
-  }
+  if (errors.length === 0) return;
+  showDocumentAiModelErrorToast(errors[0]?.message);
 }
 
 export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
@@ -145,10 +133,9 @@ export function useReceiptAiBackfill(booking: BookingRow | null | undefined) {
     },
     onError: (err) => {
       attemptedForId.current = null;
-      toast.error('Document AI check failed', {
-        description: err instanceof Error ? err.message : String(err),
-        duration: 8000,
-      });
+      showDocumentAiModelErrorToast(
+        err instanceof Error ? err.message : String(err),
+      );
     },
   });
 

@@ -104,7 +104,7 @@ Admin opens /bookings/:bookingId
   → POST validate-booking-receipts { bookingId }  [once per page visit; skips COMPLETED / CANCELLED]
   → download image/PDF from Storage → validateReceiptFromStorageUrl / validateValidIdFromStorageUrl
   → PATCH dp / balance / parking AI columns (only when Gemini returns a real verdict or config `skipped`)
-  → On Gemini/network failure: no DB write; Sonner error toast with API message; retry on next page visit
+  → On Gemini/network failure: no DB write; one simplified Sonner toast; retry on next page visit
   → Booking detail Pricing card DocPreview shows compact AI pill on receipt label
 ```
 
