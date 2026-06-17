@@ -233,14 +233,19 @@ function parseApprovalSubject(subject: string): ParsedApprovalSubject | null {
   return null;
 }
 
-/** Skip only when this Gmail message was already applied; allow retry on skipped/failed. */
-async function isBackfillBlockedByProcessed(messageId: string): Promise<boolean> {
+/** Skip only when this Gmail message was already applied to the same booking. */
+async function isBackfillBlockedByProcessed(
+  messageId: string,
+  task: BookingTask,
+): Promise<boolean> {
   const { data } = await supabaseAdmin()
     .from('processed_emails')
-    .select('status')
+    .select('status, booking_id')
     .eq('message_id', messageId)
     .maybeSingle();
-  return data?.status === 'applied';
+  if (data?.status !== 'applied') return false;
+  const linked = (data.booking_id as string | null)?.trim();
+  return linked === task.bookingId;
 }
 
 async function recordProcessedEmail(params: {
@@ -501,7 +506,7 @@ serve(async (req) => {
       let matched = false;
 
       for (const messageId of messageIds) {
-        if (await isBackfillBlockedByProcessed(messageId)) {
+        if (await isBackfillBlockedByProcessed(messageId, task)) {
           skipped++;
           continue;
         }
@@ -526,6 +531,9 @@ serve(async (req) => {
             continue;
           }
           if (allowedApprovers.length > 0 && !allowedApprovers.includes(senderEmail)) {
+            console.warn(
+              `[gmail-backfill-approvals] Sender not in EMAIL_TO allow-list: "${senderEmail || fromHeader || 'unknown'}"`,
+            );
             skipped++;
             continue;
           }

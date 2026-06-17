@@ -215,9 +215,14 @@ export function gmailApprovalBackfillToast(
     applied?: number;
     wouldApply?: number;
     failed?: number;
+    tasks?: number;
+    scannedBookings?: number;
   },
   scopedBooking: boolean,
 ): string {
+  const tasks = r.tasks ?? 0;
+  const scanned = r.scannedBookings ?? 0;
+
   if (r.dryRun) {
     const would = r.wouldApply ?? 0;
     if (would > 0) {
@@ -225,7 +230,14 @@ export function gmailApprovalBackfillToast(
         ? '1 approval would be applied'
         : `${would} approval(s) would be applied`;
     }
-    return 'No missed approvals found';
+    if (tasks === 0) {
+      return scopedBooking
+        ? 'This booking does not need an approval backfill'
+        : 'No bookings need approval backfill';
+    }
+    return scopedBooking
+      ? 'No matching approval email in Gmail for this booking'
+      : `No matching approval emails in Gmail (${tasks} booking(s) checked)`;
   }
 
   const applied = r.applied ?? 0;
@@ -235,5 +247,15 @@ export function gmailApprovalBackfillToast(
   if ((r.failed ?? 0) > 0) {
     return 'Some approvals could not be applied';
   }
-  return 'No missed approvals found';
+  if (tasks === 0) {
+    return scopedBooking
+      ? 'This booking does not need an approval backfill'
+      : 'No bookings need approval backfill';
+  }
+  if (scanned > 0 && tasks === 0) {
+    return 'No bookings need approval backfill';
+  }
+  return scopedBooking
+    ? 'No matching approval email in Gmail for this booking'
+    : `No matching approval emails in Gmail (${tasks} booking(s) checked)`;
 }

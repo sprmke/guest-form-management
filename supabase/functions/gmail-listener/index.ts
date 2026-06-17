@@ -437,11 +437,11 @@ async function processMessage(messageId: string, accessToken: string, allowedApp
     return { action: 'skipped', reason: 'subject_no_match', kind: 'gaf' };
   }
 
-  // 2b. Enforce sender allow-list (Team Email / EMAIL_REPLY_TO) when configured.
+  // 2b. Enforce sender allow-list (Documents Approver / EMAIL_TO) when configured.
   // If empty, listener remains permissive for backwards compatibility.
   if (allowedApprovers.length > 0 && !allowedApprovers.includes(senderEmail)) {
     console.warn(
-      `[gmail-listener] Sender not in EMAIL_REPLY_TO allow-list: ` +
+      `[gmail-listener] Sender not in EMAIL_TO allow-list: ` +
       `"${senderEmail || fromHeader || 'unknown'}"`,
     );
     return { action: 'skipped', reason: `sender_not_allowed:${senderEmail || 'unknown'}`, kind: parsed.kind };

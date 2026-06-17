@@ -315,10 +315,10 @@ export async function serializeGuestPaymentInfo(): Promise<GuestPaymentInfoDto> 
   };
 }
 
-/** Gmail GAF/pet approval replies must match Team Email (`EMAIL_REPLY_TO`) when set. */
+/** Gmail GAF/pet approval replies must match Documents Approver (`EMAIL_TO`) when set. */
 export async function getGmailApprovalSenderAllowList(): Promise<string[]> {
   const s = await resolveAppSettings();
-  return parseCommaSeparatedEmailsLower(s.emailReplyTo);
+  return parseCommaSeparatedEmailsLower(s.emailTo);
 }
 
 export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
