@@ -26,7 +26,7 @@ function StepDot({
         className={cn(
           'flex size-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold shadow-sm transition-colors sm:size-9 sm:text-sm',
           done &&
-            'border-primary bg-primary text-primary-foreground shadow-primary/20',
+            'border-primary gradient-primary text-primary-foreground shadow-primary/20',
           current &&
             !done &&
             'border-primary bg-primary/15 text-primary ring-2 ring-primary/25',
@@ -98,7 +98,7 @@ export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }
           aria-label={`Step ${activeStep} of ${GUEST_FORM_STEPS.length}`}
         >
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out motion-reduce:transition-none"
+            className="h-full rounded-full gradient-primary transition-[width] duration-300 ease-out motion-reduce:transition-none"
             style={{ width: `${progressPct}%` }}
           />
         </div>

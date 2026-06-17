@@ -21,7 +21,7 @@ export function GoogleSignInButton({ onClick, disabled, loading }: Props) {
       onClick={onClick}
       disabled={busy}
       className={cn(
-        'relative flex h-12 w-full items-center justify-center gap-3 rounded-2xl border px-4',
+        'relative flex h-12 w-full items-center justify-center gap-3 rounded-xl border px-4',
         'text-[15px] font-medium shadow-sm',
         'border-[#dadce0] bg-white text-[#3c4043]',
         'dark:border-[#8e918f] dark:bg-[#131314] dark:text-[#e3e3e3] dark:shadow-none',

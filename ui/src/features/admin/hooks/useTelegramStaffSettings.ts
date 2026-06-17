@@ -77,8 +77,6 @@ export function useTelegramStaffSettings() {
 
 export type TelegramStaffTestAction =
   | 'verify_staff_telegram_env'
-  | 'send_test_daily_summary'
-  | 'send_test_same_day_checkin'
   | 'send_draft_preview';
 
 export type TelegramStaffTestPayload = {

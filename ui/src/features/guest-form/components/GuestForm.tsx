@@ -346,11 +346,7 @@ export function GuestForm() {
       const parsedData = parseBookingInfoFromClipboard(clipboardText);
 
       if (!parsedData) {
-        toast.error('Invalid Format', {
-          description:
-            'The clipboard does not contain valid booking information. Please copy the booking info from an error message first.',
-          duration: 7000,
-        });
+        toast.error('Invalid clipboard data');
         return;
       }
 
@@ -362,18 +358,10 @@ export function GuestForm() {
         }
       });
 
-      toast.success('Booking Info Loaded!', {
-        description:
-          'Form has been populated with the booking information from clipboard. Please review and update file attachments.',
-        duration: 7000,
-      });
+      toast.success('Form filled from clipboard');
     } catch (error) {
       console.error('Failed to paste from clipboard:', error);
-      toast.error('Paste Failed', {
-        description:
-          'Could not read from clipboard. Please ensure you have copied the booking information first.',
-        duration: 7000,
-      });
+      toast.error('Could not read clipboard');
     }
   };
 
@@ -418,10 +406,7 @@ export function GuestForm() {
           setDummyFile(petImageInputRef, randomData.petImage);
         }
       } catch (error) {
-        toast.error('Failed to generate sample data', {
-          description:
-            error instanceof Error ? error.message : 'Unknown error occurred',
-        });
+        toast.error('Could not generate sample data');
       }
     },
     [showDevControls, urlCheckInDate, urlCheckOutDate, form.reset],
@@ -471,17 +456,8 @@ export function GuestForm() {
         throw new Error(result.error || 'Failed to cancel booking');
       }
 
-      const summary = result.summary?.totalUpdated || {};
-      const grandTotal = result.summary?.grandTotal || 0;
 
-      toast.success('Booking cancelled successfully!', {
-        description: `Updated: ${grandTotal} items (DB: ${
-          summary.database || 0
-        }, Calendar: ${summary.calendar || 0}, Sheets: ${
-          summary.sheets || 0
-        }). Dates are now available for new bookings.`,
-        duration: 7000,
-      });
+      toast.success('Booking cancelled');
 
       // Refresh booked dates after cancellation
       await fetchBookedDates();
@@ -494,10 +470,7 @@ export function GuestForm() {
       });
     } catch (error) {
       console.error('Cancel booking error:', error);
-      toast.error('Failed to cancel booking', {
-        description:
-          error instanceof Error ? error.message : 'Unknown error occurred',
-      });
+      toast.error('Could not cancel booking');
     } finally {
       setIsCancellingBooking(false);
     }
@@ -712,23 +685,14 @@ export function GuestForm() {
           // Dismiss all existing toasts (including the error toast) before showing success
           toast.dismiss();
 
-          toast.success('Booking Info Copied!', {
-            description: isAirbnb
-              ? 'You can now share this information with your host for assistance.'
-              : 'You can now paste this information in our Facebook Messenger for assistance.',
-            duration: 7000,
-          });
+          toast.success('Booking info copied');
         } catch (clipboardError) {
           console.error('Failed to copy to clipboard:', clipboardError);
 
           // Dismiss all existing toasts before showing the new error
           toast.dismiss();
 
-          toast.error('Failed to Copy', {
-            description:
-              'Could not copy to clipboard. Please try again or screenshot the form.',
-            duration: 7000,
-          });
+          toast.error('Could not copy to clipboard');
         }
       };
 
@@ -738,11 +702,8 @@ export function GuestForm() {
         errorMessage.includes('already booked')
       ) {
         // Show prominent warning toast for booking overlap
-        toast.error('Dates Already Booked', {
+        toast.error('Those dates are already booked', {
           id: 'booking-error',
-          description: isAirbnb
-            ? 'The selected dates are already reserved. Please select different dates or contact your host for assistance.'
-            : 'The selected dates are already reserved. Please select different dates or contact your host via Facebook for assistance.',
           duration: 7000,
         });
       } else {
@@ -751,7 +712,7 @@ export function GuestForm() {
           .replace('Error: ', '')
           .replace('BOOKING_OVERLAP: ', '');
 
-        toast.error('Failed to submit the guest form', {
+        toast.error('Could not submit form', {
           id: 'submission-error',
           description: (
             <div className="space-y-3 text-foreground">
@@ -760,8 +721,8 @@ export function GuestForm() {
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 {isAirbnb
-                  ? "Click the button below to copy your form data and share it with your host so we don't need to manually fill up all information again. We really apologize for the inconvenience."
-                  : "Click the button below to copy your form data and paste it on our Facebook Messenger so we don't need to manually fill up all information again. We really apologize for the inconvenience."}
+                  ? 'Copy your form below and share with your host so we can help. Sorry!'
+                  : 'Copy your form below and paste on Facebook Messenger so we can help. Sorry!'}
               </p>
               <Button
                 type="button"
@@ -858,11 +819,8 @@ export function GuestForm() {
                 Booking Not Found
               </h2>
               <p className="max-w-md text-muted-foreground">
-                The booking ID you provided is invalid or no guest form data
-                exists for this booking. Please screenshot this error message
-                and contact us{' '}
-                {isAirbnb ? 'via Airbnb messaging' : 'on Facebook'} for further
-                assistance.
+                Invalid booking link or no form data. Screenshot this and
+                contact us {isAirbnb ? 'on Airbnb' : 'on Facebook'}.
               </p>
             </div>
             <div className="flex gap-2">
@@ -968,9 +926,8 @@ export function GuestForm() {
                     <FormMessage />
                     {field.value && !form.formState.errors.guestEmail && (
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Please ensure you have access to this email. The guest
-                        advice form (GAF) will be sent there, which is required
-                        for Azure entry and check-in.
+                        Use an email you can access. Your GAF will be sent
+                        there for Azure check-in.
                       </p>
                     )}
                   </FormItem>
@@ -1231,13 +1188,11 @@ export function GuestForm() {
                     role="alert"
                   >
                     <p className="text-sm font-medium">
-                      Our standard check-in time is 2:00 PM. Early check-in
-                      requests are subject to approval and may incur additional
-                      fees. Please{' '}
+                      Check-in is 2:00 PM. Early arrival needs approval and may
+                      cost extra.{' '}
                       {isAirbnb
-                        ? 'message your host via Airbnb'
-                        : 'message us on Facebook'}{' '}
-                      to arrange early check-in.
+                        ? 'Message host via Airbnb.'
+                        : 'Message us on Facebook.'}
                     </p>
                   </div>
                 )}
@@ -1324,13 +1279,11 @@ export function GuestForm() {
                     role="alert"
                   >
                     <p className="text-sm font-medium">
-                      Our standard check-out time is 11:00 AM. Late check-out
-                      requests are subject to approval and may incur additional
-                      fees. Please{' '}
+                      Check-out is 11:00 AM. Late departure needs approval and
+                      may cost extra.{' '}
                       {isAirbnb
-                        ? 'contact your host via Airbnb'
-                        : 'contact us on Facebook'}{' '}
-                      to arrange late check-out.
+                        ? 'Contact host via Airbnb.'
+                        : 'Contact us on Facebook.'}
                     </p>
                   </div>
                 )}
@@ -1481,14 +1434,10 @@ export function GuestForm() {
                   role="alert"
                 >
                   <p className="text-sm font-medium">
-                    Azure North&apos;s official guest form is limited to 4
-                    registered guests but our unit can host up to 4 adults and 2
-                    children (total of 6 guests). Guests with more than 4 adults
-                    should{' '}
+                    Up to 6 guests here. Azure lists 4—{' '}
                     {isAirbnb
-                      ? 'message your host via Airbnb'
-                      : 'message us on Facebook'}{' '}
-                    so we can coordinate arrangements with you.
+                      ? 'message your host on Airbnb for help.'
+                      : 'message us on Facebook for help.'}
                   </p>
                 </div>
               )}
@@ -1708,13 +1657,11 @@ export function GuestForm() {
                             role="status"
                           >
                             <p className="text-sm text-foreground leading-relaxed">
-                              By checking this, you confirm you have already
-                              messaged us on{' '}
+                              You confirm you messaged us on{' '}
                               <span className="font-semibold">
                                 {isAirbnb ? 'Airbnb' : 'Facebook'}
                               </span>{' '}
-                              and agreed on the final theme and price for your
-                              surprise setup/decor before your stay.
+                              and agreed on theme and price before your stay.
                             </p>
                           </div>
                         ) : null}
@@ -1738,7 +1685,7 @@ export function GuestForm() {
                     selected={!form.watch('needParking')}
                     onSelect={() => form.setValue('needParking', false)}
                     title="No paid parking needed"
-                    description="Vehicles without a parking slot may enter for drop-off only at the tower entrance. Free parking is available outside Azure, in front of Home Depot (3–5 minute walk) on a first-come, first-served basis."
+                    description="No slot: tower drop-off only. Free parking outside Azure by Home Depot (3–5 min walk)."
                   />
                   <GuestFormOptionCard
                     selected={form.watch('needParking')}
@@ -1850,7 +1797,7 @@ export function GuestForm() {
                   <GuestFormInfoCallout title="🐶 Azure North Pet Policy">
                     <ul className="list-disc list-inside space-y-2">
                       <li>Only one toy/small dog is allowed. <span className="font-semibold text-foreground">Pet fee: P300</span></li>
-                      <li>Pets must use the service elevator only, should be in a leash whenever outside the unit.</li>
+                      <li>Use the service elevator only. Keep pets leashed outside the unit.</li>
                       <li>Azure North requires complete pet details and vaccination records for PMO approval.</li>
                       <li>No pets allowed in: Main Lobby, Viewing Deck, Common/Amenity Areas, Roof Deck</li>
                     </ul>
@@ -1964,7 +1911,7 @@ export function GuestForm() {
                         <FormControl>
                           <IsoDateInput
                             {...field}
-                            className="h-11 rounded-2xl border-border/50 bg-muted/40 focus-within:border-primary/40 focus-within:bg-background focus-within:ring-ring/30"
+                            className="h-11 rounded-xl border-border/50 bg-muted/40 focus-within:border-primary/40 focus-within:bg-background focus-within:ring-ring/30"
                           />
                         </FormControl>
                         <FormMessage />
@@ -2422,8 +2369,8 @@ export function GuestForm() {
                         )}
                       </Button>
                       <p className="mt-2 text-xs text-center text-muted-foreground">
-                        Marks booking as canceled and frees up dates. All data
-                        is preserved for records.
+                        Cancels the booking and frees dates. Data stays on
+                        file.
                       </p>
                     </div>
                   )}

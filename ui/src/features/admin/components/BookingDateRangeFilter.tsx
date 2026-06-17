@@ -140,8 +140,8 @@ export function BookingDateRangeFilter({
           aria-label="Previous period"
           className={cn(
             'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
-            'border bg-card text-sidebar-muted border-sidebar-border',
-            'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+            'border bg-card text-muted-foreground border-border',
+            'hover:border-primary/40 hover:text-primary hover:bg-primary/5',
             'transition-all duration-100',
           )}
         >
@@ -165,15 +165,15 @@ export function BookingDateRangeFilter({
             'border transition-all duration-100 select-none',
             fullWidth ? 'w-full justify-center' : 'whitespace-nowrap',
             isActive || open || calendarOpen
-              ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
-              : 'bg-card text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+              ? 'interactive-primary border-primary'
+              : 'bg-card text-sidebar-foreground border-sidebar-border hover:border-primary/40 hover:text-foreground hover:bg-primary/5',
           )}
         >
           <CalendarDays
             className={cn(
               'size-3.5 shrink-0',
               isActive || open || calendarOpen
-                ? 'text-sidebar-primary-foreground/90'
+                ? 'text-primary-foreground/90'
                 : 'text-muted-foreground',
             )}
             aria-hidden
@@ -371,15 +371,11 @@ export function BookingDateRangeFilter({
                   onClick={handleApplyRange}
                   disabled={!localRange?.from || !localRange?.to}
                   className={cn(
-                    'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold text-white',
-                    'transition-all duration-100',
+                    'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold text-primary-foreground',
+                    'interactive-primary shadow-soft transition-all duration-100',
                     'disabled:opacity-40 disabled:pointer-events-none',
-                    'hover:opacity-90 active:scale-[0.98]',
+                    'hover:brightness-[1.03] active:scale-[0.98]',
                   )}
-                  style={{
-                    background: 'hsl(var(--sidebar-primary))',
-                    boxShadow: '0 1px 3px hsl(var(--sidebar-primary) / 0.35)',
-                  }}
                 >
                   Apply
                 </button>
@@ -397,8 +393,8 @@ export function BookingDateRangeFilter({
           aria-label="Next period"
           className={cn(
             'inline-flex shrink-0 items-center justify-center rounded-lg min-w-[44px] min-h-[44px]',
-            'border bg-card text-sidebar-muted border-sidebar-border',
-            'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+            'border bg-card text-muted-foreground border-border',
+            'hover:border-primary/40 hover:text-primary hover:bg-primary/5',
             'transition-all duration-100',
           )}
         >
@@ -448,11 +444,11 @@ const CALENDAR_CLASSNAMES = {
   range_start: 'day-range-start',
   range_end: 'day-range-end',
   selected: cn(
-    'text-sidebar-primary-foreground',
-    '[&_button]:bg-sidebar-primary [&_button]:text-sidebar-primary-foreground',
-    '[&_button:hover]:bg-sidebar-primary [&_button:hover]:text-sidebar-primary-foreground',
+    'text-primary-foreground',
+    '[&_button]:gradient-primary [&_button]:text-primary-foreground',
+    '[&_button:hover]:gradient-primary [&_button:hover]:text-primary-foreground',
   ),
-  today: 'font-bold [&_button]:ring-2 [&_button]:ring-sidebar-primary/40',
+  today: 'font-bold [&_button]:ring-2 [&_button]:ring-primary/40',
   outside:
     'day-outside text-muted-foreground/50 aria-selected:bg-sidebar-accent/30 aria-selected:text-muted-foreground',
   disabled: 'text-muted-foreground/50 opacity-50 pointer-events-none',

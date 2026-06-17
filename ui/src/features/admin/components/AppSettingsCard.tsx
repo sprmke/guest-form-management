@@ -1,10 +1,11 @@
 import * as React from 'react';
 import {
   Check,
-  ChevronDown,
+  FileText,
   Globe,
   Loader2,
   Mail,
+  PawPrint,
   Settings,
   Shield,
   Timer,
@@ -12,15 +13,16 @@ import {
   Wallet,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
+import {
+  AdminSection,
+  AdminSectionNavLayout,
+  type AdminSectionNavItem,
+} from '@/features/admin/components/AdminSectionNavLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -44,50 +46,15 @@ import { CalendarEventDatesBackfillCard } from '@/features/admin/components/Cale
 import { GafDetailsSettingsSection } from '@/features/admin/components/GafDetailsSettingsSection';
 import { PetDetailsSettingsSection } from '@/features/admin/components/PetDetailsSettingsSection';
 
-function CollapsibleSection({
-  id,
-  title,
-  icon,
-  defaultOpen = false,
-  children,
-}: {
-  id: string;
-  title: string;
-  icon: React.ReactNode;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Collapsible
-      defaultOpen={defaultOpen}
-      className="rounded-lg border group/collapse border-border bg-muted/15"
-    >
-      <CollapsibleTrigger
-        type="button"
-        className={cn(
-          'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
-          'text-foreground hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-        )}
-        aria-controls={`${id}-panel`}
-      >
-        <span className="shrink-0 text-muted-foreground">{icon}</span>
-        <span className="flex-1 min-w-0 text-sm font-semibold">{title}</span>
-        <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapse:rotate-180"
-          aria-hidden
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div
-          id={`${id}-panel`}
-          className="px-3 pt-3 pb-4 space-y-4 border-t border-separator"
-        >
-          {children}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
+const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
+  { id: 'email-routing', label: 'Email', icon: Mail },
+  { id: 'automation', label: 'Automation', icon: Timer },
+  { id: 'payment', label: 'Payment', icon: Wallet },
+  { id: 'guest-links', label: 'Links & Branding', icon: Globe },
+  { id: 'gaf-details', label: 'GAF Details', icon: FileText },
+  { id: 'pet-details', label: 'Pet Details', icon: PawPrint },
+  { id: 'env-secrets', label: 'Integrations', icon: Shield },
+];
 
 function FieldGrid({
   children,
@@ -318,7 +285,7 @@ function SettingsImageField({
       await uploadMut.mutateAsync({ assetType, file });
       toast.success(`${label} updated`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      toast.error(friendlyToastError(err, 'Upload failed'));
     } finally {
       if (fileRef.current) fileRef.current.value = '';
     }
@@ -329,7 +296,7 @@ function SettingsImageField({
       await clearMut.mutateAsync(clearField);
       toast.success(`${label} reset to default`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset failed');
+      toast.error(friendlyToastError(err, 'Reset failed'));
     }
   }
 
@@ -433,7 +400,7 @@ export function AppSettingsCard() {
     if (!draft) return;
     update.mutate(draft, {
       onSuccess: () => toast.success('Settings saved'),
-      onError: (e) => toast.error((e as Error).message),
+      onError: (e) => toast.error(friendlyToastError(e, 'Could not save settings')),
     });
   };
 
@@ -442,33 +409,40 @@ export function AppSettingsCard() {
   }
 
   return (
-    <section
-      className={cn(
-        'surface-card w-full px-3 py-3 sm:px-4 sm:py-4',
-        'space-y-4 shadow-sm',
-      )}
-      aria-labelledby="app-settings-heading"
-    >
-      <AdminPageHeader
-        id="app-settings-heading"
-        title="Settings"
-        subtitle="Integrations, credentials, and workspace configuration."
-        icon={Settings}
-      />
-
-      {isError && (
+    <div className="space-y-3 sm:space-y-4" aria-labelledby="app-settings-heading">
+      {isError ? (
         <p className="text-sm text-destructive">
           {(error as Error)?.message ?? 'Could not load settings'}
         </p>
-      )}
+      ) : null}
 
-      {draft && data && (
-        <div className="space-y-3">
-          <CollapsibleSection
-            id="email-routing"
-            title="Email"
-            icon={<Mail className="size-4" aria-hidden />}
+      {draft && data ? (
+        <>
+          <AdminSectionNavLayout
+            sections={SETTINGS_SECTIONS}
+            header={
+              <AdminPageHeader
+                id="app-settings-heading"
+                variant="compact"
+                title="Settings"
+                subtitle="Integrations, credentials, and workspace configuration."
+                icon={Settings}
+              />
+            }
+            footer={
+              <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+                <Button
+                  type="button"
+                  disabled={busy || !draft}
+                  onClick={handleSave}
+                  className="min-h-[44px] w-full sm:w-auto"
+                >
+                  {update.isPending ? 'Saving…' : 'Save settings'}
+                </Button>
+              </div>
+            }
           >
+          <AdminSection id="email-routing" title="Email" icon={Mail}>
             <FieldGrid>
               <Field
                 id="email-to"
@@ -489,7 +463,7 @@ export function AppSettingsCard() {
               <Field
                 id="email-reply-to"
                 label="Team Email"
-                hint="Reply-to for guest emails. Gmail only accepts GAF/pet approval replies from this sender when set."
+                hint="Guest reply-to. Gmail only accepts GAF/pet approvals from this sender."
                 source={sources?.emailReplyTo}
               >
                 <Input
@@ -519,14 +493,9 @@ export function AppSettingsCard() {
                 </Field>
               </FieldSpan>
             </FieldGrid>
-          </CollapsibleSection>
+          </AdminSection>
 
-          <CollapsibleSection
-            id="automation"
-            title="Automation"
-            icon={<Timer className="size-4" aria-hidden />}
-            defaultOpen={false}
-          >
+          <AdminSection id="automation" title="Automation" icon={Timer}>
             <FieldGrid>
               <Field
                 id="sd-lead-hours"
@@ -554,7 +523,7 @@ export function AppSettingsCard() {
               <Field
                 id="sd-max-age"
                 label="Skip Old Checkouts After (days)"
-                hint="Skip the automated SD email if checkout was longer ago than this. Use 0 to always send."
+                hint="Skip auto SD email when checkout is older than this many days. 0 = always send."
                 source={sources?.sdRefundCronMaxCheckoutAgeDays}
               >
                 <Input
@@ -593,14 +562,9 @@ export function AppSettingsCard() {
                 />
               </Field>
             </FieldGrid>
-          </CollapsibleSection>
+          </AdminSection>
 
-          <CollapsibleSection
-            id="payment"
-            title="Payment"
-            icon={<Wallet className="size-4" aria-hidden />}
-            defaultOpen={false}
-          >
+          <AdminSection id="payment" title="Payment" icon={Wallet}>
             <FieldGrid>
               <Field
                 id="gcash-name"
@@ -653,14 +617,9 @@ export function AppSettingsCard() {
                 />
               </FieldSpan>
             </FieldGrid>
-          </CollapsibleSection>
+          </AdminSection>
 
-          <CollapsibleSection
-            id="guest-links"
-            title="Links & Branding"
-            icon={<Globe className="size-4" aria-hidden />}
-            defaultOpen={false}
-          >
+          <AdminSection id="guest-links" title="Links & Branding" icon={Globe}>
             <FieldGrid>
               <Field
                 id="public-guest-origin"
@@ -709,59 +668,48 @@ export function AppSettingsCard() {
                 />
               </FieldSpan>
             </FieldGrid>
-          </CollapsibleSection>
+          </AdminSection>
 
-          <GafDetailsSettingsSection
-            values={{
-              gafUnitOwner: draft.gafUnitOwner,
-              gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
-              gafGuestsOnsiteContactPerson: draft.gafGuestsOnsiteContactPerson,
-              gafOwnerContactNumber: draft.gafOwnerContactNumber,
-            }}
-            signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
-            signatureSource={sources?.gafUnitOwnerSignatureUrl}
-            disabled={busy}
-            fieldSources={sources}
-            onChange={(key, value) => set(key, value)}
-          />
+          <AdminSection id="gaf-details" title="GAF Details" icon={FileText}>
+            <GafDetailsSettingsSection
+              values={{
+                gafUnitOwner: draft.gafUnitOwner,
+                gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
+                gafGuestsOnsiteContactPerson: draft.gafGuestsOnsiteContactPerson,
+                gafOwnerContactNumber: draft.gafOwnerContactNumber,
+              }}
+              signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+              signatureSource={sources?.gafUnitOwnerSignatureUrl}
+              disabled={busy}
+              fieldSources={sources}
+              onChange={(key, value) => set(key, value)}
+            />
+          </AdminSection>
 
-          <PetDetailsSettingsSection
-            values={{
-              gafUnitOwner: draft.gafUnitOwner,
-              gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
-            }}
-            signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
-            signatureSource={sources?.gafUnitOwnerSignatureUrl}
-            disabled={busy}
-            onChange={(key, value) => set(key, value)}
-          />
+          <AdminSection id="pet-details" title="Pet Details" icon={PawPrint}>
+            <PetDetailsSettingsSection
+              values={{
+                gafUnitOwner: draft.gafUnitOwner,
+                gafTowerAndUnitNumber: draft.gafTowerAndUnitNumber,
+              }}
+              signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+              signatureSource={sources?.gafUnitOwnerSignatureUrl}
+              disabled={busy}
+              onChange={(key, value) => set(key, value)}
+            />
+          </AdminSection>
 
-          <CollapsibleSection
+          <AdminSection
             id="env-secrets"
             title="Integrations"
-            icon={<Shield className="size-4" aria-hidden />}
-            defaultOpen={false}
+            icon={Shield}
+            description="Sensitive information health check."
           >
-            <p className="text-xs leading-snug text-muted-foreground">
-              Sensitive information health check.
-            </p>
             <SecretsPanel status={data.secretsStatus} />
-          </CollapsibleSection>
-        </div>
-      )}
-
-      {!isError ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            disabled={busy || !draft}
-            onClick={handleSave}
-            className="min-h-[44px] w-full sm:w-auto"
-          >
-            {update.isPending ? 'Saving…' : 'Save settings'}
-          </Button>
-        </div>
+          </AdminSection>
+          </AdminSectionNavLayout>
+        </>
       ) : null}
-    </section>
+    </div>
   );
 }

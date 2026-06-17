@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { Check, ExternalLink, Loader2, Wallet } from 'lucide-react';
 
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
@@ -72,7 +73,7 @@ function StepperStepRow({
         className={cn(
           'flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm transition-colors',
           done &&
-            'border-primary bg-primary text-primary-foreground shadow-primary/25',
+            'border-primary gradient-primary text-primary-foreground shadow-primary/25',
           current &&
             !done &&
             'border-primary bg-primary/15 text-primary ring-2 ring-primary/25',
@@ -198,7 +199,7 @@ export function SdFormPage() {
       return v;
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? 'Could not reveal your voucher just yet.');
+      toast.error(friendlyToastError(err, 'Could not reveal your voucher'));
     },
   });
 
@@ -243,12 +244,10 @@ export function SdFormPage() {
     },
     onSuccess: () => {
       setStep('done');
-      toast.success(
-        'Thank you — we have received your security deposit refund information.',
-      );
+      toast.success('Refund details received');
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? 'Submit failed');
+      toast.error(friendlyToastError(err, 'Could not submit'));
     },
   });
 
@@ -262,8 +261,7 @@ export function SdFormPage() {
               Missing booking link
             </h1>
             <p className="text-sm text-muted-foreground">
-              Open this page from the link in your email, or contact us on
-              Facebook if you need help.
+              Use the link from your email, or contact us on Facebook for help.
             </p>
             <Button asChild variant="outline" className="min-h-[44px]">
               <Link to="/">Back to home</Link>
@@ -293,7 +291,7 @@ export function SdFormPage() {
             </h1>
             <p className="text-sm text-muted-foreground">
               {(query.error as Error)?.message ??
-                'This form is not available. Please use the link from your email or contact us on Facebook.'}
+                "This form isn't available. Use your email link or contact us on Facebook."}
             </p>
             <Button asChild variant="outline" className="min-h-[44px]">
               <Link to="/">Back to home</Link>
@@ -320,13 +318,11 @@ export function SdFormPage() {
                 You&apos;re all set!
               </h1>
               <p className="leading-relaxed text-muted-foreground">
-                Thank you, <strong>{data.primary_guest_name}</strong>!
-                We&apos;ll process your security deposit refund after 1-2 hours
-                using the details you shared.
+                Thanks, <strong>{data.primary_guest_name}</strong>! We&apos;ll
+                process your SD refund in 1–2 hours using your details.
               </p>
               <p className="strong leading-relaxed text-muted-foreground">
-                We are looking forward to accommodate you again on your next
-                stay. See you, Ka-Homies!
+                We hope to host you again soon. See you, Ka-Homies!
               </p>
             </div>
             <Button
@@ -356,18 +352,15 @@ export function SdFormPage() {
             </h1>
             <div className="space-y-3 text-base leading-relaxed text-muted-foreground">
               <p>
-                It was a pleasure hosting you at Kame Home! We truly appreciate
-                you choosing us, and we hope you had a comfortable stay filled
-                with great memories.
+                Thanks for staying at Kame Home! We hope you had a comfortable
+                stay with great memories.
               </p>
               <p>
-                Before we process your security deposit refund, we’d love to
-                hear about your stay! We’d really appreciate it if you could
-                leave us a review on our Facebook page and share your favorite
-                moments (photos or videos) with your loved ones.
+                Before your SD refund, leave a Facebook review and share
+                favorite moments with loved ones.
               </p>
               <p className="font-semibold text-warning">
-                Leave us a review and get a chance to win {formatVoucherDiscountRange()} or a
+                Review us for a chance to win {formatVoucherDiscountRange()} or a
                 FREE stay on your next booking!
               </p>
             </div>
@@ -393,10 +386,8 @@ export function SdFormPage() {
                 Almost there
               </p>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                We emailed you check-out and security-deposit details.
-                We&apos;re still recording your final balance on our side—refund
-                steps open here automatically when that&apos;s done. You can
-                leave this tab open; it refreshes every few seconds.
+                We emailed check-out details. Recording your balance—this page
+                updates when refund steps open.
               </p>
             </div>
           </div>
@@ -421,8 +412,8 @@ export function SdFormPage() {
           <div className="mx-auto flex max-w-md flex-col items-center gap-4 rounded-xl border border-border/60 bg-muted/20 px-4 py-8 text-center sm:px-6">
             <Loader2 className="size-9 animate-spin text-primary" aria-hidden />
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Refund details unlock once your stay moves to check-out on our
-              system. This page will update shortly.
+              Refund details unlock when your stay moves to check-out. This page
+              will update shortly.
             </p>
             <Button
               type="button"
@@ -622,7 +613,7 @@ function StepTwo({
             selected={method === 'same_phone'}
             onSelect={() => onMethodChange('same_phone')}
             title={`GCash - ${(data.guest_phone_number ?? '').trim() || '—'}`}
-            description="Same as the provided phone number from the guest form"
+            description="Same phone number from your guest form"
           />
           <MethodCard
             selected={method === 'other_bank'}
@@ -785,13 +776,8 @@ function StepTwo({
           role="note"
         >
           <p className="text-sm leading-relaxed text-amber-950">
-            For cash SD refund, this option is only available if your balance
-            and security deposit were paid in cash. We can only process the cash
-            refund if our staff is available and on the Azure premises.{' '}
-            <strong>
-              Please contact us via Facebook or Airbnb so we can arrange your
-              cash refund before you leave the building.
-            </strong>
+            Cash refunds need on-site staff and cash payment. Message us on
+            Facebook or Airbnb before leaving.
           </p>
         </div>
       )}

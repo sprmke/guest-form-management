@@ -1,5 +1,7 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AdminMetricCardSkeleton } from "@/features/admin/components/AdminMetricCard";
 
 function AdminSurfaceCard({
   className,
@@ -18,10 +20,15 @@ function AdminSurfaceCard({
 
 export function AdminPageHeaderSkeleton({
   compact = false,
+  card,
 }: {
   compact?: boolean;
+  /** Wrap in surface card. Defaults to true for `compact`. */
+  card?: boolean;
 }) {
-  return (
+  const useCard = card ?? compact;
+
+  const content = (
     <div
       className={cn(
         "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
@@ -37,6 +44,16 @@ export function AdminPageHeaderSkeleton({
       </div>
     </div>
   );
+
+  if (!useCard) {
+    return content;
+  }
+
+  return (
+    <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+      {content}
+    </section>
+  );
 }
 
 function CollapsibleSectionSkeleton({
@@ -51,7 +68,7 @@ function CollapsibleSectionSkeleton({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-border/50 bg-muted/30",
+        "overflow-hidden rounded-xl border border-border/50 bg-muted/30",
         nested && "rounded-lg bg-background/80",
       )}
     >
@@ -111,7 +128,7 @@ function TemplateEditorSkeleton({ rows = 8 }: { rows?: number }) {
     <div className="space-y-2">
       <Skeleton className="h-3 w-32" />
       <Skeleton
-        className="min-h-[96px] w-full rounded-2xl"
+        className="min-h-[96px] w-full rounded-xl"
         style={{ height: rows * 12 }}
       />
       <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
@@ -140,9 +157,9 @@ function AdminFooterActionsSkeleton() {
 
 export function TelegramOperationsSettingsSkeleton() {
   return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading operations settings">
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading operations settings">
+      <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
-        <AdminPageHeaderSkeleton />
         <CollapsibleSectionSkeleton>
           <ButtonRowSkeleton count={2} />
         </CollapsibleSectionSkeleton>
@@ -165,15 +182,15 @@ export function TelegramOperationsSettingsSkeleton() {
         </CollapsibleSectionSkeleton>
         <AdminFooterActionsSkeleton />
       </div>
-    </AdminSurfaceCard>
+    </div>
   );
 }
 
 export function TelegramStaffSettingsSkeleton() {
   return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading staff settings">
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading staff settings">
+      <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
-        <AdminPageHeaderSkeleton />
         <CollapsibleSectionSkeleton>
           <ButtonRowSkeleton count={2} />
         </CollapsibleSectionSkeleton>
@@ -193,7 +210,7 @@ export function TelegramStaffSettingsSkeleton() {
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
             <div className="space-y-2">
               <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-11 w-full rounded-2xl sm:max-w-[10rem]" />
+              <Skeleton className="h-11 w-full rounded-xl sm:max-w-[10rem]" />
             </div>
             <Skeleton className="h-3 w-24" />
           </div>
@@ -201,20 +218,20 @@ export function TelegramStaffSettingsSkeleton() {
         </CollapsibleSectionSkeleton>
         <AdminFooterActionsSkeleton />
       </div>
-    </AdminSurfaceCard>
+    </div>
   );
 }
 
 export function TelegramMarketingSettingsSkeleton() {
   return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading marketing settings">
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading marketing settings">
+      <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
-        <AdminPageHeaderSkeleton />
         <CollapsibleSectionSkeleton>
           <ButtonRowSkeleton count={3} />
           <div className="grid gap-3 sm:grid-cols-2">
-            <Skeleton className="h-11 w-full rounded-2xl" />
-            <Skeleton className="h-11 w-full rounded-2xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
           </div>
         </CollapsibleSectionSkeleton>
         <CollapsibleSectionSkeleton>
@@ -239,8 +256,8 @@ export function TelegramMarketingSettingsSkeleton() {
             </div>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Skeleton className="h-11 w-full rounded-2xl" />
-            <Skeleton className="h-11 w-full rounded-2xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
+            <Skeleton className="h-11 w-full rounded-xl" />
           </div>
         </CollapsibleSectionSkeleton>
         <CollapsibleSectionSkeleton>
@@ -250,45 +267,43 @@ export function TelegramMarketingSettingsSkeleton() {
               className="grid grid-cols-1 gap-2 rounded-md border border-border/80 bg-background/80 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
             >
               <Skeleton className="h-3 w-28" />
-              <Skeleton className="col-span-full h-20 w-full rounded-2xl sm:col-span-2" />
+              <Skeleton className="col-span-full h-20 w-full rounded-xl sm:col-span-2" />
               <Skeleton className="h-9 w-full rounded-lg sm:col-start-2 sm:row-start-1 sm:w-28" />
             </div>
           ))}
         </CollapsibleSectionSkeleton>
         <AdminFooterActionsSkeleton />
       </div>
-    </AdminSurfaceCard>
+    </div>
   );
 }
 
 export function AppSettingsCardSkeleton() {
   return (
-    <AdminSurfaceCard aria-busy="true" aria-label="Loading settings">
-      <div className="space-y-4">
-        <AdminPageHeaderSkeleton />
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <CollapsibleSectionSkeleton key={i}>
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Skeleton className="h-3.5 w-28" />
-                  <Skeleton className="h-3 w-full max-w-xs" />
-                  <Skeleton className="h-11 w-full rounded-2xl" />
-                </div>
-                <div className="space-y-2">
-                  <Skeleton className="h-3.5 w-32" />
-                  <Skeleton className="h-3 w-full max-w-sm" />
-                  <Skeleton className="h-11 w-full rounded-2xl" />
-                </div>
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading settings">
+      <AdminPageHeaderSkeleton compact />
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <CollapsibleSectionSkeleton key={i}>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="space-y-2">
+                <Skeleton className="h-3.5 w-28" />
+                <Skeleton className="h-3 w-full max-w-xs" />
+                <Skeleton className="h-11 w-full rounded-xl" />
               </div>
-            </CollapsibleSectionSkeleton>
-          ))}
-        </div>
-        <div className="border-t border-separator pt-3">
-          <Skeleton className="ml-auto h-11 w-full rounded-lg sm:w-32" />
-        </div>
+              <div className="space-y-2">
+                <Skeleton className="h-3.5 w-32" />
+                <Skeleton className="h-3 w-full max-w-sm" />
+                <Skeleton className="h-11 w-full rounded-xl" />
+              </div>
+            </div>
+          </CollapsibleSectionSkeleton>
+        ))}
       </div>
-    </AdminSurfaceCard>
+      <div className="border-t border-separator pt-3">
+        <Skeleton className="ml-auto h-11 w-full rounded-lg sm:w-32" />
+      </div>
+    </div>
   );
 }
 
@@ -400,7 +415,7 @@ export function BookingDetailPageSkeleton() {
 export function BookingsTableSkeleton() {
   return (
     <div
-      className="surface-card overflow-hidden"
+      className="surface-card surface-card-clip overflow-hidden"
       aria-busy="true"
       aria-label="Loading bookings"
     >
@@ -494,48 +509,23 @@ export function BookingsCardGridSkeleton() {
 
 function FinanceKpiGridSkeleton({
   count = 4,
-  hero = false,
 }: {
   count?: number;
-  hero?: boolean;
 }) {
-  if (hero) {
-    return (
-      <div className="gradient-primary-subtle rounded-2xl border border-primary/20 p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-3 w-28" />
-            <Skeleton className="h-8 w-40 sm:h-9" />
-          </div>
-          <Skeleton className="size-10 shrink-0 rounded-2xl" />
-        </div>
-      </div>
-    );
-  }
   return (
     <div
       className={cn(
         "grid gap-3",
-        count === 3 && "grid-cols-2 lg:grid-cols-3",
+        count === 3 && "grid-cols-1 sm:grid-cols-3",
         count === 4 && "grid-cols-2 lg:grid-cols-4",
         count === 2 && "grid-cols-2",
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
-        <div
+        <AdminMetricCardSkeleton
           key={i}
-          className="rounded-2xl border border-border/50 bg-card p-3.5 sm:p-4"
-          style={{ opacity: 1 - i * 0.05 }}
-        >
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1 space-y-2">
-              <Skeleton className="h-2.5 w-20" />
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-2.5 w-28 max-w-full" />
-            </div>
-            <Skeleton className="size-10 shrink-0 rounded-2xl" />
-          </div>
-        </div>
+          style={{ opacity: 1 - i * 0.05 } as CSSProperties}
+        />
       ))}
     </div>
   );
@@ -680,7 +670,7 @@ export function FinanceOperatingTabSkeleton() {
       <FinanceKpiGridSkeleton count={3} />
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
-        <Skeleton className="h-11 w-28 rounded-2xl" />
+        <Skeleton className="h-11 w-28 rounded-xl" />
       </div>
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
@@ -814,21 +804,7 @@ function DashboardChartCardHeaderSkeleton({
 }
 
 function DashboardTrendStatCardSkeleton() {
-  return (
-    <div className="rounded-2xl border border-border/50 bg-card p-3.5 sm:p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-8 w-32" />
-          <div className="space-y-1 pt-0.5">
-            <Skeleton className="h-6 w-14 rounded-full" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        </div>
-        <Skeleton className="size-10 shrink-0 rounded-xl sm:size-11 sm:rounded-2xl" />
-      </div>
-    </div>
-  );
+  return <AdminMetricCardSkeleton showTrend />;
 }
 
 export function DashboardSkeleton() {

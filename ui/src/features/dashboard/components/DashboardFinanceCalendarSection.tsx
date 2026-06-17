@@ -160,7 +160,7 @@ export function DashboardFinanceCalendarSection({
         >
           <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 items-start gap-2">
-              <div className="icon-well-sm shrink-0 bg-muted/80">
+              <div className="icon-well-sm shrink-0">
                 <CalendarDays
                   className="size-[18px] text-muted-foreground"
                   aria-hidden

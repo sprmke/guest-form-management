@@ -45,8 +45,8 @@ export function BookingStaySortControl({
           'inline-flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-[13px] font-semibold min-h-[44px]',
           'border transition-all duration-100 whitespace-nowrap',
           active
-            ? 'bg-sidebar-primary text-sidebar-primary-foreground border-sidebar-primary'
-            : 'bg-card text-sidebar-foreground border-sidebar-border hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50',
+            ? 'interactive-primary border-primary'
+            : 'bg-card text-sidebar-foreground border-sidebar-border hover:border-primary/40 hover:bg-primary/5',
           className,
         )}
       >

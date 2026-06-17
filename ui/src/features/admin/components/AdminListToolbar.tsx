@@ -171,18 +171,9 @@ export function AdminListPagination({
               className={cn(
                 'flex size-10 shrink-0 items-center justify-center rounded-lg text-ui font-semibold transition-all duration-100 lg:size-8',
                 item === page
-                  ? 'text-sidebar-primary-foreground'
-                  : 'text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                  ? 'interactive-primary-segment text-primary-foreground'
+                  : 'text-sidebar-muted hover:bg-primary/5 hover:text-primary',
               )}
-              style={
-                item === page
-                  ? {
-                      background: 'hsl(var(--sidebar-primary))',
-                      boxShadow:
-                        '0 1px 4px hsl(var(--sidebar-primary) / 0.3)',
-                    }
-                  : undefined
-              }
             >
               {item}
             </button>

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Activity, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import {
   useVerifyGeminiIntegration,
@@ -12,13 +13,10 @@ type Props = {
   apiKeyConfigured: boolean;
 };
 
-function formatVerifySummary(v: GeminiIntegrationVerifyDto): string {
-  const parts: string[] = [];
-  parts.push(v.model);
-  if (v.latencyMs != null) parts.push(`${v.latencyMs} ms`);
-  if (v.statusCode != null) parts.push(`HTTP ${v.statusCode}`);
-  if (v.error) parts.push(v.error);
-  return parts.join(' · ');
+function formatVerifySummary(v: GeminiIntegrationVerifyDto): string | undefined {
+  if (v.ok) return undefined;
+  if (v.error) return friendlyToastError(new Error(v.error), 'Connection failed');
+  return 'Connection failed';
 }
 
 export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
@@ -50,8 +48,7 @@ export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
             Gemini receipt AI
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 sm:text-[11px] leading-snug">
-            Validates downpayment, balance, and parking receipt uploads via
-            Gemini Flash vision. Set{' '}
+            AI-checks receipt uploads via Gemini Flash. Set{' '}
             <span className="font-mono text-[10px] sm:text-[11px]">
               GEMINI_API_KEY
             </span>{' '}
@@ -91,18 +88,13 @@ export function GeminiIntegrationCard({ apiKeyConfigured }: Props) {
             onSuccess: (v) => {
               setLastResult(v);
               if (v.ok) {
-                toast.success('Gemini connection OK', {
-                  description: formatVerifySummary(v),
-                  duration: 10_000,
-                });
+                toast.success('Receipt AI is connected');
               } else {
-                toast.error('Gemini connection failed', {
-                  description: formatVerifySummary(v),
-                  duration: 14_000,
-                });
+                const description = formatVerifySummary(v);
+                toast.error('Receipt AI connection failed', description ? { description } : undefined);
               }
             },
-            onError: (e) => toast.error((e as Error).message),
+            onError: (e) => toast.error(friendlyToastError(e, 'Connection test failed')),
           })
         }
         title={

@@ -51,7 +51,7 @@ export function RequireAdmin({ children }: Props) {
   if (status === "not-admin") {
     return (
       <div className="fixed inset-0 flex items-center justify-center p-6 bg-sidebar-accent/20">
-        <div className="w-full max-w-sm bg-card rounded-2xl border border-border shadow-[0_4px_24px_0_rgb(0,0,0,0.06)] p-8 text-center">
+        <div className="w-full max-w-sm bg-card rounded-xl border border-border shadow-[0_4px_24px_0_rgb(0,0,0,0.06)] p-8 text-center">
           <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl bg-destructive/10 dark:bg-destructive/20">
             <ShieldOff className="size-6 text-destructive" aria-hidden />
           </div>

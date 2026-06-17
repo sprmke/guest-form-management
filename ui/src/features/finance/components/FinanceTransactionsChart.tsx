@@ -353,7 +353,7 @@ export function FinanceTransactionsChart({
         description="By category"
         action={
           <div className="max-w-full overflow-x-auto">
-            <div className="flex w-max min-w-0 p-1 rounded-lg border border-border/60">
+            <div className="flex w-max min-w-0 rounded-lg border border-border bg-muted/60 p-1">
               <Button
                 type="button"
                 variant={pieChartType === "all" ? "default" : "ghost"}

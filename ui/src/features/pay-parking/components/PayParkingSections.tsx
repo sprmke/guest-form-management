@@ -126,8 +126,8 @@ export function PayParkingLastMinuteWarning() {
         aria-hidden
       />
       <span>
-        For last-minute parking requests, please allow us additional time to
-        secure a parking slot, as paid parking availability is limited.
+        Last-minute parking may take longer—paid slots inside Azure are
+        limited.
       </span>
     </p>
   );

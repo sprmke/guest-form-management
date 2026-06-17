@@ -92,7 +92,6 @@ export function useTelegramAdminSettings() {
 
 export type TelegramAdminTestAction =
   | 'verify_admin_telegram_env'
-  | 'run_hourly_cron_now'
   | 'send_draft_preview';
 
 export type TelegramAdminTestPayload = {

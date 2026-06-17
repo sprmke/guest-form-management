@@ -27,7 +27,7 @@ export function AdminDataTable({
     return (
       <div
         className={cn(
-          'flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl surface-card',
+          'flex min-h-0 flex-1 flex-col overflow-hidden surface-card surface-card-clip',
           className,
         )}
       >
@@ -44,7 +44,7 @@ export function AdminDataTable({
   }
 
   return (
-    <div className={cn('overflow-hidden surface-card', className)}>
+    <div className={cn('surface-card surface-card-clip', className)}>
       <div className="overflow-x-auto">
         <table
           className="w-full border-collapse admin-data-table bg-card"
@@ -69,8 +69,9 @@ export function AdminTableHeadRow({
       <tr
         className={cn(
           'border-b border-separator bg-card',
+          '[&_th:first-child]:rounded-tl-xl [&_th:last-child]:rounded-tr-xl',
           sticky &&
-            '[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_0_hsl(var(--border))] [&_th:first-child]:rounded-tl-3xl [&_th:last-child]:rounded-tr-3xl',
+            '[&_th]:sticky [&_th]:top-0 [&_th]:z-10 [&_th]:bg-card [&_th]:shadow-[inset_0_-1px_0_0_hsl(var(--border))]',
         )}
       >
         {children}

@@ -35,7 +35,7 @@ const COPY: Record<
   submit: {
     title: 'Submit parking request',
     description:
-      'Choose how to notify Azure North parking owners, or save vehicle details without sending email.',
+      'Notify parking owners by email, or save vehicle details without sending email.',
     broadcast: 'Save and send broadcast email',
     owner: 'Save and send to parking owner email',
     only: 'Save details only',
@@ -43,7 +43,7 @@ const COPY: Record<
   update: {
     title: 'Update parking details',
     description:
-      'Choose whether to notify Azure North parking owners again with a broadcast email, or save the changes without sending email.',
+      'Notify parking owners again, or save changes without sending email.',
     broadcast: 'Update and send broadcast email',
     owner: 'Update and send to parking owner email',
     only: 'Update details only',

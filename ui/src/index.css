@@ -4,46 +4,49 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Kame Home — Teal-green gradient design system */
+/* Kame Home — Teal brand accents; neutral gray surfaces (light + dark) */
 @layer base {
   :root {
-    --radius: 1rem;
-    --shadow-elevated: 0 1px 2px hsl(160 20% 20% / 0.04),
-      0 8px 24px -6px hsl(160 20% 20% / 0.08);
-    --shadow-elevated-lg: 0 2px 4px hsl(160 20% 20% / 0.04),
-      0 16px 40px -8px hsl(160 20% 20% / 0.12);
-    --shadow-soft: 0 4px 20px -4px hsl(168 65% 40% / 0.22);
+    --radius: 0.875rem;
+    --shadow-elevated:
+      0 1px 2px hsl(240 6% 10% / 0.03),
+      0 2px 8px -2px hsl(240 6% 10% / 0.05);
+    --shadow-elevated-lg:
+      0 2px 4px hsl(240 6% 10% / 0.04),
+      0 6px 16px -4px hsl(240 6% 10% / 0.07);
+    --shadow-soft: 0 2px 10px -2px hsl(168 65% 38% / 0.2);
 
-    --background: 150 20% 98%;
-    --foreground: 160 25% 14%;
+    /* Zinc canvas — white cards with depth (matches premium SaaS light UIs) */
+    --background: 240 6% 96%;
+    --foreground: 240 10% 4%;
 
     --card: 0 0% 100%;
-    --card-foreground: 160 25% 14%;
+    --card-foreground: 240 10% 4%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 160 25% 14%;
+    --popover-foreground: 240 10% 4%;
 
-    --primary: 168 65% 40%;
+    --primary: 168 65% 38%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 152 30% 94%;
-    --secondary-foreground: 158 50% 22%;
+    --secondary: 240 5% 93%;
+    --secondary-foreground: 240 6% 18%;
 
-    --muted: 150 15% 95%;
-    --muted-foreground: 160 10% 46%;
+    --muted: 240 5% 94%;
+    --muted-foreground: 240 4% 44%;
 
-    --accent: 152 35% 93%;
-    --accent-foreground: 158 50% 22%;
+    --accent: 240 5% 92%;
+    --accent-foreground: 240 10% 4%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 12% 90%;
-    --input: 150 12% 90%;
-    --ring: 168 65% 40%;
-    --separator: 150 10% 86%;
+    --border: 240 6% 88%;
+    --input: 240 6% 88%;
+    --ring: 168 65% 38%;
+    --separator: 240 5% 91%;
 
-    --success: 152 69% 38%;
+    --success: 152 69% 36%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
@@ -53,47 +56,48 @@
     --info-foreground: 0 0% 100%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 160 25% 14%;
-    --sidebar-primary: 168 65% 40%;
+    --sidebar-foreground: 240 10% 4%;
+    --sidebar-primary: 168 65% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 65% 96%;
-    --sidebar-accent-foreground: 168 65% 28%;
-    --sidebar-border: 150 12% 91%;
-    --sidebar-ring: 168 65% 40%;
-    --sidebar-muted: 160 8% 48%;
+    --sidebar-accent: 240 5% 95%;
+    --sidebar-accent-foreground: 240 6% 18%;
+    --sidebar-border: 240 6% 89%;
+    --sidebar-ring: 168 65% 38%;
+    --sidebar-muted: 240 4% 42%;
   }
 
   .dark {
-    --background: 160 20% 8%;
-    --foreground: 150 15% 96%;
+    /* Neutral gray surfaces; brand teal reserved for primary actions & accents */
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-    --card: 160 18% 11%;
-    --card-foreground: 150 15% 96%;
+    --card: 0 0% 7%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 160 18% 11%;
-    --popover-foreground: 150 15% 96%;
+    --popover: 0 0% 7%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 168 65% 45%;
+    --primary: 168 65% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 160 15% 16%;
-    --secondary-foreground: 152 50% 70%;
+    --secondary: 0 0% 12%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 160 15% 14%;
-    --muted-foreground: 150 10% 62%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 58%;
 
-    --accent: 160 15% 18%;
-    --accent-foreground: 150 15% 96%;
+    --accent: 0 0% 13%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 160 12% 20%;
-    --input: 160 12% 20%;
-    --ring: 168 65% 45%;
-    --separator: 160 8% 17%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 168 65% 42%;
+    --separator: 0 0% 12%;
 
-    --success: 152 65% 45%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 55%;
@@ -102,21 +106,27 @@
     --info: 199 89% 55%;
     --info-foreground: 0 0% 100%;
 
-    --shadow-elevated: 0 1px 2px hsl(0 0% 0% / 0.2),
-      0 8px 24px -6px hsl(0 0% 0% / 0.35);
-    --shadow-elevated-lg: 0 2px 4px hsl(0 0% 0% / 0.25),
-      0 16px 40px -8px hsl(0 0% 0% / 0.45);
-    --shadow-soft: 0 4px 20px -4px hsl(168 65% 45% / 0.25);
+    --shadow-elevated:
+      0 0 0 1px hsl(0 0% 100% / 0.05),
+      0 1px 2px hsl(0 0% 0% / 0.28),
+      0 8px 24px -6px hsl(0 0% 0% / 0.45);
+    --shadow-elevated-lg:
+      0 0 0 1px hsl(0 0% 100% / 0.06),
+      0 2px 6px hsl(0 0% 0% / 0.32),
+      0 16px 40px -8px hsl(0 0% 0% / 0.55);
+    --shadow-soft:
+      0 0 0 1px hsl(168 65% 42% / 0.15),
+      0 4px 20px -4px hsl(168 65% 42% / 0.22);
 
-    --sidebar-background: 160 18% 9%;
-    --sidebar-foreground: 150 15% 92%;
-    --sidebar-primary: 168 65% 45%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 94%;
+    --sidebar-primary: 168 65% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 168 50% 12%;
-    --sidebar-accent-foreground: 168 65% 55%;
-    --sidebar-border: 160 12% 18%;
-    --sidebar-ring: 168 65% 45%;
-    --sidebar-muted: 150 8% 55%;
+    --sidebar-accent: 0 0% 11%;
+    --sidebar-accent-foreground: 0 0% 94%;
+    --sidebar-border: 0 0% 14%;
+    --sidebar-ring: 168 65% 42%;
+    --sidebar-muted: 0 0% 50%;
   }
 }
 
@@ -125,7 +135,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-muted-foreground antialiased;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
     font-feature-settings:
       'rlig' 1,
@@ -141,7 +151,7 @@
   h4,
   h5,
   h6 {
-    @apply font-semibold tracking-tight text-muted-foreground;
+    @apply font-semibold tracking-tight text-foreground;
     letter-spacing: -0.028em;
   }
 
@@ -175,17 +185,40 @@
   .gradient-primary-subtle {
     background: linear-gradient(
       135deg,
-      hsl(168 65% 96%) 0%,
-      hsl(152 45% 95%) 100%
+      hsl(0 0% 100%) 0%,
+      hsl(168 28% 97%) 100%
     );
+  }
+
+  /** Primary toolbar / filter / CTA — same teal gradient as nav + Button default */
+  .interactive-primary {
+    @apply gradient-primary border-primary text-primary-foreground shadow-soft;
+  }
+
+  /** Segmented control active segment (no outer border) */
+  .interactive-primary-segment {
+    @apply gradient-primary text-primary-foreground shadow-sm;
+  }
+
+  /** Radio, checkbox, pagination page — small filled primary mark */
+  .interactive-primary-mark {
+    @apply gradient-primary border-primary;
   }
 
   .dark .gradient-primary-subtle {
     background: linear-gradient(
       135deg,
-      hsl(168 40% 14%) 0%,
-      hsl(160 18% 11%) 100%
+      hsl(0 0% 10%) 0%,
+      hsl(0 0% 7%) 100%
     );
+  }
+
+  .dark .app-shell {
+    background: hsl(var(--background));
+  }
+
+  .dark .app-shell::before {
+    display: none;
   }
 
   .nav-item-active {
@@ -196,7 +229,9 @@
       hsl(168 60% 38%) 100%
     );
     color: hsl(0 0% 100%);
-    box-shadow: 0 2px 12px -3px hsl(168 65% 40% / 0.4);
+    box-shadow:
+      0 0 0 1px hsl(168 65% 30% / 0.15),
+      0 1px 8px -2px hsl(168 65% 38% / 0.35);
   }
 
   .nav-item-active-icon {
@@ -204,42 +239,79 @@
   }
 
   .app-shell {
-    @apply relative min-h-screen;
+    @apply relative min-h-screen bg-background;
+  }
+
+  .app-shell::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
     background:
       radial-gradient(
-        ellipse 80% 50% at 100% -10%,
-        hsl(168 65% 40% / 0.07),
-        transparent 50%
+        ellipse 100% 60% at 50% -25%,
+        hsl(168 55% 42% / 0.07),
+        transparent 55%
       ),
       radial-gradient(
-        ellipse 60% 40% at 0% 100%,
-        hsl(152 50% 50% / 0.05),
+        ellipse 70% 45% at 100% 100%,
+        hsl(240 6% 10% / 0.03),
         transparent 50%
       ),
-      hsl(var(--background));
+      linear-gradient(
+        180deg,
+        hsl(240 6% 97%) 0%,
+        hsl(240 5% 95.5%) 100%
+      );
   }
 
   .surface-card {
-    @apply overflow-visible rounded-3xl border border-border/50 bg-card text-card-foreground;
+    @apply rounded-xl border border-border/50 bg-card text-card-foreground;
     box-shadow: var(--shadow-elevated);
   }
 
+  /** Clip table corners — use on admin list shells, not general cards. */
+  .surface-card-clip {
+    @apply overflow-hidden;
+  }
+
+  .dark .surface-card {
+    @apply border-[hsl(0_0%_100%_/_0.06)];
+  }
+
   .surface-card-interactive {
-    @apply rounded-3xl border border-border/50 bg-card text-card-foreground transition-all duration-300;
+    @apply rounded-xl border border-border/50 bg-card text-card-foreground transition-all duration-300;
     box-shadow: var(--shadow-elevated);
+  }
+
+  .dark .surface-card-interactive {
+    @apply border-[hsl(0_0%_100%_/_0.06)];
   }
 
   .surface-card-interactive:hover {
     box-shadow: var(--shadow-elevated-lg);
-    @apply -translate-y-0.5;
+    @apply -translate-y-px border-border/65;
+  }
+
+  .dark .surface-card-interactive:hover {
+    @apply border-[hsl(0_0%_100%_/_0.08)];
   }
 
   .surface-muted {
-    @apply rounded-2xl border border-border/40 bg-muted/60;
+    @apply rounded-xl border border-border/40 bg-muted/70;
+  }
+
+  .dark .surface-muted {
+    @apply border-[hsl(0_0%_100%_/_0.05)];
   }
 
   .icon-well-sm {
-    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl;
+    @apply inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border/45 bg-muted/50;
+  }
+
+  .dark .icon-well-sm {
+    @apply border-border/60;
   }
 
   .text-overline {
@@ -252,12 +324,12 @@
 
   /* Typography scale — single source for UI copy hierarchy */
   .text-display {
-    @apply text-2xl font-bold tracking-tight text-muted-foreground;
+    @apply text-2xl font-bold tracking-tight text-foreground;
     letter-spacing: -0.03em;
   }
 
   .text-page-title {
-    @apply text-xl font-bold tracking-tight text-muted-foreground lg:text-[1.375rem];
+    @apply text-xl font-bold tracking-tight text-foreground lg:text-[1.375rem];
     letter-spacing: -0.028em;
   }
 
@@ -282,27 +354,27 @@
   }
 
   .text-section-title {
-    @apply text-sm font-semibold tracking-tight text-muted-foreground;
+    @apply text-sm font-semibold tracking-tight text-foreground;
   }
 
   /** Primary interactive / toolbar copy (filters, buttons, menu items). */
   .text-ui {
-    @apply text-sm font-medium leading-snug text-muted-foreground;
+    @apply text-sm font-medium leading-snug text-foreground;
   }
 
   /** Dense toolbar controls (filter bar, sort, date chips). */
   .text-toolbar {
-    @apply text-xs font-semibold leading-none text-muted-foreground;
+    @apply text-xs font-semibold leading-none text-foreground/80;
   }
 
   /** Emphasized values in lists, tables, and cards. */
   .text-data-primary {
-    @apply text-sm font-semibold leading-snug text-muted-foreground lg:text-[13px];
+    @apply text-sm font-semibold leading-snug text-foreground lg:text-[13px];
   }
 
   /** Money in modals / detail rows — matches admin table amount columns. */
   .text-table-amount {
-    @apply text-[14px] font-medium tabular-nums leading-snug text-muted-foreground;
+    @apply text-[14px] font-medium tabular-nums leading-snug text-foreground;
   }
 
   /** Secondary lines under primary data (email, nights, hints). */
@@ -320,10 +392,21 @@
     @apply text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground;
   }
 
-  /** Admin list tables (Bookings, Finance Stays/Transactions) — solid card surface in light + dark. */
-  .admin-data-table thead tr,
+  /** Admin list tables — clip to card radius; header row matches top corners. */
+  .admin-data-table thead tr {
+    @apply bg-card;
+  }
+
   .admin-data-table tbody tr {
     @apply bg-card;
+  }
+
+  .admin-data-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: calc(var(--radius) + 4px);
+  }
+
+  .admin-data-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: calc(var(--radius) + 4px);
   }
 
   .text-caption {
@@ -533,8 +616,8 @@
 }
 
 .dark [data-sonner-toast] [data-close-button]:hover {
-  background: hsl(215 25% 22%) !important;
-  color: hsl(210 20% 92%) !important;
+  background: hsl(0 0% 18%) !important;
+  color: hsl(0 0% 92%) !important;
 }
 
 [data-sonner-toast][data-type='success'] {
@@ -680,16 +763,20 @@
 
 /* Professional Form Sections */
 .form-section {
-  @apply space-y-5 rounded-2xl border border-border/50 bg-card px-4 py-6;
+  @apply space-y-5 rounded-xl border border-border/50 bg-card px-4 py-6;
   box-shadow: var(--shadow-elevated);
 }
 
+.dark .form-section {
+  @apply border-[hsl(0_0%_100%_/_0.06)];
+}
+
 .form-section-header {
-  @apply mb-4 flex items-center gap-3 border-b border-primary/10 pb-3;
+  @apply mb-4 flex items-center gap-3 border-b border-border pb-3;
 }
 
 .form-section-title {
-  @apply text-lg font-semibold text-muted-foreground tracking-tight;
+  @apply text-lg font-semibold text-foreground tracking-tight;
 }
 
 .form-section-icon {
@@ -710,8 +797,6 @@ input.ui-native-datetime[type='datetime-local'] {
   -webkit-appearance: none;
   appearance: none;
   box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
   min-width: 0;
   height: 2.75rem;
   min-height: 2.75rem;
@@ -742,7 +827,8 @@ input.ui-native-datetime[type='datetime-local']::-webkit-datetime-edit-fields-wr
   align-items: center;
   justify-content: flex-start;
   height: 2.75rem;
-  width: 100%;
+  width: auto;
+  max-width: 100%;
   padding: 0;
 }
 
@@ -781,7 +867,7 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
 }
 
 .guest-image-upload-replace {
-  @apply flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:brightness-[1.03];
+  @apply flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-soft transition-all hover:brightness-[1.03];
 }
 
 .guest-image-upload-error {
@@ -1093,15 +1179,15 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
 .dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_start,
 .dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_middle,
 .dark .availability-calendar .calendar-range-active .rdp-day.rdp-range_end {
-  background-color: hsl(168 65% 40% / 0.22) !important;
+  background-color: hsl(var(--primary) / 0.18) !important;
 }
 
 .dark .availability-calendar .rdp-weekday {
-  color: hsl(168 55% 62%);
+  color: hsl(var(--muted-foreground));
 }
 
 .dark .availability-calendar .rdp-day_today:not([aria-selected]) .rdp-day_button {
-  background: hsl(168 65% 45% / 0.15) !important;
+  background: hsl(var(--primary) / 0.12) !important;
   color: hsl(168 55% 70%) !important;
-  border-color: hsl(168 65% 45%);
+  border-color: hsl(var(--primary) / 0.5);
 }

@@ -30,7 +30,7 @@ export const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
     key: 'generatePdf',
     label: 'Generate GAF / pet request PDFs',
     description:
-      'Build filled PDFs for Azure (GAF + pet if applicable), attach to request emails, and save URLs when DB save is on',
+      'Generate GAF/pet PDFs, attach to emails, save URLs when DB is on',
   },
   {
     key: 'sendGafRequestEmail',
@@ -60,8 +60,7 @@ export const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
   {
     key: 'sendSdRefundFormEmail',
     label: 'Send SD Refund Form Email',
-    description:
-      'Email guest the /sd-form link (security deposit refund) when moving to check-out',
+    description: 'Email guest /sd-form link when moving to check-out',
   },
 ];
 

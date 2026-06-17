@@ -41,7 +41,7 @@ export function simplifyAiModelErrorMessage(raw: string): string {
 }
 
 export function showDocumentAiModelErrorToast(rawError?: string | null): void {
-  toast.error('AI document check unavailable', {
+  toast.error('Receipt check unavailable', {
     id: DOCUMENT_AI_ERROR_TOAST_ID,
     description: simplifyAiModelErrorMessage(rawError?.trim() ?? ''),
     duration: 8000,

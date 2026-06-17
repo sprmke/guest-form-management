@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { History, Mail, Unplug } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
 import { GmailMailIntegrationCardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -70,8 +71,8 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
             Gmail
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 sm:text-[11px] leading-snug">
-            Connect the inbox that receives Azure approval replies. Approved GAF
-            and pet PDFs are picked up automatically.
+            Connect the inbox for Azure approval replies. GAF and pet PDFs sync
+            automatically.
           </p>
           {isError && (
             <p className="mt-1 text-xs text-destructive">
@@ -97,13 +98,13 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
           disabled={startOAuth.isPending || disconnect.isPending}
           onClick={() => {
             startOAuth.mutate(undefined, {
-              onError: (e) => toast.error((e as Error).message),
+              onError: (e) => toast.error(friendlyToastError(e, 'Could not connect Gmail')),
             });
           }}
           className={cn(
             'inline-flex items-center justify-center gap-2 rounded-lg min-h-[44px] px-4',
-            'text-sm font-semibold text-white sm:text-[13px]',
-            'bg-sidebar-primary hover:opacity-90 active:scale-[0.99] transition-all',
+            'text-sm font-semibold border border-primary/30 bg-primary/5 text-primary sm:text-[13px]',
+            'transition-colors hover:bg-primary/10 hover:border-primary/40',
             'disabled:opacity-40 disabled:pointer-events-none w-full sm:w-auto',
           )}
         >
@@ -121,7 +122,7 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
                   toast.success('Gmail disconnected');
                   void refetch();
                 },
-                onError: (e) => toast.error((e as Error).message),
+                onError: (e) => toast.error(friendlyToastError(e, 'Could not disconnect Gmail')),
               });
             }}
             className={cn(

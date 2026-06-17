@@ -246,7 +246,7 @@ export function CalendarPage() {
         {/* Selection Summary */}
         <div>
           {checkInDate || checkOutDate ? (
-            <div className="surface-muted rounded-2xl border border-primary/15 p-4">
+            <div className="surface-muted rounded-xl border border-primary/15 p-4">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-6">
                   {/* Check-in */}
@@ -329,7 +329,7 @@ export function CalendarPage() {
         </div>
 
         {canProceed ? (
-          <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/5 p-4">
+          <div className="mt-6 rounded-xl border border-primary/15 bg-primary/5 p-4">
             <div className="flex gap-3">
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <div className="text-sm text-foreground/80">

@@ -117,7 +117,7 @@ export function SignInPage() {
           <ThemeToggle />
         </div>
         <div className="mb-8 animate-fade-in-up text-center lg:hidden">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary shadow-soft">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl gradient-primary shadow-soft">
             <span className="text-lg font-black text-primary-foreground">K</span>
           </div>
           <p className="text-2xl font-extrabold tracking-tight text-foreground">
@@ -140,7 +140,7 @@ export function SignInPage() {
 
           {/* Access-restricted notice */}
           {status === 'not-admin' && (
-            <div className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
+            <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
               <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
               <p className="text-[13px] leading-snug">
                 We could not open the admin area with your current Google
@@ -151,7 +151,7 @@ export function SignInPage() {
 
           {/* OAuth error */}
           {error && (
-            <div className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
+            <div className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive">
               <AlertCircle className="size-4 mt-0.5 shrink-0" aria-hidden />
               <p className="text-[13px] leading-snug">{error}</p>
             </div>

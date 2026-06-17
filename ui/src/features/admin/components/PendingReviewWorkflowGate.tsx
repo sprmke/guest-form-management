@@ -84,9 +84,8 @@ export function PendingReviewWorkflowGate({ booking, children }: Props) {
           className="mt-1 size-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500/40 dark:border-amber-400/40"
         />
         <span className="text-xs leading-snug text-amber-950 dark:text-amber-100">
-          I have reviewed the guest's booking submission and confirm that all
-          provided details, attached documents and receipts are accurate and
-          valid.
+          I reviewed the guest submission and confirm details, documents, and
+          receipts are accurate.
         </span>
       </label>
     </div>

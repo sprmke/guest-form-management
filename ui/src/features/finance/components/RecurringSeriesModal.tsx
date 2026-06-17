@@ -180,7 +180,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                   seriesEnd={seriesEnd}
                 />
               ) : isLoading ? (
-                <div className="h-24 rounded-2xl animate-pulse bg-muted/50" />
+                <div className="h-24 rounded-xl animate-pulse bg-muted/50" />
               ) : null}
             </DialogHeader>
 

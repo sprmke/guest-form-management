@@ -169,22 +169,20 @@ export function FinancePage() {
   return (
     <AdminLayout>
       <div className="space-y-3 sm:space-y-4">
-        <section className="px-3 py-3 w-full surface-card sm:px-4 sm:py-4">
-          <AdminPageHeader
-            id="finance-heading"
-            variant="compact"
-            title="Finance"
-            subtitle="Revenue, profit, and property transactions."
-            icon={DollarSign}
-            actions={
-              <FinanceExportMenu
-                query={query}
-                summary={summaryQuery.data}
-                operating={lineItemsQuery.data}
-              />
-            }
-          />
-        </section>
+        <AdminPageHeader
+          id="finance-heading"
+          variant="compact"
+          title="Finance"
+          subtitle="Revenue, profit, and property transactions."
+          icon={DollarSign}
+          actions={
+            <FinanceExportMenu
+              query={query}
+              summary={summaryQuery.data}
+              operating={lineItemsQuery.data}
+            />
+          }
+        />
 
         <section className="surface-card w-full overflow-visible px-3 py-2.5 sm:px-4 sm:py-3">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-3 2xl:items-center">

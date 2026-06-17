@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { Check, Loader2 } from 'lucide-react';
 
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
@@ -97,7 +98,7 @@ export function PayParkingPage() {
       setPendingSubmit(null);
     },
     onError: (err: Error) => {
-      toast.error(err.message ?? 'Submit failed');
+      toast.error(friendlyToastError(err, 'Could not submit'));
     },
   });
 
@@ -153,8 +154,7 @@ export function PayParkingPage() {
               Missing booking link
             </h1>
             <p className="text-sm text-muted-foreground">
-              Open this page from the link your host sent, or contact us on
-              Facebook if you need help.
+              Use the link your host sent, or contact us on Facebook for help.
             </p>
             <Button asChild variant="outline" className="min-h-[44px]">
               <Link to="/">Back to home</Link>
@@ -228,13 +228,12 @@ export function PayParkingPage() {
                 </p>
               ) : submittedBroadcastSent ? (
                 <p className="text-muted-foreground">
-                  We've shared your vehicle details with the Azure North parking
-                  owners. We will send the parking details to you shortly.
+                  We shared your vehicle details with parking owners. We&apos;ll
+                  send parking info to you shortly.
                 </p>
               ) : (
                 <p className="text-muted-foreground">
-                  Vehicle details were saved. No parking broadcast email was
-                  sent.
+                  Vehicle details saved. No parking broadcast email was sent.
                 </p>
               )}
               {showLastMinuteParkingWarning ? (

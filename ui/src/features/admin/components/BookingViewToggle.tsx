@@ -59,8 +59,8 @@ export function BookingViewToggle({
             className={cn(
               'inline-flex items-center justify-center rounded-md min-w-[40px] h-9 px-2 transition-all duration-150',
               active
-                ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                : 'text-sidebar-muted hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+                ? 'interactive-primary-segment'
+                : 'text-sidebar-muted hover:text-primary hover:bg-primary/5',
             )}
           >
             <Icon className="size-4" aria-hidden />

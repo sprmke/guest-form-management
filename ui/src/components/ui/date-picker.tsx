@@ -66,7 +66,7 @@ export function DatePicker({
           variant="outline"
           type="button"
           className={cn(
-            'h-10 w-full justify-start rounded-2xl px-3 py-2 text-left font-normal',
+            'h-10 w-full justify-start rounded-lg px-3 py-2 text-left font-normal',
             !date ? 'text-muted-foreground' : 'text-foreground',
             className,
           )}

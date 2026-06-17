@@ -338,7 +338,7 @@ export function PayParkingHeaderButton({
     <button
       type="button"
       onClick={viewMode ? onViewParking : onOpenModal}
-      className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:inline-flex sm:w-auto sm:min-w-[44px] sm:flex-initial sm:justify-center sm:gap-1.5"
+      className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50 sm:inline-flex sm:w-auto sm:min-w-[44px] sm:flex-initial sm:justify-center sm:gap-1.5"
     >
       <Car className="size-3.5 shrink-0" aria-hidden />
       <span className="min-w-0 text-left">

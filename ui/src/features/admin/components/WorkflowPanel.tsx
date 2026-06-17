@@ -87,10 +87,7 @@ import {
   statusLabel,
   type BookingStatus,
 } from '@/features/admin/lib/bookingStatus';
-import {
-  formatBookingDate,
-  formatRelative,
-} from '@/features/admin/lib/formatters';
+import { formatRelative } from '@/features/admin/lib/formatters';
 import { shouldWarnPastBookingStayForProceed } from '@/features/admin/lib/bookingPastPipelineManila';
 import {
   loadPersistedWorkflowDevControls,
@@ -115,6 +112,11 @@ import {
 } from '@/features/admin/hooks/useTransitionBooking';
 import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
 import type { BookingRow } from '@/features/admin/lib/types';
+import {
+  friendlyToastError,
+  gmailPollSuccessMessage,
+  sdRefundCronSuccessMessage,
+} from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import {
   workflowBackActionClass,
@@ -126,27 +128,10 @@ import {
 } from '@/features/admin/lib/workflowActionButtonStyles';
 
 /** Shared copy for manual “Run Gmail poll” and auto-poll on Pending Documents load. */
-function buildGmailPollSuccessMessage(result: {
-  applied?: number;
-  skipped?: number;
-  failed?: number;
-  reconciled?: number;
-  initialized?: boolean;
-  historyReset?: boolean;
-}): string {
-  const applied = result.applied ?? 0;
-  const reconciled = result.reconciled ?? 0;
-  const recSuffix =
-    reconciled > 0
-      ? `, ${reconciled} sub-step(s) re-synced from saved approvals`
-      : '';
-  if (result.initialized) {
-    return 'Gmail cursor initialized (Please run again.)';
-  }
-  if (result.historyReset) {
-    return 'Gmail history expired and was reset — check for missed emails manually';
-  }
-  return `Gmail poll complete: ${applied} applied, ${result.skipped ?? 0} skipped, ${result.failed ?? 0} failed${recSuffix}`;
+function buildGmailPollSuccessMessage(result: Parameters<
+  typeof gmailPollSuccessMessage
+>[0]): string {
+  return gmailPollSuccessMessage(result);
 }
 
 // ─── Confirm dialog ───────────────────────────────────────────────────────────
@@ -311,13 +296,11 @@ export function WorkflowPanel({ booking }: Props) {
       if (next === 'PENDING_SD_REFUND' && before !== 'PENDING_SD_REFUND') {
         toast.success('Guest submitted the SD refund form.');
       } else {
-        toast.message(
-          'We’re still waiting for the guest to submit the SD Refund Form.',
-        );
+        toast.message('Still waiting for the guest SD refund form');
       }
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : 'Could not refresh this booking.',
+        friendlyToastError(err, 'Could not refresh this booking'),
       );
     } finally {
       setRecheckSdGuestSubmitPending(false);
@@ -346,7 +329,7 @@ export function WorkflowPanel({ booking }: Props) {
         toast.success(buildGmailPollSuccessMessage(result));
       } catch (err: unknown) {
         if (cancelled) return;
-        toast.error(err instanceof Error ? err.message : 'Gmail poll failed');
+        toast.error(friendlyToastError(err, 'Gmail check failed'));
       }
     })();
 
@@ -412,44 +395,21 @@ export function WorkflowPanel({ booking }: Props) {
       const result = await gmailPollMut.mutateAsync();
       toast.success(buildGmailPollSuccessMessage(result));
     } catch (err: any) {
-      toast.error(err?.message ?? 'Gmail poll failed');
+      toast.error(friendlyToastError(err, 'Gmail check failed'));
     }
   }
 
   async function handleSdCron() {
     try {
       const result = await sdCronMut.mutateAsync();
-      const transitioned = result.transitioned ?? 0;
-      const suppressed = result.transitionedSdEmailSuppressed ?? 0;
-      const sent = result.transitionedSdEmailSent ?? 0;
-      const checkoutOnly = result.checkoutEmailsSent ?? 0;
-      if (transitioned > 0) {
-        const suffix =
-          suppressed > 0 && sent === 0
-            ? ' (automated guest email skipped — check-out older than configured window)'
-            : suppressed > 0
-              ? ` (${sent} check-out email(s) tied to runs, ${suppressed} stale check-out without guest email)`
-              : '';
-        toast.success(
-          `SD refund cron: ${transitioned} booking(s) → Ready for Check-out${suffix}`,
-        );
-      } else if (checkoutOnly > 0) {
-        toast.success(
-          `SD refund cron: sent check-out email to ${checkoutOnly} stay(s) still on Ready for check-in (awaiting final balance before status moves to Ready for check-out).`,
-        );
+      const message = sdRefundCronSuccessMessage(result);
+      if (message) {
+        toast.success(message);
       } else {
-        const scanned = result.scanned ?? 0;
-        const isScoped = Boolean(result.scoped);
-        const idleMsg =
-          isScoped && scanned === 0
-            ? 'SD refund cron: booking not found or not Ready for check-in'
-            : isScoped
-              ? `SD refund cron: nothing updated (${scanned} checked). Either we're still outside the automated window before check-out, or the check-out email was already sent and final balance isn't settled yet.`
-              : `SD refund cron: no matching actions (${scanned} checked)`;
-        toast.success(idleMsg);
+        toast.message('Nothing to update right now');
       }
-    } catch (err: any) {
-      toast.error(err?.message ?? 'SD refund cron failed');
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, 'Check-out automation failed'));
     }
   }
 
@@ -457,12 +417,12 @@ export function WorkflowPanel({ booking }: Props) {
     try {
       const result = await resendSdFormMut.mutateAsync();
       if (result.skipped) {
-        toast.message('Skipped (test booking in production)');
+        toast.message('Skipped in production');
       } else {
         toast.success('SD refund form email sent');
       }
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to send email');
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, 'Could not send email'));
     }
   }
 
@@ -610,9 +570,9 @@ export function WorkflowPanel({ booking }: Props) {
         devControls: flags,
         manual: true,
       });
-      toast.success(`Booking moved to: ${statusLabel(toStatus)}`);
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Transition failed');
+      toast.success(`Moved to ${statusLabel(toStatus)}`);
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, 'Could not update booking status'));
     }
   }
 
@@ -651,7 +611,7 @@ export function WorkflowPanel({ booking }: Props) {
         focusPipelineView();
       }
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to mark sub-status complete');
+      toast.error(friendlyToastError(err, 'Could not mark step complete'));
     }
   }
 
@@ -668,7 +628,7 @@ export function WorkflowPanel({ booking }: Props) {
       });
       toast.success(`Marked ${statusLabel(subStatus)} as incomplete`);
     } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to mark sub-status incomplete');
+      toast.error(friendlyToastError(err, 'Could not mark step incomplete'));
     }
   }
 
@@ -682,7 +642,7 @@ export function WorkflowPanel({ booking }: Props) {
       });
       toast.success('Booking cancelled');
     } catch (err: any) {
-      toast.error(err?.message ?? 'Cancel failed');
+      toast.error(friendlyToastError(err, 'Could not cancel booking'));
     }
   }
 
@@ -765,23 +725,20 @@ export function WorkflowPanel({ booking }: Props) {
                   aria-hidden
                 />
                 <p className="min-w-0 text-[12px] leading-snug text-blue-950 dark:text-blue-100 sm:text-[13px]">
-                  Quick view of previously completed steps is read-only. To make
-                  changes to them, use the{' '}
-                  <span className="font-semibold">Edit Booking Details</span>{' '}
-                  section.
+                  Completed steps are read-only here. Edit them in{' '}
+                  <span className="font-semibold">Edit Booking Details</span>.
                 </p>
               </div>
             ) : null}
             {showSdGuestInfoCard && (
               <WorkflowSubFormCard title="Guest SD refund form">
                 <p className="text-[11.5px] leading-relaxed text-muted-foreground">
-                  We are just waiting for the guest to fill out the SD Refund
-                  form. Once they submit it, this booking will automatically
-                  move to{' '}
+                  Waiting for the guest SD refund form. Submitting moves this
+                  booking to{' '}
                   <span className="font-medium text-foreground">
                     Pending SD Refund
-                  </span>{' '}
-                  status.
+                  </span>
+                  .
                 </p>
                 <div>
                   <span className="inline-flex flex-wrap gap-x-1 gap-y-1 items-center max-w-full">
@@ -910,63 +867,45 @@ export function WorkflowPanel({ booking }: Props) {
                 {showSdCron ? (
                   <>
                     <p className="text-muted-foreground">
-                      Two hours before the check-out time, we will send an email
-                      to the guest regarding the{' '}
-                      <span className="font-medium text-muted-foreground">
-                        Check-out and Security-deposit refund details
-                      </span>
-                      . That email will still send even we haven&apos;t settle
-                      the guest balance but is required to move the booking to{' '}
-                      <span className="font-medium text-muted-foreground">
-                        Ready for check-out
-                      </span>{' '}
-                      status .
+                      Two hours before checkout, guests get the check-out/SD
+                      email—even if balance is unsettled. Settlement is still
+                      required to advance status.
                     </p>
                     <p className="text-muted-foreground">
                       <span className="font-medium text-muted-foreground">
                         Run SD refund cron
                       </span>{' '}
-                      runs the checks for{' '}
+                      checks{' '}
                       <span className="font-medium text-muted-foreground">
                         this booking only
                       </span>
-                      . The same checks also run automatically in the background
-                      for{' '}
-                      <span className="font-medium text-muted-foreground">
-                        other bookings
-                      </span>{' '}
-                      that's still at 'Ready for Check-in' status.
+                      . The same job also runs for other ready-for-check-in
+                      stays.
                     </p>
                     <p className="text-muted-foreground">
                       <span className="font-medium text-muted-foreground">
                         Send SD refund form email
                       </span>{' '}
-                      only sends the email again in case the guest didn't
-                      receive it. This does{' '}
+                      resends the link only. It does{' '}
                       <span className="font-medium text-muted-foreground">
                         not
                       </span>{' '}
-                      change booking status automatically.
+                      change booking status.
                     </p>
                   </>
                 ) : showGmailPoll ? (
                   <>
                     <p className="text-muted-foreground">
-                      Use this if approval emails from the inbox look stuck.
-                      Shown while this booking is waiting on documents from the
-                      pipeline.
+                      Use when inbox approvals look stuck. Shown while this
+                      booking awaits pipeline documents.
                     </p>
                     <ol className="list-decimal space-y-1.5 pl-4 marker:text-muted-foreground">
                       <li>
                         <span className="font-medium text-muted-foreground">
                           Run Gmail poll now
                         </span>{' '}
-                        — checks the inbox for{' '}
-                        <strong className="font-semibold text-muted-foreground">
-                          every
-                        </strong>{' '}
-                        booking that might be waiting on that kind of reply, not
-                        just this one. Safe to run more than once.
+                        checks the inbox for all bookings awaiting that
+                        reply—not just this one. Safe to rerun.
                       </li>
                     </ol>
                   </>
@@ -976,10 +915,8 @@ export function WorkflowPanel({ booking }: Props) {
                       <span className="font-medium text-muted-foreground">
                         Send SD refund form email
                       </span>{' '}
-                      mails the check-out and security-deposit link to the guest
-                      again—for example they missed it or you need a manual
-                      resend. It does not move the booking to the next step; it
-                      only sends the message.
+                      resends the check-out/SD link. It does not advance the
+                      booking—email only.
                     </p>
                   </>
                 )}
@@ -1301,16 +1238,13 @@ export function WorkflowPanel({ booking }: Props) {
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-100">
                   <p className="font-semibold">Stay dates are in the past</p>
                   <p className="mt-1 text-xs leading-relaxed text-amber-900/95 dark:text-amber-200/90">
-                    At least one of check-in (
-                    {formatBookingDate(booking.check_in_date)}) or check-out (
-                    {formatBookingDate(booking.check_out_date)}) is before
-                    today’s calendar date in Asia/Manila. Only continue if you
-                    still intend to advance this booking.
+                    Check-in or check-out is before today (Asia/Manila). Continue
+                    only if you still want to advance.
                   </p>
                 </div>
               ) : null
             }
-            description={`Transition from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck any side effect you want to skip for this action.`}
+            description={`Move from "${statusLabel(status)}" to "${statusLabel(confirm.toStatus)}". Uncheck side effects to skip.`}
             devControls={transitionConfirmDevControls}
             devControlValues={modalDevControls}
             onDevControlToggle={toggleModalDevControl}
@@ -1324,7 +1258,7 @@ export function WorkflowPanel({ booking }: Props) {
           <ConfirmModal
             title="Cancel Booking"
             secondaryLabel="Keep booking"
-            description="This will mark the booking as CANCELLED. Uncheck any integration you want to skip. Guest data is preserved. This cannot be undone."
+            description="Marks booking CANCELLED. Uncheck integrations to skip. Guest data stays. Cannot be undone."
             devControls={cancelConfirmDevControls}
             devControlValues={modalDevControls}
             onDevControlToggle={toggleModalDevControl}
@@ -1411,14 +1345,14 @@ function PipelineStepper({
                     isCurrent
                       ? 'ring-2 size-6 bg-primary/10 ring-primary'
                       : isCompleted
-                        ? 'size-5 bg-primary text-primary-foreground'
+                      ? 'size-5 gradient-primary text-primary-foreground'
                         : 'ring-1 size-5 bg-card ring-border/60',
                   )}
                 >
                   {isCompleted ? (
                     <Check className="size-3" strokeWidth={3} />
                   ) : isCurrent ? (
-                    <span className="rounded-full size-2 bg-primary" />
+                    <span className="rounded-full size-2 gradient-primary" />
                   ) : null}
                 </div>
               </div>
@@ -1548,7 +1482,7 @@ function PendingDocumentsSubTree({
         const iconClass = cn(
           'relative z-[1] flex size-4 shrink-0 items-center justify-center rounded-full box-border',
           completed
-            ? 'bg-primary text-primary-foreground'
+            ? 'gradient-primary text-primary-foreground'
             : 'border border-border/60 bg-card',
         );
 
@@ -1652,8 +1586,8 @@ function PendingDocSubStatusCard({
           <div className="space-y-2">
             <p className="text-xs leading-relaxed text-muted-foreground">
               {completed
-                ? 'Azure returned an approved GAF. The booking sub-step is marked complete.'
-                : 'Waiting for Azure to return an approved GAF. Use Run Gmail poll in Automation triggers if an approval email was missed.'}
+                ? 'Azure returned an approved GAF. Sub-step marked complete.'
+                : 'Waiting for Azure’s approved GAF. Use Run Gmail poll if an email was missed.'}
             </p>
             <DocLinkRow
               label="GAF request PDF"
@@ -1671,8 +1605,8 @@ function PendingDocSubStatusCard({
           <div className="space-y-2">
             <p className="text-xs leading-relaxed text-muted-foreground">
               {completed
-                ? 'Azure returned an approved pet request. The booking sub-step is marked complete.'
-                : 'Waiting for Azure to return an approved pet request. Use Run Gmail poll in Automation triggers if an approval email was missed.'}
+                ? 'Azure returned an approved pet request. Sub-step marked complete.'
+                : 'Waiting for Azure’s approved pet request. Use Run Gmail poll if missed.'}
             </p>
             <DocLinkRow
               label="Pet request PDF"

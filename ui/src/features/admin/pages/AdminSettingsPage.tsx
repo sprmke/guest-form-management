@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { AdminLayout } from '@/features/admin/components/AdminLayout';
 import { AppSettingsCard } from '@/features/admin/components/AppSettingsCard';
 
@@ -25,7 +26,7 @@ export function AdminSettingsPage() {
       void qc.invalidateQueries({ queryKey: ['gmail-mail-integration'] });
     }
     if (gmailErr) {
-      toast.error(`Gmail connection failed: ${gmailErr}`);
+      toast.error(friendlyToastError(new Error(gmailErr), 'Gmail connection failed'));
       next.delete('gmail_error');
     }
     setSearchParams(next, { replace: true });

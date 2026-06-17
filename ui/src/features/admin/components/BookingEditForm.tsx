@@ -13,6 +13,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import {
   CheckCircle2,
   FileText,
@@ -315,13 +316,13 @@ export function BookingEditForm({
       });
 
       if (revertToPendingReview) {
-        toast.success('Booking updated — status reverted to Pending Review');
+        toast.success('Booking updated — moved to Pending Review');
       } else {
-        toast.success('Booking updated successfully');
+        toast.success('Booking updated');
       }
       onSaved(updated);
-    } catch (err: any) {
-      toast.error(err?.message ?? 'Failed to save booking');
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, 'Could not save booking'));
     }
   };
 

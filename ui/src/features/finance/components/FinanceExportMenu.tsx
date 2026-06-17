@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import type {
   FinanceExportType,
@@ -62,7 +63,7 @@ export function FinanceExportMenu({
       await downloadFinanceReportPdf({ query, summary, stays, operating }, type);
       toast.success('PDF downloaded');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'PDF export failed');
+      toast.error(friendlyToastError(e, 'PDF export failed'));
     } finally {
       setLoading(null);
     }

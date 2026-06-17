@@ -151,9 +151,7 @@ export function VoucherReveal({
           />
           <p className="text-sm leading-relaxed text-amber-900">
             <span className="font-semibold">Screenshot your voucher code.</span>{' '}
-            Present it together with your Facebook review on your next booking
-            to claim your reward. <span className="font-semibold">Please make sure the review contains images or videos and is set to{' '}
-            public to be eligible for your prize.</span>
+            Show it with a public Facebook review on your next booking.
           </p>
         </div>
 
@@ -249,11 +247,10 @@ function VoucherIntroCopy() {
         Spin for your next-stay reward!
       </h2>
       <p className="mx-auto max-w-md text-center text-sm leading-relaxed text-muted-foreground">
-        Your review means a lot to us as small unit owners! As a token of
-        appreciation, tap the button below to win{' '}
+        Thanks for your review! Tap below to win{' '}
         <strong className="text-primary">{formatVoucherDiscountRange()}</strong>{' '}
-        or a <strong className="text-primary">free staycation</strong> on your next
-        booking.
+        or a <strong className="text-primary">free staycation</strong> on your
+        next booking.
       </p>
     </div>
   );
@@ -261,7 +258,7 @@ function VoucherIntroCopy() {
 
 function SlotReelPlaceholder() {
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
+    <div className="relative w-full overflow-hidden rounded-xl border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 via-card to-card">
       <div
         className="flex items-center justify-center px-6"
         style={{ height: REEL_ROW_HEIGHT_PX }}
@@ -353,7 +350,7 @@ function SlotReel({
   return (
     <div
       className={cn(
-        'relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-card shadow-lg shadow-primary/10',
+        'relative overflow-hidden rounded-xl border-2 border-primary/40 bg-card shadow-lg shadow-primary/10',
         REEL_SHELL_WIDTH_CLASS,
       )}
       role="img"
@@ -440,7 +437,7 @@ function RevealedVoucherCard({
   const stayLine = formatVoucherStayLine(checkInDate, checkOutDate);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-emerald-200/10 via-card to-primary/10 p-5 shadow-xl shadow-primary/10">
+    <div className="relative overflow-hidden rounded-xl border-2 border-primary/40 bg-gradient-to-br from-emerald-200/10 via-card to-primary/10 p-5 shadow-xl shadow-primary/10">
       {/* sparkles top-right */}
       <Sparkles
         className="absolute right-3 top-3 size-6 animate-pulse text-primary/70"

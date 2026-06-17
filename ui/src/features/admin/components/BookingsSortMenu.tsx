@@ -47,8 +47,8 @@ export function BookingsSortMenu({
           'border transition-all duration-100 whitespace-nowrap select-none',
           fullWidth && 'w-full justify-center',
           open
-            ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
-            : 'border-sidebar-border bg-card text-sidebar-foreground hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50',
+            ? 'interactive-primary border-primary'
+            : 'border-sidebar-border bg-card text-sidebar-foreground hover:border-primary/40 hover:bg-primary/5',
         )}
       >
         <ArrowUpDown className="size-3.5 shrink-0" aria-hidden />

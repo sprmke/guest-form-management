@@ -185,7 +185,7 @@ export function FinancePeriodToolbar({
         >
           <SlidersHorizontal className="size-4" aria-hidden />
           {extraFilters > 0 && (
-            <span className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            <span className="absolute -right-1 -top-1 flex size-[18px] items-center justify-center rounded-full gradient-primary text-[10px] font-bold text-primary-foreground">
               {extraFilters}
             </span>
           )}

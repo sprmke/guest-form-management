@@ -23,7 +23,7 @@ export function FinanceChartCard({
     <section className={cn('flex flex-col p-3 min-w-0 surface-card sm:p-4', className)}>
       <div className="mb-3 flex shrink-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex gap-2 items-start min-w-0">
-          <div className="icon-well-sm shrink-0 bg-muted/80">
+          <div className="icon-well-sm shrink-0">
             <Icon className="size-[18px] text-muted-foreground" aria-hidden />
           </div>
           <div className="min-w-0">

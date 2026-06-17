@@ -12,6 +12,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { supabase } from '@/lib/supabaseClient';
 import {
   toGuestSubmissionDate,
@@ -86,8 +87,10 @@ async function syncBookingIntegrationsAfterSave(bookingId: string): Promise<void
 
     if (!res.ok || json.success !== true) {
       toast.warning(
-        json.error ??
-          'Booking saved, but Google Calendar / Sheet sync failed. Check credentials or retry after a workflow step.',
+        friendlyToastError(
+          new Error(json.error),
+          'Booking saved, but Calendar or Sheets could not be updated',
+        ),
       );
       return;
     }
@@ -98,12 +101,12 @@ async function syncBookingIntegrationsAfterSave(bookingId: string): Promise<void
     const shOk = sh?.skipped || sh?.success;
     if (!calOk || !shOk) {
       toast.warning(
-        'Booking saved. Google Calendar or Sheets reported an error refreshing — check logs or run a workflow action to retry.',
+        'Booking saved, but Calendar or Sheets reported an error',
       );
     }
   } catch {
     toast.warning(
-      'Booking saved, but we could not reach the sync service to refresh Google Calendar / Sheets.',
+      'Booking saved, but Calendar or Sheets could not be refreshed',
     );
   }
 }

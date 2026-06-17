@@ -78,7 +78,7 @@ export function GuestFormPaymentStepContent({ form }: Props) {
   return (
     <div className="space-y-4">
       <div
-        className="space-y-3 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm"
+        className="space-y-3 rounded-xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm"
         role="group"
         aria-label="Payment breakdown"
       >

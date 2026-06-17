@@ -45,7 +45,7 @@ export function DashboardAttentionStrip({ items }: Props) {
               key={item.id}
               to={item.href}
               className={cn(
-                'group inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-2xl border px-3 py-2 transition-colors sm:gap-2.5 sm:px-3.5',
+                'group inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-3 py-2 transition-colors sm:gap-2.5 sm:px-3.5',
                 style.chip,
               )}
             >

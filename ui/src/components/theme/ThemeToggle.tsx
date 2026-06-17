@@ -28,7 +28,7 @@ export function ThemeToggle({ className, variant = 'icon' }: Props) {
         type="button"
         onClick={toggleTheme}
         className={cn(
-          'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground shadow-sm transition-colors hover:bg-muted/60 hover:text-foreground',
+          'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl border border-border bg-card text-muted-foreground shadow-elevated transition-colors hover:bg-muted hover:text-foreground',
           className,
         )}
         aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -46,7 +46,7 @@ export function ThemeToggle({ className, variant = 'icon' }: Props) {
   return (
     <div
       className={cn(
-        'flex w-full rounded-xl border border-border/60 bg-muted/40 p-1',
+        'flex w-full rounded-xl border border-border bg-muted p-1 shadow-[0_1px_2px_hsl(0_0%_0%_/_0.04)]',
         className,
       )}
       role="group"

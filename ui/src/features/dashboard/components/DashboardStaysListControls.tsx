@@ -32,7 +32,7 @@ function FilterToggle({
       <span
         className={cn(
           'relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors',
-          pressed ? 'bg-primary' : 'bg-muted',
+          pressed ? 'gradient-primary' : 'bg-muted',
         )}
         aria-hidden
       >

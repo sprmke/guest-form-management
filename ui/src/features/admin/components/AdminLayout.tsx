@@ -196,10 +196,10 @@ export function AdminLayout({ children }: Props) {
                       aria-current={active ? 'page' : undefined}
                       aria-label={collapsed ? label : undefined}
                       className={cn(
-                        'group flex items-center rounded-2xl text-sm font-semibold transition-all duration-200',
+                        'group flex items-center rounded-xl text-sm font-semibold transition-all duration-200',
                         collapsed
-                          ? 'justify-center px-2 py-2.5'
-                          : 'gap-3 px-3 py-2.5',
+                          ? 'justify-center px-2 py-2'
+                          : 'gap-2.5 px-2.5 py-2',
                         active
                           ? 'nav-item-active'
                           : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
@@ -207,7 +207,7 @@ export function AdminLayout({ children }: Props) {
                     >
                       <div
                         className={cn(
-                          'flex justify-center items-center w-9 h-9 rounded-xl transition-all duration-200 shrink-0',
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-all duration-200',
                           active
                             ? 'nav-item-active-icon'
                             : 'bg-muted/80 group-hover:bg-primary/10',
@@ -244,7 +244,7 @@ export function AdminLayout({ children }: Props) {
       {/* Desktop — floating sidebar */}
       <aside
         className={cn(
-          'fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] rounded-[1.75rem] border border-border/50 bg-card/95 shadow-elevated-lg backdrop-blur-xl transition-all duration-300 sm:left-4 sm:top-4 sm:h-[calc(100vh-2rem)] lg:block',
+          'fixed left-3 top-3 z-30 hidden h-[calc(100vh-1.5rem)] rounded-xl border border-border bg-card shadow-elevated-lg transition-all duration-300 sm:left-4 sm:top-4 sm:h-[calc(100vh-2rem)] lg:block',
           sidebarCollapsed ? 'w-[5.5rem]' : 'w-[17rem]',
         )}
         aria-label="Admin navigation"
@@ -268,7 +268,7 @@ export function AdminLayout({ children }: Props) {
         <aside
           ref={mobileDrawerRef}
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-[17rem] rounded-r-[1.75rem] border border-border/50 bg-card shadow-elevated-lg transition-transform duration-300 ease-out motion-reduce:transition-none',
+            'fixed inset-y-0 left-0 z-50 w-[17rem] rounded-r-xl border border-border bg-card shadow-elevated-lg transition-transform duration-300 ease-out motion-reduce:transition-none',
             mobileMenuOpen
               ? 'translate-x-0'
               : 'pointer-events-none -translate-x-full',
@@ -283,16 +283,16 @@ export function AdminLayout({ children }: Props) {
         </aside>
       </div>
 
-      {/* Main — offset for floating sidebar; no desktop topbar (fixes spacing) */}
+      {/* Main — offset: sidebar inset (left-4) + width + gap */}
       <div
         className={cn(
           'flex min-h-screen flex-col transition-[margin] duration-300',
           sidebarCollapsed
-            ? 'lg:ml-[calc(5.5rem+2rem)]'
-            : 'lg:ml-[calc(17rem+2rem)]',
+            ? 'lg:ml-[calc(1rem+5.5rem+0.5rem)]'
+            : 'lg:ml-[calc(1rem+17rem+0.5rem)]',
         )}
       >
-        <header className="flex sticky top-0 z-20 gap-3 justify-between items-center px-3 h-14 border-b backdrop-blur-md shrink-0 border-separator bg-background/90 sm:px-4 lg:hidden">
+        <header className="flex sticky top-0 z-20 gap-3 justify-between items-center px-3 h-14 border-b shrink-0 border-separator bg-background sm:px-4 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -306,8 +306,8 @@ export function AdminLayout({ children }: Props) {
           </div>
         </header>
 
-        <main className="overflow-y-auto flex-1 px-3 py-4 sm:px-4 sm:py-5 lg:px-6 lg:py-5 xl:px-8">
-          <div className="mx-auto max-w-[1680px] animate-fade-in-up">
+        <main className="flex-1 px-3 py-4 sm:px-4 sm:py-5 lg:px-4 lg:py-5 xl:px-6">
+          <div className="mx-auto max-w-[1680px]">
             <div className="space-y-3 sm:space-y-4">{children}</div>
           </div>
         </main>
@@ -396,7 +396,7 @@ function AdminProfileFooter({
       {profileOpen && (
         <div
           className={cn(
-            'absolute z-50 overflow-hidden rounded-2xl border border-border/50 bg-card shadow-elevated-lg',
+            'absolute z-50 overflow-hidden rounded-xl border border-border/50 bg-card shadow-elevated-lg',
             collapsed
               ? 'bottom-0 left-full ml-2 w-[14rem]'
               : 'bottom-full left-3 right-3 mb-1.5',
@@ -427,7 +427,7 @@ function AdminProfileFooter({
         aria-expanded={profileOpen}
         aria-label="Account menu"
         className={cn(
-          'relative z-10 flex w-full min-h-[44px] items-center rounded-2xl transition-all duration-150 hover:bg-muted/70',
+          'relative z-10 flex w-full min-h-[44px] items-center rounded-xl transition-all duration-150 hover:bg-muted/70',
           collapsed ? 'justify-center px-2 py-2' : 'gap-2.5 px-2.5 py-2',
           profileOpen && 'bg-muted/70',
         )}

@@ -54,7 +54,7 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
                 : undefined
             }
             className={cn(
-              'surface-card relative min-w-0 overflow-hidden sm:overflow-visible',
+              'surface-card relative min-w-0 overflow-visible',
               animateOnNavigate && guestEnterClass(navState),
             )}
           >

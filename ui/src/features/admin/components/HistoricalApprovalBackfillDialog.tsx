@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { ScanSearch, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { gmailApprovalBackfillToast } from '@/lib/toastMessages';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,19 +44,7 @@ function buildBackfillToastSummary(
   },
   scopedBooking: boolean,
 ): string {
-  return [
-    r.dryRun ? 'Dry run' : 'Applied',
-    scopedBooking ? 'this booking' : null,
-    r.scannedBookings != null
-      ? `${r.scannedBookings} booking(s) scanned`
-      : null,
-    r.tasks != null ? `${r.tasks} task(s)` : null,
-    r.applied != null ? `${r.applied} applied` : null,
-    r.wouldApply != null ? `${r.wouldApply} would apply` : null,
-    r.failed != null && r.failed > 0 ? `${r.failed} failed` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  return gmailApprovalBackfillToast(r, scopedBooking);
 }
 
 export function HistoricalApprovalBackfillDialog({
@@ -97,7 +87,7 @@ export function HistoricalApprovalBackfillDialog({
         resetBackfillModal();
         onRunSuccess?.();
       },
-      onError: (e) => toast.error((e as Error).message),
+      onError: (e) => toast.error(friendlyToastError(e, 'Backfill failed')),
     });
   };
 
@@ -109,20 +99,13 @@ export function HistoricalApprovalBackfillDialog({
   const description =
     variant === 'booking-detail' ? (
       <>
-        This booking was made before{' '}
-        <span className="font-medium text-foreground/90">
-          {HISTORICAL_BACKFILL_LISTENER_CUTOFF}
-        </span>{' '}
-        and is still waiting for GAF approval from Azure. We can search your
-        Gmail for older approval emails that may not have been picked up yet.
-        Run <span className="font-medium">Preview only</span> first to see what
-        we find, then use Apply if it looks right.
+        Pre-{HISTORICAL_BACKFILL_LISTENER_CUTOFF} booking awaits GAF approval.
+        Search Gmail for missed approvals. Preview first, then apply.
       </>
     ) : (
       <>
-        Search Gmail for older Azure approval emails that may not be linked to
-        bookings yet. Run <span className="font-medium">Preview only</span>{' '}
-        first to see matches without changing anything.
+        Search Gmail for older Azure approvals not linked to bookings. Preview
+        first—no changes.
       </>
     );
 
@@ -175,8 +158,7 @@ export function HistoricalApprovalBackfillDialog({
                     Preview only
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground sm:text-[11px] leading-snug">
-                    Dry run: shows what would match. No uploads or workflow
-                    changes.
+                    Dry run: shows matches. No uploads or workflow changes.
                   </span>
                 </span>
               </span>
@@ -204,8 +186,7 @@ export function HistoricalApprovalBackfillDialog({
                     Apply for real
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground sm:text-[11px] leading-snug">
-                    Uploads matching PDFs and may advance booking workflow
-                    (calendar / sheet updates follow the backfill service).
+                    Uploads PDFs and may advance workflow per backfill rules.
                   </span>
                 </span>
               </span>

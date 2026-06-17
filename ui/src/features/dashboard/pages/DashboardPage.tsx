@@ -123,7 +123,7 @@ export function DashboardPage() {
             <button
               type="button"
               onClick={() => refetch()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-xl gradient-primary px-4 text-sm font-semibold text-primary-foreground shadow-soft hover:brightness-[1.03]"
             >
               Retry
             </button>

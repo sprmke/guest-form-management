@@ -1,5 +1,8 @@
-import { eachDayOfInterval, format, parseISO } from "date-fns";
+import { addDays, eachDayOfInterval, format, parseISO, subDays } from "date-fns";
 import { financeDisplayNet } from "@/features/admin/lib/bookingFinance";
+import { checkInDateToIso } from "@/features/admin/lib/bookingsListSort";
+import { parseOccupancyDate } from "@/features/admin/components/calendar/calendarDateUtils";
+import { occupiedNightCount } from "@/features/admin/components/calendar/calendarStayAmounts";
 import { bookingDateForPeriod } from "@/features/finance/lib/financePeriod";
 import type {
   FinanceBookingLedgerRow,
@@ -48,6 +51,57 @@ function bookingChartDateIso(
   return iso || null;
 }
 
+/** Occupied overnight dates [check-in, check-out) — same rule as admin calendar. */
+function occupiedNightIsoDates(row: FinanceBookingLedgerRow): string[] {
+  const start = parseOccupancyDate(row.check_in_date);
+  const end = parseOccupancyDate(row.check_out_date);
+  if (start && end && start < end) {
+    const lastNight = subDays(end, 1);
+    return eachDayOfInterval({ start, end: lastNight }).map((day) =>
+      format(day, "yyyy-MM-dd"),
+    );
+  }
+
+  const checkInIso = checkInDateToIso(row.check_in_date);
+  if (!checkInIso) return [];
+  const nights = occupiedNightCount(row.number_of_nights);
+  const anchor = parseISO(checkInIso);
+  return Array.from({ length: nights }, (_, index) =>
+    format(addDays(anchor, index), "yyyy-MM-dd"),
+  );
+}
+
+function distributeAmountAcrossDays(
+  map: Map<string, number>,
+  dayKeys: string[],
+  total: number,
+) {
+  if (dayKeys.length === 0 || total === 0) return;
+
+  const totalCents = Math.round(Math.abs(total) * 100);
+  const baseCents = Math.floor(totalCents / dayKeys.length);
+  let remainder = totalCents - baseCents * dayKeys.length;
+
+  for (const key of dayKeys) {
+    let cents = baseCents;
+    if (remainder > 0) {
+      cents += 1;
+      remainder -= 1;
+    }
+    map.set(key, (map.get(key) ?? 0) + cents / 100);
+  }
+}
+
+function bookingChartOccupiedDates(
+  row: FinanceBookingLedgerRow,
+  basis: FinancePeriodBasis,
+): string[] {
+  const nights = occupiedNightIsoDates(row);
+  if (nights.length > 0) return nights;
+  const fallback = bookingChartDateIso(row, basis);
+  return fallback ? [fallback] : [];
+}
+
 function resolveChartDateRange(
   items: FinanceLineItem[],
   bookings: FinanceBookingLedgerRow[],
@@ -64,6 +118,9 @@ function resolveChartDateRange(
   for (const row of bookings) {
     const iso = bookingChartDateIso(row, basis);
     if (iso) isoDates.push(iso);
+    for (const nightIso of occupiedNightIsoDates(row)) {
+      isoDates.push(nightIso);
+    }
   }
 
   if (isoDates.length === 0) return null;
@@ -157,8 +214,8 @@ function bucketStayNetByDay(
   let stayNetIncomeTotal = 0;
 
   for (const row of bookings) {
-    const dateIso = bookingChartDateIso(row, basis);
-    if (!dateIso) continue;
+    const nightDates = bookingChartOccupiedDates(row, basis);
+    if (nightDates.length === 0) continue;
 
     // Cash flow uses realized host net for completed stays; projected net only
     // when the period basis attributes an in-progress stay to that date.
@@ -168,13 +225,10 @@ function bucketStayNetByDay(
         : (row.financials.projectedNet ?? 0);
 
     if (net > 0) {
-      incomeByDay.set(dateIso, (incomeByDay.get(dateIso) ?? 0) + net);
+      distributeAmountAcrossDays(incomeByDay, nightDates, net);
       stayNetIncomeTotal += net;
     } else if (net < 0) {
-      expenseByDay.set(
-        dateIso,
-        (expenseByDay.get(dateIso) ?? 0) + Math.abs(net),
-      );
+      distributeAmountAcrossDays(expenseByDay, nightDates, Math.abs(net));
     }
   }
 

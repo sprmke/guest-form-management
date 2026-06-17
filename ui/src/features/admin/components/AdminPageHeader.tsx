@@ -16,6 +16,10 @@ type AdminPageHeaderProps = {
    * Typography matches `default` on all breakpoints.
    */
   variant?: 'default' | 'compact';
+  /** Wrap header in a surface card. Defaults to true for `compact`. */
+  card?: boolean;
+  /** Pin on desktop only (`lg:top-5`). On mobile the header scrolls with the page. */
+  sticky?: boolean;
 };
 
 export function AdminPageHeader({
@@ -27,18 +31,21 @@ export function AdminPageHeader({
   className,
   id,
   variant = 'default',
+  card,
+  sticky = false,
 }: AdminPageHeaderProps) {
   const compact = variant === 'compact';
   const rowWithActions = compact && actions;
+  const useCard = card ?? compact;
 
-  return (
+  const content = (
     <div
       className={cn(
         rowWithActions
           ? 'flex flex-row items-center justify-between gap-3'
           : 'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
         compact && !rowWithActions && 'sm:items-center',
-        className,
+        !useCard && className,
       )}
     >
       <div className="min-w-0 space-y-1.5">
@@ -68,5 +75,22 @@ export function AdminPageHeader({
         </div>
       ) : null}
     </div>
+  );
+
+  if (!useCard) {
+    return content;
+  }
+
+  return (
+    <section
+      className={cn(
+        'surface-card w-full px-3 py-3 sm:px-4 sm:py-4',
+        sticky &&
+          'lg:sticky lg:top-5 lg:z-10 lg:bg-card lg:shadow-sm',
+        className,
+      )}
+    >
+      {content}
+    </section>
   );
 }

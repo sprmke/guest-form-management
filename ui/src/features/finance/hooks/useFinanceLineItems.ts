@@ -5,6 +5,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { friendlyToastError } from "@/lib/toastMessages";
 import type {
   FinanceLineItem,
   FinanceQuery,
@@ -80,7 +81,7 @@ function financeMutationErrorMessage(error: Error): string {
     case "extend_until_must_be_before_series_start":
       return "Choose a date before the first occurrence in the series.";
     default:
-      return error.message;
+      return friendlyToastError(error, 'Could not save transaction');
   }
 }
 
@@ -173,7 +174,7 @@ export function useFinanceLineItemMutations(query: FinanceQuery) {
       }
       await refreshFinanceLineItemCaches(qc, query);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyToastError(e, 'Could not delete transaction')),
   });
 
   return { create, update, remove };

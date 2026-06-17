@@ -431,7 +431,7 @@ function BookingFilterChips({
         role="switch"
         aria-checked={query.showCompletedBookings}
         aria-label="Show completed bookings"
-        title="By default, completed and cancelled bookings are hidden. Turn on to include completed stays (including past check-ins)."
+        title="Completed and cancelled stays hidden by default. Turn on to include completed."
         onClick={() =>
           onChange({
             showCompletedBookings: !query.showCompletedBookings,
@@ -447,8 +447,8 @@ function BookingFilterChips({
               : 'min-w-[44px] justify-center px-2.5 py-2.5'),
           fillWidth && previousLabel === 'full' && 'gap-1.5 px-3 py-2.5',
           query.showCompletedBookings
-            ? 'border-sidebar-primary bg-sidebar-primary text-sidebar-primary-foreground'
-            : 'border-sidebar-border bg-card text-sidebar-muted hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+            ? 'interactive-primary border-primary'
+            : 'border-sidebar-border bg-card text-sidebar-muted hover:border-primary/40 hover:bg-primary/5 hover:text-primary',
         )}
       >
         <History className="size-4 shrink-0" aria-hidden />
@@ -495,7 +495,7 @@ function TriOptions({
                 className={cn(
                   'flex justify-center items-center rounded-full border-2 transition-all size-4 shrink-0',
                   isSelected
-                    ? 'border-sidebar-primary bg-sidebar-primary'
+                    ? 'interactive-primary-mark'
                     : 'border-muted-foreground/45 bg-transparent',
                 )}
                 aria-hidden
@@ -536,7 +536,7 @@ function StatusFilterCheckbox({
       className={cn(
         'flex justify-center items-center rounded border-2 transition-all size-4 shrink-0',
         checked || indeterminate
-          ? 'bg-sidebar-primary border-sidebar-primary'
+          ? 'interactive-primary-mark'
           : 'border-muted-foreground/45 bg-transparent',
       )}
       aria-hidden

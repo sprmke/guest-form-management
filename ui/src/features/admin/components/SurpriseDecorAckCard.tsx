@@ -40,9 +40,8 @@ export function SurpriseDecorAckCard({
             className="mt-1.5 size-4 shrink-0 rounded border-border text-blue-600 focus:ring-blue-500/40 disabled:cursor-default disabled:opacity-70"
           />
           <span className="text-xs text-foreground">
-            By checking this, you confirm that you have already coordinated with
-            our staff regarding the surprise decor setup, including the selected
-            theme and final price.
+            I coordinated surprise decor with staff, including theme and final
+            price.
           </span>
         </label>
       </div>

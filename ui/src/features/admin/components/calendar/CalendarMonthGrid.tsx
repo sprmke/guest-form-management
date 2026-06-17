@@ -235,7 +235,7 @@ export function CalendarMonthGrid<T>({
                   className={cn(
                     "font-semibold leading-none text-[12px]",
                     todayFlag
-                      ? "inline-flex justify-center items-center rounded-full size-5 bg-sidebar-primary text-sidebar-primary-foreground"
+                      ? "inline-flex justify-center items-center rounded-full size-5 gradient-primary text-primary-foreground"
                       : "px-1 text-foreground",
                   )}
                 >

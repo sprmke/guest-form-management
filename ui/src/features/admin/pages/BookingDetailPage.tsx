@@ -438,7 +438,7 @@ function BookingHeader({
               type="button"
               onClick={onCancelEdit}
               aria-label="Cancel and close the form"
-              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
             >
               <X className="size-3.5 shrink-0" aria-hidden />
               <span>Cancel</span>
@@ -447,7 +447,7 @@ function BookingHeader({
             <button
               type="button"
               onClick={onEdit}
-              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border border-border bg-card px-4 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-border hover:bg-muted/50"
             >
               <Edit2 className="size-3.5 shrink-0" aria-hidden />
               Edit
@@ -538,7 +538,7 @@ function AdditionalGuestsCard({ booking }: { booking: BookingRow }) {
         {extra.map((name, i) => (
           <span
             key={i}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground"
+            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-muted/50 px-3 py-1 text-xs text-foreground"
           >
             <User className="size-3 text-muted-foreground" />
             {name}
@@ -700,7 +700,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
           Booking Source
         </p>
         <span
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+          className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1 text-xs font-medium ${
             isAirbnb
               ? "border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-500/30 dark:bg-orange-500/15 dark:text-orange-300"
               : "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/15 dark:text-blue-300"
@@ -715,7 +715,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
           Surprise decor
         </p>
         <span
-          className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium ${
+          className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-medium ${
             booking.guest_requests_surprise_decor
               ? "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-500/30 dark:bg-violet-500/15 dark:text-violet-300"
               : "border-border bg-muted/50 text-muted-foreground"
@@ -734,7 +734,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
           </p>
           <div className="flex flex-wrap gap-2">
             {booking.find_us && (
-              <span className="flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-xs text-foreground">
+              <span className="flex items-center gap-1.5 rounded-xl border border-border bg-muted/50 px-3 py-1 text-xs text-foreground">
                 <Search className="size-3 text-muted-foreground" />
                 {booking.find_us}
               </span>
@@ -871,7 +871,7 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
           aria-hidden
         />
         <div className="flex items-center gap-3">
-          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
             <Ticket className="size-4" aria-hidden />
           </span>
           <div className="min-w-0 flex-1">

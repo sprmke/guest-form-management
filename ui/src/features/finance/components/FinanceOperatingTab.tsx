@@ -151,11 +151,7 @@ export function FinanceOperatingTab({ query }: Props) {
           label="Net"
           value={formatMoney(net)}
           icon={CircleDollarSign}
-          iconColor={
-            net >= 0
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-red-600 dark:text-red-400"
-          }
+          iconBgClassName={net >= 0 ? "bg-emerald-500" : "bg-red-500"}
           valueClassName={cn(
             net >= 0
               ? "text-emerald-700 dark:text-emerald-300"
@@ -166,11 +162,13 @@ export function FinanceOperatingTab({ query }: Props) {
           label="Income"
           value={formatMoney(incomeTotal)}
           icon={ArrowUpRight}
+          iconBgClassName="bg-emerald-500"
         />
         <FinanceKpiCard
           label="Expenses"
           value={formatMoney(expenseTotal)}
           icon={ArrowDownRight}
+          iconBgClassName="bg-red-500"
         />
       </div>
 
@@ -190,7 +188,7 @@ export function FinanceOperatingTab({ query }: Props) {
           <button
             type="button"
             className={cn(
-              "inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-3.5 py-2",
+              "inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2",
               "gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft",
               "transition-all duration-200 hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] motion-safe:active:scale-[0.98]",
             )}
@@ -243,7 +241,7 @@ export function FinanceOperatingTab({ query }: Props) {
                     <button
                       type="button"
                       className={cn(
-                        "mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-4",
+                        "mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4",
                         "gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft",
                       )}
                       onClick={openCreate}

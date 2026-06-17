@@ -119,7 +119,7 @@ function MiniMonth<T>({
                 className={cn(
                   "text-[9px] font-semibold leading-none",
                   todayFlag
-                    ? "inline-flex size-4 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground"
+                    ? "inline-flex size-4 items-center justify-center rounded-full gradient-primary text-primary-foreground"
                     : "text-foreground/80",
                 )}
               >

@@ -301,7 +301,7 @@ export function BookingsListPage() {
       <Link
         to="/form"
         className={cn(
-          'inline-flex min-h-[44px] items-center gap-1.5 rounded-2xl px-3 py-2 sm:px-3.5',
+          'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
           'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
           'transition-all duration-200 hover:shadow-[0_8px_28px_-6px_hsl(168_65%_40%_/_0.35)] motion-safe:active:scale-[0.98]',
         )}
@@ -315,16 +315,14 @@ export function BookingsListPage() {
   return (
     <AdminLayout>
       <div className="space-y-3 sm:space-y-4">
-        <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
-          <AdminPageHeader
-            id="bookings-heading"
-            variant="compact"
-            title="Bookings"
-            subtitle="Search, filter, and manage guest stays."
-            icon={BookOpen}
-            actions={bookingActions}
-          />
-        </section>
+        <AdminPageHeader
+          id="bookings-heading"
+          variant="compact"
+          title="Bookings"
+          subtitle="Search, filter, and manage guest stays."
+          icon={BookOpen}
+          actions={bookingActions}
+        />
         <BookingFilters
           query={query}
           onChange={patch}

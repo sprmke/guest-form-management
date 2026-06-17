@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ScanSearch, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+import { calendarDatesBackfillToast, friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -27,31 +28,7 @@ export type CalendarEventDatesBackfillDialogProps = {
 };
 
 function buildToastSummary(r: CalendarEventDatesBackfillResult): string {
-  if (r.message && (r.count === 0 || !r.preview?.length)) {
-    return r.message;
-  }
-  if (r.dryRun) {
-    return [
-      'Preview',
-      r.count != null ? `${r.count} multi-night stay(s)` : null,
-      'would update Google Calendar',
-    ]
-      .filter(Boolean)
-      .join(' · ');
-  }
-
-  const s = r.summary;
-  if (!s) return 'Calendar dates updated';
-  return [
-    'Applied',
-    `${s.updated} updated`,
-    s.created > 0 ? `${s.created} created` : null,
-    s.skipped > 0 ? `${s.skipped} skipped` : null,
-    s.deletedDuplicates > 0 ? `${s.deletedDuplicates} duplicate(s) removed` : null,
-    s.failed > 0 ? `${s.failed} failed` : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  return calendarDatesBackfillToast(r);
 }
 
 export function CalendarEventDatesBackfillDialog({
@@ -93,7 +70,7 @@ export function CalendarEventDatesBackfillDialog({
             resetModal();
           }
         },
-        onError: (e) => toast.error((e as Error).message),
+        onError: (e) => toast.error(friendlyToastError(e, 'Calendar update failed')),
       },
     );
   };
@@ -119,8 +96,8 @@ export function CalendarEventDatesBackfillDialog({
         <DialogHeader>
           <DialogTitle>Fix Google Calendar stay dates</DialogTitle>
           <DialogDescription>
-            Re-sync Google Calendar for 2+ night stays (including completed)
-            that show an extra day. Preview first, then Apply.
+            Re-sync calendar end times for 2+ night stays. Preview first, then
+            apply.
           </DialogDescription>
         </DialogHeader>
 
@@ -155,8 +132,8 @@ export function CalendarEventDatesBackfillDialog({
                     Preview only
                   </span>
                   <span className="mt-0.5 block text-xs text-muted-foreground sm:text-[11px] leading-snug">
-                    Dry run: lists all multi-night stays (including completed)
-                    that would get a new calendar end time. No Google changes.
+                    Dry run: lists multi-night stays needing new calendar end
+                    times. No Google changes.
                   </span>
                 </span>
               </span>
@@ -210,8 +187,8 @@ export function CalendarEventDatesBackfillDialog({
                 htmlFor="calendar-backfill-apply-ack"
                 className="text-xs font-normal leading-snug text-sidebar-foreground sm:text-[11px] cursor-pointer"
               >
-                I ran preview or understand this PATCHes Google Calendar for
-                the multi-night stays shown in preview.
+                I ran preview or accept that this updates Google Calendar for
+                listed stays.
               </Label>
             </div>
           </div>

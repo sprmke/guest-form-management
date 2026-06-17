@@ -48,16 +48,9 @@ export function GuestAvatar({
       className={cn(
         'rounded-full overflow-hidden flex items-center justify-center font-black shrink-0 ring-1 ring-inset ring-black/[0.04]',
         SIZE_CLASS[size],
+        !showImage && 'gradient-primary text-primary-foreground',
         className,
       )}
-      style={
-        showImage
-          ? undefined
-          : {
-              background: 'hsl(var(--sidebar-primary))',
-              color: 'hsl(var(--sidebar-primary-foreground))',
-            }
-      }
       aria-hidden
     >
       {showImage ? (

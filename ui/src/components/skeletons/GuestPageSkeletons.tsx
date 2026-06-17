@@ -38,7 +38,7 @@ function GuestFormFieldSkeleton({ className }: { className?: string }) {
   return (
     <div className={cn('space-y-2', className)}>
       <Skeleton className="h-3.5 w-28" />
-      <Skeleton className="h-11 w-full rounded-2xl" />
+      <Skeleton className="h-11 w-full rounded-xl" />
     </div>
   );
 }
@@ -70,8 +70,8 @@ export function GuestFormStepPanelSkeleton({
         ))}
       </div>
       <div className="flex flex-col-reverse gap-2 border-t border-separator pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <Skeleton className="h-11 w-full rounded-2xl sm:w-28" />
-        <Skeleton className="h-11 w-full rounded-2xl sm:w-32" />
+        <Skeleton className="h-11 w-full rounded-xl sm:w-28" />
+        <Skeleton className="h-11 w-full rounded-xl sm:w-32" />
       </div>
     </div>
   );
@@ -137,7 +137,7 @@ export function CalendarPageSkeleton() {
       <KameFormBrandHeader title="Check Availability" />
       <CalendarAvailabilitySkeleton />
       <div>
-        <Skeleton className="h-12 w-full rounded-2xl" />
+        <Skeleton className="h-12 w-full rounded-xl" />
       </div>
     </div>
   );
@@ -165,8 +165,8 @@ export function PayParkingPageSkeleton({ title }: { title: string }) {
             <GuestFormFieldSkeleton key={i} />
           ))}
         </div>
-        <Skeleton className="h-24 w-full rounded-2xl" />
-        <Skeleton className="h-11 w-full rounded-2xl sm:ml-auto sm:w-40" />
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-11 w-full rounded-xl sm:ml-auto sm:w-40" />
       </div>
     </div>
   );

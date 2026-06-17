@@ -52,8 +52,8 @@ export function FinanceStaysViewToggle({
             className={cn(
               'inline-flex h-9 min-h-[44px] min-w-[40px] items-center justify-center rounded-md px-2 transition-all duration-150 lg:min-h-0',
               active
-                ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                : 'text-sidebar-muted hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
+                ? 'interactive-primary-segment'
+                : 'text-sidebar-muted hover:bg-primary/5 hover:text-primary',
             )}
           >
             <Icon className="size-4" aria-hidden />

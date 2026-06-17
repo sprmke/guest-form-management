@@ -83,7 +83,7 @@ export function FinanceOverviewTab({
             label="Completed net"
             value={formatMoney(s.hostNetCompleted)}
             icon={Wallet}
-            iconColor="text-emerald-600 dark:text-emerald-400"
+            iconBgClassName="bg-emerald-500"
             valueClassName={cn(
               s.hostNetCompleted >= 0
                 ? 'text-emerald-700 dark:text-emerald-300'
@@ -94,19 +94,19 @@ export function FinanceOverviewTab({
             label="Booking rate"
             value={formatMoney(s.bookingRate)}
             icon={Banknote}
-            iconColor="text-primary"
+            iconBgClassName="bg-teal-500"
           />
           <FinanceKpiCard
             label="Other fees"
             value={formatMoney(s.otherFees)}
             icon={Banknote}
-            iconColor="text-sky-600 dark:text-sky-400"
+            iconBgClassName="bg-sky-500"
           />
           <FinanceKpiCard
             label="Outstanding"
             value={formatMoney(s.outstandingGuestBalance)}
             icon={ShieldCheck}
-            iconColor="text-amber-600 dark:text-amber-400"
+            iconBgClassName="bg-amber-500"
             valueClassName={cn(
               s.outstandingGuestBalance > 0
                 ? 'text-amber-700 dark:text-amber-300'
@@ -135,10 +135,8 @@ export function FinanceOverviewTab({
             label="Total net"
             value={formatMoney(grandNet)}
             icon={TrendingUp}
-            iconColor={
-              grandNet >= 0
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-red-600 dark:text-red-400'
+            iconBgClassName={
+              grandNet >= 0 ? 'bg-emerald-500' : 'bg-red-500'
             }
             valueClassName={cn(
               grandNet >= 0
@@ -150,11 +148,7 @@ export function FinanceOverviewTab({
             label="Transactions net"
             value={formatMoney(o.net)}
             icon={CircleDollarSign}
-            iconColor={
-              o.net >= 0
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-red-600 dark:text-red-400'
-            }
+            iconBgClassName={o.net >= 0 ? 'bg-emerald-500' : 'bg-red-500'}
             valueClassName={cn(
               o.net >= 0
                 ? 'text-emerald-700 dark:text-emerald-300'
@@ -165,11 +159,13 @@ export function FinanceOverviewTab({
             label="Income"
             value={formatMoney(o.income)}
             icon={ArrowUpRight}
+            iconBgClassName="bg-emerald-500"
           />
           <FinanceKpiCard
             label="Expenses"
             value={formatMoney(o.expenses)}
             icon={ArrowDownRight}
+            iconBgClassName="bg-red-500"
           />
         </div>
 

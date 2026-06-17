@@ -1,25 +1,31 @@
 import * as React from 'react';
 import {
   Activity,
-  ChevronDown,
+  Braces,
   Clock,
   HardHat,
+  MessageSquare,
   Send,
-  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import {
+  AdminSection,
+  AdminSectionNavLayout,
+  type AdminSectionNavItem,
+} from '@/features/admin/components/AdminSectionNavLayout';
 import { AdminPageHeader } from '@/features/admin/components/AdminPageHeader';
+import { ManilaTimeField, formatManilaTimeLabel } from '@/features/admin/components/ManilaReminderTimesEditor';
+import { TelegramPlaceholdersReference } from '@/features/admin/components/TelegramPlaceholdersReference';
 import { TelegramStaffSettingsSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
+import { TelegramTemplateEditor } from '@/features/admin/components/TelegramTemplateEditor';
+import { buildValidPlaceholderKeySet } from '@/features/admin/lib/telegramPlaceholderGroups';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+  friendlyToastError,
+  showTelegramVerifyToast,
+  telegramScheduleSyncError,
+} from '@/lib/toastMessages';
 import {
   useTelegramStaffSettings,
   useTelegramStaffTestSend,
@@ -28,14 +34,19 @@ import {
   type StaffScenarioMeta,
   type StaffDraftScenario,
   type TelegramStaffSettingsDto,
-  type StaffTimeSlot,
 } from '@/features/admin/hooks/useTelegramStaffSettings';
+
+const STAFF_SECTIONS: AdminSectionNavItem[] = [
+  { id: 'schedule', label: 'Schedule & Alerts', icon: Clock },
+  { id: 'templates', label: 'Message Templates', icon: MessageSquare },
+  { id: 'placeholders', label: 'Placeholders', icon: Braces },
+];
 
 function ScenarioBadge({ type }: { type: StaffScenarioMeta['type'] }) {
   return (
     <span
       className={cn(
-        'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+        'shrink-0 rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
         type === 'event'
           ? 'bg-primary/10 text-primary'
           : 'bg-amber-500/15 text-amber-800 dark:text-amber-200',
@@ -86,82 +97,6 @@ function CheckboxRow({
   );
 }
 
-function CollapsibleSection({
-  id,
-  title,
-  defaultOpen,
-  triggerTitle,
-  children,
-}: {
-  id: string;
-  title: string;
-  defaultOpen?: boolean;
-  triggerTitle?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Collapsible
-      defaultOpen={defaultOpen}
-      className="group rounded-2xl border border-border/50 bg-muted/30"
-    >
-      <CollapsibleTrigger
-        type="button"
-        title={triggerTitle}
-        className={cn(
-          'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left',
-          'text-foreground hover:bg-muted/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:py-2',
-        )}
-        aria-controls={`${id}-panel`}
-      >
-        <span className="min-w-0 flex-1 text-sm font-semibold">{title}</span>
-        <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none group-data-[state=open]:rotate-180"
-          aria-hidden
-        />
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div
-          id={`${id}-panel`}
-          className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4"
-        >
-          {children}
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-  );
-}
-
-function slotToTimeInputValue(slot: StaffTimeSlot): string {
-  return `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
-}
-
-function timeInputValueToSlot(value: string): StaffTimeSlot | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
-  if (!m) return null;
-  const hour = Number(m[1]);
-  const minute = Number(m[2]);
-  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
-  return { hour, minute };
-}
-
-function formatManilaTimeLabel(slot: StaffTimeSlot): string {
-  const d = new Date(2000, 0, 1, slot.hour, slot.minute);
-  return d.toLocaleTimeString('en-PH', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
-type DailySummaryTestResult = {
-  sent?: boolean;
-  mode?: string;
-  detail?: string;
-  todayBookingCount?: number;
-  nextDaysBookingCount?: number;
-  messagesSent?: number;
-};
-
 export function TelegramStaffSettingsCard() {
   const { data, isLoading, isError, error } = useTelegramStaffSettings();
   const update = useUpdateTelegramStaffSettings();
@@ -177,6 +112,14 @@ export function TelegramStaffSettingsCard() {
 
   const busy = isLoading || update.isPending || testSend.isPending;
 
+  const validPlaceholderKeys = React.useMemo(
+    () =>
+      draft
+        ? buildValidPlaceholderKeySet(draft.placeholdersReference)
+        : undefined,
+    [draft?.placeholdersReference],
+  );
+
   const onSave = () => {
     if (!draft) return;
     update.mutate(
@@ -191,13 +134,10 @@ export function TelegramStaffSettingsCard() {
         onSuccess: ({ cronSync }) => {
           toast.success('Staff settings saved');
           if (cronSync && cronSync.ok !== true) {
-            toast.error(
-              cronSync.error ??
-                'Schedule could not be updated. Settings were still saved.',
-            );
+            toast.error(telegramScheduleSyncError());
           }
         },
-        onError: (e) => toast.error((e as Error).message),
+        onError: (e) => toast.error(friendlyToastError(e, 'Could not save settings')),
       },
     );
   };
@@ -218,22 +158,12 @@ export function TelegramStaffSettingsCard() {
       {
         onSuccess: (j) => {
           if (j.sent) {
-            const guest = j.previewGuestName as string | undefined;
-            const count = j.todayBookingCount as number | undefined;
-            const suffix =
-              guest && count && count > 1
-                ? ` for ${guest} (first of ${count} today)`
-                : guest
-                  ? ` for ${guest}`
-                  : '';
-            toast.success(
-              `Preview sent with live booking data${suffix} (${j.messageCharCount ?? '?'} characters)`,
-            );
+            toast.success('Preview sent');
           } else {
-            toast.error(j.error ?? 'Failed to send preview');
+            toast.error(friendlyToastError(j.error, 'Could not send preview'));
           }
         },
-        onError: (e) => toast.error((e as Error).message),
+        onError: (e) => toast.error(friendlyToastError(e, 'Could not send preview')),
       },
     );
   };
@@ -256,151 +186,51 @@ export function TelegramStaffSettingsCard() {
   }
 
   return (
-    <section
-      className={cn('surface-card w-full px-4 py-4 sm:px-5 sm:py-5')}
-      aria-labelledby="staff-heading"
-    >
-      <div className="space-y-4">
+    <div aria-labelledby="staff-heading">
+    <AdminSectionNavLayout
+      sections={STAFF_SECTIONS}
+      header={
         <AdminPageHeader
           id="staff-heading"
+          variant="compact"
           title="Staff"
-          subtitle="Daily summary and same-day check-in alerts for your staff group. Save when you're done editing."
+          subtitle="Daily summary and same-day check-in alerts."
           icon={HardHat}
         />
-
-        <div className="space-y-3">
-          {/* Test actions */}
-          <CollapsibleSection
-            id="staff-tests"
-            title="Test Sends"
-            defaultOpen
-            triggerTitle="Test the bot and send a sample daily summary."
+      }
+      footer={
+        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy || !data}
+            className="min-h-[44px] w-full sm:w-auto"
+            onClick={() => data && setDraft(data)}
           >
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy}
-                className="min-h-[44px] w-full gap-2 sm:w-auto"
-                onClick={() =>
-                  testSend.mutate(
-                    { action: 'verify_staff_telegram_env' },
-                    {
-                      onSuccess: (j) => {
-                        const v = j.verify as StaffEnvVerifyDto | undefined;
-                        if (!v) {
-                          toast.error('No verify payload from server');
-                          return;
-                        }
-                        const parts: string[] = [];
-                        if (v.credentials.normalizeError) {
-                          parts.push(v.credentials.normalizeError);
-                        } else {
-                          parts.push(
-                            `chat_id=${v.credentials.normalizedChatId ?? 'n/a'}`,
-                          );
-                        }
-                        parts.push(
-                          v.getMe.ok
-                            ? `getMe ok @${v.getMe.username ?? '?'}`
-                            : `getMe: ${v.getMe.error ?? 'failed'}`,
-                        );
-                        parts.push(
-                          v.getChat.ok
-                            ? `getChat ok: ${v.getChat.type ?? '?'} "${v.getChat.title ?? 'private'}"`
-                            : `getChat: ${v.getChat.error ?? 'failed'}`,
-                        );
-                        toast.message('Staff Telegram diagnostics', {
-                          description: parts.join(' · '),
-                          duration: 14_000,
-                        });
-                      },
-                      onError: (e) => toast.error((e as Error).message),
-                    },
-                  )
-                }
-              >
-                <Activity className="size-4 shrink-0" aria-hidden />
-                Verify bot
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                className="min-h-[44px] w-full sm:w-auto"
-                onClick={() =>
-                  testSend.mutate(
-                    { action: 'send_test_daily_summary' },
-                    {
-                      onSuccess: (j) => {
-                        const r = j.result as DailySummaryTestResult | undefined;
-                        if (r?.sent) {
-                          toast.success(
-                            `Daily summary sent (${r.todayBookingCount ?? 0} today, ${r.nextDaysBookingCount ?? 0} upcoming, ${r.messagesSent ?? 0} message(s))`,
-                          );
-                        } else {
-                          toast.error(
-                            r?.detail ??
-                              `Not sent (${r?.mode ?? 'unknown'}). Check Edge logs and TELEGRAM_STAFF_* secrets.`,
-                          );
-                        }
-                      },
-                      onError: (e) => toast.error((e as Error).message),
-                    },
-                  )
-                }
-              >
-                Daily summary
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={busy}
-                className="min-h-[44px] w-full gap-2 sm:w-auto"
-                onClick={() =>
-                  testSend.mutate(
-                    { action: 'send_test_same_day_checkin' },
-                    {
-                      onSuccess: (j) => {
-                        const r = j.result as { sent?: boolean; skip?: string } | undefined;
-                        if (r?.sent) {
-                          toast.success('Same-day check-in test sent');
-                        } else {
-                          toast.error(
-                            r?.skip ??
-                              'Not sent. Needs a today check-in booking or pass bookingId.',
-                          );
-                        }
-                      },
-                      onError: (e) => toast.error((e as Error).message),
-                    },
-                  )
-                }
-              >
-                <Zap className="size-4 shrink-0" aria-hidden />
-                Same-day alert
-              </Button>
-            </div>
-          </CollapsibleSection>
-
-          {/* Placeholder tokens */}
-          <CollapsibleSection id="staff-placeholders" title="Placeholders">
-            <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4 sm:text-[13px]">
-              {draft.placeholdersReference.map((line) => (
-                <li key={line} className="break-words">
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </CollapsibleSection>
-
-          {/* Settings */}
-          <CollapsibleSection id="staff-config" title="Schedule & Alerts">
+            Reset
+          </Button>
+          <Button
+            type="button"
+            disabled={busy}
+            className="min-h-[44px] w-full gap-2 sm:w-auto"
+            onClick={onSave}
+          >
+            <Send className="size-4 shrink-0" aria-hidden />
+            Save settings
+          </Button>
+        </div>
+      }
+    >
+          <AdminSection
+            id="schedule"
+            title="Schedule & Alerts"
+            icon={Clock}
+          >
             <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2 space-y-3">
               <CheckboxRow
                 id="staff-enabled"
                 label="Enable Daily Summary"
-                description="Off skips the scheduled staff message."
+                description="Skips the scheduled staff message when off."
                 checked={draft.enabled}
                 disabled={busy}
                 onChange={(v) =>
@@ -410,7 +240,7 @@ export function TelegramStaffSettingsCard() {
               <CheckboxRow
                 id="staff-same-day"
                 label="Same-day check-in alert"
-                description={`Instant one-time message when a guest submits a booking checking in today at or after ${formatManilaTimeLabel(draft.dailySummaryTimeManila)} (same as daily summary time).`}
+                description={`One alert for today's check-ins from ${formatManilaTimeLabel(draft.dailySummaryTimeManila)} onward.`}
                 checked={draft.notifyOnSameDayCheckin}
                 disabled={busy}
                 onChange={(v) =>
@@ -430,51 +260,56 @@ export function TelegramStaffSettingsCard() {
                     Daily summary time
                   </p>
                   <p className="text-xs text-muted-foreground leading-snug">
-                    When the summary is sent (Manila time). Same-day check-in
-                    alerts also start from this time. Saving updates the schedule.
+                    Manila send time. Same-day alerts start here too.
                   </p>
                 </div>
               </div>
 
-              <p
-                className="rounded-md bg-muted/40 px-2.5 py-2 text-xs text-muted-foreground"
-                aria-live="polite"
-              >
-                <span className="font-medium text-foreground">
-                  Schedule:{' '}
-                </span>
-                {formatManilaTimeLabel(draft.dailySummaryTimeManila)} daily
-              </p>
-
-              <div className="flex items-center gap-2 sm:gap-3">
-                <Label
-                  htmlFor="staff-slot-time"
-                  className="w-16 shrink-0 text-xs text-muted-foreground sm:w-20 sm:text-sm"
-                >
-                  Time
-                </Label>
-                <Input
-                  id="staff-slot-time"
-                  type="time"
-                  disabled={busy}
-                  value={slotToTimeInputValue(draft.dailySummaryTimeManila)}
-                  className="h-10 min-h-[44px] min-w-0 flex-1 max-w-[11rem] text-base sm:text-sm"
-                  onChange={(e) => {
-                    const parsed = timeInputValueToSlot(e.target.value);
-                    if (!parsed) return;
-                    setDraft((d) =>
-                      d
-                        ? { ...d, dailySummaryTimeManila: parsed }
-                        : d,
-                    );
-                  }}
-                />
-              </div>
+              <ManilaTimeField
+                inputId="staff-slot-time"
+                slot={draft.dailySummaryTimeManila}
+                disabled={busy}
+                onChange={(dailySummaryTimeManila) =>
+                  setDraft((d) =>
+                    d ? { ...d, dailySummaryTimeManila } : d,
+                  )
+                }
+              />
             </div>
-          </CollapsibleSection>
 
-          {/* Message templates */}
-          <CollapsibleSection id="staff-template" title="Message Templates" defaultOpen>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              className="min-h-[44px] w-full gap-2 sm:w-auto"
+              onClick={() =>
+                testSend.mutate(
+                  { action: 'verify_staff_telegram_env' },
+                  {
+                    onSuccess: (j) => {
+                      showTelegramVerifyToast(
+                        j.verify as StaffEnvVerifyDto | undefined,
+                        'Staff group',
+                      );
+                    },
+                    onError: (e) =>
+                      toast.error(
+                        friendlyToastError(e, 'Could not verify the connection'),
+                      ),
+                  },
+                )
+              }
+            >
+              <Activity className="size-4 shrink-0" aria-hidden />
+              Verify bot
+            </Button>
+          </AdminSection>
+
+          <AdminSection
+            id="templates"
+            title="Message Templates"
+            icon={MessageSquare}
+          >
             <div className="space-y-4">
               {(
                 [
@@ -509,66 +344,40 @@ export function TelegramStaffSettingsCard() {
                         {meta.trigger}
                       </p>
                     )}
-                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-                      <Label
-                        htmlFor={`staff-template-${id}`}
-                        className="sr-only"
-                      >
-                        {label}
-                      </Label>
-                      <Textarea
-                        id={`staff-template-${id}`}
-                        disabled={busy}
-                        rows={id === 'daily_summary' ? 14 : 10}
-                        className="col-span-full min-h-[160px] min-w-0 w-full resize-y text-sm font-mono sm:col-span-2 sm:text-[13px]"
-                        value={templateValue}
-                        onChange={(e) =>
-                          setDraft((d) =>
-                            d ? { ...d, [templateKey]: e.target.value } : d,
-                          )
-                        }
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        disabled={busy}
-                        className="min-h-[44px] w-full sm:col-start-2 sm:h-9 sm:w-auto sm:min-h-9"
-                        title="Sends a test message with live booking data."
-                        onClick={() => onSendDraftPreview(scenario, templateValue)}
-                      >
-                        Send preview
-                      </Button>
-                    </div>
+                    <TelegramTemplateEditor
+                      id={`staff-template-${id}`}
+                      label={label}
+                      labelClassName="sr-only"
+                      value={templateValue}
+                      disabled={busy}
+                      rows={id === 'daily_summary' ? 14 : 10}
+                      minHeightClassName="min-h-[160px]"
+                      mono
+                      previewSampleSet="staff"
+                      validPlaceholderKeys={validPlaceholderKeys}
+                      previewContext={{ bot: 'staff', scenario }}
+                      sendPreviewTitle="Send test with live booking data."
+                      onChange={(v) =>
+                        setDraft((d) => (d ? { ...d, [templateKey]: v } : d))
+                      }
+                      onSendDraft={() =>
+                        onSendDraftPreview(scenario, templateValue)
+                      }
+                    />
                   </div>
                 );
               })}
             </div>
-          </CollapsibleSection>
-        </div>
+          </AdminSection>
 
-        {/* Save / Reset */}
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={busy || !data}
-            className="min-h-[44px] w-full sm:w-auto"
-            onClick={() => data && setDraft(data)}
+          <AdminSection
+            id="placeholders"
+            title={`Placeholders (${draft.placeholdersReference.length})`}
+            icon={Braces}
           >
-            Reset
-          </Button>
-          <Button
-            type="button"
-            disabled={busy}
-            className="min-h-[44px] w-full gap-2 sm:w-auto"
-            onClick={onSave}
-          >
-            <Send className="size-4 shrink-0" aria-hidden />
-            Save settings
-          </Button>
-        </div>
-      </div>
-    </section>
+            <TelegramPlaceholdersReference lines={draft.placeholdersReference} />
+          </AdminSection>
+    </AdminSectionNavLayout>
+    </div>
   );
 }

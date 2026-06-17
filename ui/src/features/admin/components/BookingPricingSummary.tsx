@@ -103,8 +103,7 @@ export function BookingPricingSummary({
 
         {!isCompleted && showProjectedEstimate && fin.projectedNet != null ? (
           <p className="text-caption leading-relaxed text-muted-foreground">
-            Estimate before SD refund is settled. Open the booking for full
-            settlement details once completed.
+            Estimate until SD refund is settled. Open booking for final details.
           </p>
         ) : null}
       </div>

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import { friendlyToastError } from '@/lib/toastMessages';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,7 +35,7 @@ export function GafOwnerSignatureUploadField({
       await uploadMut.mutateAsync({ assetType: 'gaf_unit_owner_signature', file });
       toast.success('Unit Owner signature updated');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Upload failed');
+      toast.error(friendlyToastError(err, 'Upload failed'));
     } finally {
       if (fileRef.current) fileRef.current.value = '';
     }
@@ -45,7 +46,7 @@ export function GafOwnerSignatureUploadField({
       await clearMut.mutateAsync('gafUnitOwnerSignatureUrl');
       toast.success('Signature reset to template default');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Reset failed');
+      toast.error(friendlyToastError(err, 'Reset failed'));
     }
   }
 
