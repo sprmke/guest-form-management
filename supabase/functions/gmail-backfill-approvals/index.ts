@@ -17,9 +17,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
+import { DatabaseService } from '../_shared/databaseService.ts';
+import { SheetsService } from '../_shared/sheetsService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
-import { formatPublicUrl } from '../_shared/utils.ts';
+import { formatDateForEmail, formatPublicUrl } from '../_shared/utils.ts';
 import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
 import { getGmailApprovalSenderAllowList } from '../_shared/appSettings.ts';
 
@@ -27,6 +29,21 @@ const GMAIL_BASE = 'https://www.googleapis.com/gmail/v1/users/me';
 const DEFAULT_LOOKBACK_DAYS = 180;
 const DEFAULT_LIMIT_BOOKINGS = 60;
 const DEFAULT_MAX_MESSAGES_PER_KIND = 6;
+
+/** Statuses where backfill may attach a missing approved GAF/pet PDF. */
+const BACKFILL_CANDIDATE_STATUSES: BookingStatus[] = [
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PET_REQUEST',
+  'READY_FOR_CHECKIN',
+];
+
+/** Same-status orchestrator backfill (nested doc completion). */
+const WORKFLOW_BACKFILL_STATUSES: BookingStatus[] = [
+  'PENDING_DOCUMENTS',
+  'PENDING_GAF',
+  'PENDING_PET_REQUEST',
+];
 
 const BACKFILL_DEV_CONTROLS = {
   saveToDatabase: true,
@@ -63,6 +80,7 @@ type CandidateBooking = {
 
 type BookingTask = {
   bookingId: string;
+  bookingStatus: BookingStatus;
   checkInDate: string;
   checkOutDate: string;
   kind: ApprovalKind;
@@ -215,13 +233,14 @@ function parseApprovalSubject(subject: string): ParsedApprovalSubject | null {
   return null;
 }
 
-async function isAlreadyProcessed(messageId: string): Promise<boolean> {
+/** Skip only when this Gmail message was already applied; allow retry on skipped/failed. */
+async function isBackfillBlockedByProcessed(messageId: string): Promise<boolean> {
   const { data } = await supabaseAdmin()
     .from('processed_emails')
-    .select('message_id')
+    .select('status')
     .eq('message_id', messageId)
     .maybeSingle();
-  return !!data;
+  return data?.status === 'applied';
 }
 
 async function recordProcessedEmail(params: {
@@ -270,14 +289,16 @@ async function loadCandidateBookings(
 ): Promise<CandidateBooking[]> {
   let query = supabaseAdmin()
     .from('guest_submissions')
-    .select('id,status,check_in_date,check_out_date,has_pets,approved_gaf_pdf_url,approved_pet_pdf_url')
-    .in('status', ['PENDING_DOCUMENTS', 'PENDING_GAF', 'PENDING_PET_REQUEST']);
+    .select('id,status,check_in_date,check_out_date,has_pets,approved_gaf_pdf_url,approved_pet_pdf_url');
 
   const scopedId = (bookingId ?? '').trim();
   if (scopedId) {
     query = query.eq('id', scopedId);
   } else {
-    query = query.order('check_in_date', { ascending: true }).limit(limit);
+    query = query
+      .in('status', BACKFILL_CANDIDATE_STATUSES)
+      .order('check_in_date', { ascending: true })
+      .limit(limit);
   }
 
   const { data, error } = await query;
@@ -286,30 +307,135 @@ async function loadCandidateBookings(
   return (data ?? []) as CandidateBooking[];
 }
 
+function bookingNeedsGafBackfill(booking: CandidateBooking): boolean {
+  if (booking.approved_gaf_pdf_url?.trim()) return false;
+  return (
+    booking.status === 'PENDING_GAF' ||
+    booking.status === 'PENDING_DOCUMENTS' ||
+    booking.status === 'READY_FOR_CHECKIN'
+  );
+}
+
+function bookingNeedsPetBackfill(booking: CandidateBooking): boolean {
+  if (!booking.has_pets || booking.approved_pet_pdf_url?.trim()) return false;
+  return (
+    booking.status === 'PENDING_PET_REQUEST' ||
+    booking.status === 'PENDING_DOCUMENTS' ||
+    booking.status === 'READY_FOR_CHECKIN'
+  );
+}
+
 function buildTasksFromBooking(booking: CandidateBooking): BookingTask[] {
   const tasks: BookingTask[] = [];
   const base = {
     bookingId: booking.id,
+    bookingStatus: booking.status,
     checkInDate: booking.check_in_date,
     checkOutDate: booking.check_out_date,
   };
 
-  const needsGaf =
-    booking.status === 'PENDING_GAF' ||
-    (booking.status === 'PENDING_DOCUMENTS' && !booking.approved_gaf_pdf_url);
-  const needsPet =
-    booking.status === 'PENDING_PET_REQUEST' ||
-    (booking.status === 'PENDING_DOCUMENTS' && !!booking.has_pets && !booking.approved_pet_pdf_url);
-
-  if (needsGaf) tasks.push({ ...base, kind: 'gaf' });
-  if (needsPet) tasks.push({ ...base, kind: 'pet' });
+  if (bookingNeedsGafBackfill(booking)) tasks.push({ ...base, kind: 'gaf' });
+  if (bookingNeedsPetBackfill(booking)) tasks.push({ ...base, kind: 'pet' });
   return tasks;
 }
 
-function buildGmailSearchQuery(task: BookingTask, lookbackDays: number): string {
-  const subjectPrefix = task.kind === 'gaf' ? 'Monaco 2604 - GAF Request' : 'Monaco 2604 - Pet Request';
-  const dateSegment = `(${task.checkInDate} to ${task.checkOutDate})`;
-  return `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix} ${dateSegment}" has:attachment filename:pdf`;
+/**
+ * Gmail subjects use `formatDateForEmail` (e.g. Jun 18, 2026), not DB MM-DD-YYYY.
+ * Try the precise subject first, then a broader search filtered in code.
+ */
+function buildGmailSearchQueries(task: BookingTask, lookbackDays: number): string[] {
+  const subjectPrefix = task.kind === 'gaf'
+    ? 'Monaco 2604 - GAF Request'
+    : 'Monaco 2604 - Pet Request';
+  const emailCheckIn = formatDateForEmail(task.checkInDate);
+  const emailCheckOut = formatDateForEmail(task.checkOutDate);
+  const precise =
+    `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix} (${emailCheckIn} to ${emailCheckOut})" has:attachment filename:pdf`;
+  const broad =
+    `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix}" has:attachment filename:pdf`;
+  return [precise, broad];
+}
+
+async function listMessageIdsForTask(
+  accessToken: string,
+  task: BookingTask,
+  lookbackDays: number,
+  maxMessagesPerKind: number,
+): Promise<string[]> {
+  const seen = new Set<string>();
+  const ids: string[] = [];
+
+  for (const query of buildGmailSearchQueries(task, lookbackDays)) {
+    const batch = await listMessageIdsByQuery(accessToken, query, maxMessagesPerKind);
+    for (const id of batch) {
+      if (!seen.has(id)) {
+        seen.add(id);
+        ids.push(id);
+      }
+    }
+    if (ids.length > 0) break;
+  }
+
+  return ids;
+}
+
+async function persistApprovedPdfOnly(params: {
+  kind: ApprovalKind;
+  bookingId: string;
+  pdfUrl: string;
+}): Promise<void> {
+  const fields =
+    params.kind === 'gaf'
+      ? { approved_gaf_pdf_url: params.pdfUrl, gaf_manual_incomplete: false }
+      : { approved_pet_pdf_url: params.pdfUrl, pet_manual_incomplete: false };
+
+  await DatabaseService.setWorkflowFields(params.bookingId, fields);
+
+  const booking = await DatabaseService.getBookingById(params.bookingId);
+  if (booking) {
+    await SheetsService.syncFullRowFromDbBooking(booking);
+  }
+}
+
+async function applyBackfillApproval(params: {
+  task: BookingTask;
+  pdfUrl: string;
+}): Promise<void> {
+  const { task, pdfUrl } = params;
+
+  if (!WORKFLOW_BACKFILL_STATUSES.includes(task.bookingStatus)) {
+    await persistApprovedPdfOnly({
+      kind: task.kind,
+      bookingId: task.bookingId,
+      pdfUrl,
+    });
+    return;
+  }
+
+  const targetStatus: BookingStatus =
+    task.bookingStatus === 'PENDING_GAF' ||
+    task.bookingStatus === 'PENDING_PET_REQUEST'
+      ? 'PENDING_DOCUMENTS'
+      : task.bookingStatus;
+
+  const payload: Record<string, unknown> =
+    task.kind === 'gaf'
+      ? {
+          approved_gaf_pdf_url: pdfUrl,
+          document_completion_target: 'PENDING_GAF',
+        }
+      : {
+          approved_pet_pdf_url: pdfUrl,
+          document_completion_target: 'PENDING_PET_REQUEST',
+        };
+
+  await WorkflowOrchestrator.transition(
+    task.bookingId,
+    targetStatus,
+    payload,
+    { ...BACKFILL_DEV_CONTROLS },
+    false,
+  );
 }
 
 serve(async (req) => {
@@ -366,12 +492,16 @@ serve(async (req) => {
     const allowedApprovers = await getGmailApprovalSenderAllowList();
 
     for (const task of tasks) {
-      const query = buildGmailSearchQuery(task, lookbackDays);
-      const messageIds = await listMessageIdsByQuery(accessToken, query, maxMessagesPerKind);
+      const messageIds = await listMessageIdsForTask(
+        accessToken,
+        task,
+        lookbackDays,
+        maxMessagesPerKind,
+      );
       let matched = false;
 
       for (const messageId of messageIds) {
-        if (await isAlreadyProcessed(messageId)) {
+        if (await isBackfillBlockedByProcessed(messageId)) {
           skipped++;
           continue;
         }
@@ -429,24 +559,7 @@ serve(async (req) => {
             bytes,
           });
 
-          const payload: Record<string, unknown> =
-            task.kind === 'gaf'
-              ? {
-                  approved_gaf_pdf_url: pdfUrl,
-                  document_completion_target: 'PENDING_GAF',
-                }
-              : {
-                  approved_pet_pdf_url: pdfUrl,
-                  document_completion_target: 'PENDING_PET_REQUEST',
-                };
-
-          await WorkflowOrchestrator.transition(
-            task.bookingId,
-            'PENDING_DOCUMENTS',
-            payload,
-            { ...BACKFILL_DEV_CONTROLS },
-            false,
-          );
+          await applyBackfillApproval({ task, pdfUrl });
 
           await recordProcessedEmail({
             messageId,

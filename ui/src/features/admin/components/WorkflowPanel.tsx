@@ -32,7 +32,6 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
-  History,
   Info,
   Loader2,
   Mail,
@@ -62,7 +61,6 @@ import {
   type GuestBalanceSettlementValues,
 } from '@/features/admin/components/GuestBalanceSettlementForm';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
-import { HistoricalApprovalBackfillDialog } from '@/features/admin/components/HistoricalApprovalBackfillDialog';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   arePendingDocumentsComplete,
@@ -104,10 +102,6 @@ import {
   workflowDevControlsForTransition,
   type WorkflowDevControlDef,
 } from '@/features/admin/lib/workflowDevControls';
-import {
-  historicalBackfillDismissStorageKey,
-  shouldOfferHistoricalApprovalBackfill,
-} from '@/features/admin/lib/historicalBackfillEligibility';
 import {
   useTransitionBooking,
   useCancelBooking,
@@ -262,8 +256,6 @@ export function WorkflowPanel({ booking }: Props) {
   gmailPollMutRef.current = gmailPollMut;
   /** Dedupes React Strict Mode double-invoke; cleared when leaving PENDING_DOCUMENTS. */
   const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
-  const pendingDocsAutoBackfillModalRef = useRef<string | null>(null);
-  const [historicalBackfillOpen, setHistoricalBackfillOpen] = useState(false);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
 
@@ -272,7 +264,6 @@ export function WorkflowPanel({ booking }: Props) {
     status === 'PENDING_DOCUMENTS' ||
     status === 'PENDING_GAF' ||
     status === 'PENDING_PET_REQUEST';
-  const showHistoricalBackfill = shouldOfferHistoricalApprovalBackfill(booking);
   const showSdCron = status === 'READY_FOR_CHECKIN';
   const showSdFormResend =
     status === 'READY_FOR_CHECKOUT' || status === 'READY_FOR_CHECKIN';
@@ -317,7 +308,6 @@ export function WorkflowPanel({ booking }: Props) {
   useEffect(() => {
     if (status !== 'PENDING_DOCUMENTS') {
       pendingDocsAutoGmailPollRef.current = null;
-      pendingDocsAutoBackfillModalRef.current = null;
       return;
     }
     if (!bookingNeedsGmailListenerPoll(booking)) {
@@ -355,47 +345,6 @@ export function WorkflowPanel({ booking }: Props) {
     booking.has_pets,
     status,
   ]);
-
-  useEffect(() => {
-    if (status !== 'PENDING_DOCUMENTS') {
-      pendingDocsAutoBackfillModalRef.current = null;
-      setHistoricalBackfillOpen(false);
-      return;
-    }
-    if (!shouldOfferHistoricalApprovalBackfill(booking)) return;
-
-    const dismissKey = historicalBackfillDismissStorageKey(booking.id);
-    try {
-      if (sessionStorage.getItem(dismissKey) === '1') return;
-    } catch {
-      /* sessionStorage unavailable */
-    }
-
-    const dedupeKey = `${booking.id}:backfill-modal`;
-    if (pendingDocsAutoBackfillModalRef.current === dedupeKey) return;
-    pendingDocsAutoBackfillModalRef.current = dedupeKey;
-    setHistoricalBackfillOpen(true);
-  }, [
-    booking.id,
-    booking.status,
-    booking.created_at,
-    booking.gaf_completed_at,
-    booking.approved_gaf_pdf_url,
-    booking.gaf_manual_incomplete,
-    status,
-  ]);
-
-  const dismissHistoricalBackfillModal = useCallback(() => {
-    setHistoricalBackfillOpen(false);
-    try {
-      sessionStorage.setItem(
-        historicalBackfillDismissStorageKey(booking.id),
-        '1',
-      );
-    } catch {
-      /* ignore */
-    }
-  }, [booking.id]);
 
   async function handleGmailPoll() {
     try {
@@ -671,26 +620,6 @@ export function WorkflowPanel({ booking }: Props) {
 
   return (
     <>
-      <HistoricalApprovalBackfillDialog
-        open={historicalBackfillOpen}
-        onOpenChange={setHistoricalBackfillOpen}
-        onDismiss={dismissHistoricalBackfillModal}
-        bookingId={booking.id}
-        variant="booking-detail"
-        onRunSuccess={() => {
-          pendingDocsAutoBackfillModalRef.current = null;
-          try {
-            sessionStorage.removeItem(
-              historicalBackfillDismissStorageKey(booking.id),
-            );
-          } catch {
-            /* ignore */
-          }
-          void queryClient.invalidateQueries({
-            queryKey: BOOKING_QUERY_KEY(booking.id),
-          });
-        }}
-      />
       <aside className="flex overflow-hidden flex-col gap-0 rounded-xl border shadow-sm bg-card border-border">
         {/* ── Pipeline stepper ──────────────────────────────────────────────── */}
         {pipeline.length > 0 && status !== 'CANCELLED' ? (
@@ -942,26 +871,6 @@ export function WorkflowPanel({ booking }: Props) {
                       ) : (
                         <Mail className="size-3.5 shrink-0" aria-hidden />
                       )}
-                    </button>
-                  )}
-                  {showHistoricalBackfill && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        pendingDocsAutoBackfillModalRef.current = null;
-                        try {
-                          sessionStorage.removeItem(
-                            historicalBackfillDismissStorageKey(booking.id),
-                          );
-                        } catch {
-                          /* ignore */
-                        }
-                        setHistoricalBackfillOpen(true);
-                      }}
-                      className="flex min-h-[44px] w-full items-center justify-between px-3 py-2.5 text-xs font-medium rounded-lg border transition-colors border-emerald-200 bg-emerald-50/80 text-emerald-900 hover:bg-emerald-100"
-                    >
-                      <span>Historical approval backfill</span>
-                      <History className="size-3.5 shrink-0" aria-hidden />
                     </button>
                   )}
                   {showSdCron && (
@@ -1592,9 +1501,11 @@ function PendingDocSubStatusCard({
         {isGaf ? (
           <div className="space-y-2">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {completed
-                ? 'Azure returned an approved GAF. Sub-step marked complete.'
-                : 'Waiting for Azure’s approved GAF. Use Run Gmail poll if an email was missed.'}
+              {!completed
+                ? 'Waiting for Azure’s approved GAF. Use Run Gmail poll if an email was missed.'
+                : booking.approved_gaf_pdf_url?.trim()
+                  ? 'Azure returned an approved GAF. Sub-step marked complete.'
+                  : 'Marked complete without an approved GAF file. Upload manually or use Settings → Import older approvals.'}
             </p>
             <DocLinkRow
               label="GAF request PDF"
@@ -1611,9 +1522,11 @@ function PendingDocSubStatusCard({
         {isPet ? (
           <div className="space-y-2">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              {completed
-                ? 'Azure returned an approved pet request. Sub-step marked complete.'
-                : 'Waiting for Azure’s approved pet request. Use Run Gmail poll if missed.'}
+              {!completed
+                ? 'Waiting for Azure’s approved pet request. Use Run Gmail poll if missed.'
+                : booking.approved_pet_pdf_url?.trim()
+                  ? 'Azure returned an approved pet request. Sub-step marked complete.'
+                  : 'Marked complete without an approved pet file. Upload manually or use Settings → Import older approvals.'}
             </p>
             <DocLinkRow
               label="Pet request PDF"
