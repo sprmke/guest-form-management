@@ -83,6 +83,13 @@ import {
   type ViewedWorkflowStep,
 } from '@/features/admin/lib/workflow';
 import {
+  isStorageObjectNotFoundError,
+  normalizeStoragePublicUrl,
+  parseStorageUrl,
+  PRIVATE_STORAGE_BUCKETS,
+  resolveAssetUrlForBrowser,
+} from '@/features/admin/lib/storageUrls';
+import {
   TERMINAL_STATUSES,
   statusLabel,
   type BookingStatus,
@@ -1629,12 +1636,75 @@ function PendingDocSubStatusCard({
 }
 
 function DocLinkRow({ label, url }: { label: string; url?: string | null }) {
+  const trimmed = url?.trim();
+  const normalized = trimmed
+    ? (normalizeStoragePublicUrl(trimmed) ?? trimmed)
+    : null;
+  const parsed = normalized ? parseStorageUrl(normalized) : null;
+  const needsSignedUrl = Boolean(
+    parsed && PRIVATE_STORAGE_BUCKETS.has(parsed.bucket),
+  );
+
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(() =>
+    trimmed && !needsSignedUrl ? normalized : null,
+  );
+  const [loading, setLoading] = useState(false);
+  const [missingInStorage, setMissingInStorage] = useState(false);
+
+  useEffect(() => {
+    if (!trimmed) {
+      setResolvedUrl(null);
+      setLoading(false);
+      setMissingInStorage(false);
+      return;
+    }
+    if (!needsSignedUrl) {
+      setResolvedUrl(normalized);
+      setLoading(false);
+      setMissingInStorage(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setMissingInStorage(false);
+    setResolvedUrl(null);
+    resolveAssetUrlForBrowser(trimmed)
+      .then((signed) => {
+        if (!cancelled) setResolvedUrl(signed);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        if (isStorageObjectNotFoundError(err)) {
+          setMissingInStorage(true);
+          return;
+        }
+        setResolvedUrl(normalized);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmed, normalized, needsSignedUrl]);
+
   return (
     <div className="flex flex-wrap gap-2 justify-between items-center text-xs">
       <span className="text-muted-foreground">{label}</span>
-      {url ? (
+      {!trimmed ? (
+        <span className="italic text-muted-foreground">Not available</span>
+      ) : loading ? (
+        <span className="inline-flex gap-1 items-center text-muted-foreground">
+          <Loader2 className="size-3 animate-spin" aria-hidden />
+          Loading…
+        </span>
+      ) : missingInStorage ? (
+        <span className="italic text-muted-foreground">File missing from storage</span>
+      ) : (
         <a
-          href={url}
+          href={resolvedUrl ?? normalized ?? trimmed}
           target="_blank"
           rel="noopener noreferrer"
           className={cn(workflowInlineLink, 'inline-flex gap-1 items-center')}
@@ -1642,8 +1712,6 @@ function DocLinkRow({ label, url }: { label: string; url?: string | null }) {
           View
           <ExternalLink className="size-3 shrink-0" aria-hidden />
         </a>
-      ) : (
-        <span className="italic text-muted-foreground">Not available</span>
       )}
     </div>
   );

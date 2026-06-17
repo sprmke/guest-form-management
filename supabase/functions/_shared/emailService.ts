@@ -10,7 +10,6 @@ import {
 import {
   countStayNights,
   formatDateForEmail,
-  formatPublicUrl,
   formatTimeForDisplay,
 } from "./utils.ts";
 import { resolveAppSettings, DEFAULT_GCASH_QR_RELATIVE_PATH } from "./appSettings.ts";
@@ -34,61 +33,39 @@ function supabaseAdminClient() {
   );
 }
 
-const STORAGE_OBJECT_PATH_RE =
-  /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
-
 /**
- * Parse a Supabase Storage URL into { bucket, path }.
+ * Parse a Supabase Storage public URL into { bucket, path }.
  * Returns null for placeholder values or unparseable URLs.
  */
 function parseStorageUrl(url: string): { bucket: string; path: string } | null {
-  const trimmed = url?.trim();
-  if (
-    !trimmed ||
-    trimmed === "dev-mode-skipped" ||
-    trimmed === "test-mode-skipped"
-  ) {
+  try {
+    if (
+      !url ||
+      url === "dev-mode-skipped" ||
+      url === "test-mode-skipped" ||
+      !url.startsWith("http")
+    ) {
+      return null;
+    }
+    const urlObj = new URL(url);
+    const parts = urlObj.pathname.split("/");
+    // Support both /storage/v1/object/public/… and /storage/v1/object/sign/…
+    const markerIdx = parts.findIndex((p) => p === "public" || p === "sign");
+    if (markerIdx !== -1 && markerIdx < parts.length - 2) {
+      const bucket = parts[markerIdx + 1];
+      const path = parts.slice(markerIdx + 2).join("/");
+      return { bucket, path };
+    }
+    return null;
+  } catch {
     return null;
   }
-
-  const normalized = formatPublicUrl(trimmed);
-  const withoutQuery = normalized.split("?")[0] ?? "";
-  const match = withoutQuery.match(STORAGE_OBJECT_PATH_RE);
-  if (!match) return null;
-
-  const bucket = match[1];
-  const rawPath = match[2] ?? "";
-  if (!bucket || !rawPath) return null;
-
-  try {
-    return { bucket, path: decodeURIComponent(rawPath) };
-  } catch {
-    return { bucket, path: rawPath };
-  }
-}
-
-function mimeTypeFromFilename(filename: string): string {
-  const ext = filename.split(".").pop()?.toLowerCase();
-  if (ext === "pdf") return "application/pdf";
-  if (ext === "png") return "image/png";
-  if (ext === "webp") return "image/webp";
-  if (ext === "gif") return "image/gif";
-  return "image/jpeg";
 }
 
 type DownloadedFile = {
   bytes: Uint8Array;
   filename: string;
   mimeType: string;
-};
-
-type ResendAttachment = {
-  filename: string;
-  content?: string;
-  encoding?: string;
-  path?: string;
-  content_id?: string;
-  content_type?: string;
 };
 
 /**
@@ -111,70 +88,18 @@ async function downloadStorageFile(
       .download(loc.path);
 
     if (error || !data) {
-      console.error(
-        "[emailService] Storage download failed:",
-        loc.bucket,
-        loc.path,
-        error?.message,
-      );
+      console.error("[emailService] Storage download failed:", error?.message);
       return null;
     }
 
     const bytes = new Uint8Array(await data.arrayBuffer());
     const filename = loc.path.split("/").pop() || fallbackFilename;
-    const mimeType = data.type || mimeTypeFromFilename(filename);
+    const mimeType = data.type || "application/octet-stream";
     return { bytes, filename, mimeType };
   } catch (err) {
     console.error("[emailService] Unexpected download error:", err);
     return null;
   }
-}
-
-/**
- * Build a Resend attachment from a stored Supabase object URL.
- * Prefers a signed URL (`path`) so Resend fetches the file remotely; falls back to base64.
- */
-async function buildResendAttachmentFromStorageUrl(
-  url: string,
-  fallbackFilename: string,
-): Promise<ResendAttachment | null> {
-  const loc = parseStorageUrl(url);
-  if (!loc) {
-    console.warn("[emailService] Cannot parse storage URL:", url);
-    return null;
-  }
-
-  const filename = loc.path.split("/").pop() || fallbackFilename;
-  const content_type = mimeTypeFromFilename(filename);
-
-  const { data: signed, error: signErr } = await supabaseAdminClient()
-    .storage.from(loc.bucket)
-    .createSignedUrl(loc.path, 3600);
-
-  if (!signErr && signed?.signedUrl) {
-    console.log(
-      `[emailService] Attachment via signed URL: ${loc.bucket}/${loc.path}`,
-    );
-    return {
-      filename,
-      path: signed.signedUrl,
-      content_type,
-    };
-  }
-
-  console.warn(
-    "[emailService] Signed URL failed, falling back to base64:",
-    signErr?.message,
-  );
-
-  const file = await downloadStorageFile(url, fallbackFilename);
-  if (!file) return null;
-
-  return {
-    filename: file.filename,
-    content: toBase64(file.bytes),
-    content_type: file.mimeType || content_type,
-  };
 }
 
 /**
@@ -279,6 +204,14 @@ async function resolveReadyForCheckinPaymentQr(
     fallbackUrl,
   };
 }
+
+type ResendAttachment = {
+  filename: string;
+  content: string;
+  encoding: string;
+  content_id?: string;
+  content_type?: string;
+};
 
 /**
  * Checks if a booking is urgent (same-day check-in)
@@ -1084,61 +1017,60 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
 
   // Approved GAF PDF — always attach if available
   if (booking.approved_gaf_pdf_url) {
-    console.log("[readyForCheckin] Attaching approved GAF PDF...");
-    const attachment = await buildResendAttachmentFromStorageUrl(
+    console.log("[readyForCheckin] Downloading approved GAF PDF...");
+    const file = await downloadStorageFile(
       booking.approved_gaf_pdf_url,
       `approved-gaf-${booking.check_in_date}.pdf`,
     );
-    if (attachment) {
-      attachments.push(attachment);
-      console.log("[readyForCheckin] Attached approved GAF PDF:", attachment.filename);
-    } else {
-      console.error(
-        "[readyForCheckin] Failed to attach approved GAF PDF from:",
-        booking.approved_gaf_pdf_url,
+    if (file) {
+      attachments.push({
+        filename: file.filename,
+        content: toBase64(file.bytes),
+        encoding: "base64",
+      });
+      console.log(
+        "[readyForCheckin] Attached approved GAF PDF:",
+        file.filename,
       );
     }
-  } else {
-    console.warn(
-      "[readyForCheckin] No approved_gaf_pdf_url on booking — GAF PDF omitted",
-    );
   }
 
   // Approved Pet PDF — attach if booking has pets
   if (booking.has_pets && booking.approved_pet_pdf_url) {
-    console.log("[readyForCheckin] Attaching approved pet PDF...");
-    const attachment = await buildResendAttachmentFromStorageUrl(
+    console.log("[readyForCheckin] Downloading approved pet PDF...");
+    const file = await downloadStorageFile(
       booking.approved_pet_pdf_url,
       `approved-pet-form-${booking.check_in_date}.pdf`,
     );
-    if (attachment) {
-      attachments.push(attachment);
-      console.log("[readyForCheckin] Attached approved pet PDF:", attachment.filename);
-    } else {
-      console.error(
-        "[readyForCheckin] Failed to attach approved pet PDF from:",
-        booking.approved_pet_pdf_url,
+    if (file) {
+      attachments.push({
+        filename: file.filename,
+        content: toBase64(file.bytes),
+        encoding: "base64",
+      });
+      console.log(
+        "[readyForCheckin] Attached approved pet PDF:",
+        file.filename,
       );
     }
   }
 
   // Parking endorsement — attach if booking has parking
   if (booking.need_parking && booking.parking_endorsement_url) {
-    console.log("[readyForCheckin] Attaching parking endorsement...");
-    const attachment = await buildResendAttachmentFromStorageUrl(
+    console.log("[readyForCheckin] Downloading parking endorsement...");
+    const file = await downloadStorageFile(
       booking.parking_endorsement_url,
       `parking-endorsement-${booking.check_in_date}.pdf`,
     );
-    if (attachment) {
-      attachments.push(attachment);
+    if (file) {
+      attachments.push({
+        filename: file.filename,
+        content: toBase64(file.bytes),
+        encoding: "base64",
+      });
       console.log(
         "[readyForCheckin] Attached parking endorsement:",
-        attachment.filename,
-      );
-    } else {
-      console.error(
-        "[readyForCheckin] Failed to attach parking endorsement from:",
-        booking.parking_endorsement_url,
+        file.filename,
       );
     }
   }
@@ -1146,11 +1078,6 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   console.log(
     `[readyForCheckin] Sending email with ${attachments.length} attachment(s)...`,
   );
-  attachments.forEach((att, index) => {
-    console.log(
-      `  Attachment ${index + 1}: ${att.filename}${att.content_id ? " (inline CID)" : att.path ? " (remote path)" : " (base64)"}`,
-    );
-  });
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

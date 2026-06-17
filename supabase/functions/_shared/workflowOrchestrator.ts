@@ -484,13 +484,10 @@ export class WorkflowOrchestrator {
       }
     }
 
-    // Re-fetch to get latest row (needed for email content). Merge workflowFields
-    // from this transition so a just-persisted approved_* URL is never missed.
+    // Re-fetch to get latest row (needed for email content)
     const persistedStatus = fromStatus !== toStatus ? toStatus : fromStatus;
-    const fetched = await DatabaseService.getBookingById(bookingId);
-    const updatedBooking = {
-      ...(fetched ?? booking),
-      ...workflowFields,
+    const updatedBooking = await DatabaseService.getBookingById(bookingId) ?? {
+      ...booking,
       status: persistedStatus,
     };
 
