@@ -1,13 +1,11 @@
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  GUEST_FORM_STEP_COUNT,
-  type GuestFormStepId,
-} from '@/features/guest-form/lib/guestFormSteps';
+import type { GuestFormStepId } from '@/features/guest-form/lib/guestFormSteps';
 
 type GuestFormStepNavigationProps = {
   currentStep: GuestFormStepId;
+  stepCount: number;
   isSubmitting: boolean;
   canProceed: boolean;
   /** False briefly after landing on the last step so a Continue click cannot hit Submit. */
@@ -19,6 +17,7 @@ type GuestFormStepNavigationProps = {
 
 export function GuestFormStepNavigation({
   currentStep,
+  stepCount,
   isSubmitting,
   canProceed,
   submitReady,
@@ -27,7 +26,7 @@ export function GuestFormStepNavigation({
   onSubmit,
 }: GuestFormStepNavigationProps) {
   const isFirst = currentStep === 1;
-  const isLast = currentStep === GUEST_FORM_STEP_COUNT;
+  const isLast = currentStep === stepCount;
 
   return (
     <div

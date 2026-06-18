@@ -81,6 +81,7 @@ export function ReviewPricingForm({
   editMode = false,
   variant = 'workflow',
 }: Props) {
+  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
   const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
   const needParking = booking.need_parking === true;
   const hasPets = booking.has_pets === true;
@@ -171,14 +172,15 @@ export function ReviewPricingForm({
           label="Down Payment"
           required
           error={errors.down_payment?.message}
+          helpText={isAirbnb ? 'Down payment is not required for Airbnb bookings' : undefined}
         >
           <input
             type="number"
             min={0}
             step={0.01}
             placeholder="1500"
-            className={inputClass(!!errors.down_payment, false, readOnly)}
-            readOnly={readOnly}
+            className={inputClass(!!errors.down_payment, false, isAirbnb || readOnly)}
+            readOnly={isAirbnb || readOnly}
             {...register('down_payment')}
             onChange={async (e) => {
               register('down_payment').onChange(e);
@@ -191,14 +193,15 @@ export function ReviewPricingForm({
           label="Security Deposit"
           required
           error={errors.security_deposit?.message}
+          helpText={isAirbnb ? 'Security deposit is not required for Airbnb bookings' : undefined}
         >
           <input
             type="number"
             min={0}
             step={0.01}
             placeholder="1500"
-            className={inputClass(!!errors.security_deposit, false, readOnly)}
-            readOnly={readOnly}
+            className={inputClass(!!errors.security_deposit, false, isAirbnb || readOnly)}
+            readOnly={isAirbnb || readOnly}
             {...register('security_deposit')}
           />
         </Field>
@@ -345,12 +348,12 @@ function buildPricingDefaultValues(
       toNullableNumber(booking.booking_rate) ??
       computedDefaultRate ??
       undefined,
-    down_payment:
-      toNullableNumber(booking.down_payment) ??
-      (isAirbnb ? 0 : DEFAULT_DOWN_PAYMENT),
-    security_deposit:
-      toNullableNumber(booking.security_deposit) ??
-      (isAirbnb ? 0 : DEFAULT_SECURITY_DEPOSIT),
+    down_payment: isAirbnb
+      ? 0
+      : (toNullableNumber(booking.down_payment) ?? DEFAULT_DOWN_PAYMENT),
+    security_deposit: isAirbnb
+      ? 0
+      : (toNullableNumber(booking.security_deposit) ?? DEFAULT_SECURITY_DEPOSIT),
     pet_fee: hasPets
       ? (toNullableNumber(booking.pet_fee) ?? DEFAULT_PET_FEE)
       : 0,

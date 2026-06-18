@@ -3,7 +3,7 @@
  *
  * Two-column layout on lg+:
  *   Left (flexible): all booking info cards + document previews
- *   Right (sticky 344px): WorkflowPanel
+ *   Right (344px): WorkflowPanel
  *
  * Mobile (<md): compact summary + expand control; Progress (WorkflowPanel) next;
  * Tablet (md–lg): two-column layout like desktop; sidebar still hidden until lg.
@@ -313,7 +313,7 @@ export function BookingDetailPage() {
                 {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
                 <div
                   className={cn(
-                    "w-full md:w-[min(100%,20rem)] md:shrink-0 md:sticky md:top-14 lg:w-[min(100%,22.5rem)] lg:top-[58px] xl:w-[370px]",
+                    "w-full md:w-[min(100%,20rem)] md:shrink-0 lg:w-[min(100%,22.5rem)] xl:w-[370px]",
                     isMobileWorkflowFirst &&
                       (mobileDetailsBeforeWorkflow ? "order-3" : "order-2"),
                     isMobileWorkflowFirst && "md:order-none",

@@ -288,8 +288,11 @@ serve(async (req) => {
         continue;
       }
 
+      const sdAmount = Number(booking.security_deposit ?? 0);
+      const sdIsZero = sdAmount === 0;
+
       const checkoutAgeMs = nowMs - checkoutDt.getTime();
-      const suppressStaleEmail = checkoutAgeMs > maxAgeMs;
+      const suppressStaleEmail = checkoutAgeMs > maxAgeMs || sdIsZero;
 
       const emailedAtRaw = (booking as Record<string, unknown>).sd_refund_form_emailed_at;
       const hadCheckoutEmailInDb =

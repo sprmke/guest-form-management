@@ -721,13 +721,18 @@ function DocumentsSection({
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 }) {
+  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
   const docs: DocDef[] = [
-    {
-      assetType: 'payment_receipt',
-      label: 'Downpayment receipt',
-      currentUrl: booking.payment_receipt_url,
-      accept: 'image/*,.pdf',
-    },
+    ...(!isAirbnb
+      ? ([
+          {
+            assetType: 'payment_receipt',
+            label: 'Downpayment receipt',
+            currentUrl: booking.payment_receipt_url,
+            accept: 'image/*,.pdf',
+          },
+        ] as DocDef[])
+      : []),
     {
       assetType: 'valid_id',
       label: 'Valid ID',

@@ -39,7 +39,7 @@ PENDING_GAF                 → PENDING_DOCUMENTS | READY_FOR_CHECKIN | CANCELLE
 PENDING_PARKING_REQUEST     → PENDING_DOCUMENTS | READY_FOR_CHECKIN | CANCELLED
 PENDING_PET_REQUEST         → PENDING_DOCUMENTS | READY_FOR_CHECKIN | CANCELLED
 READY_FOR_CHECKIN           → READY_FOR_CHECKOUT | CANCELLED
-READY_FOR_CHECKOUT          → PENDING_SD_REFUND | CANCELLED
+READY_FOR_CHECKOUT          → PENDING_SD_REFUND | COMPLETED | CANCELLED
 PENDING_SD_REFUND           → COMPLETED | CANCELLED
 COMPLETED                   → (terminal)
 CANCELLED                   → (terminal)
@@ -71,6 +71,10 @@ PENDING_SD_REFUND           → READY_FOR_CHECKOUT
 The override **graph** is permissive — it lists every back-step that is structurally valid. The **UI** narrows it down via `bookingPipeline()` to a single "Back to …" button that always points at the booking's _immediately previous_ applicable step (e.g. parking is skipped when `need_parking = false`).
 
 **Email safety:** backward transitions never fire outbound email. The orchestrator sends the ready-for-check-in email only on **forward** moves to `READY_FOR_CHECKIN` from `PENDING_DOCUMENTS` (parent docs complete) or legacy `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST` — not from e.g. `PENDING_SD_REFUND` → `READY_FOR_CHECKIN`. The `Send Ready-for-Check-in Email` dev control is shown for those same pre-ready statuses. The **SD refund form request** email is gated on `fromStatus === READY_FOR_CHECKIN && toStatus === READY_FOR_CHECKOUT` (and the `sendSdRefundFormEmail` dev control), so stepping back from `READY_FOR_CHECKOUT` to `READY_FOR_CHECKIN` does not re-send; admins can re-send from **Automation Triggers** while the booking stays on `READY_FOR_CHECKOUT`.
+
+**SD refund skip (security_deposit=0):** When `security_deposit` is 0 (typical for Airbnb bookings where DP/SD default to 0), the `PENDING_SD_REFUND` step is skipped entirely — `READY_FOR_CHECKOUT` goes directly to `COMPLETED`. The SD refund form request email is not sent, the guest does not see the `/sd-form`, and `sd-refund-cron` suppresses the check-out email for SD=0 bookings. The UI pipeline (`bookingPipeline`) hides `PENDING_SD_REFUND` when `security_deposit === 0`.
+
+**Airbnb source behavior:** Airbnb bookings (`booking_source === 'Airbnb'`, set via `?source=airbnb` on the guest form) differ from Facebook bookings: (1) guest form skips the Payment step (4 steps instead of 5), `paymentReceipt` is not required; (2) `ReviewPricingForm` defaults DP and SD to 0; (3) admin `BookingEditForm` hides the Downpayment receipt document row; (4) `ready-for-checkin` email hides the Payment breakdown + GCash QR section when total balance due is 0 (source-agnostic — applies to any booking with zero total balance); (5) `submit-form` skips downpayment receipt AI validation for Airbnb.
 
 **Manual "force advance"** (workflow panel): admins must be able to trigger transitions that would normally be fired by **cron** or the **Gmail listener** when those automations are late or skipped.
 

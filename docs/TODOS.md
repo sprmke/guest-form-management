@@ -192,7 +192,12 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Triple check security measures on our app
 - ✅ **AI validation multi-provider fallback** — multi-key Gemini rotation (`GEMINI_API_KEYS`, comma-separated from different Google Cloud projects) + Groq Llama 4 Scout fallback (`GROQ_API_KEY`). Round-robin across Gemini keys; 429/5xx on one key skips to next; when all Gemini keys exhausted, falls back to Groq free tier. Same prompts + JSON schema across both providers.
 - ✅ Implement AI validations to valid id
-- When the booking is from Airbnb, we need to hide the payment step and review other flows
+- ✅ When the booking is from Airbnb, we need to hide the payment step and review other flows
+  - ✅ Guest form: Payment step (step 5) hidden for Airbnb — form is 4 steps. `paymentReceipt` optional in schema, `findUs` auto-defaults to "Airbnb".
+  - ✅ Server `submit-form`: allows missing payment receipt for Airbnb, skips downpayment receipt AI validation.
+  - ✅ Admin `BookingEditForm`: Downpayment receipt row hidden in Documents section for Airbnb bookings.
+  - ✅ Ready-for-check-in email: Payment breakdown + GCash QR section hidden when total balance due is 0 (source-agnostic).
+  - ✅ SD refund flow: skipped entirely when `security_deposit=0` — `READY_FOR_CHECKOUT` goes directly to `COMPLETED` (no SD form email, no guest SD form step). `sd-refund-cron` also skips SD=0 bookings for check-out email.
 - Validate the receipt amount based on the type. Meaning, validate down payment receipt and it should match the 1500 min amount. Apply for others.
 - Improve valid id validation to match the primary guest name, facebook name or additional guest names.
 - When we receive we need to reconnect to our gmail, we should automatically display a modal with reconnect gmail button

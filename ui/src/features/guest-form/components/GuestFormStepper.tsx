@@ -1,9 +1,10 @@
 import { Check } from 'lucide-react';
+import { Fragment } from 'react';
 
 import { cn } from '@/lib/utils';
-import {
-  GUEST_FORM_STEPS,
-  type GuestFormStepId,
+import type {
+  GuestFormStepConfig,
+  GuestFormStepId,
 } from '@/features/guest-form/lib/guestFormSteps';
 
 function StepDot({
@@ -71,11 +72,17 @@ function StepConnector({ done }: { done: boolean }) {
   );
 }
 
-export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }) {
+export function GuestFormStepper({
+  activeStep,
+  steps,
+}: {
+  activeStep: GuestFormStepId;
+  steps: GuestFormStepConfig[];
+}) {
   const progressPct = Math.round(
-    ((activeStep - 1) / (GUEST_FORM_STEPS.length - 1)) * 100,
+    ((activeStep - 1) / (steps.length - 1)) * 100,
   );
-  const current = GUEST_FORM_STEPS[activeStep - 1];
+  const current = steps[activeStep - 1];
 
   return (
     <nav
@@ -85,7 +92,7 @@ export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }
       <div className="space-y-1.5 sm:hidden">
         <div className="flex items-center justify-between gap-2 text-xs">
           <span className="font-semibold text-foreground">
-            Step {activeStep} of {GUEST_FORM_STEPS.length}
+            Step {activeStep} of {steps.length}
           </span>
           <span className="text-muted-foreground">{current.label}</span>
         </div>
@@ -94,8 +101,8 @@ export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }
           role="progressbar"
           aria-valuenow={activeStep}
           aria-valuemin={1}
-          aria-valuemax={GUEST_FORM_STEPS.length}
-          aria-label={`Step ${activeStep} of ${GUEST_FORM_STEPS.length}`}
+          aria-valuemax={steps.length}
+          aria-label={`Step ${activeStep} of ${steps.length}`}
         >
           <div
             className="h-full rounded-full gradient-primary transition-[width] duration-300 ease-out motion-reduce:transition-none"
@@ -105,18 +112,18 @@ export function GuestFormStepper({ activeStep }: { activeStep: GuestFormStepId }
       </div>
 
       <ol className="hidden w-full items-start justify-between gap-0 sm:flex">
-        {GUEST_FORM_STEPS.map((step, index) => (
-          <li key={step.id} className="contents">
+        {steps.map((step, index) => (
+          <Fragment key={step.id}>
             <StepDot
               stepNum={step.id}
               short={step.short}
               label={step.label}
               activeStep={activeStep}
             />
-            {index < GUEST_FORM_STEPS.length - 1 ? (
+            {index < steps.length - 1 ? (
               <StepConnector done={activeStep > step.id} />
             ) : null}
-          </li>
+          </Fragment>
         ))}
       </ol>
     </nav>

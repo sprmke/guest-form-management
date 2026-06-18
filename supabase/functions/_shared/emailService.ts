@@ -963,11 +963,57 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
 
   const emailHeaderLogo = await emailHeaderLogoHtml();
   const settings = await resolveAppSettings();
-  const qrAsset = await resolveReadyForCheckinPaymentQr(settings);
-  const paymentQrImageUrl =
-    qrAsset.bytes && qrAsset.bytes.length > 0
-      ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
-      : escapeHtml(qrAsset.fallbackUrl);
+
+  // Hide payment breakdown + GCash QR when total balance is 0 (e.g. Airbnb bookings)
+  const showPaymentSections = totalDueAtCheckin > 0;
+
+  let paymentBreakdownSection = "";
+  let gcashPaymentSection = "";
+  let paymentQrImageUrl = "";
+  let qrAssetBytes: Uint8Array | null = null;
+  let qrAssetFilename = "";
+  let qrAssetContentType = "";
+
+  if (showPaymentSections) {
+    const qrAsset = await resolveReadyForCheckinPaymentQr(settings);
+    qrAssetBytes = qrAsset.bytes;
+    qrAssetFilename = qrAsset.filename;
+    qrAssetContentType = qrAsset.contentType;
+    paymentQrImageUrl =
+      qrAsset.bytes && qrAsset.bytes.length > 0
+        ? `cid:${READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID}`
+        : escapeHtml(qrAsset.fallbackUrl);
+
+    paymentBreakdownSection = `<p class="section-label section-label-mt" style="margin:28px 0 12px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Payment breakdown</p>
+<table role="presentation" class="data-table data-table-payment" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;table-layout:fixed;border:1px solid #e2e8f0;border-radius:16px;border-collapse:separate;border-spacing:0;overflow:hidden;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <colgroup><col width="28%"/><col width="22%"/><col width="50%"/></colgroup>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Booking rate</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.booking_rate as number | null)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Down payment paid</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.down_payment as number | null)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Booking rate balance</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(balance as number)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Security deposit</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.security_deposit as number | null)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"><em class="italic-note">Refundable after check-out</em></td></tr>
+  ${parkingPaymentRow}${petPaymentRow}${additionalFeeRow}
+  <tr class="tbl-row-emphasis fee-addon-row"><td class="tbl-label" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;font-weight:600;color:#78350f;vertical-align:top;">Total balance</td><td class="tbl-num" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;text-align:right;color:#b45309;font-weight:700;vertical-align:top;">${totalBalanceDue}</td><td class="tbl-note" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;font-size:12px;color:#92400e;line-height:1.45;vertical-align:top;"><em class="italic-note">Payable on or before check-in. Please pay via online or bank transfer.</em></td></tr>
+</table>`;
+
+    gcashPaymentSection = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:22px 0 0 0;">
+  <tr><td style="padding:0;vertical-align:top">
+    <p class="section-label" style="margin:0 0 8px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Total balance payment</p>
+    <p class="gcash-payment-copy">Save and scan the QR code or send to the GCash account beside it to pay your total balance upon check-in.</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse">
+      <tr>
+        <td align="left" valign="top" style="padding:0 16px 0 0;width:250px;vertical-align:top;"><img src="${paymentQrImageUrl}" width="250" alt="Kame Home — GCash and InstaPay QR code for payments" style="display:block;width:100%;max-width:250px;height:auto;border:1px solid #e2e8f0;border-radius:12px;"/></td>
+        <td align="left" valign="middle" style="padding:0;vertical-align:middle">
+          <p class="gcash-payment-label">GCash Name</p>
+          <p class="gcash-payment-value gcash-payment-value-spaced">${escapeHtml(settings.gcashName)}</p>
+          <p class="gcash-payment-label">GCash Number</p>
+          <p class="gcash-payment-value">${escapeHtml(settings.gcashNumber)}</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>`;
+  }
+
   const rfiTpl = await loadEmailTemplate("ready-for-checkin");
   const html = replacePlaceholders(
     rfiTpl,
@@ -983,29 +1029,20 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
       towerAndUnitNumber: escapeHtml(booking.tower_and_unit_number),
       checkInTime: displayCheckInTime,
       checkOutTime: displayCheckOutTime,
-      bookingRate: pesoFormat(booking.booking_rate as number | null),
-      downPayment: pesoFormat(booking.down_payment as number | null),
-      balance: pesoFormat(balance as number),
-      securityDeposit: pesoFormat(booking.security_deposit as number | null),
-      totalBalanceDue,
-      parkingPaymentRow,
-      petPaymentRow,
-      additionalFeeRow,
-      paymentQrImageUrl,
-      gcashName: escapeHtml(settings.gcashName),
-      gcashNumber: escapeHtml(settings.gcashNumber),
+      paymentBreakdownSection,
+      gcashPaymentSection,
     }),
   );
 
   // ── Build attachments ─────────────────────────────────────────────────────────
   const attachments: ResendAttachment[] = [];
 
-  if (qrAsset.bytes && qrAsset.bytes.length > 0) {
+  if (showPaymentSections && qrAssetBytes && qrAssetBytes.length > 0) {
     attachments.push({
-      filename: qrAsset.filename,
-      content: toBase64(qrAsset.bytes),
+      filename: qrAssetFilename,
+      content: toBase64(qrAssetBytes),
       encoding: "base64",
-      content_type: qrAsset.contentType,
+      content_type: qrAssetContentType,
       content_id: READY_FOR_CHECKIN_PAYMENT_QR_CONTENT_ID,
     });
     console.log(

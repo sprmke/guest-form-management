@@ -169,8 +169,12 @@ serve(async (req) => {
     let notifyBooking = submissionData as GuestSubmission;
 
     // AI downpayment receipt check (non-blocking for guest submit).
+    // Skipped for Airbnb bookings — no payment step.
+    const bookingSource = (formData.get('bookingSource') as string)?.trim() || 'Facebook';
+    const isAirbnbSource = bookingSource === 'Airbnb';
     const paymentReceiptFile = formData.get('paymentReceipt') as File | null;
     if (
+      !isAirbnbSource &&
       isSaveToDatabaseEnabled &&
       submissionData?.id &&
       paymentReceiptFile &&

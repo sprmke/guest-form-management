@@ -8,11 +8,12 @@ import {
 } from 'lucide-react';
 
 import type { GuestFormData } from '@/features/guest-form/schemas/guestFormSchema';
-import { guestFormSchema } from '@/features/guest-form/schemas/guestFormSchema';
+import {
+  guestFormSchema,
+  createGuestFormSchema,
+} from '@/features/guest-form/schemas/guestFormSchema';
 
-export const GUEST_FORM_STEP_COUNT = 5;
-
-export type GuestFormStepId = 1 | 2 | 3 | 4 | 5;
+export type GuestFormStepId = number;
 
 export type GuestFormStepConfig = {
   id: GuestFormStepId;
@@ -22,7 +23,7 @@ export type GuestFormStepConfig = {
   icon: LucideIcon;
 };
 
-export const GUEST_FORM_STEPS: GuestFormStepConfig[] = [
+const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
   {
     id: 1,
     short: 'Guest',
@@ -59,6 +60,21 @@ export const GUEST_FORM_STEPS: GuestFormStepConfig[] = [
     icon: FileText,
   },
 ];
+
+/** Default (Facebook) steps — all 5. */
+export const GUEST_FORM_STEPS = ALL_GUEST_FORM_STEPS;
+export const GUEST_FORM_STEP_COUNT = ALL_GUEST_FORM_STEPS.length;
+
+/** Airbnb skips the Payment step (step 5). */
+const AIRBNB_GUEST_FORM_STEPS = ALL_GUEST_FORM_STEPS.slice(0, 4);
+
+export function getGuestFormSteps(isAirbnb: boolean): GuestFormStepConfig[] {
+  return isAirbnb ? AIRBNB_GUEST_FORM_STEPS : ALL_GUEST_FORM_STEPS;
+}
+
+export function getGuestFormStepCount(isAirbnb: boolean): number {
+  return isAirbnb ? AIRBNB_GUEST_FORM_STEPS.length : ALL_GUEST_FORM_STEPS.length;
+}
 
 function stayNightCount(values: GuestFormData): number {
   return Math.max(
@@ -142,20 +158,20 @@ export function getFieldsForGuestFormStep(
   }
 }
 
-export function clampGuestFormStep(step: number): GuestFormStepId {
-  return Math.min(
-    GUEST_FORM_STEP_COUNT,
-    Math.max(1, step),
-  ) as GuestFormStepId;
+export function clampGuestFormStep(step: number, isAirbnb = false): GuestFormStepId {
+  const max = getGuestFormStepCount(isAirbnb);
+  return Math.min(max, Math.max(1, step)) as GuestFormStepId;
 }
 
-/** True when every required field for this step passes guestFormSchema (ignores other steps). */
+/** True when every required field for this step passes the schema (ignores other steps). */
 export function isGuestFormStepComplete(
   step: GuestFormStepId,
   values: GuestFormData,
+  isAirbnb = false,
 ): boolean {
   const stepFields = new Set(getFieldsForGuestFormStep(step, values));
-  const result = guestFormSchema.safeParse(values);
+  const schema = createGuestFormSchema(isAirbnb);
+  const result = schema.safeParse(values);
   if (result.success) return true;
 
   return !result.error.issues.some((issue) => {

@@ -703,10 +703,12 @@ export class WorkflowOrchestrator {
       }
     }
 
+    const sdAmount = Number(updatedBooking.security_deposit ?? 0);
     if (
       fromStatus === 'READY_FOR_CHECKIN' &&
       toStatus === 'READY_FOR_CHECKOUT' &&
-      flag(devControls, 'sendSdRefundFormEmail')
+      flag(devControls, 'sendSdRefundFormEmail') &&
+      sdAmount > 0
     ) {
       const emailedRaw = (updatedBooking as { sd_refund_form_emailed_at?: string | null })
         .sd_refund_form_emailed_at;

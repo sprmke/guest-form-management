@@ -26,7 +26,7 @@ import dayjs from 'dayjs';
 import { toCapitalCase, transformFieldValues } from '@/utils/formatters';
 import { generateRandomData, setDummyFile } from '@/utils/mockData';
 import {
-  guestFormSchema,
+  createGuestFormSchema,
   type GuestFormData,
 } from '@/features/guest-form/schemas/guestFormSchema';
 import {
@@ -86,8 +86,8 @@ import {
   clampGuestFormStep,
   getFieldsForGuestFormStep,
   isGuestFormStepComplete,
-  GUEST_FORM_STEP_COUNT,
-  GUEST_FORM_STEPS,
+  getGuestFormSteps,
+  getGuestFormStepCount,
   type GuestFormStepId,
 } from '@/features/guest-form/lib/guestFormSteps';
 
@@ -124,18 +124,21 @@ export function GuestForm() {
   const { data: guestFormSettings = DEFAULT_GUEST_PAYMENT_INFO } =
     useGuestPaymentInfo();
 
-  /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
-  const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
-  if (seededDefaultsRef.current === null) {
-    seededDefaultsRef.current =
-      getGuestFormDefaultValuesFromSearchParams(searchParams);
-  }
-
-  const isDevMode = searchParams.get('dev') === 'true';
-
   // `?source=airbnb` → Airbnb labels + DB `booking_source`
   const bookingSource = bookingSourceFromUrlSearchParams(searchParams);
   const isAirbnb = bookingSource === 'Airbnb';
+
+  /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
+  const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
+  if (seededDefaultsRef.current === null) {
+    const defaults = getGuestFormDefaultValuesFromSearchParams(searchParams);
+    if (isAirbnb) {
+      defaults.findUs = 'Airbnb';
+    }
+    seededDefaultsRef.current = defaults;
+  }
+
+  const isDevMode = searchParams.get('dev') === 'true';
 
   // Get pre-selected dates from URL params (from calendar page)
   const urlCheckInDate = searchParams.get('checkInDate');
@@ -152,8 +155,11 @@ export function GuestForm() {
     sendEmail: true,
   });
 
+  const guestFormSteps = useMemo(() => getGuestFormSteps(isAirbnb), [isAirbnb]);
+  const guestFormStepCount = getGuestFormStepCount(isAirbnb);
+
   const form = useForm<GuestFormData>({
-    resolver: zodResolver(guestFormSchema),
+    resolver: zodResolver(createGuestFormSchema(isAirbnb)),
     defaultValues: seededDefaultsRef.current ?? defaultFormValues,
     mode: 'all',
   });
@@ -757,8 +763,8 @@ export function GuestForm() {
 
   const watchedValues = useWatch({ control: form.control });
   const canProceed = useMemo(
-    () => isGuestFormStepComplete(currentStep, form.getValues()),
-    [currentStep, watchedValues, form],
+    () => isGuestFormStepComplete(currentStep, form.getValues(), isAirbnb),
+    [currentStep, watchedValues, form, isAirbnb],
   );
 
   const handleNextStep = async () => {
@@ -769,11 +775,11 @@ export function GuestForm() {
       toast.error('Please complete all required fields before continuing.');
       return;
     }
-    setCurrentStep((step) => clampGuestFormStep(step + 1));
+    setCurrentStep((step) => clampGuestFormStep(step + 1, isAirbnb));
   };
 
   const handleBackStep = () => {
-    setCurrentStep((step) => clampGuestFormStep(step - 1));
+    setCurrentStep((step) => clampGuestFormStep(step - 1, isAirbnb));
   };
 
   useEffect(() => {
@@ -782,7 +788,7 @@ export function GuestForm() {
   }, [currentStep]);
 
   useEffect(() => {
-    if (currentStep !== GUEST_FORM_STEP_COUNT) {
+    if (currentStep !== guestFormStepCount) {
       setSubmitReady(false);
       return;
     }
@@ -796,7 +802,7 @@ export function GuestForm() {
     void form.handleSubmit(onSubmit)();
   };
 
-  const activeStepConfig = GUEST_FORM_STEPS[currentStep - 1];
+  const activeStepConfig = guestFormSteps[currentStep - 1];
   const StepIcon = activeStepConfig.icon;
 
   return (
@@ -804,7 +810,7 @@ export function GuestForm() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          if (currentStep < GUEST_FORM_STEP_COUNT) {
+          if (currentStep < guestFormStepCount) {
             if (canProceed) void handleNextStep();
           }
         }}
@@ -855,7 +861,7 @@ export function GuestForm() {
         ) : (
           <div className="space-y-6">
             <KameFormBrandHeader />
-            <GuestFormStepper activeStep={currentStep} />
+            <GuestFormStepper activeStep={currentStep} steps={guestFormSteps} />
 
             <div
               ref={stepPanelRef}
@@ -2097,7 +2103,7 @@ export function GuestForm() {
             </div>
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 5 && !isAirbnb && (
             <div className="space-y-4">
 
               <GuestFormPaymentStepContent form={form} />
@@ -2188,8 +2194,8 @@ export function GuestForm() {
             </div>
             )}
 
-            {/* Developer API Controls (non-production or ?dev=true) */}
-            {showDevControls && currentStep === 5 && (
+            {/* Developer API Controls (non-production or ?dev=true) — shown on the last step */}
+            {showDevControls && currentStep === guestFormStepCount && (
               <div className="space-y-4 rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-4">
                 <div className="flex items-center gap-3 border-b border-separator pb-3">
                   <Settings className="size-5 text-primary" aria-hidden />
@@ -2380,6 +2386,7 @@ export function GuestForm() {
 
             <GuestFormStepNavigation
               currentStep={currentStep}
+              stepCount={guestFormStepCount}
               isSubmitting={isSubmitting}
               canProceed={canProceed}
               submitReady={submitReady}

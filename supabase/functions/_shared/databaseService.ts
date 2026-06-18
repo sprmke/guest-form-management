@@ -256,6 +256,8 @@ export class DatabaseService {
       }
 
       // Get the downpayment receipt file (FormData: paymentReceipt → payment_receipt_url)
+      // Airbnb bookings skip the payment step — receipt is not required.
+      const isAirbnbSource = (formData.get('bookingSource') as string)?.trim() === 'Airbnb';
       const paymentReceipt = formData.get('paymentReceipt') as File;
       if (paymentReceipt) {
         const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
@@ -270,6 +272,8 @@ export class DatabaseService {
         paymentReceiptUrl = existingBooking.payment_receipt_url;
       } else if (!saveImagesToStorage) {
         paymentReceiptUrl = 'dev-mode-skipped';
+      } else if (isAirbnbSource) {
+        paymentReceiptUrl = '';
       } else {
         throw new Error('Downpayment receipt is required');
       }
@@ -310,8 +314,8 @@ export class DatabaseService {
 
       console.log('Form data processed successfully');
       
-      // Transform data for database
-      if (!paymentReceiptUrl) {
+      // Transform data for database — Airbnb bookings may have no receipt
+      if (!paymentReceiptUrl && !isAirbnbSource) {
         throw new Error('Failed to upload downpayment receipt');
       }
       

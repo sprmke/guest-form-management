@@ -152,6 +152,17 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 6. Edge function checks **date overlap** against active (non-canceled) rows, then processes.
 7. On success, UI navigates to **`/success?bookingId=...`** with `location.state.bookingData` for the summary card.
 
+### 5.1.1 Airbnb source differences
+
+When the guest form URL includes **`?source=airbnb`** (case-insensitive), the booking is treated as an Airbnb booking (`booking_source = 'Airbnb'`). Key differences from Facebook (default) bookings:
+
+- **Guest form** is **4 steps** (Payment step hidden) — submit fires after Pets step. `paymentReceipt` is optional in the schema; `findUs` defaults to "Airbnb".
+- **Server (`submit-form`)** allows missing `paymentReceipt` file and skips the downpayment receipt AI validation for Airbnb submissions.
+- **Admin `ReviewPricingForm`** defaults down payment and security deposit to **₱0** (editable by admin if needed).
+- **Admin `BookingEditForm`** hides the Downpayment receipt row in the Documents section for Airbnb bookings.
+- **Ready-for-check-in email** hides the Payment breakdown table and GCash QR section when total balance due is ₱0 (source-agnostic — applies to any booking with zero total balance).
+- **SD refund flow** is skipped when `security_deposit = 0`: booking goes directly from `READY_FOR_CHECKOUT` to `COMPLETED` (no SD form email, no guest `/sd-form` step). The `sd-refund-cron` also suppresses the check-out email for SD=0 bookings.
+
 ### 5.2 View / update existing booking
 
 1. URL is **`/form?bookingId=<uuid>`** (or legacy **`/?bookingId=<uuid>`**, which redirects to `/form` as above). The id is sanitized on client and server if query junk is appended.

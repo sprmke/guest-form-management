@@ -25,7 +25,7 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   READY_FOR_CHECKIN:       ['READY_FOR_CHECKOUT', 'CANCELLED'],
-  READY_FOR_CHECKOUT: ['PENDING_SD_REFUND', 'CANCELLED'],
+  READY_FOR_CHECKOUT: ['PENDING_SD_REFUND', 'COMPLETED', 'CANCELLED'],
   PENDING_SD_REFUND:       ['COMPLETED', 'CANCELLED'],
   COMPLETED:               [],
   CANCELLED:               [],
@@ -116,6 +116,7 @@ type ApplicabilityFlags = {
   pet_completed_at?: string | null;
   gaf_manual_incomplete?: boolean | null;
   pet_manual_incomplete?: boolean | null;
+  security_deposit?: number | null;
 };
 
 export type PendingDocumentSubStatus =
@@ -301,9 +302,11 @@ export function bookingPipeline(
   booking: ApplicabilityFlags,
   currentStatus?: BookingStatus,
 ): BookingStatus[] {
+  const sdIsZero = booking.security_deposit != null && Number(booking.security_deposit) === 0;
   const filtered = PIPELINE_ORDER.filter((s) => {
     if (s === 'PENDING_PARKING_REQUEST') return !!booking.need_parking;
     if (s === 'PENDING_PET_REQUEST') return !!booking.has_pets;
+    if (s === 'PENDING_SD_REFUND') return !sdIsZero;
     return true;
   });
 
