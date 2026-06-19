@@ -9,5 +9,6 @@ export function useMaintenanceSummary(query: MaintenanceQuery) {
     queryKey: [...MAINTENANCE_SUMMARY_KEY, query.from, query.to] as const,
     queryFn: () => fetchMaintenanceSummary(query),
     placeholderData: keepPreviousData,
+    enabled: query.tab === "overview" || query.tab === "reminders",
   });
 }

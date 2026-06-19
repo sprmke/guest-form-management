@@ -48,9 +48,10 @@ export function rangeForPreset(preset: FinanceRangePreset): {
   const { y, m, d } = manilaDateParts();
   if (preset === "all") return { from: null, to: null };
   if (preset === "this_month") {
+    const lastDay = new Date(y, m, 0).getDate();
     return {
       from: isoFromParts(y, m, 1),
-      to: isoFromParts(y, m, d),
+      to: isoFromParts(y, m, lastDay),
     };
   }
   if (preset === "last_month") {

@@ -4,6 +4,7 @@ import {
   type DateRange,
   type DateNavigationState,
   detectPresetFromRange,
+  fromIsoDate,
   getDateRangeFromPreset,
   navigateReferenceDate,
   toIsoDate,
@@ -101,11 +102,35 @@ export function useSyncDateRangeWithQuery(
   urlTo: string | null,
   onChange: (next: { from: string | null; to: string | null }) => void,
 ) {
-  const first = useRef(true);
+  const firstEmit = useRef(true);
+  const hydratingFromUrl = useRef(false);
+
+  // Keep the picker aligned when URL dates change (deep links, back/forward).
+  useEffect(() => {
+    if (!urlFrom || !urlTo) return;
+    const from = fromIsoDate(urlFrom);
+    const to = fromIsoDate(urlTo);
+    if (!from || !to) return;
+    const curFrom = toIsoDate(state.dateRange.from);
+    const curTo = toIsoDate(state.dateRange.to);
+    if (curFrom === urlFrom && curTo === urlTo) return;
+    hydratingFromUrl.current = true;
+    state.setDateRange({ from, to });
+  }, [
+    urlFrom,
+    urlTo,
+    state.dateRange.from,
+    state.dateRange.to,
+    state.setDateRange,
+  ]);
 
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
+    if (firstEmit.current) {
+      firstEmit.current = false;
+      return;
+    }
+    if (hydratingFromUrl.current) {
+      hydratingFromUrl.current = false;
       return;
     }
     const next = {

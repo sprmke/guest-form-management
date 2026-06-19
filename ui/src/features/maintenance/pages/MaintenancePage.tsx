@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { BarChart3, Bell, Settings, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from "@/features/admin/hooks/useDateNavigation";
-import { fromIsoDate } from "@/lib/dateNavigation";
+import { detectPresetFromRange, fromIsoDate } from "@/lib/dateNavigation";
 import type {
   MaintenanceQuery,
   MaintenanceTab,
@@ -61,12 +61,31 @@ export function MaintenancePage() {
   const initialFromDate = fromIsoDate(query.from);
   const initialToDate = fromIsoDate(query.to);
   const dateNav = useDateNavigation({
-    initialPreset: "month",
+    initialPreset:
+      initialFromDate && initialToDate
+        ? detectPresetFromRange(initialFromDate, initialToDate)
+        : "month",
     initialRange:
       initialFromDate && initialToDate
         ? { from: initialFromDate, to: initialToDate }
         : null,
   });
+
+  useEffect(() => {
+    if (searchParams.get("from") || searchParams.get("to")) return;
+    const def = rangeForPreset("this_month");
+    setSearchParams(
+      writeMaintenanceQueryToParams(
+        {
+          ...parseMaintenanceQueryFromParams(searchParams),
+          ...def,
+          page: 1,
+        },
+        "this_month",
+      ),
+      { replace: true },
+    );
+  }, [searchParams, setSearchParams]);
 
   useSyncDateRangeWithQuery(dateNav, query.from, query.to, (next) => {
     setQuery({ ...query, page: 1, from: next.from, to: next.to });

@@ -49,7 +49,12 @@ export function detectPresetFromRange(from: Date, to: Date): DatePreset {
   }
 
   const monthStart = startOfMonth(from);
-  if (isSameDay(from, monthStart) && isSameMonth(from, to)) {
+  const monthEnd = endOfMonth(from);
+  if (
+    isSameDay(from, monthStart) &&
+    isSameDay(to, monthEnd) &&
+    isSameMonth(from, to)
+  ) {
     return 'month';
   }
 

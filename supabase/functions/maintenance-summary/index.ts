@@ -29,6 +29,8 @@ serve(async (req) => {
     const data = await computeMaintenanceSummary({
       from: url.searchParams.get("from"),
       to: url.searchParams.get("to"),
+      includeDueInRange:
+        url.searchParams.get("include_due_in_range") === "true",
     });
 
     return new Response(JSON.stringify({ success: true, data }), {

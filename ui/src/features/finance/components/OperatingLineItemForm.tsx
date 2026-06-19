@@ -360,7 +360,7 @@ export function OperatingLineItemForm({
 
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
-          rows={2}
+          rows={7}
           className="px-3 py-2 w-full text-sm rounded-lg border transition-colors border-input bg-background text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           placeholder="Optional notes…"
           {...register("notes")}

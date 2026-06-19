@@ -312,7 +312,7 @@ export function MaintenanceItemForm({
 
       <Field label="Notes" error={errors.notes?.message}>
         <textarea
-          rows={2}
+          rows={7}
           className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           {...register("notes")}
         />

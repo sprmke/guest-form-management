@@ -30,6 +30,7 @@ export async function fetchMaintenanceSummary(
   query: MaintenanceQuery,
 ): Promise<MaintenanceSummary> {
   const params = maintenanceQueryToApiParams(query);
+  params.set("include_due_in_range", "true");
   const res = await adminFetch(`/maintenance-summary?${params.toString()}`);
   const json = await res.json();
   if (!res.ok || !json.success) {
