@@ -36,7 +36,7 @@ export const FINANCE_REMINDER_PLACEHOLDERS = [
 ] as const;
 
 export const FINANCE_DEFAULT_REMINDER_TEMPLATE =
-  "Your {{label}} is due on {{due_date}} ({{days_until_due}} day(s) left).\n\nAmount: {{amount}} · {{category}}\n\nPlease pay at your earliest convenience.";
+  "💰 Finance Reminder\n\n{{label}}\nDue: {{due_date}} ({{days_until_due}} day(s) left)\nAmount: {{amount}} · {{category}}\n\n{{notes}}";
 
 const MANILA_TZ = "Asia/Manila";
 

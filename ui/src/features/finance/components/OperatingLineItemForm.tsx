@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +20,7 @@ import { useTelegramFinanceSettings } from "@/features/admin/hooks/useTelegramFi
 import type { FinanceLineItem } from "@/features/finance/lib/types";
 import { requiredPositiveMoney } from "@/features/admin/lib/moneyFieldSchema";
 import { CategoryCombobox } from "@/features/finance/components/CategoryCombobox";
+import { TelegramReminderSchedulePreview } from "@/features/finance/components/TelegramReminderSchedulePreview";
 import { NativeSelect } from "@/components/ui/native-select";
 import { IsoDateInput } from "@/components/ui/iso-date-input";
 import { cn } from "@/lib/utils";
@@ -40,13 +41,13 @@ const schema = z
       "daily",
       "weekly",
       "monthly",
+      "every_2_months",
       "quarterly",
       "yearly",
     ]),
     recurrence_until: z.string().optional(),
     edit_scope: z.enum(["this", "this_and_future", "all"]),
     telegram_reminder_enabled: z.boolean(),
-    telegram_due_date: z.string().optional(),
     telegram_days_before: z.coerce.number().int().min(0).max(90),
     telegram_reminder_interval: z.enum([
       "hourly",
@@ -59,18 +60,6 @@ const schema = z
     marked_paid: z.boolean(),
   })
   .superRefine((data, ctx) => {
-    if (data.telegram_reminder_enabled) {
-      if (
-        data.telegram_due_date &&
-        !/^\d{4}-\d{2}-\d{2}$/.test(data.telegram_due_date)
-      ) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Valid due date required",
-          path: ["telegram_due_date"],
-        });
-      }
-    }
     if (data.recurrence_interval !== "none") {
       if (!data.recurrence_until?.match(/^\d{4}-\d{2}-\d{2}$/)) {
         ctx.addIssue({
@@ -97,7 +86,7 @@ export function telegramReminderPayloadFromForm(
   return {
     telegram_reminder_enabled: values.telegram_reminder_enabled,
     telegram_due_date: values.telegram_reminder_enabled
-      ? values.telegram_due_date?.trim() || values.occurred_on
+      ? values.occurred_on
       : null,
     telegram_days_before: values.telegram_days_before,
     telegram_reminder_interval: values.telegram_reminder_interval,
@@ -128,14 +117,6 @@ type Props = {
   isPending?: boolean;
 };
 
-function isCustomDueDate(
-  due: string | null | undefined,
-  occurredOn: string,
-): boolean {
-  const normalizedDue = due?.trim().slice(0, 10);
-  return Boolean(normalizedDue && normalizedDue !== occurredOn);
-}
-
 function defaultValues(
   initial: FinanceLineItem | null | undefined,
   globalDefaultMessageTemplate: string,
@@ -156,7 +137,6 @@ function defaultValues(
         : "",
     edit_scope: "this",
     telegram_reminder_enabled: initial?.telegram_reminder_enabled ?? false,
-    telegram_due_date: initial?.telegram_due_date?.trim().slice(0, 10) || start,
     telegram_days_before: initial?.telegram_days_before ?? 3,
     telegram_reminder_interval: normalizeFinanceReminderInterval(
       initial?.telegram_reminder_interval,
@@ -196,23 +176,20 @@ export function OperatingLineItemForm({
     defaultValues: defaultValues(initial, globalDefaultMessageTemplate),
   });
 
-  const dueDateCustomRef = useRef(
-    isCustomDueDate(initial?.telegram_due_date, initial?.occurred_on ?? ""),
-  );
-
   useEffect(() => {
-    const next = defaultValues(initial, globalDefaultMessageTemplate);
-    reset(next, { keepDefaultValues: false });
-    dueDateCustomRef.current = initial
-      ? isCustomDueDate(initial.telegram_due_date, next.occurred_on)
-      : false;
+    reset(defaultValues(initial, globalDefaultMessageTemplate), {
+      keepDefaultValues: false,
+    });
   }, [initial, globalDefaultMessageTemplate, reset]);
 
   const kind = watch("kind");
   const recurrenceInterval = watch("recurrence_interval");
+  const recurrenceUntil = watch("recurrence_until");
   const occurredOn = watch("occurred_on");
   const editScope = watch("edit_scope");
   const telegramReminderEnabled = watch("telegram_reminder_enabled");
+  const telegramDaysBefore = watch("telegram_days_before");
+  const telegramReminderInterval = watch("telegram_reminder_interval");
 
   useEffect(() => {
     if (!telegramReminderEnabled) return;
@@ -235,11 +212,6 @@ export function OperatingLineItemForm({
       );
     }
   }, [recurrenceInterval, occurredOn, isEdit, setValue]);
-
-  useEffect(() => {
-    if (!occurredOn || dueDateCustomRef.current) return;
-    setValue("telegram_due_date", occurredOn);
-  }, [occurredOn, setValue]);
 
   return (
     <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
@@ -417,30 +389,6 @@ export function OperatingLineItemForm({
         {telegramReminderEnabled ? (
           <div className="space-y-4">
             <Field
-              label="Due date"
-              hint="Matches the transaction date unless you pick a different due date."
-              error={errors.telegram_due_date?.message}
-            >
-              <Controller
-                name="telegram_due_date"
-                control={control}
-                render={({ field }) => (
-                  <IsoDateInput
-                    value={field.value ?? ""}
-                    onChange={(event) => {
-                      const nextDue = event.target.value;
-                      dueDateCustomRef.current =
-                        nextDue.trim().slice(0, 10) !== occurredOn;
-                      field.onChange(event);
-                    }}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                  />
-                )}
-              />
-            </Field>
-
-            <Field
               label="Days before due"
               error={errors.telegram_days_before?.message}
             >
@@ -503,6 +451,15 @@ export function OperatingLineItemForm({
               />
             </Field>
 
+            <TelegramReminderSchedulePreview
+              anchorDate={occurredOn}
+              recurrenceInterval={recurrenceInterval}
+              recurrenceUntil={recurrenceUntil}
+              daysBefore={telegramDaysBefore}
+              reminderInterval={telegramReminderInterval}
+              singleOccurrenceOnly={isEdit}
+            />
+
             <Field
               label="Message"
               error={errors.telegram_message_template?.message}
@@ -514,21 +471,23 @@ export function OperatingLineItemForm({
               />
             </Field>
 
-            <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
-              <input
-                type="checkbox"
-                className="mt-1 size-4 shrink-0 accent-primary"
-                {...register("marked_paid")}
-              />
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold text-foreground">
-                  Mark as paid
+            {isEdit ? (
+              <label className="flex min-h-[44px] cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-4 shrink-0 accent-primary"
+                  {...register("marked_paid")}
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold text-foreground">
+                    Mark as paid
+                  </span>
+                  <span className="mt-0.5 block text-caption text-muted-foreground">
+                    Stops reminders for this transaction.
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-caption text-muted-foreground">
-                  Stops reminders for this transaction.
-                </span>
-              </span>
-            </label>
+              </label>
+            ) : null}
           </div>
         ) : null}
       </fieldset>

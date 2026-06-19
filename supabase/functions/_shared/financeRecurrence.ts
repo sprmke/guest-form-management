@@ -6,6 +6,7 @@ export type RecurrenceInterval =
   | 'daily'
   | 'weekly'
   | 'monthly'
+  | 'every_2_months'
   | 'quarterly'
   | 'yearly';
 
@@ -15,6 +16,7 @@ const INTERVALS: ReadonlySet<string> = new Set([
   'daily',
   'weekly',
   'monthly',
+  'every_2_months',
   'quarterly',
   'yearly',
 ]);
@@ -67,6 +69,16 @@ export function addRecurrenceInterval(
       const nd = Math.min(d, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'every_2_months': {
+      let nm = m + 2;
+      let ny = y;
+      while (nm > 12) {
+        nm -= 12;
+        ny += 1;
+      }
+      const nd = Math.min(d, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
     case 'quarterly': {
       let nm = m + 3;
       let ny = y;
@@ -108,6 +120,16 @@ export function subtractRecurrenceInterval(
       const nd = Math.min(d, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'every_2_months': {
+      let nm = m - 2;
+      let ny = y;
+      while (nm < 1) {
+        nm += 12;
+        ny -= 1;
+      }
+      const nd = Math.min(d, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
     case 'quarterly': {
       let nm = m - 3;
       let ny = y;
@@ -137,6 +159,7 @@ export function defaultRecurrenceUntil(
       return formatIso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
     }
     case 'monthly':
+    case 'every_2_months':
     case 'quarterly': {
       let nm = m + (interval === 'monthly' ? 24 : 24);
       let ny = y;

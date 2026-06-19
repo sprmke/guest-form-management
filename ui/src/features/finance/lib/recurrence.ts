@@ -3,6 +3,7 @@ export type RecurrenceInterval =
   | "daily"
   | "weekly"
   | "monthly"
+  | "every_2_months"
   | "quarterly"
   | "yearly";
 
@@ -77,6 +78,7 @@ export const RECURRENCE_INTERVAL_OPTIONS: {
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "every_2_months", label: "Every 2 months" },
   { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
 ];
@@ -146,6 +148,13 @@ function addInterval(
       date.setDate(Math.min(day, last));
       break;
     }
+    case "every_2_months": {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() + 2);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
     case "quarterly": {
       const day = date.getDate();
       date.setMonth(date.getMonth() + 3);
@@ -176,6 +185,13 @@ function subtractInterval(
     case "monthly": {
       const day = date.getDate();
       date.setMonth(date.getMonth() - 1);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
+    case "every_2_months": {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() - 2);
       const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
       date.setDate(Math.min(day, last));
       break;
@@ -214,6 +230,103 @@ export function suggestExtendAfter(
   return cur;
 }
 
+export function addDaysToIso(iso: string, delta: number): string {
+  const { y, m, d } = parseIso(iso);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + delta);
+  return formatIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+export function generateRecurrenceDates(
+  start: string,
+  interval: Exclude<RecurrenceInterval, "none">,
+  until: string,
+  maxCount = 500,
+): string[] {
+  if (until < start) return [start];
+  const dates: string[] = [];
+  let cur = start;
+  while (cur <= until && dates.length < maxCount) {
+    dates.push(cur);
+    const next = addInterval(cur, interval);
+    if (next <= cur) break;
+    cur = next;
+  }
+  return dates;
+}
+
+export type TelegramReminderWindow = {
+  windowStart: string;
+  windowEnd: string;
+};
+
+export type TelegramReminderSchedulePreview = {
+  windows: TelegramReminderWindow[];
+  totalCount: number;
+  isRecurring: boolean;
+  recurrenceLabel: string | null;
+  seriesEndDate: string | null;
+};
+
+/** Preview reminder send windows from the line-item date + repeat settings. */
+export function buildTelegramReminderSchedule(params: {
+  anchorDate: string;
+  recurrenceInterval: RecurrenceInterval;
+  recurrenceUntil?: string;
+  daysBefore: number;
+  singleOccurrenceOnly?: boolean;
+  maxPreview?: number;
+}): TelegramReminderSchedulePreview | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(params.anchorDate)) return null;
+
+  const daysBefore = Math.max(0, Math.min(90, params.daysBefore));
+  const windowForDue = (due: string): TelegramReminderWindow => ({
+    windowStart: addDaysToIso(due, -daysBefore),
+    windowEnd: due,
+  });
+
+  if (
+    params.singleOccurrenceOnly ||
+    params.recurrenceInterval === "none"
+  ) {
+    return {
+      windows: [windowForDue(params.anchorDate)],
+      totalCount: 1,
+      isRecurring: false,
+      recurrenceLabel: null,
+      seriesEndDate: null,
+    };
+  }
+
+  const until = params.recurrenceUntil?.slice(0, 10);
+  if (!until || until < params.anchorDate) return null;
+
+  const dates = generateRecurrenceDates(
+    params.anchorDate,
+    params.recurrenceInterval,
+    until,
+  );
+  if (dates.length === 0) return null;
+
+  const maxPreview = params.maxPreview ?? 3;
+  return {
+    windows: dates.slice(0, maxPreview).map(windowForDue),
+    totalCount: dates.length,
+    isRecurring: true,
+    recurrenceLabel: recurrenceIntervalLabel(params.recurrenceInterval),
+    seriesEndDate: dates[dates.length - 1] ?? null,
+  };
+}
+
+export function reminderIntervalLabel(
+  interval: FinanceReminderInterval,
+): string {
+  return (
+    FINANCE_REMINDER_INTERVAL_OPTIONS.find((o) => o.value === interval)
+      ?.label ?? interval
+  );
+}
+
 /** Suggested end date when creating a new recurring series. */
 export function defaultRecurrenceUntil(
   start: string,
@@ -230,7 +343,11 @@ export function defaultRecurrenceUntil(
     return cur;
   }
   const { y, m, d } = parseIso(start);
-  if (interval === "monthly" || interval === "quarterly") {
+  if (
+    interval === "monthly" ||
+    interval === "every_2_months" ||
+    interval === "quarterly"
+  ) {
     const months = 24;
     const date = new Date(y, m - 1 + months, Math.min(d, 28));
     return formatIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
