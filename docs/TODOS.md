@@ -125,6 +125,7 @@ Todos
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
 - ✅ **Finance dashboard (`/finance`)** — Overview KPIs, Stays ledger (period basis check-in / check-out / completed), **Transactions** CRUD (`finance_line_items`), PDF export (client-side; `finance-export` CSV edge function retained for scripts). Shared formulas in `bookingFinance.ts` (UI + edge). Admin nav **Finance** replaces Reports placeholder.
+- ✅ **Maintenance dashboard (`/maintenance`)** — Overview KPIs, **Reminders** CRUD (`maintenance_items`), Telegram settings for **Kame Home - Maintenance** group, PDF export. No income/expense/stays.
 - Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
 - ✅ Automatic run cron job functions (specify here) after page refresh
 - ✅ If booking date is already past on the date today and the booking status is still either PENDING_REVIEW, PENDING_DOCS and READY_FOR_CHECKIN, display a modal warning that says that the booking date is already passed every time we click the "Proceed to.." button. If they confirm, proceed to next step, if cancel, do not proceed.

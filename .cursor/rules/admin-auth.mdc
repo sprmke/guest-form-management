@@ -28,7 +28,7 @@ Applies whenever a change touches the `/bookings` routes, the new admin-only edg
   - Shows a loader while the session hydrates.
   - Redirects to `/sign-in` if unauthenticated.
   - Shows a generic "access restricted" message if the signed-in email is not allow-listed (no disclosure of which emails are allowed; signs the user out from that view).
-- Applied to: `/bookings`, `/bookings/:bookingId`, `/finance`, `/settings`, `/marketing`, `/staff`, `/operations`, and any other admin route added later.
+- Applied to: `/bookings`, `/bookings/:bookingId`, `/finance`, `/maintenance`, `/settings`, `/marketing`, `/staff`, `/operations`, and any other admin route added later.
 - The existing public routes (`/`, `/form`, `/success`, `/calendar`) stay unauthenticated.
 
 ## 4. Guest form dev controls (`GuestForm.tsx`)
@@ -95,6 +95,9 @@ All checkboxes start **checked** so the next action runs the full happy path (DB
 | `TELEGRAM_FINANCE_BOT_TOKEN`           | edge  | _(Optional)_ Bot token for finance transaction due-date reminders. Falls back to `TELEGRAM_BOT_TOKEN` if unset.                                                                                               |
 | `TELEGRAM_FINANCE_CHAT_ID`             | edge  | Numeric Telegram chat id for the finance group (Finance transaction reminders). Required for finance Telegram alerts.                                                                                        |
 | `TELEGRAM_FINANCE_CRON_SECRET`         | edge  | _(Optional)_ When set, `telegram-finance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                                 |
+| `TELEGRAM_MAINTENANCE_BOT_TOKEN`       | edge  | _(Optional)_ Bot token for maintenance due-date reminders. Falls back to `TELEGRAM_BOT_TOKEN` if unset.                                                                                                    |
+| `TELEGRAM_MAINTENANCE_CHAT_ID`         | edge  | Numeric Telegram chat id for the maintenance group (**Kame Home - Maintenance**). Required for maintenance Telegram alerts.                                                                                 |
+| `TELEGRAM_MAINTENANCE_CRON_SECRET`     | edge  | _(Optional)_ When set, `telegram-maintenance-cron` requires header `X-Telegram-Cron-Secret` with the same value.                                                                                           |
 
 Remember to update `docs/PROJECT.md` §11 Environment variables in the same commit that introduces any of these.
 

@@ -276,6 +276,18 @@ verify_jwt = false
 [functions.finance-export]
 verify_jwt = false
 
+[functions.maintenance-summary]
+verify_jwt = false
+
+[functions.maintenance-items]
+verify_jwt = false
+
+[functions.telegram-maintenance-cron]
+verify_jwt = false
+
+[functions.telegram-maintenance-settings]
+verify_jwt = false
+
 [functions.upload-app-settings-asset]
 verify_jwt = false
 
