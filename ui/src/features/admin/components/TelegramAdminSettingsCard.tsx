@@ -50,6 +50,7 @@ type ScenarioKey =
   | 'newBooking'
   | 'pendingDocs'
   | 'balanceReceipt'
+  | 'balanceReceiptUploaded'
   | 'sdFormSubmitted'
   | 'sdRefundPending';
 
@@ -62,6 +63,7 @@ const SCENARIO_CONFIG: Record<
     patchToggleKey:
       | 'notifyOnNewBooking'
       | 'notifyOnSdFormSubmitted'
+      | 'notifyOnBalanceReceiptUploaded'
       | 'notifyPendingDocsHourly'
       | 'notifyBalanceReceiptHourly'
       | 'notifySdRefundPendingHourly';
@@ -69,6 +71,7 @@ const SCENARIO_CONFIG: Record<
       | 'newBookingTemplate'
       | 'pendingDocsTemplate'
       | 'balanceReceiptTemplate'
+      | 'balanceReceiptUploadedTemplate'
       | 'sdFormSubmittedTemplate'
       | 'sdRefundPendingTemplate';
   }
@@ -94,6 +97,13 @@ const SCENARIO_CONFIG: Record<
     patchToggleKey: 'notifyBalanceReceiptHourly',
     patchTemplateKey: 'balanceReceiptTemplate',
   },
+  balanceReceiptUploaded: {
+    scenarioId: 'balance_receipt_uploaded',
+    toggleKey: 'notifyOnBalanceReceiptUploaded',
+    templateKey: 'balanceReceiptUploadedTemplate',
+    patchToggleKey: 'notifyOnBalanceReceiptUploaded',
+    patchTemplateKey: 'balanceReceiptUploadedTemplate',
+  },
   sdFormSubmitted: {
     scenarioId: 'sd_form_submitted',
     toggleKey: 'notifyOnSdFormSubmitted',
@@ -114,6 +124,7 @@ const SCENARIO_ORDER: ScenarioKey[] = [
   'newBooking',
   'pendingDocs',
   'balanceReceipt',
+  'balanceReceiptUploaded',
   'sdFormSubmitted',
   'sdRefundPending',
 ];
@@ -250,12 +261,14 @@ export function TelegramAdminSettingsCard() {
         enabled: draft.enabled,
         notifyOnNewBooking: draft.notifyOnNewBooking,
         notifyOnSdFormSubmitted: draft.notifyOnSdFormSubmitted,
+        notifyOnBalanceReceiptUploaded: draft.notifyOnBalanceReceiptUploaded,
         notifyPendingDocsHourly: draft.notifyPendingDocsHourly,
         notifyBalanceReceiptHourly: draft.notifyBalanceReceiptHourly,
         notifySdRefundPendingHourly: draft.notifySdRefundPendingHourly,
         newBookingTemplate: draft.newBookingTemplate,
         pendingDocsTemplate: draft.pendingDocsTemplate,
         balanceReceiptTemplate: draft.balanceReceiptTemplate,
+        balanceReceiptUploadedTemplate: draft.balanceReceiptUploadedTemplate,
         sdFormSubmittedTemplate: draft.sdFormSubmittedTemplate,
         sdRefundPendingTemplate: draft.sdRefundPendingTemplate,
         resyncHourlyCron: true,

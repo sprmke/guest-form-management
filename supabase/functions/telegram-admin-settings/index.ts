@@ -56,6 +56,9 @@ serve(async (req) => {
       if (typeof body.notifyOnSdFormSubmitted === 'boolean') {
         patch.notify_on_sd_form_submitted = body.notifyOnSdFormSubmitted;
       }
+      if (typeof body.notifyOnBalanceReceiptUploaded === 'boolean') {
+        patch.notify_on_balance_receipt_uploaded = body.notifyOnBalanceReceiptUploaded;
+      }
       if (typeof body.notifyPendingDocsHourly === 'boolean') {
         patch.notify_pending_docs_hourly = body.notifyPendingDocsHourly;
         syncCron = true;
@@ -73,6 +76,7 @@ serve(async (req) => {
         newBookingTemplate: 'new_booking_template',
         pendingDocsTemplate: 'pending_docs_template',
         balanceReceiptTemplate: 'balance_receipt_template',
+        balanceReceiptUploadedTemplate: 'balance_receipt_uploaded_template',
         sdFormSubmittedTemplate: 'sd_form_submitted_template',
         sdRefundPendingTemplate: 'sd_refund_pending_template',
       };
@@ -133,6 +137,7 @@ serve(async (req) => {
           'new_booking',
           'pending_docs',
           'balance_receipt',
+          'balance_receipt_uploaded',
           'sd_form_submitted',
           'sd_refund_pending',
         ];
@@ -147,7 +152,7 @@ serve(async (req) => {
         }
         const preview = await sendAdminDraftPreview(
           text.slice(0, 8000),
-          scenario as AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+          scenario as AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted' | 'balance_receipt_uploaded',
         );
         return new Response(
           JSON.stringify({
@@ -171,6 +176,7 @@ serve(async (req) => {
           'new_booking',
           'pending_docs',
           'balance_receipt',
+          'balance_receipt_uploaded',
           'sd_form_submitted',
           'sd_refund_pending',
         ];
@@ -185,7 +191,7 @@ serve(async (req) => {
         }
         const rendered = await renderAdminDraftPreview(
           text.slice(0, 8000),
-          scenario as AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+          scenario as AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted' | 'balance_receipt_uploaded',
         );
         if (rendered.error || !rendered.renderedText) {
           return new Response(

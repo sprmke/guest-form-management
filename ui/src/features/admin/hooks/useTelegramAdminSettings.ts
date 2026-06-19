@@ -14,12 +14,14 @@ export type TelegramAdminSettingsDto = {
   enabled: boolean;
   notifyOnNewBooking: boolean;
   notifyOnSdFormSubmitted: boolean;
+  notifyOnBalanceReceiptUploaded: boolean;
   notifyPendingDocsHourly: boolean;
   notifyBalanceReceiptHourly: boolean;
   notifySdRefundPendingHourly: boolean;
   newBookingTemplate: string;
   pendingDocsTemplate: string;
   balanceReceiptTemplate: string;
+  balanceReceiptUploadedTemplate: string;
   sdFormSubmittedTemplate: string;
   sdRefundPendingTemplate: string;
   hourlyUtcCronPreview: string;
@@ -33,12 +35,14 @@ export type TelegramAdminSettingsPatch = Partial<
     | 'enabled'
     | 'notifyOnNewBooking'
     | 'notifyOnSdFormSubmitted'
+    | 'notifyOnBalanceReceiptUploaded'
     | 'notifyPendingDocsHourly'
     | 'notifyBalanceReceiptHourly'
     | 'notifySdRefundPendingHourly'
     | 'newBookingTemplate'
     | 'pendingDocsTemplate'
     | 'balanceReceiptTemplate'
+    | 'balanceReceiptUploadedTemplate'
     | 'sdFormSubmittedTemplate'
     | 'sdRefundPendingTemplate'
   >
@@ -59,6 +63,7 @@ export type AdminDraftScenario =
   | 'new_booking'
   | 'pending_docs'
   | 'balance_receipt'
+  | 'balance_receipt_uploaded'
   | 'sd_form_submitted'
   | 'sd_refund_pending';
 

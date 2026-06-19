@@ -29,17 +29,30 @@ import { formatReceiptVerdictLabel } from './receiptValidationService.ts';
 const MANILA_TZ = 'Asia/Manila';
 const APP_BASE_URL = 'https://kamehomes.space';
 
+const DEFAULT_BALANCE_RECEIPT_UPLOADED_TEMPLATE = `💳 Balance Receipt Uploaded
+
+Guest: {{primary_guest_name}}
+Balance due: {{total_guest_balance}}
+
+Balance receipt AI
+Verdict: {{balance_receipt_ai_verdict}}
+{{balance_receipt_ai_summary}}
+
+{{booking_link}}`;
+
 export type TelegramAdminSettings = {
   id: number;
   enabled: boolean;
   notify_on_new_booking: boolean;
   notify_on_sd_form_submitted: boolean;
+  notify_on_balance_receipt_uploaded: boolean;
   notify_pending_docs_hourly: boolean;
   notify_balance_receipt_hourly: boolean;
   notify_sd_refund_pending_hourly: boolean;
   new_booking_template: string;
   pending_docs_template: string;
   balance_receipt_template: string;
+  balance_receipt_uploaded_template: string;
   sd_form_submitted_template: string;
   sd_refund_pending_template: string;
   updated_at: string;
@@ -80,6 +93,10 @@ export const ADMIN_KNOWN_PLACEHOLDERS = [
   'sd_refund_payout_phone',
   'sd_refund_details',
   'sd_refund_guest_feedback',
+  'dp_receipt_ai_verdict',
+  'dp_receipt_ai_summary',
+  'balance_receipt_ai_verdict',
+  'balance_receipt_ai_summary',
   'booking_link',
 ] as const;
 
@@ -654,13 +671,21 @@ export async function notifyTelegramAdminBalanceReceiptUploaded(
 ): Promise<{ sent: boolean; skip?: AdminNotifySkip; telegramError?: string }> {
   const settings = await loadAdminSettings();
   if (!settings) return { sent: false, skip: 'no_settings' };
-  if (!opts?.force && !settings.enabled) {
-    return { sent: false, skip: 'disabled' };
+  if (
+    !opts?.force &&
+    (!settings.enabled || settings.notify_on_balance_receipt_uploaded === false)
+  ) {
+    return {
+      sent: false,
+      skip: !settings.enabled ? 'disabled' : 'notify_off',
+    };
   }
   const creds = resolveAdminTelegramCredentials();
   if (!creds.ok) return { sent: false, skip: 'missing_env', telegramError: creds.error };
 
-  const r = await sendAdminTemplateForBooking(settings.balance_receipt_template, booking);
+  const template = String(settings.balance_receipt_uploaded_template ?? '').trim() ||
+    DEFAULT_BALANCE_RECEIPT_UPLOADED_TEMPLATE;
+  const r = await sendAdminTemplateForBooking(template, booking);
   if (!r.ok) {
     return { sent: false, skip: 'send_failed', telegramError: r.error };
   }
@@ -860,7 +885,11 @@ export type AdminDraftRenderResult = {
 /** In-app preview: resolve placeholders from a matching booking without sending Telegram. */
 export async function renderAdminDraftPreview(
   template: string,
-  scenario: AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+  scenario:
+    | AdminHourlyNotificationType
+    | 'new_booking'
+    | 'sd_form_submitted'
+    | 'balance_receipt_uploaded',
 ): Promise<AdminDraftRenderResult> {
   const trimmed = template.trim();
   if (!trimmed) return { error: 'empty_message' };
@@ -893,6 +922,10 @@ export async function renderAdminDraftPreview(
     booking = (rows ?? []).find((r) => bookingNeedsPendingDocsHourlyAlert(r, todayYmd));
   } else if (scenario === 'balance_receipt') {
     booking = (rows ?? []).find((r) => bookingNeedsBalanceReceiptHourlyAlert(r, todayYmd, now));
+  } else if (scenario === 'balance_receipt_uploaded') {
+    booking = (rows ?? []).find((r) =>
+      String(r.guest_balance_payment_receipt_url ?? '').trim()
+    );
   } else if (scenario === 'sd_refund_pending') {
     booking = (rows ?? []).find((r) => bookingNeedsSdRefundPendingHourlyAlert(r));
   }
@@ -914,7 +947,11 @@ export async function renderAdminDraftPreview(
 
 export async function sendAdminDraftPreview(
   template: string,
-  scenario: AdminHourlyNotificationType | 'new_booking' | 'sd_form_submitted',
+  scenario:
+    | AdminHourlyNotificationType
+    | 'new_booking'
+    | 'sd_form_submitted'
+    | 'balance_receipt_uploaded',
 ): Promise<{
   sent: boolean;
   error?: string;
@@ -1008,12 +1045,15 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
     enabled: row.enabled,
     notifyOnNewBooking: row.notify_on_new_booking,
     notifyOnSdFormSubmitted: row.notify_on_sd_form_submitted,
+    notifyOnBalanceReceiptUploaded: row.notify_on_balance_receipt_uploaded ?? true,
     notifyPendingDocsHourly: row.notify_pending_docs_hourly,
     notifyBalanceReceiptHourly: row.notify_balance_receipt_hourly,
     notifySdRefundPendingHourly: row.notify_sd_refund_pending_hourly,
     newBookingTemplate: row.new_booking_template,
     pendingDocsTemplate: row.pending_docs_template,
     balanceReceiptTemplate: row.balance_receipt_template,
+    balanceReceiptUploadedTemplate:
+      row.balance_receipt_uploaded_template ?? DEFAULT_BALANCE_RECEIPT_UPLOADED_TEMPLATE,
     sdFormSubmittedTemplate: row.sd_form_submitted_template,
     sdRefundPendingTemplate: row.sd_refund_pending_template,
     hourlyUtcCronPreview: '0 * * * *',
@@ -1038,6 +1078,12 @@ export function serializeAdminSettings(row: TelegramAdminSettings) {
         trigger:
           'Hourly during stay until balance receipt is uploaded',
         type: 'hourly',
+      },
+      {
+        id: 'balance_receipt_uploaded',
+        label: 'Balance receipt uploaded',
+        trigger: 'Instant when admin uploads a guest balance payment receipt',
+        type: 'event',
       },
       {
         id: 'sd_form_submitted',
