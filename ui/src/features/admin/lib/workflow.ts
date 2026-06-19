@@ -116,7 +116,7 @@ type ApplicabilityFlags = {
   pet_completed_at?: string | null;
   gaf_manual_incomplete?: boolean | null;
   pet_manual_incomplete?: boolean | null;
-  security_deposit?: number | null;
+  security_deposit?: number | string | null;
 };
 
 export type PendingDocumentSubStatus =

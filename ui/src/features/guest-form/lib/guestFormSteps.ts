@@ -9,7 +9,6 @@ import {
 
 import type { GuestFormData } from '@/features/guest-form/schemas/guestFormSchema';
 import {
-  guestFormSchema,
   createGuestFormSchema,
 } from '@/features/guest-form/schemas/guestFormSchema';
 
