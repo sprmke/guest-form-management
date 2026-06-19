@@ -2,7 +2,12 @@ import { supabase } from '@/lib/supabaseClient';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-export type TelegramPreviewBot = 'marketing' | 'staff' | 'admin' | 'finance';
+export type TelegramPreviewBot =
+  | 'marketing'
+  | 'staff'
+  | 'admin'
+  | 'finance'
+  | 'maintenance';
 
 export type TelegramPreviewContext = {
   bot: TelegramPreviewBot;
@@ -23,6 +28,7 @@ const SETTINGS_ENDPOINT: Record<TelegramPreviewBot, string> = {
   staff: 'telegram-staff-settings',
   admin: 'telegram-admin-settings',
   finance: 'telegram-finance-settings',
+  maintenance: 'telegram-maintenance-settings',
 };
 
 async function getAdminJwt(): Promise<string> {

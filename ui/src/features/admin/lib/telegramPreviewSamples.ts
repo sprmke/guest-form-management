@@ -1,4 +1,9 @@
-export type TelegramPreviewSampleSet = 'admin' | 'staff' | 'marketing' | 'finance';
+export type TelegramPreviewSampleSet =
+  | 'admin'
+  | 'staff'
+  | 'marketing'
+  | 'finance'
+  | 'maintenance';
 
 const SHARED_STAY_SAMPLES: Record<string, string> = {
   check_in_date: 'June 18, 2026',
@@ -82,11 +87,21 @@ const FINANCE_SAMPLES: Record<string, string> = {
   kind: 'expense',
 };
 
+const MAINTENANCE_SAMPLES: Record<string, string> = {
+  label: 'AC filter replacement',
+  category: 'HVAC',
+  due_date: '06/20/2026',
+  scheduled_on: '06/20/2026',
+  days_until_due: '3',
+  notes: 'Replace filters in both units',
+};
+
 const SAMPLE_SETS: Record<TelegramPreviewSampleSet, Record<string, string>> = {
   admin: ADMIN_SAMPLES,
   staff: STAFF_SAMPLES,
   marketing: MARKETING_SAMPLES,
   finance: FINANCE_SAMPLES,
+  maintenance: MAINTENANCE_SAMPLES,
 };
 
 export function getTelegramPreviewSamples(

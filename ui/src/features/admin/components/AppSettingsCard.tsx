@@ -224,6 +224,10 @@ function SecretsPanel({ status }: { status: AppSettingsSecretsStatus }) {
           label="Finance group"
           configured={status.telegramFinanceChatIdConfigured}
         />
+        <SecretBadge
+          label="Maintenance group"
+          configured={status.telegramMaintenanceChatIdConfigured}
+        />
       </SecretGroup>
 
       <SecretGroup

@@ -25,26 +25,37 @@ export function CollapsibleGroup({
   id,
   title,
   defaultOpen = true,
+  variant = 'standalone',
   children,
 }: {
   id: string;
   title: string;
   defaultOpen?: boolean;
+  variant?: 'standalone' | 'nested';
   children: React.ReactNode;
 }) {
+  const isNested = variant === 'nested';
   return (
     <Collapsible
       defaultOpen={defaultOpen}
       className={cn(
-        'group/collapse overflow-hidden rounded-2xl border border-border/70 bg-card shadow-md',
-        'ring-1 ring-border/30 dark:ring-border/50',
+        'group/collapse overflow-hidden',
+        isNested
+          ? 'border-b border-border/60 last:border-b-0'
+          : cn(
+              'rounded-2xl border border-border/70 bg-card shadow-md',
+              'ring-1 ring-border/30 dark:ring-border/50',
+            ),
       )}
     >
       <CollapsibleTrigger
         type="button"
         className={cn(
-          'flex min-h-[48px] w-full items-center gap-3 border-b border-border/60 bg-muted/30 px-4 py-3 text-left',
-          'transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:px-5',
+          'flex min-h-[48px] w-full items-center gap-3 px-4 py-3 text-left sm:px-5',
+          'transition-colors hover:bg-muted/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          isNested
+            ? 'border-b border-border/60 bg-muted/20 group-data-[state=closed]/collapse:border-b-0'
+            : 'border-b border-border/60 bg-muted/30',
         )}
         aria-controls={`${id}-panel`}
       >
@@ -63,7 +74,12 @@ export function CollapsibleGroup({
       <CollapsibleContent>
         <div
           id={`${id}-panel`}
-          className="space-y-4 bg-gradient-to-b from-card to-muted/15 px-3 py-4 sm:space-y-5 sm:px-5 sm:py-5"
+          className={cn(
+            'space-y-4 px-3 py-4 sm:space-y-5 sm:px-5 sm:py-5',
+            isNested
+              ? 'bg-card'
+              : 'bg-gradient-to-b from-card to-muted/15',
+          )}
         >
           {children}
         </div>

@@ -7,6 +7,7 @@ import { AdminMarketingPage } from '@/features/admin/pages/AdminMarketingPage';
 import { AdminStaffPage } from '@/features/admin/pages/AdminStaffPage';
 import { AdminOperationsPage } from '@/features/admin/pages/AdminOperationsPage';
 import { FinancePage } from '@/features/finance/pages/FinancePage';
+import { MaintenancePage } from '@/features/maintenance/pages/MaintenancePage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
 import { RequireAdmin } from '@/features/admin/components/RequireAdmin';
 
@@ -63,6 +64,15 @@ export const adminRoutes = [
     element={
       <RequireAdmin>
         <FinancePage />
+      </RequireAdmin>
+    }
+  />,
+  <Route
+    key="admin-maintenance"
+    path="/maintenance"
+    element={
+      <RequireAdmin>
+        <MaintenancePage />
       </RequireAdmin>
     }
   />,

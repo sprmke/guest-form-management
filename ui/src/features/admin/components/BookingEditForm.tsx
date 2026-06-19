@@ -342,11 +342,18 @@ export function BookingEditForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
 
-      <CollapsibleGroup
-        id="booking-details"
-        title="Guest Form Details"
-        defaultOpen
+      <div
+        className={cn(
+          'overflow-hidden rounded-2xl border border-border/70 bg-card shadow-md',
+          'ring-1 ring-border/30 dark:ring-border/50',
+        )}
       >
+        <CollapsibleGroup
+          id="booking-details"
+          title="Guest Form Details"
+          variant="nested"
+          defaultOpen
+        >
         {/* ── Guest Identity ─────────────────────────────────────────────────── */}
         <Section title="Guest Identity">
           <Row2>
@@ -667,6 +674,7 @@ export function BookingEditForm({
       <CollapsibleGroup
         id="progress-forms"
         title="Workflow Details"
+        variant="nested"
         defaultOpen={false}
       >
         <BookingProgressFormsEdit
@@ -676,13 +684,12 @@ export function BookingEditForm({
         />
       </CollapsibleGroup>
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-3 sm:px-4">
+      <div className="flex items-center justify-end gap-3 px-3 py-3 sm:px-5 sm:py-4">
         <button
           type="button"
           onClick={onClose}
           disabled={updateMut.isPending}
-          className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-50 transition-colors"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
         >
           <X className="size-3.5" aria-hidden />
           Cancel
@@ -700,6 +707,7 @@ export function BookingEditForm({
               ? 'Save & Revert Status'
               : 'Save'}
         </Button>
+      </div>
       </div>
     </form>
   );
