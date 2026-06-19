@@ -5,6 +5,8 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 export type GmailMailIntegrationStatus = {
   connected: boolean;
+  /** True when a stored refresh token fails exchange (expired / revoked). */
+  needsReconnect: boolean;
   googleAccountEmail: string | null;
   connectedAt: string | null;
 };
@@ -28,12 +30,14 @@ export function useGmailMailIntegrationStatus() {
         success?: boolean;
         error?: string;
         connected?: boolean;
+        needsReconnect?: boolean;
         googleAccountEmail?: string | null;
         connectedAt?: string | null;
       };
       if (!json.success) throw new Error(json.error ?? 'Failed to load Gmail status');
       return {
         connected: !!json.connected,
+        needsReconnect: !!json.needsReconnect,
         googleAccountEmail: json.googleAccountEmail ?? null,
         connectedAt: json.connectedAt ?? null,
       };

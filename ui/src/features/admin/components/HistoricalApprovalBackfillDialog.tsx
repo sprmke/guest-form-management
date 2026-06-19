@@ -18,6 +18,7 @@ import {
   useRunGmailApprovalBackfill,
   type GmailApprovalBackfillInput,
 } from '@/features/admin/hooks/useTransitionBooking';
+import { useGmailReconnectPromptOptional } from '@/features/admin/components/GmailReconnectProvider';
 import { HISTORICAL_BACKFILL_LISTENER_CUTOFF } from '@/features/admin/lib/historicalBackfillEligibility';
 
 type BackfillModalMode = 'preview' | 'apply';
@@ -56,6 +57,7 @@ export function HistoricalApprovalBackfillDialog({
   onDismiss,
 }: HistoricalApprovalBackfillDialogProps) {
   const backfill = useRunGmailApprovalBackfill(bookingId);
+  const gmailReconnect = useGmailReconnectPromptOptional();
   const closedAfterSuccessRef = React.useRef(false);
   const [backfillMode, setBackfillMode] =
     React.useState<BackfillModalMode>('preview');
@@ -87,7 +89,10 @@ export function HistoricalApprovalBackfillDialog({
         resetBackfillModal();
         onRunSuccess?.();
       },
-      onError: (e) => toast.error(friendlyToastError(e, 'Backfill failed')),
+      onError: (e) => {
+        if (gmailReconnect?.handleGmailError(e)) return;
+        toast.error(friendlyToastError(e, 'Backfill failed'));
+      },
     });
   };
 

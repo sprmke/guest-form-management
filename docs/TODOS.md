@@ -200,5 +200,5 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
   - ✅ SD refund flow: skipped entirely when `security_deposit=0` — `READY_FOR_CHECKOUT` goes directly to `COMPLETED` (no SD form email, no guest SD form step). `sd-refund-cron` also skips SD=0 bookings for check-out email.
 - Validate the receipt amount based on the type. Meaning, validate down payment receipt and it should match the 1500 min amount. Apply for others.
 - Improve valid id validation to match the primary guest name, facebook name or additional guest names.
-- When we receive we need to reconnect to our gmail, we should automatically display a modal with reconnect gmail button
+- ✅ When we encounter any issues related to gmail needs to reconnect, automatically display a modal with reconnect Gmail button (`GmailReconnectProvider` + `GmailReconnectModal`; status probe via `google-mail-oauth-status`; Gmail poll/backfill/transition errors open the modal).
 - Instead of having 2 separate sections for GAF and Pet Details, we can use tab for the preview and use one form

@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { TeamLogoMark } from '@/components/TeamLogoMark';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { GmailReconnectProvider } from '@/features/admin/components/GmailReconnectProvider';
 import { useAppSettings } from '@/features/admin/hooks/useAppSettings';
 import { useAdminSession } from '@/features/admin/hooks/useAdminSession';
 
@@ -240,6 +241,7 @@ export function AdminLayout({ children }: Props) {
   );
 
   return (
+    <GmailReconnectProvider>
     <div className="min-h-screen app-shell">
       {/* Desktop — floating sidebar */}
       <aside
@@ -313,6 +315,7 @@ export function AdminLayout({ children }: Props) {
         </main>
       </div>
     </div>
+    </GmailReconnectProvider>
   );
 }
 

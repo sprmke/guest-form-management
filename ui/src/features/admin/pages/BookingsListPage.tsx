@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { BookOpen, CalendarPlus, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,8 +32,7 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/admin/lib/types';
-import { useGmailMailIntegrationStatus } from '@/features/admin/hooks/useGmailMailIntegration';
-import { showGmailDisconnectedToast } from '@/features/admin/components/GmailDisconnectedToast';
+
 const CALENDAR_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
@@ -120,7 +119,6 @@ function writeQueryToParams(
 // ─── Page component ──────────────────────────────────────────
 
 export function BookingsListPage() {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(
@@ -171,13 +169,6 @@ export function BookingsListPage() {
   });
 
   const { data, isLoading, isFetching, error, refetch } = useBookings(listQuery);
-  const gmailIntegration = useGmailMailIntegrationStatus();
-
-  useEffect(() => {
-    if (!gmailIntegration.isSuccess) return;
-    if (gmailIntegration.data.connected) return;
-    showGmailDisconnectedToast(() => navigate('/settings'));
-  }, [gmailIntegration.isSuccess, gmailIntegration.data?.connected, navigate]);
 
   const patch = useCallback(
     (p: Partial<BookingsQuery>) =>

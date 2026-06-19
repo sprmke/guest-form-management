@@ -61,6 +61,7 @@ import {
   type GuestBalanceSettlementValues,
 } from '@/features/admin/components/GuestBalanceSettlementForm';
 import { WorkflowSubFormCard } from '@/features/admin/components/WorkflowSubFormCard';
+import { useGmailReconnectPrompt } from '@/features/admin/components/GmailReconnectProvider';
 import { StatusBadge } from '@/features/admin/components/StatusBadge';
 import {
   arePendingDocumentsComplete,
@@ -251,6 +252,7 @@ export function WorkflowPanel({ booking }: Props) {
 
   const transitionMut = useTransitionBooking();
   const cancelMut = useCancelBooking();
+  const { handleGmailError } = useGmailReconnectPrompt();
   const gmailPollMut = useRunGmailPoll(booking.id);
   const gmailPollMutRef = useRef(gmailPollMut);
   gmailPollMutRef.current = gmailPollMut;
@@ -258,6 +260,15 @@ export function WorkflowPanel({ booking }: Props) {
   const pendingDocsAutoGmailPollRef = useRef<string | null>(null);
   const sdCronMut = useRunSdRefundCron(booking.id);
   const resendSdFormMut = useResendSdRefundFormEmail(booking.id);
+
+  const toastUnlessGmailReconnect = useCallback(
+    (err: unknown, fallback: string) => {
+      if (!handleGmailError(err)) {
+        toast.error(friendlyToastError(err, fallback));
+      }
+    },
+    [handleGmailError],
+  );
 
   // Which automation triggers are relevant for this status (Q6.6)
   const showGmailPoll =
@@ -326,7 +337,7 @@ export function WorkflowPanel({ booking }: Props) {
         toast.success(buildGmailPollSuccessMessage(result));
       } catch (err: unknown) {
         if (cancelled) return;
-        toast.error(friendlyToastError(err, 'Gmail check failed'));
+        toastUnlessGmailReconnect(err, 'Gmail check failed');
       }
     })();
 
@@ -344,14 +355,15 @@ export function WorkflowPanel({ booking }: Props) {
     booking.pet_manual_incomplete,
     booking.has_pets,
     status,
+    toastUnlessGmailReconnect,
   ]);
 
   async function handleGmailPoll() {
     try {
       const result = await gmailPollMut.mutateAsync();
       toast.success(buildGmailPollSuccessMessage(result));
-    } catch (err: any) {
-      toast.error(friendlyToastError(err, 'Gmail check failed'));
+    } catch (err: unknown) {
+      toastUnlessGmailReconnect(err, 'Gmail check failed');
     }
   }
 
@@ -528,7 +540,7 @@ export function WorkflowPanel({ booking }: Props) {
       });
       toast.success(`Moved to ${statusLabel(toStatus)}`);
     } catch (err: unknown) {
-      toast.error(friendlyToastError(err, 'Could not update booking status'));
+      toastUnlessGmailReconnect(err, 'Could not update booking status');
     }
   }
 
@@ -566,8 +578,8 @@ export function WorkflowPanel({ booking }: Props) {
       if (!inPendingDocuments) {
         focusPipelineView();
       }
-    } catch (err: any) {
-      toast.error(friendlyToastError(err, 'Could not mark step complete'));
+    } catch (err: unknown) {
+      toastUnlessGmailReconnect(err, 'Could not mark step complete');
     }
   }
 
@@ -583,8 +595,8 @@ export function WorkflowPanel({ booking }: Props) {
         manual: true,
       });
       toast.success(`Marked ${statusLabel(subStatus)} as incomplete`);
-    } catch (err: any) {
-      toast.error(friendlyToastError(err, 'Could not mark step incomplete'));
+    } catch (err: unknown) {
+      toastUnlessGmailReconnect(err, 'Could not mark step incomplete');
     }
   }
 

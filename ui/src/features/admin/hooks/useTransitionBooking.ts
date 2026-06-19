@@ -4,6 +4,10 @@ import type { BookingStatus } from '@/features/admin/lib/bookingStatus';
 import type { SdBank } from '@/features/sd-form/lib/sdFormSchema';
 import { BOOKING_QUERY_KEY } from '@/features/admin/hooks/useBooking';
 import { BOOKINGS_QUERY_KEY } from '@/features/admin/hooks/useBookings';
+import {
+  messageIndicatesGmailNeedsReconnect,
+  toGmailNeedsReconnectError,
+} from '@/features/admin/lib/gmailReconnect';
 
 export type TransitionPayload = {
   booking_rate?: number | null;
@@ -96,8 +100,15 @@ async function callTransitionBooking(input: TransitionInput) {
   });
 
   const json = await res.json();
+  if (json.needsReAuth) {
+    throw toGmailNeedsReconnectError(new Error(json.error))!;
+  }
   if (!res.ok || !json.success) {
-    throw new Error(json.error ?? `HTTP ${res.status}`);
+    const errMsg = json.error ?? `HTTP ${res.status}`;
+    if (messageIndicatesGmailNeedsReconnect(errMsg)) {
+      throw toGmailNeedsReconnectError(new Error(errMsg))!;
+    }
+    throw new Error(errMsg);
   }
 
   return json.data;
@@ -202,12 +213,14 @@ export function useRunGmailPoll(bookingId?: string) {
 
       const json = await res.json();
       if (!json.success && json.needsReAuth) {
-        throw new Error(
-          'Gmail OAuth expired — open Admin → Settings and use “Reconnect Gmail”, or re-run `npm run gmail-auth` for legacy env tokens.',
-        );
+        throw toGmailNeedsReconnectError(new Error(json.error))!;
       }
       if (!res.ok) {
-        throw new Error(json.error ?? `HTTP ${res.status}`);
+        const errMsg = json.error ?? `HTTP ${res.status}`;
+        if (messageIndicatesGmailNeedsReconnect(errMsg)) {
+          throw toGmailNeedsReconnectError(new Error(errMsg))!;
+        }
+        throw new Error(errMsg);
       }
       return json as RunAutomationResult;
     },
@@ -307,9 +320,7 @@ export function useRunGmailApprovalBackfill(invalidateBookingId?: string) {
       };
 
       if (json.needsReAuth) {
-        throw new Error(
-          'Gmail OAuth expired — use “Reconnect Gmail” on this page (or legacy env tokens).',
-        );
+        throw toGmailNeedsReconnectError(new Error(json.error))!;
       }
       if (!res.ok || !json.success) {
         throw new Error(json.error ?? `HTTP ${res.status}`);

@@ -5,7 +5,10 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
 import { verifyAdminJwt } from '../_shared/auth.ts';
-import { supabaseServiceRole } from '../_shared/gmailMailOAuthAccess.ts';
+import {
+  getGmailAccessTokenUnified,
+  supabaseServiceRole,
+} from '../_shared/gmailMailOAuthAccess.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -36,10 +39,28 @@ serve(async (req) => {
     }
 
     const connected = !!(data?.refresh_token_encrypted);
+    let needsReconnect = false;
+
+    if (connected) {
+      try {
+        await getGmailAccessTokenUnified();
+      } catch (e: unknown) {
+        const err = e as Error & { needsReAuth?: boolean };
+        if (
+          err.needsReAuth === true ||
+          err.message?.includes('invalid_grant') ||
+          err.message?.includes('Reconnect Gmail')
+        ) {
+          needsReconnect = true;
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         connected,
+        needsReconnect,
         googleAccountEmail: connected ? (data?.google_account_email ?? null) : null,
         connectedAt: connected ? (data?.connected_at ?? null) : null,
       }),

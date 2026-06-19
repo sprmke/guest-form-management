@@ -23,6 +23,7 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
   const disconnect = useDisconnectGmailMail();
 
   const connected = data?.connected ?? false;
+  const needsReconnect = data?.needsReconnect ?? false;
   const [backfillModalOpen, setBackfillModalOpen] = React.useState(false);
   const embedded = variant === 'embedded';
 
@@ -56,9 +57,11 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
         <div
           className={cn(
             'flex justify-center items-center rounded-lg shrink-0 size-10 sm:size-11',
-            connected
-              ? 'text-emerald-700 bg-emerald-500/15'
-              : 'bg-muted text-muted-foreground',
+            needsReconnect
+              ? 'text-amber-700 bg-amber-500/15 dark:text-amber-300'
+              : connected
+                ? 'text-emerald-700 bg-emerald-500/15'
+                : 'bg-muted text-muted-foreground',
           )}
         >
           <Mail className="size-5 sm:size-[22px]" aria-hidden />
@@ -79,9 +82,14 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
               {String((error as Error)?.message ?? error)}
             </p>
           )}
-          {!isError && connected && data?.googleAccountEmail && (
+          {!isError && connected && !needsReconnect && data?.googleAccountEmail && (
             <p className="text-xs text-emerald-800 mt-1.5 font-medium sm:text-[11px] dark:text-emerald-300">
               Connected as {data.googleAccountEmail}
+            </p>
+          )}
+          {!isError && needsReconnect && data?.googleAccountEmail && (
+            <p className="text-xs text-amber-800/90 mt-1.5 font-medium sm:text-[11px] dark:text-amber-200">
+              {data.googleAccountEmail} — reconnect to restore approval sync.
             </p>
           )}
           {!isError && !connected && (
