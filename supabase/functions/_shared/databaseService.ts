@@ -928,6 +928,59 @@ export class DatabaseService {
     return { ok: false, error: 'unexpected rpc response' };
   }
 
+  static async getTelegramMaintenanceSettings(): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_maintenance_settings')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramMaintenanceSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram maintenance settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260818120000_maintenance_module.sql on this project.`,
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramMaintenanceSettings(
+    patch: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const { data, error } = await this.supabase
+      .from('telegram_maintenance_settings')
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('updateTelegramMaintenanceSettings:', error);
+      throw new Error('Failed to update Telegram maintenance settings');
+    }
+    return data;
+  }
+
+  static async syncTelegramMaintenanceHourlyCronJob(): Promise<{
+    ok?: boolean;
+    error?: string;
+    cronExpr?: string;
+  }> {
+    const { data, error } = await this.supabase.rpc(
+      'sync_telegram_maintenance_hourly_cron_job',
+    );
+    if (error) {
+      console.error('syncTelegramMaintenanceHourlyCronJob rpc:', error);
+      return { ok: false, error: error.message ?? 'rpc failed' };
+    }
+    if (data && typeof data === 'object' && data !== null) {
+      return data as { ok?: boolean; error?: string; cronExpr?: string };
+    }
+    return { ok: false, error: 'unexpected rpc response' };
+  }
+
   static async getTelegramAdminSettings(): Promise<Record<string, unknown> | null> {
     const { data, error } = await this.supabase
       .from('telegram_admin_settings')
