@@ -89,7 +89,7 @@ const FINANCE_SAMPLES: Record<string, string> = {
 
 const MAINTENANCE_SAMPLES: Record<string, string> = {
   label: 'AC filter replacement',
-  category: 'HVAC',
+  category: 'Appliance',
   due_date: '06/20/2026',
   scheduled_on: '06/20/2026',
   days_until_due: '3',

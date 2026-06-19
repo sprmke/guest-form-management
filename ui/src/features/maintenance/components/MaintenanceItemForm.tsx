@@ -105,15 +105,15 @@ export function telegramReminderPayloadFromForm(
 }
 
 const CATEGORY_SUGGESTIONS = [
-  "HVAC",
-  "Plumbing",
-  "Electrical",
+  "Supplies",
+  "Utilities",
   "Appliance",
+  "Amenities",
   "Cleaning",
   "Pest Control",
-  "Landscaping",
   "Safety",
-  "General",
+  "Plumbing",
+  "Electrical",
   "Other",
 ];
 
