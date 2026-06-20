@@ -35,7 +35,7 @@ import {
 import { handleNameInputChange } from '@/utils/helpers';
 import { toCapitalCase } from '@/utils/formatters';
 import type { SubmitSdRefundBody } from '@/features/sd-form/lib/api';
-import { findVoucher, formatVoucherDiscountRange, type Voucher } from '@/features/sd-form/lib/voucher';
+import { findVoucher, VOUCHER_DISCOUNT_MAX, type Voucher } from '@/features/sd-form/lib/voucher';
 import { VoucherReveal } from '@/features/sd-form/components/VoucherReveal';
 
 type Step = 1 | 2 | 'done';
@@ -360,7 +360,8 @@ export function SdFormPage() {
                 favorite moments with loved ones.
               </p>
               <p className="font-semibold text-warning">
-                Review us for a chance to win {formatVoucherDiscountRange()} or a
+                Review us for a chance to win up to ₱
+                {VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} or a
                 FREE stay on your next booking!
               </p>
             </div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { AdminEntryButton } from '@/components/AdminEntryButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { guestEnterClass, type GuestNavState } from '@/layouts/guestNavState';
@@ -17,10 +18,20 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
 
   return (
     <main className="app-shell relative min-h-screen">
-      {/* Theme toggle — top-right on mobile, bottom-right on larger screens */}
+      {/* Admin + theme — top corners on mobile, bottom corners on larger screens */}
+      <div className="pointer-events-none fixed left-4 top-[max(0.75rem,env(safe-area-inset-top))] z-50 sm:hidden">
+        <div className="pointer-events-auto">
+          <AdminEntryButton />
+        </div>
+      </div>
       <div className="pointer-events-none fixed right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-50 sm:hidden">
         <div className="pointer-events-auto">
           <ThemeToggle />
+        </div>
+      </div>
+      <div className="pointer-events-none fixed bottom-4 left-4 z-50 hidden sm:bottom-6 sm:left-6 sm:block">
+        <div className="pointer-events-auto">
+          <AdminEntryButton />
         </div>
       </div>
       <div className="pointer-events-none fixed bottom-4 right-4 z-50 hidden sm:bottom-6 sm:right-6 sm:block">
