@@ -14,6 +14,12 @@ function bookingFlagTrue(value: boolean | string | null | undefined): boolean {
   return value === true || value === 'true';
 }
 
+export function isAirbnbBookingSource(
+  source: string | null | undefined,
+): boolean {
+  return source?.trim() === 'Airbnb';
+}
+
 /** Pet fee counts toward guest balance only when the guest is bringing pets. */
 export function petFeeForGuestBalance(booking: BookingFinanceInput): number {
   return bookingFlagTrue(booking.has_pets)
@@ -29,9 +35,22 @@ export function parkingFeeForGuestBalance(_booking: BookingFinanceInput): number
   return 0;
 }
 
+function petAndAdditionalFeesForGuestBalance(
+  booking: BookingFinanceInput,
+): number {
+  return (
+    petFeeForGuestBalance(booking) +
+    parkingFeeForGuestBalance(booking) +
+    toMoneyNumber(booking.guest_additional_fee)
+  );
+}
+
 /**
  * Total amount due from the guest before check-in (matches `ReviewPricingForm`
  * live total and `PricingSummaryCard` on the booking detail page).
+ *
+ * **Airbnb:** stay rate, down payment, and security deposit are excluded — the
+ * guest pays the host on Airbnb. Only pet fee and additional guest fees count.
  *
  * Excludes parking — pay parking is recorded and verified on the Parking Request
  * sub-step. `guest_submissions.balance` is the recorded “balance” line item only.
@@ -43,14 +62,18 @@ export function guestBalancePaymentReceiptRequired(totalDue: number): boolean {
 
 export function computeTotalGuestBalance(booking: BookingFinanceInput): number | null {
   if (booking.booking_rate == null || booking.booking_rate === '') return null;
+
+  const petAndAdditional = petAndAdditionalFeesForGuestBalance(booking);
+  if (isAirbnbBookingSource(booking.booking_source)) {
+    return petAndAdditional;
+  }
+
   const rate = toMoneyNumber(booking.booking_rate);
   return (
     rate -
     toMoneyNumber(booking.down_payment) +
     toMoneyNumber(booking.security_deposit) +
-    petFeeForGuestBalance(booking) +
-    parkingFeeForGuestBalance(booking) +
-    toMoneyNumber(booking.guest_additional_fee)
+    petAndAdditional
   );
 }
 

@@ -14,6 +14,7 @@ import {
 } from "./utils.ts";
 import { resolveAppSettings, DEFAULT_GCASH_QR_RELATIVE_PATH } from "./appSettings.ts";
 import { formatReceiptVerdictLabel } from "./receiptValidationService.ts";
+import { computeTotalGuestBalanceFromBooking } from "./totalGuestBalance.ts";
 
 async function emailHeaderLogoHtml(): Promise<string> {
   const settings = await resolveAppSettings();
@@ -873,12 +874,14 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
     booking.balance ??
     (booking.booking_rate ?? 0) - (booking.down_payment ?? 0);
   const balanceNum = Number(balance);
-  const additionalGuestFee = Number(booking.guest_additional_fee ?? 0) || 0;
   const totalDueAtCheckin =
-    (Number.isFinite(balanceNum) ? balanceNum : 0) +
-    (Number(booking.security_deposit ?? 0) || 0) +
-    (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0) +
-    additionalGuestFee;
+    computeTotalGuestBalanceFromBooking(
+      booking as unknown as Record<string, unknown>,
+    ) ??
+    ((Number.isFinite(balanceNum) ? balanceNum : 0) +
+      (Number(booking.security_deposit ?? 0) || 0) +
+      (booking.has_pets ? Number(booking.pet_fee ?? 0) || 0 : 0) +
+      (Number(booking.guest_additional_fee ?? 0) || 0));
   const totalBalanceDue = pesoFormat(totalDueAtCheckin);
   const pax =
     (booking.number_of_adults || 0) + (booking.number_of_children || 0);

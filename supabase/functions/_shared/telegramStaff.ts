@@ -12,6 +12,7 @@ import {
 } from './calendarAvailabilityManila.ts';
 import { normalizeTelegramChatId } from './telegramMarketing.ts';
 import { formatTimeForDisplay, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts';
+import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 
 export type TelegramStaffSettings = {
   id: number;
@@ -111,27 +112,6 @@ export function bookingQualifiesForSameDayCheckinStaffAlert(
   return isManilaTimeAtOrAfter(cutoff.hour, cutoff.minute, now);
 }
 
-function toMoneyNumber(value: unknown): number {
-  if (value === null || value === undefined || value === '') return 0;
-  const n = typeof value === 'string' ? Number(value) : Number(value);
-  return Number.isNaN(n) ? 0 : n;
-}
-
-function computeTotalGuestBalance(booking: BookingRow): number | null {
-  if (booking.booking_rate == null || booking.booking_rate === '') return null;
-  const rate = toMoneyNumber(booking.booking_rate);
-  const petFee = bookingFlagTrue(booking.has_pets)
-    ? toMoneyNumber(booking.pet_fee)
-    : 0;
-  return (
-    rate -
-    toMoneyNumber(booking.down_payment) +
-    toMoneyNumber(booking.security_deposit) +
-    petFee +
-    toMoneyNumber(booking.guest_additional_fee)
-  );
-}
-
 function formatCurrency(amount: number | null): string {
   if (amount === null) return 'Not set';
   return `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
@@ -180,7 +160,7 @@ function buildBookingPlaceholders(booking: BookingRow): Record<string, string> {
   const ciYmd = normalizeBookingDateToYmd(ciRaw) ?? ciRaw;
   const coYmd = normalizeBookingDateToYmd(coRaw) ?? coRaw;
 
-  const balance = computeTotalGuestBalance(booking);
+  const balance = computeTotalGuestBalanceFromBooking(booking);
   const hasDecor = bookingFlagTrue(booking.guest_requests_surprise_decor);
   const hasPets = bookingFlagTrue(booking.has_pets);
   const specialReqs = String(booking.guest_special_requests ?? '').trim();

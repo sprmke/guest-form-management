@@ -5,7 +5,8 @@
  * Captures: booking_rate, down_payment, security_deposit, pet_fee, parking_rate_guest,
  * guest_additional_fee.
  * Computes total guest balance (excludes parking — settled on Parking Request):
- * booking_rate - down_payment + security_deposit + pet_fee + guest_additional_fee.
+ * Facebook: booking_rate - down_payment + security_deposit + pet_fee + guest_additional_fee.
+ * Airbnb: pet_fee + guest_additional_fee only (stay paid on Airbnb).
  *
  * Plan: docs/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
@@ -20,6 +21,9 @@ import {
   type WorkflowFormVariant,
 } from '@/features/admin/components/WorkflowFormShell';
 import { formatMoney } from '@/features/admin/lib/formatters';
+import {
+  computeTotalGuestBalance,
+} from '@/features/admin/lib/totalGuestBalance';
 import {
   optionalNonNegativeMoney,
   requiredNonNegativeMoney,
@@ -116,11 +120,14 @@ export function ReviewPricingForm({
   const petFee = hasPets ? (toNullableNumber(watch('pet_fee')) ?? 0) : 0;
   const additionalFee = toNullableNumber(watch('guest_additional_fee')) ?? 0;
   const totalGuestBalance =
-    bookingRate -
-    downPayment +
-    securityDeposit +
-    petFee +
-    additionalFee;
+    computeTotalGuestBalance({
+      ...booking,
+      booking_rate: bookingRate,
+      down_payment: downPayment,
+      security_deposit: securityDeposit,
+      pet_fee: petFee,
+      guest_additional_fee: additionalFee,
+    }) ?? 0;
 
   useEffect(() => {
     if (readOnly) return;
@@ -266,13 +273,18 @@ export function ReviewPricingForm({
 
       {/* Total guest balance display */}
       <div className="flex justify-between items-center rounded-lg bg-muted/50 px-3.5 py-2.5 ring-1 ring-slate-200 dark:ring-border/60">
-        <span className="flex flex-col gap-0.5">
+        <span className="flex min-w-0 flex-col gap-0.5">
           <span className="flex items-center gap-1.5 text-sm font-semibold leading-tight text-foreground">
             Total Guest Balance
           </span>
+          {isAirbnb ? (
+            <span className="text-[10.5px] leading-snug text-muted-foreground">
+              Booking rate is excluded for Airbnb bookings.
+            </span>
+          ) : null}
         </span>
         <span
-          className={`text-lg font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
+          className={`shrink-0 text-lg font-extrabold tracking-tight ${totalGuestBalance < 0 ? 'text-red-600' : 'text-foreground'}`}
         >
           {formatMoney(totalGuestBalance)}
         </span>

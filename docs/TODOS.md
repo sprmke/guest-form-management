@@ -199,6 +199,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
   - ✅ Admin `BookingEditForm`: Downpayment receipt row hidden in Documents section for Airbnb bookings.
   - ✅ Ready-for-check-in email: Payment breakdown + GCash QR section hidden when total balance due is 0 (source-agnostic).
   - ✅ SD refund flow: skipped entirely when `security_deposit=0` — `READY_FOR_CHECKOUT` goes directly to `COMPLETED` (no SD form email, no guest SD form step). `sd-refund-cron` also skips SD=0 bookings for check-out email.
+  - ✅ Guest balance settlement: Airbnb excludes booking rate / DP / SD from total guest balance (pet + additional fees only); receipt not required when total is ₱0; AI validation only when fee total > ₱0.
 - Validate the receipt amount based on the type. Meaning, validate down payment receipt and it should match the 1500 min amount. Apply for others.
 - Improve valid id validation to match the primary guest name, facebook name or additional guest names.
 - ✅ When we encounter any issues related to gmail needs to reconnect, automatically display a modal with reconnect Gmail button (`GmailReconnectProvider` + `GmailReconnectModal`; status probe via `google-mail-oauth-status`; Gmail poll/backfill/transition errors open the modal).

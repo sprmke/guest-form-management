@@ -12,6 +12,8 @@
 import { DatabaseService } from './databaseService.ts';
 import {
   checkGuestBalanceSettlement,
+  computeTotalGuestBalanceFromBooking,
+  guestBalancePaymentReceiptRequired,
 } from './totalGuestBalance.ts';
 import { receiptVerdictBlocksAdminTransition } from './receiptValidationService.ts';
 import { CalendarService } from './calendarService.ts';
@@ -464,7 +466,12 @@ export class WorkflowOrchestrator {
       workflowFields.guest_balance_paid_amount = settlement.paidAmount;
       workflowFields.guest_balance_payment_receipt_url = settlement.receiptUrl;
 
+      const totalDue = computeTotalGuestBalanceFromBooking(
+        booking as Record<string, unknown>,
+      );
       if (
+        totalDue !== null &&
+        guestBalancePaymentReceiptRequired(totalDue) &&
         settlement.receiptUrl &&
         receiptVerdictBlocksAdminTransition(booking.balance_receipt_ai_verdict)
       ) {

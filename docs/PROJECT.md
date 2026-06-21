@@ -162,6 +162,7 @@ When the guest form URL includes **`?source=airbnb`** (case-insensitive), the bo
 - **Admin `ReviewPricingForm`** defaults down payment and security deposit to **₱0** (editable by admin if needed).
 - **Admin `BookingEditForm`** hides the Downpayment receipt row in the Documents section for Airbnb bookings.
 - **Ready-for-check-in email** hides the Payment breakdown table and GCash QR section when total balance due is ₱0 (source-agnostic — applies to any booking with zero total balance).
+- **Guest balance settlement** (`READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT`): for Airbnb, **booking rate / down payment / security deposit are excluded** from total guest balance — only **pet fee** and **additional guest fee** count. When that total is ₱0, **paid = 0** and **no payment balance receipt** is required. Other fees still require a GCash/Maya/bank/cash receipt with AI validation.
 - **SD refund flow** is skipped when `security_deposit = 0`: booking goes directly from `READY_FOR_CHECKOUT` to `COMPLETED` (no SD form email, no guest `/sd-form` step). The `sd-refund-cron` also suppresses the check-out email for SD=0 bookings.
 
 ### 5.2 View / update existing booking

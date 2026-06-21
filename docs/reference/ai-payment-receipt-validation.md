@@ -56,7 +56,7 @@ Accepts **images and PDF** (PhilSys, passport, driver's license, UMID, and simil
 
 **Blocking rules (admin only):**
 
-- **Balance receipt:** `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` is rejected server-side when `balance_receipt_ai_verdict === 'invalid'` and a receipt URL is required. `GuestBalanceSettlementForm` also disables the proceed action in the UI.
+- **Balance receipt:** `READY_FOR_CHECKIN` → `READY_FOR_CHECKOUT` is rejected server-side when `balance_receipt_ai_verdict === 'invalid'` and a receipt URL is **required** (total guest balance **> ₱0**). **Airbnb** bookings exclude stay rate / DP / SD from that total — only pet + additional fees count; when the fee total is ₱0, no receipt is required and AI blocking does not apply. `GuestBalanceSettlementForm` mirrors this in the UI.
 - **Parking receipt:** Mark complete / forward from `PENDING_PARKING_REQUEST` is rejected when a separate parking receipt is required and `parking_receipt_ai_verdict === 'invalid'`. `ParkingRequestForm` mirrors this in the UI.
 - **Booking edit mode** (`editMode` on settlement / parking forms): AI blocking is relaxed so admins can save other fields without being forced through workflow gates.
 

@@ -315,6 +315,27 @@ export function BookingEditForm({
         ? progressFormPayloadFromState(booking, progressFormState)
         : {}),
     };
+
+    const newSource = normalizeBookingSource(values.booking_source);
+    const wasAirbnb = normalizeBookingSource(booking.booking_source) === 'Airbnb';
+    const isNowAirbnb = newSource === 'Airbnb';
+    if (isNowAirbnb) {
+      payload.down_payment = 0;
+      payload.security_deposit = 0;
+      const rate =
+        payload.booking_rate ??
+        (booking.booking_rate != null ? Number(booking.booking_rate) : null);
+      if (rate != null && !Number.isNaN(rate)) {
+        payload.balance = Math.round(rate * 100) / 100;
+      }
+    }
+    if (isNowAirbnb && !wasAirbnb) {
+      payload.guest_balance_paid_amount = null;
+      payload.guest_balance_payment_receipt_url = null;
+      payload.balance_receipt_ai_verdict = null;
+      payload.balance_receipt_ai_summary = null;
+    }
+
     const revertToPendingReview =
       guestEditRevertPipeline &&
       hasWorkflowSensitiveGuestFieldDiff(booking, payload);

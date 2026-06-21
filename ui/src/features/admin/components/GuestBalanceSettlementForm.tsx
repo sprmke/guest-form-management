@@ -1,11 +1,9 @@
 /**
  * GuestBalanceSettlementForm — Shown when advancing READY_FOR_CHECKIN →
  * READY_FOR_CHECKOUT. Requires **balance amount paid** to **equal** total
- * guest balance (same formula as pricing: rate − down + SD + pet + additional;
- * parking excluded — settled on Parking Request). Payment balance receipt is
- * required only when total > ₱0
- * (free stays may proceed with paid = 0 and no receipt; sd-refund-cron uses the
- * same rules server-side).
+ * guest balance (Facebook: rate − down + SD + pet + additional; Airbnb:
+ * pet + additional only). Parking excluded — settled on Parking Request.
+ * Payment balance receipt is required only when total > ₱0.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -60,6 +58,7 @@ type Props = {
 function defaultPaidFromBooking(booking: BookingRow): number {
   const bal = computeTotalGuestBalance(booking);
   if (bal === null) return 0;
+  if (bal === 0) return 0;
   const saved = booking.guest_balance_paid_amount;
   if (saved !== null && saved !== undefined && saved !== '') {
     const p = typeof saved === 'string' ? Number(saved) : saved;
@@ -157,6 +156,12 @@ export function GuestBalanceSettlementForm({
   }, [receiptUrl, receiptPreviewBust]);
 
   useEffect(() => {
+    if (totalDue === 0 && paidInput !== '0') {
+      setPaidInput('0');
+    }
+  }, [totalDue, paidInput]);
+
+  useEffect(() => {
     const fromBooking = booking.guest_balance_payment_receipt_url?.trim() ?? '';
     if (fromBooking && !initialDraft) setReceiptUrl(fromBooking);
   }, [booking.guest_balance_payment_receipt_url, initialDraft]);
@@ -221,7 +226,7 @@ export function GuestBalanceSettlementForm({
 
     const paidCents = Math.round(paidParsed * 100);
     if (editMode) {
-      const receipt = receiptUrl.trim();
+      const receipt = receiptRequired ? receiptUrl.trim() : '';
       onChange({
         guest_balance_paid_amount: Math.round(paidParsed * 100) / 100,
         guest_balance_payment_receipt_url: receipt,
@@ -238,12 +243,16 @@ export function GuestBalanceSettlementForm({
       return;
     }
 
-    const receipt = receiptUrl.trim();
+    const receipt = receiptRequired ? receiptUrl.trim() : '';
     if (receiptRequired && !receipt) {
       onChange(null);
       return;
     }
-    if (receipt && receiptAiVerdictBlocksAdmin(receiptAiVerdict)) {
+    if (
+      receiptRequired &&
+      receipt &&
+      receiptAiVerdictBlocksAdmin(receiptAiVerdict)
+    ) {
       onChange(null);
       return;
     }
@@ -471,7 +480,7 @@ export function GuestBalanceSettlementForm({
           </>
           ) : null}
         </div>
-        {receiptAiVerdict ? (
+        {receiptRequired && receiptAiVerdict ? (
           <ReceiptAiVerdictBadge
             verdict={receiptAiVerdict}
             summary={receiptAiSummary}

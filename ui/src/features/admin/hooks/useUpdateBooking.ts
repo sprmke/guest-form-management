@@ -169,8 +169,10 @@ export type UpdateBookingPayload = {
   parking_endorsement_url?: string | null;
   parking_fee_included_in_downpayment?: boolean;
   parking_payment_receipt_url?: string | null;
-  guest_balance_paid_amount?: number;
+  guest_balance_paid_amount?: number | null;
   guest_balance_payment_receipt_url?: string | null;
+  balance_receipt_ai_verdict?: string | null;
+  balance_receipt_ai_summary?: string | null;
   sd_additional_expense_items?: Array<{ label: string; amount: number }>;
   sd_additional_profit_items?: Array<{ label: string; amount: number }>;
   sd_additional_expenses?: number[];
@@ -209,14 +211,19 @@ export function useUpdateBooking() {
         updated_at: new Date().toISOString(),
       };
 
+      if (payload.booking_source === 'Airbnb') {
+        patch.down_payment = 0;
+        patch.security_deposit = 0;
+      }
+
       if (
         payload.booking_rate != null &&
-        payload.down_payment != null &&
+        (payload.down_payment != null || payload.booking_source === 'Airbnb') &&
         payload.balance === undefined
       ) {
         patch.balance = computeBalance(
           payload.booking_rate,
-          payload.down_payment,
+          payload.booking_source === 'Airbnb' ? 0 : payload.down_payment,
         );
       }
 

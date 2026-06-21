@@ -3,6 +3,9 @@
  * booking_rate − down_payment + security_deposit
  * + (pet_fee when has_pets) + guest_additional_fee.
  *
+ * **Airbnb:** stay rate, down payment, and security deposit are excluded — only
+ * pet fee and additional guest fees count toward guest balance settlement.
+ *
  * Parking is excluded — settled separately on the Parking Request sub-step.
  */
 
@@ -16,6 +19,10 @@ function bookingFlagTrue(v: unknown): boolean {
   return v === true || v === 'true';
 }
 
+export function isAirbnbBookingSource(source: unknown): boolean {
+  return String(source ?? '').trim() === 'Airbnb';
+}
+
 function petFeeForGuestBalance(booking: Record<string, unknown>): number {
   return bookingFlagTrue(booking.has_pets) ? num(booking.pet_fee) : 0;
 }
@@ -24,19 +31,33 @@ function parkingFeeForGuestBalance(_booking: Record<string, unknown>): number {
   return 0;
 }
 
+function petAndAdditionalFeesForGuestBalance(
+  booking: Record<string, unknown>,
+): number {
+  return (
+    petFeeForGuestBalance(booking) +
+    parkingFeeForGuestBalance(booking) +
+    num(booking.guest_additional_fee)
+  );
+}
+
 export function computeTotalGuestBalanceFromBooking(
   booking: Record<string, unknown>,
 ): number | null {
   const raw = booking.booking_rate;
   if (raw === null || raw === undefined || raw === '') return null;
+
+  const petAndAdditional = petAndAdditionalFeesForGuestBalance(booking);
+  if (isAirbnbBookingSource(booking.booking_source)) {
+    return petAndAdditional;
+  }
+
   const rate = num(raw);
   return (
     rate -
     num(booking.down_payment) +
     num(booking.security_deposit) +
-    petFeeForGuestBalance(booking) +
-    parkingFeeForGuestBalance(booking) +
-    num(booking.guest_additional_fee)
+    petAndAdditional
   );
 }
 
@@ -105,6 +126,6 @@ export function checkGuestBalanceSettlement(
   return {
     ok: true,
     paidAmount: paidNum,
-    receiptUrl: receipt || null,
+    receiptUrl: guestBalancePaymentReceiptRequired(totalDue) ? receipt || null : null,
   };
 }

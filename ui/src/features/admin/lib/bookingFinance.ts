@@ -5,6 +5,7 @@ import { computeTotalGuestBalance, guestBalancePaidRecorded } from '@/features/a
 export type BookingFinanceInput = Pick<
   BookingRow,
   | 'status'
+  | 'booking_source'
   | 'booking_rate'
   | 'down_payment'
   | 'balance'

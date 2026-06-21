@@ -22,6 +22,7 @@ export const SD_REFUND_METHOD_LABELS: Record<string, string> = {
 export type BookingPricingSummarySource = Pick<
   BookingRow,
   | 'status'
+  | 'booking_source'
   | 'booking_rate'
   | 'down_payment'
   | 'balance'
