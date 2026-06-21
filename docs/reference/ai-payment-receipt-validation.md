@@ -146,7 +146,7 @@ Placeholders in **`telegram_admin_settings`** templates (via `buildAdminBookingP
 | `{{balance_receipt_ai_verdict}}` | Human label from `balance_receipt_ai_verdict` |
 | `{{balance_receipt_ai_summary}}` | `balance_receipt_ai_summary` or `N/A` |
 
-Default **new booking** template (migration `20260717120000`) includes downpayment AI lines. **Balance receipt uploaded** uses `balance_receipt_uploaded_template` (instant on admin upload). **Balance receipt needed** hourly reminders use `balance_receipt_template` (migration `20260721120000` restores the split).
+Default **new booking** template (migration `20260717120000`) includes downpayment AI lines. **Balance receipt uploaded** uses `balance_receipt_uploaded_template` (instant on admin upload, deduped per receipt URL). **Balance receipt needed** hourly reminders use `balance_receipt_template` without AI placeholders — migration `20260721120000` / `20260721140000` restore the split if `20260717120000` overwrote the hourly copy with "Uploaded".
 
 Parking AI is shown in **`ParkingRequestForm`** on the booking detail workflow panel; there is no separate instant Telegram template for parking receipt upload today.
 

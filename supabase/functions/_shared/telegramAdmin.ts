@@ -29,6 +29,14 @@ import { formatReceiptVerdictLabel } from './receiptValidationService.ts';
 const MANILA_TZ = 'Asia/Manila';
 const APP_BASE_URL = 'https://kamehomes.space';
 
+const DEFAULT_BALANCE_RECEIPT_NEEDED_TEMPLATE = `💳 Balance Receipt Needed
+
+Guest: {{primary_guest_name}}
+Balance due: {{total_guest_balance}}
+
+Upload payment receipt now:
+{{booking_link}}`;
+
 const DEFAULT_BALANCE_RECEIPT_UPLOADED_TEMPLATE = `💳 Balance Receipt Uploaded
 
 Guest: {{primary_guest_name}}
@@ -39,6 +47,28 @@ Verdict: {{balance_receipt_ai_verdict}}
 {{balance_receipt_ai_summary}}
 
 {{booking_link}}`;
+
+/** Hourly reminders must never use the instant "uploaded" copy (migration 20260717120000 regression). */
+function resolveBalanceReceiptHourlyTemplate(raw: string): string {
+  const t = raw.trim();
+  if (!t) return DEFAULT_BALANCE_RECEIPT_NEEDED_TEMPLATE;
+  if (/Balance Receipt Uploaded/i.test(t)) return DEFAULT_BALANCE_RECEIPT_NEEDED_TEMPLATE;
+  if (t.includes('{{balance_receipt_ai_verdict}}')) {
+    return DEFAULT_BALANCE_RECEIPT_NEEDED_TEMPLATE;
+  }
+  return t;
+}
+
+function receiptUploadDedupeKey(receiptUrl: string): string {
+  const u = receiptUrl.trim();
+  if (!u) return 'empty';
+  try {
+    const path = new URL(u).pathname;
+    return path.length > 240 ? path.slice(-240) : path;
+  } catch {
+    return u.length > 240 ? u.slice(-240) : u;
+  }
+}
 
 export type TelegramAdminSettings = {
   id: number;
@@ -63,6 +93,10 @@ export type AdminHourlyNotificationType =
   | 'pending_docs'
   | 'balance_receipt'
   | 'sd_refund_pending';
+
+export type AdminNotificationLogType =
+  | AdminHourlyNotificationType
+  | 'balance_receipt_uploaded';
 
 export const ADMIN_KNOWN_PLACEHOLDERS = [
   'primary_guest_name',
@@ -548,9 +582,9 @@ async function loadAdminSettings(): Promise<TelegramAdminSettings | null> {
   }
 }
 
-async function hasHourlyDedupeEntry(
+async function hasNotificationLogEntry(
   bookingId: string,
-  notificationType: AdminHourlyNotificationType,
+  notificationType: AdminNotificationLogType,
   hourBucket: string,
 ): Promise<boolean> {
   const supabase = createClient(
@@ -571,9 +605,9 @@ async function hasHourlyDedupeEntry(
   return !!data;
 }
 
-async function recordHourlySend(
+async function recordNotificationLog(
   bookingId: string,
-  notificationType: AdminHourlyNotificationType,
+  notificationType: AdminNotificationLogType,
   hourBucket: string,
 ): Promise<{ ok: boolean; constraintRejected?: boolean }> {
   const supabase = createClient(
@@ -589,7 +623,8 @@ async function recordHourlySend(
   if (error?.code === '23514') {
     console.error(
       '[telegram-admin] notification_type rejected by DB check — deploy migration ' +
-        '20260705120000_telegram_admin_new_booking_hourly.sql',
+        '20260705120000_telegram_admin_new_booking_hourly.sql and ' +
+        '20260721140000_telegram_admin_balance_receipt_hourly_fix.sql',
       error,
     );
     return { ok: false, constraintRejected: true };
@@ -618,7 +653,8 @@ export type AdminNotifySkip =
   | 'notify_off'
   | 'missing_env'
   | 'send_failed'
-  | 'no_settings';
+  | 'no_settings'
+  | 'dedupe';
 
 /** After a brand-new guest submission row is inserted. */
 export async function notifyTelegramAdminNewBooking(
@@ -639,7 +675,7 @@ export async function notifyTelegramAdminNewBooking(
   }
   const bookingId = String(booking.id ?? '').trim();
   if (bookingId) {
-    await recordHourlySend(bookingId, 'new_booking', manilaHourBucket());
+    await recordNotificationLog(bookingId, 'new_booking', manilaHourBucket());
   }
   return { sent: true };
 }
@@ -683,11 +719,26 @@ export async function notifyTelegramAdminBalanceReceiptUploaded(
   const creds = resolveAdminTelegramCredentials();
   if (!creds.ok) return { sent: false, skip: 'missing_env', telegramError: creds.error };
 
+  const bookingId = String(booking.id ?? '').trim();
+  const receiptUrl = String(booking.guest_balance_payment_receipt_url ?? '').trim();
+  const dedupeKey = receiptUploadDedupeKey(receiptUrl);
+  if (
+    !opts?.force &&
+    bookingId &&
+    receiptUrl &&
+    await hasNotificationLogEntry(bookingId, 'balance_receipt_uploaded', dedupeKey)
+  ) {
+    return { sent: false, skip: 'dedupe' };
+  }
+
   const template = String(settings.balance_receipt_uploaded_template ?? '').trim() ||
     DEFAULT_BALANCE_RECEIPT_UPLOADED_TEMPLATE;
   const r = await sendAdminTemplateForBooking(template, booking);
   if (!r.ok) {
     return { sent: false, skip: 'send_failed', telegramError: r.error };
+  }
+  if (bookingId && receiptUrl) {
+    await recordNotificationLog(bookingId, 'balance_receipt_uploaded', dedupeKey);
   }
   return { sent: true };
 }
@@ -770,7 +821,7 @@ export async function runAdminHourlyAlerts(opts?: {
 
     if (!opts?.force && !enabled) return false;
 
-    if (!opts?.force && await hasHourlyDedupeEntry(id, notificationType, hourBucket)) {
+    if (!opts?.force && await hasNotificationLogEntry(id, notificationType, hourBucket)) {
       skippedDedupe++;
       return false;
     }
@@ -780,7 +831,7 @@ export async function runAdminHourlyAlerts(opts?: {
       return false;
     }
     if (!opts?.force) {
-      const recorded = await recordHourlySend(id, notificationType, hourBucket);
+      const recorded = await recordNotificationLog(id, notificationType, hourBucket);
       if (recorded.constraintRejected) dedupeMigrationMissing = true;
     }
     return true;
@@ -817,7 +868,7 @@ export async function runAdminHourlyAlerts(opts?: {
       id,
       settings.notify_balance_receipt_hourly,
       bookingNeedsBalanceReceiptHourlyAlert(booking, todayYmd, now),
-      settings.balance_receipt_template,
+      resolveBalanceReceiptHourlyTemplate(settings.balance_receipt_template),
       'balance_receipt',
     )) {
       balanceReceiptSent++;
