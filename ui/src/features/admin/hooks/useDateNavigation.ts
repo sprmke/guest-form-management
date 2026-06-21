@@ -50,7 +50,8 @@ export function useDateNavigation(options: Options = {}): DateNavigationState {
 
   const setDateRange = useCallback((range: DateRange) => {
     setDateRangeState(range);
-    setDatePresetState('custom');
+    setReferenceDate(range.from);
+    setDatePresetState(detectPresetFromRange(range.from, range.to));
   }, []);
 
   const navigatePeriod = useCallback(
@@ -104,25 +105,23 @@ export function useSyncDateRangeWithQuery(
 ) {
   const firstEmit = useRef(true);
   const hydratingFromUrl = useRef(false);
+  const dateRangeRef = useRef(state.dateRange);
+  dateRangeRef.current = state.dateRange;
 
   // Keep the picker aligned when URL dates change (deep links, back/forward).
+  // Only react to urlFrom/urlTo — not local dateRange changes from ←/→ navigation.
+  // Otherwise we revert the new range before the sync effect writes the URL.
   useEffect(() => {
     if (!urlFrom || !urlTo) return;
     const from = fromIsoDate(urlFrom);
     const to = fromIsoDate(urlTo);
     if (!from || !to) return;
-    const curFrom = toIsoDate(state.dateRange.from);
-    const curTo = toIsoDate(state.dateRange.to);
+    const curFrom = toIsoDate(dateRangeRef.current.from);
+    const curTo = toIsoDate(dateRangeRef.current.to);
     if (curFrom === urlFrom && curTo === urlTo) return;
     hydratingFromUrl.current = true;
     state.setDateRange({ from, to });
-  }, [
-    urlFrom,
-    urlTo,
-    state.dateRange.from,
-    state.dateRange.to,
-    state.setDateRange,
-  ]);
+  }, [urlFrom, urlTo, state.setDateRange]);
 
   useEffect(() => {
     if (firstEmit.current) {
