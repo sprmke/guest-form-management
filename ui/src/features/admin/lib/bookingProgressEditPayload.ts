@@ -189,6 +189,13 @@ export function progressFormPayloadFromState(
       state.parking.parking_fee_included_in_downpayment
         ? null
         : state.parking.parking_payment_receipt_url || null;
+    if (
+      !state.parking.parking_fee_included_in_downpayment &&
+      !state.parking.parking_payment_receipt_url?.trim()
+    ) {
+      patch.parking_receipt_ai_verdict = null;
+      patch.parking_receipt_ai_summary = null;
+    }
   }
 
   if (state.guestBalance) {
@@ -196,6 +203,10 @@ export function progressFormPayloadFromState(
       state.guestBalance.guest_balance_paid_amount;
     patch.guest_balance_payment_receipt_url =
       state.guestBalance.guest_balance_payment_receipt_url || null;
+    if (!state.guestBalance.guest_balance_payment_receipt_url?.trim()) {
+      patch.balance_receipt_ai_verdict = null;
+      patch.balance_receipt_ai_summary = null;
+    }
   }
 
   if (state.sdRefundGuest) {

@@ -26,6 +26,8 @@ import type {
   SdSettlementLineItem,
 } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
+import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -198,6 +200,7 @@ export function SdRefundForm({
   showGuestDetails = true,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
+  const clearAssetMut = useClearBookingAsset();
   const receiptFileRef = useRef<HTMLInputElement>(null);
 
   const sdInitial = buildSdInitialState(booking, initialDraft);
@@ -254,8 +257,7 @@ export function SdRefundForm({
       : null;
 
   useEffect(() => {
-    const url = booking.sd_refund_receipt_url;
-    if (url) setReceiptUrl(url);
+    setReceiptUrl(booking.sd_refund_receipt_url?.trim() ?? '');
   }, [booking.sd_refund_receipt_url]);
 
   useEffect(() => {
@@ -291,6 +293,22 @@ export function SdRefundForm({
       );
     } finally {
       if (receiptFileRef.current) receiptFileRef.current.value = '';
+    }
+  }
+
+  async function handleRemoveReceipt() {
+    setReceiptUrl('');
+    if (receiptFileRef.current) receiptFileRef.current.value = '';
+    if (readOnly) return;
+    try {
+      await clearAssetMut.mutateAsync({
+        bookingId: booking.id,
+        assetType: 'sd_refund_receipt',
+      });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove refund receipt',
+      );
     }
   }
 
@@ -402,31 +420,40 @@ export function SdRefundForm({
         </label>
         <div className="space-y-2">
           {receiptUrl ? (
-            <a
-              href={receiptUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={workflowAssetPreviewCard}
-            >
-              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
-                <img
-                  src={receiptUrl}
-                  alt="Refund receipt"
-                  className="object-cover w-full h-full shrink-0"
-                  width={48}
-                  height={48}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground">
-                  Current receipt
-                </p>
-                <p className={workflowAssetViewLink}>
-                  <ExternalLink className="size-3 shrink-0" />
-                  View image
-                </p>
-              </div>
-            </a>
+            <WorkflowAssetPreviewWithRemove
+              readOnly={readOnly}
+              removing={clearAssetMut.isPending}
+              uploading={uploadMut.isPending}
+              removeAriaLabel="Remove refund receipt"
+              onRemove={() => void handleRemoveReceipt()}
+              preview={
+                <a
+                  href={receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={workflowAssetPreviewCard}
+                >
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <img
+                      src={receiptUrl}
+                      alt="Refund receipt"
+                      className="h-full w-full shrink-0 object-cover"
+                      width={48}
+                      height={48}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground">
+                      Current receipt
+                    </p>
+                    <p className={workflowAssetViewLink}>
+                      <ExternalLink className="size-3 shrink-0" />
+                      View image
+                    </p>
+                  </div>
+                </a>
+              }
+            />
           ) : (
             <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-border bg-card px-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">

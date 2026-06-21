@@ -20,6 +20,8 @@ import {
 } from '@/features/admin/lib/totalGuestBalance';
 import { resolveAssetUrlForBrowser, isStorageObjectNotFoundError } from '@/features/admin/lib/storageUrls';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
+import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -84,6 +86,7 @@ export function GuestBalanceSettlementForm({
 }: Props) {
   const qc = useQueryClient();
   const uploadMut = useUploadBookingAsset();
+  const clearAssetMut = useClearBookingAsset();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const savePaidMut = useMutation({
@@ -162,8 +165,8 @@ export function GuestBalanceSettlementForm({
   }, [totalDue, paidInput]);
 
   useEffect(() => {
-    const fromBooking = booking.guest_balance_payment_receipt_url?.trim() ?? '';
-    if (fromBooking && !initialDraft) setReceiptUrl(fromBooking);
+    if (initialDraft) return;
+    setReceiptUrl(booking.guest_balance_payment_receipt_url?.trim() ?? '');
   }, [booking.guest_balance_payment_receipt_url, initialDraft]);
 
   useEffect(() => {
@@ -286,6 +289,27 @@ export function GuestBalanceSettlementForm({
     }
   }
 
+  async function handleRemoveReceipt() {
+    setReceiptUrl('');
+    setReceiptAiVerdict(null);
+    setReceiptAiSummary('');
+    setReceiptPreviewBust(0);
+    if (fileRef.current) fileRef.current.value = '';
+
+    if (readOnly) return;
+
+    try {
+      await clearAssetMut.mutateAsync({
+        bookingId: booking.id,
+        assetType: 'guest_balance_payment_receipt',
+      });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove receipt',
+      );
+    }
+  }
+
   async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -386,53 +410,57 @@ export function GuestBalanceSettlementForm({
             </>
           ) : null}
         </span>
-        {!receiptRequired && totalDue !== null ? (
-          <p className="text-[10.5px] leading-snug text-muted-foreground">
-            Not required when total guest balance is {formatMoney(totalDue)}.
-          </p>
-        ) : null}
         <div className="space-y-2">
           {receiptUrl ? (
-            <a
-              href={receiptImgSrc ?? receiptUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={workflowAssetPreviewCard}
-            >
-              <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
-                {!receiptImgSrc ? (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <Loader2
-                      className="size-5 animate-spin text-muted-foreground"
-                      aria-hidden
-                    />
+            <WorkflowAssetPreviewWithRemove
+              readOnly={readOnly}
+              removing={clearAssetMut.isPending}
+              uploading={uploadMut.isPending}
+              removeAriaLabel="Remove payment balance receipt"
+              onRemove={() => void handleRemoveReceipt()}
+              preview={
+                <a
+                  href={receiptImgSrc ?? receiptUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={workflowAssetPreviewCard}
+                >
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {!receiptImgSrc ? (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Loader2
+                          className="size-5 animate-spin text-muted-foreground"
+                          aria-hidden
+                        />
+                      </div>
+                    ) : receiptImgFailed ? (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <FileImage className="size-5 text-muted-foreground" aria-hidden />
+                      </div>
+                    ) : (
+                      <img
+                        key={receiptPreviewBust}
+                        src={receiptImgSrc}
+                        alt=""
+                        className="h-full w-full shrink-0 object-cover"
+                        width={48}
+                        height={48}
+                        onError={() => setReceiptImgFailed(true)}
+                      />
+                    )}
                   </div>
-                ) : receiptImgFailed ? (
-                  <div className="flex h-full w-full items-center justify-center">
-                    <FileImage className="size-5 text-muted-foreground" aria-hidden />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground">
+                      Current receipt
+                    </p>
+                    <p className={workflowAssetViewLink}>
+                      <ExternalLink className="size-3 shrink-0" aria-hidden />
+                      View image
+                    </p>
                   </div>
-                ) : (
-                  <img
-                    key={receiptPreviewBust}
-                    src={receiptImgSrc}
-                    alt=""
-                    className="h-full w-full shrink-0 object-cover"
-                    width={48}
-                    height={48}
-                    onError={() => setReceiptImgFailed(true)}
-                  />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium text-foreground">
-                  Current receipt
-                </p>
-                <p className={workflowAssetViewLink}>
-                  <ExternalLink className="size-3 shrink-0" aria-hidden />
-                  View image
-                </p>
-              </div>
-            </a>
+                </a>
+              }
+            />
           ) : (
             <div className="flex min-h-[44px] items-center justify-center rounded-lg border border-dashed border-border bg-card px-2 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">

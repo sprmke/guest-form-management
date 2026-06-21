@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   VOUCHER_REEL_POOL,
-  formatVoucherDiscountRange,
+  formatVoucherDiscountMaxLabel,
   formatVoucherPrizeLabel,
   pickPreWinnerTeasers,
   type Voucher,
@@ -248,7 +248,7 @@ function VoucherIntroCopy() {
       </h2>
       <p className="mx-auto max-w-md text-center text-sm leading-relaxed text-muted-foreground">
         Thanks for your review! Tap below to win{' '}
-        <strong className="text-primary">{formatVoucherDiscountRange()}</strong>{' '}
+        <strong className="text-primary">{formatVoucherDiscountMaxLabel()}</strong>{' '}
         or a <strong className="text-primary">free staycation</strong> on your
         next booking.
       </p>
@@ -267,7 +267,7 @@ function SlotReelPlaceholder() {
           <div className="flex items-center gap-3">
             <Ticket className="size-6 shrink-0" aria-hidden />
             <p className="text-sm font-semibold tracking-wide sm:text-base">
-              {formatVoucherDiscountRange()}
+              {formatVoucherDiscountMaxLabel()}
             </p>
           </div>
           <p className="text-sm font-bold uppercase tracking-wider text-primary/80 sm:text-lg">

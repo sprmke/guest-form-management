@@ -20,6 +20,8 @@ import { toast } from 'sonner';
 import { formatMoney } from '@/features/admin/lib/formatters';
 import type { BookingRow } from '@/features/admin/lib/types';
 import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
+import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
+import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
@@ -133,6 +135,7 @@ export function ParkingRequestForm({
   variant = 'workflow',
 }: Props) {
   const uploadMut = useUploadBookingAsset();
+  const clearAssetMut = useClearBookingAsset();
   const [uploadingField, setUploadingField] = useState<
     'endorsement' | 'receipt' | null
   >(null);
@@ -318,6 +321,51 @@ export function ParkingRequestForm({
     }
   }
 
+  async function handleRemoveEndorsement() {
+    setCurrentEndorsementUrl('');
+    setEndorsementPreviewBust(0);
+    setValue('parking_endorsement_url', '', {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    if (endorsementInputRef.current) endorsementInputRef.current.value = '';
+    if (readOnly) return;
+    try {
+      await clearAssetMut.mutateAsync({
+        bookingId: booking.id,
+        assetType: 'parking_endorsement',
+      });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove endorsement',
+      );
+    }
+  }
+
+  async function handleRemoveParkingReceipt() {
+    setCurrentReceiptUrl('');
+    setReceiptPreviewBust(0);
+    setReceiptAiVerdict(null);
+    setReceiptAiSummary('');
+    stashedReceiptRef.current = null;
+    setValue('parking_payment_receipt_url', '', {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    if (receiptInputRef.current) receiptInputRef.current.value = '';
+    if (readOnly) return;
+    try {
+      await clearAssetMut.mutateAsync({
+        bookingId: booking.id,
+        assetType: 'parking_payment_receipt',
+      });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to remove receipt',
+      );
+    }
+  }
+
   const cardTitle =
     variant === 'edit'
       ? workflowFormEditTitle('Parking request')
@@ -387,36 +435,45 @@ export function ParkingRequestForm({
         <input type="hidden" {...register('parking_endorsement_url')} />
         <div className="space-y-2">
           {currentEndorsementUrl ? (
-            <a
-              href={withStorageUrlCacheBust(
-                currentEndorsementUrl,
-                endorsementPreviewBust || null,
-              )}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={workflowAssetPreviewCard}
-            >
-              <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
-                <img
-                  key={endorsementPreviewBust}
-                  src={withStorageUrlCacheBust(
+            <WorkflowAssetPreviewWithRemove
+              readOnly={readOnly}
+              removing={clearAssetMut.isPending}
+              uploading={endorsementUploading}
+              removeAriaLabel="Remove parking endorsement"
+              onRemove={() => void handleRemoveEndorsement()}
+              preview={
+                <a
+                  href={withStorageUrlCacheBust(
                     currentEndorsementUrl,
                     endorsementPreviewBust || null,
                   )}
-                  alt="Parking endorsement"
-                  className="object-cover w-full h-full"
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-foreground">
-                  Current endorsement
-                </p>
-                <p className={workflowAssetViewLink}>
-                  <ExternalLink className="size-3 shrink-0" />
-                  View image
-                </p>
-              </div>
-            </a>
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={workflowAssetPreviewCard}
+                >
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <img
+                      key={endorsementPreviewBust}
+                      src={withStorageUrlCacheBust(
+                        currentEndorsementUrl,
+                        endorsementPreviewBust || null,
+                      )}
+                      alt="Parking endorsement"
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium text-foreground">
+                      Current endorsement
+                    </p>
+                    <p className={workflowAssetViewLink}>
+                      <ExternalLink className="size-3 shrink-0" />
+                      View image
+                    </p>
+                  </div>
+                </a>
+              }
+            />
           ) : (
             <div className="flex justify-center items-center h-14 text-xs bg-card rounded-lg border border-dashed border-border text-muted-foreground">
               <span className="inline-flex items-center gap-1.5">
@@ -549,36 +606,45 @@ export function ParkingRequestForm({
           <input type="hidden" {...register('parking_payment_receipt_url')} />
           <div className="space-y-2">
             {currentReceiptUrl ? (
-              <a
-                href={withStorageUrlCacheBust(
-                  currentReceiptUrl,
-                  receiptPreviewBust || null,
-                )}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={workflowAssetPreviewCard}
-              >
-                <div className="overflow-hidden w-12 h-12 rounded-md shrink-0 bg-muted">
-                  <img
-                    key={receiptPreviewBust}
-                    src={withStorageUrlCacheBust(
+              <WorkflowAssetPreviewWithRemove
+                readOnly={readOnly}
+                removing={clearAssetMut.isPending}
+                uploading={receiptUploading}
+                removeAriaLabel="Remove parking payment receipt"
+                onRemove={() => void handleRemoveParkingReceipt()}
+                preview={
+                  <a
+                    href={withStorageUrlCacheBust(
                       currentReceiptUrl,
                       receiptPreviewBust || null,
                     )}
-                    alt="Parking payment receipt"
-                    className="object-cover w-full h-full"
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground">
-                    Current receipt
-                  </p>
-                  <p className={workflowAssetViewLink}>
-                    <ExternalLink className="size-3 shrink-0" />
-                    View image
-                  </p>
-                </div>
-              </a>
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={workflowAssetPreviewCard}
+                  >
+                    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                      <img
+                        key={receiptPreviewBust}
+                        src={withStorageUrlCacheBust(
+                          currentReceiptUrl,
+                          receiptPreviewBust || null,
+                        )}
+                        alt="Parking payment receipt"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium text-foreground">
+                        Current receipt
+                      </p>
+                      <p className={workflowAssetViewLink}>
+                        <ExternalLink className="size-3 shrink-0" />
+                        View image
+                      </p>
+                    </div>
+                  </a>
+                }
+              />
             ) : (
               <div className="flex justify-center items-center h-14 text-xs bg-card rounded-lg border border-dashed border-border text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">

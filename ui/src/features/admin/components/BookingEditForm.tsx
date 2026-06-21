@@ -50,6 +50,8 @@ import {
   useUploadBookingAsset,
   type GuestDocAssetType,
 } from '@/features/admin/hooks/useUploadBookingAsset';
+import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
+import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
 import {
   receiptAiUploadToastMessage,
   showDocumentAiModelErrorToast,
@@ -789,7 +791,7 @@ function DocumentsSection({
   return (
     <Section title="Documents" className="space-y-4">
       <p className="text-xs font-medium text-muted-foreground">
-        Replacing a file uploads it immediately — no need to press Save.
+        Replacing or removing a file updates immediately — no need to press Save.
       </p>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         {docs.map((doc) => (
@@ -818,6 +820,7 @@ function DocumentReplacer({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadMut = useUploadBookingAsset();
+  const clearAssetMut = useClearBookingAsset();
   const [justUploaded, setJustUploaded] = useState(false);
   const [thumbFailed, setThumbFailed] = useState(false);
 
@@ -868,7 +871,21 @@ function DocumentReplacer({
     if (inputRef.current) inputRef.current.value = '';
   }
 
+  async function handleRemove() {
+    setThumbFailed(false);
+    setJustUploaded(false);
+    if (inputRef.current) inputRef.current.value = '';
+    try {
+      await clearAssetMut.mutateAsync({ bookingId, assetType });
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : `Failed to remove ${label}`,
+      );
+    }
+  }
+
   const isLoading = uploadMut.isPending;
+  const isRemoving = clearAssetMut.isPending;
   const docType = displayUrl ? getDocType(displayUrl) : 'file';
   const showImageThumb = docType === 'image' && !thumbFailed;
 
@@ -879,35 +896,43 @@ function DocumentReplacer({
       </p>
 
       {currentUrl ? (
-        <button
-          type="button"
-          aria-label={`Preview ${label}`}
-          onClick={() => void onPreview(label, currentUrl)}
-          className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border/55 bg-card p-2 text-left transition-colors hover:border-primary/30 hover:bg-muted/20"
-        >
-          {showImageThumb ? (
-            <div className="overflow-hidden w-14 h-14 rounded-md shrink-0 bg-muted">
-              <img
-                src={displayUrl}
-                alt=""
-                className="object-cover w-full h-full"
-                onError={() => setThumbFailed(true)}
-              />
-            </div>
-          ) : (
-            <div className="flex justify-center items-center w-14 h-14 bg-red-50 rounded-md shrink-0 dark:bg-red-500/15">
-              <FileText className="text-red-400 size-6 dark:text-red-300" />
-            </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium truncate text-muted-foreground">
-              Current file
-            </p>
-            <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline dark:text-blue-400">
-              View
-            </p>
-          </div>
-        </button>
+        <WorkflowAssetPreviewWithRemove
+          removing={isRemoving}
+          uploading={isLoading}
+          removeAriaLabel={`Remove ${label}`}
+          onRemove={() => void handleRemove()}
+          preview={
+            <button
+              type="button"
+              aria-label={`Preview ${label}`}
+              onClick={() => void onPreview(label, currentUrl)}
+              className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border/55 bg-card p-2 text-left transition-colors hover:border-primary/30 hover:bg-muted/20"
+            >
+              {showImageThumb ? (
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
+                  <img
+                    src={displayUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={() => setThumbFailed(true)}
+                  />
+                </div>
+              ) : (
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-red-50 dark:bg-red-500/15">
+                  <FileText className="size-6 text-red-400 dark:text-red-300" />
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-muted-foreground">
+                  Current file
+                </p>
+                <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline dark:text-blue-400">
+                  View
+                </p>
+              </div>
+            </button>
+          }
+        />
       ) : (
         <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border/70 bg-card/80 text-xs text-muted-foreground">
           No file uploaded
@@ -924,14 +949,14 @@ function DocumentReplacer({
       />
       <button
         type="button"
-        disabled={isLoading}
+        disabled={isLoading || isRemoving}
         onClick={() => inputRef.current?.click()}
         className={cn(
           'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
           justUploaded
             ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30'
             : 'bg-card text-foreground ring-1 ring-border/50 hover:bg-muted/40 hover:ring-primary/20 dark:ring-border/60',
-          isLoading && 'opacity-60 cursor-not-allowed',
+          (isLoading || isRemoving) && 'cursor-not-allowed opacity-60',
         )}
       >
         {isLoading ? (

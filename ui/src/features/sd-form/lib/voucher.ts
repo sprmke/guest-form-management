@@ -65,11 +65,10 @@ export const VOUCHER_REEL_POOL: ReadonlyArray<Voucher> = VOUCHER_WIN_POOL.flatMa
   },
 );
 
-export const VOUCHER_DISCOUNT_MIN = 100;
 export const VOUCHER_DISCOUNT_MAX = 1000;
 
-export function formatVoucherDiscountRange(): string {
-  return `₱${VOUCHER_DISCOUNT_MIN.toLocaleString('en-PH')}–₱${VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} discount`;
+export function formatVoucherDiscountMaxLabel(): string {
+  return `up to ₱${VOUCHER_DISCOUNT_MAX.toLocaleString('en-PH')} discount`;
 }
 
 export function isStaycationVoucher(v: { code: string }): boolean {
