@@ -88,7 +88,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
   useEffect(() => {
     if (!open || !interval || !seriesStart || !seriesEnd) return;
     setExtendBeforeUntil(suggestExtendBefore(seriesStart, interval));
-    setExtendAfterUntil(suggestExtendAfter(seriesEnd, interval));
+    setExtendAfterUntil(suggestExtendAfter(seriesEnd, interval, seriesStart));
   }, [open, interval, seriesStart, seriesEnd]);
 
   const summary = useMemo(() => {

@@ -196,17 +196,30 @@ export async function extendRecurringSeries(
   const minDate = existing[0].scheduled_on;
   const maxDate = existing[existing.length - 1].scheduled_on;
   const until = extendUntil.slice(0, 10);
+  const primaryDay = Number(minDate.slice(8, 10));
 
   let candidateDates: string[] = [];
   if (direction === "after") {
     if (until <= maxDate)
       throw new Error("extend_until_must_be_after_series_end");
-    const firstNew = addRecurrenceInterval(maxDate, interval);
-    candidateDates = generateRecurrenceDates(firstNew, interval, until);
+    const firstNew = addRecurrenceInterval(maxDate, interval, primaryDay);
+    candidateDates = generateRecurrenceDates(
+      firstNew,
+      interval,
+      until,
+      500,
+      primaryDay,
+    );
   } else {
     if (until >= minDate)
       throw new Error("extend_until_must_be_before_series_start");
-    candidateDates = generateRecurrenceDatesBackward(minDate, interval, until);
+    candidateDates = generateRecurrenceDatesBackward(
+      minDate,
+      interval,
+      until,
+      500,
+      primaryDay,
+    );
   }
 
   const newDates = candidateDates.filter((d) => !existingDates.has(d));

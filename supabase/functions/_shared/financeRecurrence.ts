@@ -1,11 +1,13 @@
 /**
- * Recurrence helpers for finance_line_items — materialized occurrence dates.
+ * Shared recurrence helpers for finance + maintenance — keep in sync with
+ * ui/src/features/finance/lib/recurrence.ts (twice_monthly slot logic).
  */
 
 export type RecurrenceInterval =
   | 'daily'
   | 'weekly'
   | 'monthly'
+  | 'twice_monthly'
   | 'every_2_months'
   | 'quarterly'
   | 'yearly';
@@ -16,6 +18,7 @@ const INTERVALS: ReadonlySet<string> = new Set([
   'daily',
   'weekly',
   'monthly',
+  'twice_monthly',
   'every_2_months',
   'quarterly',
   'yearly',
@@ -43,11 +46,60 @@ function daysInMonth(y: number, m: number): number {
   return new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
 
+function twiceMonthlySlots(
+  primaryDay: number,
+  y: number,
+  m: number,
+): { first: number; second: number } {
+  const dim = daysInMonth(y, m);
+  const first = Math.min(primaryDay, dim);
+  const second = Math.min(primaryDay + 15, dim);
+  return { first, second };
+}
+
+function addTwiceMonthly(iso: string, primaryDay: number): string {
+  const { y, m, d } = parseIso(iso);
+  const { first, second } = twiceMonthlySlots(primaryDay, y, m);
+  if (d === first && second > first) {
+    return formatIso(y, m, second);
+  }
+  let nm = m + 1;
+  let ny = y;
+  if (nm > 12) {
+    nm = 1;
+    ny += 1;
+  }
+  const { first: nextFirst } = twiceMonthlySlots(primaryDay, ny, nm);
+  return formatIso(ny, nm, nextFirst);
+}
+
+function subtractTwiceMonthly(iso: string, primaryDay: number): string {
+  const { y, m, d } = parseIso(iso);
+  const { first, second } = twiceMonthlySlots(primaryDay, y, m);
+  if (d === second && second > first) {
+    return formatIso(y, m, first);
+  }
+  let nm = m - 1;
+  let ny = y;
+  if (nm < 1) {
+    nm = 12;
+    ny -= 1;
+  }
+  const { first: prevFirst, second: prevSecond } = twiceMonthlySlots(
+    primaryDay,
+    ny,
+    nm,
+  );
+  return formatIso(ny, nm, prevSecond > prevFirst ? prevSecond : prevFirst);
+}
+
 export function addRecurrenceInterval(
   iso: string,
   interval: RecurrenceInterval,
+  primaryDay?: number,
 ): string {
   const { y, m, d } = parseIso(iso);
+  const anchorDay = primaryDay ?? d;
   switch (interval) {
     case 'daily': {
       const t = Date.UTC(y, m - 1, d + 1);
@@ -66,9 +118,11 @@ export function addRecurrenceInterval(
         nm = 1;
         ny += 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'twice_monthly':
+      return addTwiceMonthly(iso, anchorDay);
     case 'every_2_months': {
       let nm = m + 2;
       let ny = y;
@@ -76,7 +130,7 @@ export function addRecurrenceInterval(
         nm -= 12;
         ny += 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
     case 'quarterly': {
@@ -86,19 +140,21 @@ export function addRecurrenceInterval(
         nm -= 12;
         ny += 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
     case 'yearly':
-      return formatIso(y + 1, m, Math.min(d, daysInMonth(y + 1, m)));
+      return formatIso(y + 1, m, Math.min(anchorDay, daysInMonth(y + 1, m)));
   }
 }
 
 export function subtractRecurrenceInterval(
   iso: string,
   interval: RecurrenceInterval,
+  primaryDay?: number,
 ): string {
   const { y, m, d } = parseIso(iso);
+  const anchorDay = primaryDay ?? d;
   switch (interval) {
     case 'daily': {
       const t = Date.UTC(y, m - 1, d - 1);
@@ -117,9 +173,11 @@ export function subtractRecurrenceInterval(
         nm = 12;
         ny -= 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'twice_monthly':
+      return subtractTwiceMonthly(iso, anchorDay);
     case 'every_2_months': {
       let nm = m - 2;
       let ny = y;
@@ -127,7 +185,7 @@ export function subtractRecurrenceInterval(
         nm += 12;
         ny -= 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
     case 'quarterly': {
@@ -137,11 +195,11 @@ export function subtractRecurrenceInterval(
         nm += 12;
         ny -= 1;
       }
-      const nd = Math.min(d, daysInMonth(ny, nm));
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
     case 'yearly':
-      return formatIso(y - 1, m, Math.min(d, daysInMonth(y - 1, m)));
+      return formatIso(y - 1, m, Math.min(anchorDay, daysInMonth(y - 1, m)));
   }
 }
 
@@ -159,9 +217,10 @@ export function defaultRecurrenceUntil(
       return formatIso(nd.getUTCFullYear(), nd.getUTCMonth() + 1, nd.getUTCDate());
     }
     case 'monthly':
+    case 'twice_monthly':
     case 'every_2_months':
     case 'quarterly': {
-      let nm = m + (interval === 'monthly' ? 24 : 24);
+      let nm = m + 24;
       let ny = y;
       while (nm > 12) {
         nm -= 12;
@@ -191,13 +250,15 @@ export function generateRecurrenceDates(
   interval: RecurrenceInterval,
   until: string,
   maxCount = 500,
+  seriesPrimaryDay?: number,
 ): string[] {
   if (until < start) return [start];
+  const primaryDay = seriesPrimaryDay ?? parseIso(start).d;
   const dates: string[] = [];
   let cur = start;
   while (cur <= until && dates.length < maxCount) {
     dates.push(cur);
-    const next = addRecurrenceInterval(cur, interval);
+    const next = addRecurrenceInterval(cur, interval, primaryDay);
     if (next <= cur) break;
     cur = next;
   }
@@ -210,13 +271,15 @@ export function generateRecurrenceDatesBackward(
   interval: RecurrenceInterval,
   until: string,
   maxCount = 500,
+  seriesPrimaryDay?: number,
 ): string[] {
   if (until > anchor) return [];
+  const primaryDay = seriesPrimaryDay ?? parseIso(anchor).d;
   const dates: string[] = [];
-  let cur = subtractRecurrenceInterval(anchor, interval);
+  let cur = subtractRecurrenceInterval(anchor, interval, primaryDay);
   while (cur >= until && dates.length < maxCount) {
     dates.unshift(cur);
-    const prev = subtractRecurrenceInterval(cur, interval);
+    const prev = subtractRecurrenceInterval(cur, interval, primaryDay);
     if (prev >= cur) break;
     cur = prev;
   }

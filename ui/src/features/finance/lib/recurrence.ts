@@ -3,6 +3,7 @@ export type RecurrenceInterval =
   | "daily"
   | "weekly"
   | "monthly"
+  | "twice_monthly"
   | "every_2_months"
   | "quarterly"
   | "yearly";
@@ -78,6 +79,7 @@ export const RECURRENCE_INTERVAL_OPTIONS: {
   { value: "daily", label: "Daily" },
   { value: "weekly", label: "Weekly" },
   { value: "monthly", label: "Monthly" },
+  { value: "twice_monthly", label: "Twice a month" },
   { value: "every_2_months", label: "Every 2 months" },
   { value: "quarterly", label: "Quarterly" },
   { value: "yearly", label: "Yearly" },
@@ -128,9 +130,57 @@ function daysInMonth(y: number, m: number): number {
   return new Date(y, m, 0).getDate();
 }
 
+function twiceMonthlySlots(
+  primaryDay: number,
+  y: number,
+  m: number,
+): { first: number; second: number } {
+  const dim = daysInMonth(y, m);
+  const first = Math.min(primaryDay, dim);
+  const second = Math.min(primaryDay + 15, dim);
+  return { first, second };
+}
+
+function addTwiceMonthly(iso: string, primaryDay: number): string {
+  const { y, m, d } = parseIso(iso);
+  const { first, second } = twiceMonthlySlots(primaryDay, y, m);
+  if (d === first && second > first) {
+    return formatIso(y, m, second);
+  }
+  let nm = m + 1;
+  let ny = y;
+  if (nm > 12) {
+    nm = 1;
+    ny += 1;
+  }
+  const { first: nextFirst } = twiceMonthlySlots(primaryDay, ny, nm);
+  return formatIso(ny, nm, nextFirst);
+}
+
+function subtractTwiceMonthly(iso: string, primaryDay: number): string {
+  const { y, m, d } = parseIso(iso);
+  const { first, second } = twiceMonthlySlots(primaryDay, y, m);
+  if (d === second && second > first) {
+    return formatIso(y, m, first);
+  }
+  let nm = m - 1;
+  let ny = y;
+  if (nm < 1) {
+    nm = 12;
+    ny -= 1;
+  }
+  const { first: prevFirst, second: prevSecond } = twiceMonthlySlots(
+    primaryDay,
+    ny,
+    nm,
+  );
+  return formatIso(ny, nm, prevSecond > prevFirst ? prevSecond : prevFirst);
+}
+
 function addInterval(
   iso: string,
   interval: Exclude<RecurrenceInterval, "none">,
+  primaryDay?: number,
 ): string {
   const { y, m, d } = parseIso(iso);
   const date = new Date(y, m - 1, d);
@@ -148,6 +198,8 @@ function addInterval(
       date.setDate(Math.min(day, last));
       break;
     }
+    case "twice_monthly":
+      return addTwiceMonthly(iso, primaryDay ?? d);
     case "every_2_months": {
       const day = date.getDate();
       date.setMonth(date.getMonth() + 2);
@@ -172,6 +224,7 @@ function addInterval(
 function subtractInterval(
   iso: string,
   interval: Exclude<RecurrenceInterval, "none">,
+  primaryDay?: number,
 ): string {
   const { y, m, d } = parseIso(iso);
   const date = new Date(y, m - 1, d);
@@ -189,6 +242,8 @@ function subtractInterval(
       date.setDate(Math.min(day, last));
       break;
     }
+    case "twice_monthly":
+      return subtractTwiceMonthly(iso, primaryDay ?? d);
     case "every_2_months": {
       const day = date.getDate();
       date.setMonth(date.getMonth() - 2);
@@ -215,8 +270,11 @@ export function suggestExtendBefore(
   seriesStart: string,
   interval: Exclude<RecurrenceInterval, "none">,
 ): string {
+  const primaryDay = parseIso(seriesStart).d;
   let cur = seriesStart;
-  for (let i = 0; i < 12; i += 1) cur = subtractInterval(cur, interval);
+  for (let i = 0; i < 12; i += 1) {
+    cur = subtractInterval(cur, interval, primaryDay);
+  }
   return cur;
 }
 
@@ -224,9 +282,13 @@ export function suggestExtendBefore(
 export function suggestExtendAfter(
   seriesEnd: string,
   interval: Exclude<RecurrenceInterval, "none">,
+  seriesStart?: string,
 ): string {
+  const primaryDay = parseIso(seriesStart ?? seriesEnd).d;
   let cur = seriesEnd;
-  for (let i = 0; i < 12; i += 1) cur = addInterval(cur, interval);
+  for (let i = 0; i < 12; i += 1) {
+    cur = addInterval(cur, interval, primaryDay);
+  }
   return cur;
 }
 
@@ -242,13 +304,15 @@ export function generateRecurrenceDates(
   interval: Exclude<RecurrenceInterval, "none">,
   until: string,
   maxCount = 500,
+  seriesPrimaryDay?: number,
 ): string[] {
   if (until < start) return [start];
+  const primaryDay = seriesPrimaryDay ?? parseIso(start).d;
   const dates: string[] = [];
   let cur = start;
   while (cur <= until && dates.length < maxCount) {
     dates.push(cur);
-    const next = addInterval(cur, interval);
+    const next = addInterval(cur, interval, primaryDay);
     if (next <= cur) break;
     cur = next;
   }
@@ -345,6 +409,7 @@ export function defaultRecurrenceUntil(
   const { y, m, d } = parseIso(start);
   if (
     interval === "monthly" ||
+    interval === "twice_monthly" ||
     interval === "every_2_months" ||
     interval === "quarterly"
   ) {

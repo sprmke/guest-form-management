@@ -41,6 +41,7 @@ const schema = z
       "daily",
       "weekly",
       "monthly",
+      "twice_monthly",
       "every_2_months",
       "quarterly",
       "yearly",
