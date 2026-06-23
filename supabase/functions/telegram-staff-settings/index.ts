@@ -10,9 +10,11 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   ensureStaffSettingsRow,
   renderStaffDraftPreview,
+  renderStaffNoBookingsDraftPreview,
   renderStaffSameDayCheckinDraftPreview,
   sanitizeStaffDailySummaryTemplate,
   sendStaffDraftPreview,
+  sendStaffNoBookingsDraftPreview,
   sendStaffSameDayCheckinDraftPreview,
   serializeStaffSettings,
   verifyStaffTelegramEnv,
@@ -55,6 +57,12 @@ serve(async (req) => {
       if (typeof body.dailySummaryTemplate === 'string') {
         patch.daily_summary_template = sanitizeStaffDailySummaryTemplate(
           body.dailySummaryTemplate.slice(0, 8000),
+        );
+      }
+
+      if (typeof body.dailySummaryNoBookingsTemplate === 'string') {
+        patch.daily_summary_no_bookings_template = sanitizeStaffDailySummaryTemplate(
+          body.dailySummaryNoBookingsTemplate.slice(0, 8000),
         );
       }
 
@@ -127,7 +135,9 @@ serve(async (req) => {
         const preview =
           scenario === 'same_day_checkin'
             ? await sendStaffSameDayCheckinDraftPreview(text.slice(0, 8000))
-            : await sendStaffDraftPreview(text.slice(0, 8000));
+            : scenario === 'daily_summary_no_bookings'
+              ? await sendStaffNoBookingsDraftPreview(text.slice(0, 8000))
+              : await sendStaffDraftPreview(text.slice(0, 8000));
         return new Response(
           JSON.stringify({
             success: preview.sent,
@@ -157,7 +167,9 @@ serve(async (req) => {
         const rendered =
           scenario === 'same_day_checkin'
             ? await renderStaffSameDayCheckinDraftPreview(text.slice(0, 8000))
-            : await renderStaffDraftPreview(text.slice(0, 8000));
+            : scenario === 'daily_summary_no_bookings'
+              ? await renderStaffNoBookingsDraftPreview(text.slice(0, 8000))
+              : await renderStaffDraftPreview(text.slice(0, 8000));
         if (rendered.error || !rendered.renderedText) {
           return new Response(
             JSON.stringify({ success: false, error: rendered.error ?? 'render_failed' }),

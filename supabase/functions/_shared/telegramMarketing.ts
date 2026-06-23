@@ -46,6 +46,7 @@ export const TELEGRAM_KNOWN_PLACEHOLDERS = [
   'month_name',
   'dates_list',
   'cancellation_dates',
+  'urgency_text',
 ] as const;
 
 export type TelegramKnownPlaceholder = (typeof TELEGRAM_KNOWN_PLACEHOLDERS)[number];
@@ -79,6 +80,13 @@ export class TelegramTemplateError extends Error {
     super(message);
     this.name = 'TelegramTemplateError';
   }
+}
+
+/** Daily urgency opener: "today," | "tomorrow," | "this" from nearest free check-in. */
+export function formatUrgencyText(daysOut: number): string {
+  if (daysOut === 0) return 'today,';
+  if (daysOut === 1) return 'tomorrow,';
+  return 'this';
 }
 
 /** Live values from the booking calendar (Manila). Throws if a token in the template cannot be filled. */
@@ -154,6 +162,16 @@ export async function resolveTemplatePlaceholderVars(
       normalizeBookingDateToYmd(ci) ?? ci,
       normalizeBookingDateToYmd(co) ?? co,
     );
+  }
+
+  if (keySet.has('urgency_text')) {
+    const earliest = earliestAvailableCheckInYmd(blocked, todayYmd);
+    if (!earliest) {
+      throw new TelegramTemplateError(
+        'No available check-in dates in the calendar for {{urgency_text}}.',
+      );
+    }
+    vars.urgency_text = formatUrgencyText(calendarDaysBetween(todayYmd, earliest));
   }
 
   return vars;
@@ -669,6 +687,7 @@ export function serializeTelegramSettings(row: TelegramMarketingSettings) {
       '{{month_name}} — current month name from the booking calendar',
       '{{dates_list}} — free check-in day numbers this month',
       '{{cancellation_dates}} — freed dates from the cancelled stay window',
+      '{{urgency_text}} — daily urgency opener: "today," | "tomorrow," | "this" (nearest free check-in)',
     ],
   };
 }
@@ -697,7 +716,7 @@ export async function ensureTelegramSettingsRow(): Promise<void> {
     daily_reminder_times_manila: DEFAULT_MANILA_REMINDER_SLOTS,
     daily_default_template: 'Pa up and share po ka-uppers! Salamuch!',
     daily_urgency_template:
-      'Available this {{available_dates}}. Book now and get huge last minute discount!',
+      'Available {{urgency_text}} {{month_name}} {{dates_list}}. Book now and get huge last minute discount!',
     new_booking_template:
       'Available next dates: {{month_name}} {{dates_list}}. Book now and get huge discount for this month!',
     cancellation_template:

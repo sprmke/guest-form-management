@@ -14,11 +14,26 @@ import { normalizeTelegramChatId } from './telegramMarketing.ts';
 import { formatTimeForDisplay, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts';
 import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 
+export const DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE =
+  '📋 No bookings for today.\n\n' +
+  'Kindly do a general cleaning, especially the following items:\n\n' +
+  '* Clean the aircon filter\n' +
+  '* Clean the tower fan\n' +
+  '* Clean behind the sofa\n' +
+  '* Clean the exhaust fan\n' +
+  '* Remove dust and cobwebs from the ceiling\n' +
+  '* Clean the balcony (including underneath the grass)\n' +
+  '* Clean the bathroom tiles & shower head\n' +
+  '* Clean the walls and cabinets\n\n' +
+  'Next Bookings\n' +
+  '{{next_bookings}}';
+
 export type TelegramStaffSettings = {
   id: number;
   enabled: boolean;
   notify_on_same_day_checkin: boolean;
   daily_summary_template: string;
+  daily_summary_no_bookings_template: string;
   same_day_checkin_template: string;
   daily_summary_time_manila: unknown;
   updated_at: string;
@@ -511,6 +526,35 @@ export async function renderStaffSameDayCheckinDraftPreview(
   };
 }
 
+/** In-app preview: no-bookings daily summary — fills {{next_bookings}} only (same as cron). */
+export async function renderStaffNoBookingsDraftPreview(
+  template: string,
+): Promise<StaffDraftRenderResult> {
+  const trimmed = template.trim();
+  if (!trimmed) return { error: 'empty_message' };
+
+  const todayYmd = manilaTodayYmd();
+  const todayBookings = await queryTodayBookings(todayYmd);
+  const nextBookings = await queryNextDaysBookings(todayYmd, 3);
+  const nextBookingsText = buildNextBookingsText(nextBookings);
+  const placeholders: Record<string, string> = { next_bookings: nextBookingsText };
+
+  const renderedText = applyPlaceholders(
+    sanitizeStaffDailySummaryTemplate(trimmed),
+    placeholders,
+  );
+  const unresolved = renderedText.match(/\{\{[^}]+\}\}/g);
+  if (unresolved?.length) {
+    console.warn('[telegram-staff] no-bookings draft preview unresolved:', unresolved.join(', '));
+  }
+
+  return {
+    renderedText,
+    placeholders,
+    todayBookingCount: todayBookings.length,
+  };
+}
+
 /** In-app preview: fill placeholders from today's first check-in + next 3 days (same as cron). */
 export async function renderStaffDraftPreview(
   template: string,
@@ -565,6 +609,27 @@ export async function sendStaffSameDayCheckinDraftPreview(
     sent: true,
     messageCharCount: rendered.renderedText.length,
     previewGuestName: rendered.previewGuestName,
+    todayBookingCount: rendered.todayBookingCount,
+  };
+}
+
+/** Admin preview: no-bookings daily summary with live next 3 days. */
+export async function sendStaffNoBookingsDraftPreview(
+  template: string,
+): Promise<StaffDraftPreviewResult> {
+  const rendered = await renderStaffNoBookingsDraftPreview(template);
+  if (rendered.error || !rendered.renderedText) {
+    return { sent: false, error: rendered.error ?? 'empty_message' };
+  }
+
+  const r = await sendStaffAdminPreview(rendered.renderedText);
+  if (!r.ok) {
+    return { sent: false, error: r.error ?? 'send_failed' };
+  }
+
+  return {
+    sent: true,
+    messageCharCount: rendered.renderedText.length,
     todayBookingCount: rendered.todayBookingCount,
   };
 }
@@ -632,8 +697,14 @@ export async function runStaffDailySummary(opts?: {
   const nextDaysCount = [...nextBookings.values()].reduce((sum, arr) => sum + arr.length, 0);
 
   if (todayBookings.length === 0) {
-    const noBookingMsg = `📋 No bookings for today.\n\nNext Bookings\n${nextBookingsText}`;
-    const r = await sendStaffTelegramMessage(noBookingMsg);
+    const noBookingTemplate =
+      settings.daily_summary_no_bookings_template?.trim() ||
+      DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE;
+    const noBookingMsg = applyPlaceholders(
+      sanitizeStaffDailySummaryTemplate(noBookingTemplate),
+      { next_bookings: nextBookingsText },
+    );
+    const r = await sendStaffTelegramMessage(noBookingMsg.slice(0, 4096));
     return {
       sent: r.ok,
       mode: r.ok ? 'no_bookings_sent' : 'error',
@@ -754,6 +825,8 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
     enabled: row.enabled,
     notifyOnSameDayCheckin: row.notify_on_same_day_checkin,
     dailySummaryTemplate: row.daily_summary_template,
+    dailySummaryNoBookingsTemplate:
+      row.daily_summary_no_bookings_template || DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE,
     sameDayCheckinTemplate: row.same_day_checkin_template,
     dailySummaryTimeManila: slot,
     dailySummaryUtcCronPreview: `${utcM} ${utcH} * * *`,
@@ -780,7 +853,13 @@ export function serializeStaffSettings(row: TelegramStaffSettings) {
       {
         id: 'daily_summary',
         label: 'Daily summary',
-        trigger: 'Once daily at the configured Manila time',
+        trigger: 'Once daily at the configured Manila time when there are active bookings today',
+        type: 'scheduled',
+      },
+      {
+        id: 'daily_summary_no_bookings',
+        label: 'No bookings daily summary',
+        trigger: 'Once daily at the configured Manila time when there are no active bookings today',
         type: 'scheduled',
       },
       {
@@ -822,6 +901,7 @@ export async function ensureStaffSettingsRow(): Promise<void> {
   const { error: insertError } = await supabase.from('telegram_staff_settings').insert({
     id: 1,
     daily_summary_template: defaultTemplate,
+    daily_summary_no_bookings_template: DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE,
   });
   if (insertError) {
     console.error('ensureStaffSettingsRow insert:', insertError);
