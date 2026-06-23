@@ -72,6 +72,8 @@ const MARKETING_SAMPLES: Record<string, string> = {
   month_name: 'June',
   /** `formatDatesListForMonth` — comma-separated day numbers only */
   dates_list: '18, 19, 20, 21',
+  /** `formatUrgencyText` — nearest free check-in: today, | tomorrow, | this */
+  urgency_text: 'this',
   /** `formatCancellationDatesHuman` — check-in Jun 18, check-out Jun 20 → nights 18–19 */
   cancellation_dates: 'June 18–19',
 };

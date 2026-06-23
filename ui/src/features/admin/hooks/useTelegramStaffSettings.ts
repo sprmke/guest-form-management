@@ -16,6 +16,7 @@ export type TelegramStaffSettingsDto = {
   enabled: boolean;
   notifyOnSameDayCheckin: boolean;
   dailySummaryTemplate: string;
+  dailySummaryNoBookingsTemplate: string;
   sameDayCheckinTemplate: string;
   dailySummaryTimeManila: StaffTimeSlot;
   dailySummaryUtcCronPreview: string;
@@ -29,12 +30,16 @@ export type TelegramStaffSettingsPatch = Partial<
     | 'enabled'
     | 'notifyOnSameDayCheckin'
     | 'dailySummaryTemplate'
+    | 'dailySummaryNoBookingsTemplate'
     | 'sameDayCheckinTemplate'
     | 'dailySummaryTimeManila'
   >
 >;
 
-export type StaffDraftScenario = 'daily_summary' | 'same_day_checkin';
+export type StaffDraftScenario =
+  | 'daily_summary'
+  | 'daily_summary_no_bookings'
+  | 'same_day_checkin';
 
 export type StaffEnvVerifyDto = {
   credentials: {

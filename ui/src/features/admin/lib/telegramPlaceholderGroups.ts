@@ -74,6 +74,10 @@ const MARKETING_PLACEHOLDER_META: Record<
     group: 'Calendar',
     description: 'Freed stay window (e.g. June 18–19)',
   },
+  urgency_text: {
+    group: 'Calendar',
+    description: 'Daily urgency opener: "today," | "tomorrow," | "this"',
+  },
 };
 
 function tokenName(token: string): string {
@@ -83,7 +87,7 @@ function tokenName(token: string): string {
 function inferGroupFromToken(name: string): (typeof GROUP_ORDER)[number] {
   if (/^(primary_guest|guest_)/.test(name)) return 'Guest';
   if (/^(check_in|check_out|nights|pax)$/.test(name)) return 'Stay';
-  if (/^(available_dates|month_name|dates_list|cancellation_dates)$/.test(name)) {
+  if (/^(available_dates|month_name|dates_list|cancellation_dates|urgency_text)$/.test(name)) {
     return 'Calendar';
   }
   if (/^(decor_|pet_|has_decor|has_pets|special_requests)/.test(name)) return 'Flags';

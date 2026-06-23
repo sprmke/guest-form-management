@@ -133,6 +133,7 @@ export function TelegramStaffSettingsCard() {
         enabled: draft.enabled,
         notifyOnSameDayCheckin: draft.notifyOnSameDayCheckin,
         dailySummaryTemplate: draft.dailySummaryTemplate,
+        dailySummaryNoBookingsTemplate: draft.dailySummaryNoBookingsTemplate,
         sameDayCheckinTemplate: draft.sameDayCheckinTemplate,
         dailySummaryTimeManila: draft.dailySummaryTimeManila,
       },
@@ -324,15 +325,24 @@ export function TelegramStaffSettingsCard() {
                     label: 'Daily Summary',
                     templateKey: 'dailySummaryTemplate' as const,
                     scenario: 'daily_summary' as const,
+                    rows: 14,
+                  },
+                  {
+                    id: 'daily_summary_no_bookings',
+                    label: 'No Bookings',
+                    templateKey: 'dailySummaryNoBookingsTemplate' as const,
+                    scenario: 'daily_summary_no_bookings' as const,
+                    rows: 16,
                   },
                   {
                     id: 'same_day_checkin',
                     label: 'Same-Day Check-In Alert',
                     templateKey: 'sameDayCheckinTemplate' as const,
                     scenario: 'same_day_checkin' as const,
+                    rows: 10,
                   },
                 ] as const
-              ).map(({ id, label, templateKey, scenario }) => {
+              ).map(({ id, label, templateKey, scenario, rows }) => {
                 const meta = scenarioMetaById.get(id);
                 const templateValue = String(draft[templateKey] ?? '');
 
@@ -373,7 +383,7 @@ export function TelegramStaffSettingsCard() {
                           labelClassName="sr-only"
                           value={templateValue}
                           disabled={busy}
-                          rows={id === 'daily_summary' ? 14 : 10}
+                          rows={rows}
                           minHeightClassName="min-h-[160px]"
                           mono
                           previewSampleSet="staff"
