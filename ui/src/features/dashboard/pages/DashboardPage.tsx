@@ -92,11 +92,11 @@ export function DashboardPage() {
   return (
     <AdminLayout>
       <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-        <section className="surface-card min-w-0 w-full px-3 py-3 sm:px-4 sm:py-4">
+        <section className="min-w-0 w-full mb-3">
           <AdminPageHeader
             id="dashboard-heading"
             title="Dashboard"
-            subtitle={`${greeting}, ${displayName}.`}
+            subtitle="Overview of your property's insights."
             icon={LayoutDashboard}
             actions={
               <BookingDateRangeFilter

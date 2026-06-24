@@ -10,7 +10,7 @@ function AdminSurfaceCard({
 }: React.ComponentProps<"section">) {
   return (
     <section
-      className={cn("surface-card w-full px-3 py-3 sm:px-4 sm:py-4", className)}
+      className={cn("w-full mb-3", className)}
       {...props}
     >
       {children}
@@ -50,7 +50,7 @@ export function AdminPageHeaderSkeleton({
   }
 
   return (
-    <section className="surface-card w-full px-3 py-3 sm:px-4 sm:py-4">
+    <section className="w-full mb-3">
       {content}
     </section>
   );
@@ -788,7 +788,7 @@ function DashboardChartCardHeaderSkeleton({
     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 items-start gap-2">
         <Skeleton className="icon-well-sm shrink-0 rounded-lg" />
-        <div className="min-w-0 space-y-1.5">
+        <div className="min-w-0 space-y-1">
           <Skeleton className="h-4 w-28" />
           <Skeleton className="h-3 w-40 max-w-full" />
         </div>

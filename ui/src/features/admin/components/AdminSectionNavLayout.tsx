@@ -244,7 +244,7 @@ export function AdminSectionNavLayout({
         )}
       >
         {header ? (
-          <div className="relative z-20 hidden shrink-0 bg-background pb-3 lg:block">
+          <div className="relative z-20 hidden shrink-0 bg-background lg:block">
             {header}
           </div>
         ) : null}

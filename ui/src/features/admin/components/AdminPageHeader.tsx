@@ -48,7 +48,7 @@ export function AdminPageHeader({
         !useCard && className,
       )}
     >
-      <div className="min-w-0 space-y-1.5">
+      <div className="min-w-0 space-y-1">
         <div className="flex items-center gap-2.5">
           {Icon ? (
             <Icon
@@ -84,7 +84,7 @@ export function AdminPageHeader({
   return (
     <section
       className={cn(
-        'surface-card w-full px-3 py-3 sm:px-4 sm:py-4',
+        'w-full mb-3',
         sticky &&
           'lg:sticky lg:top-5 lg:z-10 lg:bg-card lg:shadow-sm',
         className,

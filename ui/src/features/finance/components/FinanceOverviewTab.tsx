@@ -80,7 +80,7 @@ export function FinanceOverviewTab({
         </p>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <FinanceKpiCard
-            label="Completed net"
+            label="Host net (completed)"
             value={formatMoney(s.hostNetCompleted)}
             icon={Wallet}
             iconBgClassName="bg-emerald-500"
@@ -91,7 +91,7 @@ export function FinanceOverviewTab({
             )}
           />
           <FinanceKpiCard
-            label="Booking rate"
+            label="Agreed stay total"
             value={formatMoney(s.bookingRate)}
             icon={Banknote}
             iconBgClassName="bg-teal-500"

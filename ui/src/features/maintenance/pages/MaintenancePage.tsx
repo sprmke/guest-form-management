@@ -138,6 +138,7 @@ export function MaintenancePage() {
           id="maintenance-heading"
           variant="compact"
           title="Maintenance"
+          subtitle="Set maintenance items and reminders."
           icon={Wrench}
           actions={
             <MaintenanceExportMenu
