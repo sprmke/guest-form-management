@@ -42,7 +42,7 @@ export function MaintenanceRemindersCardGrid({
   return (
     <div
       className={cn(
-        'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+        'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
         'transition-opacity duration-300',
         isRefreshing && 'opacity-60',
       )}
@@ -81,6 +81,9 @@ function MaintenanceReminderCard({
     }
   };
 
+  const recurrenceLabel = recurrenceIntervalLabel(item.recurrence_interval);
+  const isRecurring = Boolean(item.recurrence_series_id);
+
   return (
     <div
       role="button"
@@ -89,55 +92,70 @@ function MaintenanceReminderCard({
       onKeyDown={handleKey}
       aria-label={`Edit reminder ${item.label}`}
       className={cn(
-        'cursor-pointer rounded-xl border border-border/50 bg-card p-3.5 transition-all duration-200 sm:p-4',
+        'flex h-full min-h-[11.5rem] cursor-pointer flex-col overflow-hidden rounded-xl border border-border/50 bg-card transition-all duration-200',
         'hover:-translate-y-0.5 hover:border-border outline-none',
         'focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
       )}
     >
-      <p className="text-[11px] font-medium tabular-nums text-muted-foreground">
-        {formatIsoDate(item.scheduled_on)}
-      </p>
-
-      {item.recurrence_series_id && onOpenSeries ? (
-        <button
-          type="button"
-          className="mt-2 max-w-full text-left"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenSeries();
-          }}
-        >
-          <p className="truncate text-sm font-bold text-foreground underline-offset-2 hover:underline">
-            {item.label}
-          </p>
-          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            <Repeat className="size-3 shrink-0" aria-hidden />
-            {recurrenceIntervalLabel(item.recurrence_interval)}
-          </span>
-        </button>
-      ) : (
-        <p className="mt-2 truncate text-sm font-bold text-foreground">
-          {item.label}
+      <div className="flex min-h-0 flex-1 flex-col px-3.5 pt-3.5 sm:px-4 sm:pt-4">
+        <p className="text-[11px] font-medium tabular-nums text-muted-foreground">
+          {formatIsoDate(item.scheduled_on)}
         </p>
-      )}
 
-      {item.category ? (
-        <p className="mt-1 truncate text-data-secondary">{item.category}</p>
-      ) : null}
+        <div className="mt-2 min-w-0">
+          {isRecurring && onOpenSeries ? (
+            <button
+              type="button"
+              className="max-w-full text-left"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenSeries();
+              }}
+            >
+              <p className="truncate text-sm font-bold text-foreground underline-offset-2 hover:underline">
+                {item.label}
+              </p>
+            </button>
+          ) : (
+            <p className="truncate text-sm font-bold text-foreground">
+              {item.label}
+            </p>
+          )}
 
-      {showStatus && item.telegram_reminder_enabled ? (
-        <div className="mt-2">
-          <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
+          <div className="mt-0.5 flex min-h-4 items-center">
+            {recurrenceLabel ? (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                <Repeat className="size-3 shrink-0" aria-hidden />
+                {recurrenceLabel}
+              </span>
+            ) : (
+              <span className="invisible text-[10px]" aria-hidden>
+                —
+              </span>
+            )}
+          </div>
         </div>
-      ) : null}
 
-      {item.notes ? (
-        <p className="mt-2 line-clamp-2 text-data-secondary">{item.notes}</p>
-      ) : null}
+        <p className="mt-1 min-h-[1.125rem] truncate text-data-secondary">
+          {item.category || '\u00A0'}
+        </p>
 
-      <div className="mt-3 flex justify-end gap-0.5 border-t border-separator pt-3">
-        {item.recurrence_series_id && onOpenSeries ? (
-          <IconAction
+        {showStatus ? (
+          <div className="mt-2 flex min-h-[22px] items-center">
+            {item.telegram_reminder_enabled ? (
+              <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
+            ) : null}
+          </div>
+        ) : null}
+
+        <p className="mt-2 min-h-[2.5rem] line-clamp-2 text-data-secondary">
+          {item.notes?.trim() || '\u00A0'}
+        </p>
+      </div>
+
+      <div className="mt-auto flex justify-end border-t border-separator bg-muted/20 dark:bg-muted/30">
+        {isRecurring && onOpenSeries ? (
+          <CardIconAction
             label="View recurring series"
             onClick={(e) => {
               e.stopPropagation();
@@ -145,9 +163,9 @@ function MaintenanceReminderCard({
             }}
           >
             <Repeat className="size-4" />
-          </IconAction>
+          </CardIconAction>
         ) : null}
-        <IconAction
+        <CardIconAction
           label="Edit"
           onClick={(e) => {
             e.stopPropagation();
@@ -155,31 +173,34 @@ function MaintenanceReminderCard({
           }}
         >
           <Pencil className="size-4" />
-        </IconAction>
-        <IconAction
+        </CardIconAction>
+        <CardIconAction
           label="Delete"
           destructive
+          edge="right"
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
         >
           <Trash2 className="size-4" />
-        </IconAction>
+        </CardIconAction>
       </div>
     </div>
   );
 }
 
-function IconAction({
+function CardIconAction({
   label,
   onClick,
   destructive,
+  edge,
   children,
 }: {
   label: string;
   onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
   destructive?: boolean;
+  edge?: 'left' | 'right';
   children: React.ReactNode;
 }) {
   return (
@@ -188,9 +209,10 @@ function IconAction({
       aria-label={label}
       onClick={onClick}
       className={cn(
-        'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2.5',
+        'inline-flex min-h-[44px] min-w-[44px] items-center justify-center p-2.5',
         'text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground',
         destructive && 'hover:bg-destructive/10 hover:text-destructive',
+        edge === 'right' && 'rounded-br-xl',
       )}
     >
       {children}

@@ -48,8 +48,6 @@ export type BookingPricingSummarySource = Pick<
   | 'sd_additional_profit_items'
   | 'sd_additional_expenses'
   | 'sd_additional_profits'
-  | 'next_stay_voucher_code'
-  | 'next_stay_voucher_amount'
 >;
 
 type Props = {
@@ -200,22 +198,15 @@ export function BookingPricingSummary({
         />
       ) : null}
 
-      {isCompleted ? (
-        <SdRefundSummaryCard
-          booking={booking}
-          voucherCost={fin.voucherCost}
-        />
-      ) : null}
+      {isCompleted ? <SdRefundSummaryCard booking={booking} /> : null}
     </div>
   );
 }
 
 function SdRefundSummaryCard({
   booking,
-  voucherCost,
 }: {
   booking: BookingPricingSummarySource;
-  voucherCost: number;
 }) {
   const refundMethodLabel = booking.sd_refund_method
     ? (SD_REFUND_METHOD_LABELS[booking.sd_refund_method] ??
@@ -260,8 +251,6 @@ function SdRefundSummaryCard({
       phoneConfirmedLabel ||
       guestFeedback,
   );
-
-  const voucherCode = booking.next_stay_voucher_code?.trim() || null;
 
   return (
     <div className="overflow-hidden rounded-lg border border-border/50">
@@ -323,24 +312,6 @@ function SdRefundSummaryCard({
                   {guestFeedback}
                 </p>
               </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-
-      {voucherCode ? (
-        <div className="bg-card px-4 py-3">
-          <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-3 py-2.5 dark:border-emerald-500/30 dark:bg-emerald-500/10">
-            <p className="text-overline text-emerald-800 dark:text-emerald-300">
-              Next-stay voucher
-            </p>
-            <p className="mt-0.5 font-mono text-sm font-bold tracking-wide text-emerald-950 dark:text-emerald-100">
-              {voucherCode}
-            </p>
-            {voucherCost > 0 ? (
-              <p className="mt-0.5 text-caption text-emerald-900/80 dark:text-emerald-200/80">
-                Value {formatMoney(voucherCost)}
-              </p>
             ) : null}
           </div>
         </div>

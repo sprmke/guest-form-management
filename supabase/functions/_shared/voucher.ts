@@ -55,18 +55,19 @@ export const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
 
 /**
  * Relative weights for `rollVoucher()` (total 1000 → divide by 10 for %).
+ * Only ratios matter — any positive sum works; 1000 keeps whole-number percents.
  * `KAME-STAY` is intentionally rare (0.5%).
  */
 export const VOUCHER_WIN_WEIGHTS: ReadonlyArray<{
   code: VoucherCode;
   weight: number;
 }> = [
-  { code: 'KAME-100', weight: 50 },
-  { code: 'KAME-150', weight: 50 },
-  { code: 'KAME-200', weight: 50 },
-  { code: 'KAME-250', weight: 252 },
-  { code: 'KAME-300', weight: 252 },
-  { code: 'KAME-350', weight: 251 },
+  { code: 'KAME-100', weight: 20 },
+  { code: 'KAME-150', weight: 20 },
+  { code: 'KAME-200', weight: 20 },
+  { code: 'KAME-250', weight: 282 },
+  { code: 'KAME-300', weight: 282 },
+  { code: 'KAME-350', weight: 281 },
   { code: 'KAME-400', weight: 30 },
   { code: 'KAME-450', weight: 30 },
   { code: 'KAME-500', weight: 20 },
