@@ -244,11 +244,11 @@ function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload
   y = drawSectionEyebrow(doc, y, 'Summary', 'Key metrics for the selected period');
   const overviewKpis: KpiItem[] = [
     {
-      label: 'Host net (completed)',
+      label: 'Completed net',
       value: pdfMoney(s.hostNetCompleted),
       accent: s.hostNetCompleted >= 0 ? 'positive' : 'negative',
     },
-    { label: 'Agreed stay total', value: pdfMoney(s.bookingRate) },
+    { label: 'Total booking rates', value: pdfMoney(s.bookingRate) },
     { label: 'Other fees', value: pdfMoney(s.otherFees) },
     {
       label: 'Outstanding',
