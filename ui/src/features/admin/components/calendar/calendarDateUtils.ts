@@ -20,6 +20,23 @@ export function parseOccupancyDate(
  * Map each occupied calendar night to its rows.
  * Checkout morning is not an overnight — dates are [check-in, check-out).
  */
+/** Map each row to a single calendar day (transactions, maintenance reminders). */
+export function buildItemsByDate<T>(
+  rows: T[],
+  getDate: (row: T) => string | null | undefined,
+): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const row of rows) {
+    const parsed = parseOccupancyDate(getDate(row));
+    if (!parsed) continue;
+    const key = format(parsed, "yyyy-MM-dd");
+    const existing = map.get(key);
+    if (existing) existing.push(row);
+    else map.set(key, [row]);
+  }
+  return map;
+}
+
 export function buildOccupancyByDay<T>(
   rows: T[],
   getCheckIn: (row: T) => string | null | undefined,
