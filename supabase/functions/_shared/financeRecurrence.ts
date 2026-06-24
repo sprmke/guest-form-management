@@ -10,6 +10,7 @@ export type RecurrenceInterval =
   | 'twice_monthly'
   | 'every_2_months'
   | 'quarterly'
+  | 'every_6_months'
   | 'yearly';
 
 export type RecurrenceEditScope = 'this' | 'this_and_future' | 'all';
@@ -21,6 +22,7 @@ const INTERVALS: ReadonlySet<string> = new Set([
   'twice_monthly',
   'every_2_months',
   'quarterly',
+  'every_6_months',
   'yearly',
 ]);
 
@@ -143,6 +145,16 @@ export function addRecurrenceInterval(
       const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'every_6_months': {
+      let nm = m + 6;
+      let ny = y;
+      while (nm > 12) {
+        nm -= 12;
+        ny += 1;
+      }
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
     case 'yearly':
       return formatIso(y + 1, m, Math.min(anchorDay, daysInMonth(y + 1, m)));
   }
@@ -198,6 +210,16 @@ export function subtractRecurrenceInterval(
       const nd = Math.min(anchorDay, daysInMonth(ny, nm));
       return formatIso(ny, nm, nd);
     }
+    case 'every_6_months': {
+      let nm = m - 6;
+      let ny = y;
+      while (nm < 1) {
+        nm += 12;
+        ny -= 1;
+      }
+      const nd = Math.min(anchorDay, daysInMonth(ny, nm));
+      return formatIso(ny, nm, nd);
+    }
     case 'yearly':
       return formatIso(y - 1, m, Math.min(anchorDay, daysInMonth(y - 1, m)));
   }
@@ -228,6 +250,7 @@ export function defaultRecurrenceUntil(
       }
       return formatIso(ny, nm, Math.min(d, daysInMonth(ny, nm)));
     }
+    case 'every_6_months':
     case 'yearly':
       return formatIso(y + 5, m, Math.min(d, daysInMonth(y + 5, m)));
   }

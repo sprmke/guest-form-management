@@ -215,6 +215,32 @@ serve(async (req) => {
         patch.notes = typeof body.notes === "string" ? body.notes : null;
       }
       patch.telegramReminder = parseMaintenanceTelegramReminderInput(body);
+      const recurrence_interval =
+        body.recurrence_interval === null || body.recurrence_interval === "none"
+          ? undefined
+          : isRecurrenceInterval(body.recurrence_interval)
+            ? body.recurrence_interval
+            : undefined;
+      if (
+        body.recurrence_interval &&
+        body.recurrence_interval !== "none" &&
+        !recurrence_interval
+      ) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid recurrence interval" }),
+          {
+            status: 400,
+            headers: {
+              ...corsHeaders(req),
+              "Content-Type": "application/json",
+            },
+          },
+        );
+      }
+      if (recurrence_interval) patch.recurrence_interval = recurrence_interval;
+      if (typeof body.recurrence_until === "string" && body.recurrence_until) {
+        patch.recurrence_until = body.recurrence_until.slice(0, 10);
+      }
       const result = await updateMaintenanceItem(id, patch, scope);
       return new Response(
         JSON.stringify({

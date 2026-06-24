@@ -25,6 +25,7 @@ import {
   type RecurrenceEditScope,
   type RecurrenceInterval,
 } from "./financeRecurrence.ts";
+import { rebuildMaterializedRecurrenceSeries } from "./recurringSeriesScheduleRebuild.ts";
 import {
   type FinanceTelegramReminderInput,
   normalizeFinanceReminderInterval,
@@ -674,6 +675,8 @@ export async function updateFinanceLineItem(
     occurred_on: string;
     notes: string | null;
     receipt_path: string | null;
+    recurrence_interval: RecurrenceInterval;
+    recurrence_until: string;
     telegramReminder?: FinanceTelegramReminderInput;
   }>,
   scope: RecurrenceEditScope = "this",
@@ -689,30 +692,120 @@ export async function updateFinanceLineItem(
   if (!existing) throw new Error("finance_line_item_not_found");
 
   const row = mapFinanceLineItemRow(existing as Record<string, unknown>);
+  const seriesId = row.recurrence_series_id;
+  const now = new Date().toISOString();
+
+  const contentUpdate: Record<string, unknown> = { updated_at: now };
+  if (patch.kind) contentUpdate.kind = patch.kind;
+  if (patch.label != null) contentUpdate.label = patch.label.slice(0, 200);
+  if (patch.amount != null) contentUpdate.amount = patch.amount;
+  if (patch.category !== undefined) {
+    contentUpdate.category = patch.category?.slice(0, 80) ?? null;
+  }
+  if (patch.notes !== undefined) {
+    contentUpdate.notes = patch.notes?.slice(0, 2000) ?? null;
+  }
+  if (patch.receipt_path !== undefined) {
+    contentUpdate.receipt_path = patch.receipt_path;
+  }
+  const reminderUpdate = reminderFieldsForUpdate(patch.telegramReminder);
+  if (reminderUpdate) {
+    delete reminderUpdate.telegram_due_date;
+    Object.assign(contentUpdate, reminderUpdate);
+  }
+
+  if (seriesId && row.recurrence_interval) {
+    const intervalCandidate = patch.recurrence_interval ?? row.recurrence_interval;
+    if (!isRecurrenceInterval(intervalCandidate)) {
+      throw new Error("invalid_recurrence_interval");
+    }
+
+    let seriesEnd = row.occurred_on;
+    const { data: endRow, error: endErr } = await supabase
+      .from("finance_line_items")
+      .select("occurred_on")
+      .eq("recurrence_series_id", seriesId)
+      .order("occurred_on", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (endErr) {
+      throw new Error(`fetch finance_line_items series end failed: ${endErr.message}`);
+    }
+    if (endRow?.occurred_on) {
+      seriesEnd = String(endRow.occurred_on).slice(0, 10);
+    }
+
+    const untilCandidate = patch.recurrence_until?.slice(0, 10) ?? seriesEnd;
+    const intervalChanged = intervalCandidate !== row.recurrence_interval;
+    const untilChanged = untilCandidate !== seriesEnd;
+
+    if (intervalChanged || untilChanged) {
+      const reminderInput = patch.telegramReminder;
+      return await rebuildMaterializedRecurrenceSeries({
+        supabase,
+        table: "finance_line_items",
+        dateColumn: "occurred_on",
+        seriesId,
+        anchorId: id,
+        newInterval: intervalCandidate,
+        newUntil: untilCandidate,
+        mapRow: mapFinanceLineItemRow,
+        buildRowPatch: (existingRow, dateYmd, updatedAt) => {
+          const rowPatch: Record<string, unknown> = {
+            ...contentUpdate,
+            occurred_on: dateYmd,
+            recurrence_interval: intervalCandidate,
+            updated_at: updatedAt,
+          };
+          if (reminderInput) {
+            Object.assign(
+              rowPatch,
+              reminderFieldsForRecurringRow(reminderInput, dateYmd),
+            );
+          } else if (existingRow.telegram_reminder_enabled) {
+            rowPatch.telegram_due_date = dateYmd;
+          }
+          return rowPatch;
+        },
+        buildInsertRow: (template, dateYmd, updatedAt) => ({
+          kind: contentUpdate.kind ?? template.kind,
+          label: contentUpdate.label ?? template.label,
+          amount: contentUpdate.amount ?? template.amount,
+          category: contentUpdate.category ?? template.category,
+          notes: contentUpdate.notes ?? template.notes,
+          receipt_path: contentUpdate.receipt_path ?? template.receipt_path,
+          occurred_on: dateYmd,
+          recurrence_series_id: seriesId,
+          recurrence_interval: intervalCandidate,
+          created_by: template.created_by,
+          created_at: updatedAt,
+          updated_at: updatedAt,
+          ...(reminderInput
+            ? reminderFieldsForRecurringRow(reminderInput, dateYmd)
+            : template.telegram_reminder_enabled
+              ? {
+                  telegram_reminder_enabled: true,
+                  telegram_due_date: dateYmd,
+                  telegram_days_before: template.telegram_days_before,
+                  telegram_reminder_interval: template.telegram_reminder_interval,
+                  telegram_message_template: template.telegram_message_template,
+                }
+              : {
+                  telegram_reminder_enabled: false,
+                  telegram_due_date: null,
+                  telegram_days_before: 3,
+                  telegram_reminder_interval: "daily_noon",
+                  telegram_message_template: null,
+                }),
+        }),
+      });
+    }
+  }
+
   const effectiveScope =
     row.recurrence_series_id && isRecurrenceEditScope(scope) ? scope : "this";
 
-  const update: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
-  };
-  if (patch.kind) update.kind = patch.kind;
-  if (patch.label != null) update.label = patch.label.slice(0, 200);
-  if (patch.amount != null) update.amount = patch.amount;
-  if (patch.category !== undefined) {
-    update.category = patch.category?.slice(0, 80) ?? null;
-  }
-  if (patch.notes !== undefined)
-    update.notes = patch.notes?.slice(0, 2000) ?? null;
-  if (patch.receipt_path !== undefined)
-    update.receipt_path = patch.receipt_path;
-  const reminderUpdate = reminderFieldsForUpdate(patch.telegramReminder);
-  if (reminderUpdate) {
-    if (effectiveScope !== "this") {
-      // Bulk series edits share interval/template only — each occurrence keeps its own due date.
-      delete reminderUpdate.telegram_due_date;
-    }
-    Object.assign(update, reminderUpdate);
-  }
+  const update: Record<string, unknown> = { ...contentUpdate };
 
   if (effectiveScope === "this") {
     if (patch.occurred_on) update.occurred_on = patch.occurred_on;
