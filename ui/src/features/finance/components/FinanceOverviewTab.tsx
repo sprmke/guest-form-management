@@ -97,13 +97,13 @@ export function FinanceOverviewTab({
             iconBgClassName="bg-teal-500"
           />
           <FinanceKpiCard
-            label="Other fees"
+            label="Additional fees"
             value={formatMoney(s.otherFees)}
             icon={Banknote}
             iconBgClassName="bg-sky-500"
           />
           <FinanceKpiCard
-            label="Outstanding"
+            label="Outstanding balance"
             value={formatMoney(s.outstandingGuestBalance)}
             icon={ShieldCheck}
             iconBgClassName="bg-amber-500"

@@ -249,9 +249,9 @@ function appendOverviewSection(doc: jsPDF, y: number, payload: FinancePdfPayload
       accent: s.hostNetCompleted >= 0 ? 'positive' : 'negative',
     },
     { label: 'Total booking rates', value: pdfMoney(s.bookingRate) },
-    { label: 'Other fees', value: pdfMoney(s.otherFees) },
+    { label: 'Additional fees', value: pdfMoney(s.otherFees) },
     {
-      label: 'Outstanding',
+      label: 'Outstanding balance',
       value: pdfMoney(s.outstandingGuestBalance),
       accent: s.outstandingGuestBalance > 0 ? 'negative' : 'neutral',
     },
@@ -328,7 +328,7 @@ function appendStaysSection(doc: jsPDF, y: number, payload: FinancePdfPayload): 
         'Check-out',
         'Status',
         'Booking rate',
-        'Other fees',
+        'Additional fees',
         'Host net',
       ],
     ],
@@ -536,8 +536,8 @@ function appendReportDefinitions(doc: jsPDF, y: number): number {
   const lines = [
     'All amounts are Philippine pesos (PHP) without a currency prefix in tables.',
     'Booking rate = down payment + guest balance (booking rate − down payment).',
-    'Other fees = pet fee + parking margin + additional guest fee + (security deposit − SD refund), when applicable.',
-    'Host net (completed) = booking rate + other fees. Matches the stay Breakdown net (Income, security deposit adjustments, Expenses including parking owner rate and SD refund).',
+    'Additional fees = pet fee + parking margin + additional guest fee + (security deposit − SD refund), when applicable.',
+    'Host net (completed) = booking rate + additional fees. Matches the stay Breakdown net (Income, security deposit adjustments, Expenses including parking owner rate and SD refund).',
     'Total net = sum of completed host net plus transactions net for this period. Pipeline estimates exclude SD refund until the stay is completed.',
   ];
 

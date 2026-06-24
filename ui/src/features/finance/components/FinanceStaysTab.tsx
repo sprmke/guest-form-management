@@ -187,7 +187,7 @@ export function FinanceStaysTab({
             <AdminTableTh className="hidden text-right lg:table-cell">
               Booking rate
             </AdminTableTh>
-            <AdminTableTh className="text-right">Other fees</AdminTableTh>
+            <AdminTableTh className="text-right">Additional fees</AdminTableTh>
             <AdminTableTh className="text-right">Host net</AdminTableTh>
             <AdminTableTh className="pr-3 pl-2 text-right sm:pr-4 sm:pl-3">
               <span className="sr-only">View</span>

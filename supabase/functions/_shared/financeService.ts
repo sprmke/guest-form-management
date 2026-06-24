@@ -103,7 +103,7 @@ export type FinanceStaysSummary = {
   completedCount: number;
   /** Σ booking rate (down + guest balance) for stays in period. */
   bookingRate: number;
-  /** Σ other fees (pet, parking margin, additional, SD net) for stays in period. */
+  /** Σ additional fees (pet, parking margin, additional, SD net) for stays in period. */
   otherFees: number;
   parkingMargin: number;
   sdExpenses: number;

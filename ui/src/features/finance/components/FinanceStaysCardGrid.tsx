@@ -167,7 +167,7 @@ function FinanceStayCard({
 
       <div className="mt-3 grid grid-cols-2 gap-3 border-t border-separator pt-3">
         <div className="min-w-0">
-          <p className="text-overline">Other fees</p>
+          <p className="text-overline">Additional fees</p>
           <p className="mt-0.5 truncate text-sm font-semibold tabular-nums text-foreground">
             {formatMoney(fin.otherFees)}
           </p>

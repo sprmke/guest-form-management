@@ -10,7 +10,6 @@ import {
 } from "@/features/admin/hooks/useDateNavigation";
 import { useIsBelowMd } from "@/hooks/useMediaQuery";
 import { DashboardSkeleton } from "@/components/skeletons/AdminSkeletons";
-import { useAdminSession } from "@/features/admin/hooks/useAdminSession";
 import { useDashboardStats } from "@/features/dashboard/hooks/useDashboardStats";
 import { DashboardAttentionStrip } from "@/features/dashboard/components/DashboardAttentionStrip";
 import { DashboardStatCards } from "@/features/dashboard/components/DashboardStatCards";
@@ -22,23 +21,9 @@ import {
   writeDashboardPeriodParams,
 } from "@/features/dashboard/lib/dashboardPeriod";
 
-function manilaGreeting(): string {
-  const hour = Number(
-    new Intl.DateTimeFormat("en-US", {
-      hour: "numeric",
-      hour12: false,
-      timeZone: "Asia/Manila",
-    }).format(new Date()),
-  );
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
-
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
-  const { name, email } = useAdminSession();
   const { data, isLoading, error, refetch } = useDashboardStats();
 
   const period = useMemo(
@@ -85,8 +70,6 @@ export function DashboardPage() {
     dateNav.setDatePreset("year");
   }, [dateNav]);
 
-  const displayName = name ?? email?.split("@")[0] ?? "there";
-  const greeting = manilaGreeting();
   const trendLabel = data?.trendWindow.label ?? "";
 
   return (
