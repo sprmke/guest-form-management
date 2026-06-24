@@ -40,6 +40,7 @@ import {
 } from "@/features/maintenance/hooks/useMaintenanceItems";
 import {
   recurrenceIntervalLabel,
+  recurrenceScheduleUpdateFields,
   suggestExtendAfter,
   suggestExtendBefore,
 } from "@/features/finance/lib/recurrence";
@@ -100,6 +101,14 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
 
   function handleEditSubmit(values: MaintenanceItemFormValues) {
     if (!editing) return;
+    const schedule = recurrenceScheduleUpdateFields({
+      hasSeries: true,
+      recurrenceInterval: values.recurrence_interval,
+      recurrenceUntil: values.recurrence_until,
+      initialInterval: editing.recurrence_interval,
+      initialUntil: seriesEnd,
+      editScope: values.edit_scope,
+    });
     update.mutate(
       {
         id: editing.id,
@@ -112,8 +121,14 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
             values,
             globalDefaultMessageTemplate,
           ),
+          ...(schedule.recurrence_interval !== undefined
+            ? {
+                recurrence_interval: schedule.recurrence_interval,
+                recurrence_until: schedule.recurrence_until ?? null,
+              }
+            : {}),
         },
-        scope: values.edit_scope,
+        scope: schedule.scope,
       },
       { onSuccess: () => setEditing(null) },
     );
@@ -335,6 +350,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
             <MaintenanceItemForm
               key={`${editing.id}:${editing.telegram_reminder_interval}`}
               initial={editing}
+              seriesRecurrenceUntil={seriesEnd}
               onSubmit={handleEditSubmit}
               onCancel={() => setEditing(null)}
               isPending={update.isPending}

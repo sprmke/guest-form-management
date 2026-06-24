@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import { BarChart3, Bell, Settings, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminLayout } from "@/features/admin/components/AdminLayout";
@@ -22,6 +23,7 @@ import {
   useSyncDateRangeWithQuery,
 } from "@/features/admin/hooks/useDateNavigation";
 import { detectPresetFromRange, fromIsoDate } from "@/lib/dateNavigation";
+import { useIsBelowLg } from "@/hooks/useMediaQuery";
 import type {
   MaintenanceQuery,
   MaintenanceTab,
@@ -39,6 +41,7 @@ const TABS: {
 
 export function MaintenancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const isMobileLayout = useIsBelowLg();
 
   const query = useMemo(() => {
     const parsed = parseMaintenanceQueryFromParams(searchParams);
@@ -94,6 +97,36 @@ export function MaintenancePage() {
   const handleClearDate = useCallback(() => {
     setQuery({ ...query, page: 1, from: null, to: null });
   }, [query, setQuery]);
+
+  useEffect(() => {
+    if (!isMobileLayout) return;
+    setSearchParams(
+      (prev) => {
+        const parsed = parseMaintenanceQueryFromParams(prev);
+        if (parsed.tab !== "reminders" || parsed.remindersView !== "table") {
+          return prev;
+        }
+        return writeMaintenanceQueryToParams({
+          ...parsed,
+          remindersView: "card",
+          page: 1,
+        });
+      },
+      { replace: true },
+    );
+  }, [isMobileLayout, setSearchParams]);
+
+  const handleCalendarMonthChange = useCallback(
+    (month: Date) => {
+      setQuery({
+        ...query,
+        from: format(startOfMonth(month), "yyyy-MM-dd"),
+        to: format(endOfMonth(month), "yyyy-MM-dd"),
+        page: 1,
+      });
+    },
+    [query, setQuery],
+  );
 
   const summaryQuery = useMaintenanceSummary(query);
   const itemsQuery = useMaintenanceItems(query, { includeDueInRange: true });
@@ -182,7 +215,12 @@ export function MaintenancePage() {
         ) : null}
 
         {query.tab === "reminders" ? (
-          <MaintenanceRemindersTab query={query} />
+          <MaintenanceRemindersTab
+            query={query}
+            onQueryChange={setQuery}
+            calendarInitialMonth={dateNav.dateRange.from ?? undefined}
+            onCalendarMonthChange={handleCalendarMonthChange}
+          />
         ) : null}
 
         {query.tab === "settings" ? <MaintenanceSettingsTab /> : null}

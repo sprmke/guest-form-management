@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  CheckCircle2,
-  Clock3,
   Pencil,
   Plus,
   Repeat,
@@ -10,6 +8,7 @@ import {
 } from "lucide-react";
 import { FinanceOperatingTabSkeleton } from "@/components/skeletons/AdminSkeletons";
 import { AdminListMetaBar } from "@/features/admin/components/AdminListToolbar";
+import { AdminListViewToggle } from "@/features/admin/components/AdminListViewToggle";
 import {
   Dialog,
   DialogContent,
@@ -38,19 +37,37 @@ import {
   useMaintenanceItemMutations,
   useMaintenanceItems,
 } from "@/features/maintenance/hooks/useMaintenanceItems";
-import { recurrenceIntervalLabel } from "@/features/finance/lib/recurrence";
+import { fetchRecurringSeriesItems } from "@/features/maintenance/hooks/useMaintenanceApi";
+import {
+  recurrenceIntervalLabel,
+  recurrenceScheduleUpdateFields,
+} from "@/features/finance/lib/recurrence";
 import type {
   MaintenanceItem,
   MaintenanceQuery,
 } from "@/features/maintenance/lib/types";
+import {
+  MaintenanceRemindersCardGrid,
+  MaintenanceStatusBadge,
+} from "@/features/maintenance/components/MaintenanceRemindersCardGrid";
+import { MaintenanceRemindersCalendarView } from "@/features/maintenance/components/MaintenanceRemindersCalendarView";
+import { useIsBelowLg } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 
 type Props = {
   query: MaintenanceQuery;
+  onQueryChange: (next: MaintenanceQuery) => void;
+  calendarInitialMonth?: Date;
+  onCalendarMonthChange?: (month: Date) => void;
 };
 
-export function MaintenanceRemindersTab({ query }: Props) {
-  const { data: items = [], isLoading } = useMaintenanceItems(query, {
+export function MaintenanceRemindersTab({
+  query,
+  onQueryChange,
+  calendarInitialMonth,
+  onCalendarMonthChange,
+}: Props) {
+  const { data: items = [], isLoading, isFetching } = useMaintenanceItems(query, {
     includeDueInRange: true,
   });
   const { create, update, remove } = useMaintenanceItemMutations(query);
@@ -61,6 +78,9 @@ export function MaintenanceRemindersTab({ query }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [createSession, setCreateSession] = useState(0);
   const [editing, setEditing] = useState<MaintenanceItem | null>(null);
+  const [editingSeriesUntil, setEditingSeriesUntil] = useState<string | null>(
+    null,
+  );
   const [deleting, setDeleting] = useState<MaintenanceItem | null>(null);
   const [seriesAnchor, setSeriesAnchor] = useState<MaintenanceItem | null>(
     null,
@@ -72,14 +92,26 @@ export function MaintenanceRemindersTab({ query }: Props) {
     setModalOpen(true);
   }
 
-  function openEdit(item: MaintenanceItem) {
+  async function openEdit(item: MaintenanceItem) {
     setEditing(item);
+    if (item.recurrence_series_id) {
+      try {
+        const rows = await fetchRecurringSeriesItems(item.recurrence_series_id);
+        const last = rows[rows.length - 1];
+        setEditingSeriesUntil(last?.scheduled_on ?? null);
+      } catch {
+        setEditingSeriesUntil(null);
+      }
+    } else {
+      setEditingSeriesUntil(null);
+    }
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditing(null);
+    setEditingSeriesUntil(null);
   }
 
   function openSeries(item: MaintenanceItem) {
@@ -100,11 +132,27 @@ export function MaintenanceRemindersTab({ query }: Props) {
       ...telegramReminderPayloadFromForm(values, globalDefaultMessageTemplate),
     };
     if (editing) {
+      const schedule = recurrenceScheduleUpdateFields({
+        hasSeries: Boolean(editing.recurrence_series_id),
+        recurrenceInterval: values.recurrence_interval,
+        recurrenceUntil: values.recurrence_until,
+        initialInterval: editing.recurrence_interval,
+        initialUntil: editingSeriesUntil,
+        editScope: values.edit_scope,
+      });
       update.mutate(
         {
           id: editing.id,
-          patch: payload,
-          scope: editing.recurrence_series_id ? values.edit_scope : "this",
+          patch: {
+            ...payload,
+            ...(schedule.recurrence_interval !== undefined
+              ? {
+                  recurrence_interval: schedule.recurrence_interval,
+                  recurrence_until: schedule.recurrence_until ?? null,
+                }
+              : {}),
+          },
+          scope: schedule.scope,
         },
         { onSuccess: closeModal },
       );
@@ -129,8 +177,18 @@ export function MaintenanceRemindersTab({ query }: Props) {
   const hasSearch = query.q.trim().length > 0;
   const showStatusColumn = items.some((item) => item.telegram_reminder_enabled);
   const tableColumnCount = showStatusColumn ? 6 : 5;
+  const isMobileLayout = useIsBelowLg();
+  const showCalendarView = query.remindersView === 'calendar';
+  const showTableView = query.remindersView === 'table' && !isMobileLayout;
+  const showCardView =
+    query.remindersView === 'card' ||
+    (isMobileLayout && query.remindersView !== 'calendar');
 
-  if (isLoading && items.length === 0) {
+  const handleViewChange = (remindersView: MaintenanceQuery['remindersView']) => {
+    onQueryChange({ ...query, remindersView, page: 1 });
+  };
+
+  if (isLoading && items.length === 0 && !showCalendarView) {
     return <FinanceOperatingTabSkeleton />;
   }
 
@@ -149,7 +207,14 @@ export function MaintenanceRemindersTab({ query }: Props) {
         }}
         showPerPage={false}
         actionsSlot={
-          <button
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminListViewToggle
+              value={query.remindersView}
+              onChange={handleViewChange}
+              hideTableView={isMobileLayout}
+              ariaLabel="Choose reminders view"
+            />
+            <button
             type="button"
             className={cn(
               "inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2",
@@ -161,9 +226,25 @@ export function MaintenanceRemindersTab({ query }: Props) {
             <Plus className="size-4" aria-hidden />
             Add reminder
           </button>
+          </div>
         }
       />
 
+      {showCalendarView ? (
+        <MaintenanceRemindersCalendarView
+          items={items}
+          isLoading={isLoading}
+          isRefreshing={isFetching}
+          initialMonth={calendarInitialMonth}
+          onMonthChange={onCalendarMonthChange}
+          showStatus={showStatusColumn}
+          onEdit={openEdit}
+          onDelete={setDeleting}
+          onOpenSeries={openSeries}
+        />
+      ) : null}
+
+      {showTableView ? (
       <AdminDataTable minWidth={showStatusColumn ? 560 : 480}>
         <AdminTableHeadRow>
           <AdminTableTh className="pr-3 pl-4 sm:pl-5">Date</AdminTableTh>
@@ -315,6 +396,45 @@ export function MaintenanceRemindersTab({ query }: Props) {
           )}
         </tbody>
       </AdminDataTable>
+      ) : null}
+
+      {showCardView ? (
+        items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border/50 bg-card py-20 text-center">
+            <div className="icon-well-sm bg-muted/80">
+              <Wrench className="size-[18px] text-muted-foreground" aria-hidden />
+            </div>
+            <p className="font-bold text-section-title text-foreground">
+              {hasSearch
+                ? 'No reminders match your search'
+                : 'No reminders yet'}
+            </p>
+            {!hasSearch ? (
+              <button
+                type="button"
+                className={cn(
+                  'mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4',
+                  'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+                )}
+                onClick={openCreate}
+              >
+                <Plus className="size-4" aria-hidden />
+                Add reminder
+              </button>
+            ) : null}
+          </div>
+        ) : (
+          <MaintenanceRemindersCardGrid
+            items={items}
+            isLoading={isLoading}
+            isRefreshing={isFetching}
+            showStatus={showStatusColumn}
+            onEdit={openEdit}
+            onDelete={setDeleting}
+            onOpenSeries={openSeries}
+          />
+        )
+      ) : null}
 
       <Dialog
         open={modalOpen}
@@ -348,6 +468,7 @@ export function MaintenanceRemindersTab({ query }: Props) {
                 : `new-${createSession}`
             }
             initial={editing}
+            seriesRecurrenceUntil={editingSeriesUntil}
             onSubmit={handleSubmit}
             onCancel={closeModal}
             isPending={create.isPending || update.isPending}
@@ -376,23 +497,5 @@ export function MaintenanceRemindersTab({ query }: Props) {
         }}
       />
     </div>
-  );
-}
-
-function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) {
-  if (isComplete) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-3 shrink-0" aria-hidden />
-        Done
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-      <Clock3 className="size-3 shrink-0" aria-hidden />
-      Pending
-    </span>
   );
 }

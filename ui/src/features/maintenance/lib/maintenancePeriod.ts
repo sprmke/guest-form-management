@@ -3,6 +3,8 @@
  */
 
 import type { MaintenanceQuery, MaintenanceTab } from "@/features/maintenance/lib/types";
+import { DEFAULT_MAINTENANCE_QUERY } from "@/features/maintenance/lib/types";
+import { parseAdminListView } from "@/features/admin/lib/listView";
 import {
   ADMIN_DEFAULT_PAGE_SIZE,
   normalizeAdminPageLimit,
@@ -74,6 +76,9 @@ export function parseMaintenanceQueryFromParams(
   const tabRaw = params.get("tab");
   const tab: MaintenanceTab =
     tabRaw === "reminders" || tabRaw === "settings" ? tabRaw : "overview";
+  const listView = parseAdminListView(params);
+  const remindersView: MaintenanceQuery["remindersView"] =
+    tab === "reminders" ? listView : DEFAULT_MAINTENANCE_QUERY.remindersView;
 
   return {
     tab,
@@ -84,6 +89,7 @@ export function parseMaintenanceQueryFromParams(
     limit: normalizeAdminPageLimit(
       parseInt(params.get("limit") ?? String(ADMIN_DEFAULT_PAGE_SIZE), 10),
     ),
+    remindersView,
   };
 }
 
@@ -99,6 +105,9 @@ export function writeMaintenanceQueryToParams(
   if (query.page > 1) p.set("page", String(query.page));
   if (query.limit !== ADMIN_DEFAULT_PAGE_SIZE) {
     p.set("limit", String(query.limit));
+  }
+  if (query.tab === "reminders" && query.remindersView !== "table") {
+    p.set("view", query.remindersView);
   }
   if (preset && preset !== "this_month") p.set("preset", preset);
   return p;

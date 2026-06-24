@@ -1,0 +1,217 @@
+import {
+  CheckCircle2,
+  Clock3,
+  Pencil,
+  Repeat,
+  Trash2,
+} from 'lucide-react';
+import { FinanceStaysCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { formatIsoDate } from '@/features/admin/lib/formatters';
+import { recurrenceIntervalLabel } from '@/features/finance/lib/recurrence';
+import type { MaintenanceItem } from '@/features/maintenance/lib/types';
+import { cn } from '@/lib/utils';
+
+type ItemActions = {
+  onEdit: (item: MaintenanceItem) => void;
+  onDelete: (item: MaintenanceItem) => void;
+  onOpenSeries?: (item: MaintenanceItem) => void;
+};
+
+type Props = ItemActions & {
+  items: MaintenanceItem[];
+  isLoading: boolean;
+  isRefreshing?: boolean;
+  showStatus?: boolean;
+};
+
+export function MaintenanceRemindersCardGrid({
+  items,
+  isLoading,
+  isRefreshing = false,
+  showStatus = false,
+  onEdit,
+  onDelete,
+  onOpenSeries,
+}: Props) {
+  if (isLoading) return <FinanceStaysCardGridSkeleton />;
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+        'transition-opacity duration-300',
+        isRefreshing && 'opacity-60',
+      )}
+    >
+      {items.map((item) => (
+        <MaintenanceReminderCard
+          key={item.id}
+          item={item}
+          showStatus={showStatus}
+          onEdit={() => onEdit(item)}
+          onDelete={() => onDelete(item)}
+          onOpenSeries={onOpenSeries ? () => onOpenSeries(item) : undefined}
+        />
+      ))}
+    </div>
+  );
+}
+
+function MaintenanceReminderCard({
+  item,
+  showStatus,
+  onEdit,
+  onDelete,
+  onOpenSeries,
+}: {
+  item: MaintenanceItem;
+  showStatus: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  onOpenSeries?: () => void;
+}) {
+  const handleKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEdit();
+    }
+  };
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onEdit}
+      onKeyDown={handleKey}
+      aria-label={`Edit reminder ${item.label}`}
+      className={cn(
+        'cursor-pointer rounded-xl border border-border/50 bg-card p-3.5 transition-all duration-200 sm:p-4',
+        'hover:-translate-y-0.5 hover:border-border outline-none',
+        'focus-visible:ring-2 focus-visible:ring-sidebar-primary/40',
+      )}
+    >
+      <p className="text-[11px] font-medium tabular-nums text-muted-foreground">
+        {formatIsoDate(item.scheduled_on)}
+      </p>
+
+      {item.recurrence_series_id && onOpenSeries ? (
+        <button
+          type="button"
+          className="mt-2 max-w-full text-left"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpenSeries();
+          }}
+        >
+          <p className="truncate text-sm font-bold text-foreground underline-offset-2 hover:underline">
+            {item.label}
+          </p>
+          <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Repeat className="size-3 shrink-0" aria-hidden />
+            {recurrenceIntervalLabel(item.recurrence_interval)}
+          </span>
+        </button>
+      ) : (
+        <p className="mt-2 truncate text-sm font-bold text-foreground">
+          {item.label}
+        </p>
+      )}
+
+      {item.category ? (
+        <p className="mt-1 truncate text-data-secondary">{item.category}</p>
+      ) : null}
+
+      {showStatus && item.telegram_reminder_enabled ? (
+        <div className="mt-2">
+          <MaintenanceStatusBadge isComplete={Boolean(item.completed_at)} />
+        </div>
+      ) : null}
+
+      {item.notes ? (
+        <p className="mt-2 line-clamp-2 text-data-secondary">{item.notes}</p>
+      ) : null}
+
+      <div className="mt-3 flex justify-end gap-0.5 border-t border-separator pt-3">
+        {item.recurrence_series_id && onOpenSeries ? (
+          <IconAction
+            label="View recurring series"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenSeries();
+            }}
+          >
+            <Repeat className="size-4" />
+          </IconAction>
+        ) : null}
+        <IconAction
+          label="Edit"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit();
+          }}
+        >
+          <Pencil className="size-4" />
+        </IconAction>
+        <IconAction
+          label="Delete"
+          destructive
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+        >
+          <Trash2 className="size-4" />
+        </IconAction>
+      </div>
+    </div>
+  );
+}
+
+function IconAction({
+  label,
+  onClick,
+  destructive,
+  children,
+}: {
+  label: string;
+  onClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  destructive?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      className={cn(
+        'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg p-2.5',
+        'text-muted-foreground transition-colors hover:bg-muted/80 hover:text-foreground',
+        destructive && 'hover:bg-destructive/10 hover:text-destructive',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function MaintenanceStatusBadge({ isComplete }: { isComplete: boolean }) {
+  if (isComplete) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+        <CheckCircle2 className="size-3 shrink-0" aria-hidden />
+        Done
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+      <Clock3 className="size-3 shrink-0" aria-hidden />
+      Pending
+    </span>
+  );
+}

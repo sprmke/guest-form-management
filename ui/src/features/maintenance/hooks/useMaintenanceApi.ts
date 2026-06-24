@@ -131,6 +131,8 @@ export async function updateMaintenanceItemApi(
       category: string;
       scheduled_on: string;
       notes: string | null;
+      recurrence_interval: RecurrenceInterval | null;
+      recurrence_until: string | null;
     } & MaintenanceTelegramReminderPayload
   >,
   scope: RecurrenceEditScope = "this",

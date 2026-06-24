@@ -3,6 +3,8 @@ import type {
   FinanceReminderInterval,
 } from "@/features/finance/lib/recurrence";
 
+import type { AdminListView } from '@/features/admin/lib/listView';
+
 export type MaintenanceTab = "overview" | "reminders" | "settings";
 
 export type MaintenanceQuery = {
@@ -12,6 +14,8 @@ export type MaintenanceQuery = {
   q: string;
   page: number;
   limit: number;
+  /** Reminders tab layout — table / card / calendar. */
+  remindersView: AdminListView;
 };
 
 export const DEFAULT_MAINTENANCE_QUERY: MaintenanceQuery = {
@@ -21,6 +25,7 @@ export const DEFAULT_MAINTENANCE_QUERY: MaintenanceQuery = {
   q: "",
   page: 1,
   limit: 31,
+  remindersView: "table",
 };
 
 export type MaintenanceSummary = {
