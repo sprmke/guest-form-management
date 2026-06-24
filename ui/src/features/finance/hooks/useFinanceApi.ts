@@ -153,6 +153,8 @@ export async function updateFinanceLineItemApi(
       category: string | null;
       occurred_on: string;
       notes: string | null;
+      recurrence_interval: RecurrenceInterval | null;
+      recurrence_until: string | null;
     } & FinanceTelegramReminderPayload
   >,
   scope: RecurrenceEditScope = "this",

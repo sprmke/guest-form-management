@@ -10,6 +10,7 @@ import {
   normalizeFinanceReminderInterval,
   RECURRENCE_INTERVAL_OPTIONS,
   RECURRENCE_SCOPE_OPTIONS,
+  isRecurrenceScheduleDirty,
 } from "@/features/finance/lib/recurrence";
 import {
   FINANCE_DEFAULT_REMINDER_TEMPLATE,
@@ -44,6 +45,7 @@ const schema = z
       "twice_monthly",
       "every_2_months",
       "quarterly",
+      "every_6_months",
       "yearly",
     ]),
     recurrence_until: z.string().optional(),
@@ -113,6 +115,7 @@ const CATEGORY_SUGGESTIONS = [
 
 type Props = {
   initial?: FinanceLineItem | null;
+  seriesRecurrenceUntil?: string | null;
   onSubmit: (values: OperatingLineItemFormValues) => void;
   onCancel: () => void;
   isPending?: boolean;
@@ -121,6 +124,7 @@ type Props = {
 function defaultValues(
   initial: FinanceLineItem | null | undefined,
   globalDefaultMessageTemplate: string,
+  seriesRecurrenceUntil?: string | null,
 ): OperatingLineItemFormValues {
   const start = initial?.occurred_on ?? manilaTodayIso();
   const interval = initial?.recurrence_interval ?? "none";
@@ -134,7 +138,8 @@ function defaultValues(
     recurrence_interval: interval === null ? "none" : interval,
     recurrence_until:
       interval && interval !== "none"
-        ? defaultRecurrenceUntil(start, interval)
+        ? (seriesRecurrenceUntil?.slice(0, 10) ??
+          defaultRecurrenceUntil(start, interval))
         : "",
     edit_scope: "this",
     telegram_reminder_enabled: initial?.telegram_reminder_enabled ?? false,
@@ -152,6 +157,7 @@ function defaultValues(
 
 export function OperatingLineItemForm({
   initial,
+  seriesRecurrenceUntil,
   onSubmit,
   onCancel,
   isPending,
@@ -174,14 +180,19 @@ export function OperatingLineItemForm({
     formState: { errors },
   } = useForm<OperatingLineItemFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: defaultValues(initial, globalDefaultMessageTemplate),
+    defaultValues: defaultValues(
+      initial,
+      globalDefaultMessageTemplate,
+      seriesRecurrenceUntil,
+    ),
   });
 
   useEffect(() => {
-    reset(defaultValues(initial, globalDefaultMessageTemplate), {
-      keepDefaultValues: false,
-    });
-  }, [initial, globalDefaultMessageTemplate, reset]);
+    reset(
+      defaultValues(initial, globalDefaultMessageTemplate, seriesRecurrenceUntil),
+      { keepDefaultValues: false },
+    );
+  }, [initial, globalDefaultMessageTemplate, seriesRecurrenceUntil, reset]);
 
   const kind = watch("kind");
   const recurrenceInterval = watch("recurrence_interval");
@@ -191,6 +202,22 @@ export function OperatingLineItemForm({
   const telegramReminderEnabled = watch("telegram_reminder_enabled");
   const telegramDaysBefore = watch("telegram_days_before");
   const telegramReminderInterval = watch("telegram_reminder_interval");
+
+  const scheduleDirty = isRecurrenceScheduleDirty({
+    isRecurringEdit,
+    recurrenceInterval,
+    recurrenceUntil,
+    initialInterval: initial?.recurrence_interval,
+    initialUntil: seriesRecurrenceUntil,
+  });
+
+  const repeatOptions = RECURRENCE_INTERVAL_OPTIONS.filter(
+    (opt) => !isRecurringEdit || opt.value !== "none",
+  );
+
+  useEffect(() => {
+    if (scheduleDirty) setValue("edit_scope", "all");
+  }, [scheduleDirty, setValue]);
 
   useEffect(() => {
     if (!telegramReminderEnabled) return;
@@ -295,11 +322,11 @@ export function OperatingLineItemForm({
         </Field>
       </div>
 
-      {!isEdit ? (
+      {(!isEdit || isRecurringEdit) ? (
         <>
           <Field label="Repeat" error={errors.recurrence_interval?.message}>
             <NativeSelect {...register("recurrence_interval")}>
-              {RECURRENCE_INTERVAL_OPTIONS.map((opt) => (
+              {repeatOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
                 </option>
@@ -322,7 +349,7 @@ export function OperatingLineItemForm({
         </>
       ) : null}
 
-      {isEdit && isRecurringEdit ? (
+      {isEdit && isRecurringEdit && !scheduleDirty ? (
         <fieldset className="space-y-2">
           <legend className="mb-1.5 block text-overline">
             Apply changes to

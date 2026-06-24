@@ -6,6 +6,7 @@ export type RecurrenceInterval =
   | "twice_monthly"
   | "every_2_months"
   | "quarterly"
+  | "every_6_months"
   | "yearly";
 
 export type RecurrenceEditScope = "this" | "this_and_future" | "all";
@@ -82,6 +83,7 @@ export const RECURRENCE_INTERVAL_OPTIONS: {
   { value: "twice_monthly", label: "Twice a month" },
   { value: "every_2_months", label: "Every 2 months" },
   { value: "quarterly", label: "Quarterly" },
+  { value: "every_6_months", label: "Twice a year" },
   { value: "yearly", label: "Yearly" },
 ];
 
@@ -115,6 +117,58 @@ export function recurrenceIntervalLabel(
     RECURRENCE_INTERVAL_OPTIONS.find((o) => o.value === interval)?.label ??
     interval
   );
+}
+
+/** True when repeat interval or series end changed on a recurring edit. */
+export function isRecurrenceScheduleDirty(params: {
+  isRecurringEdit: boolean;
+  recurrenceInterval: RecurrenceInterval;
+  recurrenceUntil?: string;
+  initialInterval: RecurrenceInterval | string | null | undefined;
+  initialUntil?: string | null;
+}): boolean {
+  if (!params.isRecurringEdit) return false;
+  const initial =
+    !params.initialInterval || params.initialInterval === "none"
+      ? "none"
+      : params.initialInterval;
+  const untilA = params.recurrenceUntil?.slice(0, 10) ?? "";
+  const untilB = params.initialUntil?.slice(0, 10) ?? "";
+  return params.recurrenceInterval !== initial || untilA !== untilB;
+}
+
+/** Scope + recurrence patch when updating a recurring row. */
+export function recurrenceScheduleUpdateFields(params: {
+  hasSeries: boolean;
+  recurrenceInterval: RecurrenceInterval;
+  recurrenceUntil?: string;
+  initialInterval: RecurrenceInterval | string | null | undefined;
+  initialUntil?: string | null;
+  editScope: RecurrenceEditScope;
+}): {
+  scope: RecurrenceEditScope;
+  recurrence_interval?: RecurrenceInterval;
+  recurrence_until?: string | null;
+} {
+  if (!params.hasSeries) return { scope: "this" };
+
+  const scheduleDirty = isRecurrenceScheduleDirty({
+    isRecurringEdit: true,
+    recurrenceInterval: params.recurrenceInterval,
+    recurrenceUntil: params.recurrenceUntil,
+    initialInterval: params.initialInterval,
+    initialUntil: params.initialUntil,
+  });
+
+  if (scheduleDirty) {
+    return {
+      scope: "all",
+      recurrence_interval: params.recurrenceInterval,
+      recurrence_until: params.recurrenceUntil ?? null,
+    };
+  }
+
+  return { scope: params.editScope };
 }
 
 function parseIso(iso: string): { y: number; m: number; d: number } {
@@ -214,6 +268,13 @@ function addInterval(
       date.setDate(Math.min(day, last));
       break;
     }
+    case "every_6_months": {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() + 6);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
     case "yearly":
       date.setFullYear(date.getFullYear() + 1);
       break;
@@ -254,6 +315,13 @@ function subtractInterval(
     case "quarterly": {
       const day = date.getDate();
       date.setMonth(date.getMonth() - 3);
+      const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
+      date.setDate(Math.min(day, last));
+      break;
+    }
+    case "every_6_months": {
+      const day = date.getDate();
+      date.setMonth(date.getMonth() - 6);
       const last = daysInMonth(date.getFullYear(), date.getMonth() + 1);
       date.setDate(Math.min(day, last));
       break;

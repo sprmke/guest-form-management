@@ -115,20 +115,30 @@ export function FinancePage() {
     ],
   );
 
-  // Table is desktop-only on Stays; switch away when the viewport narrows.
+  // Table is desktop-only on Stays / Transactions; switch away when the viewport narrows.
   useEffect(() => {
     if (!isMobileLayout) return;
     setSearchParams(
       (prev) => {
         const parsed = parseFinanceQueryFromParams(prev);
-        if (parsed.tab !== "stays" || parsed.staysView !== "table") {
-          return prev;
+        if (parsed.tab === "stays" && parsed.staysView === "table") {
+          return writeFinanceQueryToParams({
+            ...parsed,
+            staysView: "card",
+            page: 1,
+          });
         }
-        return writeFinanceQueryToParams({
-          ...parsed,
-          staysView: "card",
-          page: 1,
-        });
+        if (
+          parsed.tab === "transactions" &&
+          parsed.transactionsView === "table"
+        ) {
+          return writeFinanceQueryToParams({
+            ...parsed,
+            transactionsView: "card",
+            page: 1,
+          });
+        }
+        return prev;
       },
       { replace: true },
     );
@@ -282,7 +292,12 @@ export function FinancePage() {
         ) : null}
 
         {query.tab === "transactions" ? (
-          <FinanceOperatingTab query={query} />
+          <FinanceOperatingTab
+            query={query}
+            onQueryChange={setQuery}
+            calendarInitialMonth={dateNav.dateRange.from ?? undefined}
+            onCalendarMonthChange={handleCalendarMonthChange}
+          />
         ) : null}
 
         {query.tab === "settings" ? <FinanceSettingsTab /> : null}

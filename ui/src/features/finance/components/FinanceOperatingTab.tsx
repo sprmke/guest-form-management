@@ -2,9 +2,7 @@ import { useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  CheckCircle2,
   CircleDollarSign,
-  Clock3,
   Pencil,
   Plus,
   Receipt,
@@ -40,19 +38,38 @@ import { RecurringSeriesModal } from "@/features/finance/components/RecurringSer
 import { useTelegramFinanceSettings } from "@/features/admin/hooks/useTelegramFinanceSettings";
 import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from "@/features/finance/lib/financeReminderTemplate";
 import { useFinanceLineItemMutations, useFinanceLineItems } from "@/features/finance/hooks/useFinanceLineItems";
-import { recurrenceIntervalLabel } from "@/features/finance/lib/recurrence";
+import { fetchRecurringSeriesItems } from "@/features/finance/hooks/useFinanceApi";
+import {
+  recurrenceIntervalLabel,
+  recurrenceScheduleUpdateFields,
+} from "@/features/finance/lib/recurrence";
 import type {
   FinanceLineItem,
   FinanceQuery,
 } from "@/features/finance/lib/types";
-import { cn } from "@/lib/utils";
+import {
+  FinanceTransactionsCardGrid,
+  TransactionPaymentStatusBadge,
+} from '@/features/finance/components/FinanceTransactionsCardGrid';
+import { FinanceTransactionsCalendarView } from '@/features/finance/components/FinanceTransactionsCalendarView';
+import { AdminListViewToggle } from '@/features/admin/components/AdminListViewToggle';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 type Props = {
   query: FinanceQuery;
+  onQueryChange: (next: FinanceQuery) => void;
+  calendarInitialMonth?: Date;
+  onCalendarMonthChange?: (month: Date) => void;
 };
 
-export function FinanceOperatingTab({ query }: Props) {
-  const { data: items = [], isLoading } = useFinanceLineItems(query);
+export function FinanceOperatingTab({
+  query,
+  onQueryChange,
+  calendarInitialMonth,
+  onCalendarMonthChange,
+}: Props) {
+  const { data: items = [], isLoading, isFetching } = useFinanceLineItems(query);
   const { create, update, remove } = useFinanceLineItemMutations(query);
   const { data: financeSettings } = useTelegramFinanceSettings();
   const globalDefaultMessageTemplate =
@@ -61,6 +78,9 @@ export function FinanceOperatingTab({ query }: Props) {
   const [modalOpen, setModalOpen] = useState(false);
   const [createSession, setCreateSession] = useState(0);
   const [editing, setEditing] = useState<FinanceLineItem | null>(null);
+  const [editingSeriesUntil, setEditingSeriesUntil] = useState<string | null>(
+    null,
+  );
   const [deleting, setDeleting] = useState<FinanceLineItem | null>(null);
   const [seriesAnchor, setSeriesAnchor] = useState<FinanceLineItem | null>(
     null,
@@ -72,14 +92,26 @@ export function FinanceOperatingTab({ query }: Props) {
     setModalOpen(true);
   }
 
-  function openEdit(item: FinanceLineItem) {
+  async function openEdit(item: FinanceLineItem) {
     setEditing(item);
+    if (item.recurrence_series_id) {
+      try {
+        const rows = await fetchRecurringSeriesItems(item.recurrence_series_id);
+        const last = rows[rows.length - 1];
+        setEditingSeriesUntil(last?.occurred_on ?? null);
+      } catch {
+        setEditingSeriesUntil(null);
+      }
+    } else {
+      setEditingSeriesUntil(null);
+    }
     setModalOpen(true);
   }
 
   function closeModal() {
     setModalOpen(false);
     setEditing(null);
+    setEditingSeriesUntil(null);
   }
 
   function openSeries(item: FinanceLineItem) {
@@ -102,11 +134,27 @@ export function FinanceOperatingTab({ query }: Props) {
       ...telegramReminderPayloadFromForm(values, globalDefaultMessageTemplate),
     };
     if (editing) {
+      const schedule = recurrenceScheduleUpdateFields({
+        hasSeries: Boolean(editing.recurrence_series_id),
+        recurrenceInterval: values.recurrence_interval,
+        recurrenceUntil: values.recurrence_until,
+        initialInterval: editing.recurrence_interval,
+        initialUntil: editingSeriesUntil,
+        editScope: values.edit_scope,
+      });
       update.mutate(
         {
           id: editing.id,
-          patch: payload,
-          scope: editing.recurrence_series_id ? values.edit_scope : "this",
+          patch: {
+            ...payload,
+            ...(schedule.recurrence_interval !== undefined
+              ? {
+                  recurrence_interval: schedule.recurrence_interval,
+                  recurrence_until: schedule.recurrence_until ?? null,
+                }
+              : {}),
+          },
+          scope: schedule.scope,
         },
         { onSuccess: closeModal },
       );
@@ -139,8 +187,18 @@ export function FinanceOperatingTab({ query }: Props) {
   const hasSearch = query.q.trim().length > 0;
   const showStatusColumn = items.some((item) => item.telegram_reminder_enabled);
   const tableColumnCount = showStatusColumn ? 7 : 6;
+  const isMobileLayout = useIsBelowLg();
+  const showCalendarView = query.transactionsView === 'calendar';
+  const showTableView = query.transactionsView === 'table' && !isMobileLayout;
+  const showCardView =
+    query.transactionsView === 'card' ||
+    (isMobileLayout && query.transactionsView !== 'calendar');
 
-  if (isLoading && items.length === 0) {
+  const handleViewChange = (transactionsView: FinanceQuery['transactionsView']) => {
+    onQueryChange({ ...query, transactionsView, page: 1 });
+  };
+
+  if (isLoading && items.length === 0 && !showCalendarView) {
     return <FinanceOperatingTabSkeleton />;
   }
 
@@ -185,7 +243,14 @@ export function FinanceOperatingTab({ query }: Props) {
         }}
         showPerPage={false}
         actionsSlot={
-          <button
+          <div className="flex flex-wrap items-center gap-2">
+            <AdminListViewToggle
+              value={query.transactionsView}
+              onChange={handleViewChange}
+              hideTableView={isMobileLayout}
+              ariaLabel="Choose transactions view"
+            />
+            <button
             type="button"
             className={cn(
               "inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2",
@@ -197,9 +262,25 @@ export function FinanceOperatingTab({ query }: Props) {
             <Plus className="size-4" aria-hidden />
             Add transaction
           </button>
+          </div>
         }
       />
 
+      {showCalendarView ? (
+        <FinanceTransactionsCalendarView
+          items={items}
+          isLoading={isLoading}
+          isRefreshing={isFetching}
+          initialMonth={calendarInitialMonth}
+          onMonthChange={onCalendarMonthChange}
+          showStatus={showStatusColumn}
+          onEdit={openEdit}
+          onDelete={setDeleting}
+          onOpenSeries={openSeries}
+        />
+      ) : null}
+
+      {showTableView ? (
       <AdminDataTable minWidth={showStatusColumn ? 600 : 520}>
         <AdminTableHeadRow>
           <AdminTableTh className="pr-3 pl-4 sm:pl-5">Date</AdminTableTh>
@@ -385,6 +466,47 @@ export function FinanceOperatingTab({ query }: Props) {
           )}
         </tbody>
       </AdminDataTable>
+      ) : null}
+
+      {showCardView ? (
+        items.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-border/50 bg-card py-20 text-center">
+            <div className="icon-well-sm bg-muted/80">
+              <Receipt className="size-[18px] text-muted-foreground" aria-hidden />
+            </div>
+            <div>
+              <p className="font-bold text-section-title text-foreground">
+                {hasSearch
+                  ? 'No transactions match your search'
+                  : 'No transactions yet'}
+              </p>
+              {!hasSearch ? (
+                <button
+                  type="button"
+                  className={cn(
+                    'mt-3 inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-4',
+                    'gradient-primary text-[13px] font-semibold text-primary-foreground shadow-soft',
+                  )}
+                  onClick={openCreate}
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Add first transaction
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <FinanceTransactionsCardGrid
+            items={items}
+            isLoading={isLoading}
+            isRefreshing={isFetching}
+            showStatus={showStatusColumn}
+            onEdit={openEdit}
+            onDelete={setDeleting}
+            onOpenSeries={openSeries}
+          />
+        )
+      ) : null}
 
       <Dialog
         open={modalOpen}
@@ -418,6 +540,7 @@ export function FinanceOperatingTab({ query }: Props) {
                 : `new-${createSession}`
             }
             initial={editing}
+            seriesRecurrenceUntil={editingSeriesUntil}
             onSubmit={handleSubmit}
             onCancel={closeModal}
             isPending={create.isPending || update.isPending}
@@ -446,23 +569,5 @@ export function FinanceOperatingTab({ query }: Props) {
         }}
       />
     </div>
-  );
-}
-
-function TransactionPaymentStatusBadge({ isPaid }: { isPaid: boolean }) {
-  if (isPaid) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-        <CheckCircle2 className="size-3 shrink-0" aria-hidden />
-        Paid
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:text-amber-300">
-      <Clock3 className="size-3 shrink-0" aria-hidden />
-      Unpaid
-    </span>
   );
 }

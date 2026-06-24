@@ -2,6 +2,7 @@
  * Finance period helpers — Manila timezone presets and URL query sync.
  */
 
+import { parseAdminListView } from '@/features/admin/lib/listView';
 import type {
   FinancePeriodBasis,
   FinanceQuery,
@@ -100,11 +101,13 @@ export function parseFinanceQueryFromParams(
     sortRaw === "host_net:asc"
       ? sortRaw
       : DEFAULT_FINANCE_QUERY.sort;
-  const viewRaw = params.get("view");
+  const listView = parseAdminListView(params);
   const staysView: FinanceQuery["staysView"] =
-    viewRaw === "card" || viewRaw === "calendar"
-      ? viewRaw
-      : DEFAULT_FINANCE_QUERY.staysView;
+    tab === "stays" ? listView : DEFAULT_FINANCE_QUERY.staysView;
+  const transactionsView: FinanceQuery["transactionsView"] =
+    tab === "transactions"
+      ? listView
+      : DEFAULT_FINANCE_QUERY.transactionsView;
 
   return {
     tab,
@@ -120,6 +123,7 @@ export function parseFinanceQueryFromParams(
     ),
     sort,
     staysView,
+    transactionsView,
   };
 }
 
@@ -142,6 +146,9 @@ export function writeFinanceQueryToParams(
   if (query.sort !== DEFAULT_FINANCE_QUERY.sort) p.set("sort", query.sort);
   if (query.tab === "stays" && query.staysView !== "table") {
     p.set("view", query.staysView);
+  }
+  if (query.tab === "transactions" && query.transactionsView !== "table") {
+    p.set("view", query.transactionsView);
   }
   if (preset && preset !== "this_month") p.set("preset", preset);
   return p;

@@ -10,7 +10,7 @@ import type {
   FinancePeriodBasis,
 } from "@/features/finance/lib/types";
 import {
-  getFinanceCategoryColor,
+  assignFinanceBreakdownColors,
   getFinanceCategoryLabel,
 } from "@/features/finance/lib/financeCategoryColors";
 
@@ -145,13 +145,15 @@ function groupBreakdown(
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   const total = sorted.reduce((sum, [, amount]) => sum + amount, 0);
 
-  return sorted.map(([label, amount], index) => ({
-    category: label,
-    label,
-    amount,
-    color: getFinanceCategoryColor(label, index),
-    percentage: total > 0 ? (amount / total) * 100 : 0,
-  }));
+  return assignFinanceBreakdownColors(
+    sorted.map(([label, amount]) => ({
+      category: label,
+      label,
+      amount,
+      color: "",
+      percentage: total > 0 ? (amount / total) * 100 : 0,
+    })),
+  );
 }
 
 /** Merge income + expense slices by category label for the breakdown "All" view. */
@@ -167,13 +169,15 @@ export function combineFinanceCategoryBreakdown(
   const sorted = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   const total = sorted.reduce((sum, [, amount]) => sum + amount, 0);
 
-  return sorted.map(([label, amount], index) => ({
-    category: label,
-    label,
-    amount,
-    color: getFinanceCategoryColor(label, index),
-    percentage: total > 0 ? (amount / total) * 100 : 0,
-  }));
+  return assignFinanceBreakdownColors(
+    sorted.map(([label, amount]) => ({
+      category: label,
+      label,
+      amount,
+      color: "",
+      percentage: total > 0 ? (amount / total) * 100 : 0,
+    })),
+  );
 }
 
 function mergeStayNetIncomeBreakdown(
@@ -188,17 +192,18 @@ function mergeStayNetIncomeBreakdown(
       category: STAY_NET_CATEGORY,
       label: STAY_NET_CATEGORY,
       amount: stayNetTotal,
-      color: getFinanceCategoryColor(STAY_NET_CATEGORY, 0),
+      color: "",
       percentage: 0,
     },
   ].sort((a, b) => b.amount - a.amount);
 
   const total = merged.reduce((sum, slice) => sum + slice.amount, 0);
-  return merged.map((slice, index) => ({
-    ...slice,
-    color: getFinanceCategoryColor(slice.label, index),
-    percentage: total > 0 ? (slice.amount / total) * 100 : 0,
-  }));
+  return assignFinanceBreakdownColors(
+    merged.map((slice) => ({
+      ...slice,
+      percentage: total > 0 ? (slice.amount / total) * 100 : 0,
+    })),
+  );
 }
 
 function bucketStayNetByDay(
