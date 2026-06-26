@@ -94,7 +94,6 @@ export function useBookings(query: BookingsQuery) {
               `guest2_name.ilike.${needle}`,
               `guest3_name.ilike.${needle}`,
               `guest4_name.ilike.${needle}`,
-              `guest5_name.ilike.${needle}`,
               `pet_name.ilike.${needle}`,
               `pet_type.ilike.${needle}`,
               `pet_breed.ilike.${needle}`,

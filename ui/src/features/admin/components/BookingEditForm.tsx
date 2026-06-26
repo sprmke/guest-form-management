@@ -10,17 +10,13 @@
  * Uses React Hook Form (no Zod for now — lightweight admin-only form).
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 import { friendlyToastError } from '@/lib/toastMessages';
 import {
-  CheckCircle2,
-  FileText,
   Info,
-  Loader2,
   Save,
-  Upload,
   X,
 } from 'lucide-react';
 import {
@@ -46,18 +42,12 @@ import {
 import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/admin/lib/workflowSensitiveGuestDiff';
 import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/admin/lib/bookingStatus';
 import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice';
-import {
-  useUploadBookingAsset,
-  type GuestDocAssetType,
-} from '@/features/admin/hooks/useUploadBookingAsset';
-import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
-import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
-import {
-  receiptAiUploadToastMessage,
-  showDocumentAiModelErrorToast,
-} from '@/features/admin/components/ReceiptAiVerdictBadge';
+import { AdminAdditionalGuestSlot } from '@/features/admin/components/AdminAdditionalGuestSlot';
+import { BookingGuestDocReplacer } from '@/features/admin/components/BookingGuestDocReplacer';
+import type { GuestDocAssetType } from '@/features/admin/hooks/useUploadBookingAsset';
+import { AzureGuestLimitReminder } from '@/features/guest-form/components/AzureGuestLimitReminder';
+import { computeGuestCounts, computeGuestCountsByAge, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_PARTY_GUEST_AGE, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, isPartyFifthGuest, shouldShowAzureAdultLimitMessage, PRIMARY_GUEST_MIN_AGE, requiresValidId } from '@/features/guest-form/lib/guestCounts';
 import type { BookingRow } from '@/features/admin/lib/types';
-import { normalizeStoragePublicUrl } from '@/features/admin/lib/storageUrls';
 import {
   BOOKING_SOURCE_OPTIONS,
   normalizeBookingSource,
@@ -87,6 +77,8 @@ type Props = {
   onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 };
 
+export type BookingEditFormValues = FormValues;
+
 type FormValues = {
   booking_source: string;
   guest_facebook_name: string;
@@ -95,10 +87,15 @@ type FormValues = {
   guest_phone_number: string;
   guest_address: string;
   nationality: string;
+  primary_guest_age: number | '';
   guest2_name: string;
+  guest2_age: number | '';
   guest3_name: string;
+  guest3_age: number | '';
   guest4_name: string;
+  guest4_age: number | '';
   guest5_name: string;
+  guest5_age: number | '';
   check_in_date: string;
   check_out_date: string;
   check_in_time: string;
@@ -126,6 +123,19 @@ function toStr(v: string | null | undefined) {
   return v ?? '';
 }
 
+function toAge(
+  v: number | null | undefined,
+  slotIndex = 1,
+): number | '' {
+  if (v != null && !Number.isNaN(v)) return v;
+  return slotIndex === 5 ? DEFAULT_FIFTH_PARTY_GUEST_AGE : DEFAULT_GUEST_AGE;
+}
+
+function normalizeGuestAge(value: number | ''): number | null {
+  if (value === '' || Number.isNaN(value)) return null;
+  return value;
+}
+
 function bookingEditPayloadFromValues(
   values: FormValues,
 ): UpdateBookingPayload {
@@ -137,10 +147,23 @@ function bookingEditPayloadFromValues(
     guest_phone_number: values.guest_phone_number,
     guest_address: values.guest_address || null,
     nationality: values.nationality || null,
+    primary_guest_age: normalizeGuestAge(values.primary_guest_age),
     guest2_name: values.guest2_name || null,
+    guest2_age: values.guest2_name.trim()
+      ? normalizeGuestAge(values.guest2_age)
+      : null,
     guest3_name: values.guest3_name || null,
+    guest3_age: values.guest3_name.trim()
+      ? normalizeGuestAge(values.guest3_age)
+      : null,
     guest4_name: values.guest4_name || null,
+    guest4_age: values.guest4_name.trim()
+      ? normalizeGuestAge(values.guest4_age)
+      : null,
     guest5_name: values.guest5_name || null,
+    guest5_age: values.guest5_name.trim()
+      ? normalizeGuestAge(values.guest5_age)
+      : null,
     check_in_date: values.check_in_date,
     check_out_date: values.check_out_date,
     check_in_time: values.check_in_time || null,
@@ -229,10 +252,15 @@ export function BookingEditForm({
       guest_phone_number: toStr(booking.guest_phone_number),
       guest_address: toStr(booking.guest_address),
       nationality: toStr(booking.nationality),
+      primary_guest_age: toAge(booking.primary_guest_age),
       guest2_name: toStr(booking.guest2_name),
+      guest2_age: toAge(booking.guest2_age),
       guest3_name: toStr(booking.guest3_name),
+      guest3_age: toAge(booking.guest3_age),
       guest4_name: toStr(booking.guest4_name),
+      guest4_age: toAge(booking.guest4_age, 4),
       guest5_name: toStr(booking.guest5_name),
+      guest5_age: toAge(booking.guest5_age, 5),
       check_in_date: normalizeDateString(toStr(booking.check_in_date)),
       check_out_date: normalizeDateString(toStr(booking.check_out_date)),
       check_in_time: toTimeInputValue(booking.check_in_time),
@@ -310,6 +338,107 @@ export function BookingEditForm({
     };
   }, [apiUrl]);
 
+  React.useEffect(() => {
+    const counts = computeGuestCounts([
+      {
+        name: formSnapshot?.primary_guest_name,
+        age:
+          formSnapshot?.primary_guest_age === ''
+            ? undefined
+            : formSnapshot?.primary_guest_age,
+      },
+      {
+        name: formSnapshot?.guest2_name,
+        age:
+          formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
+      },
+      {
+        name: formSnapshot?.guest3_name,
+        age:
+          formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
+      },
+      {
+        name: formSnapshot?.guest4_name,
+        age:
+          formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
+      },
+      {
+        name: formSnapshot?.guest5_name,
+        age:
+          formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
+      },
+    ]);
+    setValue('number_of_adults', counts.adults);
+    setValue('number_of_children', counts.children);
+  }, [
+    formSnapshot?.primary_guest_name,
+    formSnapshot?.primary_guest_age,
+    formSnapshot?.guest2_name,
+    formSnapshot?.guest2_age,
+    formSnapshot?.guest3_name,
+    formSnapshot?.guest3_age,
+    formSnapshot?.guest4_name,
+    formSnapshot?.guest4_age,
+    formSnapshot?.guest5_name,
+    formSnapshot?.guest5_age,
+    setValue,
+  ]);
+
+  const adminPartySize = getActivePartySize([
+    {
+      name: formSnapshot?.primary_guest_name,
+      age:
+        formSnapshot?.primary_guest_age === ''
+          ? undefined
+          : formSnapshot?.primary_guest_age,
+    },
+    {
+      name: formSnapshot?.guest2_name,
+      age:
+        formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
+    },
+    {
+      name: formSnapshot?.guest3_name,
+      age:
+        formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
+    },
+    {
+      name: formSnapshot?.guest4_name,
+      age:
+        formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
+    },
+    {
+      name: formSnapshot?.guest5_name,
+      age:
+        formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
+    },
+  ]);
+
+  const guestAdultCount = computeGuestCountsByAge([
+    {
+      age:
+        formSnapshot?.primary_guest_age === ''
+          ? undefined
+          : formSnapshot?.primary_guest_age,
+    },
+    {
+      age:
+        formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
+    },
+    {
+      age:
+        formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
+    },
+    {
+      age:
+        formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
+    },
+    {
+      age:
+        formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
+    },
+  ]).adults;
+
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const payload = {
       ...bookingEditPayloadFromValues(values),
@@ -380,11 +509,26 @@ export function BookingEditForm({
         {/* ── Guest Identity ─────────────────────────────────────────────────── */}
         <Section title="Guest Identity">
           <Row2>
-            <Field label="Facebook / Airbnb Name" required>
-              <Input {...register('guest_facebook_name', { required: true })} />
-            </Field>
             <Field label="Primary Guest Name" required>
               <Input {...register('primary_guest_name', { required: true })} />
+            </Field>
+            <Field label="Primary Guest Age" required>
+              <Input
+                type="number"
+                min={PRIMARY_GUEST_MIN_AGE}
+                max={120}
+                placeholder="Ex. 25"
+                {...register('primary_guest_age', {
+                  required: true,
+                  valueAsNumber: true,
+                  validate: (value) => {
+                    const age = typeof value === 'number' ? value : Number(value);
+                    return !Number.isNaN(age) && age >= PRIMARY_GUEST_MIN_AGE
+                      ? true
+                      : 'Primary guest must be 18 years or older';
+                  },
+                })}
+              />
             </Field>
           </Row2>
           <Row2>
@@ -399,45 +543,131 @@ export function BookingEditForm({
             </Field>
           </Row2>
           <Row2>
-            <Field label="Address">
-              <Input {...register('guest_address')} />
+            <Field label="Facebook / Airbnb Name" required>
+              <Input {...register('guest_facebook_name', { required: true })} />
             </Field>
             <Field label="Nationality">
               <Input {...register('nationality')} />
             </Field>
           </Row2>
+          <Row2>
+            <Field label="Address">
+              <Input {...register('guest_address')} />
+            </Field>
+            <div />
+          </Row2>
+          {formSnapshot.primary_guest_age !== '' &&
+            requiresValidId(formSnapshot.primary_guest_age) && (
+              <BookingGuestDocReplacer
+                bookingId={booking.id}
+                assetType="valid_id"
+                label="Valid ID"
+                currentUrl={booking.valid_id_url}
+                accept="image/*,.pdf"
+                onPreview={onPreview}
+              />
+            )}
         </Section>
 
         {/* ── Additional Guests ─────────────────────────────────────────────── */}
         <Section title="Additional Guests">
-          <Row2>
-            <Field label="Guest 2">
-              <Input
-                {...register('guest2_name')}
-                placeholder="Full name (optional)"
-              />
-            </Field>
-            <Field label="Guest 3">
-              <Input
-                {...register('guest3_name')}
-                placeholder="Full name (optional)"
-              />
-            </Field>
-          </Row2>
-          <Row2>
-            <Field label="Guest 4">
-              <Input
-                {...register('guest4_name')}
-                placeholder="Full name (optional)"
-              />
-            </Field>
-            <Field label="Guest 5">
-              <Input
-                {...register('guest5_name')}
-                placeholder="Full name (optional)"
-              />
-            </Field>
-          </Row2>
+          {shouldShowAzureAdultLimitMessage(guestAdultCount, adminPartySize) && (
+            <AzureGuestLimitReminder className="mb-3" />
+          )}
+          <div className="space-y-3">
+            <AdminAdditionalGuestSlot
+              slotLabel="2. Guest 2"
+              nameField="guest2_name"
+              ageField="guest2_age"
+              bookingId={booking.id}
+              register={register}
+              guestAge={
+                formSnapshot.guest2_age === ''
+                  ? undefined
+                  : formSnapshot.guest2_age
+              }
+              validIdUrl={booking.guest2_valid_id_url}
+              assetType="guest2_valid_id"
+              maxAge={
+                isPartyFifthGuest(2, adminPartySize)
+                  ? FIFTH_PARTY_GUEST_MAX_AGE
+                  : undefined
+              }
+              agePlaceholder={
+                isPartyFifthGuest(2, adminPartySize) ? '3' : 'Ex. 25'
+              }
+              onPreview={onPreview}
+            />
+            <AdminAdditionalGuestSlot
+              slotLabel="3. Guest 3"
+              nameField="guest3_name"
+              ageField="guest3_age"
+              bookingId={booking.id}
+              register={register}
+              guestAge={
+                formSnapshot.guest3_age === ''
+                  ? undefined
+                  : formSnapshot.guest3_age
+              }
+              validIdUrl={booking.guest3_valid_id_url}
+              assetType="guest3_valid_id"
+              maxAge={
+                isPartyFifthGuest(3, adminPartySize)
+                  ? FIFTH_PARTY_GUEST_MAX_AGE
+                  : undefined
+              }
+              agePlaceholder={
+                isPartyFifthGuest(3, adminPartySize) ? '3' : 'Ex. 25'
+              }
+              onPreview={onPreview}
+            />
+            <AdminAdditionalGuestSlot
+              slotLabel="4. Guest 4"
+              nameField="guest4_name"
+              ageField="guest4_age"
+              bookingId={booking.id}
+              register={register}
+              guestAge={
+                formSnapshot.guest4_age === ''
+                  ? undefined
+                  : formSnapshot.guest4_age
+              }
+              validIdUrl={booking.guest4_valid_id_url}
+              assetType="guest4_valid_id"
+              maxAge={
+                isPartyFifthGuest(4, adminPartySize)
+                  ? FIFTH_PARTY_GUEST_MAX_AGE
+                  : undefined
+              }
+              agePlaceholder={
+                isPartyFifthGuest(4, adminPartySize) ? '3' : 'Ex. 25'
+              }
+              onPreview={onPreview}
+            />
+            <AdminAdditionalGuestSlot
+              slotLabel="5. Guest 5"
+              nameField="guest5_name"
+              ageField="guest5_age"
+              bookingId={booking.id}
+              register={register}
+              guestAge={
+                formSnapshot.guest5_age === ''
+                  ? undefined
+                  : formSnapshot.guest5_age
+              }
+              validIdUrl={booking.guest5_valid_id_url}
+              assetType="guest5_valid_id"
+              maxAge={
+                isPartyFifthGuest(5, adminPartySize)
+                  ? FIFTH_PARTY_GUEST_MAX_AGE
+                  : undefined
+              }
+              agePlaceholder={
+                isPartyFifthGuest(5, adminPartySize) ? '3' : 'Ex. 25'
+              }
+              onPreview={onPreview}
+            />
+          </div>
         </Section>
 
         {/* ── Stay Details ──────────────────────────────────────────────────── */}
@@ -533,6 +763,9 @@ export function BookingEditForm({
               <Input
                 type="number"
                 min={1}
+                readOnly
+                tabIndex={-1}
+                className="pointer-events-none bg-muted/40"
                 {...register('number_of_adults', {
                   required: true,
                   valueAsNumber: true,
@@ -543,6 +776,9 @@ export function BookingEditForm({
               <Input
                 type="number"
                 min={0}
+                readOnly
+                tabIndex={-1}
+                className="pointer-events-none bg-muted/40"
                 {...register('number_of_children', { valueAsNumber: true })}
               />
             </Field>
@@ -764,12 +1000,6 @@ function DocumentsSection({
           },
         ] as DocDef[])
       : []),
-    {
-      assetType: 'valid_id',
-      label: 'Valid ID',
-      currentUrl: booking.valid_id_url,
-      accept: 'image/*,.pdf',
-    },
     ...(booking.has_pets
       ? ([
           {
@@ -788,14 +1018,13 @@ function DocumentsSection({
       : []),
   ];
 
+  if (docs.length === 0) return null;
+
   return (
     <Section title="Documents" className="space-y-4">
-      <p className="text-xs font-medium text-muted-foreground">
-        Replacing or removing a file updates immediately — no need to press Save.
-      </p>
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
         {docs.map((doc) => (
-          <DocumentReplacer
+          <BookingGuestDocReplacer
             key={doc.assetType}
             bookingId={booking.id}
             onPreview={onPreview}
@@ -805,184 +1034,4 @@ function DocumentsSection({
       </div>
     </Section>
   );
-}
-
-function DocumentReplacer({
-  bookingId,
-  assetType,
-  label,
-  currentUrl,
-  accept,
-  onPreview,
-}: DocDef & {
-  bookingId: string;
-  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const uploadMut = useUploadBookingAsset();
-  const clearAssetMut = useClearBookingAsset();
-  const [justUploaded, setJustUploaded] = useState(false);
-  const [thumbFailed, setThumbFailed] = useState(false);
-
-  const displayUrl = currentUrl
-    ? (normalizeStoragePublicUrl(currentUrl) ?? currentUrl)
-    : '';
-
-  useEffect(() => {
-    setThumbFailed(false);
-  }, [currentUrl]);
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const result = await uploadMut.mutateAsync({ bookingId, assetType, file });
-      setJustUploaded(true);
-      const validation = result.receiptValidation;
-      if (validation && assetType === 'valid_id') {
-        if (validation.aiModelError) {
-          showDocumentAiModelErrorToast(validation.aiModelError);
-        } else {
-          const toastMsg = receiptAiUploadToastMessage(
-            validation.verdict,
-            'valid_id',
-          );
-          if (toastMsg?.type === 'error') {
-            toast.error(toastMsg.message, { description: toastMsg.description });
-          } else if (toastMsg?.type === 'warning') {
-            toast.warning(toastMsg.message);
-          } else if (toastMsg?.type === 'success') {
-            toast.success(toastMsg.message);
-          } else {
-            toast.success(`${label} replaced successfully`);
-          }
-        }
-      } else {
-        toast.success(`${label} replaced successfully`);
-      }
-      setTimeout(() => setJustUploaded(false), 3000);
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : `Failed to upload ${label}`,
-      );
-    }
-
-    if (inputRef.current) inputRef.current.value = '';
-  }
-
-  async function handleRemove() {
-    setThumbFailed(false);
-    setJustUploaded(false);
-    if (inputRef.current) inputRef.current.value = '';
-    try {
-      await clearAssetMut.mutateAsync({ bookingId, assetType });
-    } catch (err: unknown) {
-      toast.error(
-        err instanceof Error ? err.message : `Failed to remove ${label}`,
-      );
-    }
-  }
-
-  const isLoading = uploadMut.isPending;
-  const isRemoving = clearAssetMut.isPending;
-  const docType = displayUrl ? getDocType(displayUrl) : 'file';
-  const showImageThumb = docType === 'image' && !thumbFailed;
-
-  return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-border/60 bg-muted/20 p-3.5 ring-1 ring-border/20">
-      <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-foreground/70">
-        {label}
-      </p>
-
-      {currentUrl ? (
-        <WorkflowAssetPreviewWithRemove
-          removing={isRemoving}
-          uploading={isLoading}
-          removeAriaLabel={`Remove ${label}`}
-          onRemove={() => void handleRemove()}
-          preview={
-            <button
-              type="button"
-              aria-label={`Preview ${label}`}
-              onClick={() => void onPreview(label, currentUrl)}
-              className="group flex min-h-[44px] w-full items-center gap-2 overflow-hidden rounded-lg border border-border/55 bg-card p-2 text-left transition-colors hover:border-primary/30 hover:bg-muted/20"
-            >
-              {showImageThumb ? (
-                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted">
-                  <img
-                    src={displayUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                    onError={() => setThumbFailed(true)}
-                  />
-                </div>
-              ) : (
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-red-50 dark:bg-red-500/15">
-                  <FileText className="size-6 text-red-400 dark:text-red-300" />
-                </div>
-              )}
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium text-muted-foreground">
-                  Current file
-                </p>
-                <p className="flex items-center gap-0.5 text-[11px] text-blue-600 group-hover:underline dark:text-blue-400">
-                  View
-                </p>
-              </div>
-            </button>
-          }
-        />
-      ) : (
-        <div className="flex h-16 items-center justify-center rounded-lg border border-dashed border-border/70 bg-card/80 text-xs text-muted-foreground">
-          No file uploaded
-        </div>
-      )}
-
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept}
-        className="hidden"
-        onChange={handleFileChange}
-        disabled={isLoading}
-      />
-      <button
-        type="button"
-        disabled={isLoading || isRemoving}
-        onClick={() => inputRef.current?.click()}
-        className={cn(
-          'flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors',
-          justUploaded
-            ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30'
-            : 'bg-card text-foreground ring-1 ring-border/50 hover:bg-muted/40 hover:ring-primary/20 dark:ring-border/60',
-          (isLoading || isRemoving) && 'cursor-not-allowed opacity-60',
-        )}
-      >
-        {isLoading ? (
-          <>
-            <Loader2 className="size-3.5 animate-spin" />
-            Uploading…
-          </>
-        ) : justUploaded ? (
-          <>
-            <CheckCircle2 className="size-3.5" />
-            Uploaded!
-          </>
-        ) : (
-          <>
-            <Upload className="size-3.5" />
-            {currentUrl ? 'Replace file' : 'Upload file'}
-          </>
-        )}
-      </button>
-    </div>
-  );
-}
-
-function getDocType(url: string): 'image' | 'pdf' | 'file' {
-  const path = url.split('?')[0].toLowerCase();
-  if (/\.(jpg|jpeg|png|webp|gif)$/.test(path)) return 'image';
-  if (/\.pdf$/.test(path)) return 'pdf';
-  return 'file';
 }

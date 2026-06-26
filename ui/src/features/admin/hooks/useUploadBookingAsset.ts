@@ -18,6 +18,10 @@ import { BOOKINGS_QUERY_KEY } from './useBookings';
 
 export type GuestDocAssetType =
   | 'valid_id'
+  | 'guest2_valid_id'
+  | 'guest3_valid_id'
+  | 'guest4_valid_id'
+  | 'guest5_valid_id'
   | 'payment_receipt'
   | 'pet_vaccination'
   | 'pet_image';

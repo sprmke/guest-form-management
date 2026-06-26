@@ -1,4 +1,5 @@
 import { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
+import { DEFAULT_GUEST_AGE } from "@/features/guest-form/lib/guestCounts";
 import {
   getDefaultDates,
   formatDateToYYYYMMDD,
@@ -19,8 +20,9 @@ export const defaultFormValues: Partial<GuestFormData> = {
     checkInTime: '14:00',
     checkOutTime: '11:00',
     nationality: 'Filipino',
-    numberOfAdults: 2,
+    numberOfAdults: 1,
     numberOfChildren: 0,
+    primaryGuestAge: DEFAULT_GUEST_AGE,
     guestSpecialRequests: '',
     guestRequestsSurpriseDecor: false,
     findUs: 'Facebook',

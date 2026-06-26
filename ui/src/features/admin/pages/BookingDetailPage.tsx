@@ -49,6 +49,7 @@ import {
   Sparkles,
   Ticket,
   User,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
@@ -73,6 +74,11 @@ import {
   formatRelative,
 } from "@/features/admin/lib/formatters";
 import type { BookingRow } from "@/features/admin/lib/types";
+import {
+  ADMIN_GUEST_VIEW_SLOTS,
+  shouldShowAdminGuestViewSlot,
+} from "@/features/admin/lib/adminGuestSlots";
+import { requiresValidId } from "@/features/guest-form/lib/guestCounts";
 import {
   normalizeStoragePublicUrl,
   parseStorageUrl,
@@ -274,9 +280,12 @@ export function BookingDetailPage() {
                       <GuestInfoCard
                         booking={booking}
                         onPreview={handlePreview}
+                      />
+                      <GuestsCard
+                        booking={booking}
+                        onPreview={handlePreview}
                         isDocumentAiBackfilling={isReceiptAiBackfilling}
                       />
-                      <AdditionalGuestsCard booking={booking} />
                       <StayDetailsCard booking={booking} />
                       <PricingSummaryCard
                         booking={booking}
@@ -457,11 +466,9 @@ function BookingHeader({
 function GuestInfoCard({
   booking,
   onPreview,
-  isDocumentAiBackfilling = false,
 }: {
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void;
-  isDocumentAiBackfilling?: boolean;
 }) {
   return (
     <Card title="Guest Information" icon={<User className="size-3.5" />}>
@@ -488,57 +495,95 @@ function GuestInfoCard({
         />
         <InfoField label="Nationality" value={booking.nationality} />
       </Grid2>
-      {(booking.approved_gaf_pdf_url || booking.valid_id_url) && (
+      {booking.approved_gaf_pdf_url && (
         <div className="mt-3 flex flex-wrap gap-3">
-          {booking.approved_gaf_pdf_url && (
-            <DocPreview
-              label="Approved GAF"
-              url={booking.approved_gaf_pdf_url}
-              onPreview={onPreview}
-            />
-          )}
-          {booking.valid_id_url && (
-            <DocPreview
-              label="Valid ID"
-              url={booking.valid_id_url}
-              onPreview={onPreview}
-              receiptAiVerdict={booking.valid_id_ai_verdict}
-              receiptAiLoading={receiptAiPreviewLoading(
-                isDocumentAiBackfilling,
-                booking.valid_id_url,
-                booking.valid_id_ai_verdict,
-              )}
-              receiptAiVariant="valid_id"
-            />
-          )}
+          <DocPreview
+            label="Approved GAF"
+            url={booking.approved_gaf_pdf_url}
+            onPreview={onPreview}
+          />
         </div>
       )}
     </Card>
   );
 }
 
-function AdditionalGuestsCard({ booking }: { booking: BookingRow }) {
-  const extra = [
-    booking.guest2_name,
-    booking.guest3_name,
-    booking.guest4_name,
-    booking.guest5_name,
-  ].filter(Boolean) as string[];
-
-  if (extra.length === 0) return null;
+function GuestsCard({
+  booking,
+  onPreview,
+  isDocumentAiBackfilling = false,
+}: {
+  booking: BookingRow;
+  onPreview: (label: string, rawUrl: string) => void;
+  isDocumentAiBackfilling?: boolean;
+}) {
+  const visibleSlots = ADMIN_GUEST_VIEW_SLOTS.filter((slot) =>
+    shouldShowAdminGuestViewSlot(slot, booking),
+  );
 
   return (
-    <Card title="Additional Guests" icon={<Users className="size-3.5" />}>
-      <div className="flex flex-wrap gap-2">
-        {extra.map((name, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-muted/50 px-3 py-1 text-xs text-foreground"
-          >
-            <User className="size-3 text-muted-foreground" />
-            {name}
-          </span>
-        ))}
+    <Card title="Guests" icon={<Users className="size-3.5" />}>
+      <div className="space-y-3">
+        {visibleSlots.map((slot) => {
+          const name = booking[slot.nameKey];
+          const age = booking[slot.ageKey];
+          const validIdUrl = booking[slot.validIdUrlKey];
+          const showValidId =
+            age != null && !Number.isNaN(age) && requiresValidId(age);
+
+          return (
+            <section
+              key={slot.index}
+              className="space-y-3 rounded-xl border border-border/70 bg-muted/15 p-4"
+            >
+              <div className="flex items-center gap-2">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <UserRound className="size-4" aria-hidden />
+                </div>
+                <p className="text-xs font-bold uppercase tracking-wider text-foreground/80">
+                  {slot.index}. {slot.label} Guest
+                </p>
+              </div>
+              <Grid2>
+                <InfoField label="Name" value={name} />
+                <InfoField
+                  label="Age"
+                  value={age != null ? String(age) : undefined}
+                />
+              </Grid2>
+              {showValidId && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {validIdUrl ? (
+                    <DocPreview
+                      label={`${slot.label} Valid ID`}
+                      url={validIdUrl}
+                      onPreview={onPreview}
+                      receiptAiVerdict={
+                        slot.validIdAiVerdictKey
+                          ? booking[slot.validIdAiVerdictKey]
+                          : undefined
+                      }
+                      receiptAiLoading={
+                        slot.validIdAiVerdictKey
+                          ? receiptAiPreviewLoading(
+                              isDocumentAiBackfilling,
+                              validIdUrl,
+                              booking[slot.validIdAiVerdictKey],
+                            )
+                          : false
+                      }
+                      receiptAiVariant="valid_id"
+                    />
+                  ) : (
+                    <div className="flex min-h-[44px] items-center rounded-xl border border-dashed border-border/70 bg-card/80 px-3 text-xs text-muted-foreground">
+                      No valid ID uploaded
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
     </Card>
   );

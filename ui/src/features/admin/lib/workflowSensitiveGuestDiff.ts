@@ -33,6 +33,15 @@ function timeForCompare(value: string | null | undefined): string {
   return `${String(hour24).padStart(2, '0')}:${minute}`;
 }
 
+function sameNumber(
+  a: number | null | undefined,
+  b: number | null | undefined,
+): boolean {
+  const left = a == null || Number.isNaN(a) ? null : a;
+  const right = b == null || Number.isNaN(b) ? null : b;
+  return left === right;
+}
+
 function normDate(d: string | null | undefined): string {
   const s = trimText(d);
   if (!s) return '';
@@ -55,9 +64,16 @@ export function hasWorkflowSensitiveGuestFieldDiff(
   if (!sameText(booking.guest_phone_number, v.guest_phone_number)) return true;
 
   if (!sameText(booking.guest2_name, v.guest2_name ?? null)) return true;
+  if (!sameNumber(booking.guest2_age, v.guest2_age ?? null)) return true;
   if (!sameText(booking.guest3_name, v.guest3_name ?? null)) return true;
+  if (!sameNumber(booking.guest3_age, v.guest3_age ?? null)) return true;
   if (!sameText(booking.guest4_name, v.guest4_name ?? null)) return true;
+  if (!sameNumber(booking.guest4_age, v.guest4_age ?? null)) return true;
   if (!sameText(booking.guest5_name, v.guest5_name ?? null)) return true;
+  if (!sameNumber(booking.guest5_age, v.guest5_age ?? null)) return true;
+  if (!sameNumber(booking.primary_guest_age, v.primary_guest_age ?? null)) {
+    return true;
+  }
 
   if (normDate(booking.check_in_date) !== normDate(v.check_in_date ?? '')) return true;
   if (normDate(booking.check_out_date) !== normDate(v.check_out_date ?? '')) return true;

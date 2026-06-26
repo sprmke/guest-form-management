@@ -82,6 +82,8 @@ import {
   GuestFormInfoCallout,
   GuestFormOptionCard,
 } from '@/features/guest-form/components/GuestFormOptionCard';
+import { GuestFormGuestsSection } from '@/features/guest-form/components/GuestFormGuestsSection';
+import { computeGuestCountsByAge } from '@/features/guest-form/lib/guestCounts';
 import {
   clampGuestFormStep,
   getFieldsForGuestFormStep,
@@ -99,8 +101,12 @@ export function GuestForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCancellingBooking, setIsCancellingBooking] = useState(false);
   const [invalidBookingId, setInvalidBookingId] = useState(false);
-  const [validIdPreview, setValidIdPreview] = useState<string | null>(null);
-  const [validIdImageLoadError, setValidIdImageLoadError] = useState(false);
+  const [validIdPreviews, setValidIdPreviews] = useState<
+    Record<string, string | null>
+  >({});
+  const [validIdImageErrors, setValidIdImageErrors] = useState<
+    Record<string, boolean>
+  >({});
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState<
     string | null
   >(null);
@@ -111,11 +117,11 @@ export function GuestForm() {
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
   const [bookedDates, setBookedDates] = useState<BookedDateRange[]>([]);
   const [sameAsFacebookName, setSameAsFacebookName] = useState(false);
+  const [guestSectionSeedKey, setGuestSectionSeedKey] = useState(0);
   const [currentStep, setCurrentStep] = useState<GuestFormStepId>(1);
   const [submitReady, setSubmitReady] = useState(false);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const validIdInputRef = useRef<HTMLInputElement>(null);
   const petVaccinationInputRef = useRef<HTMLInputElement>(null);
   const petImageInputRef = useRef<HTMLInputElement>(null);
   const [searchParams] = useSearchParams();
@@ -159,7 +165,10 @@ export function GuestForm() {
   const guestFormStepCount = getGuestFormStepCount(isAirbnb);
 
   const form = useForm<GuestFormData>({
-    resolver: zodResolver(createGuestFormSchema(isAirbnb)),
+    resolver: zodResolver(createGuestFormSchema(isAirbnb), undefined, {
+      raw: true,
+      mode: 'sync',
+    }),
     defaultValues: seededDefaultsRef.current ?? defaultFormValues,
     mode: 'all',
   });
@@ -281,18 +290,51 @@ export function GuestForm() {
           }
         }
 
-        if (formData.validIdUrl) {
-          setValidIdImageLoadError(false);
-          const validIdFile = await fetchImageAsFile(
-            formData.validIdUrl,
-            formData.primaryGuestName,
-          );
-          if (validIdFile) {
-            formData.validId = validIdFile;
+        const loadValidIdAsset = async (
+          url: string | undefined,
+          field: keyof GuestFormData,
+          previewKey: string,
+          guestName: string,
+        ) => {
+          if (!url) return;
+          setValidIdImageErrors((prev) => ({ ...prev, [previewKey]: false }));
+          const file = await fetchImageAsFile(url, guestName);
+          if (file) {
+            (formData as Record<string, unknown>)[field] = file;
           }
-          // Always set preview from URL so img can load from storage (e.g. after re-submit with sanitized filename)
-          setValidIdPreview(formData.validIdUrl);
-        }
+          setValidIdPreviews((prev) => ({ ...prev, [previewKey]: url }));
+        };
+
+        await loadValidIdAsset(
+          formData.validIdUrl,
+          'validId',
+          'validId',
+          formData.primaryGuestName,
+        );
+        await loadValidIdAsset(
+          formData.guest2ValidIdUrl,
+          'guest2ValidId',
+          'guest2ValidId',
+          formData.guest2Name || formData.primaryGuestName,
+        );
+        await loadValidIdAsset(
+          formData.guest3ValidIdUrl,
+          'guest3ValidId',
+          'guest3ValidId',
+          formData.guest3Name || formData.primaryGuestName,
+        );
+        await loadValidIdAsset(
+          formData.guest4ValidIdUrl,
+          'guest4ValidId',
+          'guest4ValidId',
+          formData.guest4Name || formData.primaryGuestName,
+        );
+        await loadValidIdAsset(
+          formData.guest5ValidIdUrl,
+          'guest5ValidId',
+          'guest5ValidId',
+          formData.guest5Name || formData.primaryGuestName,
+        );
 
         if (formData.petVaccinationUrl) {
           // Fetch the image and convert it to a File object
@@ -327,6 +369,7 @@ export function GuestForm() {
 
         // Reset form with the modified data
         form.reset(formData);
+        setGuestSectionSeedKey((key) => key + 1);
       } else {
         setInvalidBookingId(true);
       }
@@ -397,14 +440,29 @@ export function GuestForm() {
         }
 
         form.reset(randomData);
+        setGuestSectionSeedKey((key) => key + 1);
+
+        const nextValidIdPreviews: Record<string, string | null> = {};
+        for (const field of [
+          'validId',
+          'guest2ValidId',
+          'guest3ValidId',
+          'guest4ValidId',
+          'guest5ValidId',
+        ] as const) {
+          const file = randomData[field];
+          if (file) {
+            nextValidIdPreviews[field] = URL.createObjectURL(file);
+          }
+        }
+        setValidIdPreviews(nextValidIdPreviews);
+        setValidIdImageErrors({});
 
         // Set the dummy files in the file inputs
         if (randomData.paymentReceipt) {
           setDummyFile(fileInputRef, randomData.paymentReceipt);
         }
-        if (randomData.validId) {
-          setDummyFile(validIdInputRef, randomData.validId);
-        }
+
         if (randomData.petVaccination) {
           setDummyFile(petVaccinationInputRef, randomData.petVaccination);
         }
@@ -497,15 +555,23 @@ export function GuestForm() {
       // Add the booking ID to form data
       formData.append('bookingId', currentBookingId || '');
 
-      // Add all form values to FormData, excluding paymentReceipt, validId, petVaccination and petImage
+      // Add all form values to FormData, excluding file upload fields
+      const fileFields = new Set([
+        'paymentReceipt',
+        'validId',
+        'guest2ValidId',
+        'guest3ValidId',
+        'guest4ValidId',
+        'guest5ValidId',
+        'petVaccination',
+        'petImage',
+      ]);
+
       Object.entries(transformedValues).forEach(([key, value]) => {
         if (
           value !== undefined &&
           value !== null &&
-          key !== 'paymentReceipt' &&
-          key !== 'validId' &&
-          key !== 'petVaccination' &&
-          key !== 'petImage'
+          !fileFields.has(key)
         ) {
           formData.append(key, value.toString());
         }
@@ -513,22 +579,79 @@ export function GuestForm() {
 
       formData.append('bookingSource', bookingSource);
 
-      // Handle file uploads with standardized naming
-      ['paymentReceipt', 'validId', 'petVaccination', 'petImage'].forEach(
-        (prefix) => {
-          handleFileUpload(
-            formData,
-            values[prefix as keyof GuestFormData] as File | null | undefined,
-            prefix,
-            values.primaryGuestName,
-            values.checkInDate,
-            values.checkOutDate,
-            prefix === 'petVaccination' || prefix === 'petImage'
-              ? values.hasPets
-              : true,
-          );
+      const guestFileUploads: Array<{
+        prefix: string;
+        file: File | null | undefined;
+        guestName: string;
+        required: boolean;
+      }> = [
+        {
+          prefix: 'paymentReceipt',
+          file: values.paymentReceipt,
+          guestName: values.primaryGuestName,
+          required: !isAirbnb,
         },
-      );
+        {
+          prefix: 'validId',
+          file: values.validId,
+          guestName: values.primaryGuestName,
+          required:
+            values.primaryGuestAge != null &&
+            values.primaryGuestAge >= 18,
+        },
+        {
+          prefix: 'guest2ValidId',
+          file: values.guest2ValidId,
+          guestName: values.guest2Name || values.primaryGuestName,
+          required:
+            values.guest2Age != null && values.guest2Age >= 18,
+        },
+        {
+          prefix: 'guest3ValidId',
+          file: values.guest3ValidId,
+          guestName: values.guest3Name || values.primaryGuestName,
+          required:
+            values.guest3Age != null && values.guest3Age >= 18,
+        },
+        {
+          prefix: 'guest4ValidId',
+          file: values.guest4ValidId,
+          guestName: values.guest4Name || values.primaryGuestName,
+          required:
+            values.guest4Age != null && values.guest4Age >= 18,
+        },
+        {
+          prefix: 'guest5ValidId',
+          file: values.guest5ValidId,
+          guestName: values.guest5Name || values.primaryGuestName,
+          required:
+            values.guest5Age != null && values.guest5Age >= 18,
+        },
+        {
+          prefix: 'petVaccination',
+          file: values.petVaccination,
+          guestName: values.primaryGuestName,
+          required: values.hasPets,
+        },
+        {
+          prefix: 'petImage',
+          file: values.petImage,
+          guestName: values.primaryGuestName,
+          required: values.hasPets,
+        },
+      ];
+
+      guestFileUploads.forEach(({ prefix, file, guestName, required }) => {
+        handleFileUpload(
+          formData,
+          file,
+          prefix,
+          guestName,
+          values.checkInDate,
+          values.checkOutDate,
+          required,
+        );
+      });
 
       // Build URL with query parameters
       const queryParams = new URLSearchParams();
@@ -748,10 +871,32 @@ export function GuestForm() {
     }
   }
 
-  // Calculate total number of additional guests needed, capped at 6
-  const totalGuests =
-    (form.watch('numberOfAdults') || 1) + (form.watch('numberOfChildren') || 0);
-  const additionalGuestsNeeded = Math.min(3, Math.max(0, totalGuests - 1)); // Cap at 3 additional guests
+  const watchedValues = useWatch({ control: form.control });
+
+  // Keep adults/children counts in sync with per-guest ages for downstream consumers.
+  useEffect(() => {
+    const counts = computeGuestCountsByAge([
+      { age: form.getValues('primaryGuestAge') },
+      { age: form.getValues('guest2Age') },
+      { age: form.getValues('guest3Age') },
+      { age: form.getValues('guest4Age') },
+      { age: form.getValues('guest5Age') },
+    ]);
+    form.setValue('numberOfAdults', Math.max(counts.adults, 1));
+    form.setValue('numberOfChildren', counts.children);
+  }, [
+    watchedValues?.primaryGuestName,
+    watchedValues?.primaryGuestAge,
+    watchedValues?.guest2Name,
+    watchedValues?.guest2Age,
+    watchedValues?.guest3Name,
+    watchedValues?.guest3Age,
+    watchedValues?.guest4Name,
+    watchedValues?.guest4Age,
+    watchedValues?.guest5Name,
+    watchedValues?.guest5Age,
+    form,
+  ]);
 
   // Handle "Same as Facebook/Airbnb Name" checkbox
   useEffect(() => {
@@ -761,7 +906,6 @@ export function GuestForm() {
     }
   }, [sameAsFacebookName, form.watch('guestFacebookName')]);
 
-  const watchedValues = useWatch({ control: form.control });
   const canProceed = useMemo(
     () => isGuestFormStepComplete(currentStep, form.getValues(), isAirbnb),
     [currentStep, watchedValues, form, isAirbnb],
@@ -994,124 +1138,6 @@ export function GuestForm() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="validId"
-                render={({ field: { onChange, value, ...field } }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Valid ID <span className="text-destructive">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <div className="guest-image-upload-dropzone group">
-                        {validIdImageLoadError ? (
-                          <div className="guest-image-upload-error">
-                            <p>
-                              Image could not be loaded (link may be outdated).
-                            </p>
-                            <p>Please re-upload your Valid ID below.</p>
-                            <label className="guest-image-upload-trigger">
-                              <Upload className="w-4 h-4" />
-                              Re-upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                    setValidIdImageLoadError(false);
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        ) : validIdPreview || value ? (
-                          <>
-                            <img
-                              src={
-                                validIdPreview ||
-                                (value && URL.createObjectURL(value))
-                              }
-                              alt="Valid ID Preview"
-                              className="object-cover w-full h-full"
-                              onError={() => {
-                                setValidIdImageLoadError(true);
-                                setValidIdPreview(null);
-                              }}
-                            />
-                            <div className="flex absolute inset-0 justify-center items-center opacity-0 transition-opacity bg-black/50 group-hover:opacity-100">
-                              <label className="guest-image-upload-replace">
-                                <Upload className="w-4 h-4" />
-                                Replace Image
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/jpg,image/png,image/heic"
-                                  className="hidden"
-                                  {...field}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      const validation =
-                                        validateImageFile(file);
-                                      if (!validation.valid) {
-                                        alert(validation.message);
-                                        return;
-                                      }
-                                      onChange(file);
-                                      setValidIdPreview(
-                                        URL.createObjectURL(file),
-                                      );
-                                    }
-                                  }}
-                                />
-                              </label>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="flex absolute inset-0 justify-center items-center">
-                            <label className="guest-image-upload-trigger">
-                              <Upload className="w-4 h-4" />
-                              Upload Image
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/jpg,image/png,image/heic"
-                                className="hidden"
-                                {...field}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    const validation = validateImageFile(file);
-                                    if (!validation.valid) {
-                                      alert(validation.message);
-                                      return;
-                                    }
-                                    onChange(file);
-                                    setValidIdPreview(
-                                      URL.createObjectURL(file),
-                                    );
-                                  }
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
             )}
 
@@ -1314,243 +1340,24 @@ export function GuestForm() {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="numberOfAdults"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Number of Adults</FormLabel>
-                      <div className="flex items-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3 rounded-r-none"
-                          disabled={field.value <= 1} // Always require at least 1 adult
-                          onClick={() => {
-                            const newValue = Math.max(
-                              1,
-                              (field.value || 1) - 1,
-                            );
-                            field.onChange(newValue);
-                          }}
-                        >
-                          -
-                        </Button>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            min="1"
-                            max="4"
-                            readOnly
-                            tabIndex={-1}
-                            className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3 rounded-l-none"
-                          disabled={field.value >= 4 || totalGuests >= 6} // Max 4 adults or total 6 guests
-                          onClick={() => {
-                            const currentChildren =
-                              form.getValues('numberOfChildren') || 0;
-                            const newValue = Math.min(
-                              4,
-                              (field.value || 1) + 1,
-                            );
-                            if (newValue + currentChildren <= 6) {
-                              field.onChange(newValue);
-                            }
-                          }}
-                        >
-                          +
-                        </Button>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="numberOfChildren"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Number of Children</FormLabel>
-                      <div className="flex items-center">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3 rounded-r-none"
-                          disabled={field.value <= 0}
-                          onClick={() => {
-                            const newValue = Math.max(
-                              0,
-                              (field.value || 0) - 1,
-                            );
-                            field.onChange(newValue);
-                          }}
-                        >
-                          -
-                        </Button>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            min="0"
-                            max="5"
-                            readOnly
-                            tabIndex={-1}
-                            className="text-center rounded-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none pointer-events-none"
-                            {...field}
-                          />
-                        </FormControl>
-                        <Button
-                          type="button"
-                          color="green"
-                          variant="outline"
-                          className="px-3 rounded-l-none"
-                          disabled={totalGuests >= 6 || field.value >= 5} // Max total 6 guests or 5 children
-                          onClick={() => {
-                            const currentAdults =
-                              form.getValues('numberOfAdults') || 1;
-                            const newValue = (field.value || 0) + 1;
-                            if (newValue + currentAdults <= 6) {
-                              field.onChange(newValue);
-                            }
-                          }}
-                        >
-                          +
-                        </Button>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {totalGuests >= 4 && (
-                <div
-                  className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-500/30 dark:bg-blue-500/10"
-                  role="alert"
-                >
-                  <p className="text-sm font-medium">
-                    Up to 6 guests here. Azure lists 4—{' '}
-                    {isAirbnb
-                      ? 'message your host on Airbnb for help.'
-                      : 'message us on Facebook for help.'}
-                  </p>
-                </div>
-              )}
-              <FormField
-                control={form.control}
-                name="primaryGuestName"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex flex-col pt-4 mb-2 space-y-2">
-                      <FormLabel>
-                        1. Primary Guest - Name{' '}
-                        <span className="text-red-500">*</span>
-                      </FormLabel>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="checkbox"
-                          id="sameAsFacebookName"
-                          checked={sameAsFacebookName}
-                          onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            setSameAsFacebookName(isChecked);
-                            if (isChecked) {
-                              const facebookName =
-                                form.getValues('guestFacebookName');
-                              if (facebookName) {
-                                form.setValue('primaryGuestName', facebookName);
-                              }
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-input text-primary focus:ring-2 focus:ring-primary/20"
-                        />
-                        <label
-                          htmlFor="sameAsFacebookName"
-                          className="text-sm cursor-pointer text-muted-foreground"
-                        >
-                          Same as {isAirbnb ? 'Airbnb' : 'Facebook'} Name
-                        </label>
-                      </div>
-                    </div>
-                    <FormControl>
-                      <Input
-                        placeholder="Complete name of Primary Guest"
-                        {...field}
-                        disabled={sameAsFacebookName}
-                        onChange={(e) =>
-                          handleNameInputChange(
-                            e,
-                            field.onChange,
-                            toCapitalCase,
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <GuestFormGuestsSection
+                form={form}
+                isAirbnb={isAirbnb}
+                sameAsFacebookName={sameAsFacebookName}
+                onSameAsFacebookNameChange={setSameAsFacebookName}
+                validIdPreviews={validIdPreviews}
+                validIdImageErrors={validIdImageErrors}
+                seedKey={guestSectionSeedKey}
+                onValidIdPreviewChange={(field, preview) =>
+                  setValidIdPreviews((prev) => ({ ...prev, [field]: preview }))
+                }
+                onValidIdImageErrorChange={(field, hasError) =>
+                  setValidIdImageErrors((prev) => ({
+                    ...prev,
+                    [field]: hasError,
+                  }))
+                }
               />
-
-              {/* Dynamic Additional Guests Fields */}
-              {additionalGuestsNeeded > 0 && (
-                <div className="space-y-4">
-                  {Array.from({ length: additionalGuestsNeeded }).map(
-                    (_, index) => (
-                      <FormField
-                        key={index}
-                        control={form.control}
-                        name={`guest${index + 2}Name` as keyof GuestFormData}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {index + 2}.{' '}
-                              {index + 2 === 2
-                                ? 'Second'
-                                : index + 2 === 3
-                                  ? 'Third'
-                                  : 'Fourth'}{' '}
-                              Guest - Name{' '}
-                              <span className="text-red-500">*</span>
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder={`Complete name of ${
-                                  index + 2 === 2
-                                    ? 'Second Guest'
-                                    : index + 2 === 3
-                                      ? 'Third Guest'
-                                      : 'Fourth Guest'
-                                }`}
-                                {...field}
-                                value={field.value?.toString() ?? ''}
-                                onChange={(e) =>
-                                  handleNameInputChange(
-                                    e,
-                                    field.onChange,
-                                    toCapitalCase,
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    ),
-                  )}
-                </div>
-              )}
 
               <FormField
                 control={form.control}

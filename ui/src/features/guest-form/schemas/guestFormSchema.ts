@@ -1,8 +1,49 @@
 import * as z from "zod"
 import { validateName } from "@/utils/helpers";
 import { getDefaultDates, formatDateToYYYYMMDD } from "@/utils/dates"
+import {
+  additionalGuestOrdinal,
+  AZURE_ADULT_LIMIT_MESSAGE,
+  AZURE_MAX_ADULTS,
+  computeGuestCounts,
+  computeGuestCountsByAge,
+  FIFTH_PARTY_GUEST_MAX_AGE,
+  MAX_GUESTS,
+  getActivePartySize,
+  preprocessGuestAgeInput,
+  PRIMARY_GUEST_MIN_AGE,
+  requiresValidId,
+  VALID_ID_MIN_AGE,
+} from "@/features/guest-form/lib/guestCounts";
 
 const { today, tomorrow } = getDefaultDates();
+
+const guestAgeNumberSchema = z
+  .number({ invalid_type_error: "Please enter a valid age" })
+  .int("Age must be a whole number")
+  .min(0, "Age cannot be negative")
+  .max(120, "Please enter a realistic age");
+
+const primaryGuestAgeSchema = z.preprocess(
+  preprocessGuestAgeInput,
+  guestAgeNumberSchema.min(
+    PRIMARY_GUEST_MIN_AGE,
+    'Primary guest must be 18 years or older',
+  ),
+);
+
+const optionalGuestAgeSchema = z.preprocess(
+  preprocessGuestAgeInput,
+  guestAgeNumberSchema.optional(),
+);
+
+const PARTY_AGE_FIELD_BY_POSITION = [
+  'primaryGuestAge',
+  'guest2Age',
+  'guest3Age',
+  'guest4Age',
+  'guest5Age',
+] as const;
 
 function buildGuestFormSchema(isAirbnb: boolean) {
   return z.object({
@@ -15,6 +56,7 @@ function buildGuestFormSchema(isAirbnb: boolean) {
         (val) => validateName(val),
         "Please enter the complete name of the primary guest"
       ),
+    primaryGuestAge: primaryGuestAgeSchema,
     guestEmail: z.string().email("Please enter a valid email address"),
     guestPhoneNumber: z.string()
       .min(11, "Phone number must be 11 digits (ex. 09876543210)")
@@ -42,7 +84,7 @@ function buildGuestFormSchema(isAirbnb: boolean) {
     checkInTime: z.string().min(1, "Please select your preferred check-in time").default("14:00"),
     checkOutTime: z.string().min(1, "Please select your preferred check-out time").default("11:00"),
     nationality: z.string().min(1, "Please select your nationality").default("Filipino"),
-    numberOfAdults: z.number().min(1, "At least 1 adult guest is required").max(4, "Maximum of 4 adult guests only"),
+    numberOfAdults: z.number().min(1, "At least 1 adult guest is required").max(6, "Maximum of 6 adults for this unit"),
     numberOfChildren: z.number().min(0).max(5, "Maximum of 5 children only"),
 
     // Optional fields
@@ -52,24 +94,28 @@ function buildGuestFormSchema(isAirbnb: boolean) {
         (val) => !val || validateName(val),
         "Please enter the complete name of the second guest"
       ),
+    guest2Age: optionalGuestAgeSchema,
     guest3Name: z.string()
       .optional()
       .refine(
         (val) => !val || validateName(val),
         "Please enter the complete name of the third guest"
       ),
+    guest3Age: optionalGuestAgeSchema,
     guest4Name: z.string()
       .optional()
       .refine(
         (val) => !val || validateName(val),
         "Please enter the complete name of the fourth guest"
       ),
+    guest4Age: optionalGuestAgeSchema,
     guest5Name: z.string()
       .optional()
       .refine(
         (val) => !val || validateName(val),
         "Please enter the complete name of the fifth guest"
       ),
+    guest5Age: optionalGuestAgeSchema,
     guestSpecialRequests: z.string().optional(),
     /** Guest intends a surprise decor / setup (theme and price agreed with host on Facebook or Airbnb). */
     guestRequestsSurpriseDecor: z.boolean().default(false),
@@ -101,7 +147,11 @@ function buildGuestFormSchema(isAirbnb: boolean) {
       : z.instanceof(File, {
           message: 'Please upload a copy of your downpayment receipt',
         }),
-    validId: z.instanceof(File, { message: "Please upload a copy of your valid ID" }),
+    validId: z.instanceof(File).optional(),
+    guest2ValidId: z.instanceof(File).optional(),
+    guest3ValidId: z.instanceof(File).optional(),
+    guest4ValidId: z.instanceof(File).optional(),
+    guest5ValidId: z.instanceof(File).optional(),
 
     // Unit and owner information with defaults
     unitOwner: z.string().default("Arianna Perez"),
@@ -109,17 +159,101 @@ function buildGuestFormSchema(isAirbnb: boolean) {
     ownerOnsiteContactPerson: z.string().default("Arianna Perez"),
     ownerContactNumber: z.string().default("0962 541 2941"),
   }).superRefine((data, ctx) => {
-    const totalGuests = data.numberOfAdults + data.numberOfChildren;
+    const guestSlots = [
+      { name: data.primaryGuestName, age: data.primaryGuestAge, validId: data.validId, prefix: "primary" },
+      { name: data.guest2Name, age: data.guest2Age, validId: data.guest2ValidId, prefix: "guest2" },
+      { name: data.guest3Name, age: data.guest3Age, validId: data.guest3ValidId, prefix: "guest3" },
+      { name: data.guest4Name, age: data.guest4Age, validId: data.guest4ValidId, prefix: "guest4" },
+      { name: data.guest5Name, age: data.guest5Age, validId: data.guest5ValidId, prefix: "guest5" },
+    ] as const;
 
-    if (totalGuests >= 2 && !data.guest2Name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the second guest", path: ["guest2Name"] });
+    const counts = computeGuestCounts(
+      guestSlots.map(({ name, age }) => ({ name, age })),
+    );
+
+    const azureAgeCounts = computeGuestCountsByAge(
+      guestSlots.map(({ name, age }) => ({
+        age: name?.trim() || age != null ? age : undefined,
+      })),
+    );
+
+    if (counts.adults + counts.children > MAX_GUESTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Up to ${MAX_GUESTS} guests per booking`,
+        path: ["primaryGuestName"],
+      });
     }
-    if (totalGuests >= 3 && !data.guest3Name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the third guest", path: ["guest3Name"] });
+
+    if (azureAgeCounts.adults > AZURE_MAX_ADULTS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: AZURE_ADULT_LIMIT_MESSAGE,
+        path: ["primaryGuestAge"],
+      });
     }
-    if (totalGuests >= 4 && !data.guest4Name) {
-      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Please enter the complete name of the fourth guest", path: ["guest4Name"] });
+
+    const partySize = getActivePartySize(
+      guestSlots.map(({ name, age }) => ({ name, age })),
+    );
+    if (partySize === MAX_GUESTS) {
+      const fifthPerson = guestSlots[MAX_GUESTS - 1];
+      if (
+        fifthPerson.age != null &&
+        fifthPerson.age > FIFTH_PARTY_GUEST_MAX_AGE
+      ) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `The 5th guest must be ${FIFTH_PARTY_GUEST_MAX_AGE} years old or younger`,
+          path: [PARTY_AGE_FIELD_BY_POSITION[MAX_GUESTS - 1]],
+        });
+      }
     }
+
+    guestSlots.forEach((guest, index) => {
+      const trimmedName = guest.name?.trim();
+      const isPrimary = index === 0;
+
+      if (!isPrimary) {
+        const hasName = !!trimmedName;
+        const hasAge = guest.age != null;
+
+        if (hasName && !hasAge) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Please enter the age of the ${additionalGuestOrdinal(index)} guest`,
+            path: [`guest${index + 1}Age`],
+          });
+        }
+
+        if (!hasName && hasAge) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Please enter the complete name of the ${additionalGuestOrdinal(index)} guest`,
+            path: [`guest${index + 1}Name`],
+          });
+        }
+
+        if (!hasName && !hasAge) {
+          return;
+        }
+      }
+
+      const age = guest.age;
+      if (age == null) return;
+
+      if (requiresValidId(age) && !guest.validId) {
+        const field =
+          guest.prefix === "primary"
+            ? "validId"
+            : (`${guest.prefix}ValidId` as keyof typeof data);
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Valid ID is required for guests aged ${VALID_ID_MIN_AGE} and above`,
+          path: [field],
+        });
+      }
+    });
 
     if ((data.findUs === "Friend" || data.findUs === "Others") && !data.findUsDetails) {
       ctx.addIssue({

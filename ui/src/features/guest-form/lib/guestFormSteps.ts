@@ -27,14 +27,14 @@ const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
     id: 1,
     short: 'Guest',
     label: 'Primary Guest Info',
-    hint: 'How we can reach you & valid ID',
+    hint: 'How we can reach you',
     icon: User,
   },
   {
     id: 2,
     short: 'Stay',
     label: 'Booking details',
-    hint: 'Dates, guests & requests',
+    hint: 'Dates, guest details & requests',
     icon: CalendarDays,
   },
   {
@@ -98,7 +98,6 @@ export function getFieldsForGuestFormStep(
         'guestEmail',
         'guestPhoneNumber',
         'guestAddress',
-        'validId',
       ];
     case 2: {
       const fields: (keyof GuestFormData)[] = [
@@ -107,15 +106,34 @@ export function getFieldsForGuestFormStep(
         'checkInTime',
         'checkOutTime',
         'nationality',
-        'numberOfAdults',
-        'numberOfChildren',
         'primaryGuestName',
+        'primaryGuestAge',
         'findUs',
       ];
-      const totalGuests = values.numberOfAdults + values.numberOfChildren;
-      if (totalGuests >= 2) fields.push('guest2Name');
-      if (totalGuests >= 3) fields.push('guest3Name');
-      if (totalGuests >= 4) fields.push('guest4Name');
+
+      const guestPairs = [
+        { name: values.guest2Name, age: values.guest2Age, nameKey: 'guest2Name' as const, ageKey: 'guest2Age' as const, validIdKey: 'guest2ValidId' as const },
+        { name: values.guest3Name, age: values.guest3Age, nameKey: 'guest3Name' as const, ageKey: 'guest3Age' as const, validIdKey: 'guest3ValidId' as const },
+        { name: values.guest4Name, age: values.guest4Age, nameKey: 'guest4Name' as const, ageKey: 'guest4Age' as const, validIdKey: 'guest4ValidId' as const },
+        { name: values.guest5Name, age: values.guest5Age, nameKey: 'guest5Name' as const, ageKey: 'guest5Age' as const, validIdKey: 'guest5ValidId' as const },
+      ];
+
+      for (const guest of guestPairs) {
+        if (guest.name?.trim() || guest.age != null) {
+          fields.push(guest.nameKey, guest.ageKey);
+        }
+      }
+
+      if (values.primaryGuestAge != null && values.primaryGuestAge >= 18) {
+        fields.push('validId');
+      }
+
+      for (const guest of guestPairs) {
+        if (guest.age != null && guest.age >= 18) {
+          fields.push(guest.validIdKey);
+        }
+      }
+
       if (values.findUs === 'Friend' || values.findUs === 'Others') {
         fields.push('findUsDetails');
       }

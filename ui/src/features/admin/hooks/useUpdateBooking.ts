@@ -121,10 +121,15 @@ export type UpdateBookingPayload = {
   nationality?: string | null;
 
   // Additional guests
+  primary_guest_age?: number | null;
   guest2_name?: string | null;
+  guest2_age?: number | null;
   guest3_name?: string | null;
+  guest3_age?: number | null;
   guest4_name?: string | null;
+  guest4_age?: number | null;
   guest5_name?: string | null;
+  guest5_age?: number | null;
 
   // Stay details
   check_in_date?: string;
