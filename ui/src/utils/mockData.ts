@@ -1,6 +1,7 @@
 import { z } from "zod";
 import dayjs from "dayjs";
 import { guestFormSchema } from "@/features/guest-form/schemas/guestFormSchema";
+import { requiresValidId, computeGuestCounts, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_GUEST_AGE } from "@/features/guest-form/lib/guestCounts";
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa', 'Juan'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',];
@@ -125,23 +126,38 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   // Generate vaccination date between 1-12 months ago
   const lastVaccination = today.subtract(randomNumber(1, 12), 'month').format('YYYY-MM-DD');
 
-  // Generate random number of adults (1-3) and children (0-3) with total <= 4
-  const numberOfAdults = Math.max(1, Math.min(3, Math.floor(Math.random() * 3) + 1));
-  const maxChildren = Math.min(3, 4 - numberOfAdults);
-  const numberOfChildren = Math.floor(Math.random() * (maxChildren + 1));
-
-  // Generate additional guest names based on total guests
-  const totalGuests = numberOfAdults + numberOfChildren;
-  const guest2Name = totalGuests >= 2 ? generateRandomName() : undefined;
-  const guest3Name = totalGuests >= 3 ? generateRandomName() : undefined;
-  const guest4Name = totalGuests >= 4 ? generateRandomName() : undefined;
+  const guestCount = randomNumber(1, 5);
+  const primaryGuestAge = DEFAULT_GUEST_AGE;
+  const guest2Age = guestCount >= 2 ? DEFAULT_GUEST_AGE : undefined;
+  const guest3Age = guestCount >= 3 ? DEFAULT_GUEST_AGE : undefined;
+  const guest4Age = guestCount >= 4 ? DEFAULT_GUEST_AGE : undefined;
+  const guest5Age = guestCount >= 5 ? DEFAULT_FIFTH_GUEST_AGE : undefined;
+  const guest2Name = guestCount >= 2 ? generateRandomName() : undefined;
+  const guest3Name = guestCount >= 3 ? generateRandomName() : undefined;
+  const guest4Name = guestCount >= 4 ? generateRandomName() : undefined;
+  const guest5Name = guestCount >= 5 ? generateRandomName() : undefined;
 
   const needParking = Math.random() > 0.5;
   const hasPets = Math.random() > 0.5;
 
+  const validId = requiresValidId(primaryGuestAge)
+    ? await generateDummyFile('ValidId')
+    : undefined;
+  const guest2ValidId =
+    guest2Age != null && requiresValidId(guest2Age)
+      ? await generateDummyFile('Guest2ValidId')
+      : undefined;
+  const guest3ValidId =
+    guest3Age != null && requiresValidId(guest3Age)
+      ? await generateDummyFile('Guest3ValidId')
+      : undefined;
+  const guest4ValidId =
+    guest4Age != null && requiresValidId(guest4Age)
+      ? await generateDummyFile('Guest4ValidId')
+      : undefined;
+
   // Generate dummy files
   const paymentReceipt = await generateDummyFile('PaymentReceipt');
-  const validId = await generateDummyFile('ValidId');
   const petVaccination = hasPets ? await generateDummyFile('PetVaccination') : undefined;
   const petImage = hasPets ? await generateDummyFile('PetImage') : undefined;
 
@@ -170,17 +186,31 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
       ])
     : undefined;
 
+  const guestCounts = computeGuestCounts([
+    { name: fullName, age: primaryGuestAge },
+    { name: guest2Name, age: guest2Age },
+    { name: guest3Name, age: guest3Age },
+    { name: guest4Name, age: guest4Age },
+    { name: guest5Name, age: guest5Age },
+  ]);
+
   return {
     guestFacebookName: fullName,
     primaryGuestName: fullName,
+    primaryGuestAge,
     guestEmail: `${fullName.toLowerCase().replace(/[^a-z]/g, '')}@example.com`,
     guestPhoneNumber: generateRandomPhoneNumber(),
     guestAddress: generateRandomAddress(),
     checkInDate: checkIn,
     checkOutDate: checkOut,
     guest2Name,
+    guest2Age,
     guest3Name,
+    guest3Age,
     guest4Name,
+    guest4Age,
+    guest5Name,
+    guest5Age,
     guestSpecialRequests: randomElement(requests),
     guestRequestsSurpriseDecor: Math.random() > 0.75,
     findUs,
@@ -201,11 +231,14 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     checkInTime: "14:00",
     checkOutTime: "11:00",
     nationality: "Filipino",
-    numberOfAdults,
-    numberOfChildren,
+    numberOfAdults: guestCounts.adults,
+    numberOfChildren: guestCounts.children,
     numberOfNights,
     paymentReceipt,
     validId,
+    guest2ValidId,
+    guest3ValidId,
+    guest4ValidId,
     unitOwner: "Arianna Perez",
     towerAndUnitNumber: "Monaco 2604",
     ownerOnsiteContactPerson: "Arianna Perez",

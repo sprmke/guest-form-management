@@ -6,6 +6,7 @@ import {
   gafDetailsToFormSubmitFields,
   type GafDetailsValues,
 } from "@/lib/gafDefaults";
+import { computeGuestCounts } from "@/features/guest-form/lib/guestCounts";
 
 export const toCapitalCase = (text: string): string => {
   if (!text) return text;
@@ -34,6 +35,14 @@ export const transformFieldValues = (
     numberOfNights <= 1 ||
     values.parkingSameAsBookingDuration !== false;
 
+  const guestCounts = computeGuestCounts([
+    { name: values.primaryGuestName, age: values.primaryGuestAge },
+    { name: values.guest2Name, age: values.guest2Age },
+    { name: values.guest3Name, age: values.guest3Age },
+    { name: values.guest4Name, age: values.guest4Age },
+    { name: values.guest5Name, age: values.guest5Age },
+  ]);
+
   return {
     ...values,
     // Unit and Owner Information (from Settings → GAF Details)
@@ -54,15 +63,20 @@ export const transformFieldValues = (
     checkOutTime: formatTimeToAMPM(values.checkOutTime, false),
     numberOfNights: numberOfNights,
     
-    // Guest Count
-    numberOfAdults: Math.max(1, Number(values.numberOfAdults) || 1),
-    numberOfChildren: Math.max(0, Number(values.numberOfChildren) || 0),
+    // Guest Count (derived from per-guest ages)
+    numberOfAdults: guestCounts.adults,
+    numberOfChildren: guestCounts.children,
+    primaryGuestAge: values.primaryGuestAge,
     
     // Additional Guests
     guest2Name: handleEmptyString(values.guest2Name ? toCapitalCase(values.guest2Name) : undefined),
+    guest2Age: values.guest2Name?.trim() ? values.guest2Age : undefined,
     guest3Name: handleEmptyString(values.guest3Name ? toCapitalCase(values.guest3Name) : undefined),
+    guest3Age: values.guest3Name?.trim() ? values.guest3Age : undefined,
     guest4Name: handleEmptyString(values.guest4Name ? toCapitalCase(values.guest4Name) : undefined),
+    guest4Age: values.guest4Name?.trim() ? values.guest4Age : undefined,
     guest5Name: handleEmptyString(values.guest5Name ? toCapitalCase(values.guest5Name) : undefined),
+    guest5Age: values.guest5Name?.trim() ? values.guest5Age : undefined,
     
     // Parking Information
     carPlateNumber: values.needParking ? handleEmptyString(values.carPlateNumber) : undefined,

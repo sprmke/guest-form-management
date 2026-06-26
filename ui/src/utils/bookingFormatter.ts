@@ -52,9 +52,6 @@ export function formatBookingInfoForClipboard(
   if (formData.guest4Name) {
     lines.push(`Guest 4 Name: ${formData.guest4Name}`);
   }
-  if (formData.guest5Name) {
-    lines.push(`Guest 5 Name: ${formData.guest5Name}`);
-  }
 
   lines.push('');
   lines.push('--- Surprise decor ---');
@@ -179,8 +176,6 @@ export function parseBookingInfoFromClipboard(
         formData.guest3Name = extractValue(trimmedLine);
       } else if (trimmedLine.startsWith('Guest 4 Name:')) {
         formData.guest4Name = extractValue(trimmedLine);
-      } else if (trimmedLine.startsWith('Guest 5 Name:')) {
-        formData.guest5Name = extractValue(trimmedLine);
       } else if (trimmedLine.startsWith('Surprise decor requested:')) {
         const value = extractValue(trimmedLine).toLowerCase();
         formData.guestRequestsSurpriseDecor = value === 'yes' || value === 'true';
