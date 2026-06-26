@@ -177,7 +177,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update booking confirmed UI and display the complete booking details
 - Improve Other information section UI / cols
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
-- Update additional guests and ask if adult or child (below 5 years old) per field
+- Update additional guests and ask if adult or child (below 3 years old) per field
 - ✅ Support slack and telegram notifications for important booking events
 - New booking requests — instant on submit + hourly while Pending Review (Operations Telegram)
 - ✅ If we received a same day booking, notify on Staff telegram group — instant alert at/after daily summary time on guest submit (`notifyTelegramStaffSameDayCheckIn`)
