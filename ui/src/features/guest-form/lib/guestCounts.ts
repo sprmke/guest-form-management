@@ -174,8 +174,16 @@ export function getInitialVisibleGuestCount(guests: GuestSlotValues[]): number {
   return Math.min(MAX_GUESTS, highest);
 }
 
+const PARTY_GUEST_LABELS = [
+  'Primary Guest',
+  'Second Guest',
+  'Third Guest',
+  'Fourth Guest',
+  'Fifth Guest',
+] as const;
+
 export function guestPartyPositionLabel(partyPosition: number): string {
-  return `Guest ${partyPosition}`;
+  return PARTY_GUEST_LABELS[partyPosition - 1] ?? `Guest ${partyPosition}`;
 }
 
 const ADDITIONAL_GUEST_ORDINALS = [

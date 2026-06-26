@@ -236,7 +236,7 @@ export function GuestFormGuestsSection({
                     <UserRound className="size-4" aria-hidden />
                   </div>
                   <h3 className="text-sm font-bold text-foreground">
-                    {partyPosition}. {partyLabel}
+                    {partyLabel}
                     {isPrimary && <span className="text-destructive"> *</span>}
                   </h3>
                 </div>

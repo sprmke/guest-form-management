@@ -46,7 +46,7 @@ import { AdminAdditionalGuestSlot } from '@/features/admin/components/AdminAddit
 import { BookingGuestDocReplacer } from '@/features/admin/components/BookingGuestDocReplacer';
 import type { GuestDocAssetType } from '@/features/admin/hooks/useUploadBookingAsset';
 import { AzureGuestLimitReminder } from '@/features/guest-form/components/AzureGuestLimitReminder';
-import { computeGuestCounts, computeGuestCountsByAge, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_PARTY_GUEST_AGE, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, isPartyFifthGuest, shouldShowAzureAdultLimitMessage, PRIMARY_GUEST_MIN_AGE, requiresValidId } from '@/features/guest-form/lib/guestCounts';
+import { computeGuestCounts, computeGuestCountsByAge, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_PARTY_GUEST_AGE, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, guestPartyPositionLabel, isPartyFifthGuest, shouldShowAzureAdultLimitMessage, PRIMARY_GUEST_MIN_AGE, requiresValidId } from '@/features/guest-form/lib/guestCounts';
 import type { BookingRow } from '@/features/admin/lib/types';
 import {
   BOOKING_SOURCE_OPTIONS,
@@ -576,7 +576,7 @@ export function BookingEditForm({
           )}
           <div className="space-y-3">
             <AdminAdditionalGuestSlot
-              slotLabel="2. Guest 2"
+              slotLabel={guestPartyPositionLabel(2)}
               nameField="guest2_name"
               ageField="guest2_age"
               bookingId={booking.id}
@@ -599,7 +599,7 @@ export function BookingEditForm({
               onPreview={onPreview}
             />
             <AdminAdditionalGuestSlot
-              slotLabel="3. Guest 3"
+              slotLabel={guestPartyPositionLabel(3)}
               nameField="guest3_name"
               ageField="guest3_age"
               bookingId={booking.id}
@@ -622,7 +622,7 @@ export function BookingEditForm({
               onPreview={onPreview}
             />
             <AdminAdditionalGuestSlot
-              slotLabel="4. Guest 4"
+              slotLabel={guestPartyPositionLabel(4)}
               nameField="guest4_name"
               ageField="guest4_age"
               bookingId={booking.id}
@@ -645,7 +645,7 @@ export function BookingEditForm({
               onPreview={onPreview}
             />
             <AdminAdditionalGuestSlot
-              slotLabel="5. Guest 5"
+              slotLabel={guestPartyPositionLabel(5)}
               nameField="guest5_name"
               ageField="guest5_age"
               bookingId={booking.id}
