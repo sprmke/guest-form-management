@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { friendlyToastError } from '@/lib/toastMessages';
 import {
   Info,
+  Plus,
   Save,
   X,
 } from 'lucide-react';
@@ -45,8 +46,7 @@ import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/component
 import { AdminAdditionalGuestSlot } from '@/features/admin/components/AdminAdditionalGuestSlot';
 import { BookingGuestDocReplacer } from '@/features/admin/components/BookingGuestDocReplacer';
 import type { GuestDocAssetType } from '@/features/admin/hooks/useUploadBookingAsset';
-import { AzureGuestLimitReminder } from '@/features/guest-form/components/AzureGuestLimitReminder';
-import { computeGuestCounts, computeGuestCountsByAge, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_PARTY_GUEST_AGE, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, guestPartyPositionLabel, isPartyFifthGuest, shouldShowAzureAdultLimitMessage, PRIMARY_GUEST_MIN_AGE, requiresValidId } from '@/features/guest-form/lib/guestCounts';
+import { computeGuestCounts, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, getDefaultAgeForPartyGuest, getInitialVisibleGuestCount, guestPartyPositionLabel, isPartyFifthGuest, MAX_GUESTS, PRIMARY_GUEST_MIN_AGE } from '@/features/guest-form/lib/guestCounts';
 import type { BookingRow } from '@/features/admin/lib/types';
 import {
   BOOKING_SOURCE_OPTIONS,
@@ -123,13 +123,60 @@ function toStr(v: string | null | undefined) {
   return v ?? '';
 }
 
-function toAge(
-  v: number | null | undefined,
-  slotIndex = 1,
-): number | '' {
+function toAge(v: number | null | undefined): number | '' {
   if (v != null && !Number.isNaN(v)) return v;
-  return slotIndex === 5 ? DEFAULT_FIFTH_PARTY_GUEST_AGE : DEFAULT_GUEST_AGE;
+  return '';
 }
+
+function getInitialVisibleAdditionalGuestCount(booking: BookingRow): number {
+  const partyCount = getInitialVisibleGuestCount([
+    { name: booking.primary_guest_name ?? undefined, age: booking.primary_guest_age ?? undefined },
+    { name: booking.guest2_name ?? undefined, age: booking.guest2_age ?? undefined },
+    { name: booking.guest3_name ?? undefined, age: booking.guest3_age ?? undefined },
+    { name: booking.guest4_name ?? undefined, age: booking.guest4_age ?? undefined },
+    { name: booking.guest5_name ?? undefined, age: booking.guest5_age ?? undefined },
+  ]);
+  return Math.max(0, partyCount - 1);
+}
+
+type AdditionalGuestSlotConfig = {
+  partyPosition: number;
+  nameField: 'guest2_name' | 'guest3_name' | 'guest4_name' | 'guest5_name';
+  ageField: 'guest2_age' | 'guest3_age' | 'guest4_age' | 'guest5_age';
+  validIdUrlKey: 'guest2_valid_id_url' | 'guest3_valid_id_url' | 'guest4_valid_id_url' | 'guest5_valid_id_url';
+  assetType: GuestDocAssetType;
+};
+
+const ADDITIONAL_GUEST_SLOTS: AdditionalGuestSlotConfig[] = [
+  {
+    partyPosition: 2,
+    nameField: 'guest2_name',
+    ageField: 'guest2_age',
+    validIdUrlKey: 'guest2_valid_id_url',
+    assetType: 'guest2_valid_id',
+  },
+  {
+    partyPosition: 3,
+    nameField: 'guest3_name',
+    ageField: 'guest3_age',
+    validIdUrlKey: 'guest3_valid_id_url',
+    assetType: 'guest3_valid_id',
+  },
+  {
+    partyPosition: 4,
+    nameField: 'guest4_name',
+    ageField: 'guest4_age',
+    validIdUrlKey: 'guest4_valid_id_url',
+    assetType: 'guest4_valid_id',
+  },
+  {
+    partyPosition: 5,
+    nameField: 'guest5_name',
+    ageField: 'guest5_age',
+    validIdUrlKey: 'guest5_valid_id_url',
+    assetType: 'guest5_valid_id',
+  },
+];
 
 function normalizeGuestAge(value: number | ''): number | null {
   if (value === '' || Number.isNaN(value)) return null;
@@ -215,6 +262,50 @@ function toTimeInputValue(value: string | null | undefined): string {
   return `${String(hour24).padStart(2, '0')}:${minute}`;
 }
 
+function bookingToEditFormValues(booking: BookingRow): FormValues {
+  return {
+    booking_source: normalizeBookingSource(booking.booking_source),
+    guest_facebook_name: toStr(booking.guest_facebook_name),
+    primary_guest_name: toStr(booking.primary_guest_name),
+    guest_email: toStr(booking.guest_email),
+    guest_phone_number: toStr(booking.guest_phone_number),
+    guest_address: toStr(booking.guest_address),
+    nationality: toStr(booking.nationality),
+    primary_guest_age: toAge(booking.primary_guest_age),
+    guest2_name: toStr(booking.guest2_name),
+    guest2_age: toAge(booking.guest2_age),
+    guest3_name: toStr(booking.guest3_name),
+    guest3_age: toAge(booking.guest3_age),
+    guest4_name: toStr(booking.guest4_name),
+    guest4_age: toAge(booking.guest4_age),
+    guest5_name: toStr(booking.guest5_name),
+    guest5_age: toAge(booking.guest5_age),
+    check_in_date: normalizeDateString(toStr(booking.check_in_date)),
+    check_out_date: normalizeDateString(toStr(booking.check_out_date)),
+    check_in_time: toTimeInputValue(booking.check_in_time),
+    check_out_time: toTimeInputValue(booking.check_out_time),
+    number_of_adults: booking.number_of_adults ?? 1,
+    number_of_children: booking.number_of_children ?? 0,
+    number_of_nights: booking.number_of_nights ?? 1,
+    need_parking: booking.need_parking ?? false,
+    car_plate_number: toStr(booking.car_plate_number),
+    car_brand_model: toStr(booking.car_brand_model),
+    car_color: toStr(booking.car_color),
+    has_pets: booking.has_pets ?? false,
+    pet_name: toStr(booking.pet_name),
+    pet_type: toStr(booking.pet_type),
+    pet_breed: toStr(booking.pet_breed),
+    pet_age: toStr(booking.pet_age),
+    pet_vaccination_date: normalizeDateString(
+      toStr(booking.pet_vaccination_date),
+    ),
+    find_us: toStr(booking.find_us),
+    find_us_details: toStr(booking.find_us_details),
+    guest_special_requests: toStr(booking.guest_special_requests),
+    guest_requests_surprise_decor: !!booking.guest_requests_surprise_decor,
+  };
+}
+
 export function BookingEditForm({
   booking,
   onClose,
@@ -236,6 +327,13 @@ export function BookingEditForm({
       sdRefundGuest: null,
     });
   const [progressTouched, setProgressTouched] = useState(false);
+  const [visibleAdditionalGuestCount, setVisibleAdditionalGuestCount] =
+    useState(() => getInitialVisibleAdditionalGuestCount(booking));
+
+  const savedSensitiveBaseline = React.useMemo(
+    () => bookingEditPayloadFromValues(bookingToEditFormValues(booking)),
+    [booking],
+  );
 
   const {
     register,
@@ -244,47 +342,7 @@ export function BookingEditForm({
     control,
     formState: { isDirty },
   } = useForm<FormValues>({
-    defaultValues: {
-      booking_source: normalizeBookingSource(booking.booking_source),
-      guest_facebook_name: toStr(booking.guest_facebook_name),
-      primary_guest_name: toStr(booking.primary_guest_name),
-      guest_email: toStr(booking.guest_email),
-      guest_phone_number: toStr(booking.guest_phone_number),
-      guest_address: toStr(booking.guest_address),
-      nationality: toStr(booking.nationality),
-      primary_guest_age: toAge(booking.primary_guest_age),
-      guest2_name: toStr(booking.guest2_name),
-      guest2_age: toAge(booking.guest2_age),
-      guest3_name: toStr(booking.guest3_name),
-      guest3_age: toAge(booking.guest3_age),
-      guest4_name: toStr(booking.guest4_name),
-      guest4_age: toAge(booking.guest4_age, 4),
-      guest5_name: toStr(booking.guest5_name),
-      guest5_age: toAge(booking.guest5_age, 5),
-      check_in_date: normalizeDateString(toStr(booking.check_in_date)),
-      check_out_date: normalizeDateString(toStr(booking.check_out_date)),
-      check_in_time: toTimeInputValue(booking.check_in_time),
-      check_out_time: toTimeInputValue(booking.check_out_time),
-      number_of_adults: booking.number_of_adults ?? 1,
-      number_of_children: booking.number_of_children ?? 0,
-      number_of_nights: booking.number_of_nights ?? 1,
-      need_parking: booking.need_parking ?? false,
-      car_plate_number: toStr(booking.car_plate_number),
-      car_brand_model: toStr(booking.car_brand_model),
-      car_color: toStr(booking.car_color),
-      has_pets: booking.has_pets ?? false,
-      pet_name: toStr(booking.pet_name),
-      pet_type: toStr(booking.pet_type),
-      pet_breed: toStr(booking.pet_breed),
-      pet_age: toStr(booking.pet_age),
-      pet_vaccination_date: normalizeDateString(
-        toStr(booking.pet_vaccination_date),
-      ),
-      find_us: toStr(booking.find_us),
-      find_us_details: toStr(booking.find_us_details),
-      guest_special_requests: toStr(booking.guest_special_requests),
-      guest_requests_surprise_decor: !!booking.guest_requests_surprise_decor,
-    },
+    defaultValues: bookingToEditFormValues(booking),
   });
 
   /** `useWatch` subscribes reliably; bare `watch()` here did not always re-render on edits. */
@@ -295,13 +353,14 @@ export function BookingEditForm({
   const surpriseDecorChangedFromSaved =
     watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
   const watchCheckInDate = formSnapshot?.check_in_date ?? '';
+  const progressDirty = progressTouched;
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
+    (isDirty || progressDirty) &&
     hasWorkflowSensitiveGuestFieldDiff(
-      booking,
+      savedSensitiveBaseline,
       bookingEditPayloadFromValues(formSnapshot),
     );
-  const progressDirty = progressTouched;
   const canSave = isDirty || progressDirty;
 
   React.useEffect(() => {
@@ -368,8 +427,8 @@ export function BookingEditForm({
           formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
       },
     ]);
-    setValue('number_of_adults', counts.adults);
-    setValue('number_of_children', counts.children);
+    setValue('number_of_adults', counts.adults, { shouldDirty: false });
+    setValue('number_of_children', counts.children, { shouldDirty: false });
   }, [
     formSnapshot?.primary_guest_name,
     formSnapshot?.primary_guest_age,
@@ -384,60 +443,56 @@ export function BookingEditForm({
     setValue,
   ]);
 
-  const adminPartySize = getActivePartySize([
-    {
-      name: formSnapshot?.primary_guest_name,
-      age:
-        formSnapshot?.primary_guest_age === ''
-          ? undefined
-          : formSnapshot?.primary_guest_age,
-    },
-    {
-      name: formSnapshot?.guest2_name,
-      age:
-        formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
-    },
-    {
-      name: formSnapshot?.guest3_name,
-      age:
-        formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
-    },
-    {
-      name: formSnapshot?.guest4_name,
-      age:
-        formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
-    },
-    {
-      name: formSnapshot?.guest5_name,
-      age:
-        formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
-    },
-  ]);
+  const adminPartySize = Math.max(
+    getActivePartySize([
+      {
+        name: formSnapshot?.primary_guest_name,
+        age:
+          formSnapshot?.primary_guest_age === ''
+            ? undefined
+            : formSnapshot?.primary_guest_age,
+      },
+      {
+        name: formSnapshot?.guest2_name,
+        age:
+          formSnapshot?.guest2_age === ''
+            ? undefined
+            : formSnapshot?.guest2_age,
+      },
+      {
+        name: formSnapshot?.guest3_name,
+        age:
+          formSnapshot?.guest3_age === ''
+            ? undefined
+            : formSnapshot?.guest3_age,
+      },
+      {
+        name: formSnapshot?.guest4_name,
+        age:
+          formSnapshot?.guest4_age === ''
+            ? undefined
+            : formSnapshot?.guest4_age,
+      },
+      {
+        name: formSnapshot?.guest5_name,
+        age:
+          formSnapshot?.guest5_age === ''
+            ? undefined
+            : formSnapshot?.guest5_age,
+      },
+    ]),
+    1 + visibleAdditionalGuestCount,
+  );
 
-  const guestAdultCount = computeGuestCountsByAge([
-    {
-      age:
-        formSnapshot?.primary_guest_age === ''
-          ? undefined
-          : formSnapshot?.primary_guest_age,
-    },
-    {
-      age:
-        formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
-    },
-    {
-      age:
-        formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
-    },
-    {
-      age:
-        formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
-    },
-    {
-      age:
-        formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
-    },
-  ]).adults;
+  const visibleAdditionalGuestSlots = ADDITIONAL_GUEST_SLOTS.slice(
+    0,
+    visibleAdditionalGuestCount,
+  );
+
+  const clearAdditionalGuestSlot = (slot: AdditionalGuestSlotConfig) => {
+    setValue(slot.nameField, '', { shouldDirty: true });
+    setValue(slot.ageField, '', { shouldDirty: true });
+  };
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
     const payload = {
@@ -469,7 +524,7 @@ export function BookingEditForm({
 
     const revertToPendingReview =
       guestEditRevertPipeline &&
-      hasWorkflowSensitiveGuestFieldDiff(booking, payload);
+      hasWorkflowSensitiveGuestFieldDiff(savedSensitiveBaseline, payload);
 
     try {
       const updated = await updateMut.mutateAsync({
@@ -556,118 +611,88 @@ export function BookingEditForm({
             </Field>
             <div />
           </Row2>
-          {formSnapshot.primary_guest_age !== '' &&
-            requiresValidId(formSnapshot.primary_guest_age) && (
-              <BookingGuestDocReplacer
-                bookingId={booking.id}
-                assetType="valid_id"
-                label="Valid ID"
-                currentUrl={booking.valid_id_url}
-                accept="image/*,.pdf"
-                onPreview={onPreview}
-              />
-            )}
+          <BookingGuestDocReplacer
+            bookingId={booking.id}
+            assetType="valid_id"
+            label="Valid ID"
+            currentUrl={booking.valid_id_url}
+            accept="image/*,.pdf"
+            onPreview={onPreview}
+          />
         </Section>
 
         {/* ── Additional Guests ─────────────────────────────────────────────── */}
         <Section title="Additional Guests">
-          {shouldShowAzureAdultLimitMessage(guestAdultCount, adminPartySize) && (
-            <AzureGuestLimitReminder className="mb-3" />
+          {visibleAdditionalGuestSlots.length > 0 && (
+            <div className="mb-3 space-y-3">
+              {visibleAdditionalGuestSlots.map((slot, index) => {
+                const ageValue = formSnapshot[slot.ageField];
+                const isLastVisible =
+                  index === visibleAdditionalGuestSlots.length - 1;
+                const isFifthPartyGuest = isPartyFifthGuest(
+                  slot.partyPosition,
+                  adminPartySize,
+                );
+
+                return (
+                  <AdminAdditionalGuestSlot
+                    key={slot.partyPosition}
+                    slotLabel={guestPartyPositionLabel(slot.partyPosition)}
+                    nameField={slot.nameField}
+                    ageField={slot.ageField}
+                    bookingId={booking.id}
+                    register={register}
+                    guestAge={ageValue === '' ? undefined : ageValue}
+                    validIdUrl={booking[slot.validIdUrlKey]}
+                    assetType={slot.assetType}
+                    maxAge={
+                      isFifthPartyGuest ? FIFTH_PARTY_GUEST_MAX_AGE : undefined
+                    }
+                    agePlaceholder={isFifthPartyGuest ? '3' : 'Ex. 25'}
+                    onPreview={onPreview}
+                    onRemove={
+                      isLastVisible
+                        ? () => {
+                            clearAdditionalGuestSlot(slot);
+                            setVisibleAdditionalGuestCount((count) =>
+                              Math.max(0, count - 1),
+                            );
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
+            </div>
           )}
-          <div className="space-y-3">
-            <AdminAdditionalGuestSlot
-              slotLabel={guestPartyPositionLabel(2)}
-              nameField="guest2_name"
-              ageField="guest2_age"
-              bookingId={booking.id}
-              register={register}
-              guestAge={
-                formSnapshot.guest2_age === ''
-                  ? undefined
-                  : formSnapshot.guest2_age
-              }
-              validIdUrl={booking.guest2_valid_id_url}
-              assetType="guest2_valid_id"
-              maxAge={
-                isPartyFifthGuest(2, adminPartySize)
-                  ? FIFTH_PARTY_GUEST_MAX_AGE
-                  : undefined
-              }
-              agePlaceholder={
-                isPartyFifthGuest(2, adminPartySize) ? '3' : 'Ex. 25'
-              }
-              onPreview={onPreview}
-            />
-            <AdminAdditionalGuestSlot
-              slotLabel={guestPartyPositionLabel(3)}
-              nameField="guest3_name"
-              ageField="guest3_age"
-              bookingId={booking.id}
-              register={register}
-              guestAge={
-                formSnapshot.guest3_age === ''
-                  ? undefined
-                  : formSnapshot.guest3_age
-              }
-              validIdUrl={booking.guest3_valid_id_url}
-              assetType="guest3_valid_id"
-              maxAge={
-                isPartyFifthGuest(3, adminPartySize)
-                  ? FIFTH_PARTY_GUEST_MAX_AGE
-                  : undefined
-              }
-              agePlaceholder={
-                isPartyFifthGuest(3, adminPartySize) ? '3' : 'Ex. 25'
-              }
-              onPreview={onPreview}
-            />
-            <AdminAdditionalGuestSlot
-              slotLabel={guestPartyPositionLabel(4)}
-              nameField="guest4_name"
-              ageField="guest4_age"
-              bookingId={booking.id}
-              register={register}
-              guestAge={
-                formSnapshot.guest4_age === ''
-                  ? undefined
-                  : formSnapshot.guest4_age
-              }
-              validIdUrl={booking.guest4_valid_id_url}
-              assetType="guest4_valid_id"
-              maxAge={
-                isPartyFifthGuest(4, adminPartySize)
-                  ? FIFTH_PARTY_GUEST_MAX_AGE
-                  : undefined
-              }
-              agePlaceholder={
-                isPartyFifthGuest(4, adminPartySize) ? '3' : 'Ex. 25'
-              }
-              onPreview={onPreview}
-            />
-            <AdminAdditionalGuestSlot
-              slotLabel={guestPartyPositionLabel(5)}
-              nameField="guest5_name"
-              ageField="guest5_age"
-              bookingId={booking.id}
-              register={register}
-              guestAge={
-                formSnapshot.guest5_age === ''
-                  ? undefined
-                  : formSnapshot.guest5_age
-              }
-              validIdUrl={booking.guest5_valid_id_url}
-              assetType="guest5_valid_id"
-              maxAge={
-                isPartyFifthGuest(5, adminPartySize)
-                  ? FIFTH_PARTY_GUEST_MAX_AGE
-                  : undefined
-              }
-              agePlaceholder={
-                isPartyFifthGuest(5, adminPartySize) ? '3' : 'Ex. 25'
-              }
-              onPreview={onPreview}
-            />
-          </div>
+          {visibleAdditionalGuestCount < MAX_GUESTS - 1 && (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-[44px] w-full"
+              onClick={() => {
+                setVisibleAdditionalGuestCount((count) => {
+                  const next = Math.min(MAX_GUESTS - 1, count + 1);
+                  const slot = ADDITIONAL_GUEST_SLOTS[next - 1];
+                  const currentAge = formSnapshot[slot.ageField];
+                  if (currentAge === '' || currentAge == null) {
+                    setValue(
+                      slot.ageField,
+                      getDefaultAgeForPartyGuest(
+                        slot.partyPosition,
+                        1 + next,
+                      ),
+                      { shouldDirty: true },
+                    );
+                  }
+                  return next;
+                });
+              }}
+            >
+              <Plus className="size-4" aria-hidden />
+              Add more guest
+            </Button>
+          )}
         </Section>
 
         {/* ── Stay Details ──────────────────────────────────────────────────── */}

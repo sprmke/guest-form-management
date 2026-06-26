@@ -370,7 +370,6 @@ export const compareFormData = (newFormData: FormData, existingData: any): { has
 const WORKFLOW_SENSITIVE_FORM_FIELDS = new Set<string>([
   'guestFacebookName',
   'primaryGuestName',
-  'primaryGuestAge',
   'guestEmail',
   'guestPhoneNumber',
   'guest2Name',
