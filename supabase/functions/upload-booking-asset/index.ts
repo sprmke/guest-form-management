@@ -67,6 +67,22 @@ const ASSET_CONFIG = {
     bucket: 'valid-ids',
     column: 'valid_id_url',
   },
+  guest2_valid_id: {
+    bucket: 'valid-ids',
+    column: 'guest2_valid_id_url',
+  },
+  guest3_valid_id: {
+    bucket: 'valid-ids',
+    column: 'guest3_valid_id_url',
+  },
+  guest4_valid_id: {
+    bucket: 'valid-ids',
+    column: 'guest4_valid_id_url',
+  },
+  guest5_valid_id: {
+    bucket: 'valid-ids',
+    column: 'guest5_valid_id_url',
+  },
   payment_receipt: {
     bucket: 'payment-receipts',
     column: 'payment_receipt_url',
@@ -87,6 +103,10 @@ function isGuestDocRevertAssetType(t: AssetType): boolean {
   return (
     t === 'payment_receipt' ||
     t === 'valid_id' ||
+    t === 'guest2_valid_id' ||
+    t === 'guest3_valid_id' ||
+    t === 'guest4_valid_id' ||
+    t === 'guest5_valid_id' ||
     t === 'pet_vaccination' ||
     t === 'pet_image'
   );

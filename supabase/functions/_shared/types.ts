@@ -41,12 +41,17 @@ export interface GuestFormData {
   nationality: string;
   numberOfAdults: number;
   numberOfChildren: number;
+  primaryGuestAge: number;
 
   // Optional fields
   guest2Name?: string;
+  guest2Age?: number;
   guest3Name?: string;
+  guest3Age?: number;
   guest4Name?: string;
+  guest4Age?: number;
   guest5Name?: string;
+  guest5Age?: number;
   guestSpecialRequests?: string;
   findUsDetails?: string;
   numberOfNights?: number;
@@ -88,6 +93,18 @@ export interface GuestFormData {
   validId?: File;
   validIdUrl?: string;
   validIdFileName?: string;
+  guest2ValidId?: File;
+  guest2ValidIdUrl?: string;
+  guest2ValidIdFileName?: string;
+  guest3ValidId?: File;
+  guest3ValidIdUrl?: string;
+  guest3ValidIdFileName?: string;
+  guest4ValidId?: File;
+  guest4ValidIdUrl?: string;
+  guest4ValidIdFileName?: string;
+  guest5ValidId?: File;
+  guest5ValidIdUrl?: string;
+  guest5ValidIdFileName?: string;
 
   // Unit and owner information
   unitOwner: string;
@@ -115,10 +132,15 @@ export interface GuestSubmission {
   number_of_adults?: number;
   number_of_children?: number;
   number_of_nights?: number;
+  primary_guest_age?: number;
   guest2_name?: string;
+  guest2_age?: number;
   guest3_name?: string;
+  guest3_age?: number;
   guest4_name?: string;
+  guest4_age?: number;
   guest5_name?: string;
+  guest5_age?: number;
   guest_special_requests?: string;
   find_us: string;
   find_us_details?: string;
@@ -138,7 +160,11 @@ export interface GuestSubmission {
   pet_vaccination_url?: string;
   pet_image_url?: string;
   payment_receipt_url: string;
-  valid_id_url: string;
+  valid_id_url?: string | null;
+  guest2_valid_id_url?: string | null;
+  guest3_valid_id_url?: string | null;
+  guest4_valid_id_url?: string | null;
+  guest5_valid_id_url?: string | null;
   unit_owner: string;
   tower_and_unit_number: string;
   owner_onsite_contact_person: string;
@@ -233,6 +259,12 @@ export const transformFormToSubmission = (
   validIdUrl: string,
   petVaccinationUrl?: string,
   petImageUrl?: string,
+  guestValidIdUrls: {
+    guest2ValidIdUrl?: string;
+    guest3ValidIdUrl?: string;
+    guest4ValidIdUrl?: string;
+    guest5ValidIdUrl?: string;
+  } = {},
 ): GuestSubmission => {
   return {
     guest_facebook_name: formData.guestFacebookName,
@@ -248,10 +280,23 @@ export const transformFormToSubmission = (
     number_of_adults: toNumber(formData.numberOfAdults),
     number_of_children: toNumber(formData.numberOfChildren),
     number_of_nights: toNumber(formData.numberOfNights),
+    primary_guest_age: toNumber(formData.primaryGuestAge),
     guest2_name: validateGuestName(formData.guest2Name),
+    guest2_age: formData.guest2Name?.trim()
+      ? toNumber(formData.guest2Age)
+      : undefined,
     guest3_name: validateGuestName(formData.guest3Name),
+    guest3_age: formData.guest3Name?.trim()
+      ? toNumber(formData.guest3Age)
+      : undefined,
     guest4_name: validateGuestName(formData.guest4Name),
+    guest4_age: formData.guest4Name?.trim()
+      ? toNumber(formData.guest4Age)
+      : undefined,
     guest5_name: validateGuestName(formData.guest5Name),
+    guest5_age: formData.guest5Name?.trim()
+      ? toNumber(formData.guest5Age)
+      : undefined,
     guest_special_requests: formData.guestSpecialRequests,
     find_us: formData.findUs,
     find_us_details: formData.findUsDetails,
@@ -279,7 +324,11 @@ export const transformFormToSubmission = (
     pet_vaccination_url: petVaccinationUrl,
     pet_image_url: petImageUrl,
     payment_receipt_url: paymentReceiptUrl,
-    valid_id_url: validIdUrl,
+    valid_id_url: validIdUrl || null,
+    guest2_valid_id_url: guestValidIdUrls.guest2ValidIdUrl || null,
+    guest3_valid_id_url: guestValidIdUrls.guest3ValidIdUrl || null,
+    guest4_valid_id_url: guestValidIdUrls.guest4ValidIdUrl || null,
+    guest5_valid_id_url: guestValidIdUrls.guest5ValidIdUrl || null,
     unit_owner: formData.unitOwner,
     tower_and_unit_number: formData.towerAndUnitNumber,
     owner_onsite_contact_person: formData.ownerOnsiteContactPerson,

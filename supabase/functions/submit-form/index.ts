@@ -195,26 +195,38 @@ serve(async (req) => {
       }
     }
 
-    // AI valid ID check (non-blocking for guest submit).
-    const validIdFile = formData.get('validId') as File | null;
-    if (
-      isSaveToDatabaseEnabled &&
-      submissionData?.id &&
-      validIdFile &&
-      validIdFile.size > 0
-    ) {
+    // AI valid ID check (non-blocking for guest submit) — primary + additional guests.
+    const validIdUploads: Array<{ field: string; persistKind: 'valid_id' | null }> = [
+      { field: 'validId', persistKind: 'valid_id' },
+      { field: 'guest2ValidId', persistKind: null },
+      { field: 'guest3ValidId', persistKind: null },
+      { field: 'guest4ValidId', persistKind: null },
+      { field: 'guest5ValidId', persistKind: null },
+    ];
+
+    for (const { field, persistKind } of validIdUploads) {
+      const validIdFile = formData.get(field) as File | null;
+      if (
+        !isSaveToDatabaseEnabled ||
+        !submissionData?.id ||
+        !validIdFile ||
+        validIdFile.size <= 0
+      ) {
+        continue;
+      }
+
       try {
         const validIdValidation = await validateValidIdFile(validIdFile);
-        if (shouldPersistReceiptValidation(validIdValidation)) {
-          const aiPatch = dbPatchForDocumentAiValidation('valid_id', validIdValidation);
+        if (persistKind && shouldPersistReceiptValidation(validIdValidation)) {
+          const aiPatch = dbPatchForDocumentAiValidation(persistKind, validIdValidation);
           await DatabaseService.setWorkflowFields(submissionData.id, aiPatch);
           notifyBooking = { ...notifyBooking, ...aiPatch } as GuestSubmission;
         }
         console.log(
-          `[submit-form] Valid ID AI: ${validIdValidation.verdict} — ${validIdValidation.summary}`,
+          `[submit-form] ${field} AI: ${validIdValidation.verdict} — ${validIdValidation.summary}`,
         );
       } catch (aiErr) {
-        console.error('[submit-form] Valid ID AI validation failed (non-fatal):', aiErr);
+        console.error(`[submit-form] ${field} AI validation failed (non-fatal):`, aiErr);
       }
     }
 

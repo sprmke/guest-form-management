@@ -806,6 +806,14 @@ export function receiptKindForAssetType(
 export function documentAiKindForAssetType(
   assetType: string,
 ): ReceiptBackfillKind | null {
-  if (assetType === 'valid_id') return 'valid_id';
+  if (
+    assetType === 'valid_id' ||
+    assetType === 'guest2_valid_id' ||
+    assetType === 'guest3_valid_id' ||
+    assetType === 'guest4_valid_id' ||
+    assetType === 'guest5_valid_id'
+  ) {
+    return 'valid_id';
+  }
   return receiptKindForAssetType(assetType);
 }

@@ -112,9 +112,23 @@ export class DatabaseService {
         numberOfAdults: data.number_of_adults || 1,
         numberOfChildren: data.number_of_children || 0,
         primaryGuestName: data.primary_guest_name || '',
+        primaryGuestAge: data.primary_guest_age ?? 18,
         guest2Name: data.guest2_name || '',
+        guest2Age: data.guest2_name?.trim()
+          ? (data.guest2_age ?? 18)
+          : undefined,
         guest3Name: data.guest3_name || '',
+        guest3Age: data.guest3_name?.trim()
+          ? (data.guest3_age ?? 18)
+          : undefined,
         guest4Name: data.guest4_name || '',
+        guest4Age: data.guest4_name?.trim()
+          ? (data.guest4_age ?? 18)
+          : undefined,
+        guest5Name: data.guest5_name || '',
+        guest5Age: data.guest5_name?.trim()
+          ? (data.guest5_age ?? 3)
+          : undefined,
         guestSpecialRequests: data.guest_special_requests || '',
         findUs: data.find_us || 'Facebook',
         findUsDetails: data.find_us_details || '',
@@ -137,6 +151,10 @@ export class DatabaseService {
         petImageUrl: formatPublicUrl(data.pet_image_url) || '',
         paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || '',
         validIdUrl: formatPublicUrl(data.valid_id_url) || '',
+        guest2ValidIdUrl: formatPublicUrl(data.guest2_valid_id_url) || '',
+        guest3ValidIdUrl: formatPublicUrl(data.guest3_valid_id_url) || '',
+        guest4ValidIdUrl: formatPublicUrl(data.guest4_valid_id_url) || '',
+        guest5ValidIdUrl: formatPublicUrl(data.guest5_valid_id_url) || '',
       };
 
       console.log('Form data fetched successfully:', formData);
@@ -210,7 +228,6 @@ export class DatabaseService {
       let petVaccinationUrl: string | undefined;
       let petImageUrl: string | undefined;
       let paymentReceiptUrl: string;
-      let validIdUrl: string;
 
       // Get the pet vaccination file and pet image file
       const petVaccination = formData.get('petVaccination') as File;
@@ -278,29 +295,138 @@ export class DatabaseService {
         throw new Error('Downpayment receipt is required');
       }
 
-      // Get the valid ID file
-      const validId = formData.get('validId') as File;
-      if (validId) {
-        const validIdFileName = formData.get('validIdFileName') as string;
-        const prefixedFileName = validIdFileName;
-        if (saveImagesToStorage) {
-          validIdUrl = await UploadService.uploadValidId(validId, prefixedFileName);
-        } else {
-          console.log('⚠️ Skipping valid ID upload (saveImagesToStorage=false)');
-          validIdUrl = 'dev-mode-skipped';
-        }
-      } else if (existingBooking) {
-        validIdUrl = existingBooking.valid_id_url;
-      } else if (!saveImagesToStorage) {
-        validIdUrl = 'dev-mode-skipped';
-      } else {
-        throw new Error('Valid ID is required');
+      // Get the valid ID files (primary + additional guests)
+      const primaryGuestAge = Number(formData.get('primaryGuestAge') || 0);
+      if (primaryGuestAge < 18) {
+        throw new Error('Primary guest must be 18 years or older');
       }
+
+      const guest2Age = Number(formData.get('guest2Age') || 0);
+      const guest3Age = Number(formData.get('guest3Age') || 0);
+      const guest4Age = Number(formData.get('guest4Age') || 0);
+      const guest5Age = Number(formData.get('guest5Age') || 0);
+      const primaryGuestName =
+        (formData.get('primaryGuestName') as string)?.trim() || '';
+      const guest2Name = (formData.get('guest2Name') as string)?.trim() || '';
+      const guest3Name = (formData.get('guest3Name') as string)?.trim() || '';
+      const guest4Name = (formData.get('guest4Name') as string)?.trim() || '';
+      const guest5Name = (formData.get('guest5Name') as string)?.trim() || '';
+
+      const partySlots = [
+        { name: primaryGuestName, age: formData.get('primaryGuestAge') },
+        { name: guest2Name, age: formData.get('guest2Age') },
+        { name: guest3Name, age: formData.get('guest3Age') },
+        { name: guest4Name, age: formData.get('guest4Age') },
+        { name: guest5Name, age: formData.get('guest5Age') },
+      ];
+      let partySize = 1;
+      partySlots.forEach((slot, index) => {
+        const ageRaw = slot.age;
+        const hasAge =
+          ageRaw != null &&
+          String(ageRaw).trim() !== '' &&
+          !Number.isNaN(Number(ageRaw));
+        if (slot.name || hasAge) {
+          partySize = Math.max(partySize, index + 1);
+        }
+      });
+
+      const FIFTH_PARTY_GUEST_MAX_AGE = 3;
+      if (partySize === 5) {
+        const fifthAgeRaw = formData.get('guest5Age');
+        if (
+          fifthAgeRaw != null &&
+          String(fifthAgeRaw).trim() !== '' &&
+          guest5Age > FIFTH_PARTY_GUEST_MAX_AGE
+        ) {
+          throw new Error(
+            `The 5th guest must be ${FIFTH_PARTY_GUEST_MAX_AGE} years old or younger`,
+          );
+        }
+      }
+
+      const uploadValidIdIfPresent = async (
+        field: string,
+        fileNameField: string,
+        required: boolean,
+      ): Promise<string | undefined> => {
+        const file = formData.get(field) as File;
+        if (file && file.size > 0) {
+          const prefixedFileName = formData.get(fileNameField) as string;
+          if (saveImagesToStorage) {
+            return await UploadService.uploadValidId(file, prefixedFileName);
+          }
+          console.log(`⚠️ Skipping ${field} upload (saveImagesToStorage=false)`);
+          return 'dev-mode-skipped';
+        }
+        if (existingBooking) {
+          const dbField =
+            field === 'validId'
+              ? 'valid_id_url'
+              : `${field.replace('ValidId', '_valid_id_url').replace('guest', 'guest')}`;
+          return existingBooking[dbField];
+        }
+        if (!saveImagesToStorage) {
+          return required ? 'dev-mode-skipped' : undefined;
+        }
+        if (required) {
+          throw new Error(`${field} is required`);
+        }
+        return undefined;
+      };
+
+      const validIdUrl = await uploadValidIdIfPresent(
+        'validId',
+        'validIdFileName',
+        true,
+      ) || '';
+      const guest2ValidIdUrl =
+        guest2Age >= 18
+          ? await uploadValidIdIfPresent(
+            'guest2ValidId',
+            'guest2ValidIdFileName',
+            true,
+          )
+          : undefined;
+      const guest3ValidIdUrl =
+        guest3Age >= 18
+          ? await uploadValidIdIfPresent(
+            'guest3ValidId',
+            'guest3ValidIdFileName',
+            true,
+          )
+          : undefined;
+      const guest4ValidIdUrl =
+        guest4Age >= 18
+          ? await uploadValidIdIfPresent(
+            'guest4ValidId',
+            'guest4ValidIdFileName',
+            true,
+          )
+          : undefined;
+      const guest5ValidIdUrl =
+        guest5Age >= 18
+          ? await uploadValidIdIfPresent(
+            'guest5ValidId',
+            'guest5ValidIdFileName',
+            true,
+          )
+          : undefined;
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
+      const excludedFormFields = new Set([
+        'paymentReceipt',
+        'validId',
+        'guest2ValidId',
+        'guest3ValidId',
+        'guest4ValidId',
+        'guest5ValidId',
+        'petVaccination',
+        'petImage',
+      ]);
       formData.forEach((value, key) => {
-        if (key !== 'paymentReceipt' && key !== 'validId' && key !== 'petVaccination' && key !== 'petImage') {
+        if (!excludedFormFields.has(key)) {
           formDataObj[key] = value;
         }
       });
@@ -329,6 +455,12 @@ export class DatabaseService {
         validIdUrl,
         petVaccinationUrl,
         petImageUrl,
+        {
+          guest2ValidIdUrl,
+          guest3ValidIdUrl,
+          guest4ValidIdUrl,
+          guest5ValidIdUrl,
+        },
       );
 
       // Save or update in database using the booking ID

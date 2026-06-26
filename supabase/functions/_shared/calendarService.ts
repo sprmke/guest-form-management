@@ -369,7 +369,11 @@ Special Requests: ${booking.guest_special_requests || 'None'}
 
 <strong>Documents</strong>
 ${booking.payment_receipt_url ? `<a href="${booking.payment_receipt_url}">Downpayment receipt</a>` : 'No downpayment receipt'}
-${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID</a>` : 'No valid ID'}
+${booking.valid_id_url ? `<a href="${booking.valid_id_url}">Valid ID (primary)</a>` : 'No primary valid ID'}
+${booking.guest2_valid_id_url ? `<a href="${booking.guest2_valid_id_url}">Valid ID (guest 2)</a>` : ''}
+${booking.guest3_valid_id_url ? `<a href="${booking.guest3_valid_id_url}">Valid ID (guest 3)</a>` : ''}
+${booking.guest4_valid_id_url ? `<a href="${booking.guest4_valid_id_url}">Valid ID (guest 4)</a>` : ''}
+${booking.guest5_valid_id_url ? `<a href="${booking.guest5_valid_id_url}">Valid ID (guest 5)</a>` : ''}
     `.trim();
   }
 

@@ -654,7 +654,7 @@ export class WorkflowOrchestrator {
 
       if (flag(devControls, 'sendGafRequestEmail')) {
         try {
-          await sendEmail(formData, gafPdfBuffer, false);
+          await sendEmail(formData, gafPdfBuffer, false, updatedBooking);
           emailsSent.push('gaf_request');
         } catch (err) {
           console.error('[orchestrator] GAF request email failed:', err);
@@ -762,6 +762,7 @@ function buildGuestFormData(booking: any): any {
   return {
     guestFacebookName: booking.guest_facebook_name,
     primaryGuestName: booking.primary_guest_name,
+    primaryGuestAge: booking.primary_guest_age,
     guestEmail: booking.guest_email,
     guestPhoneNumber: booking.guest_phone_number,
     guestAddress: booking.guest_address,
@@ -774,9 +775,13 @@ function buildGuestFormData(booking: any): any {
     numberOfChildren: booking.number_of_children,
     numberOfNights: booking.number_of_nights,
     guest2Name: booking.guest2_name,
+    guest2Age: booking.guest2_age,
     guest3Name: booking.guest3_name,
+    guest3Age: booking.guest3_age,
     guest4Name: booking.guest4_name,
+    guest4Age: booking.guest4_age,
     guest5Name: booking.guest5_name,
+    guest5Age: booking.guest5_age,
     guestSpecialRequests: booking.guest_special_requests,
     findUs: booking.find_us,
     findUsDetails: booking.find_us_details,
@@ -795,6 +800,10 @@ function buildGuestFormData(booking: any): any {
     petImageUrl: booking.pet_image_url,
     paymentReceiptUrl: booking.payment_receipt_url,
     validIdUrl: booking.valid_id_url,
+    guest2ValidIdUrl: booking.guest2_valid_id_url,
+    guest3ValidIdUrl: booking.guest3_valid_id_url,
+    guest4ValidIdUrl: booking.guest4_valid_id_url,
+    guest5ValidIdUrl: booking.guest5_valid_id_url,
     unitOwner: booking.unit_owner,
     towerAndUnitNumber: booking.tower_and_unit_number,
     ownerOnsiteContactPerson: booking.owner_onsite_contact_person,

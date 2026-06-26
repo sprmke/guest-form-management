@@ -8,6 +8,7 @@ import {
 } from './gafPdfSignature.ts'
 import { applyPetOwnerSignatureBlock } from './petPdfSignature.ts'
 import { extractTowerAndUnit } from './petPdfDefaults.ts'
+import { formatGafGuestDisplayName } from './gafGuestDisplay.ts'
 
 async function getTemplateBytes(templateName: string = 'guest-form-template.pdf'): Promise<Uint8Array> {
   console.log(`Fetching PDF template from Supabase Storage: ${templateName}...`);
@@ -49,7 +50,10 @@ export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> 
       'ownerContactNumber': fd.ownerContactNumber,
       
       // Primary Guest Information
-      'primaryGuestName': fd.primaryGuestName,
+      'primaryGuestName': formatGafGuestDisplayName(
+        fd.primaryGuestName,
+        fd.primaryGuestAge,
+      ),
       'guestEmail': fd.guestEmail,
       'guestPhoneNumber': fd.guestPhoneNumber,
       'guestAddress': fd.guestAddress,
@@ -67,10 +71,10 @@ export async function generatePDF(formData: GuestFormData): Promise<Uint8Array> 
       'numberOfChildren': String(fd.numberOfChildren),
       
       // Additional Guests
-      'guest2Name': fd.guest2Name,
-      'guest3Name': fd.guest3Name,
-      'guest4Name': fd.guest4Name,
-      'guest5Name': fd.guest5Name,
+      'guest2Name': formatGafGuestDisplayName(fd.guest2Name, fd.guest2Age),
+      'guest3Name': formatGafGuestDisplayName(fd.guest3Name, fd.guest3Age),
+      'guest4Name': formatGafGuestDisplayName(fd.guest4Name, fd.guest4Age),
+      'guest5Name': formatGafGuestDisplayName(fd.guest5Name, fd.guest5Age),
       
       // Parking Information
       'carPlateNumber': fd.carPlateNumber,

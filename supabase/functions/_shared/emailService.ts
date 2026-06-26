@@ -275,10 +275,107 @@ function urgentEmailSubjectPrefix(isUrgent: boolean): string {
   return isUrgent ? "🚨 URGENT - " : "";
 }
 
+function sanitizeAttachmentLabel(value: string): string {
+  const cleaned = value
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 40);
+  return cleaned || "guest";
+}
+
+type GuestValidIdBookingFields = Pick<
+  GuestSubmission,
+  | "check_in_date"
+  | "primary_guest_name"
+  | "guest2_name"
+  | "guest3_name"
+  | "guest4_name"
+  | "guest5_name"
+  | "valid_id_url"
+  | "guest2_valid_id_url"
+  | "guest3_valid_id_url"
+  | "guest4_valid_id_url"
+  | "guest5_valid_id_url"
+>;
+
+/**
+ * Download each stored guest valid ID and build Resend attachments for the
+ * Azure GAF request email (primary + guests 2–5 when URLs exist).
+ */
+async function buildGuestValidIdAttachments(
+  booking: GuestValidIdBookingFields,
+): Promise<ResendAttachment[]> {
+  const checkIn = booking.check_in_date || "unknown";
+  const slots = [
+    {
+      label: "PRIMARY",
+      url: booking.valid_id_url,
+      name: booking.primary_guest_name || "primary",
+    },
+    {
+      label: "GUEST2",
+      url: booking.guest2_valid_id_url,
+      name: booking.guest2_name || "guest2",
+    },
+    {
+      label: "GUEST3",
+      url: booking.guest3_valid_id_url,
+      name: booking.guest3_name || "guest3",
+    },
+    {
+      label: "GUEST4",
+      url: booking.guest4_valid_id_url,
+      name: booking.guest4_name || "guest4",
+    },
+    {
+      label: "GUEST5",
+      url: booking.guest5_valid_id_url,
+      name: booking.guest5_name || "guest5",
+    },
+  ];
+
+  const attachments: ResendAttachment[] = [];
+
+  for (const slot of slots) {
+    const url = slot.url?.trim();
+    if (!url) continue;
+
+    const file = await downloadStorageFile(
+      url,
+      `MONACO_2604_VALID_ID_${slot.label}-${checkIn}.jpg`,
+    );
+    if (!file) {
+      console.warn(
+        `[emailService] Skipping valid ID attachment (${slot.label}): download failed`,
+      );
+      continue;
+    }
+
+    const ext = file.filename.includes(".")
+      ? file.filename.split(".").pop()!
+      : "jpg";
+    const namePart = sanitizeAttachmentLabel(slot.name);
+    attachments.push({
+      filename: `MONACO_2604_VALID_ID_${namePart}-${checkIn}.${ext}`,
+      content: toBase64(file.bytes),
+      encoding: "base64",
+      content_type: file.mimeType,
+    });
+    console.log(
+      `[emailService] Valid ID attached for ${slot.label}:`,
+      attachments[attachments.length - 1]!.filename,
+    );
+  }
+
+  return attachments;
+}
+
 export async function sendEmail(
   formData: GuestFormData,
   pdfBuffer: Uint8Array | null,
   isUpdate = false,
+  booking?: GuestValidIdBookingFields | null,
 ) {
   console.log(`Sending ${isUpdate ? "update" : "confirmation"} email...`);
 
@@ -338,6 +435,28 @@ export async function sendEmail(
 
   const base64PDF = pdfBuffer ? toBase64(pdfBuffer) : null;
 
+  const attachments: ResendAttachment[] = [];
+  if (base64PDF) {
+    attachments.push({
+      filename: `MONACO_2604_GAF-${formData.checkInDate}.pdf`,
+      content: base64PDF,
+      encoding: "base64",
+      content_type: "application/pdf",
+    });
+  }
+
+  if (booking) {
+    const validIdAttachments = await buildGuestValidIdAttachments(booking);
+    attachments.push(...validIdAttachments);
+  }
+
+  console.log(
+    `Sending GAF email with ${attachments.length} attachment(s)...`,
+  );
+  attachments.forEach((att, index) => {
+    console.log(`  Attachment ${index + 1}: ${att.filename}`);
+  });
+
   const updatePrefix = isUpdate ? "UPDATED - " : "";
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -353,17 +472,7 @@ export async function sendEmail(
       reply_to: EMAIL_REPLY_TO,
       subject: `${urgentPrefix}${updatePrefix}Monaco 2604 - GAF Request (${displayCheckInDate} to ${displayCheckOutDate})`,
       html: emailContent,
-      ...(base64PDF
-        ? {
-            attachments: [
-              {
-                filename: `MONACO_2604_GAF-${formData.checkInDate}.pdf`,
-                content: base64PDF,
-                encoding: "base64",
-              },
-            ],
-          }
-        : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
     }),
   });
 
