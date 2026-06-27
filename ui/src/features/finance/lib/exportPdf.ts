@@ -536,8 +536,8 @@ function appendReportDefinitions(doc: jsPDF, y: number): number {
   const lines = [
     'All amounts are Philippine pesos (PHP) without a currency prefix in tables.',
     'Booking rate = down payment + guest balance (booking rate − down payment).',
-    'Additional fees = pet fee + parking margin + additional guest fee + (security deposit − SD refund), when applicable.',
-    'Host net (completed) = booking rate + additional fees. Matches the stay Breakdown net (Income, security deposit adjustments, Expenses including parking owner rate and SD refund).',
+    'Additional fees = pet fee + parking margin + additional guest fee + (security deposit − SD refund) when the stay is completed or an SD refund amount is recorded.',
+    'Host net (completed) = booking rate + additional fees. In-progress host net (EST) may exceed booking rate + additional fees while security deposit is still held. Breakdown net matches full income minus expenses including SD.',
     'Total net = sum of completed host net plus transactions net for this period. Pipeline estimates exclude SD refund until the stay is completed.',
   ];
 

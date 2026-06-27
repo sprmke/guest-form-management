@@ -9,7 +9,7 @@ export type SdSettlementLineItem = { label: string; amount: number };
 export type BookingFinancials = {
   /** Down payment + guest balance. */
   bookingRate: number | null;
-  /** Pet + parking margin + additional + (SD paid − SD refund). */
+  /** Pet + parking margin + additional + SD net (completed or refund recorded). */
   otherFees: number;
   totalGuestBalance: number | null;
   guestCollected: number;
@@ -62,6 +62,15 @@ function bookingRateForDisplay(booking: Record<string, unknown>): number | null 
   return roundMoney(num(booking.down_payment) + guestBalance);
 }
 
+function sdNetForOtherFeesDisplay(booking: Record<string, unknown>): number {
+  const deposit = num(booking.security_deposit);
+  const sdRefund = num(booking.sd_refund_amount);
+  if (String(booking.status ?? '') !== 'COMPLETED' && sdRefund === 0) {
+    return 0;
+  }
+  return roundMoney(deposit - sdRefund);
+}
+
 function otherFeesForDisplay(booking: Record<string, unknown>): number {
   const pet = petFeeForHostNet(booking);
   const parkingMargin = bookingFlagTrue(booking.need_parking)
@@ -70,10 +79,9 @@ function otherFeesForDisplay(booking: Record<string, unknown>): number {
       )
     : 0;
   const additional = num(booking.guest_additional_fee);
-  const sdNet = roundMoney(
-    num(booking.security_deposit) - num(booking.sd_refund_amount),
+  return roundMoney(
+    pet + parkingMargin + additional + sdNetForOtherFeesDisplay(booking),
   );
-  return roundMoney(pet + parkingMargin + additional + sdNet);
 }
 
 function guestBalanceForHostNet(booking: Record<string, unknown>): number | null {
