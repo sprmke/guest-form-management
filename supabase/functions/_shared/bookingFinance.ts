@@ -118,6 +118,15 @@ export function financeDisplayNet(fin: BookingFinancials): number | null {
   return fin.projectedNet;
 }
 
+/** Admin dashboard net profit: realized hostNet, else booking rate + other fees (held SD excluded). */
+export function dashboardNetProfitKpi(
+  booking: Record<string, unknown>,
+): number {
+  const fin = computeBookingFinancials(booking);
+  if (fin.isCompleted) return fin.hostNet;
+  return roundMoney((fin.bookingRate ?? 0) + fin.otherFees);
+}
+
 function num(v: unknown): number {
   if (v === null || v === undefined || v === '') return 0;
   const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : Number(v);

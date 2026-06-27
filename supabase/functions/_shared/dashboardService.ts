@@ -7,6 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 import {
   bookingRateForDisplay,
   computeBookingFinancials,
+  dashboardNetProfitKpi,
 } from "./bookingFinance.ts";
 import { checkInDateToIso, manilaTodayIso } from "./bookingsListSort.ts";
 
@@ -191,11 +192,9 @@ function bookingRateLodgingInRange(
 
 function hostNetForDashboardKpi(
   row: Record<string, unknown>,
-  status: string,
+  _status: string,
 ): number {
-  const fin = computeBookingFinancials(row);
-  if (status === "COMPLETED") return fin.hostNet;
-  return fin.projectedNet ?? 0;
+  return dashboardNetProfitKpi(row);
 }
 
 type PeriodKpiSnapshot = {

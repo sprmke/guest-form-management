@@ -285,6 +285,13 @@ export function financeDisplayNet(fin: BookingFinancials): number | null {
   return fin.projectedNet;
 }
 
+/** Admin dashboard net profit: realized hostNet, else booking rate + other fees (held SD excluded). */
+export function dashboardNetProfitKpi(booking: BookingFinanceInput): number {
+  const fin = computeBookingFinancials(booking);
+  if (fin.isCompleted) return fin.hostNet;
+  return roundMoney((fin.bookingRate ?? 0) + fin.otherFees);
+}
+
 /** Tailwind text color for host-net display (tables, cards, calendar). */
 export function hostNetToneClass(
   net: number | null,
