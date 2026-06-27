@@ -36,7 +36,7 @@ export function DashboardAttentionStrip({ items }: Props) {
   return (
     <section className="surface-card min-w-0 px-3 py-3 sm:px-4" aria-label="Needs attention">
       <p className="section-eyebrow mb-2.5 px-0.5">Needs attention</p>
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-0.5 [scrollbar-width:thin]">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {items.map((item) => {
           const style = SEVERITY_STYLES[item.severity];
           const Icon = style.icon;
@@ -45,12 +45,12 @@ export function DashboardAttentionStrip({ items }: Props) {
               key={item.id}
               to={item.href}
               className={cn(
-                'group inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-xl border px-3 py-2 transition-colors sm:gap-2.5 sm:px-3.5',
+                'group inline-flex min-h-[44px] w-full items-center gap-2 rounded-xl border px-3 py-2 transition-colors sm:w-auto sm:gap-2.5 sm:px-3.5',
                 style.chip,
               )}
             >
               <Icon className={cn('size-4 shrink-0', style.iconWrap)} aria-hidden />
-              <span className="whitespace-nowrap text-sm font-semibold text-foreground">
+              <span className="text-sm font-semibold text-foreground sm:whitespace-nowrap">
                 {item.label}
               </span>
               <span
@@ -62,7 +62,7 @@ export function DashboardAttentionStrip({ items }: Props) {
                 {item.count}
               </span>
               <ArrowRight
-                className="size-3.5 shrink-0 text-muted-foreground opacity-70 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 motion-reduce:opacity-70"
+                className="ml-auto size-3.5 shrink-0 text-muted-foreground opacity-70 sm:ml-0 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 motion-reduce:opacity-70"
                 aria-hidden
               />
             </Link>
