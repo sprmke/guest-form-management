@@ -250,11 +250,17 @@ export function AdminListMetaBar({
       <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
     ) : null;
 
+  const mobileActions = mobileToolbar ?? actionsSlot;
+
   return (
     <>
       <div className="space-y-2.5 px-0.5 lg:hidden">
         <AdminListSummary {...summary} />
-        {mobileToolbar}
+        {mobileActions ? (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {mobileActions}
+          </div>
+        ) : null}
       </div>
       <div className="hidden flex-wrap items-center justify-between gap-2 px-0.5 lg:flex">
         <AdminListSummary {...summary} />
