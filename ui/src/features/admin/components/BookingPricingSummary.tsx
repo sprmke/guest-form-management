@@ -102,7 +102,7 @@ export function BookingPricingSummary({
 
         {!isCompleted && showProjectedEstimate && fin.projectedNet != null ? (
           <p className="text-caption leading-relaxed text-muted-foreground">
-            Estimate until SD refund is settled. Open booking for final details.
+            Estimate — open booking for final details.
           </p>
         ) : null}
       </div>
@@ -397,7 +397,7 @@ function HostNetBreakdownCard({
       />
       {breakdown.isEstimate ? (
         <p className="px-4 pb-2.5 pt-0 text-caption text-muted-foreground">
-          SD refund not included until the stay is completed.
+          Estimate — security deposit pass-through is not included.
         </p>
       ) : null}
     </div>

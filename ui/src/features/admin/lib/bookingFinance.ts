@@ -29,7 +29,7 @@ export type BookingFinanceInput = Pick<
 export type BookingFinancials = {
   /** Down payment + guest balance (rate − down, or recorded balance). */
   bookingRate: number | null;
-  /** Pet + parking margin + additional guest fee + SD net (completed or refund recorded). */
+  /** Pet + parking margin + additional guest fee (SD pass-through excluded). */
   otherFees: number;
   totalGuestBalance: number | null;
   guestCollected: number;
@@ -105,15 +105,6 @@ function bookingRateForDisplay(booking: BookingFinanceInput): number | null {
   return roundMoney(toMoneyNumber(booking.down_payment) + guestBalance);
 }
 
-function sdNetForOtherFeesDisplay(booking: BookingFinanceInput): number {
-  const deposit = toMoneyNumber(booking.security_deposit);
-  const sdRefund = toMoneyNumber(booking.sd_refund_amount);
-  if (booking.status !== 'COMPLETED' && sdRefund === 0) {
-    return 0;
-  }
-  return roundMoney(deposit - sdRefund);
-}
-
 function otherFeesForDisplay(booking: BookingFinanceInput): number {
   const pet = petFeeForHostNet(booking);
   const parkingMargin = bookingFlagTrue(booking.need_parking)
@@ -123,58 +114,69 @@ function otherFeesForDisplay(booking: BookingFinanceInput): number {
       )
     : 0;
   const additional = toMoneyNumber(booking.guest_additional_fee);
-  return roundMoney(
-    pet + parkingMargin + additional + sdNetForOtherFeesDisplay(booking),
-  );
+  return roundMoney(pet + parkingMargin + additional);
 }
 
 function guestBalanceForHostNet(booking: BookingFinanceInput): number | null {
   return guestBalanceForStayDisplay(booking);
 }
 
-/**
- * Host net = down payment + guest balance (booking rate − down) + parking fee (guest)
- * + pet fee + additional guest fee + SD − parking rate (paid) − SD refund.
- */
-export function computeHostNetComponents(
+function includeSdSettlementInOperatingNet(
   booking: BookingFinanceInput,
-  options: { includeSdRefund: boolean } = { includeSdRefund: true },
-): number {
-  const deposit = toMoneyNumber(booking.security_deposit);
+): boolean {
+  return booking.status === 'COMPLETED';
+}
+
+/**
+ * Host net = lodging + fees − parking owner rate (+ SD settlement when COMPLETED).
+ * Security deposit collection, SD refund payout, and SD settlement are omitted until COMPLETED.
+ */
+export function computeOperatingHostNet(booking: BookingFinanceInput): number {
   const down = toMoneyNumber(booking.down_payment);
   const guestBalance = guestBalanceForHostNet(booking) ?? 0;
   const pet = petFeeForHostNet(booking);
   const additional = toMoneyNumber(booking.guest_additional_fee);
   const parkingGuest = parkingFeeForHostNet(booking);
   const parkingPaid = toMoneyNumber(booking.parking_rate_paid);
-  const sdRefund = options.includeSdRefund
-    ? toMoneyNumber(booking.sd_refund_amount)
-    : 0;
+
+  let sdProfitTotal = 0;
+  let sdExpenseTotal = 0;
+  if (includeSdSettlementInOperatingNet(booking)) {
+    const { expenses, profits } = buildSdExpenseProfitRows(booking);
+    sdExpenseTotal = roundMoney(sumSdLineAmounts(expenses));
+    sdProfitTotal = roundMoney(sumSdLineAmounts(profits));
+  }
 
   return roundMoney(
     down +
       guestBalance +
       parkingGuest +
       pet +
-      additional +
-      deposit -
-      parkingPaid -
-      sdRefund,
+      additional -
+      parkingPaid +
+      sdProfitTotal -
+      sdExpenseTotal,
   );
+}
+
+/** @deprecated Use `computeOperatingHostNet` — SD pass-through is never included. */
+export function computeHostNetComponents(
+  booking: BookingFinanceInput,
+  _options?: { includeSdRefund?: boolean },
+): number {
+  return computeOperatingHostNet(booking);
 }
 
 export function buildHostNetBreakdown(
   booking: BookingFinanceInput,
   isCompleted: boolean,
 ): HostNetBreakdown {
-  const deposit = toMoneyNumber(booking.security_deposit);
   const down = toMoneyNumber(booking.down_payment);
   const guestBalance = guestBalanceForHostNet(booking);
   const pet = petFeeForHostNet(booking);
   const additional = toMoneyNumber(booking.guest_additional_fee);
   const parkingGuest = parkingFeeForHostNet(booking);
   const parkingPaid = toMoneyNumber(booking.parking_rate_paid);
-  const sdRefund = isCompleted ? toMoneyNumber(booking.sd_refund_amount) : 0;
 
   const income: HostNetBreakdownLine[] = [
     { key: 'down', label: 'Down payment', amount: down },
@@ -221,60 +223,33 @@ export function buildHostNetBreakdown(
   const { expenses: sdExpenseLines, profits: sdProfitLines } =
     buildSdExpenseProfitRows(booking);
 
-  const sdLines: HostNetBreakdownSdLine[] = [];
-
-  if (
-    deposit > 0 ||
-    sdExpenseLines.length > 0 ||
-    sdProfitLines.length > 0
-  ) {
-    sdLines.push({
-      key: 'sd_collected',
-      label: 'Security deposit',
-      amount: deposit,
-      variant: 'collected',
+  if (isCompleted) {
+    sdProfitLines.forEach((row, i) => {
+      if (row.amount <= 0) return;
+      const label = row.label?.trim();
+      income.push({
+        key: `sd_profit_${i}`,
+        label: label ? `SD settlement — ${label}` : 'SD settlement profit',
+        amount: row.amount,
+      });
     });
 
     sdExpenseLines.forEach((row, i) => {
+      if (row.amount <= 0) return;
       const label = row.label?.trim();
-      sdLines.push({
+      expenses.push({
         key: `sd_expense_${i}`,
-        label: label ? `Additional expense — ${label}` : 'Additional expense',
+        label: label ? `SD settlement — ${label}` : 'SD settlement expense',
         amount: row.amount,
-        variant: 'adjustment-expense',
-        indent: true,
-      });
-    });
-
-    sdProfitLines.forEach((row, i) => {
-      const label = row.label?.trim();
-      sdLines.push({
-        key: `sd_profit_${i}`,
-        label: label ? `Additional profit — ${label}` : 'Additional profit',
-        amount: row.amount,
-        variant: 'adjustment-profit',
-        indent: true,
       });
     });
   }
-
-  if (isCompleted) {
-    expenses.push({
-      key: 'sd_refund',
-      label: 'SD refund',
-      amount: sdRefund,
-    });
-  }
-
-  const net = computeHostNetComponents(booking, {
-    includeSdRefund: isCompleted,
-  });
 
   return {
     income,
     expenses,
-    sd: sdLines.length > 0 ? { lines: sdLines } : null,
-    net,
+    sd: null,
+    net: computeOperatingHostNet(booking),
     isEstimate: !isCompleted,
   };
 }
@@ -285,11 +260,9 @@ export function financeDisplayNet(fin: BookingFinancials): number | null {
   return fin.projectedNet;
 }
 
-/** Admin dashboard net profit: realized hostNet, else booking rate + other fees (held SD excluded). */
+/** Admin dashboard net profit — same operating host net as Finance stays. */
 export function dashboardNetProfitKpi(booking: BookingFinanceInput): number {
-  const fin = computeBookingFinancials(booking);
-  if (fin.isCompleted) return fin.hostNet;
-  return roundMoney((fin.bookingRate ?? 0) + fin.otherFees);
+  return computeOperatingHostNet(booking);
 }
 
 /** Tailwind text color for host-net display (tables, cards, calendar). */
@@ -399,23 +372,24 @@ export function computeBookingFinancials(booking: BookingFinanceInput): BookingF
       parkingFeeForHostNet(booking) +
       petFeeForHostNet(booking) +
       toMoneyNumber(booking.guest_additional_fee) +
-      deposit,
+      (isCompleted ? sdProfitTotal : 0),
   );
-  const sdRefund = toMoneyNumber(booking.sd_refund_amount);
 
   let hostProfit = 0;
   let hostExpenses = 0;
   let hostNet = 0;
 
+  const operatingNet = computeOperatingHostNet(booking);
+
   if (isCompleted) {
     hostProfit = hostInflows;
-    hostExpenses = roundMoney(parkingPaid + sdRefund);
-    hostNet = computeHostNetComponents(booking, { includeSdRefund: true });
+    hostExpenses = roundMoney(parkingPaid + sdExpenseTotal);
+    hostNet = operatingNet;
   }
 
   let projectedNet: number | null = null;
   if (!isCompleted) {
-    projectedNet = computeHostNetComponents(booking, { includeSdRefund: false });
+    projectedNet = operatingNet;
   }
 
   return {
