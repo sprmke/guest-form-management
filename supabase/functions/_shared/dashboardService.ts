@@ -4,7 +4,10 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import { computeBookingFinancials } from "./bookingFinance.ts";
+import {
+  bookingRateForDisplay,
+  computeBookingFinancials,
+} from "./bookingFinance.ts";
 import { checkInDateToIso, manilaTodayIso } from "./bookingsListSort.ts";
 
 export type DashboardAttentionSeverity = "critical" | "warning" | "info";
@@ -134,19 +137,65 @@ function calculatePercentageChange(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 100);
 }
 
-function occupiedNightsOverlap(
+function occupiedNightIsoDatesForRow(
   checkInIso: string,
   checkOutIso: string,
+  numberOfNights: number,
+): string[] {
+  if (checkInIso && checkOutIso && checkInIso < checkOutIso) {
+    const nights: string[] = [];
+    let cursor = checkInIso;
+    while (cursor < checkOutIso) {
+      nights.push(cursor);
+      cursor = addDaysIso(cursor, 1);
+      if (nights.length > 400) break;
+    }
+    return nights;
+  }
+  if (!checkInIso) return [];
+  const nights = Math.max(1, Math.floor(numberOfNights) || 1);
+  return Array.from({ length: nights }, (_, index) =>
+    addDaysIso(checkInIso, index)
+  );
+}
+
+function countOccupiedNightsInRange(
+  checkInIso: string,
+  checkOutIso: string,
+  numberOfNights: number,
   from: string,
   to: string,
 ): number {
-  if (!checkInIso || !checkOutIso) return 0;
-  const rangeStart = checkInIso > from ? checkInIso : from;
-  const rangeEnd = checkOutIso < to ? checkOutIso : to;
-  if (rangeStart >= rangeEnd) return 0;
-  const a = new Date(`${rangeStart}T12:00:00`);
-  const b = new Date(`${rangeEnd}T12:00:00`);
-  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+  return occupiedNightIsoDatesForRow(
+    checkInIso,
+    checkOutIso,
+    numberOfNights,
+  ).filter((iso) => iso >= from && iso <= to).length;
+}
+
+function stayNightCount(numberOfNights: number): number {
+  if (!Number.isFinite(numberOfNights) || numberOfNights < 1) return 1;
+  return Math.floor(numberOfNights);
+}
+
+function bookingRateLodgingInRange(
+  row: Record<string, unknown>,
+  numberOfNights: number,
+  nightsInRange: number,
+): number {
+  if (nightsInRange === 0) return 0;
+  const bookingRate = bookingRateForDisplay(row) ?? 0;
+  const perNight = bookingRate / stayNightCount(numberOfNights);
+  return roundMoney(perNight * nightsInRange);
+}
+
+function hostNetForDashboardKpi(
+  row: Record<string, unknown>,
+  status: string,
+): number {
+  const fin = computeBookingFinancials(row);
+  if (status === "COMPLETED") return fin.hostNet;
+  return fin.projectedNet ?? 0;
 }
 
 type PeriodKpiSnapshot = {
@@ -155,7 +204,7 @@ type PeriodKpiSnapshot = {
   totalGuests: number;
   totalBookings: number;
   periodDays: number;
-  /** Completed-stay revenue and nights with host net &gt; 0 (avg nightly rate). */
+  /** Σ booking rate allocated to occupied nights in period (matches calendar Price pills). */
   ratedRevenue: number;
   ratedNights: number;
 };
@@ -168,7 +217,6 @@ function computePeriodKpiSnapshot(
   let netProfit = 0;
   let occupiedNights = 0;
   let totalGuests = 0;
-  let totalBookings = 0;
   let ratedRevenue = 0;
   let ratedNights = 0;
   const periodDays = daysInclusive(from, to);
@@ -181,31 +229,32 @@ function computePeriodKpiSnapshot(
     const checkOutIso = checkInDateToIso(String(row.check_out_date ?? ""));
     if (!checkInIso) continue;
 
+    const numberOfNights = Number(row.number_of_nights ?? 0) || 0;
     const checkInInRange = checkInIso >= from && checkInIso <= to;
+
+    const nightsInRange = countOccupiedNightsInRange(
+      checkInIso,
+      checkOutIso,
+      numberOfNights,
+      from,
+      to,
+    );
+    occupiedNights += nightsInRange;
+
+    if (nightsInRange > 0) {
+      ratedRevenue = roundMoney(
+        ratedRevenue + bookingRateLodgingInRange(row, numberOfNights, nightsInRange),
+      );
+      ratedNights += nightsInRange;
+    }
+
     if (checkInInRange) {
-      totalBookings += 1;
       totalGuests +=
         Number(row.number_of_adults ?? 0) +
         (Number(row.number_of_children ?? 0) || 0);
-    }
 
-    if (checkOutIso && checkInIso <= to && checkOutIso >= from) {
-      occupiedNights += occupiedNightsOverlap(
-        checkInIso,
-        checkOutIso,
-        from,
-        to,
-      );
-    }
-
-    if (status === "COMPLETED" && checkInInRange) {
-      const fin = computeBookingFinancials(row);
-      netProfit = roundMoney(netProfit + fin.hostNet);
-      const nights = Number(row.number_of_nights ?? 0) || 0;
-      if (fin.hostNet > 0 && nights > 0) {
-        ratedRevenue = roundMoney(ratedRevenue + fin.hostNet);
-        ratedNights += nights;
-      }
+      const net = hostNetForDashboardKpi(row, status);
+      netProfit = roundMoney(netProfit + net);
     }
   }
 
@@ -213,7 +262,7 @@ function computePeriodKpiSnapshot(
     netProfit,
     occupiedNights,
     totalGuests,
-    totalBookings,
+    totalBookings: occupiedNights,
     periodDays,
     ratedRevenue,
     ratedNights,

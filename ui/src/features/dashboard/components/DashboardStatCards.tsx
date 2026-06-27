@@ -21,7 +21,7 @@ function TrendCardLink({ to, children }: { to?: string; children: ReactNode }) {
 }
 
 export function DashboardStatCards({ stats, periodLabel }: Props) {
-  const { totals, trendWindow, kpis } = stats;
+  const { trendWindow, kpis } = stats;
   const bookingsHref = `/bookings?from=${trendWindow.from}&to=${trendWindow.to}`;
 
   return (
@@ -43,7 +43,7 @@ export function DashboardStatCards({ stats, periodLabel }: Props) {
         <TrendCardLink to={bookingsHref}>
           <DashboardTrendStatCard
             title="Total bookings"
-            value={`${totals.totalBookings} / ${totals.periodDays}`}
+            value={`${kpis.nightsBooked.value} / ${kpis.nightsBooked.periodDays}`}
             change={kpis.totalBookings.changePercent}
             icon={FileText}
             iconBgClassName="bg-sky-500"

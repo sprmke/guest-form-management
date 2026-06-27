@@ -56,7 +56,7 @@ function guestBalanceForStayDisplay(
   return null;
 }
 
-function bookingRateForDisplay(booking: Record<string, unknown>): number | null {
+export function bookingRateForDisplay(booking: Record<string, unknown>): number | null {
   const guestBalance = guestBalanceForStayDisplay(booking);
   if (guestBalance == null) return null;
   return roundMoney(num(booking.down_payment) + guestBalance);
