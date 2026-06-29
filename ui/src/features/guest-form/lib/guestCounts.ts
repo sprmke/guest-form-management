@@ -1,22 +1,25 @@
-/** Ages 3 and below count as children for Azure pax reporting. */
-const CHILD_MAX_AGE = 3;
+/** Guests aged 18+ count as adults everywhere except Azure occupancy checks on the guest form. */
+export const ADULT_MIN_AGE = 18;
 
 /** Valid government ID required for guests 18 and above. */
-export const VALID_ID_MIN_AGE = 18;
+export const VALID_ID_MIN_AGE = ADULT_MIN_AGE;
 
 /** Primary guest must be an adult — minors cannot be the primary guest. */
-export const PRIMARY_GUEST_MIN_AGE = VALID_ID_MIN_AGE;
+export const PRIMARY_GUEST_MIN_AGE = ADULT_MIN_AGE;
 
 /** Default age pre-filled on guest age inputs. */
 export const DEFAULT_GUEST_AGE = PRIMARY_GUEST_MIN_AGE;
 
-/** Max/default age for the 5th person in the party (Azure: 4 adults + 1 child). */
-export const FIFTH_PARTY_GUEST_MAX_AGE = 3;
+/** Azure building rule: ages at or below this count as a child for occupancy limits. */
+export const AZURE_CHILD_MAX_AGE = 3;
+
+/** Max/default age for the 5th person on the public guest form (Azure: 4 adults + 1 child). */
+export const FIFTH_PARTY_GUEST_MAX_AGE = AZURE_CHILD_MAX_AGE;
 const DEFAULT_FIFTH_PARTY_GUEST_AGE = FIFTH_PARTY_GUEST_MAX_AGE;
 /** @deprecated Use DEFAULT_FIFTH_PARTY_GUEST_AGE */
 export const DEFAULT_FIFTH_GUEST_AGE = DEFAULT_FIFTH_PARTY_GUEST_AGE;
 
-/** Azure GAF accepts at most this many adult guests per booking. */
+/** Azure GAF accepts at most this many adult guests per booking (Azure definition: age 4+). */
 export const AZURE_MAX_ADULTS = 4;
 
 export const AZURE_ADULT_LIMIT_MESSAGE =
@@ -24,8 +27,8 @@ export const AZURE_ADULT_LIMIT_MESSAGE =
 
 export const MAX_GUESTS = 5;
 
-/** Default age when a guest card is shown or added (party positions 1–4 → 18; 5th person → 3). */
-export function getDefaultAgeForPartyGuest(
+/** Default age when adding a guest on the public guest form (5th person → 3 for Azure). */
+export function getDefaultAgeForGuestFormPartyGuest(
   partyPosition: number,
   partySize: number,
 ): number {
@@ -33,6 +36,14 @@ export function getDefaultAgeForPartyGuest(
     return DEFAULT_FIFTH_PARTY_GUEST_AGE;
   }
   return DEFAULT_GUEST_AGE;
+}
+
+/** @deprecated Use getDefaultAgeForGuestFormPartyGuest on the public guest form only. */
+export function getDefaultAgeForPartyGuest(
+  partyPosition: number,
+  partySize: number,
+): number {
+  return getDefaultAgeForGuestFormPartyGuest(partyPosition, partySize);
 }
 
 /** Active party size = highest slot with a name or age (1–5). */
@@ -77,17 +88,23 @@ function exceedsAzureAdultLimit(adults: number): boolean {
   return adults > AZURE_MAX_ADULTS;
 }
 
-/** Show Azure guest-limit guidance when adults exceed 4 or the party has 5 guests. */
+/** Show Azure guest-limit guidance when Azure adults exceed 4 or the party has 5 guests. */
 export function shouldShowAzureAdultLimitMessage(
-  adultCount: number,
+  azureAdultCount: number,
   partySize = 0,
 ): boolean {
   if (partySize >= MAX_GUESTS) return true;
-  return exceedsAzureAdultLimit(adultCount);
+  return exceedsAzureAdultLimit(azureAdultCount);
 }
 
-function isChildAge(age: number): boolean {
-  return age <= CHILD_MAX_AGE;
+/** General rule: under 18 = child. */
+function isGeneralChildAge(age: number): boolean {
+  return age < ADULT_MIN_AGE;
+}
+
+/** Azure occupancy rule: age 3 and below = child. Guest form only. */
+function isAzureChildAge(age: number): boolean {
+  return age <= AZURE_CHILD_MAX_AGE;
 }
 
 export function requiresValidId(age: number): boolean {
@@ -96,9 +113,10 @@ export function requiresValidId(age: number): boolean {
 
 export type GuestSlotValues = {
   name?: string;
-  age?: number;
+  age?: number | null;
 };
 
+/** Count adults/children using the general 18+ rule (named guests only). */
 export function computeGuestCounts(guests: GuestSlotValues[]): {
   adults: number;
   children: number;
@@ -113,7 +131,7 @@ export function computeGuestCounts(guests: GuestSlotValues[]): {
     const age = guest.age;
     if (age == null || Number.isNaN(age)) continue;
 
-    if (isChildAge(age)) {
+    if (isGeneralChildAge(age)) {
       children += 1;
     } else {
       adults += 1;
@@ -126,8 +144,8 @@ export function computeGuestCounts(guests: GuestSlotValues[]): {
   };
 }
 
-/** Count adults/children from ages alone (used for live UI + Azure limit banner). */
-export function computeGuestCountsByAge(
+/** Azure occupancy counts from ages alone — public guest form validation/banner only. */
+export function computeAzureGuestCountsByAge(
   guests: Array<{ age?: number | null }>,
 ): { adults: number; children: number } {
   let adults = 0;
@@ -137,7 +155,7 @@ export function computeGuestCountsByAge(
     const age = guest.age;
     if (age == null || Number.isNaN(age)) continue;
 
-    if (isChildAge(age)) {
+    if (isAzureChildAge(age)) {
       children += 1;
     } else {
       adults += 1;
@@ -145,6 +163,61 @@ export function computeGuestCountsByAge(
   }
 
   return { adults, children };
+}
+
+/** @deprecated Use computeAzureGuestCountsByAge on the guest form; computeGuestCounts elsewhere. */
+export function computeGuestCountsByAge(
+  guests: Array<{ age?: number | null }>,
+): { adults: number; children: number } {
+  return computeAzureGuestCountsByAge(guests);
+}
+
+export type BookingGuestAgeFields = {
+  primary_guest_name?: string | null;
+  primary_guest_age?: number | null;
+  guest2_name?: string | null;
+  guest2_age?: number | null;
+  guest3_name?: string | null;
+  guest3_age?: number | null;
+  guest4_name?: string | null;
+  guest4_age?: number | null;
+  guest5_name?: string | null;
+  guest5_age?: number | null;
+  number_of_adults?: number | null;
+  number_of_children?: number | null;
+};
+
+export function bookingGuestSlotsFromRow(
+  row: BookingGuestAgeFields,
+): GuestSlotValues[] {
+  return [
+    {
+      name: row.primary_guest_name ?? undefined,
+      age: row.primary_guest_age ?? undefined,
+    },
+    { name: row.guest2_name ?? undefined, age: row.guest2_age ?? undefined },
+    { name: row.guest3_name ?? undefined, age: row.guest3_age ?? undefined },
+    { name: row.guest4_name ?? undefined, age: row.guest4_age ?? undefined },
+    { name: row.guest5_name ?? undefined, age: row.guest5_age ?? undefined },
+  ];
+}
+
+/** Prefer recomputing from per-guest ages; fall back to stored DB counts. */
+export function resolveGuestCountsFromBooking(row: BookingGuestAgeFields): {
+  adults: number;
+  children: number;
+} {
+  const slots = bookingGuestSlotsFromRow(row);
+  const hasPerGuestAge = slots.some(
+    (slot) => slot.name?.trim() && slot.age != null && !Number.isNaN(slot.age),
+  );
+  if (hasPerGuestAge) {
+    return computeGuestCounts(slots);
+  }
+  return {
+    adults: Math.max(row.number_of_adults ?? 1, 1),
+    children: row.number_of_children ?? 0,
+  };
 }
 
 /** How many guest cards to show when loading or seeding the form. */

@@ -78,7 +78,10 @@ import {
   ADMIN_GUEST_VIEW_SLOTS,
   shouldShowAdminGuestViewSlot,
 } from "@/features/admin/lib/adminGuestSlots";
-import { requiresValidId } from "@/features/guest-form/lib/guestCounts";
+import {
+  requiresValidId,
+  resolveGuestCountsFromBooking,
+} from "@/features/guest-form/lib/guestCounts";
 import {
   normalizeStoragePublicUrl,
   parseStorageUrl,
@@ -99,16 +102,14 @@ import {
 import { buildPayParkingPath } from "@/features/pay-parking/lib/api";
 import { hasPayParkingAvailed } from "@/features/pay-parking/lib/payParkingHelpers";
 import { isStaycationVoucher } from "@/features/sd-form/lib/voucher";
-import {
-  Collapsible,
-  CollapsibleContent,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent } from "@/components/ui/collapsible";
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();
   const navigate = useNavigate();
   const { data: booking, isLoading, error } = useBooking(bookingId);
-  const { isBackfilling: isReceiptAiBackfilling } = useReceiptAiBackfill(booking);
+  const { isBackfilling: isReceiptAiBackfilling } =
+    useReceiptAiBackfill(booking);
   const [editMode, setEditMode] = useState(false);
   const [payParkingModalOpen, setPayParkingModalOpen] = useState(false);
   const [previewAsset, setPreviewAsset] = useState<{
@@ -193,72 +194,72 @@ export function BookingDetailPage() {
   return (
     <AdminLayout>
       <div className="space-y-4">
-          {/* Back nav */}
-          <Link
-            to="/bookings"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="size-3.5" />
-            Back to Bookings
-          </Link>
+        {/* Back nav */}
+        <Link
+          to="/bookings"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to Bookings
+        </Link>
 
-          {/* Loading */}
-          {isLoading && <BookingDetailPageSkeleton />}
+        {/* Loading */}
+        {isLoading && <BookingDetailPageSkeleton />}
 
-          {/* Error */}
-          {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-              Failed to load booking. Please refresh.
-            </div>
-          )}
+        {/* Error */}
+        {error && (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+            Failed to load booking. Please refresh.
+          </div>
+        )}
 
-          {/* Not found */}
-          {!isLoading && !booking && !error && (
-            <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-              Booking not found.
-            </div>
-          )}
+        {/* Not found */}
+        {!isLoading && !booking && !error && (
+          <div className="rounded-xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+            Booking not found.
+          </div>
+        )}
 
-          {booking && (
-            <>
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-5 lg:gap-6">
-                {isMobileWorkflowFirst && (
-                  <BookingDetailMobileSummary
-                    className="order-1 md:hidden"
-                    booking={booking}
-                    detailsExpanded={detailsExpanded}
-                    onToggleDetails={handleToggleDetails}
-                    onPayParking={handleOpenPayParking}
-                    editMode={editMode}
-                    onEdit={handleStartEdit}
-                    onCancelEdit={() => setEditMode(false)}
-                  />
+        {booking && (
+          <>
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-5 lg:gap-6">
+              {isMobileWorkflowFirst && (
+                <BookingDetailMobileSummary
+                  className="order-1 md:hidden"
+                  booking={booking}
+                  detailsExpanded={detailsExpanded}
+                  onToggleDetails={handleToggleDetails}
+                  onPayParking={handleOpenPayParking}
+                  editMode={editMode}
+                  onEdit={handleStartEdit}
+                  onCancelEdit={() => setEditMode(false)}
+                />
+              )}
+
+              {/* ── Full booking details (collapsible on mobile) ───────────── */}
+              <Collapsible
+                open={showMobileDetailCards}
+                onOpenChange={(open) => {
+                  if (isMobileWorkflowFirst && !editMode) {
+                    setDetailsExpanded(open);
+                  }
+                }}
+                className={cn(
+                  "flex-1 min-w-0",
+                  isMobileWorkflowFirst &&
+                    (mobileDetailsBeforeWorkflow ? "order-2" : "order-3"),
+                  isMobileWorkflowFirst && "md:order-none",
                 )}
-
-                {/* ── Full booking details (collapsible on mobile) ───────────── */}
-                <Collapsible
-                  open={showMobileDetailCards}
-                  onOpenChange={(open) => {
-                    if (isMobileWorkflowFirst && !editMode) {
-                      setDetailsExpanded(open);
-                    }
-                  }}
+              >
+                <CollapsibleContent
+                  id="booking-detail-full-panel"
                   className={cn(
-                    "flex-1 min-w-0",
-                    isMobileWorkflowFirst &&
-                      (mobileDetailsBeforeWorkflow ? "order-2" : "order-3"),
-                    isMobileWorkflowFirst && "md:order-none",
+                    "space-y-5 overflow-hidden",
+                    "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
+                    "motion-reduce:animate-none",
+                    "md:overflow-visible md:animate-none",
                   )}
                 >
-                  <CollapsibleContent
-                    id="booking-detail-full-panel"
-                    className={cn(
-                      "space-y-5 overflow-hidden",
-                      "data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down",
-                      "motion-reduce:animate-none",
-                      "md:overflow-visible md:animate-none",
-                    )}
-                  >
                   <BookingHeader
                     booking={booking}
                     editMode={editMode}
@@ -316,34 +317,34 @@ export function BookingDetailPage() {
                       className="md:hidden"
                     />
                   )}
-                  </CollapsibleContent>
-                </Collapsible>
+                </CollapsibleContent>
+              </Collapsible>
 
-                {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
-                <div
+              {/* ── Workflow / Progress (before fold on mobile when past review) ── */}
+              <div
+                className={cn(
+                  "w-full md:w-[min(100%,20rem)] md:shrink-0 lg:w-[min(100%,22.5rem)] xl:w-[370px]",
+                  isMobileWorkflowFirst &&
+                    (mobileDetailsBeforeWorkflow ? "order-3" : "order-2"),
+                  isMobileWorkflowFirst && "md:order-none",
+                )}
+              >
+                <PendingReviewWorkflowGate booking={booking}>
+                  <WorkflowPanel key={booking.id} booking={booking} />
+                </PendingReviewWorkflowGate>
+
+                <BookingMetaCard
+                  booking={booking}
+                  onCopyBookingId={() => void copyBookingIdToClipboard()}
                   className={cn(
-                    "w-full md:w-[min(100%,20rem)] md:shrink-0 lg:w-[min(100%,22.5rem)] xl:w-[370px]",
-                    isMobileWorkflowFirst &&
-                      (mobileDetailsBeforeWorkflow ? "order-3" : "order-2"),
-                    isMobileWorkflowFirst && "md:order-none",
+                    "mt-3",
+                    isMobileWorkflowFirst && "hidden md:block",
                   )}
-                >
-                  <PendingReviewWorkflowGate booking={booking}>
-                    <WorkflowPanel key={booking.id} booking={booking} />
-                  </PendingReviewWorkflowGate>
-
-                  <BookingMetaCard
-                    booking={booking}
-                    onCopyBookingId={() => void copyBookingIdToClipboard()}
-                    className={cn(
-                      "mt-3",
-                      isMobileWorkflowFirst && "hidden md:block",
-                    )}
-                  />
-                </div>
+                />
               </div>
-            </>
-          )}
+            </div>
+          </>
+        )}
       </div>
       <AssetPreviewModal
         asset={previewAsset}
@@ -382,8 +383,8 @@ function BookingHeader({
   onPayParking: () => void;
   className?: string;
 }) {
-  const pax =
-    (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const guestCounts = resolveGuestCountsFromBooking(booking);
+  const pax = guestCounts.adults + guestCounts.children;
   const fb = booking.guest_facebook_name?.trim() ?? "";
   const primary = booking.primary_guest_name?.trim() ?? "";
   const heading = fb || primary || "Booking";
@@ -421,7 +422,10 @@ function BookingHeader({
               </span>
             </span>
             <span className="flex items-center gap-1.5">
-              <Users className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+              <Users
+                className="size-3.5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
               <span>
                 {pax} pax · {booking.number_of_nights} night
                 {booking.number_of_nights !== 1 ? "s" : ""}
@@ -590,8 +594,8 @@ function GuestsCard({
 }
 
 function StayDetailsCard({ booking }: { booking: BookingRow }) {
-  const pax =
-    (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const guestCounts = resolveGuestCountsFromBooking(booking);
+  const pax = guestCounts.adults + guestCounts.children;
   return (
     <Card title="Stay Details" icon={<Calendar className="size-3.5" />}>
       <Grid2>
@@ -617,7 +621,7 @@ function StayDetailsCard({ booking }: { booking: BookingRow }) {
         />
         <InfoField
           label="Guests"
-          value={`${booking.number_of_adults ?? 0} adult${(booking.number_of_adults ?? 0) !== 1 ? "s" : ""}${booking.number_of_children ? `, ${booking.number_of_children} child${booking.number_of_children !== 1 ? "ren" : ""}` : ""} (${pax} pax)`}
+          value={`${guestCounts.adults} adult${guestCounts.adults !== 1 ? "s" : ""}${guestCounts.children ? `, ${guestCounts.children} child${guestCounts.children !== 1 ? "ren" : ""}` : ""} (${pax} pax)`}
         />
       </Grid2>
     </Card>
@@ -736,9 +740,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
     <Card title="Other Information" icon={<Info className="size-3.5" />}>
       {/* Booking Source */}
       <div className="mb-3">
-        <p className="mb-1 text-overline">
-          Booking Source
-        </p>
+        <p className="mb-1 text-overline">Booking Source</p>
         <span
           className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1 text-xs font-medium ${
             isAirbnb
@@ -751,9 +753,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
       </div>
 
       <div className="mb-3">
-        <p className="mb-1 text-overline">
-          Surprise decor
-        </p>
+        <p className="mb-1 text-overline">Surprise decor</p>
         <span
           className={`inline-flex items-center rounded-xl border px-3 py-1 text-xs font-medium ${
             booking.guest_requests_surprise_decor
@@ -769,9 +769,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
 
       {(booking.find_us || booking.find_us_details) && (
         <div className="mb-3">
-          <p className="mb-1 text-overline">
-            How they found us
-          </p>
+          <p className="mb-1 text-overline">How they found us</p>
           <div className="flex flex-wrap gap-2">
             {booking.find_us && (
               <span className="flex items-center gap-1.5 rounded-xl border border-border bg-muted/50 px-3 py-1 text-xs text-foreground">
@@ -789,9 +787,7 @@ function OtherInfoCard({ booking }: { booking: BookingRow }) {
       )}
       {booking.guest_special_requests && (
         <div>
-          <p className="mb-1 text-overline">
-            Special Requests
-          </p>
+          <p className="mb-1 text-overline">Special Requests</p>
           <p className="flex items-start gap-2 text-sm text-foreground">
             <MessageSquare className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
             {booking.guest_special_requests}
@@ -829,9 +825,7 @@ function PricingSummaryCard({
 
       {(hasPaymentReceipt || hasBalanceReceipt) && (
         <div className="mt-4">
-          <p className="mb-2 text-overline">
-            Payment receipts
-          </p>
+          <p className="mb-2 text-overline">Payment receipts</p>
           <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3">
             {hasPaymentReceipt && (
               <DocPreview
@@ -869,9 +863,7 @@ function PricingSummaryCard({
 
       {isCompleted && booking.sd_refund_receipt_url && (
         <div className="mt-4 border-t border-separator pt-4">
-          <p className="mb-2 text-overline">
-            Refund receipt
-          </p>
+          <p className="mb-2 text-overline">Refund receipt</p>
           <DocPreview
             label="SD refund receipt"
             url={booking.sd_refund_receipt_url}
@@ -902,9 +894,7 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
 
   return (
     <div className="mt-4 border-t border-separator pt-4">
-      <p className="mb-2 text-overline">
-        Next-stay voucher
-      </p>
+      <p className="mb-2 text-overline">Next-stay voucher</p>
       <div className="relative overflow-hidden rounded-xl border border-emerald-200/80 bg-gradient-to-br from-emerald-50 via-white to-emerald-50/60 px-4 py-3 ring-1 ring-emerald-100/80 dark:border-emerald-500/30 dark:from-emerald-950/50 dark:via-card dark:to-emerald-900/25 dark:ring-emerald-500/20">
         <Sparkles
           className="absolute right-3 top-3 size-4 text-emerald-500/70 dark:text-emerald-400/80"
@@ -920,10 +910,10 @@ function NextStayVoucherCard({ booking }: { booking: BookingRow }) {
             </p>
             <p className="mt-0.5 text-caption text-emerald-900/70 dark:text-emerald-200/80">
               {isStaycationVoucher({ code })
-                ? 'Free staycation on the next booking'
+                ? "Free staycation on the next booking"
                 : amount != null
                   ? `${formatMoney(amount)} off the next booking`
-                  : '—'}
+                  : "—"}
               {awardedAt && (
                 <>
                   {" · "}
@@ -996,10 +986,14 @@ function docPreviewLabelRow(
       {receiptAiLoading ? (
         <Loader2
           className="size-3 shrink-0 animate-spin text-muted-foreground"
-          aria-label={receiptAiVariant === "valid_id" ? "Checking valid ID" : "Checking receipt"}
+          aria-label={
+            receiptAiVariant === "valid_id"
+              ? "Checking valid ID"
+              : "Checking receipt"
+          }
         />
       ) : receiptAiVerdict &&
-        String(receiptAiVerdict).toLowerCase() !== 'skipped' ? (
+        String(receiptAiVerdict).toLowerCase() !== "skipped" ? (
         <ReceiptAiVerdictBadge
           verdict={receiptAiVerdict}
           compact
@@ -1081,7 +1075,10 @@ function DocPreview({
         className={`flex flex-col overflow-hidden rounded-xl border border-border bg-card ${docPreviewOuterWidth()}`}
       >
         <div className="relative flex aspect-video items-center justify-center bg-muted">
-          <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
+          <Loader2
+            className="size-8 animate-spin text-muted-foreground"
+            aria-hidden
+          />
         </div>
         <div className="flex items-center justify-between gap-2 px-3 py-2">
           {docPreviewLabelRow(
@@ -1301,10 +1298,7 @@ function receiptAiMetaForPreviewAsset(
     };
   }
 
-  if (
-    asset.label === "Valid ID" ||
-    matches(booking.valid_id_url)
-  ) {
+  if (asset.label === "Valid ID" || matches(booking.valid_id_url)) {
     return {
       verdict: booking.valid_id_ai_verdict,
       loading: receiptAiPreviewLoading(
@@ -1433,10 +1427,7 @@ function AssetPreviewModal({
             <iframe
               title={asset.label}
               src={asset.url}
-              className={cn(
-                "w-full rounded-lg bg-card",
-                ASSET_PREVIEW_PDF_H,
-              )}
+              className={cn("w-full rounded-lg bg-card", ASSET_PREVIEW_PDF_H)}
             />
           )}
         </div>
@@ -1461,9 +1452,7 @@ function Card({
     <div className="rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <div className="mb-4 flex items-center gap-1.5">
         {icon && <span className="text-muted-foreground">{icon}</span>}
-        <h2 className="text-overline">
-          {title}
-        </h2>
+        <h2 className="text-overline">{title}</h2>
       </div>
       {children}
     </div>
@@ -1491,9 +1480,7 @@ function InfoField({
     return null;
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-overline">
-        {label}
-      </span>
+      <span className="text-overline">{label}</span>
       <span className="flex items-center gap-1.5 text-sm text-foreground">
         {icon}
         {String(value)}

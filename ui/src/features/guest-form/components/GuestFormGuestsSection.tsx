@@ -1,53 +1,54 @@
-import { useEffect, useState } from 'react';
-import type { UseFormReturn } from 'react-hook-form';
-import { Minus, Plus, UserRound } from 'lucide-react';
+import { useEffect, useState } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { Minus, Plus, UserRound } from "lucide-react";
 import {
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import type { GuestFormData } from '@/features/guest-form/schemas/guestFormSchema';
-import { GuestFormValidIdUpload } from '@/features/guest-form/components/GuestFormValidIdUpload';
-import { AzureGuestLimitReminder } from '@/features/guest-form/components/AzureGuestLimitReminder';
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import type { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
+import { GuestFormValidIdUpload } from "@/features/guest-form/components/GuestFormValidIdUpload";
+import { AzureGuestLimitReminder } from "@/features/guest-form/components/AzureGuestLimitReminder";
 import {
-  computeGuestCountsByAge,
+  computeAzureGuestCountsByAge,
+  computeGuestCounts,
   shouldShowAzureAdultLimitMessage,
   FIFTH_PARTY_GUEST_MAX_AGE,
   formatGuestAgeInputValue,
   getActivePartySize,
-  getDefaultAgeForPartyGuest,
+  getDefaultAgeForGuestFormPartyGuest,
   guestPartyPositionLabel,
   getInitialVisibleGuestCount,
   isPartyFifthGuest,
   MAX_GUESTS,
   parseGuestAgeInputChange,
   requiresValidId,
-} from '@/features/guest-form/lib/guestCounts';
-import { handleNameInputChange } from '@/utils/helpers';
-import { toCapitalCase } from '@/utils/formatters';
+} from "@/features/guest-form/lib/guestCounts";
+import { handleNameInputChange } from "@/utils/helpers";
+import { toCapitalCase } from "@/utils/formatters";
 
 type GuestNameField =
-  | 'primaryGuestName'
-  | 'guest2Name'
-  | 'guest3Name'
-  | 'guest4Name'
-  | 'guest5Name';
+  | "primaryGuestName"
+  | "guest2Name"
+  | "guest3Name"
+  | "guest4Name"
+  | "guest5Name";
 type GuestAgeField =
-  | 'primaryGuestAge'
-  | 'guest2Age'
-  | 'guest3Age'
-  | 'guest4Age'
-  | 'guest5Age';
+  | "primaryGuestAge"
+  | "guest2Age"
+  | "guest3Age"
+  | "guest4Age"
+  | "guest5Age";
 type GuestValidIdField =
-  | 'validId'
-  | 'guest2ValidId'
-  | 'guest3ValidId'
-  | 'guest4ValidId'
-  | 'guest5ValidId';
+  | "validId"
+  | "guest2ValidId"
+  | "guest3ValidId"
+  | "guest4ValidId"
+  | "guest5ValidId";
 
 type GuestSlotConfig = {
   index: number;
@@ -59,33 +60,33 @@ type GuestSlotConfig = {
 const GUEST_SLOTS: GuestSlotConfig[] = [
   {
     index: 1,
-    nameField: 'primaryGuestName',
-    ageField: 'primaryGuestAge',
-    validIdField: 'validId',
+    nameField: "primaryGuestName",
+    ageField: "primaryGuestAge",
+    validIdField: "validId",
   },
   {
     index: 2,
-    nameField: 'guest2Name',
-    ageField: 'guest2Age',
-    validIdField: 'guest2ValidId',
+    nameField: "guest2Name",
+    ageField: "guest2Age",
+    validIdField: "guest2ValidId",
   },
   {
     index: 3,
-    nameField: 'guest3Name',
-    ageField: 'guest3Age',
-    validIdField: 'guest3ValidId',
+    nameField: "guest3Name",
+    ageField: "guest3Age",
+    validIdField: "guest3ValidId",
   },
   {
     index: 4,
-    nameField: 'guest4Name',
-    ageField: 'guest4Age',
-    validIdField: 'guest4ValidId',
+    nameField: "guest4Name",
+    ageField: "guest4Age",
+    validIdField: "guest4ValidId",
   },
   {
     index: 5,
-    nameField: 'guest5Name',
-    ageField: 'guest5Age',
-    validIdField: 'guest5ValidId',
+    nameField: "guest5Name",
+    ageField: "guest5Age",
+    validIdField: "guest5ValidId",
   },
 ];
 
@@ -109,7 +110,7 @@ function clearGuestSlot(
   onValidIdImageErrorChange: (field: string, hasError: boolean) => void,
 ) {
   const previewKey = String(slot.validIdField);
-  form.setValue(slot.nameField, '');
+  form.setValue(slot.nameField, "");
   form.setValue(slot.ageField, null as unknown as number | undefined);
   form.setValue(slot.validIdField, undefined);
   onValidIdPreviewChange(previewKey, null);
@@ -143,30 +144,48 @@ export function GuestFormGuestsSection({
   }, [seedKey, form]);
 
   const watchedGuests = form.watch([
-    'primaryGuestName',
-    'primaryGuestAge',
-    'guest2Name',
-    'guest2Age',
-    'guest3Name',
-    'guest3Age',
-    'guest4Name',
-    'guest4Age',
-    'guest5Name',
-    'guest5Age',
+    "primaryGuestName",
+    "primaryGuestAge",
+    "guest2Name",
+    "guest2Age",
+    "guest3Name",
+    "guest3Age",
+    "guest4Name",
+    "guest4Age",
+    "guest5Name",
+    "guest5Age",
   ]);
 
   const partyGuests = [
-    { name: watchedGuests[0] as string, age: watchedGuests[1] as number | undefined },
-    { name: watchedGuests[2] as string, age: watchedGuests[3] as number | undefined },
-    { name: watchedGuests[4] as string, age: watchedGuests[5] as number | undefined },
-    { name: watchedGuests[6] as string, age: watchedGuests[7] as number | undefined },
-    { name: watchedGuests[8] as string, age: watchedGuests[9] as number | undefined },
+    {
+      name: watchedGuests[0] as string,
+      age: watchedGuests[1] as number | undefined,
+    },
+    {
+      name: watchedGuests[2] as string,
+      age: watchedGuests[3] as number | undefined,
+    },
+    {
+      name: watchedGuests[4] as string,
+      age: watchedGuests[5] as number | undefined,
+    },
+    {
+      name: watchedGuests[6] as string,
+      age: watchedGuests[7] as number | undefined,
+    },
+    {
+      name: watchedGuests[8] as string,
+      age: watchedGuests[9] as number | undefined,
+    },
   ];
   const partySize = Math.max(getActivePartySize(partyGuests), visibleCount);
 
-  const visibleAgeCounts = computeGuestCountsByAge(
-    Array.from({ length: visibleCount }, (_, index) => ({
-      age: watchedGuests[index * 2 + 1] as number | undefined,
+  const visiblePartyGuests = partyGuests.slice(0, visibleCount);
+  const visibleAgeCounts = computeGuestCounts(visiblePartyGuests);
+
+  const azureAgeCounts = computeAzureGuestCountsByAge(
+    visiblePartyGuests.map(({ name, age }) => ({
+      age: name?.trim() || age != null ? age : undefined,
     })),
   );
 
@@ -178,7 +197,7 @@ export function GuestFormGuestsSection({
     watchedGuests[9] != null;
 
   const showAzureAdultLimitInfo = shouldShowAzureAdultLimitMessage(
-    visibleAgeCounts.adults,
+    azureAgeCounts.adults,
     partySize,
   );
 
@@ -200,11 +219,11 @@ export function GuestFormGuestsSection({
     <div className="space-y-4">
       {hasAnyAge && (
         <p className="text-sm font-medium text-muted-foreground">
-          {visibleAgeCounts.adults}{' '}
-          {visibleAgeCounts.adults === 1 ? 'Adult' : 'Adults'}
+          {visibleAgeCounts.adults}{" "}
+          {visibleAgeCounts.adults === 1 ? "Adult" : "Adults"}
           {visibleAgeCounts.children > 0 &&
             ` · ${visibleAgeCounts.children} ${
-              visibleAgeCounts.children === 1 ? 'Child' : 'Children'
+              visibleAgeCounts.children === 1 ? "Child" : "Children"
             }`}
         </p>
       )}
@@ -218,7 +237,7 @@ export function GuestFormGuestsSection({
           const previewKey = slot.validIdField;
           const nameValue = form.watch(slot.nameField);
           const guestName =
-            typeof nameValue === 'string' ? nameValue.trim() : '';
+            typeof nameValue === "string" ? nameValue.trim() : "";
           const showValidId =
             age != null && !Number.isNaN(age) && requiresValidId(age);
           const ageRequired = isPrimary || guestName.length > 0;
@@ -264,9 +283,10 @@ export function GuestFormGuestsSection({
                       const isChecked = event.target.checked;
                       onSameAsFacebookNameChange(isChecked);
                       if (isChecked) {
-                        const facebookName = form.getValues('guestFacebookName');
+                        const facebookName =
+                          form.getValues("guestFacebookName");
                         if (facebookName) {
-                          form.setValue('primaryGuestName', facebookName);
+                          form.setValue("primaryGuestName", facebookName);
                         }
                       }
                     }}
@@ -276,7 +296,7 @@ export function GuestFormGuestsSection({
                     htmlFor="sameAsFacebookName"
                     className="cursor-pointer text-sm text-muted-foreground"
                   >
-                    Same as {isAirbnb ? 'Airbnb' : 'Facebook'} Name
+                    Same as {isAirbnb ? "Airbnb" : "Facebook"} Name
                   </label>
                 </div>
               )}
@@ -297,7 +317,7 @@ export function GuestFormGuestsSection({
                         <Input
                           placeholder={`Complete name of ${partyLabel}`}
                           {...field}
-                          value={field.value?.toString() ?? ''}
+                          value={field.value?.toString() ?? ""}
                           disabled={isPrimary && sameAsFacebookName}
                           onChange={(event) =>
                             handleNameInputChange(
@@ -329,7 +349,7 @@ export function GuestFormGuestsSection({
                           type="text"
                           inputMode="numeric"
                           autoComplete="off"
-                          placeholder={isFifthPartyGuest ? '3' : 'Ex. 25'}
+                          placeholder={isFifthPartyGuest ? "3" : "Ex. 25"}
                           value={formatGuestAgeInputValue(field.value)}
                           onChange={(event) => {
                             let next = parseGuestAgeInputChange(
@@ -392,7 +412,7 @@ export function GuestFormGuestsSection({
               if (form.getValues(slot.ageField) == null) {
                 form.setValue(
                   slot.ageField,
-                  getDefaultAgeForPartyGuest(slot.index, next),
+                  getDefaultAgeForGuestFormPartyGuest(slot.index, next),
                 );
               }
               return next;

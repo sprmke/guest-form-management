@@ -7,12 +7,16 @@ import {
   PartyPopper,
   Users,
   X,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatBookingDate } from '@/features/admin/lib/formatters';
-import { bookingRequestsSurpriseDecor, bookingFlagLabelChipClass } from '@/features/admin/lib/bookingFlags';
-import { PayParkingHeaderButton } from '@/features/admin/components/PayParkingModal';
-import type { BookingRow } from '@/features/admin/lib/types';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { formatBookingDate } from "@/features/admin/lib/formatters";
+import {
+  bookingRequestsSurpriseDecor,
+  bookingFlagLabelChipClass,
+} from "@/features/admin/lib/bookingFlags";
+import { PayParkingHeaderButton } from "@/features/admin/components/PayParkingModal";
+import { resolveGuestCountsFromBooking } from "@/features/guest-form/lib/guestCounts";
+import type { BookingRow } from "@/features/admin/lib/types";
 
 type Props = {
   booking: BookingRow;
@@ -40,11 +44,11 @@ export function BookingDetailMobileSummary({
   onCancelEdit,
   className,
 }: Props) {
-  const pax =
-    (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
-  const fb = booking.guest_facebook_name?.trim() ?? '';
-  const primary = booking.primary_guest_name?.trim() ?? '';
-  const heading = fb || primary || 'Booking';
+  const guestCounts = resolveGuestCountsFromBooking(booking);
+  const pax = guestCounts.adults + guestCounts.children;
+  const fb = booking.guest_facebook_name?.trim() ?? "";
+  const primary = booking.primary_guest_name?.trim() ?? "";
+  const heading = fb || primary || "Booking";
   const hasDecor = bookingRequestsSurpriseDecor(
     booking.guest_requests_surprise_decor,
   );
@@ -52,7 +56,7 @@ export function BookingDetailMobileSummary({
   return (
     <section
       className={cn(
-        'rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4',
+        "rounded-xl border border-border bg-card p-3 shadow-sm sm:p-4",
         className,
       )}
       aria-label="Booking summary"
@@ -70,7 +74,10 @@ export function BookingDetailMobileSummary({
 
       <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-muted-foreground">
         <span className="inline-flex items-center gap-1">
-          <Calendar className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+          <Calendar
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
           {formatBookingDate(booking.check_in_date)}
           <span className="text-muted-foreground/50" aria-hidden>
             →
@@ -78,9 +85,12 @@ export function BookingDetailMobileSummary({
           {formatBookingDate(booking.check_out_date)}
         </span>
         <span className="inline-flex items-center gap-1 text-muted-foreground">
-          <Users className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          {pax} pax · {booking.number_of_nights}{' '}
-          {booking.number_of_nights === 1 ? 'night' : 'nights'}
+          <Users
+            className="size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          {pax} pax · {booking.number_of_nights}{" "}
+          {booking.number_of_nights === 1 ? "night" : "nights"}
         </span>
       </p>
 
@@ -119,8 +129,8 @@ export function BookingDetailMobileSummary({
 
       <div
         className={cn(
-          'mt-3 flex flex-col gap-2',
-          detailsExpanded && 'sm:flex-row sm:items-stretch',
+          "mt-3 flex flex-col gap-2",
+          detailsExpanded && "sm:flex-row sm:items-stretch",
         )}
       >
         <button
@@ -129,21 +139,21 @@ export function BookingDetailMobileSummary({
           aria-expanded={detailsExpanded}
           aria-controls="booking-detail-full-panel"
           className={cn(
-            'flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200',
+            "flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg px-3 text-[13px] font-semibold transition-all duration-200",
             detailsExpanded
-              ? 'border border-border bg-muted/50 text-foreground hover:bg-muted'
-              : 'border border-sidebar-primary/30 bg-sidebar-primary/5 text-sidebar-primary hover:bg-sidebar-primary/10',
+              ? "border border-border bg-muted/50 text-foreground hover:bg-muted"
+              : "border border-sidebar-primary/30 bg-sidebar-primary/5 text-sidebar-primary hover:bg-sidebar-primary/10",
           )}
         >
           <span>
             {detailsExpanded
-              ? 'Hide full booking details'
-              : 'View full booking details'}
+              ? "Hide full booking details"
+              : "View full booking details"}
           </span>
           <ChevronDown
             className={cn(
-              'size-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none',
-              detailsExpanded && 'rotate-180',
+              "size-4 shrink-0 transition-transform duration-300 ease-out motion-reduce:transition-none",
+              detailsExpanded && "rotate-180",
             )}
             aria-hidden
           />

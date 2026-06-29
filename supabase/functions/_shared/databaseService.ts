@@ -11,6 +11,10 @@ import {
 } from "./statusMachine.ts";
 import { UploadService } from "./uploadService.ts";
 import {
+  assertAzureGuestPartyRules,
+  guestPartySlotsFromFormData,
+} from "./guestCounts.ts";
+import {
   formatDate,
   formatTime,
   DEFAULT_CHECK_IN_TIME,
@@ -358,38 +362,8 @@ export class DatabaseService {
       const guest4Name = (formData.get("guest4Name") as string)?.trim() || "";
       const guest5Name = (formData.get("guest5Name") as string)?.trim() || "";
 
-      const partySlots = [
-        { name: primaryGuestName, age: formData.get("primaryGuestAge") },
-        { name: guest2Name, age: formData.get("guest2Age") },
-        { name: guest3Name, age: formData.get("guest3Age") },
-        { name: guest4Name, age: formData.get("guest4Age") },
-        { name: guest5Name, age: formData.get("guest5Age") },
-      ];
-      let partySize = 1;
-      partySlots.forEach((slot, index) => {
-        const ageRaw = slot.age;
-        const hasAge =
-          ageRaw != null &&
-          String(ageRaw).trim() !== "" &&
-          !Number.isNaN(Number(ageRaw));
-        if (slot.name || hasAge) {
-          partySize = Math.max(partySize, index + 1);
-        }
-      });
-
-      const FIFTH_PARTY_GUEST_MAX_AGE = 3;
-      if (partySize === 5) {
-        const fifthAgeRaw = formData.get("guest5Age");
-        if (
-          fifthAgeRaw != null &&
-          String(fifthAgeRaw).trim() !== "" &&
-          guest5Age > FIFTH_PARTY_GUEST_MAX_AGE
-        ) {
-          throw new Error(
-            `The 5th guest must be ${FIFTH_PARTY_GUEST_MAX_AGE} years old or younger`,
-          );
-        }
-      }
+      const partySlots = guestPartySlotsFromFormData(formData);
+      assertAzureGuestPartyRules(partySlots);
 
       const uploadValidIdIfPresent = async (
         field: string,

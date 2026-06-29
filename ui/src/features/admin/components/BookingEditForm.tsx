@@ -10,16 +10,11 @@
  * Uses React Hook Form (no Zod for now — lightweight admin-only form).
  */
 
-import React, { useState } from 'react';
-import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
-import { toast } from 'sonner';
-import { friendlyToastError } from '@/lib/toastMessages';
-import {
-  Info,
-  Plus,
-  Save,
-  X,
-} from 'lucide-react';
+import React, { useState } from "react";
+import { useForm, useWatch, type SubmitHandler } from "react-hook-form";
+import { toast } from "sonner";
+import { friendlyToastError } from "@/lib/toastMessages";
+import { Info, Plus, Save, X } from "lucide-react";
 import {
   CollapsibleGroup,
   Field,
@@ -29,32 +24,39 @@ import {
   Section,
   CheckboxOption,
   fieldControlClass,
-} from '@/features/admin/components/bookingEditLayout';
-import { BookingProgressFormsEdit } from '@/features/admin/components/BookingProgressFormsEdit';
+} from "@/features/admin/components/bookingEditLayout";
+import { BookingProgressFormsEdit } from "@/features/admin/components/BookingProgressFormsEdit";
 import {
   progressFormPayloadFromState,
   type ProgressFormEditState,
-} from '@/features/admin/lib/bookingProgressEditPayload';
-import { cn } from '@/lib/utils';
+} from "@/features/admin/lib/bookingProgressEditPayload";
+import { cn } from "@/lib/utils";
 import {
   useUpdateBooking,
   type UpdateBookingPayload,
-} from '@/features/admin/hooks/useUpdateBooking';
-import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/admin/lib/workflowSensitiveGuestDiff';
-import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/admin/lib/bookingStatus';
-import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice';
-import { AdminAdditionalGuestSlot } from '@/features/admin/components/AdminAdditionalGuestSlot';
-import { BookingGuestDocReplacer } from '@/features/admin/components/BookingGuestDocReplacer';
-import type { GuestDocAssetType } from '@/features/admin/hooks/useUploadBookingAsset';
-import { computeGuestCounts, FIFTH_PARTY_GUEST_MAX_AGE, getActivePartySize, getDefaultAgeForPartyGuest, getInitialVisibleGuestCount, guestPartyPositionLabel, isPartyFifthGuest, MAX_GUESTS, PRIMARY_GUEST_MIN_AGE } from '@/features/guest-form/lib/guestCounts';
-import type { BookingRow } from '@/features/admin/lib/types';
+} from "@/features/admin/hooks/useUpdateBooking";
+import { hasWorkflowSensitiveGuestFieldDiff } from "@/features/admin/lib/workflowSensitiveGuestDiff";
+import { shouldRevertGuestFieldEditsToPendingReview } from "@/features/admin/lib/bookingStatus";
+import { ReadyForCheckinSensitiveFieldsNotice } from "@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice";
+import { AdminAdditionalGuestSlot } from "@/features/admin/components/AdminAdditionalGuestSlot";
+import { BookingGuestDocReplacer } from "@/features/admin/components/BookingGuestDocReplacer";
+import type { GuestDocAssetType } from "@/features/admin/hooks/useUploadBookingAsset";
+import {
+  computeGuestCounts,
+  DEFAULT_GUEST_AGE,
+  getInitialVisibleGuestCount,
+  guestPartyPositionLabel,
+  MAX_GUESTS,
+  PRIMARY_GUEST_MIN_AGE,
+} from "@/features/guest-form/lib/guestCounts";
+import type { BookingRow } from "@/features/admin/lib/types";
 import {
   BOOKING_SOURCE_OPTIONS,
   normalizeBookingSource,
-} from '@/features/guest-form/lib/bookingSourceFromSearchParams';
-import { NativeSelect } from '@/components/ui/native-select';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Button } from '@/components/ui/button';
+} from "@/features/guest-form/lib/bookingSourceFromSearchParams";
+import { NativeSelect } from "@/components/ui/native-select";
+import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "@/components/ui/button";
 import {
   createDisabledCheckoutDateMatcher,
   createDisabledDateMatcher,
@@ -64,10 +66,10 @@ import {
   stringToDate,
   DATE_PICKER_DISPLAY_FORMAT,
   type BookedDateRange,
-} from '@/utils/dates';
+} from "@/utils/dates";
 
 const bookingEditDatePickerClass =
-  'h-11 border-border/50 bg-muted/40 font-medium hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-ring/30';
+  "h-11 border-border/50 bg-muted/40 font-medium hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-ring/30";
 
 type Props = {
   booking: BookingRow;
@@ -87,15 +89,15 @@ type FormValues = {
   guest_phone_number: string;
   guest_address: string;
   nationality: string;
-  primary_guest_age: number | '';
+  primary_guest_age: number | "";
   guest2_name: string;
-  guest2_age: number | '';
+  guest2_age: number | "";
   guest3_name: string;
-  guest3_age: number | '';
+  guest3_age: number | "";
   guest4_name: string;
-  guest4_age: number | '';
+  guest4_age: number | "";
   guest5_name: string;
-  guest5_age: number | '';
+  guest5_age: number | "";
   check_in_date: string;
   check_out_date: string;
   check_in_time: string;
@@ -120,66 +122,85 @@ type FormValues = {
 };
 
 function toStr(v: string | null | undefined) {
-  return v ?? '';
+  return v ?? "";
 }
 
-function toAge(v: number | null | undefined): number | '' {
+function toAge(v: number | null | undefined): number | "" {
   if (v != null && !Number.isNaN(v)) return v;
-  return '';
+  return "";
 }
 
 function getInitialVisibleAdditionalGuestCount(booking: BookingRow): number {
   const partyCount = getInitialVisibleGuestCount([
-    { name: booking.primary_guest_name ?? undefined, age: booking.primary_guest_age ?? undefined },
-    { name: booking.guest2_name ?? undefined, age: booking.guest2_age ?? undefined },
-    { name: booking.guest3_name ?? undefined, age: booking.guest3_age ?? undefined },
-    { name: booking.guest4_name ?? undefined, age: booking.guest4_age ?? undefined },
-    { name: booking.guest5_name ?? undefined, age: booking.guest5_age ?? undefined },
+    {
+      name: booking.primary_guest_name ?? undefined,
+      age: booking.primary_guest_age ?? undefined,
+    },
+    {
+      name: booking.guest2_name ?? undefined,
+      age: booking.guest2_age ?? undefined,
+    },
+    {
+      name: booking.guest3_name ?? undefined,
+      age: booking.guest3_age ?? undefined,
+    },
+    {
+      name: booking.guest4_name ?? undefined,
+      age: booking.guest4_age ?? undefined,
+    },
+    {
+      name: booking.guest5_name ?? undefined,
+      age: booking.guest5_age ?? undefined,
+    },
   ]);
   return Math.max(0, partyCount - 1);
 }
 
 type AdditionalGuestSlotConfig = {
   partyPosition: number;
-  nameField: 'guest2_name' | 'guest3_name' | 'guest4_name' | 'guest5_name';
-  ageField: 'guest2_age' | 'guest3_age' | 'guest4_age' | 'guest5_age';
-  validIdUrlKey: 'guest2_valid_id_url' | 'guest3_valid_id_url' | 'guest4_valid_id_url' | 'guest5_valid_id_url';
+  nameField: "guest2_name" | "guest3_name" | "guest4_name" | "guest5_name";
+  ageField: "guest2_age" | "guest3_age" | "guest4_age" | "guest5_age";
+  validIdUrlKey:
+    | "guest2_valid_id_url"
+    | "guest3_valid_id_url"
+    | "guest4_valid_id_url"
+    | "guest5_valid_id_url";
   assetType: GuestDocAssetType;
 };
 
 const ADDITIONAL_GUEST_SLOTS: AdditionalGuestSlotConfig[] = [
   {
     partyPosition: 2,
-    nameField: 'guest2_name',
-    ageField: 'guest2_age',
-    validIdUrlKey: 'guest2_valid_id_url',
-    assetType: 'guest2_valid_id',
+    nameField: "guest2_name",
+    ageField: "guest2_age",
+    validIdUrlKey: "guest2_valid_id_url",
+    assetType: "guest2_valid_id",
   },
   {
     partyPosition: 3,
-    nameField: 'guest3_name',
-    ageField: 'guest3_age',
-    validIdUrlKey: 'guest3_valid_id_url',
-    assetType: 'guest3_valid_id',
+    nameField: "guest3_name",
+    ageField: "guest3_age",
+    validIdUrlKey: "guest3_valid_id_url",
+    assetType: "guest3_valid_id",
   },
   {
     partyPosition: 4,
-    nameField: 'guest4_name',
-    ageField: 'guest4_age',
-    validIdUrlKey: 'guest4_valid_id_url',
-    assetType: 'guest4_valid_id',
+    nameField: "guest4_name",
+    ageField: "guest4_age",
+    validIdUrlKey: "guest4_valid_id_url",
+    assetType: "guest4_valid_id",
   },
   {
     partyPosition: 5,
-    nameField: 'guest5_name',
-    ageField: 'guest5_age',
-    validIdUrlKey: 'guest5_valid_id_url',
-    assetType: 'guest5_valid_id',
+    nameField: "guest5_name",
+    ageField: "guest5_age",
+    validIdUrlKey: "guest5_valid_id_url",
+    assetType: "guest5_valid_id",
   },
 ];
 
-function normalizeGuestAge(value: number | ''): number | null {
-  if (value === '' || Number.isNaN(value)) return null;
+function normalizeGuestAge(value: number | ""): number | null {
+  if (value === "" || Number.isNaN(value)) return null;
   return value;
 }
 
@@ -242,8 +263,8 @@ function bookingEditPayloadFromValues(
 }
 
 function toTimeInputValue(value: string | null | undefined): string {
-  const raw = (value ?? '').trim();
-  if (!raw) return '';
+  const raw = (value ?? "").trim();
+  if (!raw) return "";
 
   // Already HTML time input compatible.
   if (/^\d{2}:\d{2}$/.test(raw)) return raw;
@@ -253,13 +274,13 @@ function toTimeInputValue(value: string | null | undefined): string {
 
   // Legacy 12-hour format like "2:00 PM".
   const m = raw.match(/^(\d{1,2}):(\d{2})\s*([AP]M)$/i);
-  if (!m) return '';
+  if (!m) return "";
   const hour12 = Number(m[1]);
   const minute = m[2];
   const ampm = m[3].toUpperCase();
   let hour24 = hour12 % 12;
-  if (ampm === 'PM') hour24 += 12;
-  return `${String(hour24).padStart(2, '0')}:${minute}`;
+  if (ampm === "PM") hour24 += 12;
+  return `${String(hour24).padStart(2, "0")}:${minute}`;
 }
 
 function bookingToEditFormValues(booking: BookingRow): FormValues {
@@ -352,7 +373,7 @@ export function BookingEditForm({
   const watchSurpriseDecor = !!formSnapshot?.guest_requests_surprise_decor;
   const surpriseDecorChangedFromSaved =
     watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
-  const watchCheckInDate = formSnapshot?.check_in_date ?? '';
+  const watchCheckInDate = formSnapshot?.check_in_date ?? "";
   const progressDirty = progressTouched;
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
@@ -368,9 +389,9 @@ export function BookingEditForm({
     const fetchBookedDates = async () => {
       try {
         const response = await fetch(`${apiUrl}/get-booked-dates`, {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
             apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
           },
@@ -386,7 +407,7 @@ export function BookingEditForm({
         setBookedDates(normalized);
       } catch (error) {
         console.error(
-          'Failed to fetch booked dates for admin edit form:',
+          "Failed to fetch booked dates for admin edit form:",
           error,
         );
       }
@@ -402,33 +423,41 @@ export function BookingEditForm({
       {
         name: formSnapshot?.primary_guest_name,
         age:
-          formSnapshot?.primary_guest_age === ''
+          formSnapshot?.primary_guest_age === ""
             ? undefined
             : formSnapshot?.primary_guest_age,
       },
       {
         name: formSnapshot?.guest2_name,
         age:
-          formSnapshot?.guest2_age === '' ? undefined : formSnapshot?.guest2_age,
+          formSnapshot?.guest2_age === ""
+            ? undefined
+            : formSnapshot?.guest2_age,
       },
       {
         name: formSnapshot?.guest3_name,
         age:
-          formSnapshot?.guest3_age === '' ? undefined : formSnapshot?.guest3_age,
+          formSnapshot?.guest3_age === ""
+            ? undefined
+            : formSnapshot?.guest3_age,
       },
       {
         name: formSnapshot?.guest4_name,
         age:
-          formSnapshot?.guest4_age === '' ? undefined : formSnapshot?.guest4_age,
+          formSnapshot?.guest4_age === ""
+            ? undefined
+            : formSnapshot?.guest4_age,
       },
       {
         name: formSnapshot?.guest5_name,
         age:
-          formSnapshot?.guest5_age === '' ? undefined : formSnapshot?.guest5_age,
+          formSnapshot?.guest5_age === ""
+            ? undefined
+            : formSnapshot?.guest5_age,
       },
     ]);
-    setValue('number_of_adults', counts.adults, { shouldDirty: false });
-    setValue('number_of_children', counts.children, { shouldDirty: false });
+    setValue("number_of_adults", counts.adults, { shouldDirty: false });
+    setValue("number_of_children", counts.children, { shouldDirty: false });
   }, [
     formSnapshot?.primary_guest_name,
     formSnapshot?.primary_guest_age,
@@ -443,55 +472,14 @@ export function BookingEditForm({
     setValue,
   ]);
 
-  const adminPartySize = Math.max(
-    getActivePartySize([
-      {
-        name: formSnapshot?.primary_guest_name,
-        age:
-          formSnapshot?.primary_guest_age === ''
-            ? undefined
-            : formSnapshot?.primary_guest_age,
-      },
-      {
-        name: formSnapshot?.guest2_name,
-        age:
-          formSnapshot?.guest2_age === ''
-            ? undefined
-            : formSnapshot?.guest2_age,
-      },
-      {
-        name: formSnapshot?.guest3_name,
-        age:
-          formSnapshot?.guest3_age === ''
-            ? undefined
-            : formSnapshot?.guest3_age,
-      },
-      {
-        name: formSnapshot?.guest4_name,
-        age:
-          formSnapshot?.guest4_age === ''
-            ? undefined
-            : formSnapshot?.guest4_age,
-      },
-      {
-        name: formSnapshot?.guest5_name,
-        age:
-          formSnapshot?.guest5_age === ''
-            ? undefined
-            : formSnapshot?.guest5_age,
-      },
-    ]),
-    1 + visibleAdditionalGuestCount,
-  );
-
   const visibleAdditionalGuestSlots = ADDITIONAL_GUEST_SLOTS.slice(
     0,
     visibleAdditionalGuestCount,
   );
 
   const clearAdditionalGuestSlot = (slot: AdditionalGuestSlotConfig) => {
-    setValue(slot.nameField, '', { shouldDirty: true });
-    setValue(slot.ageField, '', { shouldDirty: true });
+    setValue(slot.nameField, "", { shouldDirty: true });
+    setValue(slot.ageField, "", { shouldDirty: true });
   };
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
@@ -503,8 +491,9 @@ export function BookingEditForm({
     };
 
     const newSource = normalizeBookingSource(values.booking_source);
-    const wasAirbnb = normalizeBookingSource(booking.booking_source) === 'Airbnb';
-    const isNowAirbnb = newSource === 'Airbnb';
+    const wasAirbnb =
+      normalizeBookingSource(booking.booking_source) === "Airbnb";
+    const isNowAirbnb = newSource === "Airbnb";
     if (isNowAirbnb) {
       payload.down_payment = 0;
       payload.security_deposit = 0;
@@ -535,13 +524,13 @@ export function BookingEditForm({
       });
 
       if (revertToPendingReview) {
-        toast.success('Booking updated — moved to Pending Review');
+        toast.success("Booking updated — moved to Pending Review");
       } else {
-        toast.success('Booking updated');
+        toast.success("Booking updated");
       }
       onSaved(updated);
     } catch (err: unknown) {
-      toast.error(friendlyToastError(err, 'Could not save booking'));
+      toast.error(friendlyToastError(err, "Could not save booking"));
     }
   };
 
@@ -551,8 +540,8 @@ export function BookingEditForm({
 
       <div
         className={cn(
-          'overflow-hidden rounded-2xl border border-border/70 bg-card shadow-md',
-          'ring-1 ring-border/30 dark:ring-border/50',
+          "overflow-hidden rounded-2xl border border-border/70 bg-card shadow-md",
+          "ring-1 ring-border/30 dark:ring-border/50",
         )}
       >
         <CollapsibleGroup
@@ -561,437 +550,444 @@ export function BookingEditForm({
           variant="nested"
           defaultOpen
         >
-        {/* ── Guest Identity ─────────────────────────────────────────────────── */}
-        <Section title="Guest Identity">
-          <Row2>
-            <Field label="Primary Guest Name" required>
-              <Input {...register('primary_guest_name', { required: true })} />
-            </Field>
-            <Field label="Primary Guest Age" required>
-              <Input
-                type="number"
-                min={PRIMARY_GUEST_MIN_AGE}
-                max={120}
-                placeholder="Ex. 25"
-                {...register('primary_guest_age', {
-                  required: true,
-                  valueAsNumber: true,
-                  validate: (value) => {
-                    const age = typeof value === 'number' ? value : Number(value);
-                    return !Number.isNaN(age) && age >= PRIMARY_GUEST_MIN_AGE
-                      ? true
-                      : 'Primary guest must be 18 years or older';
-                  },
+          {/* ── Guest Identity ─────────────────────────────────────────────────── */}
+          <Section title="Guest Identity">
+            <Row2>
+              <Field label="Primary Guest Name" required>
+                <Input
+                  {...register("primary_guest_name", { required: true })}
+                />
+              </Field>
+              <Field label="Primary Guest Age" required>
+                <Input
+                  type="number"
+                  min={PRIMARY_GUEST_MIN_AGE}
+                  max={120}
+                  placeholder="Ex. 25"
+                  {...register("primary_guest_age", {
+                    required: true,
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      const age =
+                        typeof value === "number" ? value : Number(value);
+                      return !Number.isNaN(age) && age >= PRIMARY_GUEST_MIN_AGE
+                        ? true
+                        : "Primary guest must be 18 years or older";
+                    },
+                  })}
+                />
+              </Field>
+            </Row2>
+            <Row2>
+              <Field label="Email" required>
+                <Input
+                  type="email"
+                  {...register("guest_email", { required: true })}
+                />
+              </Field>
+              <Field label="Phone Number" required>
+                <Input
+                  {...register("guest_phone_number", { required: true })}
+                />
+              </Field>
+            </Row2>
+            <Row2>
+              <Field label="Facebook / Airbnb Name" required>
+                <Input
+                  {...register("guest_facebook_name", { required: true })}
+                />
+              </Field>
+              <Field label="Nationality">
+                <Input {...register("nationality")} />
+              </Field>
+            </Row2>
+            <Row2>
+              <Field label="Address">
+                <Input {...register("guest_address")} />
+              </Field>
+              <div />
+            </Row2>
+            <BookingGuestDocReplacer
+              bookingId={booking.id}
+              assetType="valid_id"
+              label="Valid ID"
+              currentUrl={booking.valid_id_url}
+              accept="image/*,.pdf"
+              onPreview={onPreview}
+            />
+          </Section>
+
+          {/* ── Additional Guests ─────────────────────────────────────────────── */}
+          <Section title="Additional Guests">
+            {visibleAdditionalGuestSlots.length > 0 && (
+              <div className="mb-3 space-y-3">
+                {visibleAdditionalGuestSlots.map((slot, index) => {
+                  const ageValue = formSnapshot[slot.ageField];
+                  const isLastVisible =
+                    index === visibleAdditionalGuestSlots.length - 1;
+
+                  return (
+                    <AdminAdditionalGuestSlot
+                      key={slot.partyPosition}
+                      slotLabel={guestPartyPositionLabel(slot.partyPosition)}
+                      nameField={slot.nameField}
+                      ageField={slot.ageField}
+                      bookingId={booking.id}
+                      register={register}
+                      guestAge={ageValue === "" ? undefined : ageValue}
+                      validIdUrl={booking[slot.validIdUrlKey]}
+                      assetType={slot.assetType}
+                      agePlaceholder="Ex. 25"
+                      onPreview={onPreview}
+                      onRemove={
+                        isLastVisible
+                          ? () => {
+                              clearAdditionalGuestSlot(slot);
+                              setVisibleAdditionalGuestCount((count) =>
+                                Math.max(0, count - 1),
+                              );
+                            }
+                          : undefined
+                      }
+                    />
+                  );
                 })}
-              />
-            </Field>
-          </Row2>
-          <Row2>
-            <Field label="Email" required>
-              <Input
-                type="email"
-                {...register('guest_email', { required: true })}
-              />
-            </Field>
-            <Field label="Phone Number" required>
-              <Input {...register('guest_phone_number', { required: true })} />
-            </Field>
-          </Row2>
-          <Row2>
-            <Field label="Facebook / Airbnb Name" required>
-              <Input {...register('guest_facebook_name', { required: true })} />
-            </Field>
-            <Field label="Nationality">
-              <Input {...register('nationality')} />
-            </Field>
-          </Row2>
-          <Row2>
-            <Field label="Address">
-              <Input {...register('guest_address')} />
-            </Field>
-            <div />
-          </Row2>
-          <BookingGuestDocReplacer
-            bookingId={booking.id}
-            assetType="valid_id"
-            label="Valid ID"
-            currentUrl={booking.valid_id_url}
-            accept="image/*,.pdf"
-            onPreview={onPreview}
-          />
-        </Section>
-
-        {/* ── Additional Guests ─────────────────────────────────────────────── */}
-        <Section title="Additional Guests">
-          {visibleAdditionalGuestSlots.length > 0 && (
-            <div className="mb-3 space-y-3">
-              {visibleAdditionalGuestSlots.map((slot, index) => {
-                const ageValue = formSnapshot[slot.ageField];
-                const isLastVisible =
-                  index === visibleAdditionalGuestSlots.length - 1;
-                const isFifthPartyGuest = isPartyFifthGuest(
-                  slot.partyPosition,
-                  adminPartySize,
-                );
-
-                return (
-                  <AdminAdditionalGuestSlot
-                    key={slot.partyPosition}
-                    slotLabel={guestPartyPositionLabel(slot.partyPosition)}
-                    nameField={slot.nameField}
-                    ageField={slot.ageField}
-                    bookingId={booking.id}
-                    register={register}
-                    guestAge={ageValue === '' ? undefined : ageValue}
-                    validIdUrl={booking[slot.validIdUrlKey]}
-                    assetType={slot.assetType}
-                    maxAge={
-                      isFifthPartyGuest ? FIFTH_PARTY_GUEST_MAX_AGE : undefined
+              </div>
+            )}
+            {visibleAdditionalGuestCount < MAX_GUESTS - 1 && (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-[44px] w-full"
+                onClick={() => {
+                  setVisibleAdditionalGuestCount((count) => {
+                    const next = Math.min(MAX_GUESTS - 1, count + 1);
+                    const slot = ADDITIONAL_GUEST_SLOTS[next - 1];
+                    const currentAge = formSnapshot[slot.ageField];
+                    if (currentAge === "" || currentAge == null) {
+                      setValue(slot.ageField, DEFAULT_GUEST_AGE, {
+                        shouldDirty: true,
+                      });
                     }
-                    agePlaceholder={isFifthPartyGuest ? '3' : 'Ex. 25'}
-                    onPreview={onPreview}
-                    onRemove={
-                      isLastVisible
-                        ? () => {
-                            clearAdditionalGuestSlot(slot);
-                            setVisibleAdditionalGuestCount((count) =>
-                              Math.max(0, count - 1),
-                            );
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
-          )}
-          {visibleAdditionalGuestCount < MAX_GUESTS - 1 && (
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-[44px] w-full"
-              onClick={() => {
-                setVisibleAdditionalGuestCount((count) => {
-                  const next = Math.min(MAX_GUESTS - 1, count + 1);
-                  const slot = ADDITIONAL_GUEST_SLOTS[next - 1];
-                  const currentAge = formSnapshot[slot.ageField];
-                  if (currentAge === '' || currentAge == null) {
-                    setValue(
-                      slot.ageField,
-                      getDefaultAgeForPartyGuest(
-                        slot.partyPosition,
-                        1 + next,
-                      ),
-                      { shouldDirty: true },
-                    );
-                  }
-                  return next;
-                });
-              }}
-            >
-              <Plus className="size-4" aria-hidden />
-              Add more guest
-            </Button>
-          )}
-        </Section>
-
-        {/* ── Stay Details ──────────────────────────────────────────────────── */}
-        <Section title="Stay Details">
-          <Row2>
-            <Field label="Check-in Date (MM-DD-YYYY)" required>
-              <DatePicker
-                date={
-                  watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
-                }
-                rangeEnd={
-                  formSnapshot.check_out_date
-                    ? stringToDate(formSnapshot.check_out_date)
-                    : undefined
-                }
-                onSelect={(date) => {
-                  if (!date) return;
-                  const selected = dateToString(date);
-                  setValue('check_in_date', selected, { shouldDirty: true });
-                  setValue('check_out_date', getNextDay(selected), {
-                    shouldDirty: true,
+                    return next;
                   });
                 }}
-                disabled={(date) => {
-                  const today = new Date();
-                  today.setHours(0, 0, 0, 0);
-                  if (date < today) return true;
-                  return createDisabledDateMatcher(
-                    bookedDates,
-                    booking.id,
-                  )(date);
-                }}
-                minDate={new Date()}
-                placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                className={bookingEditDatePickerClass}
-              />
-            </Field>
-            <Field label="Check-out Date (MM-DD-YYYY)" required>
-              <DatePicker
-                date={
-                  formSnapshot.check_out_date
-                    ? stringToDate(formSnapshot.check_out_date)
-                    : undefined
-                }
-                rangeEnd={
-                  watchCheckInDate ? stringToDate(watchCheckInDate) : undefined
-                }
-                onSelect={(date) => {
-                  if (!date) return;
-                  setValue('check_out_date', dateToString(date), {
-                    shouldDirty: true,
-                  });
-                }}
-                disabled={(date) => {
-                  const isBooked = createDisabledCheckoutDateMatcher(
-                    bookedDates,
-                    booking.id,
-                  )(date);
-                  if (watchCheckInDate) {
-                    const checkIn = stringToDate(watchCheckInDate);
-                    if (date <= checkIn) return true;
-                  }
-                  return isBooked;
-                }}
-                minDate={
-                  watchCheckInDate
-                    ? stringToDate(getNextDay(watchCheckInDate))
-                    : new Date()
-                }
-                placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                className={bookingEditDatePickerClass}
-              />
-            </Field>
-          </Row2>
-          <Row2>
-            <Field label="Check-in Time">
-              <Input
-                type="time"
-                {...register('check_in_time')}
-                placeholder="14:00"
-              />
-            </Field>
-            <Field label="Check-out Time">
-              <Input
-                type="time"
-                {...register('check_out_time')}
-                placeholder="11:00"
-              />
-            </Field>
-          </Row2>
-          <Row3>
-            <Field label="Adults" required>
-              <Input
-                type="number"
-                min={1}
-                readOnly
-                tabIndex={-1}
-                className="pointer-events-none bg-muted/40"
-                {...register('number_of_adults', {
-                  required: true,
-                  valueAsNumber: true,
-                })}
-              />
-            </Field>
-            <Field label="Children">
-              <Input
-                type="number"
-                min={0}
-                readOnly
-                tabIndex={-1}
-                className="pointer-events-none bg-muted/40"
-                {...register('number_of_children', { valueAsNumber: true })}
-              />
-            </Field>
-            <Field label="Nights" required>
-              <Input
-                type="number"
-                min={1}
-                {...register('number_of_nights', {
-                  required: true,
-                  valueAsNumber: true,
-                })}
-              />
-            </Field>
-          </Row3>
-        </Section>
+              >
+                <Plus className="size-4" aria-hidden />
+                Add more guest
+              </Button>
+            )}
+          </Section>
 
-        {/* ── Parking ───────────────────────────────────────────────────────── */}
-        <Section title="Parking">
-          <CheckboxOption label="Needs parking" {...register('need_parking')} />
-          {watchParking && (
+          {/* ── Stay Details ──────────────────────────────────────────────────── */}
+          <Section title="Stay Details">
+            <Row2>
+              <Field label="Check-in Date (MM-DD-YYYY)" required>
+                <DatePicker
+                  date={
+                    watchCheckInDate
+                      ? stringToDate(watchCheckInDate)
+                      : undefined
+                  }
+                  rangeEnd={
+                    formSnapshot.check_out_date
+                      ? stringToDate(formSnapshot.check_out_date)
+                      : undefined
+                  }
+                  onSelect={(date) => {
+                    if (!date) return;
+                    const selected = dateToString(date);
+                    setValue("check_in_date", selected, { shouldDirty: true });
+                    setValue("check_out_date", getNextDay(selected), {
+                      shouldDirty: true,
+                    });
+                  }}
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (date < today) return true;
+                    return createDisabledDateMatcher(
+                      bookedDates,
+                      booking.id,
+                    )(date);
+                  }}
+                  minDate={new Date()}
+                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                  className={bookingEditDatePickerClass}
+                />
+              </Field>
+              <Field label="Check-out Date (MM-DD-YYYY)" required>
+                <DatePicker
+                  date={
+                    formSnapshot.check_out_date
+                      ? stringToDate(formSnapshot.check_out_date)
+                      : undefined
+                  }
+                  rangeEnd={
+                    watchCheckInDate
+                      ? stringToDate(watchCheckInDate)
+                      : undefined
+                  }
+                  onSelect={(date) => {
+                    if (!date) return;
+                    setValue("check_out_date", dateToString(date), {
+                      shouldDirty: true,
+                    });
+                  }}
+                  disabled={(date) => {
+                    const isBooked = createDisabledCheckoutDateMatcher(
+                      bookedDates,
+                      booking.id,
+                    )(date);
+                    if (watchCheckInDate) {
+                      const checkIn = stringToDate(watchCheckInDate);
+                      if (date <= checkIn) return true;
+                    }
+                    return isBooked;
+                  }}
+                  minDate={
+                    watchCheckInDate
+                      ? stringToDate(getNextDay(watchCheckInDate))
+                      : new Date()
+                  }
+                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                  className={bookingEditDatePickerClass}
+                />
+              </Field>
+            </Row2>
+            <Row2>
+              <Field label="Check-in Time">
+                <Input
+                  type="time"
+                  {...register("check_in_time")}
+                  placeholder="14:00"
+                />
+              </Field>
+              <Field label="Check-out Time">
+                <Input
+                  type="time"
+                  {...register("check_out_time")}
+                  placeholder="11:00"
+                />
+              </Field>
+            </Row2>
             <Row3>
-              <Field label="Plate Number">
+              <Field label="Adults" required>
                 <Input
-                  {...register('car_plate_number')}
-                  placeholder="ABC 123"
+                  type="number"
+                  min={1}
+                  readOnly
+                  tabIndex={-1}
+                  className="pointer-events-none bg-muted/40"
+                  {...register("number_of_adults", {
+                    required: true,
+                    valueAsNumber: true,
+                  })}
                 />
               </Field>
-              <Field label="Brand / Model">
+              <Field label="Children">
                 <Input
-                  {...register('car_brand_model')}
-                  placeholder="Toyota Vios"
+                  type="number"
+                  min={0}
+                  readOnly
+                  tabIndex={-1}
+                  className="pointer-events-none bg-muted/40"
+                  {...register("number_of_children", { valueAsNumber: true })}
                 />
               </Field>
-              <Field label="Color">
-                <Input {...register('car_color')} placeholder="White" />
+              <Field label="Nights" required>
+                <Input
+                  type="number"
+                  min={1}
+                  {...register("number_of_nights", {
+                    required: true,
+                    valueAsNumber: true,
+                  })}
+                />
               </Field>
             </Row3>
-          )}
-        </Section>
+          </Section>
 
-        {/* ── Pet Information ───────────────────────────────────────────────── */}
-        <Section title="Pet Information">
-          <CheckboxOption label="Has pets" {...register('has_pets')} />
-          {watchPets && (
-            <>
-              <Row2>
-                <Field label="Pet Name">
-                  <Input {...register('pet_name')} />
-                </Field>
-                <Field label="Pet Type">
-                  <Input {...register('pet_type')} placeholder="Dog / Cat" />
-                </Field>
-              </Row2>
+          {/* ── Parking ───────────────────────────────────────────────────────── */}
+          <Section title="Parking">
+            <CheckboxOption
+              label="Needs parking"
+              {...register("need_parking")}
+            />
+            {watchParking && (
               <Row3>
-                <Field label="Breed">
-                  <Input {...register('pet_breed')} />
-                </Field>
-                <Field label="Age">
-                  <Input {...register('pet_age')} placeholder="2 years" />
-                </Field>
-                <Field label="Vaccination Date">
-                  <DatePicker
-                    date={
-                      formSnapshot.pet_vaccination_date
-                        ? stringToDate(formSnapshot.pet_vaccination_date)
-                        : undefined
-                    }
-                    onSelect={(date) => {
-                      setValue(
-                        'pet_vaccination_date',
-                        date ? dateToString(date) : '',
-                        { shouldDirty: true },
-                      );
-                    }}
-                    placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                    className={bookingEditDatePickerClass}
+                <Field label="Plate Number">
+                  <Input
+                    {...register("car_plate_number")}
+                    placeholder="ABC 123"
                   />
                 </Field>
+                <Field label="Brand / Model">
+                  <Input
+                    {...register("car_brand_model")}
+                    placeholder="Toyota Vios"
+                  />
+                </Field>
+                <Field label="Color">
+                  <Input {...register("car_color")} placeholder="White" />
+                </Field>
               </Row3>
-            </>
-          )}
-        </Section>
+            )}
+          </Section>
 
-        {/* ── Surprise decor ───────────────────────────────────────────────── */}
-        <Section title="Surprise decor">
-          <CheckboxOption
-            label="Guest requested a surprise decor / room setup"
-            {...register('guest_requests_surprise_decor')}
-          />
-          {surpriseDecorChangedFromSaved && (
-            <div
-              role="status"
-              className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-100 sm:text-[13px]"
-            >
-              <Info
-                className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
-                aria-hidden
-              />
-              <p className="min-w-0">
-                Please update the <strong>Additional fee</strong> field under{' '}
-                <strong>Workflow Details → Review Pricing</strong> if you change
-                this checkbox.
-              </p>
-            </div>
-          )}
-        </Section>
+          {/* ── Pet Information ───────────────────────────────────────────────── */}
+          <Section title="Pet Information">
+            <CheckboxOption label="Has pets" {...register("has_pets")} />
+            {watchPets && (
+              <>
+                <Row2>
+                  <Field label="Pet Name">
+                    <Input {...register("pet_name")} />
+                  </Field>
+                  <Field label="Pet Type">
+                    <Input {...register("pet_type")} placeholder="Dog / Cat" />
+                  </Field>
+                </Row2>
+                <Row3>
+                  <Field label="Breed">
+                    <Input {...register("pet_breed")} />
+                  </Field>
+                  <Field label="Age">
+                    <Input {...register("pet_age")} placeholder="2 years" />
+                  </Field>
+                  <Field label="Vaccination Date">
+                    <DatePicker
+                      date={
+                        formSnapshot.pet_vaccination_date
+                          ? stringToDate(formSnapshot.pet_vaccination_date)
+                          : undefined
+                      }
+                      onSelect={(date) => {
+                        setValue(
+                          "pet_vaccination_date",
+                          date ? dateToString(date) : "",
+                          { shouldDirty: true },
+                        );
+                      }}
+                      placeholder={DATE_PICKER_DISPLAY_FORMAT}
+                      className={bookingEditDatePickerClass}
+                    />
+                  </Field>
+                </Row3>
+              </>
+            )}
+          </Section>
 
-        {/* ── Other ─────────────────────────────────────────────────────────── */}
-        <Section title="How They Found Us">
-          <Row2>
-            <Field label="Referral channel">
-              <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
-            </Field>
-            <Field label="Details">
-              <Input
-                {...register('find_us_details')}
-                placeholder="Referred by…"
-              />
-            </Field>
-          </Row2>
-        </Section>
-
-        <Section title="Special Requests">
-          <Field label="Requests / Notes">
-            <textarea
-              {...register('guest_special_requests')}
-              rows={3}
-              placeholder="Any special requests from the guest…"
-              className={fieldControlClass}
+          {/* ── Surprise decor ───────────────────────────────────────────────── */}
+          <Section title="Surprise decor">
+            <CheckboxOption
+              label="Guest requested a surprise decor / room setup"
+              {...register("guest_requests_surprise_decor")}
             />
-          </Field>
-        </Section>
+            {surpriseDecorChangedFromSaved && (
+              <div
+                role="status"
+                className="mt-2 flex gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2.5 text-[12px] leading-snug text-blue-950 dark:border-blue-500/30 dark:bg-blue-950/40 dark:text-blue-100 sm:text-[13px]"
+              >
+                <Info
+                  className="mt-0.5 size-4 shrink-0 text-blue-600 sm:size-[18px]"
+                  aria-hidden
+                />
+                <p className="min-w-0">
+                  Please update the <strong>Additional fee</strong> field under{" "}
+                  <strong>Workflow Details → Review Pricing</strong> if you
+                  change this checkbox.
+                </p>
+              </div>
+            )}
+          </Section>
 
-        <Section title="Booking Source">
-          <Row2>
-            <Field label="Platform">
-              <NativeSelect {...register('booking_source', { required: true })}>
-                {BOOKING_SOURCE_OPTIONS.map((source) => (
-                  <option key={source} value={source}>
-                    {source}
-                  </option>
-                ))}
-              </NativeSelect>
+          {/* ── Other ─────────────────────────────────────────────────────────── */}
+          <Section title="How They Found Us">
+            <Row2>
+              <Field label="Referral channel">
+                <Input
+                  {...register("find_us")}
+                  placeholder="Facebook, Airbnb…"
+                />
+              </Field>
+              <Field label="Details">
+                <Input
+                  {...register("find_us_details")}
+                  placeholder="Referred by…"
+                />
+              </Field>
+            </Row2>
+          </Section>
+
+          <Section title="Special Requests">
+            <Field label="Requests / Notes">
+              <textarea
+                {...register("guest_special_requests")}
+                rows={3}
+                placeholder="Any special requests from the guest…"
+                className={fieldControlClass}
+              />
             </Field>
-          </Row2>
-        </Section>
+          </Section>
 
-        {/* ── Documents ─────────────────────────────────────────────────────── */}
-        <DocumentsSection booking={booking} onPreview={onPreview} />
-      </CollapsibleGroup>
+          <Section title="Booking Source">
+            <Row2>
+              <Field label="Platform">
+                <NativeSelect
+                  {...register("booking_source", { required: true })}
+                >
+                  {BOOKING_SOURCE_OPTIONS.map((source) => (
+                    <option key={source} value={source}>
+                      {source}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </Row2>
+          </Section>
 
-      <CollapsibleGroup
-        id="progress-forms"
-        title="Workflow Details"
-        variant="nested"
-        defaultOpen={false}
-      >
-        <BookingProgressFormsEdit
-          booking={booking}
-          onStateChange={setProgressFormState}
-          onTouchedChange={setProgressTouched}
-        />
-      </CollapsibleGroup>
+          {/* ── Documents ─────────────────────────────────────────────────────── */}
+          <DocumentsSection booking={booking} onPreview={onPreview} />
+        </CollapsibleGroup>
 
-      <div className="flex items-center justify-end gap-3 px-3 py-3 sm:px-5 sm:py-4">
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={updateMut.isPending}
-          className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+        <CollapsibleGroup
+          id="progress-forms"
+          title="Workflow Details"
+          variant="nested"
+          defaultOpen={false}
         >
-          <X className="size-3.5" aria-hidden />
-          Cancel
-        </button>
-        <Button
-          type="submit"
-          disabled={updateMut.isPending || !canSave}
-          size="sm"
-          className="min-h-[44px] rounded-lg px-5"
-        >
-          <Save className="size-3.5" />
-          {updateMut.isPending
-            ? 'Saving…'
-            : showSensitiveRevertHint
-              ? 'Save & Revert Status'
-              : 'Save'}
-        </Button>
-      </div>
+          <BookingProgressFormsEdit
+            booking={booking}
+            onStateChange={setProgressFormState}
+            onTouchedChange={setProgressTouched}
+          />
+        </CollapsibleGroup>
+
+        <div className="flex items-center justify-end gap-3 px-3 py-3 sm:px-5 sm:py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={updateMut.isPending}
+            className="flex min-h-[44px] items-center gap-1.5 rounded-lg px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            <X className="size-3.5" aria-hidden />
+            Cancel
+          </button>
+          <Button
+            type="submit"
+            disabled={updateMut.isPending || !canSave}
+            size="sm"
+            className="min-h-[44px] rounded-lg px-5"
+          >
+            <Save className="size-3.5" />
+            {updateMut.isPending
+              ? "Saving…"
+              : showSensitiveRevertHint
+                ? "Save & Revert Status"
+                : "Save"}
+          </Button>
+        </div>
       </div>
     </form>
   );
@@ -1013,31 +1009,31 @@ function DocumentsSection({
   booking: BookingRow;
   onPreview: (label: string, rawUrl: string) => void | Promise<void>;
 }) {
-  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
+  const isAirbnb = (booking.booking_source || "Facebook") === "Airbnb";
   const docs: DocDef[] = [
     ...(!isAirbnb
       ? ([
           {
-            assetType: 'payment_receipt',
-            label: 'Downpayment receipt',
+            assetType: "payment_receipt",
+            label: "Downpayment receipt",
             currentUrl: booking.payment_receipt_url,
-            accept: 'image/*,.pdf',
+            accept: "image/*,.pdf",
           },
         ] as DocDef[])
       : []),
     ...(booking.has_pets
       ? ([
           {
-            assetType: 'pet_vaccination',
-            label: 'Pet Vaccination Record',
+            assetType: "pet_vaccination",
+            label: "Pet Vaccination Record",
             currentUrl: booking.pet_vaccination_url,
-            accept: 'image/*,.pdf',
+            accept: "image/*,.pdf",
           },
           {
-            assetType: 'pet_image',
-            label: 'Pet Photo',
+            assetType: "pet_image",
+            label: "Pet Photo",
             currentUrl: booking.pet_image_url,
-            accept: 'image/*',
+            accept: "image/*",
           },
         ] as DocDef[])
       : []),
