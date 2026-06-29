@@ -1,7 +1,7 @@
-export const DEFAULT_GAF_UNIT_OWNER = 'Arianna Perez';
-export const DEFAULT_GAF_TOWER_AND_UNIT_NUMBER = 'Monaco 2604';
-export const DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON = 'Arianna Perez';
-export const DEFAULT_GAF_OWNER_CONTACT_NUMBER = '0962 541 2941';
+const DEFAULT_GAF_UNIT_OWNER = 'Arianna Perez';
+const DEFAULT_GAF_TOWER_AND_UNIT_NUMBER = 'Monaco 2604';
+const DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON = 'Arianna Perez';
+const DEFAULT_GAF_OWNER_CONTACT_NUMBER = '0962 541 2941';
 
 export type GafDetailsValues = {
   gafUnitOwner: string;

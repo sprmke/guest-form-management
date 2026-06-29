@@ -341,7 +341,7 @@ function buildGuestFormSchema(isAirbnb: boolean) {
 export const guestFormSchema = buildGuestFormSchema(false);
 
 /** Airbnb schema — paymentReceipt is optional. */
-export const guestFormSchemaAirbnb = buildGuestFormSchema(true);
+const guestFormSchemaAirbnb = buildGuestFormSchema(true);
 
 export function createGuestFormSchema(isAirbnb: boolean) {
   return isAirbnb ? guestFormSchemaAirbnb : guestFormSchema;

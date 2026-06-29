@@ -10,7 +10,7 @@ async function getAdminJwt(): Promise<string> {
   return token;
 }
 
-export type CalendarEventDatesBackfillInput = {
+type CalendarEventDatesBackfillInput = {
   dryRun?: boolean;
   limit?: number;
   bookingId?: string;

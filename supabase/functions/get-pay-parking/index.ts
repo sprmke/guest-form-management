@@ -6,11 +6,11 @@
  * and is not CANCELLED.
  */
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { corsHeaders } from "../_shared/cors.ts";
 import { DatabaseService } from "../_shared/databaseService.ts";
 import { countStayNights } from "../_shared/utils.ts";
 import { resolveAppSettings } from "../_shared/appSettings.ts";
+import { jsonResponse, jsonSuccess } from "../_shared/httpResponse.ts";
+import { servePublic } from "../_shared/serveEdge.ts";
 
 const NOT_FOUND = {
   success: false,
@@ -43,94 +43,59 @@ function hasSubmittedParking(row: Record<string, unknown>): boolean {
   );
 }
 
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders(req) });
+servePublic("get-pay-parking", async (req) => {
+  if (req.method !== "GET") {
+    throw new Error(`Method ${req.method} not allowed`);
   }
 
-  try {
-    if (req.method !== "GET") {
-      throw new Error(`Method ${req.method} not allowed`);
-    }
-
-    const url = new URL(req.url);
-    const bookingId = (url.searchParams.get("bookingId") ?? "").trim();
-    if (!bookingId) {
-      return new Response(JSON.stringify(NOT_FOUND), {
-        status: 404,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      });
-    }
-
-    const row = await DatabaseService.getBookingById(bookingId);
-    if (!row || row.status === "CANCELLED") {
-      return new Response(JSON.stringify(NOT_FOUND), {
-        status: 404,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      });
-    }
-
-    const pax =
-      (Number(row.number_of_adults) || 1) +
-      (Number(row.number_of_children) || 0);
-
-    const parkingCheckIn =
-      (row.parking_check_in_date as string | null)?.trim() || row.check_in_date;
-    const parkingCheckOut =
-      (row.parking_check_out_date as string | null)?.trim() ||
-      row.check_out_date;
-    const numberOfParkingNights =
-      countStayNights(parkingCheckIn, parkingCheckOut) ||
-      Number(row.number_of_nights) ||
-      1;
-
-    const settings = await resolveAppSettings();
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: {
-          bookingId: row.id,
-          primary_guest_name:
-            row.primary_guest_name ?? row.guest_facebook_name ?? "",
-          guest_facebook_name: row.guest_facebook_name ?? "",
-          check_in_date: row.check_in_date,
-          check_out_date: row.check_out_date,
-          check_in_time: row.check_in_time ?? "14:00",
-          check_out_time: row.check_out_time ?? "11:00",
-          number_of_nights: Number(row.number_of_nights) || 1,
-          number_of_adults: Number(row.number_of_adults) || 1,
-          number_of_children: Number(row.number_of_children) || 0,
-          pax,
-          parking_rate_guest: defaultParkingRate(
-            row as Record<string, unknown>,
-            settings.defaultParkingRateGuest,
-          ),
-          parking_check_in_date: parkingCheckIn,
-          parking_check_out_date: parkingCheckOut,
-          number_of_parking_nights: numberOfParkingNights,
-          car_plate_number: row.car_plate_number ?? "",
-          car_brand_model: row.car_brand_model ?? "",
-          car_color: row.car_color ?? "",
-          already_submitted: hasSubmittedParking(
-            row as Record<string, unknown>,
-          ),
-          status: row.status,
-        },
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      },
-    );
-  } catch (error) {
-    console.error("[get-pay-parking]", error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      {
-        status: 400,
-        headers: { ...corsHeaders(req), "Content-Type": "application/json" },
-      },
-    );
+  const url = new URL(req.url);
+  const bookingId = (url.searchParams.get("bookingId") ?? "").trim();
+  if (!bookingId) {
+    return jsonResponse(req, NOT_FOUND, 404);
   }
+
+  const row = await DatabaseService.getBookingById(bookingId);
+  if (!row || row.status === "CANCELLED") {
+    return jsonResponse(req, NOT_FOUND, 404);
+  }
+
+  const pax =
+    (Number(row.number_of_adults) || 1) + (Number(row.number_of_children) || 0);
+
+  const parkingCheckIn =
+    (row.parking_check_in_date as string | null)?.trim() || row.check_in_date;
+  const parkingCheckOut =
+    (row.parking_check_out_date as string | null)?.trim() || row.check_out_date;
+  const numberOfParkingNights =
+    countStayNights(parkingCheckIn, parkingCheckOut) ||
+    Number(row.number_of_nights) ||
+    1;
+
+  const settings = await resolveAppSettings();
+
+  return jsonSuccess(req, {
+    bookingId: row.id,
+    primary_guest_name: row.primary_guest_name ?? row.guest_facebook_name ?? "",
+    guest_facebook_name: row.guest_facebook_name ?? "",
+    check_in_date: row.check_in_date,
+    check_out_date: row.check_out_date,
+    check_in_time: row.check_in_time ?? "14:00",
+    check_out_time: row.check_out_time ?? "11:00",
+    number_of_nights: Number(row.number_of_nights) || 1,
+    number_of_adults: Number(row.number_of_adults) || 1,
+    number_of_children: Number(row.number_of_children) || 0,
+    pax,
+    parking_rate_guest: defaultParkingRate(
+      row as Record<string, unknown>,
+      settings.defaultParkingRateGuest,
+    ),
+    parking_check_in_date: parkingCheckIn,
+    parking_check_out_date: parkingCheckOut,
+    number_of_parking_nights: numberOfParkingNights,
+    car_plate_number: row.car_plate_number ?? "",
+    car_brand_model: row.car_brand_model ?? "",
+    car_color: row.car_color ?? "",
+    already_submitted: hasSubmittedParking(row as Record<string, unknown>),
+    status: row.status,
+  });
 });

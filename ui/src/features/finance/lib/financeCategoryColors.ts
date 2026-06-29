@@ -39,7 +39,7 @@ export function getFinanceCategoryLabel(
   return raw || "Other";
 }
 
-export function getFinanceCategoryColor(
+function getFinanceCategoryColor(
   category: string | null | undefined,
   index = 0,
 ): string {

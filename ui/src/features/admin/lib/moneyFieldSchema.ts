@@ -4,7 +4,7 @@ import { z } from 'zod';
  * Normalizes `<input type="number">` values for Zod.
  * Empty must not coerce to `0` on required fields (that would skip "required").
  */
-export function preprocessMoneyInput(
+function preprocessMoneyInput(
   value: unknown,
   emptyAs: 'undefined' | 'zero',
 ): unknown {

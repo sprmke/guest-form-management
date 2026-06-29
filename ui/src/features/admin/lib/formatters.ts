@@ -72,7 +72,7 @@ export function formatBookingDateShort(
 }
 
 /** 12-hour display for `guest_submissions.check_*_time` (DB stores 24h `HH:mm`). */
-export function formatBookingTime(
+function formatBookingTime(
   time: string | null | undefined,
   isCheckIn = false,
 ): string {

@@ -1,35 +1,37 @@
-import { useCallback, useMemo } from 'react';
-import type { UseFormReturn } from 'react-hook-form';
-import { toast } from 'sonner';
+import { useCallback, useMemo } from "react";
+import type { UseFormReturn } from "react-hook-form";
+import { toast } from "sonner";
 
-import { InlineCopyIconButton } from '@/features/admin/components/SdRefundForm';
-import { formatMoney } from '@/features/admin/lib/formatters';
-import type { GuestFormData } from '@/features/guest-form/schemas/guestFormSchema';
+import { InlineCopyIconButton } from "@/features/admin/components/InlineCopyIconButton";
+import { formatMoney } from "@/features/admin/lib/formatters";
+import type { GuestFormData } from "@/features/guest-form/schemas/guestFormSchema";
 import {
   computeGuestFormPaymentBreakdown,
   GUEST_DOWN_PAYMENT_RATE_PER_NIGHT,
   GUEST_PARKING_RATE_PER_NIGHT,
-} from '@/features/guest-form/lib/guestFormPayment';
-import { useGuestPaymentInfo } from '@/features/guest-form/hooks/useGuestPaymentInfo';
+} from "@/features/guest-form/lib/guestFormPayment";
+import { useGuestPaymentInfo } from "@/features/guest-form/hooks/useGuestPaymentInfo";
 
-const DEFAULT_GCASH_QR_SRC = '/images/kame-home-gcash-qr-payment.jpg';
+const DEFAULT_GCASH_QR_SRC = "/images/kame-home-gcash-qr-payment.jpg";
 
 type Props = {
   form: UseFormReturn<GuestFormData>;
 };
 
 function nightLabel(count: number): string {
-  return `${count} night${count !== 1 ? 's' : ''}`;
+  return `${count} night${count !== 1 ? "s" : ""}`;
 }
 
 export function GuestFormPaymentStepContent({ form }: Props) {
   const { data: paymentInfo } = useGuestPaymentInfo();
-  const checkInDate = form.watch('checkInDate');
-  const checkOutDate = form.watch('checkOutDate');
-  const needParking = form.watch('needParking');
-  const parkingSameAsBookingDuration = form.watch('parkingSameAsBookingDuration');
-  const parkingCheckInDate = form.watch('parkingCheckInDate');
-  const parkingCheckOutDate = form.watch('parkingCheckOutDate');
+  const checkInDate = form.watch("checkInDate");
+  const checkOutDate = form.watch("checkOutDate");
+  const needParking = form.watch("needParking");
+  const parkingSameAsBookingDuration = form.watch(
+    "parkingSameAsBookingDuration",
+  );
+  const parkingCheckInDate = form.watch("parkingCheckInDate");
+  const parkingCheckOutDate = form.watch("parkingCheckOutDate");
 
   const breakdown = useMemo(
     () =>
@@ -51,17 +53,17 @@ export function GuestFormPaymentStepContent({ form }: Props) {
     ],
   );
 
-  const gcashName = paymentInfo?.gcashName ?? '';
-  const gcashNumber = paymentInfo?.gcashNumber ?? '';
+  const gcashName = paymentInfo?.gcashName ?? "";
+  const gcashNumber = paymentInfo?.gcashNumber ?? "";
   const gcashQrSrc = paymentInfo?.gcashQrImageUrl || DEFAULT_GCASH_QR_SRC;
 
   const copyGcashName = useCallback(async () => {
     if (!gcashName) return;
     try {
       await navigator.clipboard.writeText(gcashName);
-      toast.success('GCash name copied');
+      toast.success("GCash name copied");
     } catch {
-      toast.error('Could not copy to clipboard');
+      toast.error("Could not copy to clipboard");
     }
   }, [gcashName]);
 
@@ -69,9 +71,9 @@ export function GuestFormPaymentStepContent({ form }: Props) {
     if (!gcashNumber) return;
     try {
       await navigator.clipboard.writeText(gcashNumber);
-      toast.success('GCash number copied');
+      toast.success("GCash number copied");
     } catch {
-      toast.error('Could not copy to clipboard');
+      toast.error("Could not copy to clipboard");
     }
   }, [gcashNumber]);
 
@@ -88,7 +90,7 @@ export function GuestFormPaymentStepContent({ form }: Props) {
             <dt>
               Downpayment ({nightLabel(breakdown.stayNights)})
               <span className="mt-0.5 block text-xs">
-                {formatMoney(GUEST_DOWN_PAYMENT_RATE_PER_NIGHT)} ×{' '}
+                {formatMoney(GUEST_DOWN_PAYMENT_RATE_PER_NIGHT)} ×{" "}
                 {breakdown.stayNights}
               </span>
             </dt>
@@ -96,12 +98,13 @@ export function GuestFormPaymentStepContent({ form }: Props) {
               {formatMoney(breakdown.staySubtotal)}
             </dd>
           </div>
-          {breakdown.parkingSubtotal != null && breakdown.parkingNights != null ? (
+          {breakdown.parkingSubtotal != null &&
+          breakdown.parkingNights != null ? (
             <div className="flex items-start justify-between gap-3">
               <dt>
                 Parking ({nightLabel(breakdown.parkingNights)})
                 <span className="mt-0.5 block text-xs">
-                  {formatMoney(GUEST_PARKING_RATE_PER_NIGHT)} ×{' '}
+                  {formatMoney(GUEST_PARKING_RATE_PER_NIGHT)} ×{" "}
                   {breakdown.parkingNights}
                 </span>
               </dt>

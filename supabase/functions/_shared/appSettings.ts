@@ -3,10 +3,10 @@
  * Secrets (API keys, service accounts) are never stored here.
  */
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { DEFAULT_EMAIL_LOGO_URL } from "./renderEmailHtml.ts";
 
-export type AppSettingsRow = {
+type AppSettingsRow = {
   id: number;
   updated_at: string;
   email_to: string | null;
@@ -28,10 +28,10 @@ export type AppSettingsRow = {
   gaf_unit_owner_signature_url: string | null;
 };
 
-export const DEFAULT_GAF_UNIT_OWNER = 'Arianna Perez';
-export const DEFAULT_GAF_TOWER_AND_UNIT_NUMBER = 'Monaco 2604';
-export const DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON = 'Arianna Perez';
-export const DEFAULT_GAF_OWNER_CONTACT_NUMBER = '0962 541 2941';
+const DEFAULT_GAF_UNIT_OWNER = "Arianna Perez";
+const DEFAULT_GAF_TOWER_AND_UNIT_NUMBER = "Monaco 2604";
+const DEFAULT_GAF_GUESTS_ONSITE_CONTACT_PERSON = "Arianna Perez";
+const DEFAULT_GAF_OWNER_CONTACT_NUMBER = "0962 541 2941";
 
 export type GafDetailsResolved = {
   gafUnitOwner: string;
@@ -41,11 +41,11 @@ export type GafDetailsResolved = {
   gafUnitOwnerSignatureUrl: string;
 };
 
-export const DEFAULT_GCASH_NAME = 'Arianna Perez';
-export const DEFAULT_GCASH_NUMBER = '0962 564 7541';
+const DEFAULT_GCASH_NAME = "Arianna Perez";
+const DEFAULT_GCASH_NUMBER = "0962 564 7541";
 /** Path segment after public guest app origin (no leading slash — avoids Supabase CLI false import scan). */
 export const DEFAULT_GCASH_QR_RELATIVE_PATH =
-  'images/kame-home-gcash-qr-payment.jpg';
+  "images/kame-home-gcash-qr-payment.jpg";
 
 export type AppSettingsResolved = {
   emailTo: string;
@@ -68,27 +68,29 @@ export type GuestPaymentInfoDto = {
   gcashQrImageUrl: string;
 } & GafDetailsResolved;
 
-export type AppSettingsFieldSource = 'db' | 'env' | 'default';
+export type AppSettingsFieldSource = "db" | "env" | "default";
+
+export type AppSettingsSecretsStatus = {
+  resendApiKeyConfigured: boolean;
+  googleServiceAccountConfigured: boolean;
+  googleCalendarIdConfigured: boolean;
+  googleSpreadsheetIdConfigured: boolean;
+  telegramBotTokenConfigured: boolean;
+  telegramChatIdConfigured: boolean;
+  telegramStaffChatIdConfigured: boolean;
+  telegramAdminChatIdConfigured: boolean;
+  telegramFinanceChatIdConfigured: boolean;
+  telegramMaintenanceChatIdConfigured: boolean;
+  gmailEncryptionKeyConfigured: boolean;
+  gmailWebClientConfigured: boolean;
+  geminiApiKeyConfigured: boolean;
+  groqApiKeyConfigured: boolean;
+};
 
 export type AppSettingsDto = AppSettingsResolved & {
   updatedAt: string | null;
   fieldSources: Record<keyof AppSettingsResolved, AppSettingsFieldSource>;
-  secretsStatus: {
-    resendApiKeyConfigured: boolean;
-    googleServiceAccountConfigured: boolean;
-    googleCalendarIdConfigured: boolean;
-    googleSpreadsheetIdConfigured: boolean;
-    telegramBotTokenConfigured: boolean;
-    telegramChatIdConfigured: boolean;
-    telegramStaffChatIdConfigured: boolean;
-    telegramAdminChatIdConfigured: boolean;
-    telegramFinanceChatIdConfigured: boolean;
-    telegramMaintenanceChatIdConfigured: boolean;
-    gmailEncryptionKeyConfigured: boolean;
-    gmailWebClientConfigured: boolean;
-    geminiApiKeyConfigured: boolean;
-    groqApiKeyConfigured: boolean;
-  };
+  secretsStatus: AppSettingsSecretsStatus;
 };
 
 const CACHE_TTL_MS = 30_000;
@@ -100,8 +102,8 @@ export function invalidateAppSettingsCache(): void {
 
 function supabaseAdmin() {
   return createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 }
 
@@ -112,13 +114,13 @@ async function loadSettingsRow(): Promise<AppSettingsRow | null> {
   }
 
   const { data, error } = await supabaseAdmin()
-    .from('app_settings')
-    .select('*')
-    .eq('id', 1)
+    .from("app_settings")
+    .select("*")
+    .eq("id", 1)
     .maybeSingle();
 
   if (error) {
-    console.warn('[appSettings] load failed, using env only:', error.message);
+    console.warn("[appSettings] load failed, using env only:", error.message);
     cache = { at: now, row: null };
     return null;
   }
@@ -128,7 +130,7 @@ async function loadSettingsRow(): Promise<AppSettingsRow | null> {
 }
 
 function trimOrEmpty(v: string | null | undefined): string {
-  return (v ?? '').trim();
+  return (v ?? "").trim();
 }
 
 function pickString(
@@ -136,21 +138,22 @@ function pickString(
   envKey: string,
 ): { value: string; source: AppSettingsFieldSource } {
   const fromDb = trimOrEmpty(dbVal);
-  if (fromDb) return { value: fromDb, source: 'db' };
+  if (fromDb) return { value: fromDb, source: "db" };
   if (envKey.trim()) {
     const fromEnv = trimOrEmpty(Deno.env.get(envKey));
-    if (fromEnv) return { value: fromEnv, source: 'env' };
+    if (fromEnv) return { value: fromEnv, source: "env" };
   }
-  return { value: '', source: 'default' };
+  return { value: "", source: "default" };
 }
 
 /** DB-only optional URL (no env fallback). */
-function pickOptionalUrl(
-  dbVal: string | null | undefined,
-): { value: string; source: AppSettingsFieldSource } {
+function pickOptionalUrl(dbVal: string | null | undefined): {
+  value: string;
+  source: AppSettingsFieldSource;
+} {
   const fromDb = trimOrEmpty(dbVal);
-  if (fromDb) return { value: fromDb, source: 'db' };
-  return { value: '', source: 'default' };
+  if (fromDb) return { value: fromDb, source: "db" };
+  return { value: "", source: "default" };
 }
 
 function pickInt(
@@ -163,17 +166,17 @@ function pickInt(
   if (dbVal != null && Number.isFinite(Number(dbVal))) {
     const n = Math.floor(Number(dbVal));
     if (n >= min && n <= max) {
-      return { value: n, source: 'db' };
+      return { value: n, source: "db" };
     }
   }
   const raw = trimOrEmpty(Deno.env.get(envKey));
   if (raw) {
     const n = parseInt(raw, 10);
     if (!Number.isNaN(n) && n >= min && n <= max) {
-      return { value: n, source: 'env' };
+      return { value: n, source: "env" };
     }
   }
-  return { value: fallback, source: 'default' };
+  return { value: fallback, source: "default" };
 }
 
 function pickMoney(
@@ -183,10 +186,10 @@ function pickMoney(
   if (dbVal != null) {
     const n = Number(dbVal);
     if (Number.isFinite(n) && n > 0) {
-      return { value: n, source: 'db' };
+      return { value: n, source: "db" };
     }
   }
-  return { value: fallback, source: 'default' };
+  return { value: fallback, source: "default" };
 }
 
 function pickGafString(
@@ -194,15 +197,16 @@ function pickGafString(
   fallback: string,
 ): { value: string; source: AppSettingsFieldSource } {
   const fromDb = trimOrEmpty(dbVal);
-  if (fromDb) return { value: fromDb, source: 'db' };
-  return { value: fallback, source: 'default' };
+  if (fromDb) return { value: fromDb, source: "db" };
+  return { value: fallback, source: "default" };
 }
 
-function resolveGafDetailsFromRow(
-  row: AppSettingsRow | null,
-): {
+function resolveGafDetailsFromRow(row: AppSettingsRow | null): {
   resolved: GafDetailsResolved;
-  picks: Record<keyof GafDetailsResolved, { value: string; source: AppSettingsFieldSource }>;
+  picks: Record<
+    keyof GafDetailsResolved,
+    { value: string; source: AppSettingsFieldSource }
+  >;
 } {
   const unitOwner = pickGafString(row?.gaf_unit_owner, DEFAULT_GAF_UNIT_OWNER);
   const tower = pickGafString(
@@ -240,49 +244,153 @@ function resolveGafDetailsFromRow(
   };
 }
 
-export function parseCommaSeparatedEmails(raw: string): string[] {
+function parseCommaSeparatedEmails(raw: string): string[] {
   return raw
-    .split(',')
+    .split(",")
     .map((e) => e.trim())
     .filter(Boolean);
 }
 
-export function parseCommaSeparatedEmailsLower(raw: string): string[] {
+function parseCommaSeparatedEmailsLower(raw: string): string[] {
   return parseCommaSeparatedEmails(raw).map((e) => e.toLowerCase());
 }
 
-export async function resolveAppSettings(): Promise<AppSettingsResolved> {
-  const row = await loadSettingsRow();
+function buildSecretsStatus(): AppSettingsSecretsStatus {
+  return {
+    resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get("RESEND_API_KEY")),
+    googleServiceAccountConfigured: !!trimOrEmpty(
+      Deno.env.get("GOOGLE_SERVICE_ACCOUNT"),
+    ),
+    googleCalendarIdConfigured: !!trimOrEmpty(
+      Deno.env.get("GOOGLE_CALENDAR_ID"),
+    ),
+    googleSpreadsheetIdConfigured: !!trimOrEmpty(
+      Deno.env.get("GOOGLE_SPREADSHEET_ID"),
+    ),
+    telegramBotTokenConfigured: !!trimOrEmpty(
+      Deno.env.get("TELEGRAM_BOT_TOKEN"),
+    ),
+    telegramChatIdConfigured: !!trimOrEmpty(Deno.env.get("TELEGRAM_CHAT_ID")),
+    telegramStaffChatIdConfigured: !!trimOrEmpty(
+      Deno.env.get("TELEGRAM_STAFF_CHAT_ID"),
+    ),
+    telegramAdminChatIdConfigured: !!trimOrEmpty(
+      Deno.env.get("TELEGRAM_ADMIN_CHAT_ID"),
+    ),
+    telegramFinanceChatIdConfigured: !!trimOrEmpty(
+      Deno.env.get("TELEGRAM_FINANCE_CHAT_ID"),
+    ),
+    telegramMaintenanceChatIdConfigured: !!trimOrEmpty(
+      Deno.env.get("TELEGRAM_MAINTENANCE_CHAT_ID"),
+    ),
+    gmailEncryptionKeyConfigured: !!trimOrEmpty(
+      Deno.env.get("GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY"),
+    ),
+    gmailWebClientConfigured: !!trimOrEmpty(
+      Deno.env.get("GMAIL_API_WEB_CLIENT_JSON"),
+    ),
+    geminiApiKeyConfigured:
+      !!trimOrEmpty(Deno.env.get("GEMINI_API_KEYS")) ||
+      !!trimOrEmpty(Deno.env.get("GEMINI_API_KEY")),
+    groqApiKeyConfigured: !!trimOrEmpty(Deno.env.get("GROQ_API_KEY")),
+  };
+}
 
-  const emailTo = pickString(row?.email_to, 'EMAIL_TO');
-  const emailReplyTo = pickString(row?.email_reply_to, 'EMAIL_REPLY_TO');
-  const parkingRaw = pickString(row?.parking_owner_emails, 'PARKING_OWNER_EMAILS');
+type SettingsFieldPicks = {
+  emailTo: ReturnType<typeof pickString>;
+  emailReplyTo: ReturnType<typeof pickString>;
+  parkingRaw: ReturnType<typeof pickString>;
+  lead: ReturnType<typeof pickInt>;
+  maxAge: ReturnType<typeof pickInt>;
+  origin: ReturnType<typeof pickString>;
+  facebook: ReturnType<typeof pickString>;
+  logo: ReturnType<typeof pickString>;
+  parkingRate: ReturnType<typeof pickMoney>;
+  gcashName: ReturnType<typeof pickString>;
+  gcashNumber: ReturnType<typeof pickString>;
+  gcashQr: ReturnType<typeof pickString>;
+  originBase: string;
+  gaf: ReturnType<typeof resolveGafDetailsFromRow>;
+};
+
+function pickSettingsFieldsFromRow(
+  row: AppSettingsRow | null,
+): SettingsFieldPicks {
+  const emailTo = pickString(row?.email_to, "EMAIL_TO");
+  const emailReplyTo = pickString(row?.email_reply_to, "EMAIL_REPLY_TO");
+  const parkingRaw = pickString(
+    row?.parking_owner_emails,
+    "PARKING_OWNER_EMAILS",
+  );
   const lead = pickInt(
     row?.sd_refund_cron_email_lead_minutes,
-    'SD_REFUND_CRON_EMAIL_LEAD_MINUTES',
+    "SD_REFUND_CRON_EMAIL_LEAD_MINUTES",
     120,
     0,
     10080,
   );
   const maxAge = pickInt(
     row?.sd_refund_cron_max_checkout_age_days,
-    'SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS',
+    "SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS",
     21,
     0,
     365,
   );
-  const origin = pickString(row?.public_guest_app_origin, 'PUBLIC_GUEST_APP_ORIGIN');
-  const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
-  const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
+  const origin = pickString(
+    row?.public_guest_app_origin,
+    "PUBLIC_GUEST_APP_ORIGIN",
+  );
+  const facebook = pickString(
+    row?.facebook_reviews_url,
+    "FACEBOOK_REVIEWS_URL",
+  );
+  const logo = pickString(row?.email_logo_url, "EMAIL_LOGO_URL");
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
-  const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
-  const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
-  const gcashQr = pickString(row?.gcash_qr_image_url, 'GCASH_QR_IMAGE_URL');
-  const originBase = (origin.value || 'https://kamehomes.space').replace(
+  const gcashName = pickString(row?.gcash_name, "GCASH_NAME");
+  const gcashNumber = pickString(row?.gcash_number, "GCASH_NUMBER");
+  const gcashQr = pickString(row?.gcash_qr_image_url, "GCASH_QR_IMAGE_URL");
+  const originBase = (origin.value || "https://kamehomes.space").replace(
     /\/+$/,
-    '',
+    "",
   );
   const gaf = resolveGafDetailsFromRow(row);
+
+  return {
+    emailTo,
+    emailReplyTo,
+    parkingRaw,
+    lead,
+    maxAge,
+    origin,
+    facebook,
+    logo,
+    parkingRate,
+    gcashName,
+    gcashNumber,
+    gcashQr,
+    originBase,
+    gaf,
+  };
+}
+
+export async function resolveAppSettings(): Promise<AppSettingsResolved> {
+  const row = await loadSettingsRow();
+  const {
+    emailTo,
+    emailReplyTo,
+    parkingRaw,
+    lead,
+    maxAge,
+    origin,
+    facebook,
+    logo,
+    parkingRate,
+    gcashName,
+    gcashNumber,
+    gcashQr,
+    originBase,
+    gaf,
+  } = pickSettingsFieldsFromRow(row);
 
   return {
     emailTo: emailTo.value,
@@ -290,8 +398,8 @@ export async function resolveAppSettings(): Promise<AppSettingsResolved> {
     parkingOwnerEmails: parseCommaSeparatedEmails(parkingRaw.value),
     sdRefundCronEmailLeadMinutes: lead.value,
     sdRefundCronMaxCheckoutAgeDays: maxAge.value,
-    publicGuestAppOrigin: origin.value || 'https://kamehomes.space',
-    facebookReviewsUrl: facebook.value || 'https://www.facebook.com',
+    publicGuestAppOrigin: origin.value || "https://kamehomes.space",
+    facebookReviewsUrl: facebook.value || "https://www.facebook.com",
     emailLogoUrl: logo.value || DEFAULT_EMAIL_LOGO_URL,
     defaultParkingRateGuest: parkingRate.value,
     gcashName: gcashName.value || DEFAULT_GCASH_NAME,
@@ -326,44 +434,30 @@ export async function getGmailApprovalSenderAllowList(): Promise<string[]> {
 export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
   const row = await loadSettingsRow();
   const resolved = await resolveAppSettings();
-
-  const emailTo = pickString(row?.email_to, 'EMAIL_TO');
-  const emailReplyTo = pickString(row?.email_reply_to, 'EMAIL_REPLY_TO');
-  const parkingRaw = pickString(row?.parking_owner_emails, 'PARKING_OWNER_EMAILS');
-  const lead = pickInt(
-    row?.sd_refund_cron_email_lead_minutes,
-    'SD_REFUND_CRON_EMAIL_LEAD_MINUTES',
-    120,
-    0,
-    10080,
-  );
-  const maxAge = pickInt(
-    row?.sd_refund_cron_max_checkout_age_days,
-    'SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS',
-    21,
-    0,
-    365,
-  );
-  const origin = pickString(row?.public_guest_app_origin, 'PUBLIC_GUEST_APP_ORIGIN');
-  const facebook = pickString(row?.facebook_reviews_url, 'FACEBOOK_REVIEWS_URL');
-  const logo = pickString(row?.email_logo_url, 'EMAIL_LOGO_URL');
-  const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
-  const gcashName = pickString(row?.gcash_name, 'GCASH_NAME');
-  const gcashNumber = pickString(row?.gcash_number, 'GCASH_NUMBER');
-  const gcashQr = pickString(row?.gcash_qr_image_url, 'GCASH_QR_IMAGE_URL');
-  const originBase = (origin.value || 'https://kamehomes.space').replace(
-    /\/+$/,
-    '',
-  );
+  const {
+    emailTo,
+    emailReplyTo,
+    parkingRaw,
+    lead,
+    maxAge,
+    origin,
+    facebook,
+    logo,
+    parkingRate,
+    gcashName,
+    gcashNumber,
+    gcashQr,
+    originBase,
+    gaf,
+  } = pickSettingsFieldsFromRow(row);
   const defaultGcashQrUrl = `${originBase}/${DEFAULT_GCASH_QR_RELATIVE_PATH}`;
-  const gaf = resolveGafDetailsFromRow(row);
 
   const listSource = (
     items: string[],
     rawPick: { source: AppSettingsFieldSource },
   ): AppSettingsFieldSource => {
-    if (items.length === 0) return 'default';
-    return rawPick.source === 'default' ? 'env' : rawPick.source;
+    if (items.length === 0) return "default";
+    return rawPick.source === "default" ? "env" : rawPick.source;
   };
 
   const urlSource = (
@@ -371,47 +465,57 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
     resolvedDefault: string,
     resolved: string,
   ): AppSettingsFieldSource => {
-    if (pick.source === 'db') return 'db';
-    if (pick.source === 'env') return 'env';
-    if (resolved !== resolvedDefault) return 'default';
-    return 'default';
+    if (pick.source === "db") return "db";
+    if (pick.source === "env") return "env";
+    if (resolved !== resolvedDefault) return "default";
+    return "default";
   };
 
   return {
     ...resolved,
     updatedAt: row?.updated_at ?? null,
     fieldSources: {
-      emailTo: resolved.emailTo ? (emailTo.source === 'default' ? 'env' : emailTo.source) : 'default',
+      emailTo: resolved.emailTo
+        ? emailTo.source === "default"
+          ? "env"
+          : emailTo.source
+        : "default",
       emailReplyTo: resolved.emailReplyTo
-        ? (emailReplyTo.source === 'default' ? 'env' : emailReplyTo.source)
-        : 'default',
+        ? emailReplyTo.source === "default"
+          ? "env"
+          : emailReplyTo.source
+        : "default",
       parkingOwnerEmails: listSource(resolved.parkingOwnerEmails, parkingRaw),
       sdRefundCronEmailLeadMinutes: lead.source,
       sdRefundCronMaxCheckoutAgeDays: maxAge.source,
       publicGuestAppOrigin: urlSource(
         origin,
-        'https://kamehomes.space',
+        "https://kamehomes.space",
         resolved.publicGuestAppOrigin,
       ),
       facebookReviewsUrl: urlSource(
         facebook,
-        'https://www.facebook.com',
+        "https://www.facebook.com",
         resolved.facebookReviewsUrl,
       ),
-      emailLogoUrl: urlSource(logo, DEFAULT_EMAIL_LOGO_URL, resolved.emailLogoUrl),
+      emailLogoUrl: urlSource(
+        logo,
+        DEFAULT_EMAIL_LOGO_URL,
+        resolved.emailLogoUrl,
+      ),
       defaultParkingRateGuest: parkingRate.source,
       gcashName:
-        gcashName.source === 'db'
-          ? 'db'
-          : trimOrEmpty(Deno.env.get('GCASH_NAME'))
-            ? 'env'
-            : 'default',
+        gcashName.source === "db"
+          ? "db"
+          : trimOrEmpty(Deno.env.get("GCASH_NAME"))
+            ? "env"
+            : "default",
       gcashNumber:
-        gcashNumber.source === 'db'
-          ? 'db'
-          : trimOrEmpty(Deno.env.get('GCASH_NUMBER'))
-            ? 'env'
-            : 'default',
+        gcashNumber.source === "db"
+          ? "db"
+          : trimOrEmpty(Deno.env.get("GCASH_NUMBER"))
+            ? "env"
+            : "default",
       gcashQrImageUrl: urlSource(
         gcashQr,
         defaultGcashQrUrl,
@@ -419,26 +523,12 @@ export async function serializeAppSettingsForAdmin(): Promise<AppSettingsDto> {
       ),
       gafUnitOwner: gaf.picks.gafUnitOwner.source,
       gafTowerAndUnitNumber: gaf.picks.gafTowerAndUnitNumber.source,
-      gafGuestsOnsiteContactPerson: gaf.picks.gafGuestsOnsiteContactPerson.source,
+      gafGuestsOnsiteContactPerson:
+        gaf.picks.gafGuestsOnsiteContactPerson.source,
       gafOwnerContactNumber: gaf.picks.gafOwnerContactNumber.source,
       gafUnitOwnerSignatureUrl: gaf.picks.gafUnitOwnerSignatureUrl.source,
     },
-    secretsStatus: {
-      resendApiKeyConfigured: !!trimOrEmpty(Deno.env.get('RESEND_API_KEY')),
-      googleServiceAccountConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_SERVICE_ACCOUNT')),
-      googleCalendarIdConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_CALENDAR_ID')),
-      googleSpreadsheetIdConfigured: !!trimOrEmpty(Deno.env.get('GOOGLE_SPREADSHEET_ID')),
-      telegramBotTokenConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_BOT_TOKEN')),
-      telegramChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_CHAT_ID')),
-      telegramStaffChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_STAFF_CHAT_ID')),
-      telegramAdminChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_ADMIN_CHAT_ID')),
-      telegramFinanceChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_FINANCE_CHAT_ID')),
-      telegramMaintenanceChatIdConfigured: !!trimOrEmpty(Deno.env.get('TELEGRAM_MAINTENANCE_CHAT_ID')),
-      gmailEncryptionKeyConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY')),
-      gmailWebClientConfigured: !!trimOrEmpty(Deno.env.get('GMAIL_API_WEB_CLIENT_JSON')),
-      geminiApiKeyConfigured: !!trimOrEmpty(Deno.env.get('GEMINI_API_KEYS')) || !!trimOrEmpty(Deno.env.get('GEMINI_API_KEY')),
-      groqApiKeyConfigured: !!trimOrEmpty(Deno.env.get('GROQ_API_KEY')),
-    },
+    secretsStatus: buildSecretsStatus(),
   };
 }
 
@@ -453,7 +543,10 @@ export function validateEmailList(raw: string, label: string): string | null {
   return null;
 }
 
-export function validateOptionalEmail(raw: string, label: string): string | null {
+export function validateOptionalEmail(
+  raw: string,
+  label: string,
+): string | null {
   const v = raw.trim();
   if (!v) return null;
   if (!EMAIL_RE.test(v)) return `Invalid ${label}`;
@@ -465,7 +558,7 @@ export function validateOptionalUrl(raw: string, label: string): string | null {
   if (!v) return null;
   try {
     const u = new URL(v);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
       return `${label} must use http or https`;
     }
   } catch {
@@ -479,24 +572,24 @@ export function validateOptionalOrigin(raw: string): string | null {
   if (!v) return null;
   try {
     const u = new URL(v);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-      return 'Guest app origin must use http or https';
+    if (u.protocol !== "http:" && u.protocol !== "https:") {
+      return "Guest app origin must use http or https";
     }
-    if (u.pathname !== '/' || u.search || u.hash) {
-      return 'Guest app origin should be scheme + host only (no path)';
+    if (u.pathname !== "/" || u.search || u.hash) {
+      return "Guest app origin should be scheme + host only (no path)";
     }
   } catch {
-    return 'Invalid guest app origin URL';
+    return "Invalid guest app origin URL";
   }
   return null;
 }
 
 export function formatGcashNumberDisplay(raw: string): string {
-  const digits = raw.replace(/\D/g, '');
-  if (digits.length === 11 && digits.startsWith('09')) {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("09")) {
     return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7)}`;
   }
-  if (digits.length === 10 && digits.startsWith('9')) {
+  if (digits.length === 10 && digits.startsWith("9")) {
     return `0${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   }
   return raw.trim();
@@ -505,19 +598,22 @@ export function formatGcashNumberDisplay(raw: string): string {
 export function validateGcashName(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
-  if (v.length > 120) return 'GCash name is too long (max 120 characters)';
+  if (v.length > 120) return "GCash name is too long (max 120 characters)";
   return null;
 }
 
 export function validateGcashNumber(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
-  const digits = v.replace(/\D/g, '');
+  const digits = v.replace(/\D/g, "");
   if (digits.length < 10 || digits.length > 11) {
-    return 'GCash number must be 10–11 digits';
+    return "GCash number must be 10–11 digits";
   }
-  if (!digits.startsWith('09') && !(digits.length === 10 && digits.startsWith('9'))) {
-    return 'GCash number should start with 09';
+  if (
+    !digits.startsWith("09") &&
+    !(digits.length === 10 && digits.startsWith("9"))
+  ) {
+    return "GCash number should start with 09";
   }
   return null;
 }
@@ -529,25 +625,27 @@ export function validateGafTextField(
 ): string | null {
   const v = raw.trim();
   if (!v) return null;
-  if (v.length > maxLen) return `${label} is too long (max ${maxLen} characters)`;
+  if (v.length > maxLen)
+    return `${label} is too long (max ${maxLen} characters)`;
   return null;
 }
 
 export function validateGafContactNumber(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
-  if (v.length > 40) return 'Owner contact number is too long (max 40 characters)';
-  const digits = v.replace(/\D/g, '');
+  if (v.length > 40)
+    return "Owner contact number is too long (max 40 characters)";
+  const digits = v.replace(/\D/g, "");
   if (digits.length > 0 && digits.length < 7) {
-    return 'Owner contact number looks too short';
+    return "Owner contact number looks too short";
   }
   return null;
 }
 
 /** Apply operator GAF defaults — server always wins over client-submitted values. */
-export async function applyGafDefaultsToFormData<T extends Record<string, unknown>>(
-  data: T,
-): Promise<T> {
+export async function applyGafDefaultsToFormData<
+  T extends Record<string, unknown>,
+>(data: T): Promise<T> {
   const s = await resolveAppSettings();
   return {
     ...data,

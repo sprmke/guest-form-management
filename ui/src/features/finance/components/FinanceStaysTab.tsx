@@ -1,15 +1,15 @@
-import { useMemo, useState } from 'react';
-import { BedDouble } from 'lucide-react';
+import { useMemo, useState } from "react";
+import { BedDouble } from "lucide-react";
 import {
   FinanceStaysCardGridSkeleton,
   FinanceStaysTableSkeleton,
-} from '@/components/skeletons/AdminSkeletons';
+} from "@/components/skeletons/AdminSkeletons";
 import {
   AdminListMetaBar,
   AdminListPagination,
   AdminListPerPageSelect,
-  buildPageItems,
-} from '@/features/admin/components/AdminListToolbar';
+} from "@/features/admin/components/AdminListToolbar";
+import { buildPageItems } from "@/lib/pagination";
 import {
   AdminDataTable,
   AdminTableFlagsCell,
@@ -21,19 +21,25 @@ import {
   adminTableCell,
   adminTableMoneyClass,
   adminTableRowClass,
-} from '@/features/admin/components/AdminDataTable';
-import { financeDisplayNet, hostNetToneClass } from '@/features/admin/lib/bookingFinance';
-import { bookingListDisplayName } from '@/features/admin/lib/bookingListDisplay';
-import { formatMoney } from '@/features/admin/lib/formatters';
-import { BookingStayDatesCell } from '@/features/admin/components/BookingStayDatesCell';
-import { FinanceStaysCardGrid } from '@/features/finance/components/FinanceStaysCardGrid';
-import { FinanceStaysCalendarView } from '@/features/finance/components/FinanceStaysCalendarView';
-import { FinanceStaysSortMenu } from '@/features/finance/components/FinanceStaysSortMenu';
-import { FinanceStaysViewToggle } from '@/features/finance/components/FinanceStaysViewToggle';
-import { StayFinanceModal } from '@/features/finance/components/StayFinanceModal';
-import type { FinanceBookingLedgerRow, FinanceQuery } from '@/features/finance/lib/types';
-import { useIsBelowLg } from '@/hooks/useMediaQuery';
-import { cn } from '@/lib/utils';
+} from "@/features/admin/components/AdminDataTable";
+import {
+  financeDisplayNet,
+  hostNetToneClass,
+} from "@/features/admin/lib/bookingFinance";
+import { bookingListDisplayName } from "@/features/admin/lib/bookingListDisplay";
+import { formatMoney } from "@/features/admin/lib/formatters";
+import { BookingStayDatesCell } from "@/features/admin/components/BookingStayDatesCell";
+import { FinanceStaysCardGrid } from "@/features/finance/components/FinanceStaysCardGrid";
+import { FinanceStaysCalendarView } from "@/features/finance/components/FinanceStaysCalendarView";
+import { FinanceStaysSortMenu } from "@/features/finance/components/FinanceStaysSortMenu";
+import { FinanceStaysViewToggle } from "@/features/finance/components/FinanceStaysViewToggle";
+import { StayFinanceModal } from "@/features/finance/components/StayFinanceModal";
+import type {
+  FinanceBookingLedgerRow,
+  FinanceQuery,
+} from "@/features/finance/lib/types";
+import { useIsBelowLg } from "@/hooks/useMediaQuery";
+import { cn } from "@/lib/utils";
 
 type Props = {
   query: FinanceQuery;
@@ -69,14 +75,14 @@ export function FinanceStaysTab({
     () => buildPageItems(query.page, pageCount),
     [query.page, pageCount],
   );
-  const showCalendarView = query.staysView === 'calendar';
-  const showTableView = query.staysView === 'table' && !isMobileLayout;
+  const showCalendarView = query.staysView === "calendar";
+  const showTableView = query.staysView === "table" && !isMobileLayout;
   const showCardView =
-    query.staysView === 'card' ||
-    (isMobileLayout && query.staysView !== 'calendar');
+    query.staysView === "card" ||
+    (isMobileLayout && query.staysView !== "calendar");
   const showPagination = !showCalendarView && pageCount > 1;
 
-  const handleViewChange = (staysView: FinanceQuery['staysView']) => {
+  const handleViewChange = (staysView: FinanceQuery["staysView"]) => {
     onQueryChange({ ...query, staysView, page: 1 });
   };
 
@@ -94,8 +100,8 @@ export function FinanceStaysTab({
         <div className="flex flex-wrap items-center justify-between gap-2 px-0.5">
           <p className="text-[12px] font-medium text-muted-foreground tabular-nums">
             {total === 0
-              ? 'No stays in this period'
-              : `${total} ${total === 1 ? 'stay' : 'stays'} in period`}
+              ? "No stays in this period"
+              : `${total} ${total === 1 ? "stay" : "stays"} in period`}
           </p>
           <FinanceStaysViewToggle
             value={query.staysView}
@@ -114,10 +120,7 @@ export function FinanceStaysTab({
           onOpenRow={setDrawerRow}
         />
 
-        <StayFinanceModal
-          row={drawerRow}
-          onClose={() => setDrawerRow(null)}
-        />
+        <StayFinanceModal row={drawerRow} onClose={() => setDrawerRow(null)} />
       </div>
     );
   }
@@ -129,10 +132,10 @@ export function FinanceStaysTab({
           total,
           startIdx,
           endIdx,
-          entityLabel: total === 1 ? 'stay' : 'stays',
+          entityLabel: total === 1 ? "stay" : "stays",
           isLoading,
           isFetching,
-          emptyLabel: 'No stays in this period',
+          emptyLabel: "No stays in this period",
         }}
         limit={query.limit}
         onLimitChange={(limit) => onQueryChange({ ...query, limit, page: 1 })}
@@ -222,8 +225,10 @@ export function FinanceStaysTab({
                 const isRealized = fin.isCompleted;
                 const name = bookingListDisplayName(row);
 
-                const handleKey = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                const handleKey = (
+                  e: React.KeyboardEvent<HTMLTableRowElement>,
+                ) => {
+                  if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     setDrawerRow(row);
                   }
@@ -259,7 +264,7 @@ export function FinanceStaysTab({
                     </td>
                     <td
                       className={cn(
-                        'hidden md:table-cell',
+                        "hidden md:table-cell",
                         adminTableCell.body,
                       )}
                     >
@@ -271,7 +276,7 @@ export function FinanceStaysTab({
                     </td>
                     <td
                       className={cn(
-                        'hidden text-center sm:table-cell',
+                        "hidden text-center sm:table-cell",
                         adminTableCell.body,
                       )}
                     >
@@ -284,7 +289,10 @@ export function FinanceStaysTab({
                       />
                     </td>
                     <td
-                      className={cn('hidden lg:table-cell', adminTableCell.money)}
+                      className={cn(
+                        "hidden lg:table-cell",
+                        adminTableCell.money,
+                      )}
                     >
                       <span className={adminTableMoneyClass()}>
                         {formatMoney(fin.bookingRate)}
@@ -344,10 +352,7 @@ export function FinanceStaysTab({
         />
       ) : null}
 
-      <StayFinanceModal
-        row={drawerRow}
-        onClose={() => setDrawerRow(null)}
-      />
+      <StayFinanceModal row={drawerRow} onClose={() => setDrawerRow(null)} />
     </div>
   );
 }

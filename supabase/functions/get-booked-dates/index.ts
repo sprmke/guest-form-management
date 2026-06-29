@@ -1,134 +1,80 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { corsHeaders } from '../_shared/cors.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import { jsonResponse } from "../_shared/httpResponse.ts";
+import { servePublic } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) })
+servePublic("get-booked-dates", async (req) => {
+  if (req.method !== "GET") {
+    throw new Error(`Method ${req.method} not allowed`);
   }
 
-  try {
-    // Only allow GET requests
-    if (req.method !== 'GET') {
-      throw new Error(`Method ${req.method} not allowed`)
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+  );
+
+  const today = new Date();
+
+  const { data: bookings, error } = await supabase
+    .from("guest_submissions")
+    .select("id, check_in_date, check_out_date, status")
+    .neq("status", "CANCELLED");
+
+  if (error) {
+    console.error("Database error:", error);
+    throw new Error("Failed to fetch bookings");
+  }
+
+  const parseMMDDYYYY = (dateStr: string): Date | null => {
+    try {
+      const [month, day, year] = dateStr.split("-");
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } catch {
+      return null;
     }
+  };
 
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Get today's date
-    const today = new Date();
-    const todayISO = today.toISOString().split('T')[0]; // YYYY-MM-DD format
-
-    // Get all non-CANCELLED bookings from the database.
-    // Phase 2+: only 'CANCELLED' frees dates; every other status (including
-    // COMPLETED) still blocks the calendar picker — see NEW_FLOW_PLAN.md §6.1 Q7.2.
-    // We push the filter to the DB so Postgres only returns rows we care about.
-    // Belt-and-suspenders: the JS filter below also checks for legacy 'canceled'
-    // in case the migration hasn't been applied yet on a fresh local clone.
-    const { data: bookings, error } = await supabase
-      .from('guest_submissions')
-      .select('id, check_in_date, check_out_date, status')
-      .neq('status', 'CANCELLED');
-
-    if (error) {
-      console.error('Database error:', error);
-      throw new Error('Failed to fetch bookings');
-    }
-
-    // Helper to parse MM-DD-YYYY date string to Date object
-    const parseMMDDYYYY = (dateStr: string): Date | null => {
-      try {
-        const [month, day, year] = dateStr.split('-');
-        return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-      } catch {
-        return null;
-      }
-    };
-
-    // Normalize dates to YYYY-MM-DD format
-    const normalizeDate = (dateStr: string): string => {
-      // Check if date is in YYYY-MM-DD format (already normalized)
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-        return dateStr;
-      }
-      // Check if date is in MM-DD-YYYY format
-      if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-        const [month, day, year] = dateStr.split('-');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-      // Return as-is if format is unknown
+  const normalizeDate = (dateStr: string): string => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       return dateStr;
-    };
+    }
+    if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
+      const [month, day, year] = dateStr.split("-");
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+    return dateStr;
+  };
 
-    // Set today to start of day for fair comparison (00:00:00)
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayStart = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
 
-    // Filter out:
-    // 1. CANCELLED bookings (DB query already excludes 'CANCELLED'; legacy 'canceled'
-    //    is handled here for safety during local dev before the migration runs)
-    // 2. Past bookings (where check_out_date < today)
-    // Then transform bookings to normalized date ranges
-    const bookedDateRanges = bookings
-      ?.filter(booking => {
-        // Belt-and-suspenders: exclude legacy 'canceled' value in case migration
-        // hasn't been applied (production rows are all migrated, but a fresh local
-        // clone might not have run Phase 2 yet).
-        if (booking.status === 'CANCELLED' || booking.status === 'canceled') {
+  const bookedDateRanges =
+    bookings
+      ?.filter((booking) => {
+        if (booking.status === "CANCELLED" || booking.status === "canceled") {
           return false;
         }
 
         const checkOutDate = parseMMDDYYYY(booking.check_out_date);
         if (!checkOutDate) {
-          console.warn(`Invalid date format for booking ${booking.id}: ${booking.check_out_date}`);
-          return false; // Exclude bookings with invalid dates
+          console.warn(
+            `Invalid date format for booking ${booking.id}: ${booking.check_out_date}`,
+          );
+          return false;
         }
-        // Keep only bookings where check-out date is today or in the future
         return checkOutDate >= todayStart;
       })
-      .map(booking => ({
+      .map((booking) => ({
         id: booking.id,
         checkInDate: normalizeDate(booking.check_in_date),
-        checkOutDate: normalizeDate(booking.check_out_date)
-      })) || [];
+        checkOutDate: normalizeDate(booking.check_out_date),
+      })) ?? [];
 
-    // Return the response with CORS headers
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: bookedDateRanges,
-        message: 'Future booked dates retrieved successfully.'
-      }),
-      {
-        headers: {
-          ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 200,
-      }
-    )
-
-  } catch (error) {
-    console.error('Error getting booked dates:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        message: 'Failed to retrieve booked dates'
-      }),
-      {
-        headers: {
-          ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 400,
-      }
-    )
-  }
-})
-
-
+  return jsonResponse(req, {
+    success: true,
+    data: bookedDateRanges,
+    message: "Future booked dates retrieved successfully.",
+  });
+});

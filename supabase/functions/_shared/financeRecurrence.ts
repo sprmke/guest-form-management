@@ -160,7 +160,7 @@ export function addRecurrenceInterval(
   }
 }
 
-export function subtractRecurrenceInterval(
+function subtractRecurrenceInterval(
   iso: string,
   interval: RecurrenceInterval,
   primaryDay?: number,
@@ -225,7 +225,7 @@ export function subtractRecurrenceInterval(
   }
 }
 
-export function defaultRecurrenceUntil(
+function defaultRecurrenceUntil(
   start: string,
   interval: RecurrenceInterval,
 ): string {

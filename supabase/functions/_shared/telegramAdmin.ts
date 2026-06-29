@@ -94,11 +94,11 @@ export type AdminHourlyNotificationType =
   | 'balance_receipt'
   | 'sd_refund_pending';
 
-export type AdminNotificationLogType =
+type AdminNotificationLogType =
   | AdminHourlyNotificationType
   | 'balance_receipt_uploaded';
 
-export const ADMIN_KNOWN_PLACEHOLDERS = [
+const ADMIN_KNOWN_PLACEHOLDERS = [
   'primary_guest_name',
   'guest_phone',
   'guest_email',
@@ -273,7 +273,7 @@ function sdRefundFieldOrDash(value: unknown): string {
 }
 
 /** Method-aware payout lines for admin Telegram copy (GCash phone, bank transfer, or cash). */
-export function buildSdRefundDetailsBlock(booking: BookingRow): string {
+function buildSdRefundDetailsBlock(booking: BookingRow): string {
   const method = String(booking.sd_refund_method ?? '').trim();
   if (!method) return 'Not submitted yet';
 
@@ -346,7 +346,7 @@ function areAllRequiredDocsComplete(booking: BookingRow): boolean {
   return gafDone && parkingDone && petDone;
 }
 
-export function buildAdminBookingPlaceholders(booking: BookingRow): Record<string, string> {
+function buildAdminBookingPlaceholders(booking: BookingRow): Record<string, string> {
   const ciRaw = String(booking.check_in_date ?? '');
   const coRaw = String(booking.check_out_date ?? '');
   const ciYmd = normalizeBookingDateToYmd(ciRaw) ?? ciRaw;
@@ -422,13 +422,13 @@ function isPendingReviewLikeStatus(status: unknown): boolean {
 }
 
 /** Still awaiting admin review — hourly until Proceed to Pending Documents (or GAF). */
-export function bookingNeedsNewBookingHourlyAlert(booking: BookingRow): boolean {
+function bookingNeedsNewBookingHourlyAlert(booking: BookingRow): boolean {
   if (isCancelledStatus(booking.status)) return false;
   return isPendingReviewLikeStatus(booking.status);
 }
 
 /** Check-in today + incomplete required docs, not yet ready for check-in workflow-wise. */
-export function bookingNeedsPendingDocsHourlyAlert(
+function bookingNeedsPendingDocsHourlyAlert(
   booking: BookingRow,
   todayYmd: string,
 ): boolean {
@@ -452,7 +452,7 @@ export function bookingNeedsPendingDocsHourlyAlert(
 }
 
 /** During stay, after check-in time on check-in day, before check-out, positive balance receipt missing. */
-export function bookingNeedsBalanceReceiptHourlyAlert(
+function bookingNeedsBalanceReceiptHourlyAlert(
   booking: BookingRow,
   todayYmd: string,
   now: Date = nowManila(),
@@ -494,7 +494,7 @@ export function bookingNeedsBalanceReceiptHourlyAlert(
 }
 
 /** Guest submitted SD form; admin still needs to process refund. */
-export function bookingNeedsSdRefundPendingHourlyAlert(booking: BookingRow): boolean {
+function bookingNeedsSdRefundPendingHourlyAlert(booking: BookingRow): boolean {
   if (isCancelledStatus(booking.status)) return false;
   if (String(booking.status ?? '') !== 'PENDING_SD_REFUND') return false;
   return !!String(booking.sd_refund_method ?? '').trim();

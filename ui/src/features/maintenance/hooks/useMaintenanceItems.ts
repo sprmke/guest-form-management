@@ -21,12 +21,12 @@ import {
 } from "@/features/maintenance/hooks/useMaintenanceApi";
 import { MAINTENANCE_SUMMARY_KEY } from "@/features/maintenance/hooks/useMaintenanceSummary";
 
-export const MAINTENANCE_ITEMS_KEY = ["maintenance-items"] as const;
-export const MAINTENANCE_RECURRING_SERIES_KEY = [
+const MAINTENANCE_ITEMS_KEY = ["maintenance-items"] as const;
+const MAINTENANCE_RECURRING_SERIES_KEY = [
   "maintenance-recurring-series",
 ] as const;
 
-export function maintenanceItemsQueryKey(
+function maintenanceItemsQueryKey(
   query: MaintenanceQuery,
   options?: { includeDueInRange?: boolean },
 ) {

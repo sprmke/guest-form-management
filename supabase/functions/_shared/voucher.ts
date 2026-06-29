@@ -23,7 +23,7 @@ export type VoucherCode =
   | 'KAME-1000'
   | 'KAME-STAY';
 
-export const VOUCHER_CATALOG: ReadonlyArray<{ code: VoucherCode; amount: number }> = [
+const VOUCHER_CATALOG: ReadonlyArray<{ code: VoucherCode; amount: number }> = [
   { code: 'KAME-50', amount: 50 },
   { code: 'KAME-100', amount: 100 },
   { code: 'KAME-150', amount: 150 },
@@ -39,7 +39,7 @@ export const VOUCHER_CATALOG: ReadonlyArray<{ code: VoucherCode; amount: number 
 ];
 
 /** Codes that may be awarded (odds in `VOUCHER_WIN_WEIGHTS`). */
-export const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
+const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
   'KAME-100',
   'KAME-150',
   'KAME-200',
@@ -58,7 +58,7 @@ export const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
  * Only ratios matter — any positive sum works; 1000 keeps whole-number percents.
  * `KAME-STAY` is intentionally rare (0.5%).
  */
-export const VOUCHER_WIN_WEIGHTS: ReadonlyArray<{
+const VOUCHER_WIN_WEIGHTS: ReadonlyArray<{
   code: VoucherCode;
   weight: number;
 }> = [
@@ -79,12 +79,12 @@ const VOUCHER_INDEX = new Map<VoucherCode, number>(
   VOUCHER_CATALOG.map((v) => [v.code, v.amount]),
 );
 
-export function isVoucherCode(value: string): value is VoucherCode {
+function isVoucherCode(value: string): value is VoucherCode {
   if (value === 'FREE-STAY') return true;
   return VOUCHER_INDEX.has(value as VoucherCode);
 }
 
-export function voucherAmountFor(code: string): number {
+function voucherAmountFor(code: string): number {
   if (code === 'FREE-STAY') return 0;
   return VOUCHER_INDEX.get(code as VoucherCode) ?? 0;
 }

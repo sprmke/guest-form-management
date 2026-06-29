@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 export type AppSettingsAssetType = 'gcash_qr' | 'team_logo' | 'gaf_unit_owner_signature';
 
-export type UploadAppSettingsAssetResult = {
+type UploadAppSettingsAssetResult = {
   url: string;
   bucket: string;
   path: string;

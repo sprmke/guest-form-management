@@ -3,7 +3,7 @@ import type {
   FinanceReminderInterval,
 } from "@/features/finance/lib/recurrence";
 
-import type { AdminListView } from '@/features/admin/lib/listView';
+import type { AdminListView } from "@/features/admin/lib/listView";
 
 export type MaintenanceTab = "overview" | "reminders" | "settings";
 
@@ -64,5 +64,4 @@ export type MaintenanceExportType = "overview" | "reminders" | "combined";
 export type {
   RecurrenceEditScope,
   RecurrenceInterval,
-  FinanceReminderInterval as MaintenanceReminderInterval,
 } from "@/features/finance/lib/recurrence";

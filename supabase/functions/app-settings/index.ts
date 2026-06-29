@@ -4,10 +4,7 @@
  * POST action: verify_gemini — ping Gemini Flash (receipt AI integration check).
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
-import { DatabaseService } from '../_shared/databaseService.ts';
+import { DatabaseService } from "../_shared/databaseService.ts";
 import {
   invalidateAppSettingsCache,
   serializeAppSettingsForAdmin,
@@ -20,245 +17,211 @@ import {
   formatGcashNumberDisplay,
   validateGafTextField,
   validateGafContactNumber,
-} from '../_shared/appSettings.ts';
-import { verifyGeminiIntegration } from '../_shared/receiptValidationService.ts';
+} from "../_shared/appSettings.ts";
+import { verifyGeminiIntegration } from "../_shared/receiptValidationService.ts";
+import {
+  jsonError,
+  jsonSuccess,
+  readJsonBody,
+} from "../_shared/httpResponse.ts";
+import {
+  parseAction,
+  telegramUnknownAction,
+  telegramVerifyResponse,
+} from "../_shared/telegramSettingsHttp.ts";
+import { serveAdmin } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
+serveAdmin("app-settings", async (req) => {
+  if (req.method === "GET") {
+    const data = await serializeAppSettingsForAdmin();
+    return jsonSuccess(req, data);
   }
 
-  try {
-    await verifyAdminJwt(req);
+  if (req.method === "POST") {
+    const body = await readJsonBody(req);
+    const action = parseAction(body).trim();
 
-    if (req.method === 'GET') {
-      const data = await serializeAppSettingsForAdmin();
-      return new Response(JSON.stringify({ success: true, data }), {
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      });
+    if (action === "verify_gemini") {
+      return telegramVerifyResponse(req, await verifyGeminiIntegration());
     }
 
-    if (req.method === 'POST') {
-      const body = await req.json().catch(() => ({}));
-      const action = typeof body.action === 'string' ? body.action.trim() : '';
-
-      if (action === 'verify_gemini') {
-        const verify = await verifyGeminiIntegration();
-        return new Response(JSON.stringify({ success: true, verify }), {
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
-      return jsonError(
-        req,
-        400,
-        `Unknown action: ${action || '(missing)'}. Use verify_gemini`,
-      );
-    }
-
-    if (req.method === 'PATCH') {
-      const body = await req.json().catch(() => ({}));
-      const patch: Record<string, unknown> = {};
-
-      if (typeof body.emailTo === 'string') {
-        const err = validateOptionalEmail(body.emailTo, 'Email To');
-        if (err) {
-          return jsonError(req, 400, err);
-        }
-        patch.email_to = body.emailTo.trim() || null;
-      }
-      if (typeof body.emailReplyTo === 'string') {
-        const err = validateOptionalEmail(body.emailReplyTo, 'Email Reply-To');
-        if (err) {
-          return jsonError(req, 400, err);
-        }
-        patch.email_reply_to = body.emailReplyTo.trim() || null;
-      }
-      if (typeof body.parkingOwnerEmails === 'string') {
-        const trimmed = body.parkingOwnerEmails.trim();
-        if (trimmed) {
-          const err = validateEmailList(trimmed, 'parking owner');
-          if (err) return jsonError(req, 400, err);
-          patch.parking_owner_emails = trimmed;
-        } else {
-          patch.parking_owner_emails = null;
-        }
-      }
-      if (typeof body.sdRefundCronEmailLeadHours === 'number') {
-        const minutes = Math.round(body.sdRefundCronEmailLeadHours * 60);
-        if (
-          !Number.isFinite(minutes) ||
-          minutes < 0 ||
-          minutes > 10080
-        ) {
-          return jsonError(req, 400, 'SD refund email lead must be 0–168 hours');
-        }
-        patch.sd_refund_cron_email_lead_minutes = minutes;
-      } else if (typeof body.sdRefundCronEmailLeadMinutes === 'number') {
-        const n = Math.floor(body.sdRefundCronEmailLeadMinutes);
-        if (n < 0 || n > 10080) {
-          return jsonError(req, 400, 'SD refund email lead must be 0–10080 minutes');
-        }
-        patch.sd_refund_cron_email_lead_minutes = n;
-      }
-      if (typeof body.sdRefundCronMaxCheckoutAgeDays === 'number') {
-        const n = Math.floor(body.sdRefundCronMaxCheckoutAgeDays);
-        if (n < 0 || n > 365) {
-          return jsonError(req, 400, 'Max checkout age must be 0–365 days');
-        }
-        patch.sd_refund_cron_max_checkout_age_days = n;
-      }
-      if (typeof body.publicGuestAppOrigin === 'string') {
-        const trimmed = body.publicGuestAppOrigin.trim();
-        if (trimmed) {
-          const err = validateOptionalOrigin(trimmed);
-          if (err) return jsonError(req, 400, err);
-          patch.public_guest_app_origin = trimmed.replace(/\/+$/, '');
-        } else {
-          patch.public_guest_app_origin = null;
-        }
-      }
-      if (typeof body.facebookReviewsUrl === 'string') {
-        const trimmed = body.facebookReviewsUrl.trim();
-        if (trimmed) {
-          const err = validateOptionalUrl(trimmed, 'Facebook reviews URL');
-          if (err) return jsonError(req, 400, err);
-          patch.facebook_reviews_url = trimmed;
-        } else {
-          patch.facebook_reviews_url = null;
-        }
-      }
-      if (typeof body.emailLogoUrl === 'string') {
-        const trimmed = body.emailLogoUrl.trim();
-        if (trimmed) {
-          return jsonError(
-            req,
-            400,
-            'Team logo can only be updated via upload-app-settings-asset',
-          );
-        }
-        patch.email_logo_url = null;
-      }
-      if (typeof body.defaultParkingRateGuest === 'number') {
-        const n = body.defaultParkingRateGuest;
-        if (!Number.isFinite(n) || n <= 0) {
-          return jsonError(req, 400, 'Default parking rate must be greater than 0');
-        }
-        patch.default_parking_rate_guest = Math.round(n * 100) / 100;
-      }
-      if (typeof body.gcashName === 'string') {
-        const trimmed = body.gcashName.trim();
-        if (trimmed) {
-          const err = validateGcashName(trimmed);
-          if (err) return jsonError(req, 400, err);
-          patch.gcash_name = trimmed;
-        } else {
-          patch.gcash_name = null;
-        }
-      }
-      if (typeof body.gcashNumber === 'string') {
-        const trimmed = body.gcashNumber.trim();
-        if (trimmed) {
-          const err = validateGcashNumber(trimmed);
-          if (err) return jsonError(req, 400, err);
-          patch.gcash_number = formatGcashNumberDisplay(trimmed);
-        } else {
-          patch.gcash_number = null;
-        }
-      }
-      if (typeof body.gcashQrImageUrl === 'string') {
-        const trimmed = body.gcashQrImageUrl.trim();
-        if (trimmed) {
-          return jsonError(
-            req,
-            400,
-            'GCash QR image can only be updated via upload-app-settings-asset',
-          );
-        }
-        patch.gcash_qr_image_url = null;
-      }
-      if (typeof body.gafUnitOwner === 'string') {
-        const trimmed = body.gafUnitOwner.trim();
-        if (trimmed) {
-          const err = validateGafTextField(trimmed, 'Unit owner');
-          if (err) return jsonError(req, 400, err);
-          patch.gaf_unit_owner = trimmed;
-        } else {
-          patch.gaf_unit_owner = null;
-        }
-      }
-      if (typeof body.gafTowerAndUnitNumber === 'string') {
-        const trimmed = body.gafTowerAndUnitNumber.trim();
-        if (trimmed) {
-          const err = validateGafTextField(trimmed, 'Tower and unit number');
-          if (err) return jsonError(req, 400, err);
-          patch.gaf_tower_and_unit_number = trimmed;
-        } else {
-          patch.gaf_tower_and_unit_number = null;
-        }
-      }
-      if (typeof body.gafGuestsOnsiteContactPerson === 'string') {
-        const trimmed = body.gafGuestsOnsiteContactPerson.trim();
-        if (trimmed) {
-          const err = validateGafTextField(trimmed, "Guests' on-site contact person");
-          if (err) return jsonError(req, 400, err);
-          patch.gaf_guests_onsite_contact_person = trimmed;
-        } else {
-          patch.gaf_guests_onsite_contact_person = null;
-        }
-      }
-      if (typeof body.gafOwnerContactNumber === 'string') {
-        const trimmed = body.gafOwnerContactNumber.trim();
-        if (trimmed) {
-          const err = validateGafContactNumber(trimmed);
-          if (err) return jsonError(req, 400, err);
-          patch.gaf_owner_contact_number = trimmed;
-        } else {
-          patch.gaf_owner_contact_number = null;
-        }
-      }
-      if (typeof body.gafUnitOwnerSignatureUrl === 'string') {
-        const trimmed = body.gafUnitOwnerSignatureUrl.trim();
-        if (trimmed) {
-          return jsonError(
-            req,
-            400,
-            'Unit Owner signature can only be updated via upload-app-settings-asset',
-          );
-        }
-        patch.gaf_unit_owner_signature_url = null;
-      }
-
-      if (Object.keys(patch).length === 0) {
-        return jsonError(req, 400, 'No valid fields to update');
-      }
-
-      await DatabaseService.updateAppSettings(patch);
-      invalidateAppSettingsCache();
-      const data = await serializeAppSettingsForAdmin();
-
-      return new Response(JSON.stringify({ success: true, data }), {
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      });
-    }
-
-    return jsonError(req, 405, `Method ${req.method} not allowed`);
-  } catch (error) {
-    console.error('[app-settings]', error);
-    const status = error instanceof Response ? error.status : 400;
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      {
-        status,
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      },
-    );
+    return telegramUnknownAction(req, action, "Use verify_gemini");
   }
+
+  if (req.method === "PATCH") {
+    const body = await readJsonBody(req);
+    const patch: Record<string, unknown> = {};
+
+    if (typeof body.emailTo === "string") {
+      const err = validateOptionalEmail(body.emailTo, "Email To");
+      if (err) return jsonError(req, err);
+      patch.email_to = body.emailTo.trim() || null;
+    }
+    if (typeof body.emailReplyTo === "string") {
+      const err = validateOptionalEmail(body.emailReplyTo, "Email Reply-To");
+      if (err) return jsonError(req, err);
+      patch.email_reply_to = body.emailReplyTo.trim() || null;
+    }
+    if (typeof body.parkingOwnerEmails === "string") {
+      const trimmed = body.parkingOwnerEmails.trim();
+      if (trimmed) {
+        const err = validateEmailList(trimmed, "parking owner");
+        if (err) return jsonError(req, err);
+        patch.parking_owner_emails = trimmed;
+      } else {
+        patch.parking_owner_emails = null;
+      }
+    }
+    if (typeof body.sdRefundCronEmailLeadHours === "number") {
+      const minutes = Math.round(body.sdRefundCronEmailLeadHours * 60);
+      if (!Number.isFinite(minutes) || minutes < 0 || minutes > 10080) {
+        return jsonError(req, "SD refund email lead must be 0–168 hours");
+      }
+      patch.sd_refund_cron_email_lead_minutes = minutes;
+    } else if (typeof body.sdRefundCronEmailLeadMinutes === "number") {
+      const n = Math.floor(body.sdRefundCronEmailLeadMinutes);
+      if (n < 0 || n > 10080) {
+        return jsonError(req, "SD refund email lead must be 0–10080 minutes");
+      }
+      patch.sd_refund_cron_email_lead_minutes = n;
+    }
+    if (typeof body.sdRefundCronMaxCheckoutAgeDays === "number") {
+      const n = Math.floor(body.sdRefundCronMaxCheckoutAgeDays);
+      if (n < 0 || n > 365) {
+        return jsonError(req, "Max checkout age must be 0–365 days");
+      }
+      patch.sd_refund_cron_max_checkout_age_days = n;
+    }
+    if (typeof body.publicGuestAppOrigin === "string") {
+      const trimmed = body.publicGuestAppOrigin.trim();
+      if (trimmed) {
+        const err = validateOptionalOrigin(trimmed);
+        if (err) return jsonError(req, err);
+        patch.public_guest_app_origin = trimmed.replace(/\/+$/, "");
+      } else {
+        patch.public_guest_app_origin = null;
+      }
+    }
+    if (typeof body.facebookReviewsUrl === "string") {
+      const trimmed = body.facebookReviewsUrl.trim();
+      if (trimmed) {
+        const err = validateOptionalUrl(trimmed, "Facebook reviews URL");
+        if (err) return jsonError(req, err);
+        patch.facebook_reviews_url = trimmed;
+      } else {
+        patch.facebook_reviews_url = null;
+      }
+    }
+    if (typeof body.emailLogoUrl === "string") {
+      const trimmed = body.emailLogoUrl.trim();
+      if (trimmed) {
+        return jsonError(
+          req,
+          "Team logo can only be updated via upload-app-settings-asset",
+        );
+      }
+      patch.email_logo_url = null;
+    }
+    if (typeof body.defaultParkingRateGuest === "number") {
+      const n = body.defaultParkingRateGuest;
+      if (!Number.isFinite(n) || n <= 0) {
+        return jsonError(req, "Default parking rate must be greater than 0");
+      }
+      patch.default_parking_rate_guest = Math.round(n * 100) / 100;
+    }
+    if (typeof body.gcashName === "string") {
+      const trimmed = body.gcashName.trim();
+      if (trimmed) {
+        const err = validateGcashName(trimmed);
+        if (err) return jsonError(req, err);
+        patch.gcash_name = trimmed;
+      } else {
+        patch.gcash_name = null;
+      }
+    }
+    if (typeof body.gcashNumber === "string") {
+      const trimmed = body.gcashNumber.trim();
+      if (trimmed) {
+        const err = validateGcashNumber(trimmed);
+        if (err) return jsonError(req, err);
+        patch.gcash_number = formatGcashNumberDisplay(trimmed);
+      } else {
+        patch.gcash_number = null;
+      }
+    }
+    if (typeof body.gcashQrImageUrl === "string") {
+      const trimmed = body.gcashQrImageUrl.trim();
+      if (trimmed) {
+        return jsonError(
+          req,
+          "GCash QR image can only be updated via upload-app-settings-asset",
+        );
+      }
+      patch.gcash_qr_image_url = null;
+    }
+    if (typeof body.gafUnitOwner === "string") {
+      const trimmed = body.gafUnitOwner.trim();
+      if (trimmed) {
+        const err = validateGafTextField(trimmed, "Unit owner");
+        if (err) return jsonError(req, err);
+        patch.gaf_unit_owner = trimmed;
+      } else {
+        patch.gaf_unit_owner = null;
+      }
+    }
+    if (typeof body.gafTowerAndUnitNumber === "string") {
+      const trimmed = body.gafTowerAndUnitNumber.trim();
+      if (trimmed) {
+        const err = validateGafTextField(trimmed, "Tower and unit number");
+        if (err) return jsonError(req, err);
+        patch.gaf_tower_and_unit_number = trimmed;
+      } else {
+        patch.gaf_tower_and_unit_number = null;
+      }
+    }
+    if (typeof body.gafGuestsOnsiteContactPerson === "string") {
+      const trimmed = body.gafGuestsOnsiteContactPerson.trim();
+      if (trimmed) {
+        const err = validateGafTextField(
+          trimmed,
+          "Guests' on-site contact person",
+        );
+        if (err) return jsonError(req, err);
+        patch.gaf_guests_onsite_contact_person = trimmed;
+      } else {
+        patch.gaf_guests_onsite_contact_person = null;
+      }
+    }
+    if (typeof body.gafOwnerContactNumber === "string") {
+      const trimmed = body.gafOwnerContactNumber.trim();
+      if (trimmed) {
+        const err = validateGafContactNumber(trimmed);
+        if (err) return jsonError(req, err);
+        patch.gaf_owner_contact_number = trimmed;
+      } else {
+        patch.gaf_owner_contact_number = null;
+      }
+    }
+    if (typeof body.gafUnitOwnerSignatureUrl === "string") {
+      const trimmed = body.gafUnitOwnerSignatureUrl.trim();
+      if (trimmed) {
+        return jsonError(
+          req,
+          "Unit Owner signature can only be updated via upload-app-settings-asset",
+        );
+      }
+      patch.gaf_unit_owner_signature_url = null;
+    }
+
+    if (Object.keys(patch).length === 0) {
+      return jsonError(req, "No valid fields to update");
+    }
+
+    await DatabaseService.updateAppSettings(patch);
+    invalidateAppSettingsCache();
+    const data = await serializeAppSettingsForAdmin();
+    return jsonSuccess(req, data);
+  }
+
+  return jsonError(req, `Method ${req.method} not allowed`, 405);
 });
-
-function jsonError(req: Request, status: number, error: string): Response {
-  return new Response(JSON.stringify({ success: false, error }), {
-    status,
-    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-  });
-}

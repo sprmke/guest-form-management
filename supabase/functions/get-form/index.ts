@@ -1,79 +1,39 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { corsHeaders } from '../_shared/cors.ts'
-import { DatabaseService } from '../_shared/databaseService.ts'
-import { extractRouteParam } from '../_shared/utils.ts'
+import { DatabaseService } from "../_shared/databaseService.ts";
+import { extractRouteParam } from "../_shared/utils.ts";
+import {
+  jsonError,
+  jsonResponse,
+  requireHttpMethod,
+} from "../_shared/httpResponse.ts";
+import { servePublic } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) })
+servePublic("get-form", async (req) => {
+  requireHttpMethod(req, "GET");
+
+  const url = new URL(req.url);
+  const bookingId = extractRouteParam(url.pathname, "/get-form/");
+
+  if (!bookingId) {
+    throw new Error("bookingId is required");
   }
 
-  try {
-    // Only allow GET requests
-    if (req.method !== 'GET') {
-      throw new Error(`Method ${req.method} not allowed`)
-    }
+  const formData = await DatabaseService.getFormData(bookingId);
 
-    // Get bookingId from URL path
-    const url = new URL(req.url)
-    const bookingId = extractRouteParam(url.pathname, '/get-form/');
-
-    if (!bookingId) {
-      throw new Error('bookingId is required')
-    }
-
-    // Get form data from database
-    const formData = await DatabaseService.getFormData(bookingId)
-
-    if (!formData) {
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Booking not found',
-          message: 'No booking found with the provided ID'
-        }),
-        {
-          headers: {
-            ...corsHeaders(req),
-            'Content-Type': 'application/json',
-          },
-          status: 404,
-        }
-      )
-    }
-
-    // Return the response with CORS headers
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        data: formData,
-        message: 'Form data retrieved successfully.'
-      }),
+  if (!formData) {
+    return jsonResponse(
+      req,
       {
-        headers: {
-          ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 200,
-      }
-    )
-
-  } catch (error) {
-    console.error('Error getting form data:', error)
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        message: 'Failed to retrieve form data'
-      }),
-      {
-        headers: {
-          ...corsHeaders(req),
-          'Content-Type': 'application/json',
-        },
-        status: 400,
-      }
-    )
+        success: false,
+        error: "Booking not found",
+        message: "No booking found with the provided ID",
+      },
+      404,
+    );
   }
-}) 
+
+  return jsonResponse(req, {
+    success: true,
+    data: formData,
+    message: "Form data retrieved successfully.",
+  });
+});

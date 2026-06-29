@@ -22,9 +22,9 @@ export type TelegramMaintenanceSettings = {
   updated_at: string;
 };
 
-export type MaintenanceManilaTimeSlot = { hour: number; minute: number };
+type MaintenanceManilaTimeSlot = { hour: number; minute: number };
 
-export const MAINTENANCE_REMINDER_PLACEHOLDERS = [
+const MAINTENANCE_REMINDER_PLACEHOLDERS = [
   "label",
   "category",
   "due_date",
@@ -33,7 +33,7 @@ export const MAINTENANCE_REMINDER_PLACEHOLDERS = [
   "notes",
 ] as const;
 
-export const MAINTENANCE_DEFAULT_REMINDER_TEMPLATE =
+const MAINTENANCE_DEFAULT_REMINDER_TEMPLATE =
   "🔧 Maintenance reminder\n\n{{label}}\nDue: {{due_date}} ({{days_until_due}} day(s) left)\nCategory: {{category}}\n\n{{notes}}";
 
 const MANILA_TZ = "Asia/Manila";
@@ -45,7 +45,7 @@ function getSupabase() {
   );
 }
 
-export function parseMaintenanceSlot(raw: unknown): MaintenanceManilaTimeSlot {
+function parseMaintenanceSlot(raw: unknown): MaintenanceManilaTimeSlot {
   if (raw && typeof raw === "object" && raw !== null) {
     const o = raw as Record<string, unknown>;
     const h = typeof o.hour === "number" ? o.hour : 9;
@@ -58,7 +58,7 @@ export function parseMaintenanceSlot(raw: unknown): MaintenanceManilaTimeSlot {
   return { hour: 9, minute: 0 };
 }
 
-export function formatMaintenanceManilaTimeLabel(
+function formatMaintenanceManilaTimeLabel(
   slot: MaintenanceManilaTimeSlot,
 ): string {
   const d = new Date(2000, 0, 1, slot.hour, slot.minute);
@@ -69,7 +69,7 @@ export function formatMaintenanceManilaTimeLabel(
   });
 }
 
-export function manilaTodayYmd(now = new Date()): string {
+function manilaTodayYmd(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: MANILA_TZ,
     year: "numeric",
@@ -88,7 +88,7 @@ export function sanitizeMaintenanceReminderTemplate(text: string): string {
   return text.replace(/\r\n/g, "\n").trim();
 }
 
-export function isMaintenanceReminderInterval(
+function isMaintenanceReminderInterval(
   v: unknown,
 ): v is MaintenanceReminderInterval {
   return (
@@ -141,7 +141,7 @@ export async function ensureMaintenanceSettingsRow(): Promise<void> {
   });
 }
 
-export function effectiveDueDate(row: Record<string, unknown>): string {
+function effectiveDueDate(row: Record<string, unknown>): string {
   const due = row.telegram_due_date
     ? String(row.telegram_due_date).slice(0, 10)
     : String(row.scheduled_on).slice(0, 10);
@@ -155,7 +155,7 @@ function reminderSeriesKey(row: Record<string, unknown>): string {
 }
 
 /** One reminder per recurring series per cron tick — earliest in-window occurrence wins. */
-export function selectMaintenanceReminderRows(
+function selectMaintenanceReminderRows(
   rows: Record<string, unknown>[],
   now: Date,
   lastSentByItem: Map<string, string>,
@@ -203,7 +203,7 @@ export function selectMaintenanceReminderRows(
   return selected;
 }
 
-export function manilaDateTimeParts(now = new Date()): {
+function manilaDateTimeParts(now = new Date()): {
   date: string;
   hour: number;
   minute: number;
@@ -252,7 +252,7 @@ function isInReminderWindow(
 }
 
 /** @deprecated Use shouldSendMaintenanceReminderNow — kept for callers/tests. */
-export function shouldSendMaintenanceReminderToday(
+function shouldSendMaintenanceReminderToday(
   row: Record<string, unknown>,
   today: string,
   interval: MaintenanceReminderInterval,
@@ -267,7 +267,7 @@ export function shouldSendMaintenanceReminderToday(
   );
 }
 
-export function shouldSendMaintenanceReminderNow(
+function shouldSendMaintenanceReminderNow(
   row: Record<string, unknown>,
   now: Date,
   interval: MaintenanceReminderInterval,
@@ -290,7 +290,7 @@ export function shouldSendMaintenanceReminderNow(
   return ms - new Date(lastSentAt).getTime() >= minGap;
 }
 
-export function buildMaintenanceReminderPlaceholders(
+function buildMaintenanceReminderPlaceholders(
   row: Record<string, unknown>,
   today: string,
 ): Record<string, string> {
@@ -306,7 +306,7 @@ export function buildMaintenanceReminderPlaceholders(
   };
 }
 
-export function renderMaintenanceReminderMessage(
+function renderMaintenanceReminderMessage(
   row: Record<string, unknown>,
   template: string,
   today: string,

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  "workspaces": {
+    "packages": ["ui"]
+  },
+  "ignorePatterns": ["cli-develop/**"],
+  "duplicates": {
+    "minOccurrences": 3
+  },
+  "ignoreDependencies": [
+    "@typescript-eslint/eslint-plugin",
+    "@typescript-eslint/parser",
+    "eslint-plugin-react-hooks",
+    "eslint-plugin-react-refresh"
+  ],
+  "ignoreUnresolvedImports": ["pdfjs-dist/build/pdf.worker.min.mjs?url"],
+  "ignoreExports": [
+    { "file": "supabase/functions/_shared/statusMachine.ts", "exports": ["*"] },
+    { "file": "supabase/functions/_shared/types.ts", "exports": ["*"] },
+    { "file": "ui/src/components/ui/**", "exports": ["*"] },
+    {
+      "file": "ui/src/features/admin/components/bookingEditLayout.tsx",
+      "exports": ["*"]
+    },
+    { "file": "ui/src/features/admin/lib/bookingStatus.ts", "exports": ["*"] },
+    { "file": "ui/src/features/admin/lib/workflow.ts", "exports": ["*"] },
+    {
+      "file": "ui/src/features/admin/lib/bookingsListSort.ts",
+      "exports": ["*"]
+    },
+    { "file": "ui/src/features/finance/lib/financePeriod.ts", "exports": ["*"] }
+  ]
+}

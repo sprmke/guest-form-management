@@ -1,9 +1,9 @@
-export const THEME_STORAGE_KEY = 'kame-ui-theme';
+const THEME_STORAGE_KEY = 'kame-ui-theme';
 
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type ResolvedTheme = 'light' | 'dark';
 
-export function getSystemTheme(): ResolvedTheme {
+function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light';
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'

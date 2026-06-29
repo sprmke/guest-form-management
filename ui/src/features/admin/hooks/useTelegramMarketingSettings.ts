@@ -1,5 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient";
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -21,32 +21,32 @@ export type TelegramMarketingSettingsDto = {
   placeholdersReference: string[];
 };
 
-export type TelegramMarketingSettingsPatch = Partial<
+type TelegramMarketingSettingsPatch = Partial<
   Pick<
     TelegramMarketingSettingsDto,
-    | 'enabled'
-    | 'notifyOnNewBooking'
-    | 'notifyOnCancellation'
-    | 'urgencyDaysThreshold'
-    | 'newBookingDatesLimit'
-    | 'dailyReminderTimesManila'
-    | 'dailyDefaultTemplate'
-    | 'dailyUrgencyTemplate'
-    | 'newBookingTemplate'
-    | 'cancellationTemplate'
+    | "enabled"
+    | "notifyOnNewBooking"
+    | "notifyOnCancellation"
+    | "urgencyDaysThreshold"
+    | "newBookingDatesLimit"
+    | "dailyReminderTimesManila"
+    | "dailyDefaultTemplate"
+    | "dailyUrgencyTemplate"
+    | "newBookingTemplate"
+    | "cancellationTemplate"
   >
 >;
 
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error('No active session — please sign in');
+  if (!token) throw new Error("No active session — please sign in");
   return token;
 }
 
 export function useTelegramMarketingSettings() {
   return useQuery({
-    queryKey: ['telegram-marketing-settings'],
+    queryKey: ["telegram-marketing-settings"],
     queryFn: async (): Promise<TelegramMarketingSettingsDto> => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-marketing-settings`, {
@@ -58,16 +58,14 @@ export function useTelegramMarketingSettings() {
         data?: TelegramMarketingSettingsDto;
       };
       if (!json.success || !json.data) {
-        throw new Error(json.error ?? 'Failed to load Telegram settings');
+        throw new Error(json.error ?? "Failed to load Telegram settings");
       }
       return json.data;
     },
   });
 }
 
-export type TelegramMarketingTestAction =
-  | 'verify_telegram_env'
-  | 'send_draft_preview';
+type TelegramMarketingTestAction = "verify_telegram_env" | "send_draft_preview";
 
 export type TelegramEnvVerifyDto = {
   credentials: {
@@ -80,10 +78,16 @@ export type TelegramEnvVerifyDto = {
     normalizedStartsWithAsciiMinus?: boolean;
   };
   getMe: { ok: boolean; username?: string; error?: string };
-  getChat: { ok: boolean; type?: string; title?: string; username?: string; error?: string };
+  getChat: {
+    ok: boolean;
+    type?: string;
+    title?: string;
+    username?: string;
+    error?: string;
+  };
 };
 
-export type TelegramMarketingTestPayload = {
+type TelegramMarketingTestPayload = {
   action: TelegramMarketingTestAction;
   text?: string;
   checkInYmd?: string;
@@ -95,10 +99,10 @@ export function useTelegramMarketingTestSend() {
     mutationFn: async (payload: TelegramMarketingTestPayload) => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-marketing-settings`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -119,7 +123,7 @@ export function useTelegramMarketingTestSend() {
   });
 }
 
-export type TelegramCronSyncResult = {
+type TelegramCronSyncResult = {
   ok?: boolean;
   error?: string;
   scheduled?: number;
@@ -136,10 +140,10 @@ export function useUpdateTelegramMarketingSettings() {
     }> => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-marketing-settings`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(patch),
       });
@@ -150,12 +154,12 @@ export function useUpdateTelegramMarketingSettings() {
         cronSync?: TelegramCronSyncResult;
       };
       if (!json.success || !json.data) {
-        throw new Error(json.error ?? 'Failed to save');
+        throw new Error(json.error ?? "Failed to save");
       }
       return { data: json.data, cronSync: json.cronSync };
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['telegram-marketing-settings'] });
+      await qc.invalidateQueries({ queryKey: ["telegram-marketing-settings"] });
     },
   });
 }

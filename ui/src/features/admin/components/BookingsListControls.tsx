@@ -1,35 +1,24 @@
-import { BookingsSortMenu } from '@/features/admin/components/BookingsSortMenu';
+import { BookingsSortMenu } from "@/features/admin/components/BookingsSortMenu";
 import {
   BookingViewToggle,
   type BookingView,
-} from '@/features/admin/components/BookingViewToggle';
+} from "@/features/admin/components/BookingViewToggle";
 import {
-  ADMIN_PAGE_SIZES,
   AdminListPagination,
   AdminListPerPageSelect,
   AdminListSummary,
-  buildPageItems,
-  type PageItem,
-} from '@/features/admin/components/AdminListToolbar';
-import type { BookingsSort } from '@/features/admin/lib/types';
+} from "@/features/admin/components/AdminListToolbar";
+import type { BookingsSort } from "@/features/admin/lib/types";
 
-import type { ComponentProps } from 'react';
-
-export {
-  ADMIN_PAGE_SIZES as PAGE_SIZES,
-  buildPageItems,
-  type PageItem,
-};
+import type { ComponentProps } from "react";
 
 type BookingsPaginationProps = Omit<
   ComponentProps<typeof AdminListPagination>,
-  'ariaLabel'
+  "ariaLabel"
 >;
 
 export function BookingsListPagination(props: BookingsPaginationProps) {
-  return (
-    <AdminListPagination ariaLabel="Bookings pagination" {...props} />
-  );
+  return <AdminListPagination ariaLabel="Bookings pagination" {...props} />;
 }
 
 type SummaryProps = {
@@ -52,24 +41,24 @@ export function BookingsListSummary({
   rowsLength,
   view,
 }: SummaryProps) {
-  if (view === 'calendar') {
+  if (view === "calendar") {
     return (
       <p className="text-meta min-h-[20px]">
         {isLoading ? (
           <span className="inline-block h-3 w-28 animate-pulse rounded-full bg-muted" />
         ) : total === 0 ? (
-          'No bookings found'
+          "No bookings found"
         ) : (
           <>
             <span className="font-bold text-foreground">
               {rowsLength.toLocaleString()}
             </span>
             <span className="ml-1.5 text-muted-foreground">
-              {rowsLength === 1 ? 'booking' : 'bookings'} in view
+              {rowsLength === 1 ? "booking" : "bookings"} in view
             </span>
             {total > rowsLength && (
               <span className="ml-1.5 text-muted-foreground/50">
-                {' '}
+                {" "}
                 of {total.toLocaleString()}
               </span>
             )}
@@ -87,7 +76,7 @@ export function BookingsListSummary({
       total={total}
       startIdx={startIdx}
       endIdx={endIdx}
-      entityLabel={total === 1 ? 'booking' : 'bookings'}
+      entityLabel={total === 1 ? "booking" : "bookings"}
       isLoading={isLoading}
       isFetching={isFetching}
       emptyLabel="No bookings found"
@@ -130,7 +119,7 @@ export function BookingsListControls({
           hideTableView={hideTableView}
         />
 
-        {showPerPage && view !== 'calendar' && (
+        {showPerPage && view !== "calendar" && (
           <AdminListPerPageSelect limit={limit} onChange={onLimitChange} />
         )}
       </div>

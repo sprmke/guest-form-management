@@ -4,7 +4,7 @@
 
 import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 
-export type SdSettlementLineItem = { label: string; amount: number };
+type SdSettlementLineItem = { label: string; amount: number };
 
 export type BookingFinancials = {
   /** Down payment + guest balance. */
@@ -84,7 +84,7 @@ function includeSdSettlementInOperatingNet(
 }
 
 /** Host net excluding SD pass-through; SD settlement only when COMPLETED. */
-export function computeOperatingHostNet(
+function computeOperatingHostNet(
   booking: Record<string, unknown>,
 ): number {
   const down = num(booking.down_payment);
@@ -157,7 +157,7 @@ function parseSdNumberArray(arr: unknown): number[] {
   return arr.map((x) => num(x));
 }
 
-export function buildSdExpenseProfitRows(booking: Record<string, unknown>): {
+function buildSdExpenseProfitRows(booking: Record<string, unknown>): {
   expenses: SdSettlementLineItem[];
   profits: SdSettlementLineItem[];
 } {

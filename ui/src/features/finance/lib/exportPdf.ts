@@ -587,7 +587,7 @@ export type FinancePdfPayload = {
   operating: FinanceLineItem[];
 };
 
-export async function buildFinanceReportPdf(
+async function buildFinanceReportPdf(
   payload: FinancePdfPayload,
   type: FinanceExportType = 'combined',
 ): Promise<jsPDF> {

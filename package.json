@@ -32,7 +32,5 @@
     "@supabase/supabase-js": "^2.49.1",
     "concurrently": "^8.2.2"
   },
-  "dependencies": {
-    "@remix-run/router": "^1.23.0"
-  }
+  "dependencies": {}
 }

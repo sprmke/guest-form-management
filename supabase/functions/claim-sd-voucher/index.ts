@@ -10,80 +10,55 @@
  * Status guard: only available while the booking is `READY_FOR_CHECKOUT`.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-import { DatabaseService } from '../_shared/databaseService.ts';
-import { rollVoucher } from '../_shared/voucher.ts';
-import type { VoucherCode } from '../_shared/voucher.ts';
+import { DatabaseService } from "../_shared/databaseService.ts";
+import { rollVoucher } from "../_shared/voucher.ts";
+import type { VoucherCode } from "../_shared/voucher.ts";
+import {
+  jsonResponse,
+  jsonSuccess,
+  readJsonBody,
+  requireHttpMethod,
+} from "../_shared/httpResponse.ts";
+import { servePublic } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
-  }
+servePublic("claim-sd-voucher", async (req) => {
+  requireHttpMethod(req, "POST");
+  const body = await readJsonBody(req);
+  const bookingId = (
+    typeof body.bookingId === "string" ? body.bookingId : ""
+  ).trim();
+  if (!bookingId) throw new Error("bookingId is required");
 
-  try {
-    if (req.method !== 'POST') {
-      throw new Error(`Method ${req.method} not allowed`);
-    }
-
-    const body = (await req.json().catch(() => null)) as {
-      bookingId?: string;
-    } | null;
-
-    const bookingId = (body?.bookingId ?? '').trim();
-    if (!bookingId) throw new Error('bookingId is required');
-
-    const row = await DatabaseService.getBookingById(bookingId);
-    if (!row || row.status !== 'READY_FOR_CHECKOUT') {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'not_available',
-          message: 'This form is no longer available for this booking.',
-        }),
-        {
-          status: 409,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        },
-      );
-    }
-
-    let code = (row.next_stay_voucher_code ?? null) as VoucherCode | null;
-    let amount =
-      row.next_stay_voucher_amount != null
-        ? Number(row.next_stay_voucher_amount)
-        : null;
-    let alreadyAwarded = !!code;
-
-    if (!code) {
-      const rolled = rollVoucher();
-      code = rolled.code;
-      amount = rolled.amount;
-      await DatabaseService.setWorkflowFields(bookingId, {
-        next_stay_voucher_code: code,
-        next_stay_voucher_amount: amount,
-        next_stay_voucher_awarded_at: new Date().toISOString(),
-      });
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        data: { code, amount, alreadyAwarded },
-      }),
+  const row = await DatabaseService.getBookingById(bookingId);
+  if (!row || row.status !== "READY_FOR_CHECKOUT") {
+    return jsonResponse(
+      req,
       {
-        status: 200,
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+        success: false,
+        error: "not_available",
+        message: "This form is no longer available for this booking.",
       },
-    );
-  } catch (error) {
-    console.error('[claim-sd-voucher]', error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      {
-        status: 400,
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      },
+      409,
     );
   }
+
+  let code = (row.next_stay_voucher_code ?? null) as VoucherCode | null;
+  let amount =
+    row.next_stay_voucher_amount != null
+      ? Number(row.next_stay_voucher_amount)
+      : null;
+  const alreadyAwarded = !!code;
+
+  if (!code) {
+    const rolled = rollVoucher();
+    code = rolled.code;
+    amount = rolled.amount;
+    await DatabaseService.setWorkflowFields(bookingId, {
+      next_stay_voucher_code: code,
+      next_stay_voucher_amount: amount,
+      next_stay_voucher_awarded_at: new Date().toISOString(),
+    });
+  }
+
+  return jsonSuccess(req, { code, amount, alreadyAwarded });
 });

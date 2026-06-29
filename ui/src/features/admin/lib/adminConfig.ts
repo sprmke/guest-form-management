@@ -5,7 +5,7 @@
 const RAW_ALLOWED = (import.meta.env.VITE_ADMIN_ALLOWED_EMAILS as string | undefined) ?? '';
 
 /** Comma-separated → lowercased, trimmed, deduped. */
-export const ADMIN_ALLOWED_EMAILS: ReadonlyArray<string> = Array.from(
+const ADMIN_ALLOWED_EMAILS: ReadonlyArray<string> = Array.from(
   new Set(
     RAW_ALLOWED.split(',')
       .map((e) => e.trim().toLowerCase())

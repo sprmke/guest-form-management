@@ -2,10 +2,10 @@ import { PDFDocument } from 'pdf-lib';
 import { gafDetailsToPdfFormFields, type GafDetailsValues } from '@/lib/gafDefaults';
 import { applyGafOwnerSignatureBlock } from '@/features/admin/lib/gafPdfSignature';
 
-export const GAF_PDF_TEMPLATE_URL = '/templates/guest-form-template.pdf';
+const GAF_PDF_TEMPLATE_URL = '/templates/guest-form-template.pdf';
 
 /** Sample guest-submitted values so admins can see where booking data lands on the GAF. */
-export const GAF_PREVIEW_SAMPLE_GUEST_FIELDS: Record<string, string> = {
+const GAF_PREVIEW_SAMPLE_GUEST_FIELDS: Record<string, string> = {
   primaryGuestName: 'Juan Dela Cruz',
   guestEmail: 'guest@example.com',
   guestPhoneNumber: '0917 123 4567',
@@ -40,7 +40,7 @@ async function loadTemplateBytes(): Promise<Uint8Array> {
   return templateBytesCache;
 }
 
-export function buildGafPreviewFieldMappings(
+function buildGafPreviewFieldMappings(
   details: GafDetailsValues,
 ): Record<string, string> {
   return {

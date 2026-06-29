@@ -1,5 +1,5 @@
 /** Thrown when Gmail OAuth refresh fails (invalid_grant / revoked token). */
-export class GmailNeedsReconnectError extends Error {
+class GmailNeedsReconnectError extends Error {
   readonly needsReAuth = true;
 
   constructor(message?: string) {

@@ -23,7 +23,7 @@ export interface Voucher {
   amount: number;
 }
 
-export const VOUCHER_CATALOG: ReadonlyArray<Voucher> = [
+const VOUCHER_CATALOG: ReadonlyArray<Voucher> = [
   { code: 'KAME-50', amount: 50 },
   { code: 'KAME-100', amount: 100 },
   { code: 'KAME-150', amount: 150 },
@@ -43,7 +43,7 @@ const VOUCHER_BY_CODE = new Map<VoucherCode, Voucher>(
 );
 
 /** Codes the server can award — mirror `supabase/functions/_shared/voucher.ts`. */
-export const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
+const VOUCHER_WIN_POOL: ReadonlyArray<VoucherCode> = [
   'KAME-100',
   'KAME-150',
   'KAME-200',
@@ -80,7 +80,7 @@ export function formatVoucherPrizeLabel(v: Pick<Voucher, 'code' | 'amount'>): st
   return `₱${v.amount.toLocaleString('en-PH')}`;
 }
 
-export function voucherPrizeRank(v: Pick<Voucher, 'code' | 'amount'>): number {
+function voucherPrizeRank(v: Pick<Voucher, 'code' | 'amount'>): number {
   if (isStaycationVoucher(v)) return 10_000;
   return v.amount;
 }

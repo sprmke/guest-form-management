@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 // The rest of the UI calls Edge Functions via VITE_SUPABASE_URL (which already
 // contains the `/functions/v1` suffix). The Supabase JS client needs the bare
@@ -6,21 +6,25 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 // derive it by stripping the functions suffix. This way admins don't have to
 // duplicate a value that's already in the env.
 function resolveProjectUrl(): string {
-  const explicit = import.meta.env.VITE_SUPABASE_PROJECT_URL as string | undefined;
-  if (explicit && explicit.trim()) return explicit.trim().replace(/\/+$/, '');
+  const explicit = import.meta.env.VITE_SUPABASE_PROJECT_URL as
+    | string
+    | undefined;
+  if (explicit && explicit.trim()) return explicit.trim().replace(/\/+$/, "");
 
-  const functionsUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '';
-  return functionsUrl.replace(/\/functions\/v1\/?$/, '').replace(/\/+$/, '');
+  const functionsUrl =
+    (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+  return functionsUrl.replace(/\/functions\/v1\/?$/, "").replace(/\/+$/, "");
 }
 
 const projectUrl = resolveProjectUrl();
-const anonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? '';
+const anonKey =
+  (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) ?? "";
 
 if (!projectUrl || !anonKey) {
   // eslint-disable-next-line no-console
   console.warn(
-    '[supabaseClient] Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. ' +
-      'Admin features (/sign-in, /bookings) will not work until these are set.',
+    "[supabaseClient] Missing VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY. " +
+      "Admin features (/sign-in, /bookings) will not work until these are set.",
   );
 }
 
@@ -33,8 +37,6 @@ export const supabase: SupabaseClient = createClient(projectUrl, anonKey, {
     detectSessionInUrl: true,
     // The OAuth callback lands back in the SPA; React Router handles routing
     // from there, but Supabase needs to read the hash fragment first.
-    flowType: 'implicit',
+    flowType: "implicit",
   },
 });
-
-export const supabaseProjectUrl = projectUrl;

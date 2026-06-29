@@ -9,43 +9,42 @@
  * Plan: docs/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import {
-  Copy,
   ExternalLink,
   FileImage,
   Loader2,
   Plus,
   Trash2,
   Upload,
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { formatMoney } from '@/features/admin/lib/formatters';
+} from "lucide-react";
+import { toast } from "sonner";
+import { formatMoney } from "@/features/admin/lib/formatters";
 import type {
   BookingRow,
   SdSettlementLineItem,
-} from '@/features/admin/lib/types';
-import { useUploadBookingAsset } from '@/features/admin/hooks/useUploadBookingAsset';
-import { useClearBookingAsset } from '@/features/admin/hooks/useClearBookingAsset';
-import { WorkflowAssetPreviewWithRemove } from '@/features/admin/components/WorkflowAssetPreviewWithRemove';
+} from "@/features/admin/lib/types";
+import { useUploadBookingAsset } from "@/features/admin/hooks/useUploadBookingAsset";
+import { useClearBookingAsset } from "@/features/admin/hooks/useClearBookingAsset";
+import { WorkflowAssetPreviewWithRemove } from "@/features/admin/components/WorkflowAssetPreviewWithRemove";
 import {
   WorkflowFormShell,
   workflowFormEditTitle,
   type WorkflowFormVariant,
-} from '@/features/admin/components/WorkflowFormShell';
-import { GuestSdRefundDetailsSection } from '@/features/admin/components/GuestSdRefundDetailsSection';
+} from "@/features/admin/components/WorkflowFormShell";
+import { GuestSdRefundDetailsSection } from "@/features/admin/components/GuestSdRefundDetailsSection";
 import {
   workflowAssetPreviewCard,
   workflowAssetViewLink,
   workflowUploadButtonClass,
-} from '@/features/admin/lib/workflowActionButtonStyles';
-import { cn } from '@/lib/utils';
+} from "@/features/admin/lib/workflowActionButtonStyles";
+import { cn } from "@/lib/utils";
 
 function parseNumberArray(raw: unknown): number[] {
   if (Array.isArray(raw)) {
     return raw.map((v) => Number(v)).filter((n) => !Number.isNaN(n));
   }
-  if (typeof raw === 'string' && raw.trim()) {
+  if (typeof raw === "string" && raw.trim()) {
     try {
       const parsed = JSON.parse(raw) as unknown;
       return Array.isArray(parsed)
@@ -62,7 +61,7 @@ function parseLineItemsFromBooking(
   raw: unknown,
 ): SdSettlementLineItem[] | null {
   let arr: unknown = raw;
-  if (typeof raw === 'string' && raw.trim()) {
+  if (typeof raw === "string" && raw.trim()) {
     try {
       arr = JSON.parse(raw) as unknown;
     } catch {
@@ -71,11 +70,11 @@ function parseLineItemsFromBooking(
   }
   if (!Array.isArray(arr) || arr.length === 0) return null;
   return arr.map((row) => {
-    if (typeof row !== 'object' || row === null) {
-      return { label: '', amount: 0 };
+    if (typeof row !== "object" || row === null) {
+      return { label: "", amount: 0 };
     }
     const r = row as Record<string, unknown>;
-    const label = typeof r.label === 'string' ? r.label : '';
+    const label = typeof r.label === "string" ? r.label : "";
     const n = Number(r.amount);
     return {
       label,
@@ -96,13 +95,13 @@ function buildInitialLineItems(booking: BookingRow): {
   );
   const expFallback = parseNumberArray(booking.sd_additional_expenses).map(
     (amount) => ({
-      label: '',
+      label: "",
       amount,
     }),
   );
   const profFallback = parseNumberArray(booking.sd_additional_profits).map(
     (amount) => ({
-      label: '',
+      label: "",
       amount,
     }),
   );
@@ -124,50 +123,21 @@ function buildSdInitialState(
     return {
       expenseItems: draft.sd_additional_expense_items.map((r) => ({ ...r })),
       profitItems: draft.sd_additional_profit_items.map((r) => ({ ...r })),
-      receiptUrl: draft.sd_refund_receipt_url ?? '',
+      receiptUrl: draft.sd_refund_receipt_url ?? "",
     };
   }
   const built = buildInitialLineItems(booking);
   return {
     expenseItems: built.expenses,
     profitItems: built.profits,
-    receiptUrl: booking.sd_refund_receipt_url ?? '',
+    receiptUrl: booking.sd_refund_receipt_url ?? "",
   };
 }
 
 /** Digits only — used for `gcash://` deep links. */
 function phoneDigitsOnly(raw: string | null | undefined): string {
-  if (!raw?.trim()) return '';
-  return raw.replace(/\D/g, '');
-}
-
-/** 18×18px icon-only copy control, inline after value text. */
-export function InlineCopyIconButton({
-  'aria-label': ariaLabel,
-  disabled,
-  onClick,
-}: {
-  'aria-label': string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'relative top-px inline-flex shrink-0 items-center justify-center rounded border p-0 align-middle transition-colors ml-1',
-        disabled
-          ? 'cursor-not-allowed border-border bg-muted/50 text-muted-foreground/50'
-          : 'border-blue-200/80 bg-blue-50/90 text-blue-700 hover:bg-blue-100 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-400 dark:hover:bg-blue-500/20',
-      )}
-      style={{ width: 18, height: 18, padding: 0 }}
-      aria-label={ariaLabel}
-    >
-      <Copy className="size-2.5 shrink-0" aria-hidden />
-    </button>
-  );
+  if (!raw?.trim()) return "";
+  return raw.replace(/\D/g, "");
 }
 
 export type SdRefundValues = {
@@ -196,7 +166,7 @@ export function SdRefundForm({
   onChange,
   readOnly = false,
   editMode = false,
-  variant = 'workflow',
+  variant = "workflow",
   showGuestDetails = true,
 }: Props) {
   const uploadMut = useUploadBookingAsset();
@@ -220,7 +190,7 @@ export function SdRefundForm({
   const rawBase = Number(booking.security_deposit);
   const baseSd =
     booking.security_deposit == null ||
-    booking.security_deposit === '' ||
+    booking.security_deposit === "" ||
     Number.isNaN(rawBase)
       ? SD_DEFAULT
       : rawBase;
@@ -242,22 +212,22 @@ export function SdRefundForm({
   );
   /** GCash app send link: on-file phone (same_phone) or guest-submitted GCash number (other_bank + GCash). */
   const gcashDestinationDigits =
-    guestMethod === 'same_phone'
+    guestMethod === "same_phone"
       ? phoneDigits
-      : guestMethod === 'other_bank' && booking.sd_refund_bank === 'GCash'
+      : guestMethod === "other_bank" && booking.sd_refund_bank === "GCash"
         ? otherBankGcashDigits
-        : '';
+        : "";
   const refundAmountForGcash =
     netSD > 0 && Number.isFinite(netSD)
       ? (Math.round(netSD * 100) / 100).toFixed(2)
-      : '';
+      : "";
   const gcashSendHref =
     gcashDestinationDigits.length >= 10 && refundAmountForGcash
       ? `gcash://send?mobile=${gcashDestinationDigits}&amount=${refundAmountForGcash}`
       : null;
 
   useEffect(() => {
-    setReceiptUrl(booking.sd_refund_receipt_url?.trim() ?? '');
+    setReceiptUrl(booking.sd_refund_receipt_url?.trim() ?? "");
   }, [booking.sd_refund_receipt_url]);
 
   useEffect(() => {
@@ -282,41 +252,41 @@ export function SdRefundForm({
     try {
       const result = await uploadMut.mutateAsync({
         bookingId: booking.id,
-        assetType: 'sd_refund_receipt',
+        assetType: "sd_refund_receipt",
         file,
       });
       setReceiptUrl(result.url);
-      toast.success('Refund receipt uploaded');
+      toast.success("Refund receipt uploaded");
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to upload refund receipt',
+        err instanceof Error ? err.message : "Failed to upload refund receipt",
       );
     } finally {
-      if (receiptFileRef.current) receiptFileRef.current.value = '';
+      if (receiptFileRef.current) receiptFileRef.current.value = "";
     }
   }
 
   async function handleRemoveReceipt() {
-    setReceiptUrl('');
-    if (receiptFileRef.current) receiptFileRef.current.value = '';
+    setReceiptUrl("");
+    if (receiptFileRef.current) receiptFileRef.current.value = "";
     if (readOnly) return;
     try {
       await clearAssetMut.mutateAsync({
         bookingId: booking.id,
-        assetType: 'sd_refund_receipt',
+        assetType: "sd_refund_receipt",
       });
     } catch (err: unknown) {
       toast.error(
-        err instanceof Error ? err.message : 'Failed to remove refund receipt',
+        err instanceof Error ? err.message : "Failed to remove refund receipt",
       );
     }
   }
 
   function addExpense() {
-    setExpenseItems((prev) => [...prev, { label: '', amount: 0 }]);
+    setExpenseItems((prev) => [...prev, { label: "", amount: 0 }]);
   }
   function addProfit() {
-    setProfitItems((prev) => [...prev, { label: '', amount: 0 }]);
+    setProfitItems((prev) => [...prev, { label: "", amount: 0 }]);
   }
   function removeExpense(i: number) {
     setExpenseItems((prev) => prev.filter((_, idx) => idx !== i));
@@ -336,9 +306,9 @@ export function SdRefundForm({
   }
 
   const cardTitle =
-    variant === 'edit'
-      ? workflowFormEditTitle('SD settlement')
-      : 'Security deposit settlement';
+    variant === "edit"
+      ? workflowFormEditTitle("SD settlement")
+      : "Security deposit settlement";
 
   return (
     <WorkflowFormShell
@@ -382,17 +352,17 @@ export function SdRefundForm({
       <div className="space-y-2">
         <div className="space-y-1">
           <label className="block text-xs text-muted-foreground">
-            Actual Refund Amount{' '}
+            Actual Refund Amount{" "}
             <span className="font-normal text-muted-foreground">
               (base + expenses − profits)
             </span>
           </label>
           <div
             className={cn(
-              'flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm',
+              "flex h-10 w-full items-center justify-between rounded-md border px-3 text-sm",
               netSD < 0
-                ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300'
-                : 'border-border bg-muted/50 text-foreground',
+                ? "border-red-300 bg-red-50 text-red-700 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-300"
+                : "border-border bg-muted/50 text-foreground",
             )}
             aria-readonly="true"
           >
@@ -488,8 +458,8 @@ export function SdRefundForm({
                   <>
                     <Upload className="size-3.5 shrink-0" />
                     {receiptUrl
-                      ? 'Replace receipt image'
-                      : 'Upload receipt image'}
+                      ? "Replace receipt image"
+                      : "Upload receipt image"}
                   </>
                 )}
               </button>
@@ -513,7 +483,7 @@ function LineListSection({
   readOnly = false,
 }: {
   label: string;
-  sign: '+' | '-';
+  sign: "+" | "-";
   items: SdSettlementLineItem[];
   onAdd: () => void;
   onRemove: (i: number) => void;
@@ -545,7 +515,7 @@ function LineListSection({
           className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-1.5"
         >
           <span
-            className={`hidden shrink-0 text-xs font-bold sm:inline sm:w-3 ${sign === '+' ? 'text-emerald-600' : 'text-red-600'}`}
+            className={`hidden shrink-0 text-xs font-bold sm:inline sm:w-3 ${sign === "+" ? "text-emerald-600" : "text-red-600"}`}
           >
             {sign}
           </span>
@@ -556,13 +526,13 @@ function LineListSection({
             placeholder={labelPlaceholder}
             readOnly={readOnly}
             className={cn(
-              'h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40',
-              readOnly && 'cursor-default bg-muted/40 text-foreground',
+              "h-9 min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40",
+              readOnly && "cursor-default bg-muted/40 text-foreground",
             )}
           />
           <div className="flex items-center gap-1.5">
             <span
-              className={`shrink-0 text-xs font-bold sm:hidden ${sign === '+' ? 'text-emerald-600' : 'text-red-600'}`}
+              className={`shrink-0 text-xs font-bold sm:hidden ${sign === "+" ? "text-emerald-600" : "text-red-600"}`}
             >
               {sign}
             </span>
@@ -575,8 +545,8 @@ function LineListSection({
               placeholder={amountPlaceholder}
               readOnly={readOnly}
               className={cn(
-                'h-9 w-full min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]',
-                readOnly && 'cursor-default bg-muted/40 text-foreground',
+                "h-9 w-full min-w-0 flex-1 rounded-md border border-border bg-card px-2 py-1 text-[13px] leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:w-24 sm:flex-none sm:min-w-[5.5rem]",
+                readOnly && "cursor-default bg-muted/40 text-foreground",
               )}
             />
             {!readOnly ? (

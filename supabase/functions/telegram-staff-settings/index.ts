@@ -1,12 +1,8 @@
 /**
  * telegram-staff-settings — Admin GET/PATCH/POST for staff Telegram config.
- * POST `action` = manual tests (verifyAdminJwt). Auth: verifyAdminJwt
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
-import { DatabaseService } from '../_shared/databaseService.ts';
+import { DatabaseService } from "../_shared/databaseService.ts";
 import {
   ensureStaffSettingsRow,
   renderStaffDraftPreview,
@@ -19,198 +15,153 @@ import {
   serializeStaffSettings,
   verifyStaffTelegramEnv,
   type TelegramStaffSettings,
-} from '../_shared/telegramStaff.ts';
+} from "../_shared/telegramStaff.ts";
+import {
+  handleTelegramRenderDraftPreview,
+  handleTelegramSendDraftPreview,
+  parseAction,
+  telegramPatchNoFields,
+  telegramPatchSuccessResponse,
+  telegramSettingsGetResponse,
+  telegramUnknownAction,
+  telegramVerifyResponse,
+} from "../_shared/telegramSettingsHttp.ts";
+import { jsonError, readJsonBody } from "../_shared/httpResponse.ts";
+import { serveAdmin } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
+function staffDraftByScenario<T>(
+  scenario: string,
+  text: string,
+  handlers: {
+    sameDayCheckin: (text: string) => Promise<T>;
+    noBookings: (text: string) => Promise<T>;
+    default: (text: string) => Promise<T>;
+  },
+): Promise<T> {
+  if (scenario === "same_day_checkin") return handlers.sameDayCheckin(text);
+  if (scenario === "daily_summary_no_bookings")
+    return handlers.noBookings(text);
+  return handlers.default(text);
+}
+
+serveAdmin("telegram-staff-settings", async (req) => {
+  if (req.method === "GET") {
+    return telegramSettingsGetResponse(
+      req,
+      ensureStaffSettingsRow,
+      () => DatabaseService.getTelegramStaffSettings(),
+      (row) => serializeStaffSettings(row as unknown as TelegramStaffSettings),
+    );
   }
 
-  try {
-    await verifyAdminJwt(req);
+  if (req.method === "PATCH") {
+    const body = await readJsonBody(req);
+    const patch: Record<string, unknown> = {};
+    let slotParsed: { hour: number; minute: number } | undefined;
 
-    if (req.method === 'GET') {
-      await ensureStaffSettingsRow();
-      const row = await DatabaseService.getTelegramStaffSettings();
-      if (!row) {
-        return new Response(JSON.stringify({ success: false, error: 'Settings row missing' }), {
-          status: 500,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response(
-        JSON.stringify({ success: true, data: serializeStaffSettings(row as unknown as TelegramStaffSettings) }),
-        { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+    if (typeof body.enabled === "boolean") patch.enabled = body.enabled;
+    if (typeof body.notifyOnSameDayCheckin === "boolean") {
+      patch.notify_on_same_day_checkin = body.notifyOnSameDayCheckin;
+    }
+
+    if (typeof body.dailySummaryTemplate === "string") {
+      patch.daily_summary_template = sanitizeStaffDailySummaryTemplate(
+        body.dailySummaryTemplate.slice(0, 8000),
       );
     }
 
-    if (req.method === 'PATCH') {
-      const body = await req.json().catch(() => ({}));
-      const patch: Record<string, unknown> = {};
-      let slotParsed: { hour: number; minute: number } | undefined;
-
-      if (typeof body.enabled === 'boolean') patch.enabled = body.enabled;
-      if (typeof body.notifyOnSameDayCheckin === 'boolean') {
-        patch.notify_on_same_day_checkin = body.notifyOnSameDayCheckin;
-      }
-
-      if (typeof body.dailySummaryTemplate === 'string') {
-        patch.daily_summary_template = sanitizeStaffDailySummaryTemplate(
-          body.dailySummaryTemplate.slice(0, 8000),
-        );
-      }
-
-      if (typeof body.dailySummaryNoBookingsTemplate === 'string') {
-        patch.daily_summary_no_bookings_template = sanitizeStaffDailySummaryTemplate(
+    if (typeof body.dailySummaryNoBookingsTemplate === "string") {
+      patch.daily_summary_no_bookings_template =
+        sanitizeStaffDailySummaryTemplate(
           body.dailySummaryNoBookingsTemplate.slice(0, 8000),
         );
-      }
+    }
 
-      if (typeof body.sameDayCheckinTemplate === 'string') {
-        patch.same_day_checkin_template = sanitizeStaffDailySummaryTemplate(
-          body.sameDayCheckinTemplate.slice(0, 8000),
-        );
-      }
-
-      if (body.dailySummaryTimeManila !== undefined) {
-        const s = body.dailySummaryTimeManila;
-        if (s && typeof s === 'object' && typeof s.hour === 'number' && typeof s.minute === 'number') {
-          const h = Math.max(0, Math.min(23, Math.round(s.hour)));
-          const m = Math.max(0, Math.min(59, Math.round(s.minute)));
-          slotParsed = { hour: h, minute: m };
-          patch.daily_summary_time_manila = slotParsed;
-        } else {
-          return new Response(JSON.stringify({ success: false, error: 'dailySummaryTimeManila must be { hour, minute }' }), {
-            status: 400,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          });
-        }
-      }
-
-      if (Object.keys(patch).length === 0) {
-        return new Response(JSON.stringify({ success: false, error: 'No valid fields to update' }), {
-          status: 400,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
-      const updated = await DatabaseService.updateTelegramStaffSettings(patch);
-      let cronSync: { ok?: boolean; error?: string; cronExpr?: string } | undefined;
-      if (slotParsed) {
-        cronSync = await DatabaseService.syncTelegramStaffDailyCronJob(slotParsed);
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: serializeStaffSettings(updated as unknown as TelegramStaffSettings),
-          ...(cronSync !== undefined ? { cronSync } : {}),
-        }),
-        { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+    if (typeof body.sameDayCheckinTemplate === "string") {
+      patch.same_day_checkin_template = sanitizeStaffDailySummaryTemplate(
+        body.sameDayCheckinTemplate.slice(0, 8000),
       );
     }
 
-    if (req.method === 'POST') {
-      await ensureStaffSettingsRow();
-      const body = await req.json().catch(() => ({}));
-      const action = typeof body.action === 'string' ? body.action : '';
-
-      if (action === 'verify_staff_telegram_env') {
-        const verify = await verifyStaffTelegramEnv();
-        return new Response(JSON.stringify({ success: true, verify }), {
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (action === 'send_draft_preview') {
-        const text = typeof body.text === 'string' ? body.text : '';
-        const scenario =
-          typeof body.scenario === 'string' ? body.scenario : 'daily_summary';
-        if (!text.trim()) {
-          return new Response(JSON.stringify({ success: false, error: 'text is required' }), {
-            status: 400,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          });
-        }
-        const preview =
-          scenario === 'same_day_checkin'
-            ? await sendStaffSameDayCheckinDraftPreview(text.slice(0, 8000))
-            : scenario === 'daily_summary_no_bookings'
-              ? await sendStaffNoBookingsDraftPreview(text.slice(0, 8000))
-              : await sendStaffDraftPreview(text.slice(0, 8000));
-        return new Response(
-          JSON.stringify({
-            success: preview.sent,
-            sent: preview.sent,
-            error: preview.error,
-            messageCharCount: preview.messageCharCount,
-            previewGuestName: preview.previewGuestName,
-            todayBookingCount: preview.todayBookingCount,
-          }),
-          {
-            status: preview.sent ? 200 : 400,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          },
+    if (body.dailySummaryTimeManila !== undefined) {
+      const s = body.dailySummaryTimeManila;
+      if (
+        s &&
+        typeof s === "object" &&
+        typeof s.hour === "number" &&
+        typeof s.minute === "number"
+      ) {
+        const h = Math.max(0, Math.min(23, Math.round(s.hour)));
+        const m = Math.max(0, Math.min(59, Math.round(s.minute)));
+        slotParsed = { hour: h, minute: m };
+        patch.daily_summary_time_manila = slotParsed;
+      } else {
+        return jsonError(
+          req,
+          "dailySummaryTimeManila must be { hour, minute }",
         );
       }
-
-      if (action === 'render_draft_preview') {
-        const text = typeof body.text === 'string' ? body.text : '';
-        const scenario =
-          typeof body.scenario === 'string' ? body.scenario : 'daily_summary';
-        if (!text.trim()) {
-          return new Response(JSON.stringify({ success: false, error: 'text is required' }), {
-            status: 400,
-            headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-          });
-        }
-        const rendered =
-          scenario === 'same_day_checkin'
-            ? await renderStaffSameDayCheckinDraftPreview(text.slice(0, 8000))
-            : scenario === 'daily_summary_no_bookings'
-              ? await renderStaffNoBookingsDraftPreview(text.slice(0, 8000))
-              : await renderStaffDraftPreview(text.slice(0, 8000));
-        if (rendered.error || !rendered.renderedText) {
-          return new Response(
-            JSON.stringify({ success: false, error: rendered.error ?? 'render_failed' }),
-            {
-              status: 400,
-              headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-            },
-          );
-        }
-        return new Response(
-          JSON.stringify({
-            success: true,
-            renderedText: rendered.renderedText,
-            placeholders: rendered.placeholders,
-            previewGuestName: rendered.previewGuestName,
-            todayBookingCount: rendered.todayBookingCount,
-          }),
-          { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-        );
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            `Unknown action: ${action || '(missing)'}. Use verify_staff_telegram_env | send_draft_preview | render_draft_preview`,
-        }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
     }
 
-    throw new Error(`Method ${req.method} not allowed`);
-  } catch (error) {
-    const status = error instanceof Response ? error.status : 400;
-    const message = error instanceof Response
-      ? await error.clone().json().then((b: { error?: string }) => b.error).catch(() => 'Error')
-      : (error as Error).message;
-    console.error('telegram-staff-settings:', error);
-    return new Response(JSON.stringify({ success: false, error: message }), {
-      status,
-      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-    });
+    if (Object.keys(patch).length === 0) {
+      return telegramPatchNoFields(req);
+    }
+
+    const updated = await DatabaseService.updateTelegramStaffSettings(patch);
+    const cronSync = slotParsed
+      ? await DatabaseService.syncTelegramStaffDailyCronJob(slotParsed)
+      : undefined;
+
+    return telegramPatchSuccessResponse(
+      req,
+      serializeStaffSettings(updated as unknown as TelegramStaffSettings),
+      cronSync,
+    );
   }
+
+  if (req.method === "POST") {
+    await ensureStaffSettingsRow();
+    const body = await readJsonBody(req);
+    const action = parseAction(body);
+
+    if (action === "verify_staff_telegram_env") {
+      return telegramVerifyResponse(req, await verifyStaffTelegramEnv());
+    }
+
+    if (action === "send_draft_preview") {
+      return handleTelegramSendDraftPreview(
+        req,
+        body,
+        (text, scenario) =>
+          staffDraftByScenario(scenario, text, {
+            sameDayCheckin: (t) => sendStaffSameDayCheckinDraftPreview(t),
+            noBookings: (t) => sendStaffNoBookingsDraftPreview(t),
+            default: (t) => sendStaffDraftPreview(t),
+          }),
+        { defaultScenario: "daily_summary" },
+      );
+    }
+
+    if (action === "render_draft_preview") {
+      return handleTelegramRenderDraftPreview(
+        req,
+        body,
+        (text, scenario) =>
+          staffDraftByScenario(scenario, text, {
+            sameDayCheckin: (t) => renderStaffSameDayCheckinDraftPreview(t),
+            noBookings: (t) => renderStaffNoBookingsDraftPreview(t),
+            default: (t) => renderStaffDraftPreview(t),
+          }),
+        { defaultScenario: "daily_summary" },
+      );
+    }
+
+    return telegramUnknownAction(
+      req,
+      action,
+      "Use verify_staff_telegram_env | send_draft_preview | render_draft_preview",
+    );
+  }
+
+  throw new Error(`Method ${req.method} not allowed`);
 });

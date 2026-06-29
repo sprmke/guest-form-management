@@ -1,7 +1,7 @@
-import { InlineCopyIconButton } from '@/features/admin/components/SdRefundForm';
-import { formatRelative } from '@/features/admin/lib/formatters';
-import type { BookingRow } from '@/features/admin/lib/types';
-import { cn } from '@/lib/utils';
+import { InlineCopyIconButton } from "@/features/admin/components/InlineCopyIconButton";
+import { formatRelative } from "@/features/admin/lib/formatters";
+import type { BookingRow } from "@/features/admin/lib/types";
+import { cn } from "@/lib/utils";
 
 type Props = {
   booking: BookingRow;
@@ -17,7 +17,7 @@ export function BookingMetaCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6',
+        "rounded-xl border border-border bg-card p-5 shadow-sm sm:p-6",
         className,
       )}
     >
@@ -26,7 +26,9 @@ export function BookingMetaCard({
       </p>
       <div className="space-y-1.5 text-xs">
         <div className="flex items-start justify-between gap-2">
-          <span className="shrink-0 text-[11px] text-muted-foreground">Booking ID</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">
+            Booking ID
+          </span>
           <span className="inline-flex max-w-full flex-wrap items-baseline justify-end gap-x-1 gap-y-0.5 text-right">
             <span className="font-mono text-[11px] text-muted-foreground break-all">
               {booking.id}
@@ -38,14 +40,18 @@ export function BookingMetaCard({
           </span>
         </div>
         <div className="flex items-start justify-between gap-2">
-          <span className="shrink-0 text-[11px] text-muted-foreground">Created</span>
+          <span className="shrink-0 text-[11px] text-muted-foreground">
+            Created
+          </span>
           <span className="text-right text-[11px] text-muted-foreground">
             {formatRelative(booking.created_at)}
           </span>
         </div>
         {booking.updated_at ? (
           <div className="flex items-start justify-between gap-2">
-            <span className="shrink-0 text-[11px] text-muted-foreground">Updated</span>
+            <span className="shrink-0 text-[11px] text-muted-foreground">
+              Updated
+            </span>
             <span className="text-right text-[11px] text-muted-foreground">
               {formatRelative(booking.updated_at)}
             </span>

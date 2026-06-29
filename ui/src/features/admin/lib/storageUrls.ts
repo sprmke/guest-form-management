@@ -70,7 +70,7 @@ export function parseStorageUrl(
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-export class StorageObjectNotFoundError extends Error {
+class StorageObjectNotFoundError extends Error {
   constructor() {
     super('Object not found');
     this.name = 'StorageObjectNotFoundError';

@@ -320,7 +320,7 @@ function addPageFooter(doc: jsPDF): void {
   }
 }
 
-export async function buildMaintenanceReportPdf(
+async function buildMaintenanceReportPdf(
   payload: MaintenancePdfPayload,
   type: MaintenanceExportType = "combined",
 ): Promise<jsPDF> {

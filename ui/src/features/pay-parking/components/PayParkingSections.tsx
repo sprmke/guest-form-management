@@ -81,7 +81,7 @@ export function PayParkingIntro({ data }: { data: PayParkingBootstrap }) {
   );
 }
 
-export function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
+function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
   const nights = data.number_of_parking_nights || 1;
   const ratePerNight = data.parking_rate_guest;
   const totalEstimate = ratePerNight * nights;
@@ -133,7 +133,7 @@ export function PayParkingLastMinuteWarning() {
   );
 }
 
-export function PayParkingNonRefundableNote() {
+function PayParkingNonRefundableNote() {
   return (
     <p
       className="flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm leading-relaxed text-amber-950/90"

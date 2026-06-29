@@ -9,16 +9,13 @@ function AdminSurfaceCard({
   ...props
 }: React.ComponentProps<"section">) {
   return (
-    <section
-      className={cn("w-full mb-3", className)}
-      {...props}
-    >
+    <section className={cn("w-full mb-3", className)} {...props}>
       {children}
     </section>
   );
 }
 
-export function AdminPageHeaderSkeleton({
+function AdminPageHeaderSkeleton({
   compact = false,
   card,
 }: {
@@ -49,11 +46,7 @@ export function AdminPageHeaderSkeleton({
     return content;
   }
 
-  return (
-    <section className="w-full mb-3">
-      {content}
-    </section>
-  );
+  return <section className="w-full mb-3">{content}</section>;
 }
 
 function CollapsibleSectionSkeleton({
@@ -157,7 +150,11 @@ function AdminFooterActionsSkeleton() {
 
 export function TelegramOperationsSettingsSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading operations settings">
+    <div
+      className="space-y-3 sm:space-y-4"
+      aria-busy="true"
+      aria-label="Loading operations settings"
+    >
       <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
         <CollapsibleSectionSkeleton>
@@ -188,7 +185,11 @@ export function TelegramOperationsSettingsSkeleton() {
 
 export function TelegramStaffSettingsSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading staff settings">
+    <div
+      className="space-y-3 sm:space-y-4"
+      aria-busy="true"
+      aria-label="Loading staff settings"
+    >
       <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
         <CollapsibleSectionSkeleton>
@@ -224,7 +225,11 @@ export function TelegramStaffSettingsSkeleton() {
 
 export function TelegramMarketingSettingsSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading marketing settings">
+    <div
+      className="space-y-3 sm:space-y-4"
+      aria-busy="true"
+      aria-label="Loading marketing settings"
+    >
       <AdminPageHeaderSkeleton compact />
       <div className="space-y-4">
         <CollapsibleSectionSkeleton>
@@ -280,7 +285,11 @@ export function TelegramMarketingSettingsSkeleton() {
 
 export function AppSettingsCardSkeleton() {
   return (
-    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading settings">
+    <div
+      className="space-y-3 sm:space-y-4"
+      aria-busy="true"
+      aria-label="Loading settings"
+    >
       <AdminPageHeaderSkeleton compact />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -507,11 +516,7 @@ export function BookingsCardGridSkeleton() {
   );
 }
 
-function FinanceKpiGridSkeleton({
-  count = 4,
-}: {
-  count?: number;
-}) {
+function FinanceKpiGridSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div
       className={cn(
@@ -546,23 +551,6 @@ export function FinanceOverviewSkeleton() {
         <Skeleton className="h-3 w-24" />
         <Skeleton className="h-3 w-full max-w-md" />
         <FinanceKpiGridSkeleton count={4} />
-      </div>
-    </div>
-  );
-}
-
-export function FinanceToolbarSkeleton() {
-  return (
-    <div
-      className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center"
-      aria-busy="true"
-      aria-label="Loading finance filters"
-    >
-      <Skeleton className="h-11 w-[min(100%,14rem)] rounded-xl" />
-      <Skeleton className="order-last h-11 w-full rounded-xl sm:order-none sm:max-w-xs sm:flex-1" />
-      <div className="flex gap-2 sm:ml-auto">
-        <Skeleton className="h-11 w-[10rem] rounded-xl" />
-        <Skeleton className="size-11 rounded-xl" />
       </div>
     </div>
   );
@@ -845,7 +833,10 @@ export function DashboardSkeleton() {
               <div className="shrink-0 border-t border-border/50 pt-2">
                 <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={`breakdown-legend-${i}`} className="h-4 w-full" />
+                    <Skeleton
+                      key={`breakdown-legend-${i}`}
+                      className="h-4 w-full"
+                    />
                   ))}
                 </div>
               </div>

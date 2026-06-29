@@ -31,7 +31,7 @@ export type ReceiptValidationResult = {
   provider?: 'gemini' | 'groq';
 };
 
-export const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL =
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
@@ -471,7 +471,7 @@ async function callGeminiVision(
   return aiModelFailure('AI validation temporarily unavailable', detail);
 }
 
-export async function validateReceiptImage(
+async function validateReceiptImage(
   imageBytes: Uint8Array,
   mimeType: string,
 ): Promise<ReceiptValidationResult> {
@@ -484,7 +484,7 @@ export async function validateReceiptImage(
   );
 }
 
-export async function validateValidIdImage(
+async function validateValidIdImage(
   imageBytes: Uint8Array,
   mimeType: string,
   path?: string,
@@ -572,7 +572,7 @@ async function validateDocumentFromStorageUrl(
 }
 
 /** Download a stored receipt image and run Gemini validation (admin backfill). */
-export async function validateReceiptFromStorageUrl(
+async function validateReceiptFromStorageUrl(
   url: string,
 ): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
@@ -584,7 +584,7 @@ export async function validateReceiptFromStorageUrl(
 }
 
 /** Download a stored valid ID and run Gemini validation (admin backfill). */
-export async function validateValidIdFromStorageUrl(
+async function validateValidIdFromStorageUrl(
   url: string,
 ): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
@@ -614,7 +614,7 @@ export type ReceiptBackfillResult = {
 };
 
 /** Returns true when a receipt URL exists but AI verdict was never persisted. */
-export function receiptUrlNeedsAiBackfill(
+function receiptUrlNeedsAiBackfill(
   url: string | null | undefined,
   verdict: string | null | undefined,
 ): boolean {
@@ -788,7 +788,7 @@ export function dbPatchForReceiptValidation(
   return dbPatchForDocumentAiValidation(kind, result);
 }
 
-export function receiptKindForAssetType(
+function receiptKindForAssetType(
   assetType: string,
 ): 'downpayment' | 'balance' | 'parking' | null {
   switch (assetType) {

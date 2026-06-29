@@ -16,8 +16,8 @@ import {
   setGafPdfTextField,
 } from '@/features/admin/lib/gafPdfSignature';
 
-export const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE = 'unitOwnerSignature';
-export const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
+const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE = 'unitOwnerSignature';
+const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
 
 export type PetOwnerSignatureBlockOptions = {
   unitOwner: string;

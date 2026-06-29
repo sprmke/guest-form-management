@@ -22,9 +22,9 @@ export type TelegramFinanceSettings = {
   updated_at: string;
 };
 
-export type FinanceManilaTimeSlot = { hour: number; minute: number };
+type FinanceManilaTimeSlot = { hour: number; minute: number };
 
-export const FINANCE_REMINDER_PLACEHOLDERS = [
+const FINANCE_REMINDER_PLACEHOLDERS = [
   "label",
   "amount",
   "category",
@@ -35,7 +35,7 @@ export const FINANCE_REMINDER_PLACEHOLDERS = [
   "kind",
 ] as const;
 
-export const FINANCE_DEFAULT_REMINDER_TEMPLATE =
+const FINANCE_DEFAULT_REMINDER_TEMPLATE =
   "💰 Finance Reminder\n\n{{label}}\nDue: {{due_date}} ({{days_until_due}} day(s) left)\nAmount: {{amount}} · {{category}}\n\n{{notes}}";
 
 const MANILA_TZ = "Asia/Manila";
@@ -47,7 +47,7 @@ function getSupabase() {
   );
 }
 
-export function parseFinanceSlot(raw: unknown): FinanceManilaTimeSlot {
+function parseFinanceSlot(raw: unknown): FinanceManilaTimeSlot {
   if (raw && typeof raw === "object" && raw !== null) {
     const o = raw as Record<string, unknown>;
     const h = typeof o.hour === "number" ? o.hour : 9;
@@ -60,7 +60,7 @@ export function parseFinanceSlot(raw: unknown): FinanceManilaTimeSlot {
   return { hour: 9, minute: 0 };
 }
 
-export function formatFinanceManilaTimeLabel(
+function formatFinanceManilaTimeLabel(
   slot: FinanceManilaTimeSlot,
 ): string {
   const d = new Date(2000, 0, 1, slot.hour, slot.minute);
@@ -71,7 +71,7 @@ export function formatFinanceManilaTimeLabel(
   });
 }
 
-export function manilaTodayYmd(now = new Date()): string {
+function manilaTodayYmd(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: MANILA_TZ,
     year: "numeric",
@@ -98,7 +98,7 @@ export function sanitizeFinanceReminderTemplate(text: string): string {
   return text.replace(/\r\n/g, "\n").trim();
 }
 
-export function isFinanceReminderInterval(
+function isFinanceReminderInterval(
   v: unknown,
 ): v is FinanceReminderInterval {
   return (
@@ -151,7 +151,7 @@ export async function ensureFinanceSettingsRow(): Promise<void> {
   });
 }
 
-export function effectiveDueDate(row: Record<string, unknown>): string {
+function effectiveDueDate(row: Record<string, unknown>): string {
   const due = row.telegram_due_date
     ? String(row.telegram_due_date).slice(0, 10)
     : String(row.occurred_on).slice(0, 10);
@@ -165,7 +165,7 @@ function reminderSeriesKey(row: Record<string, unknown>): string {
 }
 
 /** One reminder per recurring series per cron tick — earliest in-window occurrence wins. */
-export function selectFinanceReminderRows(
+function selectFinanceReminderRows(
   rows: Record<string, unknown>[],
   now: Date,
   lastSentByItem: Map<string, string>,
@@ -213,7 +213,7 @@ export function selectFinanceReminderRows(
   return selected;
 }
 
-export function manilaDateTimeParts(now = new Date()): {
+function manilaDateTimeParts(now = new Date()): {
   date: string;
   hour: number;
   minute: number;
@@ -262,7 +262,7 @@ function isInReminderWindow(
 }
 
 /** @deprecated Use shouldSendFinanceReminderNow — kept for callers/tests. */
-export function shouldSendFinanceReminderToday(
+function shouldSendFinanceReminderToday(
   row: Record<string, unknown>,
   today: string,
   interval: FinanceReminderInterval,
@@ -277,7 +277,7 @@ export function shouldSendFinanceReminderToday(
   );
 }
 
-export function shouldSendFinanceReminderNow(
+function shouldSendFinanceReminderNow(
   row: Record<string, unknown>,
   now: Date,
   interval: FinanceReminderInterval,
@@ -300,7 +300,7 @@ export function shouldSendFinanceReminderNow(
   return ms - new Date(lastSentAt).getTime() >= minGap;
 }
 
-export function buildFinanceReminderPlaceholders(
+function buildFinanceReminderPlaceholders(
   row: Record<string, unknown>,
   today: string,
 ): Record<string, string> {
@@ -318,7 +318,7 @@ export function buildFinanceReminderPlaceholders(
   };
 }
 
-export function renderFinanceReminderMessage(
+function renderFinanceReminderMessage(
   row: Record<string, unknown>,
   template: string,
   today: string,

@@ -1,7 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import type {
   FinanceBookingLedgerRow,
-  FinanceExportType,
   FinanceLineItem,
   FinanceQuery,
   FinanceReminderInterval,
@@ -213,24 +212,4 @@ export async function fetchAllFinanceBookings(
     page += 1;
   }
   return all;
-}
-
-export async function downloadFinanceExport(
-  query: FinanceQuery,
-  type: FinanceExportType,
-): Promise<{ blob: Blob; filename: string }> {
-  const params = financeQueryToApiParams(query);
-  params.set("type", type);
-  const res = await adminFetch(`/finance-export?${params.toString()}`);
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error((json as { error?: string }).error ?? "Export failed");
-  }
-  const blob = await res.blob();
-  const cd = res.headers.get("Content-Disposition");
-  const fromHeader = cd?.match(/filename="([^"]+)"/)?.[1];
-  return {
-    blob,
-    filename: fromHeader ?? `finance-${type}.csv`,
-  };
 }

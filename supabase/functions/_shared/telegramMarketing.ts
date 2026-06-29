@@ -41,7 +41,7 @@ export type TelegramMarketingSettings = {
   daily_reminder_times_manila?: unknown;
 };
 
-export const TELEGRAM_KNOWN_PLACEHOLDERS = [
+const TELEGRAM_KNOWN_PLACEHOLDERS = [
   'available_dates',
   'month_name',
   'dates_list',
@@ -49,9 +49,9 @@ export const TELEGRAM_KNOWN_PLACEHOLDERS = [
   'urgency_text',
 ] as const;
 
-export type TelegramKnownPlaceholder = (typeof TELEGRAM_KNOWN_PLACEHOLDERS)[number];
+type TelegramKnownPlaceholder = (typeof TELEGRAM_KNOWN_PLACEHOLDERS)[number];
 
-export function listTemplatePlaceholderKeys(template: string): TelegramKnownPlaceholder[] {
+function listTemplatePlaceholderKeys(template: string): TelegramKnownPlaceholder[] {
   const keys = new Set<TelegramKnownPlaceholder>();
   const re = /\{\{(\w+)\}\}/g;
   let m: RegExpExecArray | null;
@@ -64,7 +64,7 @@ export function listTemplatePlaceholderKeys(template: string): TelegramKnownPlac
   return [...keys];
 }
 
-export function applyTemplatePlaceholders(
+function applyTemplatePlaceholders(
   template: string,
   vars: Record<string, string>,
 ): string {
@@ -83,14 +83,14 @@ export class TelegramTemplateError extends Error {
 }
 
 /** Daily urgency opener: "today," | "tomorrow," | "this" from nearest free check-in. */
-export function formatUrgencyText(daysOut: number): string {
+function formatUrgencyText(daysOut: number): string {
   if (daysOut === 0) return 'today,';
   if (daysOut === 1) return 'tomorrow,';
   return 'this';
 }
 
 /** Live values from the booking calendar (Manila). Throws if a token in the template cannot be filled. */
-export async function resolveTemplatePlaceholderVars(
+async function resolveTemplatePlaceholderVars(
   template: string,
   settings: TelegramMarketingSettings,
   opts?: { checkInYmd?: string; checkOutYmd?: string },
@@ -177,7 +177,7 @@ export async function resolveTemplatePlaceholderVars(
   return vars;
 }
 
-export function renderTelegramTemplate(
+function renderTelegramTemplate(
   template: string,
   vars: Record<string, string>,
 ): string {
@@ -502,7 +502,7 @@ export async function runTelegramDailyReminder(opts?: {
 }
 
 /** Admin test: send only the daily urgency template (ignores threshold and enabled toggle). */
-export async function runTelegramDailyUrgencyTest(opts?: {
+async function runTelegramDailyUrgencyTest(opts?: {
   force?: boolean;
 }): Promise<TelegramDailyReminderResult> {
   const settings = await loadSettings();

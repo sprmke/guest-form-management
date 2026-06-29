@@ -3,7 +3,7 @@
  * A booking blocks each overnight night from check_in (inclusive) to check_out (exclusive).
  */
 
-export const MANILA_TZ = 'Asia/Manila';
+const MANILA_TZ = 'Asia/Manila';
 
 /** Today as YYYY-MM-DD in Manila. */
 export function manilaTodayYmd(): string {
@@ -21,7 +21,7 @@ export function normalizeBookingDateToYmd(dateStr: string): string | null {
   return null;
 }
 
-export function addDaysYmd(ymd: string, deltaDays: number): string {
+function addDaysYmd(ymd: string, deltaDays: number): string {
   const [y, m, d] = ymd.split('-').map(Number);
   const dt = new Date(Date.UTC(y, m - 1, d + deltaDays));
   return dt.toISOString().slice(0, 10);
@@ -90,7 +90,7 @@ export function listAvailableCheckIns(
 }
 
 /** YYYY-MM-DD -> { y, m0, d } for Manila-named month via UTC parts trick on noon UTC from ymd. */
-export function ymdParts(ymd: string): { year: number; monthIndex: number; day: number } {
+function ymdParts(ymd: string): { year: number; monthIndex: number; day: number } {
   const [y, m, d] = ymd.split('-').map(Number);
   return { year: y, monthIndex: m - 1, day: d };
 }

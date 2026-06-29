@@ -13,10 +13,10 @@ import {
 } from 'https://esm.sh/pdf-lib@1.17.1';
 
 /** Adobe Sign suffix on the signature widget — use this exact name in code. */
-export const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE =
+const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE =
   'unitOwnerSignature_es_:signer:signature';
 
-export const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
+const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
 
 export const GAF_PDF_FIELD_CARPARK_SLOT_NUMBER = 'carparkSlotNumber';
 

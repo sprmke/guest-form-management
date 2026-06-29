@@ -9,7 +9,7 @@ export const DEFAULT_MANILA_REMINDER_SLOTS: ManilaReminderSlot[] = [
   { hour: 21, minute: 0 },
 ];
 
-export function manilaTimeToUtcCronParts(slot: ManilaReminderSlot): { utcH: number; utcM: number } {
+function manilaTimeToUtcCronParts(slot: ManilaReminderSlot): { utcH: number; utcM: number } {
   const M = slot.hour * 60 + slot.minute;
   const U = (M - 480 + 2880) % 1440;
   return { utcH: Math.floor(U / 60) % 24, utcM: U % 60 };

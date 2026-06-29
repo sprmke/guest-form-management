@@ -1,5 +1,5 @@
 /** Distinct segment colors for pie / breakdown charts (dark + light friendly). */
-export const CHART_SEGMENT_PALETTE = [
+const CHART_SEGMENT_PALETTE = [
   "#10b981",
   "#6366f1",
   "#f97316",

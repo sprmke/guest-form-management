@@ -13,7 +13,7 @@ export type DashboardTransactionRow = {
   isPaid: boolean;
 };
 
-export function effectiveDueDate(item: FinanceLineItem): string {
+function effectiveDueDate(item: FinanceLineItem): string {
   return item.telegram_due_date?.trim().slice(0, 10) || item.occurred_on;
 }
 

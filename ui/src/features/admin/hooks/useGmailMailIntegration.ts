@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
-export type GmailMailIntegrationStatus = {
+type GmailMailIntegrationStatus = {
   connected: boolean;
   /** True when a stored refresh token fails exchange (expired / revoked). */
   needsReconnect: boolean;

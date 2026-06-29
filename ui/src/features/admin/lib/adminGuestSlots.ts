@@ -1,7 +1,7 @@
 import type { GuestDocAssetType } from '@/features/admin/hooks/useUploadBookingAsset';
 import type { BookingRow } from '@/features/admin/lib/types';
 
-export const ADMIN_GUEST_SLOT_LABELS = [
+const ADMIN_GUEST_SLOT_LABELS = [
   'Primary',
   'Second',
   'Third',

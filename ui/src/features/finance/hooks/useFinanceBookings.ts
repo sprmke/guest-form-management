@@ -2,7 +2,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { FinanceQuery } from "@/features/finance/lib/types";
 import { fetchFinanceBookings } from "@/features/finance/hooks/useFinanceApi";
 
-export const FINANCE_BOOKINGS_KEY = ["finance-bookings"] as const;
+const FINANCE_BOOKINGS_KEY = ["finance-bookings"] as const;
 
 export function useFinanceBookings(
   query: FinanceQuery,

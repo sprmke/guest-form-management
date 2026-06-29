@@ -280,7 +280,7 @@ export type GmailApprovalBackfillInput = {
   bookingId?: string;
 };
 
-export type GmailApprovalBackfillResult = {
+type GmailApprovalBackfillResult = {
   success: boolean;
   dryRun?: boolean;
   settings?: {

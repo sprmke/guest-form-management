@@ -6,70 +6,43 @@
  * Does not change status; updates sd_refund_form_emailed_at.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
-import { DatabaseService } from '../_shared/databaseService.ts';
-import { sendSdRefundFormRequest } from '../_shared/emailService.ts';
+import { DatabaseService } from "../_shared/databaseService.ts";
+import { sendSdRefundFormRequest } from "../_shared/emailService.ts";
+import {
+  jsonError,
+  jsonResponse,
+  readJsonBody,
+  requireHttpMethod,
+} from "../_shared/httpResponse.ts";
+import { serveAdmin } from "../_shared/serveEdge.ts";
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders(req) });
+serveAdmin("send-sd-refund-form-email", async (req) => {
+  requireHttpMethod(req, "POST");
+  const body = await readJsonBody(req);
+  const bookingId = body?.bookingId;
+  if (!bookingId || typeof bookingId !== "string") {
+    return jsonError(req, "bookingId (string) is required");
   }
 
-  try {
-    await verifyAdminJwt(req);
+  const booking = await DatabaseService.getBookingById(bookingId);
+  if (!booking) {
+    return jsonError(req, "Booking not found", 404);
+  }
 
-    if (req.method !== 'POST') {
-      throw new Error(`Method ${req.method} not allowed`);
-    }
-
-    const body = await req.json().catch(() => ({}));
-    const bookingId = body?.bookingId as string | undefined;
-    if (!bookingId || typeof bookingId !== 'string') {
-      return new Response(
-        JSON.stringify({ success: false, error: 'bookingId (string) is required' }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    const booking = await DatabaseService.getBookingById(bookingId);
-    if (!booking) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Booking not found' }),
-        { status: 404, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    if (
-      booking.status !== 'READY_FOR_CHECKOUT' &&
-      booking.status !== 'READY_FOR_CHECKIN'
-    ) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error:
-            `Booking must be in READY_FOR_CHECKIN or READY_FOR_CHECKOUT (current: ${booking.status})`,
-        }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-      );
-    }
-
-    await sendSdRefundFormRequest(booking);
-    await DatabaseService.setWorkflowFields(bookingId, {
-      sd_refund_form_emailed_at: new Date().toISOString(),
-    });
-
-    return new Response(
-      JSON.stringify({ success: true, bookingId }),
-      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-    );
-  } catch (err: unknown) {
-    if (err instanceof Response) return err;
-    console.error('[send-sd-refund-form-email]', err);
-    return new Response(
-      JSON.stringify({ success: false, error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+  if (
+    booking.status !== "READY_FOR_CHECKOUT" &&
+    booking.status !== "READY_FOR_CHECKIN"
+  ) {
+    return jsonError(
+      req,
+      `Booking must be in READY_FOR_CHECKIN or READY_FOR_CHECKOUT (current: ${booking.status})`,
     );
   }
+
+  await sendSdRefundFormRequest(booking);
+  await DatabaseService.setWorkflowFields(bookingId, {
+    sd_refund_form_emailed_at: new Date().toISOString(),
+  });
+
+  return jsonResponse(req, { success: true, bookingId });
 });

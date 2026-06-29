@@ -1,7 +1,7 @@
 import { cn } from '@/lib/utils';
 
 /** Bundled fallback when settings have not loaded or no custom logo is set. */
-export const DEFAULT_TEAM_LOGO_URL = '/images/logo.png';
+const DEFAULT_TEAM_LOGO_URL = '/images/logo.png';
 
 type Props = {
   src?: string | null;

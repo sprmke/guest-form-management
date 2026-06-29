@@ -10,7 +10,7 @@ export type WorkflowDevControlDef = {
   description: string;
 };
 
-export const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
+const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
   {
     key: 'saveToDatabase',
     label: 'Save to Database',
@@ -65,14 +65,14 @@ export const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
 ];
 
 /** All workflow dev flags default to enabled (mirrors server `flag()` undefined → true). */
-export function defaultWorkflowDevControlFlags(): DevControlFlags {
+function defaultWorkflowDevControlFlags(): DevControlFlags {
   return WORKFLOW_DEV_CONTROLS.reduce<DevControlFlags>(
     (acc, c) => ({ ...acc, [c.key]: true }),
     {},
   );
 }
 
-export function workflowDevControlsStorageKey(bookingId: string): string {
+function workflowDevControlsStorageKey(bookingId: string): string {
   return STORAGE_PREFIX + bookingId;
 }
 
@@ -144,7 +144,7 @@ function isForwardToReadyForCheckin(
  * Which dev-control checkboxes apply to a specific admin transition.
  * Server still gates side effects; this only drives the confirm modal UI.
  */
-export function isWorkflowDevControlRelevant(
+function isWorkflowDevControlRelevant(
   key: keyof DevControlFlags,
   fromStatus: BookingStatus,
   toStatus: BookingStatus,

@@ -10,7 +10,7 @@ export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.reado
 export type WebClientCredentials = { clientId: string; clientSecret: string };
 
 /** JSON from Google Cloud "Web application" OAuth client (same shape as legacy installed/web blobs). */
-export function parseGmailApiWebClientJson(raw: string): WebClientCredentials {
+function parseGmailApiWebClientJson(raw: string): WebClientCredentials {
   const clientJson = JSON.parse(raw);
   const inner = clientJson.web ?? clientJson.installed;
   if (!inner?.client_id || !inner?.client_secret) {
@@ -41,7 +41,7 @@ export function supabaseServiceRole() {
   );
 }
 
-export async function exchangeRefreshForAccessToken(
+async function exchangeRefreshForAccessToken(
   clientId: string,
   clientSecret: string,
   refreshToken: string,
@@ -108,7 +108,7 @@ export async function exchangeCodeForTokens(params: {
  * `SUPABASE_PUBLIC_URL=http://127.0.0.1:54321` in `supabase/.env.local`, or rely on the
  * kong→127.0.0.1:54321 fallback below (default local API port).
  */
-export function publicSupabaseUrlForOAuth(): string {
+function publicSupabaseUrlForOAuth(): string {
   const explicit = (Deno.env.get('SUPABASE_PUBLIC_URL') ?? '').trim().replace(/\/+$/, '');
   if (explicit) return explicit;
 

@@ -1,29 +1,35 @@
-import type { BookingRow, SdSettlementLineItem } from '@/features/admin/lib/types';
-import { computeTotalGuestBalance, guestBalancePaidRecorded } from '@/features/admin/lib/totalGuestBalance';
+import type {
+  BookingRow,
+  SdSettlementLineItem,
+} from "@/features/admin/lib/types";
+import {
+  computeTotalGuestBalance,
+  guestBalancePaidRecorded,
+} from "@/features/admin/lib/totalGuestBalance";
 
 /** Minimum booking columns for pricing / P&amp;L math (full row or finance snapshot). */
 export type BookingFinanceInput = Pick<
   BookingRow,
-  | 'status'
-  | 'booking_source'
-  | 'booking_rate'
-  | 'down_payment'
-  | 'balance'
-  | 'security_deposit'
-  | 'has_pets'
-  | 'pet_fee'
-  | 'need_parking'
-  | 'parking_rate_guest'
-  | 'parking_rate_paid'
-  | 'guest_additional_fee'
-  | 'guest_balance_paid_amount'
-  | 'sd_refund_amount'
-  | 'sd_additional_expense_items'
-  | 'sd_additional_profit_items'
-  | 'sd_additional_expenses'
-  | 'sd_additional_profits'
-  | 'next_stay_voucher_code'
-  | 'next_stay_voucher_amount'
+  | "status"
+  | "booking_source"
+  | "booking_rate"
+  | "down_payment"
+  | "balance"
+  | "security_deposit"
+  | "has_pets"
+  | "pet_fee"
+  | "need_parking"
+  | "parking_rate_guest"
+  | "parking_rate_paid"
+  | "guest_additional_fee"
+  | "guest_balance_paid_amount"
+  | "sd_refund_amount"
+  | "sd_additional_expense_items"
+  | "sd_additional_profit_items"
+  | "sd_additional_expenses"
+  | "sd_additional_profits"
+  | "next_stay_voucher_code"
+  | "next_stay_voucher_amount"
 >;
 
 export type BookingFinancials = {
@@ -49,13 +55,11 @@ export type BookingFinancials = {
 };
 
 function bookingFlagTrue(value: boolean | string | null | undefined): boolean {
-  return value === true || value === 'true';
+  return value === true || value === "true";
 }
 
 function petFeeForHostNet(booking: BookingFinanceInput): number {
-  return bookingFlagTrue(booking.has_pets)
-    ? toMoneyNumber(booking.pet_fee)
-    : 0;
+  return bookingFlagTrue(booking.has_pets) ? toMoneyNumber(booking.pet_fee) : 0;
 }
 
 function parkingFeeForHostNet(booking: BookingFinanceInput): number {
@@ -72,7 +76,7 @@ export type HostNetBreakdownLine = {
 };
 
 export type HostNetBreakdownSdLine = HostNetBreakdownLine & {
-  variant: 'collected' | 'adjustment-expense' | 'adjustment-profit';
+  variant: "collected" | "adjustment-expense" | "adjustment-profit";
 };
 
 export type HostNetBreakdownSd = {
@@ -87,13 +91,15 @@ export type HostNetBreakdown = {
   isEstimate: boolean;
 };
 
-function guestBalanceForStayDisplay(booking: BookingFinanceInput): number | null {
-  if (booking.booking_rate != null && booking.booking_rate !== '') {
+function guestBalanceForStayDisplay(
+  booking: BookingFinanceInput,
+): number | null {
+  if (booking.booking_rate != null && booking.booking_rate !== "") {
     return roundMoney(
       toMoneyNumber(booking.booking_rate) - toMoneyNumber(booking.down_payment),
     );
   }
-  if (booking.balance != null && booking.balance !== '') {
+  if (booking.balance != null && booking.balance !== "") {
     return roundMoney(toMoneyNumber(booking.balance));
   }
   return null;
@@ -124,14 +130,14 @@ function guestBalanceForHostNet(booking: BookingFinanceInput): number | null {
 function includeSdSettlementInOperatingNet(
   booking: BookingFinanceInput,
 ): boolean {
-  return booking.status === 'COMPLETED';
+  return booking.status === "COMPLETED";
 }
 
 /**
  * Host net = lodging + fees − parking owner rate (+ SD settlement when COMPLETED).
  * Security deposit collection, SD refund payout, and SD settlement are omitted until COMPLETED.
  */
-export function computeOperatingHostNet(booking: BookingFinanceInput): number {
+function computeOperatingHostNet(booking: BookingFinanceInput): number {
   const down = toMoneyNumber(booking.down_payment);
   const guestBalance = guestBalanceForHostNet(booking) ?? 0;
   const pet = petFeeForHostNet(booking);
@@ -159,14 +165,6 @@ export function computeOperatingHostNet(booking: BookingFinanceInput): number {
   );
 }
 
-/** @deprecated Use `computeOperatingHostNet` — SD pass-through is never included. */
-export function computeHostNetComponents(
-  booking: BookingFinanceInput,
-  _options?: { includeSdRefund?: boolean },
-): number {
-  return computeOperatingHostNet(booking);
-}
-
 export function buildHostNetBreakdown(
   booking: BookingFinanceInput,
   isCompleted: boolean,
@@ -179,33 +177,33 @@ export function buildHostNetBreakdown(
   const parkingPaid = toMoneyNumber(booking.parking_rate_paid);
 
   const income: HostNetBreakdownLine[] = [
-    { key: 'down', label: 'Down payment', amount: down },
+    { key: "down", label: "Down payment", amount: down },
   ];
 
   if (guestBalance != null) {
     income.push({
-      key: 'guest_balance',
-      label: 'Guest balance',
+      key: "guest_balance",
+      label: "Guest balance",
       amount: guestBalance,
     });
   }
 
   if (bookingFlagTrue(booking.need_parking)) {
     income.push({
-      key: 'parking_guest',
-      label: 'Parking fee',
+      key: "parking_guest",
+      label: "Parking fee",
       amount: parkingGuest,
     });
   }
 
   if (bookingFlagTrue(booking.has_pets)) {
-    income.push({ key: 'pet', label: 'Pet fee', amount: pet });
+    income.push({ key: "pet", label: "Pet fee", amount: pet });
   }
 
   if (additional > 0) {
     income.push({
-      key: 'additional',
-      label: 'Additional guest fee',
+      key: "additional",
+      label: "Additional guest fee",
       amount: additional,
     });
   }
@@ -214,8 +212,8 @@ export function buildHostNetBreakdown(
 
   if (bookingFlagTrue(booking.need_parking) || parkingPaid > 0) {
     expenses.push({
-      key: 'parking_paid',
-      label: 'Parking Owner Rate',
+      key: "parking_paid",
+      label: "Parking Owner Rate",
       amount: parkingPaid,
     });
   }
@@ -229,7 +227,7 @@ export function buildHostNetBreakdown(
       const label = row.label?.trim();
       income.push({
         key: `sd_profit_${i}`,
-        label: label ? `SD settlement — ${label}` : 'SD settlement profit',
+        label: label ? `SD settlement — ${label}` : "SD settlement profit",
         amount: row.amount,
       });
     });
@@ -239,7 +237,7 @@ export function buildHostNetBreakdown(
       const label = row.label?.trim();
       expenses.push({
         key: `sd_expense_${i}`,
-        label: label ? `SD settlement — ${label}` : 'SD settlement expense',
+        label: label ? `SD settlement — ${label}` : "SD settlement expense",
         amount: row.amount,
       });
     });
@@ -260,28 +258,23 @@ export function financeDisplayNet(fin: BookingFinancials): number | null {
   return fin.projectedNet;
 }
 
-/** Admin dashboard net profit — same operating host net as Finance stays. */
-export function dashboardNetProfitKpi(booking: BookingFinanceInput): number {
-  return computeOperatingHostNet(booking);
-}
-
 /** Tailwind text color for host-net display (tables, cards, calendar). */
 export function hostNetToneClass(
   net: number | null,
   isRealized: boolean,
 ): string {
-  if (net == null || net === 0) return 'text-muted-foreground';
+  if (net == null || net === 0) return "text-muted-foreground";
   if (isRealized) {
     return net > 0
-      ? 'text-emerald-700 dark:text-emerald-300'
-      : 'text-red-600 dark:text-red-400';
+      ? "text-emerald-700 dark:text-emerald-300"
+      : "text-red-600 dark:text-red-400";
   }
-  return 'text-amber-700 dark:text-amber-300';
+  return "text-amber-700 dark:text-amber-300";
 }
 
 function toMoneyNumber(value: number | string | null | undefined): number {
-  if (value === null || value === undefined || value === '') return 0;
-  const n = typeof value === 'string' ? Number(value) : value;
+  if (value === null || value === undefined || value === "") return 0;
+  const n = typeof value === "string" ? Number(value) : value;
   return Number.isNaN(n) ? 0 : n;
 }
 
@@ -301,7 +294,7 @@ function parseSdLineItemsFromBooking(
 ): SdSettlementLineItem[] {
   if (!Array.isArray(json) || json.length === 0) return [];
   return json.map((row) => ({
-    label: typeof row.label === 'string' ? row.label : '',
+    label: typeof row.label === "string" ? row.label : "",
     amount: toMoneyNumber(row.amount),
   }));
 }
@@ -311,12 +304,16 @@ function parseSdNumberArray(arr: number[] | null | undefined): number[] {
   return arr.map((x) => toMoneyNumber(x));
 }
 
-export function buildSdExpenseProfitRows(booking: BookingFinanceInput): {
+function buildSdExpenseProfitRows(booking: BookingFinanceInput): {
   expenses: SdSettlementLineItem[];
   profits: SdSettlementLineItem[];
 } {
-  const expJson = parseSdLineItemsFromBooking(booking.sd_additional_expense_items);
-  const profJson = parseSdLineItemsFromBooking(booking.sd_additional_profit_items);
+  const expJson = parseSdLineItemsFromBooking(
+    booking.sd_additional_expense_items,
+  );
+  const profJson = parseSdLineItemsFromBooking(
+    booking.sd_additional_profit_items,
+  );
   const expFallback = parseSdNumberArray(booking.sd_additional_expenses).map(
     (amount, i) => ({
       label: `Expense line ${i + 1}`,
@@ -338,8 +335,10 @@ export function buildSdExpenseProfitRows(booking: BookingFinanceInput): {
 /**
  * Canonical per-booking financial breakdown for finance reports and pricing card.
  */
-export function computeBookingFinancials(booking: BookingFinanceInput): BookingFinancials {
-  const isCompleted = booking.status === 'COMPLETED';
+export function computeBookingFinancials(
+  booking: BookingFinanceInput,
+): BookingFinancials {
+  const isCompleted = booking.status === "COMPLETED";
   const totalGuestBalance = computeTotalGuestBalance(booking);
   const guestCollected = guestBalancePaidRecorded(booking);
   const guestUnpaid =
@@ -357,14 +356,11 @@ export function computeBookingFinancials(booking: BookingFinanceInput): BookingF
   const { expenses, profits } = buildSdExpenseProfitRows(booking);
   const sdExpenseTotal = roundMoney(sumSdLineAmounts(expenses));
   const sdProfitTotal = roundMoney(sumSdLineAmounts(profits));
-  const voucherCost =
-    booking.next_stay_voucher_code?.trim()
-      ? roundMoney(toMoneyNumber(booking.next_stay_voucher_amount))
-      : 0;
+  const voucherCost = booking.next_stay_voucher_code?.trim()
+    ? roundMoney(toMoneyNumber(booking.next_stay_voucher_amount))
+    : 0;
 
-  const stayRevenue = isCompleted
-    ? roundMoney(guestCollected - deposit)
-    : null;
+  const stayRevenue = isCompleted ? roundMoney(guestCollected - deposit) : null;
 
   const hostInflows = roundMoney(
     toMoneyNumber(booking.down_payment) +

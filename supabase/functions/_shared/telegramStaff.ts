@@ -14,7 +14,7 @@ import { normalizeTelegramChatId } from './telegramMarketing.ts';
 import { formatTimeForDisplay, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts';
 import { computeTotalGuestBalanceFromBooking } from './totalGuestBalance.ts';
 
-export const DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE =
+const DEFAULT_STAFF_NO_BOOKINGS_TEMPLATE =
   '📋 No bookings for today.\n\n' +
   'Kindly do a general cleaning, especially the following items:\n\n' +
   '* Clean the aircon filter\n' +
@@ -39,9 +39,9 @@ export type TelegramStaffSettings = {
   updated_at: string;
 };
 
-export type StaffManilaTimeSlot = { hour: number; minute: number };
+type StaffManilaTimeSlot = { hour: number; minute: number };
 
-export const STAFF_KNOWN_PLACEHOLDERS = [
+const STAFF_KNOWN_PLACEHOLDERS = [
   'check_in_date',
   'check_out_date',
   'check_in_time',
@@ -61,7 +61,7 @@ export const STAFF_KNOWN_PLACEHOLDERS = [
   'next_bookings',
 ] as const;
 
-export type StaffKnownPlaceholder = (typeof STAFF_KNOWN_PLACEHOLDERS)[number];
+type StaffKnownPlaceholder = (typeof STAFF_KNOWN_PLACEHOLDERS)[number];
 
 type BookingRow = Record<string, unknown>;
 
@@ -88,7 +88,7 @@ function isManilaTimeAtOrAfter(
   return hour > targetHour || (hour === targetHour && minute >= targetMinute);
 }
 
-export function parseStaffSlot(raw: unknown): StaffManilaTimeSlot {
+function parseStaffSlot(raw: unknown): StaffManilaTimeSlot {
   if (raw && typeof raw === 'object' && raw !== null) {
     const o = raw as Record<string, unknown>;
     const h = typeof o.hour === 'number' ? o.hour : 8;
@@ -101,7 +101,7 @@ export function parseStaffSlot(raw: unknown): StaffManilaTimeSlot {
   return { hour: 8, minute: 0 };
 }
 
-export function formatStaffManilaTimeLabel(slot: StaffManilaTimeSlot): string {
+function formatStaffManilaTimeLabel(slot: StaffManilaTimeSlot): string {
   const d = new Date(2000, 0, 1, slot.hour, slot.minute);
   return d.toLocaleTimeString('en-PH', {
     hour: 'numeric',
@@ -116,7 +116,7 @@ function isCancelledStatus(status: unknown): boolean {
 }
 
 /** Check-in is today (Manila) and submission time is at/after the daily summary time. */
-export function bookingQualifiesForSameDayCheckinStaffAlert(
+function bookingQualifiesForSameDayCheckinStaffAlert(
   booking: BookingRow,
   cutoff: StaffManilaTimeSlot,
   now = new Date(),
@@ -260,7 +260,7 @@ export function sanitizeStaffDailySummaryTemplate(template: string): string {
   return out.trim();
 }
 
-export async function tryClaimStaffNotification(
+async function tryClaimStaffNotification(
   bookingId: string,
   notificationType: 'same_day_checkin',
 ): Promise<boolean> {
@@ -325,7 +325,7 @@ export async function notifyTelegramStaffSameDayCheckIn(
 }
 
 /** Bookings active today for staff: check-in day and each occupied overnight night (not checkout day). */
-export function bookingIsActiveForStaffToday(
+function bookingIsActiveForStaffToday(
   booking: BookingRow,
   todayYmd: string,
 ): boolean {
@@ -336,7 +336,7 @@ export function bookingIsActiveForStaffToday(
   return bookingOccupiesNight(ciYmd, coYmd, todayYmd);
 }
 
-export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {
+async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]> {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
@@ -368,7 +368,7 @@ export async function queryTodayBookings(todayYmd: string): Promise<BookingRow[]
   });
 }
 
-export async function queryNextDaysBookings(
+async function queryNextDaysBookings(
   todayYmd: string,
   days: number,
 ): Promise<Map<string, BookingRow[]>> {
@@ -468,7 +468,7 @@ async function sendStaffTelegramMessage(text: string): Promise<{ ok: boolean; er
   return { ok: true };
 }
 
-export async function sendStaffAdminPreview(text: string): Promise<{ ok: boolean; error?: string }> {
+async function sendStaffAdminPreview(text: string): Promise<{ ok: boolean; error?: string }> {
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, error: 'empty_message' };
   return sendStaffTelegramMessage(trimmed.slice(0, 4096));

@@ -21,7 +21,7 @@ function documentUrlNeedsAiBackfill(
   return Boolean(url?.trim()) && !String(verdict ?? '').trim();
 }
 
-export function bookingNeedsReceiptAiBackfill(
+function bookingNeedsReceiptAiBackfill(
   booking: Pick<
     BookingRow,
     | 'status'

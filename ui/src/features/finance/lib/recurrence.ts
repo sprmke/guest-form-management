@@ -360,14 +360,14 @@ export function suggestExtendAfter(
   return cur;
 }
 
-export function addDaysToIso(iso: string, delta: number): string {
+function addDaysToIso(iso: string, delta: number): string {
   const { y, m, d } = parseIso(iso);
   const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + delta);
   return formatIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
 }
 
-export function generateRecurrenceDates(
+function generateRecurrenceDates(
   start: string,
   interval: Exclude<RecurrenceInterval, "none">,
   until: string,

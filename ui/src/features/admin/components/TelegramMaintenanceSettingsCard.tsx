@@ -13,17 +13,16 @@ import {
   useTelegramMaintenanceSettings,
   useTelegramMaintenanceTestSend,
   useUpdateTelegramMaintenanceSettings,
-  type MaintenanceEnvVerifyDto,
   type TelegramMaintenanceSettingsDto,
 } from "@/features/admin/hooks/useTelegramMaintenanceSettings";
+import type { TelegramEnvVerifyDto } from "@/features/admin/lib/telegramEnvVerify";
 
 export function TelegramMaintenanceSettingsCard() {
   const { data, isLoading, isError, error } = useTelegramMaintenanceSettings();
   const update = useUpdateTelegramMaintenanceSettings();
   const testSend = useTelegramMaintenanceTestSend();
-  const [draft, setDraft] = React.useState<TelegramMaintenanceSettingsDto | null>(
-    null,
-  );
+  const [draft, setDraft] =
+    React.useState<TelegramMaintenanceSettingsDto | null>(null);
 
   React.useEffect(() => {
     if (data) setDraft(data);
@@ -74,7 +73,7 @@ export function TelegramMaintenanceSettingsCard() {
               {
                 onSuccess: (j) => {
                   showTelegramVerifyToast(
-                    j.verify as MaintenanceEnvVerifyDto | undefined,
+                    j.verify as TelegramEnvVerifyDto | undefined,
                     "Maintenance group",
                   );
                 },
@@ -120,9 +119,7 @@ export function TelegramMaintenanceSettingsCard() {
         validPlaceholderKeys={validPlaceholderKeys}
         previewContext={{ bot: "maintenance" }}
         sendPreviewTitle="Send test with live maintenance data."
-        onChange={(v) =>
-          setDraft({ ...draft, defaultReminderTemplate: v })
-        }
+        onChange={(v) => setDraft({ ...draft, defaultReminderTemplate: v })}
         onSendDraft={() =>
           testSend.mutate(
             {

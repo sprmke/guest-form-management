@@ -116,7 +116,7 @@ export function setPdfText(
 }
 
 /** Simulated elevated card shadow (offset layer + card). */
-export function drawCardShadow(
+function drawCardShadow(
   doc: import('jspdf').jsPDF,
   x: number,
   y: number,

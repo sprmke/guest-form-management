@@ -64,7 +64,7 @@ export function buildGoogleCalendarOccupiedEndDateTime(
 /**
  * @deprecated Prefer {@link buildGoogleCalendarDateTime}; kept for call sites that pass explicit HH:mm.
  */
-export const formatDateTime = (date: string, time: string): string => {
+const formatDateTime = (date: string, time: string): string => {
   return buildGoogleCalendarDateTime(date, time, '00:00');
 }
 
@@ -177,7 +177,7 @@ export const formatPublicUrl = (url: string) => {
  * Checks if the application is running in development mode
  * @returns true if in development mode, false otherwise
  */
-export const isDevelopment = (): boolean => {
+const isDevelopment = (): boolean => {
   const env = Deno.env.get('ENVIRONMENT') || Deno.env.get('DENO_ENV') || 'development';
   return env !== 'production';
 };

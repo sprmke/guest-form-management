@@ -14,7 +14,7 @@ import {
   getFinanceCategoryLabel,
 } from "@/features/finance/lib/financeCategoryColors";
 
-export const STAY_NET_CATEGORY = "Stay net";
+const STAY_NET_CATEGORY = "Stay net";
 
 export type FinanceCashFlowPoint = {
   date: string;

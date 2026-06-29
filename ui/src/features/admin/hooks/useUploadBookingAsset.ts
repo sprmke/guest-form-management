@@ -36,7 +36,7 @@ export type WorkflowAssetType =
 
 export type AssetType = GuestDocAssetType | WorkflowAssetType;
 
-export type UploadAssetResult = {
+type UploadAssetResult = {
   url: string;
   bucket: string;
   path: string;

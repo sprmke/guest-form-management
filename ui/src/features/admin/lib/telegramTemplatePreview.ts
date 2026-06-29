@@ -1,24 +1,20 @@
-import * as React from 'react';
+import * as React from "react";
 
-export const TELEGRAM_TOKEN_PATTERN = /(\{\{[^}]+\}\})/g;
-export const TELEGRAM_TOKEN_TEST = /^\{\{[^}]+\}\}$/;
+const TELEGRAM_TOKEN_PATTERN = /(\{\{[^}]+\}\})/g;
+const TELEGRAM_TOKEN_TEST = /^\{\{[^}]+\}\}$/;
 
-export const TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_PREVIEW =
-  'rounded bg-primary/15 px-0.5 font-mono text-primary';
+const TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_PREVIEW =
+  "rounded bg-primary/15 px-0.5 font-mono text-primary";
 
-export const TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_EDIT =
-  'rounded-sm bg-primary/15 text-primary';
+const TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_EDIT =
+  "rounded-sm bg-primary/15 text-primary";
 
-/** @deprecated Use TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_PREVIEW — kept for backward compat */
-export const TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS =
-  TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_PREVIEW;
-
-export function extractTelegramPlaceholderKey(part: string): string | null {
+function extractTelegramPlaceholderKey(part: string): string | null {
   if (!TELEGRAM_TOKEN_TEST.test(part)) return null;
   return part.slice(2, -2).trim();
 }
 
-export function isKnownTelegramPlaceholder(
+function isKnownTelegramPlaceholder(
   part: string,
   validKeys?: ReadonlySet<string>,
 ): boolean {
@@ -30,12 +26,12 @@ export function isKnownTelegramPlaceholder(
 
 export function renderTelegramPlaceholderHighlights(
   text: string,
-  keyPrefix = '',
-  variant: 'edit' | 'preview' = 'preview',
+  keyPrefix = "",
+  variant: "edit" | "preview" = "preview",
   validKeys?: ReadonlySet<string>,
 ): React.ReactNode[] {
   const highlightClass =
-    variant === 'edit'
+    variant === "edit"
       ? TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_EDIT
       : TELEGRAM_PLACEHOLDER_HIGHLIGHT_CLASS_PREVIEW;
 
@@ -43,7 +39,7 @@ export function renderTelegramPlaceholderHighlights(
     const key = `${keyPrefix}${index}`;
     if (isKnownTelegramPlaceholder(part, validKeys)) {
       return React.createElement(
-        'mark',
+        "mark",
         { key, className: highlightClass },
         part,
       );

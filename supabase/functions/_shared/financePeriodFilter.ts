@@ -8,7 +8,7 @@ export type FinancePeriodBasis = 'check_in' | 'check_out' | 'completed';
 
 const CANCELLED = new Set(['CANCELLED', 'canceled']);
 
-export function bookingDateForPeriod(
+function bookingDateForPeriod(
   row: Record<string, unknown>,
   basis: FinancePeriodBasis,
 ): string {

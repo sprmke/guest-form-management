@@ -13,8 +13,8 @@ import {
 } from 'https://esm.sh/pdf-lib@1.17.1';
 import { formatGafUnitOwnerPrintedName, setGafPdfTextField } from './gafPdfSignature.ts';
 
-export const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE = 'unitOwnerSignature';
-export const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
+const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE = 'unitOwnerSignature';
+const PET_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
 
 export type PetOwnerSignatureBlockOptions = {
   unitOwner: string;

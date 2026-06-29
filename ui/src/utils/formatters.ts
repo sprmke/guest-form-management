@@ -17,7 +17,7 @@ export const toCapitalCase = (text: string): string => {
 };
 
 // Helper to handle empty strings
-export const handleEmptyString = (value: string | undefined): string | undefined => {
+const handleEmptyString = (value: string | undefined): string | undefined => {
   if (!value || value.trim() === '') return undefined;
   return value;
 };

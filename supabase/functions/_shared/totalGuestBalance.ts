@@ -19,7 +19,7 @@ function bookingFlagTrue(v: unknown): boolean {
   return v === true || v === 'true';
 }
 
-export function isAirbnbBookingSource(source: unknown): boolean {
+function isAirbnbBookingSource(source: unknown): boolean {
   return String(source ?? '').trim() === 'Airbnb';
 }
 

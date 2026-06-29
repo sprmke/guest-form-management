@@ -181,7 +181,7 @@ function filterBookings(
   });
 }
 
-export function summarizeStays(
+function summarizeStays(
   rows: Record<string, unknown>[],
 ): FinanceStaysSummary {
   let bookingRate = 0;
@@ -396,7 +396,7 @@ export async function extendRecurringSeries(
   return { rows: merged, created_count: inserted.length };
 }
 
-export function summarizeOperating(
+function summarizeOperating(
   items: FinanceLineItemRow[],
 ): FinanceOperatingSummary {
   let income = 0;

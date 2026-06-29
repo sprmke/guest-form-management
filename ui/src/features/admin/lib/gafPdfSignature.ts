@@ -10,15 +10,13 @@ import {
   type PDFPage,
   type PDFTextField,
   type PDFImage,
-} from 'pdf-lib';
+} from "pdf-lib";
 
 /** Adobe Sign suffix on the signature widget — use this exact name in code. */
-export const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE =
-  'unitOwnerSignature_es_:signer:signature';
+const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE =
+  "unitOwnerSignature_es_:signer:signature";
 
-export const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = 'unitOwnerSignatureName';
-
-export const GAF_PDF_FIELD_CARPARK_SLOT_NUMBER = 'carparkSlotNumber';
+const GAF_PDF_FIELD_UNIT_OWNER_SIGNATURE_NAME = "unitOwnerSignatureName";
 
 export type GafOwnerSignatureBlockOptions = {
   unitOwner: string;
@@ -56,13 +54,16 @@ export function setGafPdfTextField(
 ): void {
   try {
     const field = form.getTextField(fieldName);
-    field.setText(value ? String(value) : '');
+    field.setText(value ? String(value) : "");
   } catch {
     // Field missing or wrong type — skip silently for preview resilience.
   }
 }
 
-function pageForField(pdfDoc: PDFDocument, field: PDFTextField): PDFPage | null {
+function pageForField(
+  pdfDoc: PDFDocument,
+  field: PDFTextField,
+): PDFPage | null {
   const widgets = field.acroField.getWidgets();
   if (widgets.length === 0) return pdfDoc.getPages()[0] ?? null;
 
@@ -103,7 +104,7 @@ async function drawSignatureInFormField(
   const bytes = new Uint8Array(await res.arrayBuffer());
   if (bytes.length === 0) return;
 
-  field.setText('');
+  field.setText("");
 
   const embedded = await embedSignatureImage(pdfDoc, bytes);
   const scaled = embedded.scaleToFit(rect.width, rect.height);

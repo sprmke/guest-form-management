@@ -7,7 +7,7 @@ import {
 } from '@/features/dashboard/lib/dashboardPeriod';
 import type { DashboardStats } from '@/features/dashboard/lib/types';
 
-export const DASHBOARD_STATS_KEY = ['dashboard-stats'] as const;
+const DASHBOARD_STATS_KEY = ['dashboard-stats'] as const;
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 

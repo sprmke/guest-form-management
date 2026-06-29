@@ -5,10 +5,10 @@ import {
 } from '@/lib/petDefaults';
 import { applyPetOwnerSignatureBlock } from '@/features/admin/lib/petPdfSignature';
 
-export const PET_PDF_TEMPLATE_URL = '/templates/pet-form-template.pdf';
+const PET_PDF_TEMPLATE_URL = '/templates/pet-form-template.pdf';
 
 /** Sample guest-submitted pet values for the admin live preview. */
-export const PET_PREVIEW_SAMPLE_GUEST_FIELDS: Record<string, string> = {
+const PET_PREVIEW_SAMPLE_GUEST_FIELDS: Record<string, string> = {
   checkInDate: '06-15-2026',
   petName: 'Buddy',
   petType: 'DOG',
@@ -29,7 +29,7 @@ async function loadTemplateBytes(): Promise<Uint8Array> {
   return templateBytesCache;
 }
 
-export function buildPetPreviewFieldMappings(
+function buildPetPreviewFieldMappings(
   details: PetDetailsValues,
 ): Record<string, string> {
   return {

@@ -42,7 +42,7 @@ import {
 import { isPostPendingDocumentsStatus } from '@/features/admin/lib/workflow';
 import { withStorageUrlCacheBust } from '@/features/admin/lib/storageUrls';
 
-export const parkingRequestFormSchema = z
+const parkingRequestFormSchema = z
   .object({
     parking_owner: z.string().trim().min(1, 'Enter parking owner or agent name'),
     parking_rate_paid: requiredPositiveMoney({
@@ -80,7 +80,7 @@ export const parkingRequestFormSchema = z
 export type ParkingRequestValues = z.infer<typeof parkingRequestFormSchema>;
 
 /** Default / restore “included in downpayment” from status and saved parking cycle. */
-export function resolveParkingFeeIncludedDefault(
+function resolveParkingFeeIncludedDefault(
   booking: Pick<
     BookingRow,
     | 'status'

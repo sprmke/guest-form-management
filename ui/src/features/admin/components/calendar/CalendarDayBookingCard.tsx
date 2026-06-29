@@ -17,7 +17,7 @@ import {
 } from '@/features/admin/lib/formatters';
 import { cn } from '@/lib/utils';
 
-export type CalendarDayBookingCardSource = {
+type CalendarDayBookingCardSource = {
   id: string;
   primary_guest_name: string;
   guest_facebook_name: string;
@@ -32,7 +32,7 @@ export type CalendarDayBookingCardSource = {
   number_of_nights: number | null;
 };
 
-export type CalendarDayBookingCardAmount =
+type CalendarDayBookingCardAmount =
   | { mode: 'booking_rate'; amount: number | string | null | undefined }
   | {
       mode: 'host_net';

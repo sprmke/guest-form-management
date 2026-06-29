@@ -4,15 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ManilaReminderSlot } from '@/features/admin/hooks/useTelegramMarketingSettings';
 
-export function slotSort(a: ManilaReminderSlot, b: ManilaReminderSlot): number {
+function slotSort(a: ManilaReminderSlot, b: ManilaReminderSlot): number {
   return a.hour * 60 + a.minute - (b.hour * 60 + b.minute);
 }
 
-export function slotToTimeInputValue(slot: ManilaReminderSlot): string {
+function slotToTimeInputValue(slot: ManilaReminderSlot): string {
   return `${String(slot.hour).padStart(2, '0')}:${String(slot.minute).padStart(2, '0')}`;
 }
 
-export function timeInputValueToSlot(value: string): ManilaReminderSlot | null {
+function timeInputValueToSlot(value: string): ManilaReminderSlot | null {
   const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
   if (!m) return null;
   const hour = Number(m[1]);

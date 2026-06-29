@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
  * Subscribes to `window.matchMedia` and updates when the query result changes
  * (resize, orientation, devtools device toolbar) without a page refresh.
  */
-export function useMediaQuery(query: string): boolean {
+function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(() => {
     if (typeof window === 'undefined') return false;
     return window.matchMedia(query).matches;

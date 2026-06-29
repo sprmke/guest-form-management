@@ -21,12 +21,12 @@ import {
 } from "@/features/finance/hooks/useFinanceApi";
 import { FINANCE_SUMMARY_KEY } from "@/features/finance/hooks/useFinanceSummary";
 
-export const FINANCE_LINE_ITEMS_KEY = ["finance-line-items"] as const;
-export const FINANCE_RECURRING_SERIES_KEY = [
+const FINANCE_LINE_ITEMS_KEY = ["finance-line-items"] as const;
+const FINANCE_RECURRING_SERIES_KEY = [
   "finance-recurring-series",
 ] as const;
 
-export function financeLineItemsQueryKey(
+function financeLineItemsQueryKey(
   query: FinanceQuery,
   options?: { includeDueInRange?: boolean },
 ) {

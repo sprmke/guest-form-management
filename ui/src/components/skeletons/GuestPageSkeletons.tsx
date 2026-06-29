@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
 
-export function GuestFormStepperSkeleton() {
+function GuestFormStepperSkeleton() {
   return (
     <div
       className="space-y-3 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 via-card to-card px-3 py-4 sm:px-5"
@@ -43,7 +43,7 @@ function GuestFormFieldSkeleton({ className }: { className?: string }) {
   );
 }
 
-export function GuestFormStepPanelSkeleton({
+function GuestFormStepPanelSkeleton({
   fieldCount = 4,
   twoColumn = true,
 }: {
@@ -91,7 +91,7 @@ export function GuestFormPageSkeleton({ title }: { title?: string }) {
   );
 }
 
-export function CalendarAvailabilitySkeleton() {
+function CalendarAvailabilitySkeleton() {
   return (
     <div className="flex w-full justify-center">
       <div className="availability-calendar">

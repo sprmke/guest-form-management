@@ -53,7 +53,7 @@ export function CalendarDayDetailPanel({
   );
 }
 
-export function CalendarEmptyDetail({
+function CalendarEmptyDetail({
   title,
   caption,
 }: {

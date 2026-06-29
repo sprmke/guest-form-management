@@ -1,5 +1,6 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabaseClient";
+import type { TelegramEnvVerifyDto } from "@/features/admin/lib/telegramEnvVerify";
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
@@ -9,7 +10,7 @@ export type StaffScenarioMeta = {
   id: string;
   label: string;
   trigger: string;
-  type: 'scheduled' | 'event';
+  type: "scheduled" | "event";
 };
 
 export type TelegramStaffSettingsDto = {
@@ -24,44 +25,33 @@ export type TelegramStaffSettingsDto = {
   scenarios: StaffScenarioMeta[];
 };
 
-export type TelegramStaffSettingsPatch = Partial<
+type TelegramStaffSettingsPatch = Partial<
   Pick<
     TelegramStaffSettingsDto,
-    | 'enabled'
-    | 'notifyOnSameDayCheckin'
-    | 'dailySummaryTemplate'
-    | 'dailySummaryNoBookingsTemplate'
-    | 'sameDayCheckinTemplate'
-    | 'dailySummaryTimeManila'
+    | "enabled"
+    | "notifyOnSameDayCheckin"
+    | "dailySummaryTemplate"
+    | "dailySummaryNoBookingsTemplate"
+    | "sameDayCheckinTemplate"
+    | "dailySummaryTimeManila"
   >
 >;
 
 export type StaffDraftScenario =
-  | 'daily_summary'
-  | 'daily_summary_no_bookings'
-  | 'same_day_checkin';
-
-export type StaffEnvVerifyDto = {
-  credentials: {
-    tokenConfigured: boolean;
-    chatIdConfigured: boolean;
-    normalizedChatId?: string;
-    normalizeError?: string;
-  };
-  getMe: { ok: boolean; username?: string; error?: string };
-  getChat: { ok: boolean; type?: string; title?: string; error?: string };
-};
+  | "daily_summary"
+  | "daily_summary_no_bookings"
+  | "same_day_checkin";
 
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;
-  if (!token) throw new Error('No active session — please sign in');
+  if (!token) throw new Error("No active session — please sign in");
   return token;
 }
 
 export function useTelegramStaffSettings() {
   return useQuery({
-    queryKey: ['telegram-staff-settings'],
+    queryKey: ["telegram-staff-settings"],
     queryFn: async (): Promise<TelegramStaffSettingsDto> => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-staff-settings`, {
@@ -73,18 +63,18 @@ export function useTelegramStaffSettings() {
         data?: TelegramStaffSettingsDto;
       };
       if (!json.success || !json.data) {
-        throw new Error(json.error ?? 'Failed to load staff settings');
+        throw new Error(json.error ?? "Failed to load staff settings");
       }
       return json.data;
     },
   });
 }
 
-export type TelegramStaffTestAction =
-  | 'verify_staff_telegram_env'
-  | 'send_draft_preview';
+type TelegramStaffTestAction =
+  | "verify_staff_telegram_env"
+  | "send_draft_preview";
 
-export type TelegramStaffTestPayload = {
+type TelegramStaffTestPayload = {
   action: TelegramStaffTestAction;
   text?: string;
   scenario?: StaffDraftScenario;
@@ -95,10 +85,10 @@ export function useTelegramStaffTestSend() {
     mutationFn: async (payload: TelegramStaffTestPayload) => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-staff-settings`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(payload),
       });
@@ -110,7 +100,7 @@ export function useTelegramStaffTestSend() {
         messageCharCount?: number;
         previewGuestName?: string;
         todayBookingCount?: number;
-        verify?: StaffEnvVerifyDto;
+        verify?: TelegramEnvVerifyDto;
       };
       if (!res.ok || json.success === false) {
         throw new Error(json.error ?? `Request failed (${res.status})`);
@@ -120,7 +110,7 @@ export function useTelegramStaffTestSend() {
   });
 }
 
-export type StaffCronSyncResult = {
+type StaffCronSyncResult = {
   ok?: boolean;
   error?: string;
   cronExpr?: string;
@@ -137,10 +127,10 @@ export function useUpdateTelegramStaffSettings() {
     }> => {
       const jwt = await getAdminJwt();
       const res = await fetch(`${FUNCTIONS_URL}/telegram-staff-settings`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${jwt}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(patch),
       });
@@ -151,12 +141,12 @@ export function useUpdateTelegramStaffSettings() {
         cronSync?: StaffCronSyncResult;
       };
       if (!json.success || !json.data) {
-        throw new Error(json.error ?? 'Failed to save');
+        throw new Error(json.error ?? "Failed to save");
       }
       return { data: json.data, cronSync: json.cronSync };
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['telegram-staff-settings'] });
+      await qc.invalidateQueries({ queryKey: ["telegram-staff-settings"] });
     },
   });
 }

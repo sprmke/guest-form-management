@@ -12,7 +12,7 @@ import {
 } from '@/features/admin/lib/totalGuestBalance';
 import { cn } from '@/lib/utils';
 
-export const SD_REFUND_METHOD_LABELS: Record<string, string> = {
+const SD_REFUND_METHOD_LABELS: Record<string, string> = {
   same_phone: 'Refund to same phone (GCash)',
   other_bank: 'Bank transfer',
   cash: 'Cash pickup',

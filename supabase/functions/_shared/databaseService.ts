@@ -1,51 +1,63 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
-import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts'
-import { applyGafDefaultsToFormData } from './appSettings.ts'
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
+import {
+  GuestFormData,
+  GuestSubmission,
+  transformFormToSubmission,
+} from "./types.ts";
+import { applyGafDefaultsToFormData } from "./appSettings.ts";
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
-} from './statusMachine.ts'
-import { UploadService } from './uploadService.ts'
-import { formatDate, formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME, formatPublicUrl } from './utils.ts'
+} from "./statusMachine.ts";
+import { UploadService } from "./uploadService.ts";
+import {
+  formatDate,
+  formatTime,
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+  formatPublicUrl,
+} from "./utils.ts";
 import {
   compareBookingsForListSort,
   manilaTodayIso,
   matchesDefaultBookingsListVisibility,
   passesListCheckInDateRangeFilter,
   type BookingsListSort,
-} from './bookingsListSort.ts'
+} from "./bookingsListSort.ts";
 
 export class DatabaseService {
   private static supabase = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    Deno.env.get("SUPABASE_URL") ?? "",
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
   );
 
   static async getRawData(bookingId: string) {
-    console.log('Fetching raw data for booking:', bookingId);
-    
+    console.log("Fetching raw data for booking:", bookingId);
+
     try {
       const { data, error } = await this.supabase
-        .from('guest_submissions')
-        .select('*')
-        .eq('id', bookingId)
+        .from("guest_submissions")
+        .select("*")
+        .eq("id", bookingId)
         .single();
 
       // PGRST116 means no rows found - this is expected for new bookings
-      if (error && error.code === 'PGRST116') {
-        console.log('No existing booking found (this is normal for new bookings)');
+      if (error && error.code === "PGRST116") {
+        console.log(
+          "No existing booking found (this is normal for new bookings)",
+        );
         return null;
       }
 
       if (error) {
         // PGRST116 means "not found" - this is expected for new submissions
-        if (error.code === 'PGRST116') {
-          console.log('Booking not found in database (new submission)');
+        if (error.code === "PGRST116") {
+          console.log("Booking not found in database (new submission)");
           return null;
         }
-        
-        console.error('Database error:', error);
-        throw new Error('Failed to fetch guest submission');
+
+        console.error("Database error:", error);
+        throw new Error("Failed to fetch guest submission");
       }
 
       if (!data) {
@@ -54,30 +66,30 @@ export class DatabaseService {
 
       return data;
     } catch (error) {
-      console.error('Error fetching raw data:', error);
+      console.error("Error fetching raw data:", error);
       throw error;
     }
   }
 
   static async getFormData(bookingId: string) {
-    console.log('Fetching form data for booking:', bookingId);
-    
+    console.log("Fetching form data for booking:", bookingId);
+
     try {
       const { data, error } = await this.supabase
-        .from('guest_submissions')
-        .select('*')
-        .eq('id', bookingId)
+        .from("guest_submissions")
+        .select("*")
+        .eq("id", bookingId)
         .single();
 
       // PGRST116 means no rows found - return null for non-existent bookings
-      if (error && error.code === 'PGRST116') {
-        console.log('No existing booking found');
+      if (error && error.code === "PGRST116") {
+        console.log("No existing booking found");
         return null;
       }
 
       if (error) {
-        console.error('Database error:', error);
-        throw new Error('Failed to fetch guest submission');
+        console.error("Database error:", error);
+        throw new Error("Failed to fetch guest submission");
       }
 
       if (!data) {
@@ -95,72 +107,74 @@ export class DatabaseService {
         parkingCheckInDate === checkInDate &&
         parkingCheckOutDate === checkOutDate;
 
-      const checkInTime = formatTime(data.check_in_time) || DEFAULT_CHECK_IN_TIME;
-      const checkOutTime = formatTime(data.check_out_time) || DEFAULT_CHECK_OUT_TIME;
+      const checkInTime =
+        formatTime(data.check_in_time) || DEFAULT_CHECK_IN_TIME;
+      const checkOutTime =
+        formatTime(data.check_out_time) || DEFAULT_CHECK_OUT_TIME;
 
       // Transform the database record back to form data format
       const formData: GuestFormData = {
-        guestFacebookName: data.guest_facebook_name || '',
-        guestEmail: data.guest_email || '',
-        guestPhoneNumber: data.guest_phone_number || '',
-        guestAddress: data.guest_address || '',
+        guestFacebookName: data.guest_facebook_name || "",
+        guestEmail: data.guest_email || "",
+        guestPhoneNumber: data.guest_phone_number || "",
+        guestAddress: data.guest_address || "",
         checkInDate,
         checkInTime,
         checkOutDate,
         checkOutTime,
-        nationality: data.nationality || '',
+        nationality: data.nationality || "",
         numberOfAdults: data.number_of_adults || 1,
         numberOfChildren: data.number_of_children || 0,
-        primaryGuestName: data.primary_guest_name || '',
+        primaryGuestName: data.primary_guest_name || "",
         primaryGuestAge: data.primary_guest_age ?? 18,
-        guest2Name: data.guest2_name || '',
+        guest2Name: data.guest2_name || "",
         guest2Age: data.guest2_name?.trim()
           ? (data.guest2_age ?? 18)
           : undefined,
-        guest3Name: data.guest3_name || '',
+        guest3Name: data.guest3_name || "",
         guest3Age: data.guest3_name?.trim()
           ? (data.guest3_age ?? 18)
           : undefined,
-        guest4Name: data.guest4_name || '',
+        guest4Name: data.guest4_name || "",
         guest4Age: data.guest4_name?.trim()
           ? (data.guest4_age ?? 18)
           : undefined,
-        guest5Name: data.guest5_name || '',
+        guest5Name: data.guest5_name || "",
         guest5Age: data.guest5_name?.trim()
           ? (data.guest5_age ?? 3)
           : undefined,
-        guestSpecialRequests: data.guest_special_requests || '',
-        findUs: data.find_us || 'Facebook',
-        findUsDetails: data.find_us_details || '',
-        bookingSource: data.booking_source || 'Facebook',
+        guestSpecialRequests: data.guest_special_requests || "",
+        findUs: data.find_us || "Facebook",
+        findUsDetails: data.find_us_details || "",
+        bookingSource: data.booking_source || "Facebook",
         guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
         parkingSameAsBookingDuration,
         parkingCheckInDate,
         parkingCheckOutDate,
-        carPlateNumber: data.car_plate_number || '',
-        carBrandModel: data.car_brand_model || '',
-        carColor: data.car_color || '',
+        carPlateNumber: data.car_plate_number || "",
+        carBrandModel: data.car_brand_model || "",
+        carColor: data.car_color || "",
         hasPets: data.has_pets || false,
-        petName: data.pet_name || '',
-        petType: data.pet_type || '',
-        petBreed: data.pet_breed || '',
-        petAge: data.pet_age || '',
+        petName: data.pet_name || "",
+        petType: data.pet_type || "",
+        petBreed: data.pet_breed || "",
+        petAge: data.pet_age || "",
         petVaccinationDate: formatDate(data.pet_vaccination_date),
-        petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || '',
-        petImageUrl: formatPublicUrl(data.pet_image_url) || '',
-        paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || '',
-        validIdUrl: formatPublicUrl(data.valid_id_url) || '',
-        guest2ValidIdUrl: formatPublicUrl(data.guest2_valid_id_url) || '',
-        guest3ValidIdUrl: formatPublicUrl(data.guest3_valid_id_url) || '',
-        guest4ValidIdUrl: formatPublicUrl(data.guest4_valid_id_url) || '',
-        guest5ValidIdUrl: formatPublicUrl(data.guest5_valid_id_url) || '',
+        petVaccinationUrl: formatPublicUrl(data.pet_vaccination_url) || "",
+        petImageUrl: formatPublicUrl(data.pet_image_url) || "",
+        paymentReceiptUrl: formatPublicUrl(data.payment_receipt_url) || "",
+        validIdUrl: formatPublicUrl(data.valid_id_url) || "",
+        guest2ValidIdUrl: formatPublicUrl(data.guest2_valid_id_url) || "",
+        guest3ValidIdUrl: formatPublicUrl(data.guest3_valid_id_url) || "",
+        guest4ValidIdUrl: formatPublicUrl(data.guest4_valid_id_url) || "",
+        guest5ValidIdUrl: formatPublicUrl(data.guest5_valid_id_url) || "",
       };
 
-      console.log('Form data fetched successfully:', formData);
+      console.log("Form data fetched successfully:", formData);
       return formData;
     } catch (error) {
-      console.error('Error fetching form data:', error);
+      console.error("Error fetching form data:", error);
       throw error;
     }
   }
@@ -170,31 +184,38 @@ export class DatabaseService {
     saveToDatabase = true,
     saveImagesToStorage = true,
     revertReadyForCheckinToPendingReview = false,
-  ): Promise<{ data: GuestFormData; submissionData: any; validIdUrl: string; paymentReceiptUrl: string; petVaccinationUrl?: string; petImageUrl?: string }> {
+  ): Promise<{
+    data: GuestFormData;
+    submissionData: any;
+    validIdUrl: string;
+    paymentReceiptUrl: string;
+    petVaccinationUrl?: string;
+    petImageUrl?: string;
+  }> {
     try {
-      console.log('Processing form data...');
+      console.log("Processing form data...");
 
       // Get required form fields
-      const fullName = formData.get('primaryGuestName') as string;
-      const checkInDate = formData.get('checkInDate') as string;
-      const checkOutDate = formData.get('checkOutDate') as string;
-      const guestEmail = formData.get('guestEmail') as string;
-      const bookingId = formData.get('bookingId') as string;
+      const fullName = formData.get("primaryGuestName") as string;
+      const checkInDate = formData.get("checkInDate") as string;
+      const checkOutDate = formData.get("checkOutDate") as string;
+      const guestEmail = formData.get("guestEmail") as string;
+      const bookingId = formData.get("bookingId") as string;
 
       if (!fullName) {
-        throw new Error('Full Name is required');
+        throw new Error("Full Name is required");
       }
 
       if (!checkInDate || !checkOutDate) {
-        throw new Error('Check-in and check-out dates are required');
+        throw new Error("Check-in and check-out dates are required");
       }
 
       if (!guestEmail) {
-        throw new Error('Email is required');
+        throw new Error("Email is required");
       }
 
       if (!bookingId) {
-        throw new Error('Booking ID is required');
+        throw new Error("Booking ID is required");
       }
 
       // Format dates
@@ -202,26 +223,29 @@ export class DatabaseService {
       const formattedCheckOut = formatDate(checkOutDate);
 
       if (!formattedCheckIn || !formattedCheckOut) {
-        throw new Error('Invalid check-in or check-out date format');
+        throw new Error("Invalid check-in or check-out date format");
       }
 
       // Check if booking already exists using the booking ID (only if saving to database or storage)
       let existingBooking = null;
       if (saveToDatabase || saveImagesToStorage) {
         const { data, error: fetchError } = await this.supabase
-          .from('guest_submissions')
-          .select('*')
-          .eq('id', bookingId)
+          .from("guest_submissions")
+          .select("*")
+          .eq("id", bookingId)
           .single();
 
-        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "not found" error
-          console.error('Error fetching existing booking:', fetchError);
-          throw new Error('Failed to check for existing booking');
+        if (fetchError && fetchError.code !== "PGRST116") {
+          // PGRST116 is "not found" error
+          console.error("Error fetching existing booking:", fetchError);
+          throw new Error("Failed to check for existing booking");
         }
-        
+
         existingBooking = data;
       } else {
-        console.log('⚠️ Skipping existing booking check (both saveToDatabase and saveImagesToStorage are false)');
+        console.log(
+          "⚠️ Skipping existing booking check (both saveToDatabase and saveImagesToStorage are false)",
+        );
       }
 
       // Handle file uploads
@@ -230,101 +254,123 @@ export class DatabaseService {
       let paymentReceiptUrl: string;
 
       // Get the pet vaccination file and pet image file
-      const petVaccination = formData.get('petVaccination') as File;
-      const petImage = formData.get('petImage') as File;
-      const hasPets = formData.get('hasPets') === 'true';
-      
+      const petVaccination = formData.get("petVaccination") as File;
+      const petImage = formData.get("petImage") as File;
+      const hasPets = formData.get("hasPets") === "true";
+
       if (hasPets) {
         // Handle pet vaccination upload
         if (petVaccination) {
-          const petVaccinationFileName = formData.get('petVaccinationFileName') as string;
+          const petVaccinationFileName = formData.get(
+            "petVaccinationFileName",
+          ) as string;
           const prefixedFileName = petVaccinationFileName;
           if (saveImagesToStorage) {
-            petVaccinationUrl = await UploadService.uploadPetVaccination(petVaccination, prefixedFileName);
+            petVaccinationUrl = await UploadService.uploadPetVaccination(
+              petVaccination,
+              prefixedFileName,
+            );
           } else {
-            console.log('⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)');
-            petVaccinationUrl = 'dev-mode-skipped';
+            console.log(
+              "⚠️ Skipping pet vaccination upload (saveImagesToStorage=false)",
+            );
+            petVaccinationUrl = "dev-mode-skipped";
           }
         } else if (existingBooking) {
           petVaccinationUrl = existingBooking.pet_vaccination_url;
         } else if (!saveImagesToStorage) {
-          petVaccinationUrl = 'dev-mode-skipped';
+          petVaccinationUrl = "dev-mode-skipped";
         } else {
-          throw new Error('Pet vaccination record is required when bringing pets');
+          throw new Error(
+            "Pet vaccination record is required when bringing pets",
+          );
         }
 
         // Handle pet image upload
         if (petImage) {
-          const petImageFileName = formData.get('petImageFileName') as string;
+          const petImageFileName = formData.get("petImageFileName") as string;
           const prefixedFileName = petImageFileName;
           if (saveImagesToStorage) {
-            petImageUrl = await UploadService.uploadPetImage(petImage, prefixedFileName);
+            petImageUrl = await UploadService.uploadPetImage(
+              petImage,
+              prefixedFileName,
+            );
           } else {
-            console.log('⚠️ Skipping pet image upload (saveImagesToStorage=false)');
-            petImageUrl = 'dev-mode-skipped';
+            console.log(
+              "⚠️ Skipping pet image upload (saveImagesToStorage=false)",
+            );
+            petImageUrl = "dev-mode-skipped";
           }
         } else if (existingBooking) {
           petImageUrl = existingBooking.pet_image_url;
         } else if (!saveImagesToStorage) {
-          petImageUrl = 'dev-mode-skipped';
+          petImageUrl = "dev-mode-skipped";
         } else {
-          throw new Error('Pet image is required when bringing pets');
+          throw new Error("Pet image is required when bringing pets");
         }
       }
 
       // Get the downpayment receipt file (FormData: paymentReceipt → payment_receipt_url)
       // Airbnb bookings skip the payment step — receipt is not required.
-      const isAirbnbSource = (formData.get('bookingSource') as string)?.trim() === 'Airbnb';
-      const paymentReceipt = formData.get('paymentReceipt') as File;
+      const isAirbnbSource =
+        (formData.get("bookingSource") as string)?.trim() === "Airbnb";
+      const paymentReceipt = formData.get("paymentReceipt") as File;
       if (paymentReceipt) {
-        const paymentReceiptFileName = formData.get('paymentReceiptFileName') as string;
+        const paymentReceiptFileName = formData.get(
+          "paymentReceiptFileName",
+        ) as string;
         const prefixedFileName = paymentReceiptFileName;
         if (saveImagesToStorage) {
-          paymentReceiptUrl = await UploadService.uploadPaymentReceipt(paymentReceipt, prefixedFileName);
+          paymentReceiptUrl = await UploadService.uploadPaymentReceipt(
+            paymentReceipt,
+            prefixedFileName,
+          );
         } else {
-          console.log('⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)');
-          paymentReceiptUrl = 'dev-mode-skipped';
+          console.log(
+            "⚠️ Skipping downpayment receipt upload (saveImagesToStorage=false)",
+          );
+          paymentReceiptUrl = "dev-mode-skipped";
         }
       } else if (existingBooking) {
         paymentReceiptUrl = existingBooking.payment_receipt_url;
       } else if (!saveImagesToStorage) {
-        paymentReceiptUrl = 'dev-mode-skipped';
+        paymentReceiptUrl = "dev-mode-skipped";
       } else if (isAirbnbSource) {
-        paymentReceiptUrl = '';
+        paymentReceiptUrl = "";
       } else {
-        throw new Error('Downpayment receipt is required');
+        throw new Error("Downpayment receipt is required");
       }
 
       // Get the valid ID files (primary + additional guests)
-      const primaryGuestAge = Number(formData.get('primaryGuestAge') || 0);
+      const primaryGuestAge = Number(formData.get("primaryGuestAge") || 0);
       if (primaryGuestAge < 18) {
-        throw new Error('Primary guest must be 18 years or older');
+        throw new Error("Primary guest must be 18 years or older");
       }
 
-      const guest2Age = Number(formData.get('guest2Age') || 0);
-      const guest3Age = Number(formData.get('guest3Age') || 0);
-      const guest4Age = Number(formData.get('guest4Age') || 0);
-      const guest5Age = Number(formData.get('guest5Age') || 0);
+      const guest2Age = Number(formData.get("guest2Age") || 0);
+      const guest3Age = Number(formData.get("guest3Age") || 0);
+      const guest4Age = Number(formData.get("guest4Age") || 0);
+      const guest5Age = Number(formData.get("guest5Age") || 0);
       const primaryGuestName =
-        (formData.get('primaryGuestName') as string)?.trim() || '';
-      const guest2Name = (formData.get('guest2Name') as string)?.trim() || '';
-      const guest3Name = (formData.get('guest3Name') as string)?.trim() || '';
-      const guest4Name = (formData.get('guest4Name') as string)?.trim() || '';
-      const guest5Name = (formData.get('guest5Name') as string)?.trim() || '';
+        (formData.get("primaryGuestName") as string)?.trim() || "";
+      const guest2Name = (formData.get("guest2Name") as string)?.trim() || "";
+      const guest3Name = (formData.get("guest3Name") as string)?.trim() || "";
+      const guest4Name = (formData.get("guest4Name") as string)?.trim() || "";
+      const guest5Name = (formData.get("guest5Name") as string)?.trim() || "";
 
       const partySlots = [
-        { name: primaryGuestName, age: formData.get('primaryGuestAge') },
-        { name: guest2Name, age: formData.get('guest2Age') },
-        { name: guest3Name, age: formData.get('guest3Age') },
-        { name: guest4Name, age: formData.get('guest4Age') },
-        { name: guest5Name, age: formData.get('guest5Age') },
+        { name: primaryGuestName, age: formData.get("primaryGuestAge") },
+        { name: guest2Name, age: formData.get("guest2Age") },
+        { name: guest3Name, age: formData.get("guest3Age") },
+        { name: guest4Name, age: formData.get("guest4Age") },
+        { name: guest5Name, age: formData.get("guest5Age") },
       ];
       let partySize = 1;
       partySlots.forEach((slot, index) => {
         const ageRaw = slot.age;
         const hasAge =
           ageRaw != null &&
-          String(ageRaw).trim() !== '' &&
+          String(ageRaw).trim() !== "" &&
           !Number.isNaN(Number(ageRaw));
         if (slot.name || hasAge) {
           partySize = Math.max(partySize, index + 1);
@@ -333,10 +379,10 @@ export class DatabaseService {
 
       const FIFTH_PARTY_GUEST_MAX_AGE = 3;
       if (partySize === 5) {
-        const fifthAgeRaw = formData.get('guest5Age');
+        const fifthAgeRaw = formData.get("guest5Age");
         if (
           fifthAgeRaw != null &&
-          String(fifthAgeRaw).trim() !== '' &&
+          String(fifthAgeRaw).trim() !== "" &&
           guest5Age > FIFTH_PARTY_GUEST_MAX_AGE
         ) {
           throw new Error(
@@ -356,18 +402,20 @@ export class DatabaseService {
           if (saveImagesToStorage) {
             return await UploadService.uploadValidId(file, prefixedFileName);
           }
-          console.log(`⚠️ Skipping ${field} upload (saveImagesToStorage=false)`);
-          return 'dev-mode-skipped';
+          console.log(
+            `⚠️ Skipping ${field} upload (saveImagesToStorage=false)`,
+          );
+          return "dev-mode-skipped";
         }
         if (existingBooking) {
           const dbField =
-            field === 'validId'
-              ? 'valid_id_url'
-              : `${field.replace('ValidId', '_valid_id_url').replace('guest', 'guest')}`;
+            field === "validId"
+              ? "valid_id_url"
+              : `${field.replace("ValidId", "_valid_id_url").replace("guest", "guest")}`;
           return existingBooking[dbField];
         }
         if (!saveImagesToStorage) {
-          return required ? 'dev-mode-skipped' : undefined;
+          return required ? "dev-mode-skipped" : undefined;
         }
         if (required) {
           throw new Error(`${field} is required`);
@@ -375,55 +423,53 @@ export class DatabaseService {
         return undefined;
       };
 
-      const validIdUrl = await uploadValidIdIfPresent(
-        'validId',
-        'validIdFileName',
-        true,
-      ) || '';
+      const validIdUrl =
+        (await uploadValidIdIfPresent("validId", "validIdFileName", true)) ||
+        "";
       const guest2ValidIdUrl =
         guest2Age >= 18
           ? await uploadValidIdIfPresent(
-            'guest2ValidId',
-            'guest2ValidIdFileName',
-            true,
-          )
+              "guest2ValidId",
+              "guest2ValidIdFileName",
+              true,
+            )
           : undefined;
       const guest3ValidIdUrl =
         guest3Age >= 18
           ? await uploadValidIdIfPresent(
-            'guest3ValidId',
-            'guest3ValidIdFileName',
-            true,
-          )
+              "guest3ValidId",
+              "guest3ValidIdFileName",
+              true,
+            )
           : undefined;
       const guest4ValidIdUrl =
         guest4Age >= 18
           ? await uploadValidIdIfPresent(
-            'guest4ValidId',
-            'guest4ValidIdFileName',
-            true,
-          )
+              "guest4ValidId",
+              "guest4ValidIdFileName",
+              true,
+            )
           : undefined;
       const guest5ValidIdUrl =
         guest5Age >= 18
           ? await uploadValidIdIfPresent(
-            'guest5ValidId',
-            'guest5ValidIdFileName',
-            true,
-          )
+              "guest5ValidId",
+              "guest5ValidIdFileName",
+              true,
+            )
           : undefined;
 
       // Convert form data to an object
       const formDataObj: Partial<GuestFormData> = {};
       const excludedFormFields = new Set([
-        'paymentReceipt',
-        'validId',
-        'guest2ValidId',
-        'guest3ValidId',
-        'guest4ValidId',
-        'guest5ValidId',
-        'petVaccination',
-        'petImage',
+        "paymentReceipt",
+        "validId",
+        "guest2ValidId",
+        "guest3ValidId",
+        "guest4ValidId",
+        "guest5ValidId",
+        "petVaccination",
+        "petImage",
       ]);
       formData.forEach((value, key) => {
         if (!excludedFormFields.has(key)) {
@@ -438,17 +484,17 @@ export class DatabaseService {
 
       const dataWithGafDefaults = await applyGafDefaultsToFormData(data);
 
-      console.log('Form data processed successfully');
-      
+      console.log("Form data processed successfully");
+
       // Transform data for database — Airbnb bookings may have no receipt
       if (!paymentReceiptUrl && !isAirbnbSource) {
-        throw new Error('Failed to upload downpayment receipt');
+        throw new Error("Failed to upload downpayment receipt");
       }
-      
+
       if (!validIdUrl) {
-        throw new Error('Failed to upload valid ID');
+        throw new Error("Failed to upload valid ID");
       }
-      
+
       const dbData = transformFormToSubmission(
         dataWithGafDefaults,
         paymentReceiptUrl,
@@ -472,18 +518,28 @@ export class DatabaseService {
             revertReadyForCheckinToPendingReview &&
             shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
           ) {
-            Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
-            patch.status = 'PENDING_REVIEW';
+            Object.assign(
+              patch,
+              pendingDocumentsClearPatchForGuestEditRevert(),
+            );
+            patch.status = "PENDING_REVIEW";
             patch.status_updated_at = new Date().toISOString();
           }
           submissionData = await this.updateGuestSubmission(bookingId, patch);
         } else {
-          submissionData = await this.saveGuestSubmission({ ...dbData, id: bookingId });
+          submissionData = await this.saveGuestSubmission({
+            ...dbData,
+            id: bookingId,
+          });
         }
       } else {
-        console.log('⚠️ Skipping database save (saveToDatabase=false)');
+        console.log("⚠️ Skipping database save (saveToDatabase=false)");
         // Return mock data for development
-        submissionData = { id: bookingId, ...dbData, created_at: new Date().toISOString() };
+        submissionData = {
+          id: bookingId,
+          ...dbData,
+          created_at: new Date().toISOString(),
+        };
       }
 
       return {
@@ -492,48 +548,48 @@ export class DatabaseService {
         petVaccinationUrl: formatPublicUrl(petVaccinationUrl),
         petImageUrl: formatPublicUrl(petImageUrl),
         validIdUrl: formatPublicUrl(validIdUrl),
-        paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl)
+        paymentReceiptUrl: formatPublicUrl(paymentReceiptUrl),
       };
     } catch (error) {
-      console.error('Error processing form data:', error);
-      throw new Error('Failed to process form data: ' + error.message);
+      console.error("Error processing form data:", error);
+      throw new Error("Failed to process form data: " + error.message);
     }
   }
 
   private static async saveGuestSubmission(formData: any) {
-    console.log('Saving new submission to database...');
-    
+    console.log("Saving new submission to database...");
+
     const { data, error } = await this.supabase
-      .from('guest_submissions')
+      .from("guest_submissions")
       .insert([formData])
       .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      throw new Error('Failed to save guest submission');
+      console.error("Database error:", error);
+      throw new Error("Failed to save guest submission");
     }
 
-    console.log('Database submission successful');
+    console.log("Database submission successful");
     return data;
   }
 
   private static async updateGuestSubmission(bookingId: string, formData: any) {
-    console.log('Updating existing submission in database...');
-    
+    console.log("Updating existing submission in database...");
+
     const { data, error } = await this.supabase
-      .from('guest_submissions')
+      .from("guest_submissions")
       .update(formData)
-      .eq('id', bookingId)
+      .eq("id", bookingId)
       .select()
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      throw new Error('Failed to update guest submission');
+      console.error("Database error:", error);
+      throw new Error("Failed to update guest submission");
     }
 
-    console.log('Database update successful');
+    console.log("Database update successful");
     return data;
   }
 
@@ -545,13 +601,13 @@ export class DatabaseService {
    */
   static async getBookingById(bookingId: string) {
     const { data, error } = await this.supabase
-      .from('guest_submissions')
-      .select('*')
-      .eq('id', bookingId)
+      .from("guest_submissions")
+      .select("*")
+      .eq("id", bookingId)
       .single();
 
     if (error) {
-      if (error.code === 'PGRST116') return null;
+      if (error.code === "PGRST116") return null;
       throw new Error(`Failed to fetch booking ${bookingId}: ${error.message}`);
     }
 
@@ -564,13 +620,18 @@ export class DatabaseService {
    */
   static async updateBookingStatus(bookingId: string, status: string) {
     const { data, error } = await this.supabase
-      .from('guest_submissions')
-      .update({ status, status_updated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq('id', bookingId)
+      .from("guest_submissions")
+      .update({
+        status,
+        status_updated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bookingId)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to update booking status: ${error.message}`);
+    if (error)
+      throw new Error(`Failed to update booking status: ${error.message}`);
     return data;
   }
 
@@ -579,15 +640,19 @@ export class DatabaseService {
    * SD refund fields, approved PDF URLs, etc.).  Called by the orchestrator after
    * validating the transition.
    */
-  static async setWorkflowFields(bookingId: string, fields: Record<string, unknown>) {
+  static async setWorkflowFields(
+    bookingId: string,
+    fields: Record<string, unknown>,
+  ) {
     const { data, error } = await this.supabase
-      .from('guest_submissions')
+      .from("guest_submissions")
       .update({ ...fields, updated_at: new Date().toISOString() })
-      .eq('id', bookingId)
+      .eq("id", bookingId)
       .select()
       .single();
 
-    if (error) throw new Error(`Failed to set workflow fields: ${error.message}`);
+    if (error)
+      throw new Error(`Failed to set workflow fields: ${error.message}`);
     return data;
   }
 
@@ -605,29 +670,29 @@ export class DatabaseService {
   static async listBookings(params: {
     q?: string;
     status?: string[];
-    from?: string | null;   // YYYY-MM-DD
-    to?: string | null;     // YYYY-MM-DD
+    from?: string | null; // YYYY-MM-DD
+    to?: string | null; // YYYY-MM-DD
     hasPets?: boolean | null;
     needParking?: boolean | null;
     sort?:
-      | 'status_priority:asc'
-      | 'check_in_date:asc'
-      | 'check_in_date:desc'
-      | 'created_at:asc'
-      | 'created_at:desc';
+      | "status_priority:asc"
+      | "check_in_date:asc"
+      | "check_in_date:desc"
+      | "created_at:asc"
+      | "created_at:desc";
     page?: number;
     limit?: number;
     /** When true, include COMPLETED rows (cancelled stays hidden unless status filter). */
     showCompletedBookings?: boolean;
   }) {
     const {
-      q = '',
+      q = "",
       status = [],
       from = null,
       to = null,
       hasPets = null,
       needParking = null,
-      sort = 'status_priority:asc',
+      sort = "status_priority:asc",
       page = 1,
       limit = 31,
       showCompletedBookings = false,
@@ -636,8 +701,8 @@ export class DatabaseService {
     const todayManila = manilaTodayIso();
 
     let request = this.supabase
-      .from('guest_submissions')
-      .select('*', { count: 'exact' });
+      .from("guest_submissions")
+      .select("*", { count: "exact" });
 
     // --- Filters ---
     // Free-text search now spans the full guest record:
@@ -674,23 +739,27 @@ export class DatabaseService {
           // Free-text notes
           `guest_special_requests.ilike.${needle}`,
           `find_us_details.ilike.${needle}`,
-        ].join(','),
+        ].join(","),
       );
     }
 
     if (status.length > 0) {
-      request = request.in('status', status);
+      request = request.in("status", status);
     }
 
-    if (hasPets === true) request = request.eq('has_pets', true);
-    if (hasPets === false) request = request.eq('has_pets', false);
+    if (hasPets === true) request = request.eq("has_pets", true);
+    if (hasPets === false) request = request.eq("has_pets", false);
 
-    if (needParking === true) request = request.eq('need_parking', true);
-    if (needParking === false) request = request.eq('need_parking', false);
+    if (needParking === true) request = request.eq("need_parking", true);
+    if (needParking === false) request = request.eq("need_parking", false);
 
     // Fetch all matching rows first (required for MM-DD-YYYY client-side sort)
     // Then paginate in memory. This is acceptable for admin (≤ a few thousand rows).
-    const { data: allData, error, count } = await request.order('created_at', { ascending: false });
+    const {
+      data: allData,
+      error,
+      count,
+    } = await request.order("created_at", { ascending: false });
 
     if (error) throw new Error(`listBookings query failed: ${error.message}`);
 
@@ -698,9 +767,7 @@ export class DatabaseService {
 
     // Date-range filter — PENDING_REVIEW always included (see passesListCheckInDateRangeFilter)
     if (from || to) {
-      rows = rows.filter((r) =>
-        passesListCheckInDateRangeFilter(r, from, to)
-      );
+      rows = rows.filter((r) => passesListCheckInDateRangeFilter(r, from, to));
     }
 
     // Default list: hide cancelled + completed unless toggle is on
@@ -710,7 +777,7 @@ export class DatabaseService {
 
     const listSort = sort as BookingsListSort;
     rows.sort((a, b) =>
-      compareBookingsForListSort(a, b, listSort, todayManila)
+      compareBookingsForListSort(a, b, listSort, todayManila),
     );
 
     // Paginate
@@ -723,15 +790,26 @@ export class DatabaseService {
 
   // ─────────────────────────────────────────────────────────────────────────────
 
-  static async checkOverlappingBookings(checkInDate: string, checkOutDate: string, bookingId?: string) {
-    console.log('Checking for overlapping bookings...');
-    console.log('Check-in:', checkInDate, 'Check-out:', checkOutDate, 'Booking ID:', bookingId);
+  static async checkOverlappingBookings(
+    checkInDate: string,
+    checkOutDate: string,
+    bookingId?: string,
+  ) {
+    console.log("Checking for overlapping bookings...");
+    console.log(
+      "Check-in:",
+      checkInDate,
+      "Check-out:",
+      checkOutDate,
+      "Booking ID:",
+      bookingId,
+    );
 
     try {
       // Normalize dates to YYYY-MM-DD format for comparison
       const normalizeDate = (dateStr: string): string => {
         console.log(`  Normalizing date: "${dateStr}"`);
-        
+
         // Check if date is in YYYY-MM-DD format (already normalized)
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
           console.log(`  → Already in YYYY-MM-DD format: ${dateStr}`);
@@ -739,94 +817,121 @@ export class DatabaseService {
         }
         // Check if date is in MM-DD-YYYY format
         if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-          const [month, day, year] = dateStr.split('-');
-          const normalized = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          const [month, day, year] = dateStr.split("-");
+          const normalized = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
           console.log(`  → Converted from MM-DD-YYYY to: ${normalized}`);
           return normalized;
         }
         // Return as-is if format is unknown
-        console.warn('  ⚠️ Unknown date format:', dateStr);
+        console.warn("  ⚠️ Unknown date format:", dateStr);
         return dateStr;
       };
 
       const newCheckIn = normalizeDate(checkInDate);
       const newCheckOut = normalizeDate(checkOutDate);
 
-      console.log('Normalized dates - Check-in:', newCheckIn, 'Check-out:', newCheckOut);
+      console.log(
+        "Normalized dates - Check-in:",
+        newCheckIn,
+        "Check-out:",
+        newCheckOut,
+      );
 
       // Query for overlapping bookings
       // Two date ranges overlap if:
       // (StartA < EndB) AND (EndA > StartB)
-      // 
+      //
       // However, we allow check-in on checkout dates (same day turnover), so we exclude:
       // - New check-in === existing check-out
       // - New check-out === existing check-in
-      
+
       // Phase 2+: only CANCELLED bookings free dates — every other status blocks.
       // We push the CANCELLED filter to the DB query for efficiency.
       // Belt-and-suspenders: legacy 'canceled' is also excluded in JS below.
       let query = this.supabase
-        .from('guest_submissions')
-        .select('id, check_in_date, check_out_date, status, primary_guest_name')
-        .neq('status', 'CANCELLED');
+        .from("guest_submissions")
+        .select("id, check_in_date, check_out_date, status, primary_guest_name")
+        .neq("status", "CANCELLED");
 
       // Exclude the current booking if updating
       if (bookingId) {
-        query = query.neq('id', bookingId);
+        query = query.neq("id", bookingId);
       }
 
       const { data: allBookings, error } = await query;
 
       if (error) {
-        console.error('Database error:', error);
-        throw new Error('Failed to check for overlapping bookings');
+        console.error("Database error:", error);
+        throw new Error("Failed to check for overlapping bookings");
       }
 
       // Belt-and-suspenders: also filter legacy 'canceled' rows in case the
       // Phase 2 migration hasn't been applied on a fresh local clone.
-      const activeBookings = allBookings?.filter(
-        booking => booking.status !== 'canceled' && booking.status !== 'CANCELLED'
-      ) || [];
+      const activeBookings =
+        allBookings?.filter(
+          (booking) =>
+            booking.status !== "canceled" && booking.status !== "CANCELLED",
+        ) || [];
 
-      console.log(`Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`);
+      console.log(
+        `Found ${allBookings?.length || 0} non-CANCELLED bookings, ${activeBookings.length} active bookings to check for overlaps`,
+      );
 
       // Filter overlapping bookings in memory
-      const overlappingBookings = activeBookings?.filter(booking => {
-        const existingCheckIn = normalizeDate(booking.check_in_date);
-        const existingCheckOut = normalizeDate(booking.check_out_date);
+      const overlappingBookings =
+        activeBookings?.filter((booking) => {
+          const existingCheckIn = normalizeDate(booking.check_in_date);
+          const existingCheckOut = normalizeDate(booking.check_out_date);
 
-        console.log(`Comparing with existing booking ${booking.id}:`);
-        console.log(`  Existing: ${existingCheckIn} to ${existingCheckOut}`);
-        console.log(`  New: ${newCheckIn} to ${newCheckOut}`);
+          console.log(`Comparing with existing booking ${booking.id}:`);
+          console.log(`  Existing: ${existingCheckIn} to ${existingCheckOut}`);
+          console.log(`  New: ${newCheckIn} to ${newCheckOut}`);
 
-        // Check if dates overlap
-        // New booking overlaps if:
-        // - New check-in is before existing check-out AND
-        // - New check-out is after existing check-in
-        // However, we allow check-in on checkout dates (same day turnover)
-        const overlaps = (newCheckIn < existingCheckOut) && (newCheckOut > existingCheckIn) &&
-                        !(newCheckIn === existingCheckOut || newCheckOut === existingCheckIn);
+          // Check if dates overlap
+          // New booking overlaps if:
+          // - New check-in is before existing check-out AND
+          // - New check-out is after existing check-in
+          // However, we allow check-in on checkout dates (same day turnover)
+          const overlaps =
+            newCheckIn < existingCheckOut &&
+            newCheckOut > existingCheckIn &&
+            !(
+              newCheckIn === existingCheckOut || newCheckOut === existingCheckIn
+            );
 
-        console.log(`  Overlap detected: ${overlaps}`);
-        console.log(`    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`);
-        console.log(`    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`);
-        console.log(`    - Allowing check-in on checkout date: ${newCheckIn === existingCheckOut ? 'YES (no overlap)' : 'N/A'}`);
+          console.log(`  Overlap detected: ${overlaps}`);
+          console.log(
+            `    - newCheckIn (${newCheckIn}) < existingCheckOut (${existingCheckOut}): ${newCheckIn < existingCheckOut}`,
+          );
+          console.log(
+            `    - newCheckOut (${newCheckOut}) > existingCheckIn (${existingCheckIn}): ${newCheckOut > existingCheckIn}`,
+          );
+          console.log(
+            `    - Allowing check-in on checkout date: ${newCheckIn === existingCheckOut ? "YES (no overlap)" : "N/A"}`,
+          );
 
-        if (overlaps) {
-          console.warn('⚠️ OVERLAP DETECTED with booking:', booking.id, '- Guest:', booking.primary_guest_name);
-        }
+          if (overlaps) {
+            console.warn(
+              "⚠️ OVERLAP DETECTED with booking:",
+              booking.id,
+              "- Guest:",
+              booking.primary_guest_name,
+            );
+          }
 
-        return overlaps;
-      }) || [];
+          return overlaps;
+        }) || [];
 
-      console.log(`✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`);
+      console.log(
+        `✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`,
+      );
 
       return {
         hasOverlap: overlappingBookings.length > 0,
-        overlappingBookings
+        overlappingBookings,
       };
     } catch (error) {
-      console.error('Error checking overlapping bookings:', error);
+      console.error("Error checking overlapping bookings:", error);
       throw error;
     }
   }
@@ -838,26 +943,26 @@ export class DatabaseService {
     { checkInYmd: string; checkOutYmd: string }[]
   > {
     const { data, error } = await this.supabase
-      .from('guest_submissions')
-      .select('check_in_date, check_out_date, status')
-      .neq('status', 'CANCELLED');
+      .from("guest_submissions")
+      .select("check_in_date, check_out_date, status")
+      .neq("status", "CANCELLED");
 
     if (error) {
-      console.error('listBookingRangesForAvailability:', error);
-      throw new Error('Failed to load booking ranges');
+      console.error("listBookingRangesForAvailability:", error);
+      throw new Error("Failed to load booking ranges");
     }
 
     const normalizeDate = (dateStr: string): string | null => {
       if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
       if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) {
-        const [month, day, year] = dateStr.split('-');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        const [month, day, year] = dateStr.split("-");
+        return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
       }
       return null;
     };
 
     const rows = (data ?? []).filter(
-      (r) => r.status !== 'canceled' && r.status !== 'CANCELLED',
+      (r) => r.status !== "canceled" && r.status !== "CANCELLED",
     );
 
     const out: { checkInYmd: string; checkOutYmd: string }[] = [];
@@ -869,18 +974,21 @@ export class DatabaseService {
     return out;
   }
 
-  static async getTelegramMarketingSettings(): Promise<Record<string, unknown> | null> {
+  static async getTelegramMarketingSettings(): Promise<Record<
+    string,
+    unknown
+  > | null> {
     const { data, error } = await this.supabase
-      .from('telegram_marketing_settings')
-      .select('*')
-      .eq('id', 1)
+      .from("telegram_marketing_settings")
+      .select("*")
+      .eq("id", 1)
       .maybeSingle();
 
     if (error) {
-      console.error('getTelegramMarketingSettings:', error);
-      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      console.error("getTelegramMarketingSettings:", error);
+      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
       throw new Error(
-        `Failed to load Telegram marketing settings${pg ? `: ${pg}` : ''}. ` +
+        `Failed to load Telegram marketing settings${pg ? `: ${pg}` : ""}. ` +
           `On production this usually means the table is missing — run migration ` +
           `20260614120000_telegram_marketing_settings.sql (or “supabase db push”) on this project.`,
       );
@@ -892,32 +1000,15 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('telegram_marketing_settings')
+      .from("telegram_marketing_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateTelegramMarketingSettings:', error);
-      throw new Error('Failed to update Telegram marketing settings');
-    }
-    return data;
-  }
-
-  static async getAppSettings(): Promise<Record<string, unknown> | null> {
-    const { data, error } = await this.supabase
-      .from('app_settings')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
-
-    if (error) {
-      console.error('getAppSettings:', error);
-      throw new Error(
-        `Failed to load app settings: ${error.message}. ` +
-          `Run migration 20260701120000_app_settings.sql on this project.`,
-      );
+      console.error("updateTelegramMarketingSettings:", error);
+      throw new Error("Failed to update Telegram marketing settings");
     }
     return data;
   }
@@ -926,16 +1017,16 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('app_settings')
+      .from("app_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateAppSettings:', error);
+      console.error("updateAppSettings:", error);
       throw new Error(
-        `Failed to update app settings: ${error.message ?? 'unknown error'}`,
+        `Failed to update app settings: ${error.message ?? "unknown error"}`,
       );
     }
     return data;
@@ -944,31 +1035,37 @@ export class DatabaseService {
   static async syncTelegramMarketingDailyCronJobs(
     slots: { hour: number; minute: number }[],
   ): Promise<{ ok?: boolean; error?: string; scheduled?: number }> {
-    const { data, error } = await this.supabase.rpc('sync_telegram_marketing_daily_cron_jobs', {
-      p_slots: slots as never,
-    });
+    const { data, error } = await this.supabase.rpc(
+      "sync_telegram_marketing_daily_cron_jobs",
+      {
+        p_slots: slots as never,
+      },
+    );
     if (error) {
-      console.error('syncTelegramMarketingDailyCronJobs rpc:', error);
-      return { ok: false, error: error.message ?? 'rpc failed' };
+      console.error("syncTelegramMarketingDailyCronJobs rpc:", error);
+      return { ok: false, error: error.message ?? "rpc failed" };
     }
-    if (data && typeof data === 'object' && data !== null) {
+    if (data && typeof data === "object" && data !== null) {
       return data as { ok?: boolean; error?: string; scheduled?: number };
     }
-    return { ok: false, error: 'unexpected rpc response' };
+    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramStaffSettings(): Promise<Record<string, unknown> | null> {
+  static async getTelegramStaffSettings(): Promise<Record<
+    string,
+    unknown
+  > | null> {
     const { data, error } = await this.supabase
-      .from('telegram_staff_settings')
-      .select('*')
-      .eq('id', 1)
+      .from("telegram_staff_settings")
+      .select("*")
+      .eq("id", 1)
       .maybeSingle();
 
     if (error) {
-      console.error('getTelegramStaffSettings:', error);
-      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      console.error("getTelegramStaffSettings:", error);
+      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
       throw new Error(
-        `Failed to load Telegram staff settings${pg ? `: ${pg}` : ''}. ` +
+        `Failed to load Telegram staff settings${pg ? `: ${pg}` : ""}. ` +
           `On production this usually means the table is missing — run migration ` +
           `20260622120000_telegram_staff_settings.sql (or "supabase db push") on this project.`,
       );
@@ -980,47 +1077,54 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('telegram_staff_settings')
+      .from("telegram_staff_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateTelegramStaffSettings:', error);
-      throw new Error('Failed to update Telegram staff settings');
+      console.error("updateTelegramStaffSettings:", error);
+      throw new Error("Failed to update Telegram staff settings");
     }
     return data;
   }
 
-  static async syncTelegramStaffDailyCronJob(
-    slot: { hour: number; minute: number },
-  ): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
-    const { data, error } = await this.supabase.rpc('sync_telegram_staff_daily_cron_job', {
-      p_slot: slot as never,
-    });
+  static async syncTelegramStaffDailyCronJob(slot: {
+    hour: number;
+    minute: number;
+  }): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
+    const { data, error } = await this.supabase.rpc(
+      "sync_telegram_staff_daily_cron_job",
+      {
+        p_slot: slot as never,
+      },
+    );
     if (error) {
-      console.error('syncTelegramStaffDailyCronJob rpc:', error);
-      return { ok: false, error: error.message ?? 'rpc failed' };
+      console.error("syncTelegramStaffDailyCronJob rpc:", error);
+      return { ok: false, error: error.message ?? "rpc failed" };
     }
-    if (data && typeof data === 'object' && data !== null) {
+    if (data && typeof data === "object" && data !== null) {
       return data as { ok?: boolean; error?: string; cronExpr?: string };
     }
-    return { ok: false, error: 'unexpected rpc response' };
+    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramFinanceSettings(): Promise<Record<string, unknown> | null> {
+  static async getTelegramFinanceSettings(): Promise<Record<
+    string,
+    unknown
+  > | null> {
     const { data, error } = await this.supabase
-      .from('telegram_finance_settings')
-      .select('*')
-      .eq('id', 1)
+      .from("telegram_finance_settings")
+      .select("*")
+      .eq("id", 1)
       .maybeSingle();
 
     if (error) {
-      console.error('getTelegramFinanceSettings:', error);
-      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      console.error("getTelegramFinanceSettings:", error);
+      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
       throw new Error(
-        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ''}. ` +
+        `Failed to load Telegram finance settings${pg ? `: ${pg}` : ""}. ` +
           `Run migration 20260710120000_finance_telegram_reminders.sql on this project.`,
       );
     }
@@ -1031,47 +1135,54 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('telegram_finance_settings')
+      .from("telegram_finance_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateTelegramFinanceSettings:', error);
-      throw new Error('Failed to update Telegram finance settings');
+      console.error("updateTelegramFinanceSettings:", error);
+      throw new Error("Failed to update Telegram finance settings");
     }
     return data;
   }
 
-  static async syncTelegramFinanceDailyCronJob(
-    slot: { hour: number; minute: number },
-  ): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
-    const { data, error } = await this.supabase.rpc('sync_telegram_finance_daily_cron_job', {
-      p_slot: slot as never,
-    });
+  static async syncTelegramFinanceDailyCronJob(slot: {
+    hour: number;
+    minute: number;
+  }): Promise<{ ok?: boolean; error?: string; cronExpr?: string }> {
+    const { data, error } = await this.supabase.rpc(
+      "sync_telegram_finance_daily_cron_job",
+      {
+        p_slot: slot as never,
+      },
+    );
     if (error) {
-      console.error('syncTelegramFinanceDailyCronJob rpc:', error);
-      return { ok: false, error: error.message ?? 'rpc failed' };
+      console.error("syncTelegramFinanceDailyCronJob rpc:", error);
+      return { ok: false, error: error.message ?? "rpc failed" };
     }
-    if (data && typeof data === 'object' && data !== null) {
+    if (data && typeof data === "object" && data !== null) {
       return data as { ok?: boolean; error?: string; cronExpr?: string };
     }
-    return { ok: false, error: 'unexpected rpc response' };
+    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramMaintenanceSettings(): Promise<Record<string, unknown> | null> {
+  static async getTelegramMaintenanceSettings(): Promise<Record<
+    string,
+    unknown
+  > | null> {
     const { data, error } = await this.supabase
-      .from('telegram_maintenance_settings')
-      .select('*')
-      .eq('id', 1)
+      .from("telegram_maintenance_settings")
+      .select("*")
+      .eq("id", 1)
       .maybeSingle();
 
     if (error) {
-      console.error('getTelegramMaintenanceSettings:', error);
-      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      console.error("getTelegramMaintenanceSettings:", error);
+      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
       throw new Error(
-        `Failed to load Telegram maintenance settings${pg ? `: ${pg}` : ''}. ` +
+        `Failed to load Telegram maintenance settings${pg ? `: ${pg}` : ""}. ` +
           `Run migration 20260818120000_maintenance_module.sql on this project.`,
       );
     }
@@ -1082,15 +1193,15 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('telegram_maintenance_settings')
+      .from("telegram_maintenance_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateTelegramMaintenanceSettings:', error);
-      throw new Error('Failed to update Telegram maintenance settings');
+      console.error("updateTelegramMaintenanceSettings:", error);
+      throw new Error("Failed to update Telegram maintenance settings");
     }
     return data;
   }
@@ -1101,30 +1212,33 @@ export class DatabaseService {
     cronExpr?: string;
   }> {
     const { data, error } = await this.supabase.rpc(
-      'sync_telegram_maintenance_hourly_cron_job',
+      "sync_telegram_maintenance_hourly_cron_job",
     );
     if (error) {
-      console.error('syncTelegramMaintenanceHourlyCronJob rpc:', error);
-      return { ok: false, error: error.message ?? 'rpc failed' };
+      console.error("syncTelegramMaintenanceHourlyCronJob rpc:", error);
+      return { ok: false, error: error.message ?? "rpc failed" };
     }
-    if (data && typeof data === 'object' && data !== null) {
+    if (data && typeof data === "object" && data !== null) {
       return data as { ok?: boolean; error?: string; cronExpr?: string };
     }
-    return { ok: false, error: 'unexpected rpc response' };
+    return { ok: false, error: "unexpected rpc response" };
   }
 
-  static async getTelegramAdminSettings(): Promise<Record<string, unknown> | null> {
+  static async getTelegramAdminSettings(): Promise<Record<
+    string,
+    unknown
+  > | null> {
     const { data, error } = await this.supabase
-      .from('telegram_admin_settings')
-      .select('*')
-      .eq('id', 1)
+      .from("telegram_admin_settings")
+      .select("*")
+      .eq("id", 1)
       .maybeSingle();
 
     if (error) {
-      console.error('getTelegramAdminSettings:', error);
-      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      console.error("getTelegramAdminSettings:", error);
+      const pg = `${error.code ?? ""} ${error.message ?? ""}`.trim();
       throw new Error(
-        `Failed to load Telegram admin settings${pg ? `: ${pg}` : ''}. ` +
+        `Failed to load Telegram admin settings${pg ? `: ${pg}` : ""}. ` +
           `Run migration 20260702120000_telegram_admin_settings.sql on this project.`,
       );
     }
@@ -1135,15 +1249,15 @@ export class DatabaseService {
     patch: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     const { data, error } = await this.supabase
-      .from('telegram_admin_settings')
+      .from("telegram_admin_settings")
       .update({ ...patch, updated_at: new Date().toISOString() })
-      .eq('id', 1)
+      .eq("id", 1)
       .select()
       .single();
 
     if (error) {
-      console.error('updateTelegramAdminSettings:', error);
-      throw new Error('Failed to update Telegram admin settings');
+      console.error("updateTelegramAdminSettings:", error);
+      throw new Error("Failed to update Telegram admin settings");
     }
     return data;
   }
@@ -1153,14 +1267,16 @@ export class DatabaseService {
     error?: string;
     cronExpr?: string;
   }> {
-    const { data, error } = await this.supabase.rpc('sync_telegram_admin_hourly_cron_job');
+    const { data, error } = await this.supabase.rpc(
+      "sync_telegram_admin_hourly_cron_job",
+    );
     if (error) {
-      console.error('syncTelegramAdminHourlyCronJob rpc:', error);
-      return { ok: false, error: error.message ?? 'rpc failed' };
+      console.error("syncTelegramAdminHourlyCronJob rpc:", error);
+      return { ok: false, error: error.message ?? "rpc failed" };
     }
-    if (data && typeof data === 'object' && data !== null) {
+    if (data && typeof data === "object" && data !== null) {
       return data as { ok?: boolean; error?: string; cronExpr?: string };
     }
-    return { ok: false, error: 'unexpected rpc response' };
+    return { ok: false, error: "unexpected rpc response" };
   }
-} 
+}

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
-export type PayParkingEmailChoiceVariant = 'submit' | 'update';
+type PayParkingEmailChoiceVariant = 'submit' | 'update';
 
 type Props = {
   open: boolean;

@@ -3,10 +3,10 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 /** Dedupes AI service failure toasts (backfill + upload). */
-export const DOCUMENT_AI_ERROR_TOAST_ID = 'document-ai-error';
+const DOCUMENT_AI_ERROR_TOAST_ID = 'document-ai-error';
 
 /** User-facing copy for raw Gemini / network errors. */
-export function simplifyAiModelErrorMessage(raw: string): string {
+function simplifyAiModelErrorMessage(raw: string): string {
   const msg = raw.trim();
   if (!msg) return 'Try again in a minute.';
 
@@ -58,7 +58,7 @@ export type ReceiptAiVerdict =
   | null
   | undefined;
 
-export function formatReceiptAiVerdictLabel(verdict: ReceiptAiVerdict): string {
+function formatReceiptAiVerdictLabel(verdict: ReceiptAiVerdict): string {
   switch (String(verdict ?? '').toLowerCase()) {
     case 'valid':
       return 'Valid';

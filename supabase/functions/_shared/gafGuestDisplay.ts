@@ -1,5 +1,5 @@
 /** Ages at or below this count as children on the GAF guest list. */
-export const GAF_CHILD_MAX_AGE = 3;
+const GAF_CHILD_MAX_AGE = 3;
 
 function formatAgeLabelForGaf(age: number): string {
   return age === 1 ? '1 year old' : `${age} years old`;

@@ -13,23 +13,12 @@ export type TelegramMaintenanceSettingsDto = {
   placeholdersReference: string[];
 };
 
-export type TelegramMaintenanceSettingsPatch = Partial<
+type TelegramMaintenanceSettingsPatch = Partial<
   Pick<
     TelegramMaintenanceSettingsDto,
     "enabled" | "defaultReminderTemplate" | "dailyCheckTimeManila"
   >
 >;
-
-export type MaintenanceEnvVerifyDto = {
-  credentials: {
-    tokenConfigured: boolean;
-    chatIdConfigured: boolean;
-    normalizedChatId?: string;
-    normalizeError?: string;
-  };
-  getMe: { ok: boolean; username?: string; error?: string };
-  getChat: { ok: boolean; type?: string; title?: string; error?: string };
-};
 
 async function getAdminJwt(): Promise<string> {
   const { data } = await supabase.auth.getSession();
@@ -43,9 +32,12 @@ export function useTelegramMaintenanceSettings() {
     queryKey: ["telegram-maintenance-settings"],
     queryFn: async (): Promise<TelegramMaintenanceSettingsDto> => {
       const jwt = await getAdminJwt();
-      const res = await fetch(`${FUNCTIONS_URL}/telegram-maintenance-settings`, {
-        headers: { Authorization: `Bearer ${jwt}` },
-      });
+      const res = await fetch(
+        `${FUNCTIONS_URL}/telegram-maintenance-settings`,
+        {
+          headers: { Authorization: `Bearer ${jwt}` },
+        },
+      );
       const json = (await res.json()) as {
         success?: boolean;
         error?: string;
@@ -66,14 +58,17 @@ export function useUpdateTelegramMaintenanceSettings() {
   return useMutation({
     mutationFn: async (patch: TelegramMaintenanceSettingsPatch) => {
       const jwt = await getAdminJwt();
-      const res = await fetch(`${FUNCTIONS_URL}/telegram-maintenance-settings`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `${FUNCTIONS_URL}/telegram-maintenance-settings`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(patch),
         },
-        body: JSON.stringify(patch),
-      });
+      );
       const json = (await res.json()) as {
         success?: boolean;
         error?: string;
@@ -88,12 +83,14 @@ export function useUpdateTelegramMaintenanceSettings() {
       return { data: json.data, cronSync: json.cronSync };
     },
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ["telegram-maintenance-settings"] });
+      void qc.invalidateQueries({
+        queryKey: ["telegram-maintenance-settings"],
+      });
     },
   });
 }
 
-export type TelegramMaintenanceTestAction =
+type TelegramMaintenanceTestAction =
   | "verify_maintenance_telegram_env"
   | "send_test_due_reminders"
   | "send_draft_preview";
@@ -105,14 +102,17 @@ export function useTelegramMaintenanceTestSend() {
       text?: string;
     }) => {
       const jwt = await getAdminJwt();
-      const res = await fetch(`${FUNCTIONS_URL}/telegram-maintenance-settings`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${jwt}`,
-          "Content-Type": "application/json",
+      const res = await fetch(
+        `${FUNCTIONS_URL}/telegram-maintenance-settings`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${jwt}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(input),
         },
-        body: JSON.stringify(input),
-      });
+      );
       const json = (await res.json()) as Record<string, unknown>;
       if (!res.ok && !json.success) {
         throw new Error(String(json.error ?? "Test send failed"));

@@ -58,7 +58,7 @@ export function replacePlaceholders(
  * Gmail web) that drop or ignore class rules from `<head>`. Keep visually in
  * sync with `.email-outer` … `.content-pad` / `.h1-title` in the HTML templates.
  */
-export const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
+const EMAIL_SHELL_STYLE_VARS: Record<string, string> = {
   emailShellBodyStyle:
     "margin:0 !important;padding:0 !important;-webkit-text-size-adjust:100%;background-color:#f3f4f6;",
   emailShellTableOuterStyle:

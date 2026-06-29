@@ -1,7 +1,5 @@
 export const CHART_INCOME_COLOR = "#10b981";
 export const CHART_EXPENSE_COLOR = "#ef4444";
-export const CHART_SKY_COLOR = "#3b82f6";
-export const CHART_AMBER_COLOR = "#f59e0b";
 
 export function formatChartMoneyAxis(value: number): string {
   if (value >= 1_000_000) return `₱${(value / 1_000_000).toFixed(1)}M`;

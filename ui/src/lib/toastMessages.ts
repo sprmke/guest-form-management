@@ -17,7 +17,7 @@ export type TelegramVerifyDto = {
   };
 };
 
-export function telegramVerifyToastContent(
+function telegramVerifyToastContent(
   verify: TelegramVerifyDto,
   groupLabel = 'Telegram group',
 ): { ok: boolean; title: string; description?: string } {
