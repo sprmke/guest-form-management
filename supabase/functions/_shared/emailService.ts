@@ -1021,6 +1021,8 @@ export async function sendReadyForCheckin(booking: GuestSubmission) {
   `
     : "";
 
+  const additionalGuestFee = Number(booking.guest_additional_fee ?? 0) || 0;
+
   const additionalFeeRow =
     additionalGuestFee > 0
       ? `
