@@ -3,9 +3,8 @@
  *
  * Shown in the left column of BookingDetailPage when the admin clicks "Edit".
  * While the booking is in **Pending documents** (parent or GAF / parking / pet)
- * or **Ready for check-in**, saving **workflow-sensitive** guest/stay fields
- * reverts status to PENDING_REVIEW (see `hasWorkflowSensitiveGuestFieldDiff`
- * + docs/TODOS.md). Other edits keep status unchanged.
+ * or **Ready for check-in**, saving workflow-sensitive guest/stay fields opens
+ * a choice: save only (keep status) or save and revert to PENDING_REVIEW.
  *
  * Uses React Hook Form (no Zod for now — lightweight admin-only form).
  */
@@ -37,7 +36,7 @@ import {
 } from "@/features/admin/hooks/useUpdateBooking";
 import { hasWorkflowSensitiveGuestFieldDiff } from "@/features/admin/lib/workflowSensitiveGuestDiff";
 import { shouldRevertGuestFieldEditsToPendingReview } from "@/features/admin/lib/bookingStatus";
-import { ReadyForCheckinSensitiveFieldsNotice } from "@/features/admin/components/ReadyForCheckinSensitiveFieldsNotice";
+import { BookingEditSaveChoiceDialog } from "@/features/admin/components/BookingEditSaveChoiceDialog";
 import { AdminAdditionalGuestSlot } from "@/features/admin/components/AdminAdditionalGuestSlot";
 import { BookingGuestDocReplacer } from "@/features/admin/components/BookingGuestDocReplacer";
 import type { GuestDocAssetType } from "@/features/admin/hooks/useUploadBookingAsset";
@@ -348,6 +347,9 @@ export function BookingEditForm({
       sdRefundGuest: null,
     });
   const [progressTouched, setProgressTouched] = useState(false);
+  const [saveChoiceOpen, setSaveChoiceOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] =
+    useState<UpdateBookingPayload | null>(null);
   const [visibleAdditionalGuestCount, setVisibleAdditionalGuestCount] =
     useState(() => getInitialVisibleAdditionalGuestCount(booking));
 
@@ -375,13 +377,6 @@ export function BookingEditForm({
     watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
   const watchCheckInDate = formSnapshot?.check_in_date ?? "";
   const progressDirty = progressTouched;
-  const showSensitiveRevertHint =
-    guestEditRevertPipeline &&
-    (isDirty || progressDirty) &&
-    hasWorkflowSensitiveGuestFieldDiff(
-      savedSensitiveBaseline,
-      bookingEditPayloadFromValues(formSnapshot),
-    );
   const canSave = isDirty || progressDirty;
 
   React.useEffect(() => {
@@ -482,8 +477,8 @@ export function BookingEditForm({
     setValue(slot.ageField, "", { shouldDirty: true });
   };
 
-  const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    const payload = {
+  const buildPayloadFromValues = (values: FormValues): UpdateBookingPayload => {
+    const payload: UpdateBookingPayload = {
       ...bookingEditPayloadFromValues(values),
       ...(progressTouched
         ? progressFormPayloadFromState(booking, progressFormState)
@@ -511,33 +506,62 @@ export function BookingEditForm({
       payload.balance_receipt_ai_summary = null;
     }
 
-    const revertToPendingReview =
+    return payload;
+  };
+
+  const persistBooking = async (
+    payload: UpdateBookingPayload,
+    revertToPendingReview: boolean,
+  ) => {
+    const updated = await updateMut.mutateAsync({
+      bookingId: booking.id,
+      currentStatus: booking.status,
+      payload,
+      revertToPendingReview,
+    });
+
+    if (revertToPendingReview) {
+      toast.success("Booking updated — moved to Pending Review");
+    } else {
+      toast.success("Booking updated");
+    }
+
+    setSaveChoiceOpen(false);
+    setPendingPayload(null);
+    onSaved(updated);
+  };
+
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
+    const payload = buildPayloadFromValues(values);
+    const needsSaveChoice =
       guestEditRevertPipeline &&
       hasWorkflowSensitiveGuestFieldDiff(savedSensitiveBaseline, payload);
 
-    try {
-      const updated = await updateMut.mutateAsync({
-        bookingId: booking.id,
-        currentStatus: booking.status,
-        payload,
-        revertToPendingReview,
-      });
+    if (needsSaveChoice) {
+      setPendingPayload(payload);
+      setSaveChoiceOpen(true);
+      return;
+    }
 
-      if (revertToPendingReview) {
-        toast.success("Booking updated — moved to Pending Review");
-      } else {
-        toast.success("Booking updated");
-      }
-      onSaved(updated);
+    try {
+      await persistBooking(payload, false);
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, "Could not save booking"));
+    }
+  };
+
+  const handleSaveChoice = async (revertToPendingReview: boolean) => {
+    if (!pendingPayload) return;
+    try {
+      await persistBooking(pendingPayload, revertToPendingReview);
     } catch (err: unknown) {
       toast.error(friendlyToastError(err, "Could not save booking"));
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
-
+    <>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <div
         className={cn(
           "overflow-hidden rounded-2xl border border-border/70 bg-card shadow-md",
@@ -981,15 +1005,23 @@ export function BookingEditForm({
             className="min-h-[44px] rounded-lg px-5"
           >
             <Save className="size-3.5" />
-            {updateMut.isPending
-              ? "Saving…"
-              : showSensitiveRevertHint
-                ? "Save & Revert Status"
-                : "Save"}
+            {updateMut.isPending ? "Saving…" : "Save"}
           </Button>
         </div>
       </div>
     </form>
+
+      <BookingEditSaveChoiceDialog
+        open={saveChoiceOpen}
+        onOpenChange={(open) => {
+          if (!open) setPendingPayload(null);
+          setSaveChoiceOpen(open);
+        }}
+        isSaving={updateMut.isPending}
+        onSaveOnly={() => void handleSaveChoice(false)}
+        onSaveAndRevert={() => void handleSaveChoice(true)}
+      />
+    </>
   );
 }
 

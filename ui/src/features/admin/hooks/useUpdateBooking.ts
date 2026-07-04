@@ -2,12 +2,8 @@
  * useUpdateBooking — mutation to patch guest_submissions directly via Supabase.
  *
  * Used by BookingEditForm. All writes go through the authenticated admin session.
- * When `revertToPendingReview` is true and `currentStatus` is in the documents pipeline
- * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
- * `bookingStatus.ts`), this also resets status → PENDING_REVIEW and merges
- * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, PDF URLs,
- * parking settlement, guest balance settlement — **not** pricing snapshot fields).
- * The caller should set `revertToPendingReview` only when workflow-sensitive guest fields changed.
+ * When `revertToPendingReview` is true and `currentStatus` is revert-eligible,
+ * also resets status to PENDING_REVIEW (admin chooses this in the save modal).
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
