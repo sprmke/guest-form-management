@@ -100,8 +100,22 @@ Full query set / edge cases: **`MIGRATION_RUNBOOK.md` §3** · **§5** step 6.
 ## 4. Deploy Edge Functions
 
 ```bash
-supabase functions deploy
+npm run deploy:supabase:functions
+# or: supabase functions deploy
 ```
+
+**Production must deploy from `main`** until multi-tenancy migrations ship. The WIP branch `feature/support-multi-users-and-properties` selects `guest_submissions.property_id` and queries `properties` — if those functions reach prod **without** the matching migrations, every cron/public handler that touches bookings fails (e.g. `sd-refund-cron`: `column guest_submissions.property_id does not exist`, guest **`submit-form`**: `Load failed`).
+
+`scripts/deploy-supabase.sh` blocks function deploy when this tree contains multi-tenancy edge code unless you pass **`--allow-multi-tenancy`** (only after **`db push`** includes `20260629180000_multi_tenancy_foundation.sql` and follow-ons).
+
+**Recovery (functions ahead of schema):**
+
+```bash
+git checkout main
+npm run deploy:supabase:functions
+```
+
+Do **not** run multi-tenancy **`db push`** on prod until the full cutover is planned. Redeploying **`main`** functions restores single-tenant behavior immediately.
 
 **`supabase/config.toml`** **`static_files`** must bundle email HTML / inline assets for workflow senders (orchestrator **`ENOENT`** if missing — see **`docs/PROJECT.md`** deploy notes).
 
