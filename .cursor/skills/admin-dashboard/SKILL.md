@@ -5,7 +5,7 @@ description: Patterns for the new /bookings admin list and /bookings/:bookingId 
 
 # Admin dashboard skill
 
-Implements the admin surface described in `docs/NEW FLOW.md` lines 67-76 and refined in `docs/NEW_FLOW_PLAN.md §3.1`.
+Implements the admin surface described in `docs/planning/NEW_FLOW.md` lines 67-76 and refined in `docs/planning/NEW_FLOW_PLAN.md §3.1`.
 
 ## Required context
 
@@ -18,7 +18,7 @@ Implements the admin surface described in `docs/NEW FLOW.md` lines 67-76 and ref
 ## Folder layout
 
 ```
-ui/src/features/admin/
+ui/src/features/dashboard/bookings/
   routes/index.tsx                 # exports adminRoutes array, merged in ui/src/routes/index.tsx
   pages/
     SignInPage.tsx                 # /sign-in
@@ -51,7 +51,7 @@ ui/src/features/admin/
 ## Data fetching
 
 - Introduce **TanStack Query v5** (`@tanstack/react-query`) now. Hook up a single `QueryClientProvider` in `ui/src/App.tsx`.
-- All admin fetches go through hooks under `ui/src/features/admin/hooks/`. Do not `fetch()` in components.
+- All admin fetches go through hooks under `ui/src/features/dashboard/bookings/hooks/`. Do not `fetch()` in components.
 - Cache keys:
   - `['bookings', { search, status, sort, page, limit }]`
   - `['booking', bookingId]`
@@ -134,7 +134,7 @@ Two-column on ≥lg, single column on mobile:
 
 ## Don'ts
 
-- Don't duplicate status or transition logic between `ui/src/features/admin/lib/workflow.ts` and `_shared/statusMachine.ts` — keep them aligned; a mismatch is a bug.
+- Don't duplicate status or transition logic between `ui/src/features/dashboard/bookings/lib/workflow.ts` and `_shared/statusMachine.ts` — keep them aligned; a mismatch is a bug.
 - Don't fetch all bookings client-side for filtering. Server does filter/sort/pagination.
 - Don't hide guest-field editing after `READY_FOR_CHECKIN` — instead show a **warning banner** that saving workflow-sensitive changes (Q5.5 list) will revert workflow to `PENDING_REVIEW`; non-listed changes should not revert status.
 - Don't bypass `RequireAdmin` via a route-level `<Outlet />` without the guard.

@@ -5,7 +5,7 @@ description: Patterns for the /bookings admin list table using shadcn Table prim
 
 # Bookings table skill
 
-Practical patterns for the `/bookings` list in `ui/src/features/admin/`. See the `admin-dashboard` skill for the surrounding page layout.
+Practical patterns for the `/bookings` list in `ui/src/features/dashboard/bookings/`. See the `admin-dashboard` skill for the surrounding page layout.
 
 ## Stack decision
 
@@ -20,48 +20,48 @@ Practical patterns for the `/bookings` list in `ui/src/features/admin/`. See the
 When TanStack Table is not used, keep columns declarative anyway:
 
 ```tsx
-// ui/src/features/admin/components/BookingTable.tsx
-import type { BookingRow } from "@/features/admin/lib/types";
+// ui/src/features/dashboard/bookings/components/BookingTable.tsx
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 type Column = {
-  id: keyof BookingRow | "actions";
+  id: keyof BookingRow | 'actions';
   header: React.ReactNode;
   cell: (row: BookingRow) => React.ReactNode;
-  align?: "left" | "right";
+  align?: 'left' | 'right';
   className?: string;
 };
 
 export const columns: Column[] = [
   {
-    id: "status",
-    header: "Status",
+    id: 'status',
+    header: 'Status',
     cell: (r) => <StatusBadge status={r.status} />,
   },
-  { id: "guest", header: "Guest", cell: (r) => <GuestCell row={r} /> },
-  { id: "dates", header: "Dates", cell: (r) => <DatesCell row={r} /> },
+  { id: 'guest', header: 'Guest', cell: (r) => <GuestCell row={r} /> },
+  { id: 'dates', header: 'Dates', cell: (r) => <DatesCell row={r} /> },
   {
-    id: "pax",
-    header: "Pax",
+    id: 'pax',
+    header: 'Pax',
     cell: (r) => r.numberOfAdults + (r.numberOfChildren ?? 0),
-    align: "right",
+    align: 'right',
   },
-  { id: "flags", header: "", cell: (r) => <FlagsCell row={r} /> },
+  { id: 'flags', header: '', cell: (r) => <FlagsCell row={r} /> },
   {
-    id: "bookingRate",
-    header: "Amount",
+    id: 'bookingRate',
+    header: 'Amount',
     cell: (r) => <Amount value={r.bookingRate} />,
-    align: "right",
+    align: 'right',
   },
   {
-    id: "createdAt",
-    header: "Created",
+    id: 'createdAt',
+    header: 'Created',
     cell: (r) => <RelativeTime value={r.createdAt} />,
   },
   {
-    id: "actions",
-    header: "",
+    id: 'actions',
+    header: '',
     cell: (r) => <RowActions row={r} />,
-    align: "right",
+    align: 'right',
   },
 ];
 ```
