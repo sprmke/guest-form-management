@@ -1,0 +1,142 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start dev server",
+      "type": "shell",
+      "command": "./dev.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "focus": true },
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Dev: UI only (remote Supabase)",
+      "type": "shell",
+      "command": "./dev.sh --ui-only",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Dev: Edge functions only",
+      "type": "shell",
+      "command": "bun run dev:api",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Quality: CI",
+      "type": "shell",
+      "command": "bun run type-check && bun run lint && bun run check:filenames && bun run build",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "group": "test",
+      "problemMatcher": ["$tsc"]
+    },
+    {
+      "label": "Supabase: Start",
+      "type": "shell",
+      "command": "bun run start:supabase",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      }
+    },
+    {
+      "label": "Supabase: Stop",
+      "type": "shell",
+      "command": "bun run stop:supabase",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      }
+    },
+    {
+      "label": "Supabase: DB reset",
+      "type": "shell",
+      "command": "bun run db:reset",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      }
+    },
+    {
+      "label": "Supabase: Sync prod data → local",
+      "type": "shell",
+      "command": "bun run sync:prod-data",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      }
+    },
+    {
+      "label": "Deploy: Supabase (db + functions)",
+      "type": "shell",
+      "command": "bun run deploy:supabase",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Deploy: Supabase (db only)",
+      "type": "shell",
+      "command": "bun run deploy:supabase:db",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Deploy: Supabase (functions only)",
+      "type": "shell",
+      "command": "bun run deploy:supabase:functions",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Preview: Emails from DB",
+      "type": "shell",
+      "command": "bun run preview:emails",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Integrations: Gmail OAuth setup",
+      "type": "shell",
+      "command": "bun run gmail-auth",
+      "options": { "cwd": "${workspaceFolder}" }
+    }
+  ]
+}
