@@ -77,13 +77,13 @@ If all three are **no** → omit the text.
 
 ## Exceptions (add text)
 
-| Case | Guidance |
-|------|----------|
-| Form labels | Short noun phrase; see `accessibility` skill |
-| Buttons | Verb or verb phrase: `Save`, `Send test` |
-| Errors | State what failed; no preamble |
-| Empty states | Optional one line; never a paragraph |
-| User-requested copy | Follow the brief; still prefer short |
+| Case                | Guidance                                     |
+| ------------------- | -------------------------------------------- |
+| Form labels         | Short noun phrase; see `accessibility` skill |
+| Buttons             | Verb or verb phrase: `Save`, `Send test`     |
+| Errors              | State what failed; no preamble               |
+| Empty states        | Optional one line; never a paragraph         |
+| User-requested copy | Follow the brief; still prefer short         |
 
 ## Refactors
 

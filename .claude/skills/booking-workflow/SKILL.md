@@ -9,8 +9,8 @@ This skill is the **playbook** for the redesign. The **rules of engagement** liv
 
 ## Required reading before you start
 
-1. `docs/NEW_FLOW_PLAN.md` — plan, open questions, phased rollout.
-2. `docs/NEW FLOW.md` — original product spec.
+1. `docs/planning/NEW_FLOW_PLAN.md` — plan, open questions, phased rollout.
+2. `docs/planning/NEW_FLOW.md` — original product spec.
 3. `.cursor/rules/booking-workflow.mdc` — canonical status/transition/color map.
 4. `.cursor/rules/admin-auth.mdc` — who can transition and how.
 5. `.cursor/rules/supabase-edge-functions.mdc` — function conventions.
@@ -26,14 +26,14 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 ### Phase 0 — Backup + additive migration
 
 - Migration: `supabase/migrations/2026…_backup_guest_submissions.sql` → `CREATE TABLE guest_submissions_backup_<ts> AS SELECT * FROM guest_submissions`.
-- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD expense/profit **`NUMERIC[]`**, SD refund receipt URL, SD refund amount, `is_test_booking`, `status_updated_at`).
+- Migration: add nullable columns from `NEW_FLOW_PLAN.md §2` (booking rate, down payment, balance, parking rates ×2, pet fee, approved PDF URLs, SD expense/profit **`NUMERIC[]`**, SD refund receipt URL, SD refund amount, `status_updated_at`). (Historical: `is_test_booking` was added then removed — use staging for trials.)
 - Do **not** change behavior yet. Deploy, verify, only then move to Phase 1.
 
 ### Phase 1 — Admin auth + empty `/bookings`
 
 - Add `@supabase/supabase-js` + `@tanstack/react-query` to `ui/package.json`.
-- Create `ui/src/lib/supabaseClient.ts` (singleton).
-- Create `ui/src/features/admin/` with `RequireAdmin`, `SignInPage`, `BookingsListPage` (read-only).
+- Create `ui/src/lib/supabase/client.ts` (singleton).
+- Create `ui/src/features/dashboard/bookings/` with `RequireAdmin`, `SignInPage`, `BookingsListPage` (read-only).
 - `list-bookings` edge function returns existing rows paginated; no transitions yet.
 - Wire routes in `ui/src/routes/index.tsx`.
 
@@ -72,7 +72,7 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 
 ## Implementation rules (please follow)
 
-- **Single source of truth for status/color/prefix** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/admin/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
+- **Single source of truth for status/color/prefix** — in `_shared/statusMachine.ts`. Mirror to `ui/src/features/dashboard/bookings/lib/workflow.ts` via a shared JSON file or duplicated literal with a lint test.
 - **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / Azure GAF `sendEmail` / `sendPetEmail` directly from a handler for workflow work — **exception:** `submit-form` may call **`sendNewBookingRequestNotify`** (owner inbox only).
 - **Never CC the guest** on GAF or pet request emails.
 - **Pricing math** lives in one helper (`_shared/pricing.ts`): **`balance = booking_rate - down_payment`**. SD (`security_deposit`, default ₱1500) and parking/pet line items are **not** in balance — they are separate fields shown in breakdown UIs/emails. UI must import the same helper (or call a tiny `compute-pricing` edge function) — no duplicated math.

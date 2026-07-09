@@ -26,7 +26,7 @@ Apply this skill whenever you implement or review UI in `ui/src/**`.
 </button>
 ```
 
-### React Hook Form fields (matches `ui/src/features/guest-form/schemas/guestFormSchema.ts`)
+### React Hook Form fields (matches `ui/src/features/guest/form/schemas/guestFormSchema.ts`)
 
 ```tsx
 <Label htmlFor="guestEmail">Email</Label>
@@ -66,7 +66,7 @@ Status color alone is not enough — always pair color with text and, for screen
 ### Sonner toasts (already used in the project)
 
 - Toasts are announced via `aria-live`. Keep messages short and actionable.
-- The existing "Copy booking info" pattern in `ui/src/features/guest-form/components/GuestForm.tsx` is a good reference.
+- The existing "Copy booking info" pattern in `ui/src/features/guest/form/components/GuestForm.tsx` is a good reference.
 
 ## Testing checklist
 

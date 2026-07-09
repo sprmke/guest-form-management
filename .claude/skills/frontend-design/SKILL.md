@@ -37,12 +37,12 @@ Create **distinctive, production-grade** frontend interfaces. Avoid generic AI a
 
 - `Input`, `Label`, `Button`, `Checkbox`, `Popover`, `Select` from `ui/src/components/ui/`.
 - `cn()` util from `ui/src/utils/helpers.ts` (or `ui/src/lib/utils.ts` — check which exists before adding a new one).
-- Existing calendar & form visual language in `ui/src/features/guest-form/` — admin pages should feel like a polished extension, not a different product.
+- Existing calendar & form visual language in `ui/src/features/guest/form/` — admin pages should feel like a polished extension, not a different product.
 
 ## Where to put new UI
 
-- Guest-facing: `ui/src/features/guest-form/`
-- Admin dashboard: `ui/src/features/admin/` (new folder per the new flow plan)
+- Guest-facing: `ui/src/features/guest/form/`
+- Admin dashboard: `ui/src/features/dashboard/bookings/` (new folder per the new flow plan)
 - Shared primitives: `ui/src/components/ui/`
 - Cross-feature shared (e.g. `StatusBadge`): `ui/src/components/` (non-`ui/`) — add a folder like `components/booking/` if a family of shared booking widgets emerges.
 
