@@ -1,0 +1,58 @@
+---
+description: Public guest routes — calendar, form, sd-form, pay-parking (unauthenticated)
+globs:
+  - 'ui/src/features/guest/form/**/*'
+  - 'ui/src/features/guest/sd-form/**/*'
+  - 'ui/src/features/guest/pay-parking/**/*'
+  - 'ui/src/layouts/MainLayout.tsx'
+alwaysApply: false
+---
+
+# Public UI
+
+Routes: `/`, `/calendar`, `/form`, `/success`, `/sd-form`, `/bookings/:id/parking` (pay parking).
+
+No admin auth required. Branding via property scope (`?property=<slug>`).
+
+## Layout
+
+`MainLayout` — guest nav; `KameFormBrandHeader` on form flows.
+
+## Calendar → form
+
+`CalendarPage` preserves query params (`?source=airbnb`, `?property=`) when navigating to `/form`.
+
+## Guest form
+
+| Concern      | Location                                              |
+| ------------ | ----------------------------------------------------- |
+| Main UI      | `ui/src/features/guest/form/components/GuestForm.tsx` |
+| Schema       | `guestFormSchema.ts`                                  |
+| Submit       | `submit-form` edge function (FormData)                |
+| Booked dates | `get-booked-dates`                                    |
+
+Production: full save path. Non-prod / `?dev=true`: dev checkbox panel (save DB, storage, calendar, sheet, email).
+
+## SD refund
+
+`/sd-form?bookingId=` — `get-sd-form` read-only; `submit-sd-form` + `claim-sd-voucher` at `READY_FOR_CHECKOUT`.
+
+## Pay parking
+
+`/bookings/:bookingId/parking` — owner broadcast flow; separate from main guest form.
+
+## API calls
+
+Use `VITE_SUPABASE_URL` + anon key. Pass `?property=` or `?property_id=` when scoped.
+
+## UX
+
+- Mobile-first (375px)
+- Minimal copy (`ui-minimal-copy.mdc`)
+- Guide: `docs/guides/routes/form.md`, `calendar.md`, `sd-form.md`
+
+## Don'ts
+
+- Require Google sign-in on public routes
+- Expose admin URLs or service role in guest bundle
+- Block guest submit on optional dev-only code paths in production builds

@@ -5,6 +5,10 @@
       {
         "command": ".cursor/hooks/format-edited-file.sh",
         "timeout": 15
+      },
+      {
+        "command": "bash .cursor/hooks/check-stack-terminology.sh",
+        "timeout": 5
       }
     ],
     "beforeShellExecution": [

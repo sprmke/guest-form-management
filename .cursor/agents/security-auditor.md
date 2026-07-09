@@ -11,7 +11,7 @@ When invoked, perform a readonly audit. Do not modify files unless explicitly as
 
 ## 1. Identify security-sensitive surfaces in this repo
 
-- **Admin auth** (`ui/src/features/admin/`, `supabase/functions/_shared/auth.ts`): Supabase Google OAuth + `ADMIN_ALLOWED_EMAILS` allow list. The allow list **must** be server-enforced (JWT validated via `supabase.auth.getUser`), not only client-side.
+- **Admin auth** (`ui/src/features/dashboard/bookings/`, `supabase/functions/_shared/auth.ts`): Supabase Google OAuth + `ADMIN_ALLOWED_EMAILS` allow list. The allow list **must** be server-enforced (JWT validated via `supabase.auth.getUser`), not only client-side.
 - **Edge functions** (`supabase/functions/**/*.ts`):
   - Public (`submit-form`, `get-form`, `get-booked-dates`) — `verify_jwt = false`. Treat request bodies as untrusted.
   - Admin — `verify_jwt = true` + `verifyAdminJwt()` as first line.
@@ -81,4 +81,4 @@ End with a **Summary** table: severity → count → one-line theme.
 - `.cursor/rules/admin-auth.mdc`
 - `.cursor/rules/supabase-edge-functions.mdc`
 - `.cursor/rules/booking-workflow.mdc`
-- `docs/NEW_FLOW_PLAN.md` — especially §3.2 (Auth) and §3.4 (Gmail listener).
+- `docs/planning/NEW_FLOW_PLAN.md` — especially §3.2 (Auth) and §3.4 (Gmail listener).

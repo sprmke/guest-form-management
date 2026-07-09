@@ -7,10 +7,12 @@ alwaysApply: true
 
 **Start every task by reading:**
 
-1. `docs/PROJECT.md` — current architecture, API tables, env vars, routes.
-2. `docs/TODOS.md` — shipped/planned backlog (do not assume a feature exists).
-3. `docs/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
-4. `docs/NEW FLOW.md` — original product spec for the redesign.
+1. `docs/README.md` — doc index; then **`docs/PROJECT.md`** for architecture, API tables, env vars, routes.
+2. **`docs/reference/project-structure.md`** — guest vs dashboard feature folders.
+3. `docs/guides/routes/README.md` — per-page behavior guides (update via `.cursor/rules/route-guides.mdc` when changing a page/section).
+4. `docs/TODOS.md` — shipped/planned backlog (do not assume a feature exists).
+5. `docs/planning/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
+6. `docs/planning/NEW_FLOW.md` — original product spec for the redesign.
 
 ## What this is
 
@@ -24,11 +26,13 @@ Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functio
 - **Auth**: None today on public flows. New admin flow adds **Supabase Auth + Google OAuth** for `/bookings` (see `admin-auth.mdc`).
 - **Storage**: Supabase Storage (not AWS S3).
 
-If a rule, skill, or doc references Next.js, React 19 RSC, tRPC, Drizzle, Neon, Bun, `packages/emails`, `apps/web`, or multi-tenancy → **that content is stale/wrong for this repo** and should be flagged or deleted.
+If a rule, skill, or doc references Next.js, React 19 RSC, tRPC, Drizzle, Neon, `packages/emails`, `apps/web`, or PMA-only multi-tenant patterns → **that content is stale/wrong for this repo** and should be flagged or deleted.
+
+**Cursor agent tooling:** index at **`.cursor/rules/README.md`**; use **`docs-first`** skill before new features. Keep always-on rules lean (see README).
 
 ## Monorepo gotcha
 
-Root `package.json` workspaces list `api`, but **there is no `api/` package**. Use `npm run dev` / `dev.sh` at the root and `cd ui && npm run dev` for the SPA.
+Root `package.json` workspaces list `ui` only (no `api/` package). Use **`bun install`** at root, then **`bun run dev`** / `./dev.sh` for full stack, or **`./dev.sh --ui-only`** for Vite against remote Supabase (no Docker).
 
 ## Routes
 
@@ -46,16 +50,14 @@ Root `package.json` workspaces list `api`, but **there is no `api/` package**. U
 - `/bookings` — admin dashboard (list with search / filter / sort / pagination).
 - `/bookings/:bookingId` — detail page; renders the guest form with dev controls + workflow panel.
 - `/settings` — admin settings (**Gmail listener** connect / reconnect / disconnect via `GmailMailIntegrationCard`).
-- `/finance` — Finance dashboard (overview KPIs, stays ledger, property transactions, PDF export).
-- `/maintenance` — Maintenance dashboard (overview KPIs, property upkeep reminders, Telegram settings, PDF export).
-- `/marketing` — Telegram marketing reminders (`TelegramMarketingSettingsCard`; see `docs/reference/telegram-marketing-reminders.md`).
-- `/staff` — Staff/cleaner Telegram daily booking summary + instant same-day check-in alert at/after the configured daily summary time (`TelegramStaffSettingsCard`).
-- `/operations` — Admin workflow Telegram alerts (`TelegramAdminSettingsCard`; instant + hourly scenarios, per-event templates, test sends).
+- `/notifications` — unified Telegram settings for Marketing, Staff, Operations, Finance, and Maintenance (`NotificationsPage`; see `docs/guides/routes/org/property/notifications.md`).
+- `/finance` — Finance dashboard (overview KPIs, stays ledger, property transactions). Telegram reminders: **Notifications → Finance**.
+- `/maintenance` — Maintenance dashboard (overview KPIs, property upkeep reminders). Telegram reminders: **Notifications → Maintenance**.
 
 ## When editing the guest form
 
-- Schema: `ui/src/features/guest-form/schemas/guestFormSchema.ts`
-- Large UI: `ui/src/features/guest-form/components/GuestForm.tsx` (dev controls — **all toggles on by default** when the panel is shown, submit `FormData`, clipboard recovery)
+- Schema: `ui/src/features/guest/form/schemas/guestFormSchema.ts`
+- Large UI: `ui/src/features/guest/form/components/GuestForm.tsx` (dev controls — **all toggles on by default** when the panel is shown, submit `FormData`, clipboard recovery)
 - Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports.
 
 ## When editing submit behavior
@@ -86,24 +88,51 @@ Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
 
 ## Docs workflow
 
-Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, `docs/TODOS.md`, and — for redesign work — `docs/NEW_FLOW_PLAN.md` in the same change set as code. Don't leave code and docs out of sync.
+Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, `docs/TODOS.md`, and — for redesign work — `docs/planning/NEW_FLOW_PLAN.md` in the same change set as code. Don't leave code and docs out of sync.
 
-For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, local `functions serve`, curl / admin “Run now” testing), see **`docs/SCHEDULED_JOBS_AND_TESTING.md`**.
+For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, local `functions serve`, curl / admin “Run now” testing), see **`docs/operations/scheduled-jobs-and-testing.md`**.
 
 ## Related rules
 
 - `.cursor/rules/booking-workflow.mdc` — **read before any booking-state task**.
 - `.cursor/rules/admin-auth.mdc` — **read before any /bookings or auth task**.
+- `.cursor/rules/architecture.mdc` — feature folders, shared utils, import conventions.
+- `.cursor/rules/naming-conventions.mdc` — file/directory naming (bulletproof-react aligned).
 - `.cursor/rules/supabase-edge-functions.mdc` — conventions for new edge functions.
 - `.cursor/rules/documentation-maintenance.mdc` — when and what docs to update.
+- `.cursor/rules/route-guides.mdc` — per-route guides in `docs/guides/routes/`.
+- `.cursor/skills/route-guides/SKILL.md` — workflow for writing route guides.
 - `.cursor/rules/ui-minimal-copy.mdc` — no extra UI labels or descriptions unless asked or required.
 
 ## Related skills (in `.cursor/skills/`)
 
-- `booking-workflow` — operational guide for implementing the new flow.
-- `admin-dashboard` — patterns for the `/bookings` list + detail pages.
-- `gmail-listener` — Gmail OAuth + idempotency for Azure approval emails.
-- `bookings-table` — table UI patterns for the admin list.
-- `frontend-design` — project-aware design guidance.
-- `minimal-ui-copy` — no extra labels, descriptions, or helper text unless asked or required.
-- `accessibility` — WCAG 2.1 AA rules for UI work.
+Full index: **`.cursor/rules/README.md`**.
+
+### Platform
+
+- `docs-first` — read `docs/README.md` + `docs/PROJECT.md` before implementing
+- `supabase-stack` — Postgres, Storage, edge platform
+- `supabase-auth` — OAuth, JWT, org/property RBAC
+- `tanstack-query` — admin hooks + edge fetch
+- `multi-tenancy` — org/property routes and scoping
+- `integrations` — Google, Telegram, Meta, Resend
+
+### Booking & admin
+
+- `booking-workflow` — status machine, orchestrator
+- `admin-dashboard` — bookings list + detail
+- `bookings-table` — table UI patterns
+- `gmail-listener` — Gmail OAuth + approvals
+- `social-inbox` / `meta-messaging` — Guest Inbox
+- `emails` — HTML templates + workflow mail
+- `forms` — RHF + Zod guest/admin forms
+
+### UI
+
+- `frontend-design` — layout and visual patterns
+- `component-generator` — scaffold components
+- `tanstack-table` — admin list tables
+- `minimal-ui-copy` — sparse copy
+- `accessibility` — WCAG 2.1 AA
+- `route-guides` — per-route docs workflow
+- `performance` — Vite + query tuning

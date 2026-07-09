@@ -1,0 +1,59 @@
+---
+description: Auth, org/property RBAC, secrets, and data scoping — edge + admin UI
+globs:
+  - 'supabase/functions/**/*.ts'
+  - 'ui/src/features/dashboard/org/**/*.ts'
+  - 'ui/src/features/dashboard/team/**/*.ts'
+  - 'ui/src/features/dashboard/bookings/components/RequireAdmin.tsx'
+  - 'ui/src/lib/supabase/client.ts'
+alwaysApply: false
+---
+
+# Security
+
+## Layers
+
+| Surface               | Gate                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------- |
+| Legacy platform admin | `verifyAdminJwt` + `ADMIN_ALLOWED_EMAILS` — `.cursor/rules/admin-auth.mdc`                   |
+| Org / property admin  | `verifyOrgAccess`, `verifyPropertyAccess` — `_shared/orgAuth.ts`, `_shared/propertyScope.ts` |
+| Public guest          | Anon key; validate inputs; no PII in logs                                                    |
+| Cron / webhooks       | Optional secrets (`X-Telegram-Cron-Secret`, Meta verify token)                               |
+
+## Non-negotiables
+
+1. **Server enforces** — never trust client-only allow lists or role checks.
+2. **Scope every query** by `organization_id` / `property_id` / `booking.property_id`.
+3. **Service role** only inside edge functions — never in UI env.
+4. **Encrypt** OAuth refresh tokens + Telegram bot tokens at rest (`GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`).
+5. **No secrets** in URLs, commits, or guest-visible errors.
+
+## Property-scoped edge functions
+
+```typescript
+import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
+import { serveAdmin } from '../_shared/serveEdge.ts';
+
+serveAdmin('list-bookings', async (req, admin) => {
+  const propertyId = await resolveAdminPropertyId(req, admin);
+  // all DB reads/writes filter by propertyId
+});
+```
+
+Team RBAC: `_shared/propertyTeamPermissions.ts`, `_shared/orgTeamPermissions.ts`.
+
+## UI
+
+- `RequireAdmin.tsx` — session hydrate, allow-list UX, sign-out on reject.
+- `callEdgeFunction` refreshes session before admin calls.
+- Property context: `usePropertyIdParam`, `scopedFunctionsUrl`, route params `orgSlug` / `propertySlug`.
+
+## Guest PII
+
+Minimize logs. Storage paths: `{propertyId}/{bookingId}/…` via `bookingStoragePaths.ts`.
+
+## Don'ts
+
+- Skip `verifyAdminJwt` / `verifyPropertyAccess` because `verify_jwt = false` in config.toml
+- Return stack traces or secret env names to clients
+- Cross-tenant reads using only client-supplied UUIDs without membership check

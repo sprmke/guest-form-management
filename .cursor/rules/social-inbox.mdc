@@ -1,0 +1,69 @@
+---
+description: Org-level Guest Inbox — Meta messaging, webhooks, permissions, AI auto-reply invariants
+globs:
+  - supabase/functions/**/meta-inbox-*/**
+  - supabase/functions/**/social-inbox-*/**
+  - supabase/functions/_shared/metaInbox*.ts
+  - supabase/functions/_shared/socialInbox*.ts
+  - ui/src/features/dashboard/inbox/**
+  - docs/guides/routes/org/inbox.md
+---
+
+# Social Guest Inbox — agent reference
+
+Org-scoped unified inbox at `/org/:orgSlug/inbox`. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments). TikTok and Airbnb are **Coming soon** until partner APIs are available — never fake connectivity.
+
+## Permissions
+
+| Permission         | Capability                                  |
+| ------------------ | ------------------------------------------- |
+| `org:inbox:view`   | Read threads and messages                   |
+| `org:inbox:reply`  | Send replies                                |
+| `org:inbox:manage` | Connect channels, quick replies, automation |
+
+Keep in sync: `supabase/functions/_shared/orgTeamPermissions.ts` and `ui/src/features/dashboard/team/lib/orgTeamConstants.ts`.
+
+## Data scope
+
+- Every row keyed by `organization_id`. Edge functions use `resolveOrgAccessContext(req, permission)`.
+- Webhook handler is public but **must** verify `X-Hub-Signature-256` and dedupe via `social_webhook_events`.
+- Tokens encrypted with `META_INBOX_TOKEN_ENCRYPTION_KEY` (AES-256-GCM, same pattern as Gmail OAuth crypto).
+
+## Meta messaging rules
+
+- **24-hour window:** outbound DMs only when `messaging_window_expires_at` > now (set from last inbound).
+- **Comments:** public reply via Graph API; IG private reply via `recipient.comment_id` (one DM per comment, 7 days).
+- **Webhook-first:** Conversations API backfill on connect only; do not poll in a loop.
+- **App Review:** production requires Advanced Access — see `docs/operations/meta-app-review.md`.
+
+## AI auto-reply
+
+- Default mode: **suggest only** (`auto_reply_mode = draft`).
+- Auto-send (`send`) requires explicit org opt-in in Automation tab.
+- Never auto-reply outside Meta messaging window.
+- Flag outbound AI messages with `is_ai_generated = true`.
+
+## Edge functions
+
+| Function                                             | Auth            |
+| ---------------------------------------------------- | --------------- |
+| `meta-inbox-oauth-start`                             | JWT + org       |
+| `meta-inbox-oauth-callback`                          | Public redirect |
+| `meta-inbox-status` / `disconnect`                   | JWT + org       |
+| `meta-inbox-webhook`                                 | Public (signed) |
+| `social-inbox-threads` / `messages` / `send`         | JWT + org       |
+| `social-inbox-templates` / `settings` / `ai-suggest` | JWT + org       |
+
+All JWT routes: `verify_jwt = false` in config + `serveAuthenticated` + in-handler checks.
+
+## UI
+
+- Feature folder: `ui/src/features/dashboard/inbox/`
+- Mobile: master–detail with back button on conversation view
+- Realtime: Supabase channel on `social_messages` + `social_conversations` for org id
+
+## Don'ts
+
+- Don't leak cross-org data in webhooks (resolve connection by `meta_page_id`).
+- Don't scrape Airbnb/TikTok without official APIs.
+- Don't skip route guide + `docs/PROJECT.md` updates when changing behavior.
