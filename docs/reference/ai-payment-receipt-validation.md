@@ -8,13 +8,13 @@ Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and 
 
 ## 1. Overview
 
-| Item | Detail |
-| --- | --- |
-| **Provider** | Google **Gemini 2.5 Flash** (`generativelanguage.googleapis.com`) |
-| **Runtime** | Supabase Edge Functions (Deno) — `supabase/functions/_shared/receiptValidationService.ts` |
-| **Secret** | `GEMINI_API_KEY` (Google AI Studio; optional) |
-| **When key missing / API fails** | Verdict `skipped` for config/storage issues only; **Gemini/network failures are not persisted** — admin sees a toast on `/bookings/:id` and may retry |
-| **Re-runs** | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a document URL exists but verdict columns are empty (non-terminal bookings only). |
+| Item                             | Detail                                                                                                                                                            |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider**                     | Google **Gemini 2.5 Flash** (`generativelanguage.googleapis.com`)                                                                                                 |
+| **Runtime**                      | Supabase Edge Functions (Deno) — `supabase/functions/_shared/receiptValidationService.ts`                                                                         |
+| **Secret**                       | `GEMINI_API_KEY` (Google AI Studio; optional)                                                                                                                     |
+| **When key missing / API fails** | Verdict `skipped` for config/storage issues only; **Gemini/network failures are not persisted** — admin sees a toast on `/bookings/:id` and may retry             |
+| **Re-runs**                      | On **new upload** (primary path). **One-shot backfill** on `/bookings/:id` when a document URL exists but verdict columns are empty (non-terminal bookings only). |
 
 The AI does **not** verify that the amount matches the booking total. It only judges whether the image appears to be legitimate payment proof (digital transfer screenshot or visible PHP cash).
 
@@ -22,12 +22,12 @@ The AI does **not** verify that the amount matches the booking total. It only ju
 
 ## 2. Receipt types covered
 
-| Receipt | Upload path | DB URL column | AI verdict column | AI summary column |
-| --- | --- | --- | --- | --- |
-| **Downpayment** (guest form) | `submit-form` (`paymentReceipt` file) | `payment_receipt_url` | `dp_receipt_ai_verdict` | `dp_receipt_ai_summary` |
-| **Downpayment** (admin replace) | `upload-booking-asset` → `payment_receipt` | `payment_receipt_url` | `dp_receipt_ai_verdict` | `dp_receipt_ai_summary` |
-| **Guest balance** | `upload-booking-asset` → `guest_balance_payment_receipt` | `guest_balance_payment_receipt_url` | `balance_receipt_ai_verdict` | `balance_receipt_ai_summary` |
-| **Parking** (separate payment) | `upload-booking-asset` → `parking_payment_receipt` | `parking_payment_receipt_url` | `parking_receipt_ai_verdict` | `parking_receipt_ai_summary` |
+| Receipt                         | Upload path                                              | DB URL column                       | AI verdict column            | AI summary column            |
+| ------------------------------- | -------------------------------------------------------- | ----------------------------------- | ---------------------------- | ---------------------------- |
+| **Downpayment** (guest form)    | `submit-form` (`paymentReceipt` file)                    | `payment_receipt_url`               | `dp_receipt_ai_verdict`      | `dp_receipt_ai_summary`      |
+| **Downpayment** (admin replace) | `upload-booking-asset` → `payment_receipt`               | `payment_receipt_url`               | `dp_receipt_ai_verdict`      | `dp_receipt_ai_summary`      |
+| **Guest balance**               | `upload-booking-asset` → `guest_balance_payment_receipt` | `guest_balance_payment_receipt_url` | `balance_receipt_ai_verdict` | `balance_receipt_ai_summary` |
+| **Parking** (separate payment)  | `upload-booking-asset` → `parking_payment_receipt`       | `parking_payment_receipt_url`       | `parking_receipt_ai_verdict` | `parking_receipt_ai_summary` |
 
 Parking AI runs only when the admin uploads a **separate** parking receipt (`ParkingRequestForm` with **Included from downpayment receipt** unchecked). When parking is included in the downpayment, no parking receipt URL is stored and parking AI columns are cleared on transition.
 
@@ -35,9 +35,9 @@ Parking AI runs only when the admin uploads a **separate** parking receipt (`Par
 
 ### 2.1 Valid ID (guest document)
 
-| Document | Upload path | DB URL column | AI verdict column | AI summary column |
-| --- | --- | --- | --- | --- |
-| **Valid ID** (guest form) | `submit-form` (`validId` file) | `valid_id_url` | `valid_id_ai_verdict` | `valid_id_ai_summary` |
+| Document                     | Upload path                         | DB URL column  | AI verdict column     | AI summary column     |
+| ---------------------------- | ----------------------------------- | -------------- | --------------------- | --------------------- |
+| **Valid ID** (guest form)    | `submit-form` (`validId` file)      | `valid_id_url` | `valid_id_ai_verdict` | `valid_id_ai_summary` |
 | **Valid ID** (admin replace) | `upload-booking-asset` → `valid_id` | `valid_id_url` | `valid_id_ai_verdict` | `valid_id_ai_summary` |
 
 Accepts **images and PDF** (PhilSys, passport, driver's license, UMID, and similar government photo IDs). **Non-blocking** — invalid verdict is informational only (does not gate workflow). UI: **Guest Information** card `DocPreview` + preview modal compact pill (same as payment receipts).
@@ -46,13 +46,13 @@ Accepts **images and PDF** (PhilSys, passport, driver's license, UMID, and simil
 
 ## 3. Verdicts and blocking behavior
 
-| Verdict | Meaning | Guest form submit | Admin workflow |
-| --- | --- | --- | --- |
-| `valid` | Clear transfer screenshot **or** clear PHP cash payment photo | Allowed | Allowed |
-| `likely_valid` | Probably payment proof; some fields blurry or cropped | Allowed | Allowed |
-| `unclear` | Cannot confidently classify | Allowed | Allowed (UI warns) |
-| `invalid` | Clearly not payment proof (not a transfer screenshot or cash photo) | Allowed | **Blocked** on balance settlement and parking completion |
-| `skipped` | No API key, storage/URL issue, or empty image (not a Gemini model failure) | Allowed | Allowed (no badge) |
+| Verdict        | Meaning                                                                    | Guest form submit | Admin workflow                                           |
+| -------------- | -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------- |
+| `valid`        | Clear transfer screenshot **or** clear PHP cash payment photo              | Allowed           | Allowed                                                  |
+| `likely_valid` | Probably payment proof; some fields blurry or cropped                      | Allowed           | Allowed                                                  |
+| `unclear`      | Cannot confidently classify                                                | Allowed           | Allowed (UI warns)                                       |
+| `invalid`      | Clearly not payment proof (not a transfer screenshot or cash photo)        | Allowed           | **Blocked** on balance settlement and parking completion |
+| `skipped`      | No API key, storage/URL issue, or empty image (not a Gemini model failure) | Allowed           | Allowed (no badge)                                       |
 
 **Blocking rules (admin only):**
 
@@ -139,12 +139,12 @@ Only `verdict` and `summary` are persisted to Postgres. `confidence` and `has_*`
 
 Placeholders in **`telegram_admin_settings`** templates (via `buildAdminBookingPlaceholders`):
 
-| Placeholder | Source |
-| --- | --- |
-| `{{dp_receipt_ai_verdict}}` | Human label from `dp_receipt_ai_verdict` |
-| `{{dp_receipt_ai_summary}}` | `dp_receipt_ai_summary` or `N/A` |
+| Placeholder                      | Source                                        |
+| -------------------------------- | --------------------------------------------- |
+| `{{dp_receipt_ai_verdict}}`      | Human label from `dp_receipt_ai_verdict`      |
+| `{{dp_receipt_ai_summary}}`      | `dp_receipt_ai_summary` or `N/A`              |
 | `{{balance_receipt_ai_verdict}}` | Human label from `balance_receipt_ai_verdict` |
-| `{{balance_receipt_ai_summary}}` | `balance_receipt_ai_summary` or `N/A` |
+| `{{balance_receipt_ai_summary}}` | `balance_receipt_ai_summary` or `N/A`         |
 
 Default **new booking** template (migration `20260717120000`) includes downpayment AI lines. **Balance receipt uploaded** uses `balance_receipt_uploaded_template` (instant on admin upload, deduped per receipt URL). **Balance receipt needed** hourly reminders use `balance_receipt_template` without AI placeholders — migration `20260721120000` / `20260721140000` restore the split if `20260717120000` overwrote the hourly copy with "Uploaded".
 
@@ -152,11 +152,11 @@ Parking AI is shown in **`ParkingRequestForm`** on the booking detail workflow p
 
 ### Admin UI
 
-| Location | Component | What shows |
-| --- | --- | --- |
-| Booking detail → Pricing card | `BookingDetailPage` `DocPreview` + `useReceiptAiBackfill` | Compact AI pill on downpayment / balance receipt preview label; auto-backfill when verdict missing |
-| Workflow → Guest balance settlement | `GuestBalanceSettlementForm` | Inline badge, toast, blocks proceed if `invalid` |
-| Workflow → Parking request | `ParkingRequestForm` | Inline badge, toast, blocks complete if `invalid` |
+| Location                            | Component                                                 | What shows                                                                                         |
+| ----------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Booking detail → Pricing card       | `BookingDetailPage` `DocPreview` + `useReceiptAiBackfill` | Compact AI pill on downpayment / balance receipt preview label; auto-backfill when verdict missing |
+| Workflow → Guest balance settlement | `GuestBalanceSettlementForm`                              | Inline badge, toast, blocks proceed if `invalid`                                                   |
+| Workflow → Parking request          | `ParkingRequestForm`                                      | Inline badge, toast, blocks complete if `invalid`                                                  |
 
 ---
 
@@ -173,10 +173,10 @@ Get a key from [Google AI Studio](https://aistudio.google.com). Free tier is suf
 
 ### Settings integration check
 
-On **Admin → Settings → Integrations → AI**:
+On **Property → Settings → Integrations → AI services**:
 
-- **`secretsStatus.geminiApiKeyConfigured`** — whether `GEMINI_API_KEY` is present in the Edge runtime (no value exposed).
-- **Test connection** — `POST app-settings` with `{ "action": "verify_gemini" }`; pings **`gemini-2.5-flash`** with a minimal text request (same model as receipt validation). Success means the key is valid and the API responds; failure surfaces the Google error message (e.g. invalid key, quota).
+- **`platformSecrets.geminiApiKeyConfigured`** / **`groqApiKeyConfigured`** — whether primary / fallback AI keys are present in the Edge runtime (no values exposed).
+- **Test connection** — `POST app-settings` with `{ "action": "verify_ai" }` (legacy alias `verify_gemini`). Pings the configured primary provider with a minimal text request.
 
 After changing secrets locally, restart **`functions serve`**. On hosted Supabase, redeploy is not required for secret-only changes — allow a minute for Dashboard secret propagation.
 
@@ -201,19 +201,19 @@ Required migrations: `20260717120000_receipt_ai_validation_columns.sql`, `202607
 
 ## 8. Code map
 
-| Concern | File |
-| --- | --- |
-| Gemini API + verdict helpers | `supabase/functions/_shared/receiptValidationService.ts` |
-| Guest downpayment validation | `supabase/functions/submit-form/index.ts` |
-| Admin receipt uploads | `supabase/functions/upload-booking-asset/index.ts` |
-| Detail-page backfill | `supabase/functions/validate-booking-receipts/index.ts`, `ui/src/features/admin/hooks/useReceiptAiBackfill.ts` |
-| Transition blocking | `supabase/functions/_shared/workflowOrchestrator.ts` |
-| New booking email section | `supabase/functions/_shared/emailService.ts` |
-| Telegram placeholders | `supabase/functions/_shared/telegramAdmin.ts` |
-| Revert-to-review clears parking AI | `supabase/functions/_shared/statusMachine.ts`, `ui/src/features/admin/lib/bookingStatus.ts` |
-| UI badge component | `ui/src/features/admin/components/ReceiptAiVerdictBadge.tsx` |
-| Balance form | `ui/src/features/admin/components/GuestBalanceSettlementForm.tsx` |
-| Parking form | `ui/src/features/admin/components/ParkingRequestForm.tsx` |
+| Concern                            | File                                                                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Gemini API + verdict helpers       | `supabase/functions/_shared/receiptValidationService.ts`                                                                    |
+| Guest downpayment validation       | `supabase/functions/submit-form/index.ts`                                                                                   |
+| Admin receipt uploads              | `supabase/functions/upload-booking-asset/index.ts`                                                                          |
+| Detail-page backfill               | `supabase/functions/validate-booking-receipts/index.ts`, `ui/src/features/dashboard/bookings/hooks/useReceiptAiBackfill.ts` |
+| Transition blocking                | `supabase/functions/_shared/workflowOrchestrator.ts`                                                                        |
+| New booking email section          | `supabase/functions/_shared/emailService.ts`                                                                                |
+| Telegram placeholders              | `supabase/functions/_shared/telegramAdmin.ts`                                                                               |
+| Revert-to-review clears parking AI | `supabase/functions/_shared/statusMachine.ts`, `ui/src/features/dashboard/bookings/lib/bookingStatus.ts`                    |
+| UI badge component                 | `ui/src/features/dashboard/bookings/components/ReceiptAiVerdictBadge.tsx`                                                   |
+| Balance form                       | `ui/src/features/dashboard/bookings/components/GuestBalanceSettlementForm.tsx`                                              |
+| Parking form                       | `ui/src/features/dashboard/bookings/components/ParkingRequestForm.tsx`                                                      |
 
 ---
 

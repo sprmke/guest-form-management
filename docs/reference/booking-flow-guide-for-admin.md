@@ -1,6 +1,6 @@
 # Kame Home — Booking Flow Guide for Admin
 
-A friendly walkthrough of how a booking moves from "guest just submitted the form" all the way to "completed, refund sent." This is the **non-technical** companion to the full plan in `docs/NEW_FLOW_PLAN.md`.
+A friendly walkthrough of how a booking moves from "guest just submitted the form" all the way to "completed, refund sent." This is the **non-technical** companion to the full plan in `docs/planning/NEW_FLOW_PLAN.md`.
 
 > **Who this is for:** the Airbnb admin / unit owner managing day-to-day bookings.
 > **What you'll learn:** every booking status, what you need to do at each one, what happens **automatically** (so you don't have to babysit), what each email is, and what each Google Calendar color means.
@@ -407,11 +407,11 @@ That single line tells you the booking is in review **and** the guest has a pet,
 
 Use **Finance** in the admin sidebar when you need totals across many stays or property costs that are not tied to one booking.
 
-| Tab | What it shows |
-| --- | --- |
-| **Overview** | KPI cards: grand net (completed stays + transactions), guest collected, parking margin, outstanding balances, pipeline estimates |
-| **Stays** | One row per booking with collected amount, parking margin, and net (realized when **Completed**, projected otherwise) |
-| **Transactions** | Rent, utilities, supplies, marketing, etc. — add **expense** or **income** lines with a date and optional category |
+| Tab              | What it shows                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Overview**     | KPI cards: grand net (completed stays + transactions), guest collected, parking margin, outstanding balances, pipeline estimates |
+| **Stays**        | One row per booking with collected amount, parking margin, and net (realized when **Completed**, projected otherwise)            |
+| **Transactions** | Rent, utilities, supplies, marketing, etc. — add **expense** or **income** lines with a date and optional category               |
 
 **Period basis** (toolbar): filter by **check-in**, **check-out**, or **completed** date. Presets: This month, Last month, YTD, All time.
 
