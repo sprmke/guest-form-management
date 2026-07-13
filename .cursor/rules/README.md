@@ -12,6 +12,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 | `admin-auth.mdc`                | Allow list, JWT, route guards, dev controls   |
 | `mobile-responsive.mdc`         | Breakpoints, touch targets, admin shell       |
 | `ui-minimal-copy.mdc`           | No extra UI prose                             |
+| `competitive-ux-research.mdc`   | Airbnb + PMS UX research before features      |
 
 ## Conditional rules (by file glob — loaded when relevant)
 
@@ -58,15 +59,16 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ### UI & quality
 
-| Skill                 | Use for                   |
-| --------------------- | ------------------------- |
-| `frontend-design`     | Layout, visual patterns   |
-| `component-generator` | New components            |
-| `tanstack-table`      | Admin list tables         |
-| `accessibility`       | WCAG deep patterns        |
-| `minimal-ui-copy`     | Sparse copy               |
-| `route-guides`        | `docs/guides/routes/*`    |
-| `performance`         | Vite bundle, query tuning |
+| Skill                     | Use for                                       |
+| ------------------------- | --------------------------------------------- |
+| `competitive-ux-research` | Airbnb + PMS flow research before UI/features |
+| `frontend-design`         | Layout, visual patterns                       |
+| `component-generator`     | New components                                |
+| `tanstack-table`          | Admin list tables                             |
+| `accessibility`           | WCAG deep patterns                            |
+| `minimal-ui-copy`         | Sparse copy                                   |
+| `route-guides`            | `docs/guides/routes/*`                        |
+| `performance`             | Vite bundle, query tuning                     |
 
 ## Subagents (`.cursor/agents/`)
 
@@ -86,7 +88,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Token budget
 
-- **Always-on** = 6 rules only (booking + auth are domain-critical).
+- **Always-on** = 7 rules (booking + auth + competitive UX are domain-critical).
 - **Everything else** = globs or skills on demand.
 - Per-route detail → `docs/guides/routes/`, not rules.
 - **Skipped from PMA:** `thinking-framework` (too heavy), Drizzle, tRPC, Next.js, React Email monorepo, AWS S3, Zustand.

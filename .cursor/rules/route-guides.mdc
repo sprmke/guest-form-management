@@ -11,22 +11,28 @@ Whenever you **implement or materially change** a page, section, or feature, upd
 
 Mirror the app URL (omit dynamic params):
 
-| Route                                                            | Guide path                                                                                       |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `/sign-in`                                                       | `docs/guides/routes/sign-in.md`                                                                  |
-| `/onboarding`                                                    | `docs/guides/routes/onboarding.md`                                                               |
-| `/org`                                                           | `docs/guides/routes/org/selector.md`                                                             |
-| `/org/:orgSlug/dashboard`                                        | `docs/guides/routes/org/dashboard.md`                                                            |
-| `/org/:orgSlug/settings`                                         | `docs/guides/routes/org/settings.md`                                                             |
-| `/org/:orgSlug/properties`                                       | `docs/guides/routes/org/properties.md`                                                           |
-| `/org/:orgSlug/property/:propertySlug`                           | `docs/guides/routes/org/property/dashboard.md`                                                   |
-| `…/bookings`                                                     | `docs/guides/routes/org/property/bookings.md`                                                    |
-| `…/bookings/:bookingId`                                          | `docs/guides/routes/org/property/bookings-detail.md`                                             |
-| `…/finance` · `…/maintenance` · `…/notifications` · `…/settings` | same segment under `org/property/`                                                               |
-| `…/marketing` · `…/staff` · `…/operations`                       | redirect to `…/notifications?module=…` — see [notifications.md](./org/property/notifications.md) |
-| `/` · `/calendar`                                                | `docs/guides/routes/calendar.md`                                                                 |
-| `/form` · `/success` · `/sd-form`                                | `docs/guides/routes/{form,success,sd-form}.md`                                                   |
-| `/bookings/:bookingId/parking`                                   | `docs/guides/routes/bookings/parking.md`                                                         |
+| Route                                                                                        | Guide path                                                                                       |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `/sign-in`                                                                                   | `docs/guides/routes/sign-in.md`                                                                  |
+| `/onboarding`                                                                                | `docs/guides/routes/onboarding.md`                                                               |
+| `/org`                                                                                       | `docs/guides/routes/org/selector.md`                                                             |
+| `/org/:orgSlug/dashboard`                                                                    | `docs/guides/routes/org/dashboard.md`                                                            |
+| `/org/:orgSlug/settings`                                                                     | `docs/guides/routes/org/settings.md`                                                             |
+| `/org/:orgSlug/properties`                                                                   | `docs/guides/routes/org/properties.md`                                                           |
+| `/org/:orgSlug/property/:propertySlug`                                                       | `docs/guides/routes/org/property/dashboard.md`                                                   |
+| `…/bookings`                                                                                 | `docs/guides/routes/org/property/bookings.md`                                                    |
+| `…/bookings/:bookingId`                                                                      | `docs/guides/routes/org/property/bookings-detail.md`                                             |
+| `…/finance` · `…/maintenance` · `…/notifications` · `…/settings`                             | same segment under `org/property/`                                                               |
+| `…/marketing` · `…/staff` · `…/operations`                                                   | redirect to `…/notifications?module=…` — see [notifications.md](./org/property/notifications.md) |
+| `/`                                                                                          | `docs/guides/routes/index-landing.md`                                                            |
+| `/for-hosts`                                                                                 | `docs/guides/routes/for-hosts.md`                                                                |
+| `/properties` · `/properties/:propertySlug` · `…/calendar` · `…/forms/:formId`               | `docs/guides/routes/properties.md`                                                               |
+| `/developments` · `/developments/:slug` · `…/properties` · `…/parking/*` · `…/forms/:formId` | `docs/guides/routes/developments.md`                                                             |
+| `/terms` · `/privacy`                                                                        | `docs/guides/routes/legal.md`                                                                    |
+| `/for-guests/*` · `/for-hosts/*` (login, register, …)                                        | `docs/guides/routes/auth.md`                                                                     |
+| `/calendar`                                                                                  | `docs/guides/routes/calendar.md`                                                                 |
+| `/form` · `/success` · `/sd-form`                                                            | `docs/guides/routes/{form,success,sd-form}.md`                                                   |
+| `/bookings/:bookingId/parking`                                                               | `docs/guides/routes/bookings/parking.md`                                                         |
 
 Full index: **`docs/guides/routes/README.md`**. Workflow: **`.cursor/skills/route-guides/SKILL.md`**.
 

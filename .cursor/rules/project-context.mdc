@@ -14,6 +14,8 @@ alwaysApply: true
 5. `docs/planning/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
 6. `docs/planning/NEW_FLOW.md` — original product spec for the redesign.
 
+**User-facing features:** run **`competitive-ux-research`** skill first (`.cursor/rules/competitive-ux-research.mdc`) — study Airbnb + PMS leaders before designing UI or flows.
+
 ## What this is
 
 Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functions** (Deno) under `supabase/functions/`. Data lives in Postgres table **`guest_submissions`**; files in **Supabase Storage**. Emails via **Resend**, calendar via **Google Calendar API**, spreadsheet via **Google Sheets API**, all from inside edge functions.
@@ -38,15 +40,18 @@ Root `package.json` workspaces list `ui` only (no `api/` package). Use **`bun in
 
 ### Current (public)
 
-- `/` — calendar (`CalendarPage`); **Proceed** → `/form` with dates and current query params preserved (e.g. `?source=airbnb`). Legacy `/?bookingId=` links redirect to `/form`. Legacy `?from=airbnb` on `/form` is replaced with `?source=airbnb`.
-- `/calendar` — same calendar component as `/`.
-- `/form` — guest form (`GuestFormPage`); always reachable (defaults apply when dates/`bookingId` are absent). Optional **`?source=airbnb`** for Airbnb copy + `booking_source` (case-insensitive).
+**Marketing (PMA port — Phase 1 UI, mock data):** `/`, `/for-hosts`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` — see **`features/guest/marketing/`** and **`docs/guides/routes/properties.md`**.
+
+**Operational booking:**
+
+- `/calendar` — date picker (`CalendarPage`); **Proceed** → `/form` with dates and query params preserved (e.g. `?source=airbnb`, `?property=`). Legacy `/?property=` redirects here from the landing page. Legacy `/?bookingId=` on calendar redirects to `/form`.
+- `/form` — guest form (`GuestFormPage`); always reachable. Optional **`?source=airbnb`** for Airbnb copy + `booking_source`.
 - `/success` — needs `bookingId` query param; summary from `navigate` state.
 - `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; **`get-sd-form`** allows `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` once the check-out email was sent (`sd_refund_form_emailed_at`), returning **`awaiting_balance_settlement`** until the stay advances. **`submit-sd-form`** and **`claim-sd-voucher`** require `READY_FOR_CHECKOUT`. Step 1: Facebook-review CTA, optional wait for settlement, then slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher`) that idempotently awards a `KAME-*` next-stay voucher and persists `next_stay_voucher_*` on `guest_submissions`.
 
 ### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
 
-- `/sign-in` — Google OAuth for admin.
+- `/for-hosts/login` — Google OAuth for hosts (PMA auth UI); legacy `/sign-in` redirects here.
 - `/bookings` — admin dashboard (list with search / filter / sort / pagination).
 - `/bookings/:bookingId` — detail page; renders the guest form with dev controls + workflow panel.
 - `/settings` — admin settings (**Gmail listener** connect / reconnect / disconnect via `GmailMailIntegrationCard`).
@@ -129,10 +134,12 @@ Full index: **`.cursor/rules/README.md`**.
 
 ### UI
 
+- `competitive-ux-research` — Airbnb + PMS UX before new features/flows
 - `frontend-design` — layout and visual patterns
 - `component-generator` — scaffold components
 - `tanstack-table` — admin list tables
 - `minimal-ui-copy` — sparse copy
 - `accessibility` — WCAG 2.1 AA
 - `route-guides` — per-route docs workflow
+- `public-ui` — PMA marketing port + guest public routes (Vite adapters)
 - `performance` — Vite + query tuning

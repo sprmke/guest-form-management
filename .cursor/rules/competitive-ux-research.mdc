@@ -1,0 +1,36 @@
+---
+description: Before implementing UI/flows, research Airbnb + leading PMS apps. Mandatory for new features and UX changes.
+alwaysApply: true
+---
+
+# Competitive UX research — agent reference
+
+**Before designing or implementing any user-facing feature, screen, or flow**, run the **`competitive-ux-research`** skill (`.cursor/skills/competitive-ux-research/SKILL.md`).
+
+## When required
+
+- New routes, pages, modals, or multi-step flows
+- Auth, checkout, booking, payments, messaging, settings, onboarding
+- Material UX changes to existing screens (not typo-only fixes)
+
+## When skipped
+
+- Pure backend/edge/DB with no UX change
+- Bug fixes that restore documented behavior
+- Copy-only tweaks the user requested verbatim
+
+## Minimum output (before coding)
+
+Produce a short **Competitive UX brief** (template in the skill):
+
+1. **Airbnb** (guest/explore) — how they handle this task
+2. **PMS leaders** (host/admin) — Guesty, Hostaway, Lodgify, or closest match
+3. **Adopt / adapt / skip** for Kame Homes — cite project constraints (`minimal-ui-copy`, `mobile-responsive`, checkout auth modal)
+
+Use **WebSearch** when you lack current product knowledge. Do not guess competitor flows.
+
+## Pair with
+
+- `frontend-design` — visual execution after research
+- `minimal-ui-copy` — sparse copy even when competitors use more prose
+- `route-guides` — document chosen patterns in `docs/guides/routes/`
