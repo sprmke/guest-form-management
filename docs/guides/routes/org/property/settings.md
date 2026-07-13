@@ -1,0 +1,394 @@
+# Property Settings — operator guide
+
+Route: `/org/:orgSlug/property/:propertySlug/settings`
+
+> **Status:** Documented
+
+This document tracks **what each section does**, **how data is saved**, and **implementation status**. Use it as the living spec for property settings E2E behavior.
+
+## Progress overview
+
+| Section           | E2E save | Validation | Docs | Notes                                                         |
+| ----------------- | -------- | ---------- | ---- | ------------------------------------------------------------- |
+| Basic Information | Done     | Done       | Done | Required fields marked with *; save blocked until complete    |
+| Photos & Videos   | Done     | Done       | Done | Min 3 photos; section banner when below minimum               |
+| Property Details  | Done     | Done       | Done | Azure North residence defaults + limits                       |
+| Amenities         | Done     | Done       | Done | Min 5 selected; section banner when below minimum             |
+| House Rules       | Done     | Done       | Done | Presets + custom rules; shown on public listing               |
+| Cancellation      | Done     | Done       | Done | Presets + custom; shown on public listing + booking card      |
+| Location          | Done     | Done       | Done | Address + map pin required                                    |
+| Socials           | Done     | Done       | Done | Per-property social links                                     |
+| Payment           | Done     | Done       | Done | Server-enforced; QR via upload only                           |
+| Building Forms    | Done     | Done       | Done | Shared GAF + pet PDF fields                                   |
+| Email automations | Done     | Done       | Done | Recipients, timing, toggles per property                      |
+| Integrations      | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional |
+| Danger Zone       | Done     | Done       | Done | Archive + delete with confirmations                           |
+
+---
+
+## Setup completeness
+
+**Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. If some sections save and others do not, you get a toast: _New changes has been saved._
+
+Incomplete sections still show a **red dot** on the in-page section nav and on the sidebar **Settings** link (for setup tracking).
+
+| Rule                                                           | Required?                                                    |
+| -------------------------------------------------------------- | ------------------------------------------------------------ |
+| Basic info (name, type, tower/unit for condos, contact fields) | Yes                                                          |
+| Description                                                    | No                                                           |
+| Photos                                                         | Yes — at least **3** images                                  |
+| Property details (capacity, check-in/out)                      | Yes                                                          |
+| Amenities                                                      | Yes — at least **5** selected                                |
+| Location (address + map pin)                                   | Yes                                                          |
+| Socials (Facebook page)                                        | Yes                                                          |
+| Brand color (Basic information)                                | No — defaults to `#24a88e`; property inherits org when unset |
+| Payment (provider, account, QR upload)                         | Yes                                                          |
+| Building forms (GAF fields + signature)                        | Yes                                                          |
+| Email automations (PMO/property email, timing, toggles)        | Yes                                                          |
+| Google integration (Gmail, Calendar, Spreadsheet)              | Yes                                                          |
+| Telegram integrations                                          | No                                                           |
+
+Field-level errors appear **as you edit** a field (on change). After **Save Changes**, all remaining issues are shown at once. Section banners (orange) appear only for **Photos & Videos**, **Amenities**, and **Integrations** — not for sections with individual inputs.
+
+Logic: `ui/src/features/dashboard/org/lib/propertySettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/propertySettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/propertySettingsSave.ts`
+
+---
+
+## Active vs Archive
+
+Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
+
+| Control                   | What it does                                                |
+| ------------------------- | ----------------------------------------------------------- |
+| **Archive** (Danger Zone) | Sets `status = INACTIVE` immediately via `update-property`. |
+| **Restore** (Danger Zone) | Sets `status = ACTIVE` when the property is archived.       |
+
+**Inactive** properties keep all bookings, settings, integrations, and media. Nothing is deleted.
+
+---
+
+## Basic Information
+
+### Fields
+
+| Field         | Storage                            | Validation                                                                                     |
+| ------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Property name | `properties.name`                  | 2–120 chars; **unique per organization** (case-insensitive)                                    |
+| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                |
+| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; blank inherits `organizations.settings.brandColor` → default `#24a88e` |
+| Property type | `properties.type`                  | Condo enables residence / tower / unit                                                         |
+| Residence     | `properties.residence_name`        | Known residences apply defaults (see below)                                                    |
+| Tower         | `properties.tower`                 | Options from residence config (Azure North: Monaco, Bali, Barbados)                            |
+| Unit          | `properties.unit_number`           | 4-digit; unique per tower globally                                                             |
+| Description   | `properties.settings.description`  | Max 1000 chars                                                                                 |
+| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                       |
+| Contact role  | `properties.settings.contactRole`  | Required                                                                                       |
+| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                              |
+| Email         | `properties.settings.contactEmail` | Required; valid email                                                                          |
+
+### Save path
+
+1. UI draft → **Save Changes** → `update-property` (PATCH)
+2. DB columns + merged `properties.settings` JSONB
+
+### Residence defaults (Azure North Residences)
+
+When residence is **Azure North Residences**, the app applies:
+
+| Field         | Default                | Allowed range          |
+| ------------- | ---------------------- | ---------------------- |
+| Tower options | Monaco, Bali, Barbados | From residence catalog |
+| Bedrooms      | 1                      | 1–2                    |
+| Bathrooms     | 1                      | 1                      |
+| Floor         | 1                      | 1–29                   |
+| Max adults    | 4                      | 1–6                    |
+| Max children  | 0                      | 0–4                    |
+| Check-in      | 2:00 PM (`14:00`)      | —                      |
+| Check-out     | 12:00 PM (`12:00`)     | —                      |
+
+Defaults apply when selecting the residence in settings and when creating a new property with that residence.
+
+---
+
+## Photos & Videos
+
+### Behavior
+
+- Uploads save **immediately** (no Save Changes required).
+- **POST** `upload-property-media` → Supabase Storage bucket `property-media` → append to `properties.settings.media`.
+- Reorder / cover photo → **PATCH** `update-property` with `settings.media`.
+- **DELETE** `upload-property-media` removes storage object + DB entry.
+- File picker uses a transparent overlay on the upload buttons (native `<input type="file">`).
+
+### Limits
+
+| Type   | Max count | Max size                                        |
+| ------ | --------- | ----------------------------------------------- |
+| Images | 5         | 5 MB each; **minimum 3** for setup completeness |
+| Video  | 1         | 25 MB                                           |
+
+---
+
+## Property Details
+
+Stored in `properties.settings` (+ `properties.max_guests` derived from adults + children).
+
+Validated on save against residence limits (see Azure North table above).
+
+---
+
+## Amenities
+
+| Data               | Storage                                |
+| ------------------ | -------------------------------------- |
+| Enabled preset IDs | `properties.settings.enabledAmenities` |
+| Custom amenities   | `properties.settings.customAmenities`  |
+
+Custom amenity names max **50** characters; add-field shows an inline `current/50` counter inside the input.
+
+Saved via **Save Changes** → `update-property` settings merge.
+
+---
+
+## House Rules
+
+| Data               | Storage                                 |
+| ------------------ | --------------------------------------- |
+| Enabled preset IDs | `properties.settings.enabledHouseRules` |
+| Custom rules       | `properties.settings.customHouseRules`  |
+
+Preset catalog mirrors `ui/src/features/dashboard/org/lib/propertyHouseRulesConstants.ts` (check-in/out, restrictions, guests & pets, property). Custom rule names max **50** characters; add-field shows an inline `current/50` counter inside the input. Check-in/out presets use property detail times on the public listing.
+
+Templates → **House Rules** is for email copy only — not shown on `/properties/:slug`.
+
+---
+
+## Cancellation policy
+
+Configure how guests see refund terms on the public property page (`/properties/:propertySlug`). This is **display-only** today — actual refund enforcement still follows your booking workflow and payment process.
+
+| Data                 | Storage                                  |
+| -------------------- | ---------------------------------------- |
+| Policy type + tuners | `properties.settings.cancellationPolicy` |
+
+### Presets
+
+| Type                                                    | Guest-facing behavior                                                                      | Listing highlight                       |
+| ------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------- |
+| **Free cancellation window** (`grace_period`)           | Full refund within N hours after booking (24 / 48 / 72 / 168)                              | Yes — shield bullet + green card        |
+| **Full refund before check-in** (`full_before_checkin`) | Full refund when cancelled ≥ N days before check-in (1–30)                                 | Yes                                     |
+| **Moderate** (`moderate`)                               | Grace window **or** full refund ≥ N days before check-in; otherwise non-refundable         | Yes                                     |
+| **Partial refund** (`partial_before_checkin`)           | X% refund (25 / 50 / 75) when cancelled ≥ N days before check-in; otherwise non-refundable | Yes — “Partial refund” badge            |
+| **Non-refundable** (`non_refundable`)                   | No refunds after confirmation                                                              | No highlight on overview / booking card |
+| **Custom** (`custom`)                                   | Host-written title (80 chars) + description (500 chars)                                    | Yes when title is set                   |
+
+**Default for new properties:** 48-hour grace period (`propertyResidenceDefaults.ts`).
+
+### Admin UX
+
+Section nav: **Cancellation** (after House Rules). UI: `PropertyCancellationPolicySection.tsx`
+
+- Radio cards for each preset with one-line summary
+- Tuners appear per type (grace hours, days before check-in, partial %)
+- Custom type requires title + description with inline char counters (`80/80`, `500/500`)
+- Live **guest preview** card mirrors `CancellationPolicyDisplay` on the public page
+
+Save path: **Save Changes** → dirty `cancellation` section → `update-property` settings merge. Server validation: `propertySettingsValidation.ts` + `propertyCancellationPolicy.ts` (edge mirror).
+
+Completion: optional section (no red-dot gate for setup completeness). Custom type must pass validation when that section is dirty.
+
+### Public display
+
+| Surface                   | Component                                     | Notes                                     |
+| ------------------------- | --------------------------------------------- | ----------------------------------------- |
+| Overview shield bullet    | `PropertyOverview`                            | When `showListingHighlight`               |
+| Rules card                | `PropertyRules` → `CancellationPolicyDisplay` | Always shows resolved title + description |
+| Booking sidebar trust row | `BookingCard`                                 | Short label when `showListingHighlight`   |
+
+API: `get-public-property` returns `cancellationPolicy` as resolved display fields (`publicPropertyService.ts`).
+
+### Common configuration scenarios
+
+| Scenario                                | Recommended preset                   |
+| --------------------------------------- | ------------------------------------ |
+| Short-stay / instant book, low friction | 48h grace period                     |
+| Flexible long-lead bookings             | Full refund 7+ days before check-in  |
+| Airbnb-style balanced policy            | Moderate (48h grace + 5 days before) |
+| Discounted / peak-season rate           | Non-refundable or partial 50%        |
+| Building-specific legal copy            | Custom title + description           |
+
+### Edge cases
+
+| Case                               | Behavior                                                                     |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| Missing / invalid stored JSON      | Normalizes to default 48h grace                                              |
+| Out-of-range tuner values          | Snapped to nearest allowed option on save                                    |
+| Custom with empty title            | Save blocked; no listing highlight until title set                           |
+| Custom with title only             | Highlight uses title; description falls back to contact host                 |
+| Non-refundable                     | Overview + booking card hide “free cancellation” marketing                   |
+| Policy change after bookings exist | Display updates immediately; does not retroactively change paid bookings     |
+| Same-day / past check-in cancel    | Copy describes policy intent only — ops handles exceptions in admin workflow |
+
+Implementation: `ui/src/features/dashboard/org/lib/propertyCancellationPolicy.ts`, `supabase/functions/_shared/propertyCancellationPolicy.ts`
+
+---
+
+## Location
+
+| Field                        | Storage                 |
+| ---------------------------- | ----------------------- |
+| Address                      | `properties.address`    |
+| City, province, country, zip | `properties.settings.*` |
+| Lat/lng, place ID, Maps URL  | `properties.settings.*` |
+
+### Multi-tenant / Google Maps
+
+- One **platform** Google Maps API key (`VITE_GOOGLE_MAPS_API_KEY`) is used for all orgs and properties.
+- Each property stores its **own** coordinates and address; data is isolated by `property_id` / org ownership.
+- Restrict the API key by HTTP referrer in Google Cloud Console for production.
+
+---
+
+## Socials
+
+Per-property operational settings in `app_settings` (org settings provide fallbacks when a property column is empty).
+
+| Field         | Column                 | Notes                                                                                 |
+| ------------- | ---------------------- | ------------------------------------------------------------------------------------- |
+| Facebook page | `facebook_reviews_url` | Required; SD form review CTA; falls back to `org_settings.facebook_reviews_url` → env |
+| Airbnb        | `airbnb_url`           | Optional; falls back to org                                                           |
+| Instagram     | `instagram_url`        | Optional; falls back to org                                                           |
+| TikTok        | `tiktok_url`           | Optional; falls back to org                                                           |
+
+**Admin theme:** Property admin routes use the **resolved** property brand color (property → org → default). Org admin routes use org brand color only (set under **Basic information**).
+
+**Guest/runtime:** `resolveAppSettings(propertyId)` merges property branding for guest forms, emails, SD form, and pay-parking.
+
+Saved via **Save Changes** → `app-settings` PATCH.
+
+---
+
+## Payment
+
+Per-property operational settings in `app_settings` (not `properties.settings`).
+
+| Field           | Column               | Security notes                                                                 |
+| --------------- | -------------------- | ------------------------------------------------------------------------------ |
+| Bank / e-wallet | `payment_provider`   | Allow-list only (PH providers)                                                 |
+| Account name    | `gcash_name`         | Max 120 chars; no secrets                                                      |
+| Account number  | `gcash_number`       | Format validated per provider type                                             |
+| QR image        | `gcash_qr_image_url` | **Upload only** via `upload-app-settings-asset`; PATCH cannot set URL directly |
+
+### Save path
+
+**Save Changes** → `app-settings` PATCH (admin JWT + `property_id` scope).
+
+Payment details are shown on the guest form and ready-for-check-in email for **this property only**.
+
+---
+
+## Building Forms
+
+Shared GAF + pet PDF owner fields in `app_settings`:
+
+- Unit owner, on-site contact, owner phone, signature image
+- **Tower & unit** — read-only; auto-filled from **Basic Information** (`properties.tower` + `properties.unit_number`)
+
+Signature upload saves immediately (like payment QR) and does not reset other unsaved building-form text fields.
+
+---
+
+## Email automations
+
+Per-property operational settings in `app_settings` (below Building Forms in the UI).
+
+### Recipients
+
+| Field                                                | Column                 | Notes                                                                   |
+| ---------------------------------------------------- | ---------------------- | ----------------------------------------------------------------------- |
+| PMO email (Azure North) / Documents approver (other) | `email_to`             | Required; GAF/pet approval requests                                     |
+| Property email (Azure North) / Team email (other)    | `email_reply_to`       | Required; new booking alert + guest reply-to; Gmail listener allow-list |
+| Parking owners                                       | `parking_owner_emails` | Comma-separated BCC for parking broadcast                               |
+
+**Azure North Residences** uses residence-specific labels and defaults (`propertyEmailAutomationDefaults.ts`): PMO default **`stlmonaco.theresortresidences@azurenorth.com.ph`**.
+
+### Check-out timing & defaults
+
+| Field                                    | Column                                 | Notes                             |
+| ---------------------------------------- | -------------------------------------- | --------------------------------- |
+| SD refund email lead (hours)             | `sd_refund_cron_email_lead_minutes`    | Default **3** h before checkout   |
+| Days after checkout to stop guest emails | `sd_refund_cron_max_checkout_age_days` | Default **30**; **0** = no cutoff |
+
+**Parking rate** is configured on the **Pricing** page only (`default_parking_rate_guest` via `property-pricing`), not in Email automations.
+
+### Automated sends
+
+Master switches in `app_settings.automation_toggles` (JSONB). Missing keys default to **enabled**. Saved via **`app-settings` PATCH** with recipient/timing fields.
+
+---
+
+## Integrations
+
+Read-only status on this page. Connect/disconnect via cards linking to dedicated settings flows.
+
+---
+
+## Danger Zone
+
+### Archive
+
+- Confirmation modal → `update-property` with `status: INACTIVE`
+- Does **not** delete data
+
+### Restore
+
+- Shown when property is archived (Inactive)
+- Confirmation modal → `update-property` with `status: ACTIVE`
+
+### Delete
+
+- Confirmation modal with destructive warning
+- **DELETE** `delete-property` with `{ propertyId }`
+- **Blocked** when `guest_submissions` exist for this property (409)
+- On success: removes property row (cascades Telegram/app settings integrations), cleans gallery storage
+- Navigates to `/org/:orgSlug/properties`
+
+**Recommendation:** Prefer **Archive** for units with booking history. Use **Delete** only for mistaken/empty properties.
+
+---
+
+## API reference (this page)
+
+| Action                                       | Endpoint                                             |
+| -------------------------------------------- | ---------------------------------------------------- |
+| Profile + settings                           | `PATCH update-property`                              |
+| Payment + building forms + email automations | `PATCH app-settings?property_id=`                    |
+| Media upload/delete                          | `POST` / `DELETE upload-property-media?property_id=` |
+| Payment QR / signature                       | `POST upload-app-settings-asset?property_id=`        |
+| Archive                                      | `PATCH update-property` `{ status: "INACTIVE" }`     |
+| Restore                                      | `PATCH update-property` `{ status: "ACTIVE" }`       |
+| Delete                                       | `DELETE delete-property` `{ propertyId }`            |
+
+---
+
+## Shared validation modules
+
+| Layer                                 | Path                                                                   |
+| ------------------------------------- | ---------------------------------------------------------------------- |
+| UI                                    | `ui/src/lib/validation/fieldValidation.ts`                             |
+| Edge                                  | `supabase/functions/_shared/fieldValidation.ts`                        |
+| Residence defaults (UI)               | `ui/src/features/dashboard/org/lib/propertyResidenceDefaults.ts`       |
+| Email automation copy/defaults (UI)   | `ui/src/features/dashboard/org/lib/propertyEmailAutomationDefaults.ts` |
+| Residence defaults (edge)             | `supabase/functions/_shared/propertyResidenceDefaults.ts`              |
+| Email automation copy/defaults (edge) | `supabase/functions/_shared/propertyEmailAutomationDefaults.ts`        |
+
+Keep UI and edge copies in sync when changing rules.
+
+---
+
+## Pending / follow-ups
+
+- [ ] Org-level residence catalog (DB-driven instead of code constants)
+- [ ] Location: optional per-org Maps API key override
+- [ ] Soft-delete flag instead of hard delete for edge cases
+- [ ] Automated tests for property settings validation

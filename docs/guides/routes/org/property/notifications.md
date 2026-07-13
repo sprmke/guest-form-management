@@ -1,0 +1,113 @@
+# Notifications — operator guide
+
+Route: `/org/:orgSlug/property/:propertySlug/notifications`
+
+Deep link: `?module=marketing|staff|operations|finance|maintenance` scrolls to that module section.
+
+> **Status:** Documented
+
+## Progress overview
+
+| Section     | E2E save | Validation | Docs       | Notes                        |
+| ----------- | -------- | ---------- | ---------- | ---------------------------- |
+| Marketing   | ✅       | ✅         | Documented | Gated setup + manage cards   |
+| Staff       | ✅       | ✅         | Documented | Gated setup + manage cards   |
+| Operations  | ✅       | ✅         | Documented | Gated setup + manage cards   |
+| Finance     | ✅       | ✅         | Documented | Gated setup + template modal |
+| Maintenance | ✅       | ✅         | Documented | Gated setup + template modal |
+
+---
+
+## Overview
+
+Single hub for all **Telegram notification bots** on a property.
+
+### Per-module flow (all five bots)
+
+1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
+2. **Telegram connection** — bot token row, chat ID row, and **Connect** (outline) beside chat ID. After a successful verify the button becomes a green **Connected** state (disabled); editing either field resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials are returned from the settings API and shown in the fields (hidden by default; use the eye toggle to reveal).
+3. **Manage cards** — after connect, shown inside a bordered group (Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**), same card pattern as **Telegram connection**:
+   - **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
+   - **Staff:** Schedule alerts · Message templates
+   - **Operations:** Message templates (6 scenarios)
+   - **Finance / Maintenance:** Reminder message (single template; module enable toggle only — no per-template switch)
+
+### Saving behavior
+
+| Action                                 | When it persists                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Enable notifications** toggle        | Immediately on change                                                                      |
+| **Connect** (successful verify)        | Bot token and chat ID auto-saved to the server                                             |
+| **Save** in schedule / template modals | Templates, schedule fields, and per-template toggles                                       |
+| **Reset** in schedule modals           | Restores schedule/control fields to factory defaults (draft only until **Save**)           |
+| **Reset** in template editor toolbar   | Restores the current template tab to its factory default (draft only until modal **Save**) |
+
+There is no module-level **Save** or **Reset** footer — credentials must not require a separate save after Connect.
+
+### Modals
+
+| Manage target     | UI                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Schedule alerts   | Daily times + **Calendar content** (urgency threshold, new-booking date limit with descriptions). Staff: daily summary time only. **Reset** beside **Save** restores defaults                                                                                                                                                                                                                                      |
+| Message templates | Per-template **toggle switches** (Marketing, Staff, Operations — **on by default**); sidebar nav shows on/off dot when >2 tabs. Finance / Maintenance: template editor only (module `enabled` gates cron). **Reset** in editor toolbar (between **Placeholders** and **Send preview**) restores that tab's default template. Module `enabled` + per-template toggle (where present) must both be on for cron sends |
+| Placeholders      | **Placeholders** button in template dialog header → stacked modal above (search + tap-to-copy). Each token shows a short label and **e.g.** sample value                                                                                                                                                                                                                                                           |
+
+Legacy URLs redirect here — see [previous guide version](./notifications.md) redirect table (`…/marketing`, `…/finance?tab=settings`, etc.).
+
+**Property Settings → Integrations → Telegram** **Configure** links deep-link via `?module=…`.
+
+### Section nav
+
+Page header subtitle: **Configure Telegram notifications for this property.**
+
+**Sidebar:** uppercase **Telegram notifications** group label above module links (PMA templates pattern), with separator before additional groups when added later (e.g. email).
+
+**Main content:** **Telegram notifications** group heading with module count badge before the five module cards.
+
+---
+
+## Save paths
+
+Each module uses its existing edge function (property-scoped via `property_id`):
+
+| Module      | Edge function                   | UI component                      |
+| ----------- | ------------------------------- | --------------------------------- |
+| Marketing   | `telegram-marketing-settings`   | `TelegramMarketingSettingsCard`   |
+| Staff       | `telegram-staff-settings`       | `TelegramStaffSettingsCard`       |
+| Operations  | `telegram-admin-settings`       | `TelegramAdminSettingsCard`       |
+| Finance     | `telegram-finance-settings`     | `TelegramFinanceSettingsCard`     |
+| Maintenance | `telegram-maintenance-settings` | `TelegramMaintenanceSettingsCard` |
+
+Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** chat ID on server, or both fields filled in the current draft.
+
+---
+
+## Permissions
+
+- `RequireAdmin` + `RequireOrgContext` via `PropertyAdminShell`.
+- Server: `verifyAdminJwt` on every settings edge function.
+
+---
+
+## Implementation map
+
+| Concern                                            | Path                                                                                                        |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                            |
+| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx` |
+| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                  |
+| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                          |
+| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                         |
+| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                 |
+| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                    |
+| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                  |
+| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                   |
+| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                           |
+
+---
+
+## Related docs
+
+- [Route index](../../README.md)
+- [`docs/PROJECT.md`](../../../PROJECT.md)
+- [`docs/reference/telegram-marketing-reminders.md`](../../../reference/telegram-marketing-reminders.md)

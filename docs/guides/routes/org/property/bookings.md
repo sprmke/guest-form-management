@@ -1,0 +1,109 @@
+# Bookings List — operator guide
+
+Route: `/org/:orgSlug/property/:propertySlug/bookings`
+
+> **Status:** Documented
+
+## Progress overview
+
+| Section                       | E2E save  | Validation | Docs | Notes                                                             |
+| ----------------------------- | --------- | ---------- | ---- | ----------------------------------------------------------------- |
+| Summary stage cards           | —         | —          | Done | Finance-style cards; status hints inline; click toggles `?stage=` |
+| Filter bar                    | —         | —          | Done | Row 1: search + filters; row 2: sort + per-page + view            |
+| Table / card / calendar views | —         | —          | Done | Existing behavior                                                 |
+| Kanban view                   | via modal | —          | Done | Reuses `WorkflowPanel` from detail page                           |
+
+---
+
+## Overview
+
+Paginated booking list with PMA-style **stage summary cards** and four view modes: **table**, **card**, **kanban**, **calendar**.
+
+Layout (top → bottom):
+
+1. Page header — **date range** (top right) + **New booking** → `/properties/:propertySlug/form` (current property from route context)
+2. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
+3. **Toolbar** (`BookingFilters`, same layout as Finance ledger toolbar):
+   - Row 1: search (left) + Status + **More filters** (pets, parking) + Clear filters (right)
+   - Row 2: sort + per-page (left; per-page hidden in calendar/kanban) | view toggle (right)
+4. Active view content + pagination (table/card only)
+
+---
+
+## Stage summary cards
+
+Click a card to filter the list (table, card, kanban, calendar). Click again to clear.
+
+| Card            | Label                                      | Statuses included                                                                    |
+| --------------- | ------------------------------------------ | ------------------------------------------------------------------------------------ |
+| Action Required | Action Required                            | `PENDING_REVIEW`, `READY_FOR_CHECKOUT`, `PENDING_SD_REFUND`                          |
+| Pending Docs    | **Pending Docs** (not “Awaiting Response”) | `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST` |
+| Confirmed Stays | Confirmed Stays                            | `READY_FOR_CHECKIN`                                                                  |
+| History         | History                                    | `COMPLETED`, `CANCELLED`                                                             |
+
+**URL:** `?stage=action_required|pending_docs|confirmed|history` (omit for all).
+
+Counts come from a secondary list fetch (same date range, up to 100 rows, includes completed).
+
+When a stage is active, the list query sends the matching `status[]` values to `list-bookings` (intersected with manual status filters when compatible; otherwise stage wins).
+
+---
+
+## Views
+
+| View     | URL               | Notes                                                                                               |
+| -------- | ----------------- | --------------------------------------------------------------------------------------------------- |
+| Table    | default (desktop) | `BookingTable`                                                                                      |
+| Card     | `?view=card`      | Mobile default                                                                                      |
+| Kanban   | `?view=kanban`    | Last view toggle; reuses card styling (`GuestAvatar`, flags, `StatusBadge` columns); workflow modal |
+| Calendar | `?view=calendar`  | Month grid; `limit=100`, `showCompletedBookings=true`                                               |
+
+---
+
+## Kanban
+
+- Columns follow workflow order: Pending Review → GAF / Parking / Pet → Ready for Check-in → Ready for Check-out → Pending SD Refund → Completed. There is **no** separate **Pending Documents** column — bookings with `status = PENDING_DOCUMENTS` appear in the first incomplete nested step (GAF, then parking, then pet; all complete → Ready for Check-in). **Cancelled** bookings are omitted from the board.
+- **Click** a card or **drop** on a valid column → opens **workflow modal** with stage-specific forms and actions only (no progress stepper — kanban column is the pipeline). Uses `WorkflowPanel` `variant="modal"` + `PendingReviewWorkflowGate` `layout="inline"`. Forms use `WorkflowFormShell` `variant="modal"` (no nested sub-form card). Dropping on **GAF / Parking / Pet** from **Pending Review** is valid when **Proceed to Pending Documents** would place the booking on that sub-step (there is no separate Docs column).
+- Invalid drops show “Cannot drop here”; valid drops open the modal so the admin completes transitions with the same forms and dev controls as `/bookings/:bookingId` (automation triggers stay on the detail page).
+- **Open booking** outline button in the modal header opens the full detail page in a new tab.
+- Drag-drop does **not** auto-transition without going through the workflow panel.
+
+---
+
+## Filters & query params
+
+Existing params unchanged: `q`, `status`, `from`, `to`, `hasPets`, `needParking`, `sort`, `page`, `limit`, `view`.
+
+`showCompletedBookings` remains supported for calendar/kanban (auto-enabled in those views); there is no UI toggle — use the **History** stage card or status filter for completed rows.
+
+New: `stage` (see above).
+
+---
+
+## API
+
+- `list-bookings` edge function — admin JWT; see `docs/PROJECT.md` API table.
+
+---
+
+## Implementation map
+
+| Concern               | Path                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| Page                  | `ui/src/features/dashboard/bookings/pages/BookingsListPage.tsx`                |
+| Stage mapping         | `ui/src/features/dashboard/bookings/lib/bookingStages.ts`                      |
+| Summary cards         | `ui/src/features/dashboard/bookings/components/BookingsSummaryCards.tsx`       |
+| Kanban board          | `ui/src/features/dashboard/bookings/components/BookingKanban.tsx`              |
+| Kanban workflow modal | `ui/src/features/dashboard/bookings/components/BookingKanbanWorkflowModal.tsx` |
+| Workflow (reused)     | `ui/src/features/dashboard/bookings/components/WorkflowPanel.tsx`              |
+| Filters               | `ui/src/features/dashboard/bookings/components/BookingFilters.tsx`             |
+| Routes                | `ui/src/features/dashboard/routes/index.tsx`                                   |
+
+---
+
+## Related docs
+
+- [Booking detail](./bookings-detail.md)
+- [Route index](../../README.md)
+- [Booking workflow rule](../../../../.cursor/rules/booking-workflow.mdc)
+- [`docs/PROJECT.md`](../../../PROJECT.md)

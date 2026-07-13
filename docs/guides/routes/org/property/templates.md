@@ -1,0 +1,198 @@
+# Property templates
+
+**Route:** `/org/:orgSlug/property/:propertySlug/templates`  
+**Status:** Documented — **admin UI, DB persistence, and workflow email sends shipped**
+
+## Purpose
+
+Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor, placeholders, and reset-to-default.
+
+Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
+
+## Integration status
+
+### Shipped
+
+| Layer              | Behavior                                                                                                                                                                      |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin UI**       | Load, edit, save, reset, custom create/delete, Edit/Preview, placeholders insert, image resize                                                                                |
+| **Persistence**    | `property_template_contents` per `property_id` + `template_key`; optional **`section_image_url`** (standard only); built-ins fall back to shipped defaults when no row exists |
+| **API**            | `GET/PATCH property-templates-settings`, `POST property-templates-preview`, `POST upload-property-template-asset` (section + inline images)                                   |
+| **Preview**        | Standard: client sample placeholders. Email: same send shell + `buildSampleDynamicSections()` as production                                                                   |
+| **Workflow sends** | `emailService.ts` → `renderPropertyTemplateSendEmail()` resolves DB/default body, substitutes plain + dynamic section placeholders, wraps in send shell                       |
+
+### Not wired
+
+| Area                 | Behavior                    |
+| -------------------- | --------------------------- |
+| **Custom templates** | Stored only; no send target |
+
+### Standard templates → guest stay guide (shipped)
+
+The four **standard** keys (`house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`) render on the token-gated guest page **`/properties/:slug/stay-guide?token=`** during the booking access window. See **`docs/guides/routes/stay-guide.md`**.
+
+### Previously not wired (email/PDF)
+
+| Area                            | Behavior                                                             |
+| ------------------------------- | -------------------------------------------------------------------- |
+| **Standard templates** (4 keys) | **Not** injected into workflow emails or PDFs (stay guide page only) |
+
+### Email send path
+
+| UI `template_key`               | `emailService` function       | Dynamic section placeholders                                                                                                                                                                                                                    |
+| ------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `email-gaf-request`             | `sendEmail`                   | `{{urgent_notice}}`, `{{update_notice}}`, `{{email_signature_section}}`                                                                                                                                                                         |
+| `email-pet-request`             | `sendPetEmail`                | `{{urgent_notice}}`, `{{update_notice}}`, `{{pet_details_section}}`, `{{pet_attachments_section}}`, `{{email_signature_section}}`                                                                                                               |
+| `email-parking-request`         | `sendParkingBroadcast`        | `{{urgent_notice}}`, `{{update_notice}}`, `{{booking_vehicle_copy}}`, `{{parking_reply_callout_section}}`, `{{email_signature_section}}`                                                                                                        |
+| `email-new-booking-request`     | `sendNewBookingRequestNotify` | `{{urgent_notice}}`, `{{new_booking_detail_tables}}`, `{{downpayment_receipt_ai_section}}`, `{{booking_link_cta}}`                                                                                                                              |
+| `email-booking-acknowledgement` | `sendBookingAcknowledgement`  | `{{booking_acknowledgement_flow_section}}`, `{{email_signature_section}}`                                                                                                                                                                       |
+| `email-ready-for-checkin`       | `sendReadyForCheckin`         | `{{ready_for_checkin_booking_summary_section}}`, payment/GCash sections (empty when total balance is 0), `{{document_reminders_section}}`, `{{stay_guide_cta_section}}`, `{{ready_for_checkin_contact_section}}`, `{{email_signature_section}}` |
+| `email-sd-refund-form-request`  | `sendSdRefundFormRequest`     | `{{sd_refund_checklist_section}}`, `{{sd_refund_details_section}}`                                                                                                                                                                              |
+
+Static files under `email-templates/*.html` remain for reference; live sends use the configurable body + send shell above.
+
+## Sections
+
+| Group    | Keys                                                                                                                                                                                       |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Standard | `house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`                                                                                                      |
+| Email    | `email-gaf-request`, `email-pet-request`, `email-parking-request`, `email-new-booking-request`, `email-booking-acknowledgement`, `email-ready-for-checkin`, `email-sd-refund-form-request` |
+| Custom   | `custom-{uuid}` — operator-created; **stored for future use**                                                                                                                              |
+
+Built-in defaults ship in `propertyTemplates.ts` on the server. Rows in `property_template_contents` override defaults per property.
+
+**Reset to default** restores shipped body copy including dynamic section placeholders (each on its own paragraph). Existing saved rows from before this layout will not show tables/CTAs until reset or placeholders are added manually.
+
+## Save paths
+
+| Action                         | API                                                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Load all                       | `GET property-templates-settings?property_id=`                                                    |
+| Save built-in / custom content | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                  |
+| Upload section / inline image  | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only) |
+| Create custom                  | `PATCH` `{ action: "create", name, content }`                                                     |
+| Delete custom                  | `PATCH` `{ action: "delete", templateKey }`                                                       |
+| Preview (email shell)          | `POST property-templates-preview` `{ templateKey, category, content, name? }`                     |
+
+Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings).
+
+## Preview
+
+- **Standard:** inline HTML preview (`RichTextDisplay`) with sample `{{placeholder}}` substitution (same sample values as the preview API).
+- **Email:** iframe from preview edge function — **`renderPropertyTemplatePreview`** calls **`renderPropertyTemplateSendEmail`** with `contentOverride`, sample vars, and **`buildSampleDynamicSections()`** for section placeholders present in the template body (same layout as production sends).
+
+Preview and send are aligned on `fragments/configurable-template-send.html`.
+
+## Placeholders
+
+Each template card has a **Placeholders** button (next to Edit / Preview). Tap a token to copy + insert at the editor cursor (modal closes); use the copy icon to copy only.
+
+### Block-level section placeholders
+
+Full-width dynamic blocks (tables, CTAs, urgent/update callouts, signatures, etc.) must each sit on **their own paragraph** — one `{{token}}` per `<p>` line, never inline with other copy or other section tokens.
+
+| Rule          | Detail                                                                                                                                                                                        |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Insert**    | Placeholders modal + editor insert put block-level tokens on a new paragraph automatically (`PROPERTY_BLOCK_PLACEHOLDER_KEYS` in `templatePlaceholderCatalog.ts`).                            |
+| **Defaults**  | Shipped bodies in `propertyTemplates.ts` put `{{urgent_notice}}` and `{{update_notice}}` **above** `Good day,` on GAF, pet, and parking templates (new booking: urgent above intro only).     |
+| **Normalize** | `normalizeBlockLevelPlaceholdersInHtml()` splits inline section tokens; `normalizeEmailCalloutPlaceholders()` moves callouts above the salutation and inserts missing tokens on load/preview. |
+| **Reset**     | Restores the shipped default layout when operators want a clean starting point.                                                                                                               |
+
+Block-level keys include: `urgent_notice`, `update_notice`, `new_booking_detail_tables`, `downpayment_receipt_ai_section`, `booking_link_cta`, `pet_details_section`, `pet_attachments_section`, `booking_vehicle_copy`, `parking_reply_callout_section`, `booking_acknowledgement_flow_section`, all ready-for-check-in sections, `sd_refund_checklist_section`, `sd_refund_details_section`, and `email_signature_section`.
+
+**`{{urgent_notice}}`** — GAF, pet, parking, and new booking request templates only (empty when check-in is not same-day in Asia/Manila). **`{{update_notice}}`** — GAF, pet, and parking request templates only (empty on first send; amber callout on resubmit). **Preview** shows sample HTML for both when those placeholders are in the saved body.
+
+## WYSIWYG in real email
+
+At send time, `prepareConfigurableEmailBodyHtml()`:
+
+- Adds inline image styles (`max-width:100%`, block display) when missing
+- Absolutizes root-relative links (`href="/…"`) using `publicGuestAppOrigin`
+
+Admin-authored HTML is trusted (not stripped). Plain placeholder **values** are HTML-escaped; dynamic section HTML is injected pre-rendered.
+
+## DB
+
+Table **`property_template_contents`**: `property_id`, `template_key`, `category`, `name` (custom only), `content`, `updated_at`.
+
+## Implementation map
+
+| Layer                       | Path                                                                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Page                        | `ui/src/features/dashboard/bookings/pages/TemplatesPage.tsx`                                                                                              |
+| Editor card                 | `ui/src/features/dashboard/bookings/components/property-templates/PropertyTemplateEditorCard.tsx`                                                         |
+| WYSIWYG                     | `ui/src/features/dashboard/bookings/components/property-templates/RichTextEditor.tsx`                                                                     |
+| Hooks                       | `ui/src/features/dashboard/bookings/hooks/usePropertyTemplates.ts`                                                                                        |
+| Registry / defaults         | `supabase/functions/_shared/propertyTemplates.ts`                                                                                                         |
+| Send render                 | `supabase/functions/_shared/propertyTemplateEmail.ts`                                                                                                     |
+| Dynamic sections            | `supabase/functions/_shared/propertyTemplateEmailSections.ts`                                                                                             |
+| Block placeholder normalize | `supabase/functions/_shared/normalizeBlockLevelPlaceholders.ts` (+ UI mirror `ui/src/features/dashboard/bookings/lib/normalizeBlockLevelPlaceholders.ts`) |
+| Preview render              | `supabase/functions/_shared/propertyTemplatePreview.ts`                                                                                                   |
+| Settings API                | `supabase/functions/property-templates-settings/index.ts`                                                                                                 |
+| Preview API                 | `supabase/functions/property-templates-preview/index.ts`                                                                                                  |
+| **Send path**               | `supabase/functions/_shared/emailService.ts` → `renderPropertyTemplateSendEmail()`                                                                        |
+
+## Dynamic branding (subjects, From, shell)
+
+Workflow emails resolve labels from the database via **`propertyEmailBranding.ts`**:
+
+| Field                                                           | Source                                                                                                                                                              |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organization name** (shell `{{brandName}}`, logo alt, footer) | `organizations.name`                                                                                                                                                |
+| **Property name** (`{{property_name}}` placeholder)             | `properties.name`                                                                                                                                                   |
+| **Unit label** (shell subtitle, subjects, From display name)    | Booking/form `tower_and_unit_number` → **`app_settings.gaf_tower_and_unit_number`** → **`properties.tower_and_unit`** → property name                               |
+| **From email address**                                          | **`RESEND_FROM_EMAIL`** env, else **`app_settings.email_reply_to`**                                                                                                 |
+| **From display name**                                           | e.g. `{unit} - GAF Request` or `{unit} - {org}` for guest mail                                                                                                      |
+| **Logo**                                                        | **`org_settings.email_logo_url`** (via merged app settings)                                                                                                         |
+| **Brand color**                                                 | Org/property `brandColor` (property override → org settings), resolved to the same **primary** hex as admin `bg-primary` for shell accent, CTAs, and section labels |
+| **Body copy**                                                   | **`property_template_contents`** (Templates page)                                                                                                                   |
+
+Platform defaults (not property-specific): **`DEFAULT_EMAIL_LOGO_URL`** when org has no logo; **`PUBLIC_GUEST_APP_ORIGIN`** for link absolutization; preview sample placeholders still use demo values in the UI catalog.
+
+## Dynamic section data sources (live sends)
+
+Preview uses **`buildSampleDynamicSections()`** with demo dates/names/phones. **Production sends** resolve real values from booking rows + org/property settings (never legacy Kame Home / Monaco 2604 literals).
+
+| Section placeholder                             | Templates                                              | Live data source                                                                         |
+| ----------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `{{urgent_notice}}`                             | GAF, pet, parking, new booking                         | Same-day check-in vs Asia/Manila today                                                   |
+| `{{update_notice}}`                             | GAF, pet, parking                                      | Resubmit flag + unit label from branding                                                 |
+| `{{email_signature_section}}`                   | GAF, pet, parking, acknowledgement, ready-for-check-in | `app_settings.gaf_unit_owner` + unit label                                               |
+| `{{pet_details_section}}`                       | Pet request                                            | Guest form / booking pet fields                                                          |
+| `{{pet_attachments_section}}`                   | Pet request                                            | Static attachment list (no property-specific copy)                                       |
+| `{{parking_reply_callout_section}}`             | Parking request                                        | Static ops callout                                                                       |
+| `{{booking_vehicle_copy}}`                      | Parking request                                        | Booking vehicle fields + unit label                                                      |
+| `{{new_booking_detail_tables}}`                 | New booking notify                                     | Booking stay/guest/notable columns                                                       |
+| `{{downpayment_receipt_ai_section}}`            | New booking notify                                     | `dp_receipt_ai_*` on booking (empty when absent)                                         |
+| `{{booking_link_cta}}`                          | New booking notify                                     | Admin booking URL + org brand color                                                      |
+| `{{booking_acknowledgement_flow_section}}`      | Acknowledgement                                        | Unit + booking dates; step 2 includes Facebook + Airbnb “message us on …” links          |
+| `{{ready_for_checkin_booking_summary_section}}` | Ready for check-in                                     | Booking dates/times/pax + unit label                                                     |
+| `{{document_reminders_section}}`                | Ready for check-in                                     | GAF always; parking/pet lines from `need_parking` / `has_pets`                           |
+| `{{payment_breakdown_section}}`                 | Ready for check-in                                     | Booking pricing columns (empty when total balance is 0)                                  |
+| `{{gcash_payment_section}}`                     | Ready for check-in                                     | `app_settings` payment provider, account name/number, QR (empty when total balance is 0) |
+| `{{ready_for_checkin_contact_section}}`         | Ready for check-in                                     | Facebook + Airbnb links; phone + email from property profile → org profile               |
+| `{{facebook_page_url}}`                         | Acknowledgement, RFCI, SD refund                       | Resolved Facebook URL (`app_settings` → `org_settings`)                                  |
+| `{{airbnb_url}}`                                | Acknowledgement, RFCI, SD refund                       | Resolved Airbnb URL (`app_settings` → `org_settings`)                                    |
+| `{{contact_name}}`                              | Acknowledgement, RFCI, SD refund                       | Property `contactName` → org `contactName`                                               |
+| `{{contact_phone}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactPhone` → org `contactPhone`                                             |
+| `{{contact_email}}`                             | Acknowledgement, RFCI, SD refund                       | Property `contactEmail` → org `contactEmail`                                             |
+| `{{social_contact_mentions}}`                   | Acknowledgement, RFCI, SD refund                       | “message us on **Facebook** or **Airbnb**” — only platform names linked                  |
+| `{{sd_refund_checklist_section}}`               | SD refund                                              | Unit label (elevator card step)                                                          |
+| `{{sd_refund_details_section}}`                 | SD refund                                              | Security deposit amount, `/sd-form` URL, brand color                                     |
+
+Plain body placeholders (`{{guest_name}}`, `{{property_name}}`, etc.) are filled by **`buildBookingPlaceholderVars()`** from the booking row + **`loadPropertyEmailBranding()`** + merged app settings.
+
+Implementation: **`guestContactInfo.ts`** (contact resolution), **`propertyTemplateEmailSections.ts`** (section HTML builders), **`emailService.ts`** (send-time injection).
+
+## Edge cases
+
+- Custom templates capped at **20** per property.
+- Content max **120 000** characters.
+- Reset writes the shipped default back to DB (same as PMA).
+- Unknown `{{tokens}}` in saved content are left literal in sent email.
+- **Base64 / data-URI images** from the editor may be blocked or inflate message size in some clients — prefer HTTPS image URLs.
+- **Existing saved templates** may lack dynamic section placeholders until **Reset to default** or manual insert; inline section tokens are auto-split onto separate lines on load/save/render via `normalizeBlockLevelPlaceholdersInHtml`.
+- **SD refund** — default body uses `{{sd_refund_checklist_section}}` and `{{sd_refund_details_section}}` on separate lines. Saved templates with legacy `{{sd_refund_footer_section}}` still render (combined block) until reset or manual swap.
+- **Ready for check-in** — payment/GCash placeholders resolve to empty strings when total guest balance is 0.
+- **`house-rules`** standard template is not injected into ready-for-check-in (legacy `houseRulesSection` remains disabled for Gmail size).
+- Missing `property_id` on a booking falls back to built-in defaults (no DB row).
