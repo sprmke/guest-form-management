@@ -315,10 +315,10 @@ Multi-users/multi-tenant todos:
 
 ### External reviews, Superhost, and moderation
 
-- [ ] **Property settings — external review proof.** Extend **Socials** (or adjacent settings) so owners/admins can submit up to **5** external reviews each with text, image, and proof (URL and/or screenshot). Support Facebook and Airbnb review screenshots for **Superhost / Superhost-equivalent** verification. Store verification URL where applicable.
-- [ ] **Superhost flag.** Platform can flag a host as Superhost (or equivalent) based on verified external reviews; surface badge on public property page.
-- [ ] **Public property page — unified Reviews section.** Render reviews from **Facebook**, **Airbnb**, and **Kame** (in-app guest reviews). External entries show only after platform approval.
-- [ ] **Super admin — review moderation.** Super admin can **approve**, **reject**, or verify submitted external reviews and Superhost claims before they appear publicly.
+- [x] **Property settings — external review proof.** **Socials** → **External reviews** card (up to 5; Facebook/Airbnb; screenshot + proof URL) + **Superhost** card (verification URL + proof upload). Saved via `app-settings` PATCH; screenshots via `upload-app-settings-asset`.
+- [x] **Superhost flag.** `superhost_status = approved` → `isSuperhost` on `get-public-property`; badge on public property UI when API returns it.
+- [x] **Public property page — unified Reviews section.** `get-public-property` merges approved external + Kame reviews; `PropertyReviews` shows source badge (`Kame guest`, `Airbnb`, `Facebook`).
+- [ ] **Super admin — review moderation.** Super admin can **approve**, **reject**, or verify submitted external reviews and Superhost claims before they appear publicly. _(Owner submit + pending status shipped; moderation UI not yet.)_
 
 ### Super admin & platform governance
 
@@ -346,7 +346,7 @@ Multi-users/multi-tenant todos:
 
 ### Guest ↔ host communication
 
-- [ ] **Public property page — guest chat.** Support chat between guest (from public property page) and property admin/owner. Consider overlap with Guest Inbox; define whether this is a lightweight on-page thread or routes into inbox.
+- [x] **Public property page — guest chat.** Contact host (dates + guest sign-in) → **`/properties/:slug/messages`**; threads land in org Guest Inbox (**Web** tab) via **`platform=web`** on **`social_conversations`**. Guide: **`docs/guides/routes/properties/chat.md`**.
 
 ### Help & support (per org)
 
@@ -471,3 +471,60 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 - [ ] Wire guest email/password + Facebook (guest audience only)
 - [ ] `/about`, `/contact` pages (footer stubs today)
 - [ ] Optional: `scripts/dev/port-pma-public-ui.sh` re-sync helper from PMA repo
+
+Mind map todos:
+
+Big modules:
+
+- Refined onboarding flow/process for adding new properties & parking
+- Parking booking process
+- Plan a way for agent to use and make a profit on using our platform
+- Provider service module where guest/user can avail cleaning, maintenance, breakfast services, etc
+- Create new super admin module for managing developments, approvals, etc
+  - New host listings
+  - Approve external reviews
+- Provide help and support
+- Create stunning and animated customizable or templated landing/showcase page
+- Payment process
+- Subscription process
+- Refund/scam protection
+- Chat app between guest and host
+- Improve app responsiveness & skeleton loaders
+- Legit check, Proof submission
+- Add info modal for some module or sections
+  - Telegram notifications setup
+
+Random:
+
+- Add confirmation modal when adding new payment modals that all information are correct
+  ✅ Apply the same slide-in animation we have from PMA when switching between host & explore mode
+- Improve /for-hosts landing page
+- ✅ Improve external reviews modal UI/UX
+- Remove parking request from email templates? And should we support Templates module on parking?
+- Improve property and org level dashboard to provide more important info
+- Update our booking calendar to support multi nights booking in single badge instead of separate badge which looks like a different guest booking
+- Update property settings -> basic info -> add "Level" field to be consitent with parking
+- Parking display name and code should be in one row on parking basic info settings
+- Add copy or open buttons beside URL slug field
+- ✅ Set default Azure north google map location/address
+- Set atleast 3 parking amenities (same validation with property amenities)
+- Save updated base rates pricing should only be applicable for all future unbooked dates
+- ✅ Let's support up to 9 images in property photos
+- Update superhost to have duration or implement our own Superhost logics
+
+- UI to make consistent/improve:
+  - Modal
+  - Image uploader
+  - Improve calendar date ranger to have seamless UI (without spacing between arrows and button date)
+
+- Things to refine:
+  - Improve UI/UX and process and support more functionality on edit booking detail page
+  - Provide better templates on marketing calendar, design and video builders
+  - Improve UI/UX when transition bookings
+  - Property/Parking default amenities lists
+  - Refine public filters, search functionality
+  - Standard and email templates
+  - Refine footer links and info
+  - Finance transaction categories
+  - Legal: Privacy policy, terms of service, cookie policy
+  - PDF Reporting
