@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * scripts/gmail-auth.mjs
+ * scripts/integrations/gmail-auth.mjs
  *
  * One-time OAuth setup for the `gmail-listener` edge function.
  *
  * What it does:
- *   1. Reads your OAuth 2.0 Desktop client from scripts/gmail-credentials.json
+ *   1. Reads your OAuth 2.0 Desktop client from scripts/integrations/gmail-credentials.json
  *      (download from Google Cloud Console — see instructions below).
  *   2. Opens a browser so you can sign in as kamehome.azurenorth@gmail.com
  *      and grant Gmail read-only access.
@@ -19,8 +19,8 @@
  *   2. APIs & Services → Credentials → + Create Credentials
  *      → OAuth 2.0 Client ID → Application type: Desktop app
  *      → Name: "gmail-listener-local" → Create → Download JSON
- *   3. Save the downloaded file as: scripts/gmail-credentials.json
- *   4. Run: npm run gmail-auth
+ *   3. Save the downloaded file as: scripts/integrations/gmail-credentials.json
+ *   4. Run: bun run gmail-auth
  *      Sign in as kamehome.azurenorth@gmail.com in the browser that opens.
  *
  * Re-running: safe to re-run if the refresh token expires. The .env.local
@@ -37,7 +37,7 @@ import { fileURLToPath } from 'node:url';
 import { exec } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '../..');
 const CREDS_PATH = path.join(__dirname, 'gmail-credentials.json');
 const ENV_PATH = path.join(ROOT, 'supabase', '.env.local');
 
@@ -103,7 +103,7 @@ async function main() {
   // ── 1. Load credentials ───────────────────────────────────────────────────
 
   if (!fs.existsSync(CREDS_PATH)) {
-    err('scripts/gmail-credentials.json not found.\n');
+    err('scripts/integrations/gmail-credentials.json not found.\n');
     info('Steps to create it:');
     info(
       '  a. Go to https://console.cloud.google.com → guest-form-management project',
@@ -111,7 +111,7 @@ async function main() {
     info('  b. APIs & Services → Enable "Gmail API"');
     info('  c. Credentials → + Create Credentials → OAuth 2.0 Client ID');
     info('     Application type: Desktop app  |  Name: gmail-listener-local');
-    info('  d. Download the JSON → save as scripts/gmail-credentials.json\n');
+    info('  d. Download the JSON → save as scripts/integrations/gmail-credentials.json\n');
     process.exit(1);
   }
 
@@ -122,7 +122,7 @@ async function main() {
     if (!clientConfig)
       throw new Error('Neither "installed" nor "web" key found in JSON');
   } catch (e) {
-    err(`Failed to parse scripts/gmail-credentials.json: ${e.message}`);
+    err(`Failed to parse scripts/integrations/gmail-credentials.json: ${e.message}`);
     process.exit(1);
   }
 

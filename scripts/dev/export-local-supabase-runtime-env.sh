@@ -3,11 +3,11 @@
 # The CLI --env-file skips env names starting with SUPABASE_; they must be in the shell.
 set -euo pipefail
 _script="${BASH_SOURCE[0]:-${0:-$0}}"
-ROOT="${ROOT:-$(cd "$(dirname "$_script")/.." && pwd)}"
+ROOT="${ROOT:-$(cd "$(dirname "$_script")/../.." && pwd)}"
 _tmp="$(mktemp)"
 trap 'rm -f "$_tmp"' EXIT
 
-if ! "$ROOT/scripts/run-with-ui-dev-env.sh" npx --yes supabase@latest status -o env >"$_tmp" 2>/dev/null; then
+if ! "$ROOT/scripts/dev/run-with-ui-dev-env.sh" "$ROOT/scripts/dev/bunx" --bun supabase@latest status -o env >"$_tmp" 2>/dev/null; then
   echo "ERROR: supabase status failed. Run supabase start first." >&2
   exit 1
 fi

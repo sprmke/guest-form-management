@@ -7,7 +7,7 @@
  *   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
  *   EMAIL_LOGO_URL (optional) — absolute URL for the Kame Home logo in `<img src>`; default `https://kamehomes.space/images/logo.png`
  *
- * Run: npm run preview:emails:db
+ * Run: bun run preview:emails:db
  */
 
 import fs from 'node:fs';
@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '../..');
 const TPL_DIR = path.join(
   ROOT,
   'supabase',
@@ -130,8 +130,58 @@ const EMAIL_SHELL_STYLE_VARS = {
     'display:block;margin:0 auto;width:80px;max-width:80px;height:80px;border:0;outline:none;text-decoration:none;border-radius:50%;',
 };
 
-function withEmailShellStyleVars(vars) {
-  return { ...vars, ...EMAIL_SHELL_STYLE_VARS };
+const DEFAULT_ORG_BRAND_COLOR = '#24a88e';
+
+function parseHexColor(hex) {
+  const match = /^#([0-9A-Fa-f]{6})$/.exec(String(hex ?? '').trim());
+  if (!match) return null;
+  const raw = match[1];
+  return {
+    r: parseInt(raw.slice(0, 2), 16),
+    g: parseInt(raw.slice(2, 4), 16),
+    b: parseInt(raw.slice(4, 6), 16),
+  };
+}
+
+function toHexColor({ r, g, b }) {
+  const clamp = (n) => Math.max(0, Math.min(255, Math.round(n)));
+  return `#${[clamp(r), clamp(g), clamp(b)]
+    .map((n) => n.toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+function lightenHexColor(hex, amount) {
+  const rgb = parseHexColor(hex);
+  if (!rgb) return hex;
+  const t = Math.max(0, Math.min(1, amount));
+  return toHexColor({
+    r: rgb.r + (255 - rgb.r) * t,
+    g: rgb.g + (255 - rgb.g) * t,
+    b: rgb.b + (255 - rgb.b) * t,
+  });
+}
+
+function buildBrandedEmailShellStyleVars(brandColorHex) {
+  const brand =
+    typeof brandColorHex === 'string' && parseHexColor(brandColorHex)
+      ? brandColorHex.trim()
+      : DEFAULT_ORG_BRAND_COLOR;
+  const attachAccent = lightenHexColor(brand, 0.55);
+  return {
+    emailShellTdAccentStyle: `height:5px;line-height:5px;font-size:0;background-color:${brand};`,
+    emailShellCtaBtnStyle: `display:inline-block;padding:14px 28px;background-color:${brand};color:#ffffff !important;text-decoration:none;border-radius:14px;font-weight:700;font-size:15px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;`,
+    emailStepNumCellStyle: `width:68px;min-width:68px;padding:20px 14px;border-right:1px solid #e2e8f0;text-align:center;vertical-align:middle;background-color:#f1f5f9;color:${brand};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:32px;font-weight:700;line-height:1;`,
+    emailStepNumTextStyle: `font-size:32px;font-weight:700;line-height:1;color:${brand};display:inline-block;`,
+    emailAttachListCellStyle: `padding:18px 20px;background-color:#f1f5f9;border:1px solid #e2e8f0;border-left:4px solid ${attachAccent};border-radius:16px;color:#333333;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;font-size:15px;line-height:1.6;`,
+  };
+}
+
+function withEmailShellStyleVars(vars, brandColorHex) {
+  return {
+    ...vars,
+    ...EMAIL_SHELL_STYLE_VARS,
+    ...buildBrandedEmailShellStyleVars(brandColorHex),
+  };
 }
 
 function loadTemplate(name) {
@@ -202,11 +252,14 @@ function formatDateForEmail(dateStr) {
 
 const DEFAULT_EMAIL_LOGO_URL = 'https://kamehomes.space/images/logo.png';
 
-function buildEmailHeaderLogoHtml(logoUrl) {
+function buildEmailHeaderLogoHtml(logoUrl, logoAlt = 'Property') {
   const frag = loadTemplate('fragments/email-header-logo');
   return replacePlaceholders(
     frag,
-    withEmailShellStyleVars({ logoUrl: escapeHtml(logoUrl) }),
+    withEmailShellStyleVars({
+      logoUrl: escapeHtml(logoUrl),
+      logoAlt: escapeHtml(logoAlt),
+    }),
   );
 }
 
@@ -489,7 +542,7 @@ function buildAdditionalFeeRow(booking) {
     </tr>`;
 }
 
-/** Booking rate balance + security deposit + optional parking & pet fees. */
+/** Computes total balance due at check-in for payment section visibility. */
 function computeTotalDueAtCheckin(booking) {
   const bal =
     booking.balance != null
@@ -503,6 +556,56 @@ function computeTotalDueAtCheckin(booking) {
   const pet = booking.has_pets ? Number(booking.pet_fee) || 0 : 0;
   const addl = Number(booking.guest_additional_fee) || 0;
   return (Number.isFinite(bal) ? bal : 0) + sec + park + pet + addl;
+}
+
+function buildPaymentBreakdownSection(
+  booking,
+  balance,
+  parkingPaymentRow,
+  petPaymentRow,
+  additionalFeeRow,
+) {
+  const totalBalanceDue = pesoFormat(computeTotalDueAtCheckin(booking));
+  return `<p class="section-label section-label-mt" style="margin:28px 0 12px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Payment breakdown</p>
+<table role="presentation" class="data-table data-table-payment" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;table-layout:fixed;border:1px solid #e2e8f0;border-radius:16px;border-collapse:separate;border-spacing:0;overflow:hidden;font-size:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+  <colgroup><col width="28%"/><col width="22%"/><col width="50%"/></colgroup>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Booking rate</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.booking_rate)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Down payment paid</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.down_payment)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Booking rate balance</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(balance)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"></td></tr>
+  <tr><td class="tbl-label" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-weight:600;color:#475569;vertical-align:top;">Security deposit</td><td class="tbl-num" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;text-align:right;color:#333333;vertical-align:top;">${pesoFormat(booking.security_deposit)}</td><td class="tbl-note" style="padding:12px 16px;background-color:#ffffff;border-bottom:1px solid #e2e8f0;font-size:12px;color:#555555;line-height:1.45;vertical-align:top;"><em class="italic-note">Refundable after check-out</em></td></tr>
+  ${parkingPaymentRow}${petPaymentRow}${additionalFeeRow}
+  <tr class="tbl-row-emphasis fee-addon-row"><td class="tbl-label" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;font-weight:600;color:#78350f;vertical-align:top;">Total balance</td><td class="tbl-num" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;text-align:right;color:#b45309;font-weight:700;vertical-align:top;">${totalBalanceDue}</td><td class="tbl-note" style="padding:12px 16px;background-color:#fffbeb;border-bottom:none;font-size:12px;color:#92400e;line-height:1.45;vertical-align:top;"><em class="italic-note">Payable on or before check-in. Please pay via online or bank transfer.</em></td></tr>
+</table>`;
+}
+
+function buildPaymentInstructionsSection(paymentSettings) {
+  const provider = escapeHtml(
+    (paymentSettings.paymentProvider || 'GCash').trim(),
+  );
+  const qrUrl = escapeHtml(paymentSettings.gcashQrImageUrl);
+  const accountName = escapeHtml(paymentSettings.gcashName);
+  const accountNumber = escapeHtml(paymentSettings.gcashNumber);
+  const paymentCopy = escapeHtml(
+    `Save and scan the QR code or send to the ${(paymentSettings.paymentProvider || 'GCash').trim()} account beside it to pay your total balance upon check-in.`,
+  );
+
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:22px 0 0 0;">
+  <tr><td style="padding:0;vertical-align:top">
+    <p class="section-label" style="margin:0 0 8px 0;font-size:13px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#5f954c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">Total balance payment — ${provider}</p>
+    <p class="gcash-payment-copy">${paymentCopy}</p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse">
+      <tr>
+        <td align="left" valign="top" style="padding:0 16px 0 0;width:250px;vertical-align:top;"><img src="${qrUrl}" width="250" alt="${provider} QR code for payments" style="display:block;width:100%;max-width:250px;height:auto;border:1px solid #e2e8f0;border-radius:12px;"/></td>
+        <td align="left" valign="middle" style="padding:0;vertical-align:middle">
+          <p class="gcash-payment-label">Account name</p>
+          <p class="gcash-payment-value gcash-payment-value-spaced">${accountName}</p>
+          <p class="gcash-payment-label">Account Number</p>
+          <p class="gcash-payment-value">${accountNumber}</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>`;
 }
 
 function buildDocumentRemindersSection(booking) {
@@ -568,13 +671,14 @@ async function loadPaymentSettings(supabase) {
   const defaults = {
     gcashName: DEFAULT_GCASH_NAME,
     gcashNumber: DEFAULT_GCASH_NUMBER,
+    paymentProvider: 'GCash',
     gcashQrImageUrl: DEFAULT_GCASH_QR_URL,
   };
   if (!supabase) return defaults;
   try {
     const { data, error } = await supabase
       .from('app_settings')
-      .select('gcash_name, gcash_number, gcash_qr_image_url, public_guest_app_origin')
+      .select('gcash_name, gcash_number, gcash_qr_image_url, payment_provider, public_guest_app_origin')
       .eq('id', 1)
       .maybeSingle();
     if (error || !data) return defaults;
@@ -585,6 +689,7 @@ async function loadPaymentSettings(supabase) {
     return {
       gcashName: (data.gcash_name || DEFAULT_GCASH_NAME).trim(),
       gcashNumber: (data.gcash_number || DEFAULT_GCASH_NUMBER).trim(),
+      paymentProvider: (data.payment_provider || 'GCash').trim(),
       gcashQrImageUrl:
         (data.gcash_qr_image_url || `${origin}/images/kame-home-gcash-qr-payment.jpg`).trim(),
     };
@@ -630,8 +735,31 @@ async function pickBooking(supabase) {
   return { row: null, label: null };
 }
 
-function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
+async function loadBrandColorForBooking(supabase, booking) {
+  if (!supabase || !booking?.property_id) return DEFAULT_ORG_BRAND_COLOR;
+  try {
+    const { data: property } = await supabase
+      .from('properties')
+      .select('organization_id')
+      .eq('id', booking.property_id)
+      .maybeSingle();
+    if (!property?.organization_id) return DEFAULT_ORG_BRAND_COLOR;
+    const { data: org } = await supabase
+      .from('organizations')
+      .select('settings')
+      .eq('id', property.organization_id)
+      .maybeSingle();
+    const raw = org?.settings?.brandColor;
+    if (typeof raw === 'string' && parseHexColor(raw)) return raw.trim();
+  } catch {
+    /* fall through */
+  }
+  return DEFAULT_ORG_BRAND_COLOR;
+}
+
+function renderAll(booking, meta, emailLogoUrl, paymentSettings, brandColor = DEFAULT_ORG_BRAND_COLOR) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
+  const shell = (vars) => withEmailShellStyleVars(vars, brandColor);
 
   const emailHeaderLogo = buildEmailHeaderLogoHtml(emailLogoUrl);
   const testWarning = '';
@@ -646,7 +774,7 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   const gafTpl = loadTemplate('gaf-request');
   const gafHtml = replacePlaceholders(
     gafTpl,
-    withEmailShellStyleVars({
+    shell({
       emailHeaderLogo,
       testWarning,
       updateSuffix,
@@ -661,7 +789,7 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   const petTpl = loadTemplate('pet-request');
   const petHtml = replacePlaceholders(
     petTpl,
-    withEmailShellStyleVars({
+    shell({
       emailHeaderLogo,
       testWarning,
       updateSuffix,
@@ -681,7 +809,7 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   const ackTpl = loadTemplate('booking-acknowledgement');
   const ackHtml = replacePlaceholders(
     ackTpl,
-    withEmailShellStyleVars({
+    shell({
       emailHeaderLogo,
       testWarning,
       guestFacebookName: escapeHtml(booking.guest_facebook_name),
@@ -705,7 +833,7 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   const carPlate = String(booking.car_plate_number ?? '').trim() || 'N/A';
   const parkHtml = replacePlaceholders(
     parkTpl,
-    withEmailShellStyleVars({
+    shell({
       emailHeaderLogo,
       testWarning,
       checkInDate: escapeHtml(displayCheckInDate),
@@ -773,9 +901,27 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
   );
 
   const rfiTpl = loadTemplate('ready-for-checkin');
+  const parkingPaymentRow = buildParkingPaymentRow(booking);
+  const petPaymentRow = buildPetPaymentRow(booking);
+  const additionalFeeRow = buildAdditionalFeeRow(booking);
+  const totalDueAtCheckin = computeTotalDueAtCheckin(booking);
+  const paymentBreakdownSection =
+    totalDueAtCheckin > 0
+      ? buildPaymentBreakdownSection(
+          booking,
+          balance,
+          parkingPaymentRow,
+          petPaymentRow,
+          additionalFeeRow,
+        )
+      : '';
+  const gcashPaymentSection =
+    totalDueAtCheckin > 0
+      ? buildPaymentInstructionsSection(paymentSettings)
+      : '';
   const rfiHtml = replacePlaceholders(
     rfiTpl,
-    withEmailShellStyleVars({
+    shell({
       emailHeaderLogo,
       testWarning,
       checkInDate: escapeHtml(displayCheckInDate),
@@ -790,14 +936,13 @@ function renderAll(booking, meta, emailLogoUrl, paymentSettings) {
       downPayment: pesoFormat(booking.down_payment),
       balance: pesoFormat(balance),
       securityDeposit: pesoFormat(booking.security_deposit),
-      totalBalanceDue: pesoFormat(computeTotalDueAtCheckin(booking)),
-      parkingPaymentRow: buildParkingPaymentRow(booking),
-      petPaymentRow: buildPetPaymentRow(booking),
-      additionalFeeRow: buildAdditionalFeeRow(booking),
+      totalBalanceDue: pesoFormat(totalDueAtCheckin),
+      parkingPaymentRow,
+      petPaymentRow,
+      additionalFeeRow,
       houseRulesSection,
-      paymentQrImageUrl: escapeHtml(paymentSettings.gcashQrImageUrl),
-      gcashName: escapeHtml(paymentSettings.gcashName),
-      gcashNumber: escapeHtml(paymentSettings.gcashNumber),
+      paymentBreakdownSection,
+      gcashPaymentSection,
     }),
   );
   fs.writeFileSync(
@@ -843,6 +988,7 @@ async function main() {
   let paymentSettings = {
     gcashName: DEFAULT_GCASH_NAME,
     gcashNumber: DEFAULT_GCASH_NUMBER,
+    paymentProvider: 'GCash',
     gcashQrImageUrl: DEFAULT_GCASH_QR_URL,
   };
 
@@ -871,7 +1017,13 @@ async function main() {
     console.log('Using built-in DEMO_BOOKING (no DB row).');
   }
 
-  renderAll(booking, meta, emailLogoUrl, paymentSettings);
+  let brandColor = DEFAULT_ORG_BRAND_COLOR;
+  if (url && key && booking?.property_id) {
+    const supabase = createClient(url, key);
+    brandColor = await loadBrandColorForBooking(supabase, booking);
+  }
+
+  renderAll(booking, meta, emailLogoUrl, paymentSettings, brandColor);
   console.log(`Wrote filled previews to ${path.relative(ROOT, OUT_DIR)}/`);
   console.log(
     'Open http://localhost:3334/ and use the "Filled from database" links (run npm run preview:emails:serve if the server is not up).',

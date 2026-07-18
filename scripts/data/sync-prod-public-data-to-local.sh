@@ -10,10 +10,10 @@
 #   Prefer the Session pooler URI from Dashboard → Connect (direct `db.*` is often
 #   labeled "Not IPv4 compatible"; pooler works on typical IPv4 networks and for pg_dump).
 #   export PROD_DB_URL='postgresql://postgres.[REF]:PASSWORD@aws-0-....pooler.supabase.com:6543/postgres'
-#   ./scripts/sync-prod-public-data-to-local.sh
+#   ./scripts/data/sync-prod-public-data-to-local.sh
 #
 # Optional:
-#   DUMP_FILE=/path/to/dump.sql ./scripts/sync-prod-public-data-to-local.sh
+#   DUMP_FILE=/path/to/dump.sql ./scripts/data/sync-prod-public-data-to-local.sh
 #
 # Password special characters must be URL-encoded in PROD_DB_URL (e.g. @ → %40).
 # Direct `db.*.supabase.co` is IPv6-only; `hostaddr` then stays IPv6 and pg_dump-in-Docker still
@@ -25,7 +25,7 @@
 
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
 DUMP_FILE="${DUMP_FILE:-$ROOT/supabase/.temp/prod_public_data.sql}"
@@ -61,7 +61,7 @@ else
     echo "Example: export PROD_DB_URL='postgresql://postgres.[REF]:PASSWORD@aws-0-REGION.pooler.supabase.com:6543/postgres'"
     echo "Or add PROD_DB_URL=... to supabase/.env.local (gitignored)."
     if [[ -s "$DUMP_FILE" ]]; then
-      echo "To re-apply the last local dump without prod access: RESTORE_ONLY=1 ./scripts/sync-prod-public-data-to-local.sh"
+      echo "To re-apply the last local dump without prod access: RESTORE_ONLY=1 ./scripts/data/sync-prod-public-data-to-local.sh"
     fi
     exit 1
   fi
@@ -337,12 +337,12 @@ docker exec "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
 echo "==> Restoring dump into local Postgres"
 docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <"$DUMP_FILE"
 
-AFTER_RESTORE_SQL="$ROOT/scripts/sql/after-prod-data-restore.sql"
+AFTER_RESTORE_SQL="$ROOT/scripts/data/sql/after-prod-data-restore.sql"
 if [[ ! -f "$AFTER_RESTORE_SQL" ]]; then
   echo "ERROR: Missing $AFTER_RESTORE_SQL"
   exit 1
 fi
-echo "==> Normalizing legacy status values + re-adding CHECK (see scripts/sql/after-prod-data-restore.sql)"
+echo "==> Normalizing legacy status values + re-adding CHECK (see scripts/data/sql/after-prod-data-restore.sql)"
 docker exec -i "$CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 <"$AFTER_RESTORE_SQL"
 
 echo "==> Ensure gmail_listener_state singleton (migration seed is not re-run after TRUNCATE)"

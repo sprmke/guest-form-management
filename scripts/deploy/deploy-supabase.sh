@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Deploy migrations and Edge Functions to the linked Supabase project.
 # Prerequisites: supabase login, supabase link --project-ref <prod-ref>
-# See docs/production-deployment.md for the full cutover checklist (backups, secrets, UI).
+# See docs/operations/production-deployment.md for the full cutover checklist (backups, secrets, UI).
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-SUPABASE=(npx --yes supabase@latest)
+SUPABASE=("$ROOT/scripts/dev/bunx" --bun supabase@latest)
 PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
 
 DB_ONLY=false
@@ -16,7 +16,7 @@ INCLUDE_ALL=false
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/deploy-supabase.sh [options]
+Usage: ./scripts/deploy/deploy-supabase.sh [options]
 
 Deploy to the linked Supabase project (supabase link --project-ref <ref>).
 
@@ -73,7 +73,7 @@ fi
 
 PROJECT_REF="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
 echo "Linked project: $PROJECT_REF"
-echo "See docs/production-deployment.md for backups and post-deploy steps."
+echo "See docs/operations/production-deployment.md for backups and post-deploy steps."
 echo
 
 run_db_push() {
