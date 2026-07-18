@@ -1,18 +1,76 @@
-import { z } from "zod";
-import dayjs from "dayjs";
-import { guestFormSchema } from "@/features/guest-form/schemas/guestFormSchema";
-import { requiresValidId, computeGuestCounts, DEFAULT_GUEST_AGE, DEFAULT_FIFTH_GUEST_AGE } from "@/features/guest-form/lib/guestCounts";
+import dayjs from 'dayjs';
+import { type z } from 'zod';
+
+import {
+  requiresValidId,
+  computeGuestCounts,
+  DEFAULT_GUEST_AGE,
+  DEFAULT_FIFTH_GUEST_AGE,
+} from '@/features/guest/form/lib/guestCounts';
+import { type guestFormSchema } from '@/features/guest/form/schemas/guestFormSchema';
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa', 'Juan'];
-const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',];
-const cities = ['San Fernando', 'Angeles', 'Mabalacat', 'Manila', 'Quezon', 'Makati', 'Pasig', 'Taguig'];
-const provinces = ['Pampanga', 'Metro Manila', 'Bulacan', 'Bataan', 'Zambales', 'Cavite', 'Laguna', 'Batangas'];
+const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
+const cities = [
+  'San Fernando',
+  'Angeles',
+  'Mabalacat',
+  'Manila',
+  'Quezon',
+  'Makati',
+  'Pasig',
+  'Taguig',
+];
+const provinces = [
+  'Pampanga',
+  'Metro Manila',
+  'Bulacan',
+  'Bataan',
+  'Zambales',
+  'Cavite',
+  'Laguna',
+  'Batangas',
+];
 const findUsSources = ['Facebook', 'Airbnb', 'Tiktok', 'Instagram', 'Friend', 'Others'];
-const carBrands = ['Toyota Vios', 'Honda Civic', 'Ford Ranger', 'Mitsubishi Xpander', 'Nissan Navara'];
+const carBrands = [
+  'Toyota Vios',
+  'Honda Civic',
+  'Ford Ranger',
+  'Mitsubishi Xpander',
+  'Nissan Navara',
+];
 const carColors = ['Black', 'White', 'Silver', 'Red', 'Blue', 'Gray'];
-const petNames = ['Buddy', 'Max', 'Luna', 'Bella', 'Charlie', 'Lucy', 'Milo', 'Daisy', 'Rocky', 'Buddy'];
-const petBreeds = ['Labrador', 'Golden Retriever', 'German Shepherd', 'Bulldog', 'Poodle', 'Persian Cat', 'Siamese Cat', 'Maine Coon'];
-const petAges = ['1 year old', '2 years old', '3 years old', '4 years old', '5 years old', '6 months old', '8 months old'];
+const petNames = [
+  'Buddy',
+  'Max',
+  'Luna',
+  'Bella',
+  'Charlie',
+  'Lucy',
+  'Milo',
+  'Daisy',
+  'Rocky',
+  'Buddy',
+];
+const petBreeds = [
+  'Labrador',
+  'Golden Retriever',
+  'German Shepherd',
+  'Bulldog',
+  'Poodle',
+  'Persian Cat',
+  'Siamese Cat',
+  'Maine Coon',
+];
+const petAges = [
+  '1 year old',
+  '2 years old',
+  '3 years old',
+  '4 years old',
+  '5 years old',
+  '6 months old',
+  '8 months old',
+];
 const petTypes = ['Dog', 'Cat'];
 const requests = [
   'Early check-in if possible',
@@ -32,7 +90,8 @@ const requests = [
 ];
 
 const randomElement = (arr: any[]) => arr[Math.floor(Math.random() * arr.length)];
-const randomNumber = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1) + min);
+const randomNumber = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1) + min);
 
 // Generate a valid name with at least 2 words, each word >= 2 characters
 const generateRandomName = () => {
@@ -44,7 +103,18 @@ const generateRandomName = () => {
 
 // Generate a valid plate number format
 const generateRandomPlate = () => {
-  const letters = randomElement(['ABC', 'XYZ', 'DEF', 'GHI', 'JKL', 'MNO', 'PQR', 'STU', 'VWX', 'YZA']);
+  const letters = randomElement([
+    'ABC',
+    'XYZ',
+    'DEF',
+    'GHI',
+    'JKL',
+    'MNO',
+    'PQR',
+    'STU',
+    'VWX',
+    'YZA',
+  ]);
   const numbers = randomNumber(100, 999);
   return `${letters} ${numbers}`;
 };
@@ -65,44 +135,47 @@ const generateDummyImage = (prefix: string): string => {
   const height = 600;
   canvas.width = width;
   canvas.height = height;
-  
+
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Could not get canvas context');
-  
+
   // Generate a random color based on the prefix
   const hue = prefix.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 360;
   ctx.fillStyle = `hsl(${hue}, 50%, 70%)`;
   ctx.fillRect(0, 0, width, height);
-  
+
   // Add text
   ctx.fillStyle = '#333333';
   ctx.font = 'bold 32px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  
+
   const text = prefix.replace(/([A-Z])/g, ' $1').trim();
   const formattedDateTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
-  
+
   ctx.fillText(text, width / 2, height / 2 - 30);
   ctx.font = '20px Arial';
   ctx.fillText(formattedDateTime, width / 2, height / 2 + 30);
-  
+
   return canvas.toDataURL('image/jpeg', 0.8);
 };
 
 const generateDummyFile = async (prefix: string): Promise<File> => {
   const dataUrl = generateDummyImage(prefix);
   const filename = `${prefix.toLowerCase()}_${dayjs().valueOf()}.jpg`;
-  
+
   // Convert data URL to blob
   const response = await fetch(dataUrl);
   const blob = await response.blob();
-  
+
   return new File([blob], filename, { type: 'image/jpeg' });
 };
 
 // Set dummy file in file input
-export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, file: File | null) => {
+export const setDummyFile = (
+  fileInputRef: React.RefObject<HTMLInputElement>,
+  file: File | null
+) => {
   if (!fileInputRef.current || !file) return;
 
   // Create a DataTransfer object
@@ -115,11 +188,11 @@ export const setDummyFile = (fileInputRef: React.RefObject<HTMLInputElement>, fi
 
 export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
   const fullName = generateRandomName();
-  
+
   // Generate a date between today and next 30 days for check-in
   const today = dayjs();
   const checkIn = today.add(randomNumber(1, 30), 'day').format('YYYY-MM-DD');
-  
+
   // Generate check-out date 1-7 days after check-in
   const checkOut = dayjs(checkIn).add(randomNumber(1, 7), 'day').format('YYYY-MM-DD');
 
@@ -140,9 +213,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   const needParking = Math.random() > 0.5;
   const hasPets = Math.random() > 0.5;
 
-  const validId = requiresValidId(primaryGuestAge)
-    ? await generateDummyFile('ValidId')
-    : undefined;
+  const validId = requiresValidId(primaryGuestAge) ? await generateDummyFile('ValidId') : undefined;
   const guest2ValidId =
     guest2Age != null && requiresValidId(guest2Age)
       ? await generateDummyFile('Guest2ValidId')
@@ -165,26 +236,27 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   const numberOfNights = dayjs(checkOut).diff(dayjs(checkIn), 'day');
 
   const findUs = randomElement(findUsSources);
-  const findUsDetails = findUs === 'Friend' 
-    ? `${generateRandomName()} recommended your place`
-    : findUs === 'Others'
-    ? randomElement([
-        'Google search',
-        'Walk-in inquiry',
-        'Property agent referral',
-        'Local community group',
-        'Travel blog recommendation',
-        'Instagram ad',
-        'Facebook Marketplace',
-        'TikTok video',
-        'YouTube vlog',
-        'Real estate website',
-        'Airbnb listing',
-        'Travel agency',
-        'Corporate booking',
-        'Previous guest'
-      ])
-    : undefined;
+  const findUsDetails =
+    findUs === 'Friend'
+      ? `${generateRandomName()} recommended your place`
+      : findUs === 'Others'
+        ? randomElement([
+            'Google search',
+            'Walk-in inquiry',
+            'Property agent referral',
+            'Local community group',
+            'Travel blog recommendation',
+            'Instagram ad',
+            'Facebook Marketplace',
+            'TikTok video',
+            'YouTube vlog',
+            'Real estate website',
+            'Airbnb listing',
+            'Travel agency',
+            'Corporate booking',
+            'Previous guest',
+          ])
+        : undefined;
 
   const guestCounts = computeGuestCounts([
     { name: fullName, age: primaryGuestAge },
@@ -228,9 +300,9 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     petVaccinationDate: hasPets ? lastVaccination : undefined,
     petVaccination,
     petImage,
-    checkInTime: "14:00",
-    checkOutTime: "11:00",
-    nationality: "Filipino",
+    checkInTime: '14:00',
+    checkOutTime: '11:00',
+    nationality: 'Filipino',
     numberOfAdults: guestCounts.adults,
     numberOfChildren: guestCounts.children,
     numberOfNights,
@@ -239,9 +311,9 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
     guest2ValidId,
     guest3ValidId,
     guest4ValidId,
-    unitOwner: "Arianna Perez",
-    towerAndUnitNumber: "Monaco 2604",
-    ownerOnsiteContactPerson: "Arianna Perez",
-    ownerContactNumber: "0962 541 2941"
+    unitOwner: 'Arianna Perez',
+    towerAndUnitNumber: 'Monaco 2604',
+    ownerOnsiteContactPerson: 'Arianna Perez',
+    ownerContactNumber: '0962 541 2941',
   };
 };
