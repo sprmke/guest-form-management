@@ -1,8 +1,8 @@
 ---
 description: Mobile-first, responsive UI standards for every screen and component in this project. Apply to all new UI work in ui/src/**.
 globs:
-  - "ui/src/**/*.tsx"
-  - "ui/src/**/*.ts"
+  - 'ui/src/**/*.tsx'
+  - 'ui/src/**/*.ts'
 alwaysApply: true
 ---
 
@@ -14,15 +14,16 @@ Every UI component in this project must work correctly at **375 px** (iPhone SE)
 
 Use **Tailwind's default min-width breakpoints** in this order:
 
-| Prefix | Min width | Context |
-|--------|-----------|---------|
-| _(none)_ | 0 px | Mobile default — design here first |
-| `sm:` | 640 px | Large phone / small tablet |
-| `md:` | 768 px | Tablet portrait |
-| `lg:` | 1024 px | Laptop — sidebar becomes visible |
-| `xl:` | 1280 px | Desktop |
+| Prefix   | Min width | Context                            |
+| -------- | --------- | ---------------------------------- |
+| _(none)_ | 0 px      | Mobile default — design here first |
+| `sm:`    | 640 px    | Large phone / small tablet         |
+| `md:`    | 768 px    | Tablet portrait                    |
+| `lg:`    | 1024 px   | Laptop — sidebar becomes visible   |
+| `xl:`    | 1280 px   | Desktop                            |
 
 **Rules:**
+
 - Write the mobile style first (no prefix), then add `sm:`, `md:`, `lg:` overrides.
 - Never write desktop-only styles without a mobile fallback.
 - Never use `max-w-` breakpoints (max-width queries); always min-width.
@@ -70,13 +71,13 @@ Table row actions, filter buttons, nav items, and pagination chips must all meet
 
 ## 4. Typography scaling
 
-| Use | Mobile | Desktop |
-|-----|--------|---------|
-| Page title | `text-lg font-bold` (`text-admin-page-title`) | `sm:text-xl` |
-| Page subtitle | `text-sm` (`text-admin-page-subtitle`) | `sm:text-[15px]` |
-| Table data | `text-sm` | `text-[13px]` |
-| Secondary / muted | `text-xs` | `text-[11px]` |
-| Section labels | `text-xs font-bold uppercase tracking-wider` | same |
+| Use               | Mobile                                        | Desktop          |
+| ----------------- | --------------------------------------------- | ---------------- |
+| Page title        | `text-lg font-bold` (`text-admin-page-title`) | `sm:text-xl`     |
+| Page subtitle     | `text-sm` (`text-admin-page-subtitle`)        | `sm:text-[15px]` |
+| Table data        | `text-sm`                                     | `text-[13px]`    |
+| Secondary / muted | `text-xs`                                     | `text-[11px]`    |
+| Section labels    | `text-xs font-bold uppercase tracking-wider`  | same             |
 
 Prefer Tailwind `text-sm` / `text-base` on mobile; use precise `text-[13px]` pixel values for desktop density.
 
@@ -85,8 +86,12 @@ Prefer Tailwind `text-sm` / `text-base` on mobile; use precise `text-[13px]` pix
 Tables must never cause horizontal overflow on the page. Use this pattern:
 
 ```tsx
-<div className="overflow-x-auto rounded-xl"> {/* scrollable wrapper */}
-  <table className="w-full min-w-[600px]">   {/* ensures table doesn't collapse */}
+<div className="overflow-x-auto rounded-xl">
+  {' '}
+  {/* scrollable wrapper */}
+  <table className="w-full min-w-[600px]">
+    {' '}
+    {/* ensures table doesn't collapse */}
     ...
   </table>
 </div>
@@ -94,16 +99,16 @@ Tables must never cause horizontal overflow on the page. Use this pattern:
 
 Hide non-critical columns on small screens:
 
-| Column | Visible from |
-|--------|-------------|
-| Status | always |
-| Guest (name + email) | always |
-| Stay (dates + nights) | always |
-| Pax | `md:` |
-| Flags (parking/pet icons) | `sm:` |
-| Amount | `lg:` |
-| Created | `md:` |
-| Actions | always (icon only on mobile) |
+| Column                    | Visible from                 |
+| ------------------------- | ---------------------------- |
+| Status                    | always                       |
+| Guest (name + email)      | always                       |
+| Stay (dates + nights)     | always                       |
+| Pax                       | `md:`                        |
+| Flags (parking/pet icons) | `sm:`                        |
+| Amount                    | `lg:`                        |
+| Created                   | `md:`                        |
+| Actions                   | always (icon only on mobile) |
 
 ## 6. Forms and filter bars
 
@@ -114,12 +119,12 @@ Hide non-critical columns on small screens:
 
 ## 7. Spacing
 
-| Context | Mobile | Desktop |
-|---------|--------|---------|
-| Page padding | `p-3 sm:p-4` | `lg:p-6` |
-| Card / section gap | `space-y-3` | `sm:space-y-4` |
-| Form field gap | `space-y-4` | same |
-| Inline button gap | `gap-1.5` | same |
+| Context            | Mobile       | Desktop        |
+| ------------------ | ------------ | -------------- |
+| Page padding       | `p-3 sm:p-4` | `lg:p-6`       |
+| Card / section gap | `space-y-3`  | `sm:space-y-4` |
+| Form field gap     | `space-y-4`  | same           |
+| Inline button gap  | `gap-1.5`    | same           |
 
 Never use `px-6` or larger without a mobile fallback like `px-4`.
 

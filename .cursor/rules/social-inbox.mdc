@@ -5,13 +5,16 @@ globs:
   - supabase/functions/**/social-inbox-*/**
   - supabase/functions/_shared/metaInbox*.ts
   - supabase/functions/_shared/socialInbox*.ts
+  - supabase/functions/**/guest-web-chat-*/**
+  - supabase/functions/_shared/webGuestChatService.ts
+  - ui/src/features/guest/chat/**
   - ui/src/features/dashboard/inbox/**
   - docs/guides/routes/org/inbox.md
 ---
 
 # Social Guest Inbox — agent reference
 
-Org-scoped unified inbox at `/org/:orgSlug/inbox`. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments). TikTok and Airbnb are **Coming soon** until partner APIs are available — never fake connectivity.
+Org-scoped unified inbox at `/org/:orgSlug/inbox`. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** until partner APIs are available — never fake connectivity.
 
 ## Permissions
 
@@ -31,7 +34,7 @@ Keep in sync: `supabase/functions/_shared/orgTeamPermissions.ts` and `ui/src/fea
 
 ## Meta messaging rules
 
-- **24-hour window:** outbound DMs only when `messaging_window_expires_at` > now (set from last inbound).
+- **24-hour window:** outbound DMs only when `messaging_window_expires_at` > now (set from last inbound). **Does not apply to `platform=web`.**
 - **Comments:** public reply via Graph API; IG private reply via `recipient.comment_id` (one DM per comment, 7 days).
 - **Webhook-first:** Conversations API backfill on connect only; do not poll in a loop.
 - **App Review:** production requires Advanced Access — see `docs/operations/meta-app-review.md`.
@@ -52,6 +55,7 @@ Keep in sync: `supabase/functions/_shared/orgTeamPermissions.ts` and `ui/src/fea
 | `meta-inbox-status` / `disconnect`                   | JWT + org       |
 | `meta-inbox-webhook`                                 | Public (signed) |
 | `social-inbox-threads` / `messages` / `send`         | JWT + org       |
+| `guest-web-chat-start` / `guest-web-chat-messages`   | JWT (guest)     |
 | `social-inbox-templates` / `settings` / `ai-suggest` | JWT + org       |
 
 All JWT routes: `verify_jwt = false` in config + `serveAuthenticated` + in-handler checks.
