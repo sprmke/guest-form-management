@@ -4,9 +4,7 @@ export type GuestNavState = {
   guestEnter?: GuestEnterVariant;
 };
 
-export function guestEnterClass(
-  state: GuestNavState | null | undefined,
-): string {
+export function guestEnterClass(state: GuestNavState | null | undefined): string {
   switch (state?.guestEnter) {
     case 'forward':
       return 'guest-enter-forward';

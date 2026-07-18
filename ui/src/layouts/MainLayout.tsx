@@ -1,23 +1,40 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useMemo } from 'react';
+
 import { Outlet, useLocation } from 'react-router-dom';
-import { AdminEntryButton } from '@/components/AdminEntryButton';
+
+import { AdminEntryButton } from '@/components/navigation/AdminEntryButton';
+import { useTheme } from '@/components/theme/ThemeProvider';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
+import { guestEnterClass, type GuestNavState } from '@/layouts/guest/navState';
+import { applyBrandCssVariables } from '@/lib/theme/applyBrandCssVariables';
+import { buildGuestBrandStyle } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
-import { guestEnterClass, type GuestNavState } from '@/layouts/guestNavState';
 
 interface MainLayoutProps {
   children?: ReactNode;
   /** Animate the content card on guest route changes (calendar → form → success). */
   animateOnNavigate?: boolean;
+  /** Org brand color hex (#RRGGBB) for guest-facing accents. */
+  brandColor?: string | null;
 }
 
-export function MainLayout({ children, animateOnNavigate = false }: MainLayoutProps) {
+export function MainLayout({ children, animateOnNavigate = false, brandColor }: MainLayoutProps) {
   const location = useLocation();
+  const { resolvedTheme } = useTheme();
   const navState = location.state as GuestNavState | null;
   const content = children ?? <Outlet />;
+  const brandStyle = useMemo(
+    () => buildGuestBrandStyle(brandColor, resolvedTheme === 'dark'),
+    [brandColor, resolvedTheme]
+  );
+
+  useEffect(() => {
+    return applyBrandCssVariables(document.documentElement, brandStyle as Record<string, string>);
+  }, [brandStyle]);
 
   return (
-    <main className="app-shell relative min-h-screen">
+    <main className="app-shell relative min-h-screen" style={brandStyle as CSSProperties}>
       {/* Admin + theme — top corners on mobile, bottom corners on larger screens */}
       <div className="pointer-events-none fixed left-4 top-[max(0.75rem,env(safe-area-inset-top))] z-50 sm:hidden">
         <div className="pointer-events-auto">
@@ -45,7 +62,7 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url('/images/hero-banner.png')` }}
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/70 via-primary/45 to-primary/80" />
+          <div className="from-primary/70 via-primary/45 to-primary/80 absolute inset-0 bg-gradient-to-br" />
           <div
             className="absolute inset-0 opacity-[0.08]"
             style={{
@@ -59,14 +76,10 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
       <div className="relative -mt-10 px-4 pb-6 sm:px-6 sm:pb-8 lg:px-8">
         <div className="mx-auto min-w-0 max-w-3xl">
           <div
-            key={
-              animateOnNavigate
-                ? `${location.pathname}${location.search}`
-                : undefined
-            }
+            key={animateOnNavigate ? `${location.pathname}${location.search}` : undefined}
             className={cn(
               'surface-card relative min-w-0 overflow-visible',
-              animateOnNavigate && guestEnterClass(navState),
+              animateOnNavigate && guestEnterClass(navState)
             )}
           >
             {content}
@@ -74,7 +87,7 @@ export function MainLayout({ children, animateOnNavigate = false }: MainLayoutPr
         </div>
       </div>
 
-      <footer className="px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center text-xs text-muted-foreground sm:px-6">
+      <footer className="text-muted-foreground px-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-6 text-center text-xs sm:px-6">
         <p>© 2024 Kame Home — Azure North. All rights reserved.</p>
       </footer>
     </main>
