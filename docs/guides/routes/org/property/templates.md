@@ -31,6 +31,8 @@ Operators edit per-property copy here. **Preview and live sends use the same ren
 
 The four **standard** keys (`house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`) render on the token-gated guest page **`/properties/:slug/stay-guide?token=`** during the booking access window. See **`docs/guides/routes/stay-guide.md`**.
 
+**Stay guide preview** — **Standard templates** group heading includes **Preview stay guide** (opens new tab). URL: **`/properties/:slug/stay-guide?preview=1&property_id=`**; loads via **`GET preview-guest-stay-guide`** with host JWT (`templates:view`). Uses sample guest/booking placeholders so all four standard sections (including parking) are visible without a real booking token.
+
 ### Previously not wired (email/PDF)
 
 | Area                            | Behavior                                                             |
@@ -65,16 +67,17 @@ Built-in defaults ship in `propertyTemplates.ts` on the server. Rows in `propert
 
 ## Save paths
 
-| Action                         | API                                                                                               |
-| ------------------------------ | ------------------------------------------------------------------------------------------------- |
-| Load all                       | `GET property-templates-settings?property_id=`                                                    |
-| Save built-in / custom content | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                  |
-| Upload section / inline image  | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only) |
-| Create custom                  | `PATCH` `{ action: "create", name, content }`                                                     |
-| Delete custom                  | `PATCH` `{ action: "delete", templateKey }`                                                       |
-| Preview (email shell)          | `POST property-templates-preview` `{ templateKey, category, content, name? }`                     |
+| Action                           | API                                                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Load all                         | `GET property-templates-settings?property_id=`                                                       |
+| Save built-in / custom content   | `PATCH property-templates-settings` `{ templateKey, content, sectionImageUrl? }`                     |
+| Upload section / inline image    | `POST upload-property-template-asset` multipart `assetType`, `file`, `templateKey` (section only)    |
+| Create custom                    | `PATCH` `{ action: "create", name, content }`                                                        |
+| Delete custom                    | `PATCH` `{ action: "delete", templateKey }`                                                          |
+| Preview (email shell)            | `POST property-templates-preview` `{ templateKey, category, content, name? }`                        |
+| Preview stay guide (public page) | `GET preview-guest-stay-guide?property_id=` — mock booking; opens from **Preview stay guide** button |
 
-Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings).
+Auth: `verifyAdminJwt` + property scope via `property_id` query (same as other admin settings). Stay guide preview uses **`serveAuthenticated`** + **`templates:view`**.
 
 ## Preview
 

@@ -13,7 +13,7 @@
 
 ## Overview
 
-Org operators view and reply to guest messages from Facebook Messenger and (planned) Instagram DMs in one inbox. Page header: **Guest Inbox** with subtitle _View and reply to guest messages from connected channels._ TikTok and Airbnb appear as **Coming soon** until partner APIs are available.
+Org operators view and reply to guest messages from Facebook Messenger, on-site **Web** chat, and (planned) Instagram DMs in one inbox. Page header: **Guest Inbox** with subtitle _View and reply to guest messages from connected channels._ TikTok and Airbnb appear as **Coming soon** until partner APIs are available.
 
 **Route:** `/org/:orgSlug/inbox`
 
@@ -30,7 +30,7 @@ Org operators view and reply to guest messages from Facebook Messenger and (plan
 ### Messages (main view)
 
 - Full-height split layout: thread list + conversation
-- **Platform tabs** — All, Facebook, Instagram (Instagram tab shows no live threads until IG connect bug is fixed)
+- **Platform tabs** — All, **Web**, Facebook, Instagram (Instagram tab shows no live threads until IG connect bug is fixed)
 - **Filters** — status row (All / Unread / Pending / Replied) + type popover (Chats / Comments)
 - **Search** — server-side on **synced DB rows only** (guest name, preview, message body); debounced 300ms. Does **not** search Meta-wide or unscrolled history. Empty state explains when `metaHasMore` is true.
 - **Infinite scroll** — 40 threads/page from DB; when DB cursor is exhausted and `metaHasMore`, scroll calls `meta-inbox-backfill` (`light: true`) then lists next DB page
@@ -39,7 +39,7 @@ Org operators view and reply to guest messages from Facebook Messenger and (plan
 - Inbound attachment URLs render inline; **images/videos open in preview modal**
 - Outbound replies are **text only** today
 - **Desktop notifications** when tab is in background (browser permission; uses system sound where supported)
-- Realtime via Supabase on `social_messages` / `social_conversations` (RLS: org owner or org ADMIN)
+- Realtime via Supabase on `social_messages` / `social_conversations` (RLS: org owner or org ADMIN; guests read own web threads)
 - Webhook preserves `participant_name` from backfill; resolves sender name via Graph when missing on new threads
 
 ### Settings (header buttons → modals)

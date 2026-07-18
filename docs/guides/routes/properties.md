@@ -7,6 +7,7 @@ Routes:
 - `/properties/:propertySlug` — detail
 - `/hosts/:orgSlug` — public org/host profile + listings
 - `/properties/:propertySlug/calendar` — property-scoped calendar UI
+- `/properties/:propertySlug/messages` — guest ↔ host web chat (see [chat.md](./properties/chat.md))
 - `/properties/:propertySlug/forms/:formId` — dynamic form builder preview
 
 > **Status:** Documented — **Phase 2a (detail API)** for `/properties/:propertySlug`; list/browse still mock.
@@ -28,6 +29,8 @@ Routes:
 Browse and view rental listings. Ported from PMA `features/marketing/properties/**`. Uses **`MarketingLayoutShell`**.
 
 **Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** (guest OTP / OAuth modal) then navigates to **`/form?property=<slug>&checkInDate=&checkOutDate=`**. Without dates, desktop opens the booking calendar modal; mobile navigates to **`/properties/:propertySlug/calendar`**.
+
+**Contact host:** **`ListingHostCard`** → **`usePropertyContactHost`** (same date + auth gates as Reserve) → **`/properties/:propertySlug/messages?checkInDate=&checkOutDate=`**. Host replies in org **Guest Inbox** (**Web** tab). See **[chat.md](./properties/chat.md)**.
 
 **Save / wishlist:** Heart on **`PropertyCard`** (grid + carousel), **`PropertyListItem`**, and detail **`PropertyGallery`** uses **`usePropertySave`** → **`requireGuestAuth`** when anonymous, then persists to **`guest_saved_properties`** (shared TanStack Query cache). OAuth return resumes via **`save_property`** intent in **`guestAuthResume.ts`**.
 
@@ -73,16 +76,16 @@ Route is registered **before** `/properties/:propertySlug` so `in` is not treate
 
 Gap analysis (ratings, nearby POIs, etc.): **`docs/reference/public-property-catalog.md`**.
 
-| Section     | Component                                                                             | Data                                                                                   |
-| ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| Gallery     | `PropertyGallery`                                                                     | API media URLs or mock images                                                          |
-| Overview    | `PropertyOverview`                                                                    | API profile; host card (owner + unit + org); cancellation highlight; ratings mock-only |
-| Amenities   | `PropertyAmenities`                                                                   | Resolved amenity labels; preview grid + modal for full list                            |
-| Location    | `PropertyLocation` + `PropertyMapEmbed`                                               | Google/OSM iframe when pinned; decorative fallback if no pin                           |
-| Rules       | `PropertyRules`                                                                       | House rules preview (6) + modal; cancellation live; safety mock-only                   |
-| Reviews     | `PropertyReviews`                                                                     | Mock only (hidden for live API)                                                        |
-| Booking     | `BookingCard`                                                                         | API pricing; cancellation trust badge when highlight; Reserve → guest auth → `/form`   |
-| Similar     | `SimilarProperties`                                                                   | other mock listings (unchanged)                                                        |
+| Section     | Component                                                                             | Data                                                                                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Gallery     | `PropertyGallery`                                                                     | API media URLs or mock images                                                                                                                            |
+| Overview    | `PropertyOverview`                                                                    | API profile; **`ListingPlaceMeta`** (development link → `/developments/:slug`, tower · floor, geo); host card; cancellation highlight; ratings mock-only |
+| Amenities   | `PropertyAmenities`                                                                   | Resolved amenity labels; preview grid + modal for full list                                                                                              |
+| Location    | `PropertyLocation` + `PropertyMapEmbed`                                               | Google/OSM iframe when pinned; decorative fallback if no pin                                                                                             |
+| Rules       | `PropertyRules`                                                                       | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                     |
+| Reviews     | `PropertyReviews`                                                                     | Mock only (hidden for live API)                                                                                                                          |
+| Booking     | `BookingCard`                                                                         | API pricing; cancellation trust badge when highlight; Reserve → guest auth → `/form`                                                                     |
+| Similar     | `SimilarProperties`                                                                   | other mock listings (unchanged)                                                                                                                          |
 | Parking CTA | Link when `getParkingFormForProperty` returns a form → development parking form route |
 
 ---

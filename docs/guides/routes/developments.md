@@ -14,14 +14,14 @@ Routes:
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs       | Notes                                                                                                           |
-| ------------------ | -------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------- |
-| Developments list  | —        | —          | Documented | Location-grouped carousels                                                                                      |
-| Location browse    | —        | —          | Documented | Properties grouped by development                                                                               |
-| Development detail | —        | —          | Documented | Hero, amenities, unit + parking previews                                                                        |
-| Properties in dev  | —        | —          | Documented | Links to `/properties/:slug`                                                                                    |
-| Parking flow       | —        | —          | Documented | Slot list at `…/parking`; photo cards (Inside/Outside tower badge, floor on inside slots, **Reserve slot** CTA) |
-| Development form   | —        | —          | Documented | Mock submit                                                                                                     |
+| Section            | E2E save | Validation | Docs       | Notes                                                                                                                                                                           |
+| ------------------ | -------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Developments list  | —        | —          | Documented | Location-grouped carousels                                                                                                                                                      |
+| Location browse    | —        | —          | Documented | Properties grouped by development                                                                                                                                               |
+| Development detail | —        | —          | Documented | Hero, amenities, unit + parking previews                                                                                                                                        |
+| Properties in dev  | —        | —          | Documented | Links to `/properties/:slug`                                                                                                                                                    |
+| Parking flow       | —        | —          | Documented | Slot list at `…/parking`; compact carousel cards (same as `/parkings`) — square photo, Inside/Outside badge, **Parking in {city}**, tower · level subtitle on development pages |
+| Development form   | —        | —          | Documented | Mock submit                                                                                                                                                                     |
 
 ---
 

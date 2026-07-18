@@ -15,12 +15,15 @@ Route: `/org/:orgSlug/dashboard`
 | Recent bookings          | —        | —          | Done | Links to property booking detail         |
 | Pending actions          | —        | —          | Done | From `dashboard-stats.attention`         |
 | Properties performance   | —        | —          | Done | Per-property period KPIs                 |
+| Add asset                | ✅       | ✅         | Done | Opens unified `AddEntityDialog`          |
 
 ---
 
 ## Overview
 
 Org-level performance overview across **all properties** in the organization. Page header: **Dashboard Overview** with subtitle _Performance overview across all properties in your organization._ The selected **`?from` / `?to`** range (Asia/Manila calendar days) drives KPIs, charts, recent bookings, and property performance rows.
+
+**Add asset** (org owner / platform admin): header button opens the same unified modal as the workspace switcher **+** — property or parking, with development → tower → slot fields.
 
 There is **no** New Booking button on this page.
 

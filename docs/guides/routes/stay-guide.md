@@ -33,9 +33,14 @@ Template HTML is filled with the same booking placeholders as workflow emails (`
 
 ## API
 
-| Function               | Method | Auth | Query                                           |
-| ---------------------- | ------ | ---- | ----------------------------------------------- |
-| `get-guest-stay-guide` | GET    | anon | `?token=` required; `?property=<slug>` optional |
+| Function                   | Method | Auth                   | Query                                                            |
+| -------------------------- | ------ | ---------------------- | ---------------------------------------------------------------- |
+| `get-guest-stay-guide`     | GET    | anon                   | `?token=` required; `?property=<slug>` optional                  |
+| `preview-guest-stay-guide` | GET    | JWT + `templates:view` | `?property_id=` required; `?property=<slug>` optional slug guard |
+
+## Admin preview (Templates)
+
+**Preview stay guide** on **Templates → Standard templates** opens **`?preview=1&property_id=`** (no guest token). See **`docs/guides/routes/org/property/templates.md`**.
 
 ## Email
 
@@ -44,6 +49,10 @@ On **`READY_FOR_CHECKIN`** transition, orchestrator calls **`ensureGuestStayGuid
 ## Admin (booking detail)
 
 On **`READY_FOR_CHECKIN`** and later, **WorkflowPanel** shows **Stay guide** with **Open stay guide** + copy. The link is **issued automatically** on transition to **`READY_FOR_CHECKIN`**.
+
+## Admin preview (Templates)
+
+**Templates → Standard templates** → **Preview stay guide** opens **`/properties/:slug/stay-guide?preview=1&property_id=`** in a new tab. Requires the same signed-in host session as the dashboard (`templates:view`). Payload from **`preview-guest-stay-guide`** uses **mock booking data** (sample guest name, Manila-relative check-in/out, parking + pets enabled) so operators can review all standard sections without a live booking token. A **Preview** banner appears at the top of the page.
 
 ## Standard template section images
 
@@ -69,11 +78,13 @@ On **Templates → Standard templates**, each card has an optional **Section ima
 | --------------- | ----------------------------------------------------------------------------------------------- |
 | Page            | `ui/src/features/guest/stay-guide/pages/StayGuidePage.tsx`                                      |
 | Components      | `ui/src/features/guest/stay-guide/components/*`                                                 |
-| Hook            | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts`                                   |
+| Hook            | `ui/src/features/guest/stay-guide/hooks/useGuestStayGuide.ts` (`useGuestStayGuidePreview`)      |
+| Preview client  | `ui/src/features/guest/stay-guide/lib/previewApi.ts`                                            |
 | Edge            | `supabase/functions/get-guest-stay-guide/index.ts`                                              |
+| Preview edge    | `supabase/functions/preview-guest-stay-guide/index.ts`                                          |
 | Issue link API  | `supabase/functions/issue-guest-stay-guide-token/index.ts`                                      |
-| Token + payload | `supabase/functions/_shared/guestStayGuide.ts`                                                  |
-| Admin UI        | `ui/src/features/dashboard/bookings/components/WorkflowPanel.tsx` (Stay guide row)              |
+| Token + payload | `supabase/functions/_shared/guestStayGuide.ts` (`loadGuestStayGuidePreview`, mock booking)      |
+| Admin UI        | `WorkflowPanel.tsx` (Stay guide row); **`TemplatesPage.tsx`** (Preview stay guide)              |
 | Orchestrator    | `workflowOrchestrator.ts` — token on `READY_FOR_CHECKIN`                                        |
 | Email CTA       | `propertyTemplateEmailSections.ts#buildStayGuideCtaHtml`, `emailService.ts#sendReadyForCheckin` |
 | Migration       | `supabase/migrations/20260916120000_guest_stay_guide_token.sql`                                 |

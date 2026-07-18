@@ -2,19 +2,49 @@
 
 Route: `/onboarding`
 
-> **Status:** Pending — document when implementing or materially changing this page.
+> **Status:** Documented
 
 ## Progress overview
 
-| Section | E2E save | Validation | Docs    | Notes |
-| ------- | -------- | ---------- | ------- | ----- |
-| _TBD_   | —        | —          | Pending |       |
+| Section      | E2E save | Validation | Docs       | Notes                                 |
+| ------------ | -------- | ---------- | ---------- | ------------------------------------- |
+| Residence    | —        | —          | Documented | Fixed Azure North (read-only)         |
+| Organization | ✅       | ✅         | Documented | Name 2–120 chars                      |
+| Host type    | ✅       | ✅         | Documented | Property · Parking · Both · Add later |
+| Details      | ✅       | ✅         | Documented | Conditional property/parking blocks   |
 
 ---
 
 ## Overview
 
-_(Not yet documented.)_
+New hosts land here after Google sign-in when they have no organization. Creates an **organization** (required) and optionally the first **property** and/or **parking slot**.
+
+---
+
+## Steps
+
+1. **Residence** — read-only `Azure North Residences`
+2. **Organization** — `name` (required)
+3. **Host type** — `property` | `parking` | `both` | `later` (org only)
+4. **Details** — property block (tower, unit, display name) and/or parking block (tower, level, slot label, type, display name)
+
+**Add later** skips step 4 and creates org only → `/org/:orgSlug/dashboard`.
+
+---
+
+## Save path
+
+1. **Continue** → `POST create-organization` with `hostModes`, optional property fields, optional `parking` object
+2. Seeds `org_settings`; optional `app_settings` / `parking_settings`
+3. Redirect: property settings → parking settings → org dashboard (priority order)
+
+---
+
+## API reference
+
+| Endpoint              | Method | Auth |
+| --------------------- | ------ | ---- |
+| `create-organization` | POST   | JWT  |
 
 ---
 
@@ -23,17 +53,4 @@ _(Not yet documented.)_
 | Concern | Path                                                     |
 | ------- | -------------------------------------------------------- |
 | Page    | `ui/src/features/dashboard/org/pages/OnboardingPage.tsx` |
-| Routes  | `ui/src/features/dashboard/routes/index.tsx`             |
-
----
-
-## Related docs
-
-- [Route index](../README.md)
-- [`docs/PROJECT.md`](../../PROJECT.md)
-
----
-
-## Pending / follow-ups
-
-- [ ] Initial documentation pass
+| Edge    | `supabase/functions/create-organization/index.ts`        |

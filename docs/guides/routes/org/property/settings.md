@@ -71,20 +71,20 @@ Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
 
 ### Fields
 
-| Field         | Storage                            | Validation                                                                                     |
-| ------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Property name | `properties.name`                  | 2–120 chars; **unique per organization** (case-insensitive)                                    |
-| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                |
-| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; blank inherits `organizations.settings.brandColor` → default `#24a88e` |
-| Property type | `properties.type`                  | Condo enables residence / tower / unit                                                         |
-| Residence     | `properties.residence_name`        | Known residences apply defaults (see below)                                                    |
-| Tower         | `properties.tower`                 | Options from residence config (Azure North: Monaco, Bali, Barbados)                            |
-| Unit          | `properties.unit_number`           | 4-digit; unique per tower globally                                                             |
-| Description   | `properties.settings.description`  | Max 1000 chars                                                                                 |
-| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                       |
-| Contact role  | `properties.settings.contactRole`  | Required                                                                                       |
-| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                              |
-| Email         | `properties.settings.contactEmail` | Required; valid email                                                                          |
+| Field         | Storage                            | Validation                                                                                                                      |
+| ------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| Property name | `properties.name`                  | 2–120 chars; **unique per organization** (case-insensitive)                                                                     |
+| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                                                 |
+| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; UI shows **inherited** org color when unset; **Reset** clears property override back to org / `#24a88e` |
+| Property type | `properties.type`                  | Condo enables residence / tower / unit                                                                                          |
+| Residence     | `properties.residence_name`        | Known residences apply defaults (see below)                                                                                     |
+| Tower         | `properties.tower`                 | Options from residence config (Azure North: Monaco, Bali, Barbados)                                                             |
+| Unit          | `properties.unit_number`           | 4-digit; unique per tower globally                                                                                              |
+| Description   | `properties.settings.description`  | Max 1000 chars                                                                                                                  |
+| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                                                        |
+| Contact role  | `properties.settings.contactRole`  | Required                                                                                                                        |
+| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                               |
+| Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                           |
 
 ### Save path
 
@@ -253,12 +253,22 @@ Implementation: `ui/src/features/dashboard/org/lib/propertyCancellationPolicy.ts
 
 Per-property operational settings in `app_settings` (org settings provide fallbacks when a property column is empty).
 
-| Field         | Column                 | Notes                                                                                 |
-| ------------- | ---------------------- | ------------------------------------------------------------------------------------- |
-| Facebook page | `facebook_reviews_url` | Required; SD form review CTA; falls back to `org_settings.facebook_reviews_url` → env |
-| Airbnb        | `airbnb_url`           | Optional; falls back to org                                                           |
-| Instagram     | `instagram_url`        | Optional; falls back to org                                                           |
-| TikTok        | `tiktok_url`           | Optional; falls back to org                                                           |
+| Field            | Column                       | Notes                                                                                                                        |
+| ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Facebook page    | `facebook_reviews_url`       | Required; SD form review CTA; falls back to `org_settings.facebook_reviews_url` → env                                        |
+| Airbnb           | `airbnb_url`                 | Optional; falls back to org                                                                                                  |
+| Instagram        | `instagram_url`              | Optional; falls back to org                                                                                                  |
+| TikTok           | `tiktok_url`                 | Optional; falls back to org                                                                                                  |
+| External reviews | `external_reviews` (JSONB)   | Up to **5**; source `facebook` \| `airbnb`; screenshot + optional proof URL; moderation `pending` until super-admin approval |
+| Superhost URL    | `superhost_verification_url` | Optional Airbnb profile URL                                                                                                  |
+| Superhost proof  | `superhost_proof_image_url`  | Upload via `upload-app-settings-asset` (`superhost_proof`); sets `superhost_status = pending`                                |
+| Superhost status | `superhost_status`           | `none` \| `pending` \| `approved` \| `rejected`; public page uses `isSuperhost` when `approved`                              |
+
+**UI:** Social link URLs remain inline. **External reviews** and **Superhost** use integration-style cards (status + **Manage** modal), matching Telegram/Google on **Integrations**.
+
+**Uploads:** Review screenshots use `upload-app-settings-asset` with `assetType=external_review_image` + `reviewId` (URL returned; persisted on Save via `externalReviews` PATCH).
+
+**Public API:** `get-public-property` merges approved external reviews with Kame guest reviews; each review includes optional `source` (`kame` \| `facebook` \| `airbnb`).
 
 **Admin theme:** Property admin routes use the **resolved** property brand color (property → org → default). Org admin routes use org brand color only (set under **Basic information**).
 

@@ -44,8 +44,8 @@ Org **Settings** (profile, danger zone) remains **owner-only** on the server for
 
 ### Members
 
-- Virtual owner row (Owner badge) — **Contact** button for owner self-edit (`display_name`, `contact_phone` on `organization_members`).
-- Org admins: **Contact** (self or `org:team:manage`) + deactivate / activate / remove via actions menu.
+- Virtual owner row (Owner badge) — **Manage** opens host details; **Owner** role is read-only.
+- Org admins: **Manage** (self or `org:team:manage`) includes contact + **Admin** role when caller can manage; deactivate / remove via actions menu.
 - Search + role filter; phone shown under email when set.
 
 ### Invitations

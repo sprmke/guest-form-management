@@ -17,7 +17,9 @@ Route: `/for-hosts`
 
 Host acquisition landing (PMA `(marketing)/for-hosts`). Explains platform value prop, feature highlights, and pricing-style sections from mock/static content.
 
-**CTA difference from PMA:** Primary buttons link to **`/for-hosts/login`** (Google OAuth in PMA auth shell). New operators without an org land on **`/onboarding`** after sign-in.
+**CTA difference from PMA:** Primary buttons link to **`/for-hosts/login`** (Google OAuth in PMA auth shell) when signed out. When a host session already exists, the marketing nav shows **Dashboard** → last org dashboard (`/org/:orgSlug/dashboard`) or **`/dashboard`** (legacy redirect). New operators without an org land on **`/onboarding`** after sign-in.
+
+**Mode switch:** **Become a host?** in the marketing nav (explore → host) and **Explore / Host** in the signed-in admin account menu run a brand-colored SVG morph overlay before navigating. Uses the listing **`brandColor`** on property/parking pages (via `GuestPublicBrandShell` + transition context), the scoped admin/property theme on dashboard pages (CSS vars), otherwise default Kame teal.
 
 ---
 

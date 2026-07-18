@@ -138,9 +138,9 @@ When access is revoked (deactivated member, removed from property, or lost org m
 ### Members
 
 - Search by name or email; filter by role (`MANAGER`, `STAFF`, `VIEWER`, custom).
-- Non-org members: change role via select, **Contact**, **Edit Permissions**, **Deactivate** / **Activate**, **Remove from Property**.
+- Non-org members: change role via select or **Manage** dialog, **Edit Permissions**, **Deactivate** / **Activate**, **Remove from Property**.
 - Deactivated members: **Disabled** badge, role select locked, **permissions cleared** until reactivated.
-- Org owner and org admins (virtual, `fromOrg: true`): **Org** badge; **Contact** when self or caller has `org:team:manage` (saves via `org-team-members` using virtual `org-owner-*` / `org-admin-*` ids). Otherwise **Manage in org team** link when viewer has `org:team:view`.
+- Org owner and org admins (virtual, `fromOrg: true`): **Org** badge; **Manage in org** link to `/org/:orgSlug/team` when viewer has `org:team:view` (no property-level contact edit).
 - Property members: role dropdown, permissions, deactivate, remove when caller has `team:manage`.
 - Guest-facing contact resolves from active property **MANAGER** `display_name` / `contact_phone`, then org owner team row, then legacy settings.
 - Cannot deactivate/remove yourself or the last active member with `team:manage` (org owner still has implicit access).
