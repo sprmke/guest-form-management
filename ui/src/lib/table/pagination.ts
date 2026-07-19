@@ -6,9 +6,7 @@ export type PageItem = number | 'ellipsis';
 
 /** Coerce URL/page-size control values to an allowed admin list size. */
 export function normalizeAdminPageLimit(value: number): number {
-  return (ADMIN_PAGE_SIZES as readonly number[]).includes(value)
-    ? value
-    : ADMIN_DEFAULT_PAGE_SIZE;
+  return (ADMIN_PAGE_SIZES as readonly number[]).includes(value) ? value : ADMIN_DEFAULT_PAGE_SIZE;
 }
 
 /** Page number strip with ellipses (shared by bookings + finance lists). */

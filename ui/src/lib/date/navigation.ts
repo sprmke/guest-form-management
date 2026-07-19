@@ -50,11 +50,7 @@ export function detectPresetFromRange(from: Date, to: Date): DatePreset {
 
   const monthStart = startOfMonth(from);
   const monthEnd = endOfMonth(from);
-  if (
-    isSameDay(from, monthStart) &&
-    isSameDay(to, monthEnd) &&
-    isSameMonth(from, to)
-  ) {
+  if (isSameDay(from, monthStart) && isSameDay(to, monthEnd) && isSameMonth(from, to)) {
     return 'month';
   }
 
@@ -67,10 +63,7 @@ export function detectPresetFromRange(from: Date, to: Date): DatePreset {
   return 'custom';
 }
 
-export function getDateRangeFromPreset(
-  preset: DatePreset,
-  referenceDate: Date,
-): DateRange {
+export function getDateRangeFromPreset(preset: DatePreset, referenceDate: Date): DateRange {
   switch (preset) {
     case 'week':
       // Sunday-first week (Sun → Sat) to match the calendar + range picker.
@@ -100,21 +93,15 @@ export function getDateRangeFromPreset(
 export function navigateReferenceDate(
   referenceDate: Date,
   preset: DatePreset,
-  direction: 'prev' | 'next',
+  direction: 'prev' | 'next'
 ): Date {
   switch (preset) {
     case 'week':
-      return direction === 'next'
-        ? addWeeks(referenceDate, 1)
-        : subWeeks(referenceDate, 1);
+      return direction === 'next' ? addWeeks(referenceDate, 1) : subWeeks(referenceDate, 1);
     case 'month':
-      return direction === 'next'
-        ? addMonths(referenceDate, 1)
-        : subMonths(referenceDate, 1);
+      return direction === 'next' ? addMonths(referenceDate, 1) : subMonths(referenceDate, 1);
     case 'year':
-      return direction === 'next'
-        ? addYears(referenceDate, 1)
-        : subYears(referenceDate, 1);
+      return direction === 'next' ? addYears(referenceDate, 1) : subYears(referenceDate, 1);
     case 'custom':
     default:
       return referenceDate;
@@ -126,11 +113,7 @@ export function navigateReferenceDate(
  * Adapted verbatim from property-management-app's `formatDateRangeDisplay`
  * so behavior matches the calendar dashboard exactly.
  */
-export function formatDateRangeDisplay(
-  from: Date,
-  to: Date,
-  preset: DatePreset,
-): string {
+export function formatDateRangeDisplay(from: Date, to: Date, preset: DatePreset): string {
   switch (preset) {
     case 'week': {
       if (isSameMonth(from, to)) {
