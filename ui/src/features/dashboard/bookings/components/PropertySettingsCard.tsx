@@ -1,0 +1,573 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { useNavigate } from 'react-router-dom';
+
+import {
+  AlertTriangle,
+  ClipboardList,
+  Globe,
+  Home,
+  Image as ImageIcon,
+  Info,
+  ListChecks,
+  Mail,
+  MapPin,
+  Save,
+  Share2,
+  Shield,
+  Sparkles,
+  Wallet,
+} from 'lucide-react';
+import { toast } from 'sonner';
+
+import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import {
+  AdminSectionNavLayout,
+  type AdminSectionNavItem,
+} from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import {
+  appSettingsToFormValues,
+  useAppSettings,
+  useUpdateAppSettings,
+  type AppSettingsFormValues,
+} from '@/features/dashboard/bookings/hooks/useAppSettings';
+import {
+  applyBuildingFormsTeamDefaults,
+  pickBuildingFormsTeamContact,
+} from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
+import {
+  operationalSettingsDraftIsDirty,
+  PropertyOperationalSettingsSections,
+} from '@/features/dashboard/org/components/property-settings/PropertyOperationalSettingsSections';
+import {
+  PropertyDangerZoneSection,
+  PropertyProfileMainSections,
+} from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
+import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
+import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
+import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
+import { usePropertySettingsCompletionForDraft } from '@/features/dashboard/org/hooks/usePropertySettingsCompletion';
+import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
+import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
+import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
+import {
+  gafTowerUnitFromProfile,
+  propertyProfileDraftFromProperty,
+  propertyProfileDraftIsDirty,
+  propertySlugPreview,
+  type PropertyProfileDraft,
+} from '@/features/dashboard/org/lib/propertySettingsForm';
+import { setPropertySettingsIssueSections } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
+import {
+  applySavedOperationalSections,
+  applySavedProfileSections,
+  buildAppSettingsPatchForSections,
+  buildProfilePatchForSections,
+  planPropertySettingsSave,
+} from '@/features/dashboard/org/lib/propertySettingsSave';
+import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
+
+import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
+
+const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
+  { id: 'basic', label: 'Basic Information', icon: Info },
+  { id: 'media', label: 'Photos & Videos', icon: ImageIcon },
+  { id: 'details', label: 'Property Details', icon: Home },
+  { id: 'amenities', label: 'Amenities', icon: Sparkles },
+  { id: 'house-rules', label: 'House Rules', icon: ListChecks },
+  { id: 'cancellation', label: 'Cancellation', icon: Shield },
+  { id: 'location', label: 'Location', icon: MapPin },
+  { id: 'branding', label: 'Socials', icon: Share2 },
+  { id: 'payment', label: 'Payment', icon: Wallet },
+  { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
+  { id: 'email-automations', label: 'Email automations', icon: Mail },
+  { id: 'integrations', label: 'Integrations', icon: Globe },
+  { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
+];
+
+function mergeProfileDraftAfterSave(
+  current: PropertyProfileDraft,
+  saved: PropertyProfileDraft
+): PropertyProfileDraft {
+  return {
+    ...saved,
+    type: current.type,
+  };
+}
+
+export function PropertySettingsCard() {
+  const navigate = useNavigate();
+  const { property, orgSlug, propertySlug } = useOrgContext();
+  const {
+    data: appSettings,
+    isLoading: appSettingsLoading,
+    isError: appSettingsError,
+    error: appSettingsLoadError,
+  } = useAppSettings();
+  const { data: propertyTeam } = usePropertyTeam();
+  const updateProperty = useUpdateProperty(orgSlug);
+  const deleteProperty = useDeleteProperty(orgSlug);
+  const updateAppSettings = useUpdateAppSettings();
+  const orgBrandColor = useOrgBrandColor();
+  const inheritedBrandColor = appSettings?.inheritedBrandColor ?? orgBrandColor;
+
+  const [profileBaseline, setProfileBaseline] = useState(() =>
+    propertyProfileDraftFromProperty(property)
+  );
+  const [profileDraft, setProfileDraft] = useState(profileBaseline);
+  const [operationalDraft, setOperationalDraft] = useState<AppSettingsFormValues | null>(null);
+  const [operationalBaseline, setOperationalBaseline] = useState<AppSettingsFormValues | null>(
+    null
+  );
+  const [newCustomAmenityInputs, setNewCustomAmenityInputs] = useState<Record<string, string>>({});
+  const [newCustomHouseRuleInputs, setNewCustomHouseRuleInputs] = useState<Record<string, string>>(
+    {}
+  );
+  const [showValidationErrors, setShowValidationErrors] = useState(false);
+  const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
+
+  const markFieldInteracted = useCallback((fieldId: string) => {
+    setInteractedFields((current) => {
+      if (current[fieldId]) return current;
+      return { ...current, [fieldId]: true };
+    });
+  }, []);
+
+  const profileDirtyRef = useRef(false);
+  const operationalDirtyRef = useRef(false);
+  const skipProfileSyncRef = useRef(false);
+  const [mediaGalleryBusy, setMediaGalleryBusy] = useState(false);
+
+  useEffect(() => {
+    if (profileDirtyRef.current) return;
+    if (skipProfileSyncRef.current) {
+      skipProfileSyncRef.current = false;
+      return;
+    }
+    const next = propertyProfileDraftFromProperty(property);
+    setProfileDraft(next);
+    setProfileBaseline(next);
+  }, [property.id, property.updatedAt, property.settings]);
+
+  useEffect(() => {
+    if (!appSettings) return;
+    if (operationalDirtyRef.current) return;
+    let values = appSettingsToFormValues(appSettings);
+    const teamDefaults = propertyTeam?.members
+      ? pickBuildingFormsTeamContact(propertyTeam.members)
+      : null;
+    values = applyBuildingFormsTeamDefaults(values, appSettings.fieldSources, teamDefaults);
+    setOperationalDraft(values);
+    setOperationalBaseline(values);
+  }, [appSettings, propertyTeam?.members]);
+
+  const gafTowerUnit = useMemo(
+    () => gafTowerUnitFromProfile(profileDraft),
+    [profileDraft.tower, profileDraft.unitNumber]
+  );
+
+  useEffect(() => {
+    setOperationalDraft((current) => {
+      if (!current || current.gafTowerAndUnitNumber === gafTowerUnit) return current;
+      return { ...current, gafTowerAndUnitNumber: gafTowerUnit };
+    });
+  }, [gafTowerUnit]);
+
+  const {
+    completion: draftCompletion,
+    nameConflict,
+    towerConflict,
+  } = usePropertySettingsCompletionForDraft({
+    profile: profileDraft,
+    operational: operationalDraft,
+    propertyId: property.id,
+    orgSlug,
+  });
+
+  const { completion: savedCompletion } = usePropertySettingsCompletionForDraft({
+    profile: profileBaseline,
+    operational: operationalBaseline,
+    propertyId: property.id,
+    orgSlug,
+  });
+
+  const settingsCompletion = draftCompletion;
+
+  const resolveFieldError = useCallback(
+    (fieldId: string) =>
+      resolvePropertySettingsFieldError(
+        fieldId,
+        settingsCompletion.fieldErrors,
+        interactedFields,
+        showValidationErrors
+      ),
+    [settingsCompletion.fieldErrors, interactedFields, showValidationErrors]
+  );
+
+  const profileDirty = propertyProfileDraftIsDirty(profileDraft, profileBaseline);
+  profileDirtyRef.current = profileDirty;
+  const operationalDirty =
+    operationalDraft && operationalBaseline && appSettings
+      ? operationalSettingsDraftIsDirty(operationalDraft, operationalBaseline, inheritedBrandColor)
+      : false;
+  operationalDirtyRef.current = operationalDirty;
+  const isDirty = profileDirty || operationalDirty;
+
+  const busy =
+    appSettingsLoading ||
+    updateAppSettings.isPending ||
+    deleteProperty.isPending ||
+    (updateProperty.isPending && !mediaGalleryBusy);
+
+  const propertySlugPrefix =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/org/${orgSlug}/property/`
+      : `/org/${orgSlug}/property/`;
+
+  const slugPreview = propertySlugPreview(profileDraft.name, property.slug, profileBaseline.name);
+
+  const navSections = useMemo(
+    (): AdminSectionNavItem[] =>
+      SETTINGS_SECTIONS.map((section) => ({
+        ...section,
+        hasIssue: settingsCompletion.issueSectionIds.includes(
+          section.id as PropertySettingsSectionId
+        ),
+      })),
+    [settingsCompletion.issueSectionIds]
+  );
+
+  useEffect(() => {
+    setPropertySettingsIssueSections(settingsCompletion.issueSectionIds);
+    return () => {
+      setPropertySettingsIssueSections(savedCompletion.issueSectionIds);
+    };
+  }, [settingsCompletion.issueSectionIds, savedCompletion.issueSectionIds]);
+
+  const scrollToSettingsSection = (sectionId: PropertySettingsSectionId) => {
+    document
+      .getElementById(`section-${sectionId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const setProfileField = <K extends keyof PropertyProfileDraft>(
+    key: K,
+    value: PropertyProfileDraft[K]
+  ) => {
+    setProfileDraft((current) => ({ ...current, [key]: value }));
+  };
+
+  const handleMediaPersisted = (media: PropertyProfileDraft['media']) => {
+    setProfileDraft((current) => ({ ...current, media }));
+    setProfileBaseline((current) => ({ ...current, media }));
+  };
+
+  const persistMediaOrder = async (media: PropertyProfileDraft['media']) => {
+    skipProfileSyncRef.current = true;
+    setMediaGalleryBusy(true);
+    try {
+      const result = await updateProperty.mutateAsync({
+        propertyId: property.id,
+        status: profileDraft.status,
+        settings: { media },
+      });
+      const savedProfile = propertyProfileDraftFromProperty(result.property);
+      handleMediaPersisted(savedProfile.media);
+    } finally {
+      setMediaGalleryBusy(false);
+    }
+  };
+
+  const setOperationalField = <K extends keyof AppSettingsFormValues>(
+    key: K,
+    value: AppSettingsFormValues[K]
+  ) => {
+    setOperationalDraft((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const setAutomationToggle = (key: PropertyAutomationToggleKey, value: boolean) => {
+    setOperationalDraft((current) =>
+      current
+        ? {
+            ...current,
+            automationToggles: { ...current.automationToggles, [key]: value },
+          }
+        : current
+    );
+  };
+
+  const handleSave = async () => {
+    if (!operationalDraft || !operationalBaseline || !appSettings) return;
+
+    if (towerConflict) {
+      toast.error('Tower and unit combination is already in use');
+      return;
+    }
+
+    const plan = planPropertySettingsSave({
+      profileDraft,
+      profileBaseline,
+      operationalDraft,
+      operationalBaseline,
+      completion: settingsCompletion,
+      inheritedBrandColor,
+    });
+
+    if (!plan.hasSavableWork) {
+      setShowValidationErrors(true);
+      if (plan.firstBlockedMessage) {
+        toast.error(plan.firstBlockedMessage);
+      } else if (!profileDirty && !operationalDirty) {
+        toast.message('No changes to save');
+      }
+      if (plan.firstBlockedSectionId) {
+        scrollToSettingsSection(plan.firstBlockedSectionId);
+      }
+      return;
+    }
+
+    setShowValidationErrors(false);
+
+    try {
+      let savedSomething = false;
+      const savedProfileSections = plan.profileSections;
+      const savedOperationalSections = plan.operationalSections;
+
+      const profilePayload = buildProfilePatchForSections(
+        profileDraft,
+        property.id,
+        savedProfileSections
+      );
+      if (profilePayload) {
+        const result = await updateProperty.mutateAsync(profilePayload);
+        const savedProfile = propertyProfileDraftFromProperty(result.property);
+        const mergedSaved = mergeProfileDraftAfterSave(profileDraft, savedProfile);
+        setProfileDraft((current) =>
+          applySavedProfileSections(current, mergedSaved, savedProfileSections)
+        );
+        setProfileBaseline((current) =>
+          applySavedProfileSections(current, mergedSaved, savedProfileSections)
+        );
+        savedSomething = true;
+        if (profilePayload.name && result.property.slug !== propertySlug) {
+          navigate(propertySectionPath(orgSlug, result.property.slug, 'settings'), {
+            replace: true,
+          });
+        }
+      }
+
+      const operationalPatch = buildAppSettingsPatchForSections(
+        {
+          ...operationalDraft,
+          gafTowerAndUnitNumber: gafTowerUnitFromProfile(profileDraft),
+          brandColor: propertyBrandColorStoredValue(
+            operationalDraft.brandColor,
+            inheritedBrandColor
+          ),
+        },
+        savedOperationalSections
+      );
+      if (operationalPatch) {
+        const saved = await updateAppSettings.mutateAsync(operationalPatch);
+        const values = appSettingsToFormValues(saved);
+        setOperationalDraft((current) =>
+          current
+            ? applySavedOperationalSections(current, values, savedOperationalSections)
+            : values
+        );
+        setOperationalBaseline((current) =>
+          current
+            ? applySavedOperationalSections(current, values, savedOperationalSections)
+            : values
+        );
+        savedSomething = true;
+      }
+
+      if (savedSomething) {
+        setInteractedFields({});
+        if (plan.blockedSections.length > 0) {
+          toast.success('New changes has been saved.');
+          scrollToSettingsSection(plan.blockedSections[0]!);
+        } else {
+          toast.success('Settings saved');
+        }
+      }
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save settings'));
+    }
+  };
+
+  const handleArchiveProperty = async () => {
+    const result = await updateProperty.mutateAsync({
+      propertyId: property.id,
+      status: 'INACTIVE',
+    });
+    const savedProfile = propertyProfileDraftFromProperty(result.property);
+    setProfileDraft(savedProfile);
+    setProfileBaseline(savedProfile);
+    toast.success('Property archived');
+  };
+
+  const handleRestoreProperty = async () => {
+    const result = await updateProperty.mutateAsync({
+      propertyId: property.id,
+      status: 'ACTIVE',
+    });
+    const savedProfile = propertyProfileDraftFromProperty(result.property);
+    setProfileDraft(savedProfile);
+    setProfileBaseline(savedProfile);
+    toast.success('Property restored');
+  };
+
+  const handleDeleteProperty = async () => {
+    await deleteProperty.mutateAsync(property.id);
+    toast.success('Property deleted');
+    navigate(orgPropertiesPath(orgSlug));
+  };
+
+  if (appSettingsLoading) {
+    return <AppSettingsCardSkeleton />;
+  }
+
+  return (
+    <div className="space-y-3 sm:space-y-4" aria-labelledby="property-settings-heading">
+      {operationalDraft && appSettings ? (
+        <PropertySettingsBrandColorPreview
+          brandColor={operationalDraft.brandColor}
+          resolvedBrandColor={appSettings.resolvedBrandColor}
+        />
+      ) : null}
+      {appSettingsError ? (
+        <p className="text-destructive text-sm">
+          {(appSettingsLoadError as Error)?.message ?? 'Could not load operational settings'}
+        </p>
+      ) : null}
+
+      {appSettings && operationalDraft ? (
+        <AdminSectionNavLayout
+          sections={navSections}
+          header={
+            <AdminPageHeader
+              id="property-settings-heading"
+              variant="compact"
+              title="Settings"
+              subtitle="Manage your property's profile, amenities, and configurations."
+              actions={
+                isDirty ? (
+                  <Button
+                    type="button"
+                    onClick={() => void handleSave()}
+                    disabled={busy || Boolean(towerConflict) || Boolean(nameConflict)}
+                    className="min-h-[44px] gap-1.5 lg:hidden"
+                  >
+                    <Save className="size-4" aria-hidden />
+                    {busy ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                ) : null
+              }
+            />
+          }
+          footer={
+            isDirty ? (
+              <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+                <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="size-2 animate-pulse rounded-full bg-amber-500" />
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Unsaved changes
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => void handleSave()}
+                    disabled={busy || Boolean(towerConflict) || Boolean(nameConflict)}
+                    className="min-h-[44px] w-full sm:w-auto"
+                    size="sm"
+                  >
+                    {busy ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : null
+          }
+        >
+          <PropertyProfileMainSections
+            draft={profileDraft}
+            onChange={setProfileField}
+            disabled={busy}
+            propertySlugPrefix={propertySlugPrefix}
+            slugPreview={slugPreview}
+            towerConflict={towerConflict}
+            nameConflict={nameConflict}
+            newCustomAmenityInputs={newCustomAmenityInputs}
+            onNewCustomAmenityInputChange={(categoryId, value) =>
+              setNewCustomAmenityInputs((current) => ({
+                ...current,
+                [categoryId]: value,
+              }))
+            }
+            newCustomHouseRuleInputs={newCustomHouseRuleInputs}
+            onNewCustomHouseRuleInputChange={(categoryId, value) =>
+              setNewCustomHouseRuleInputs((current) => ({
+                ...current,
+                [categoryId]: value,
+              }))
+            }
+            onMediaPersisted={handleMediaPersisted}
+            onPersistMediaOrder={persistMediaOrder}
+            mediaGalleryBusy={mediaGalleryBusy}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            sectionMessages={settingsCompletion.sectionMessages}
+            brandColor={operationalDraft.brandColor}
+            inheritedBrandColor={inheritedBrandColor}
+            onBrandColorChange={(value) => setOperationalField('brandColor', value)}
+          />
+
+          <PropertySocialsBrandingSection
+            data={appSettings}
+            draft={operationalDraft}
+            disabled={busy}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            onChange={setOperationalField}
+            sectionMessages={settingsCompletion.sectionMessages}
+          />
+
+          <PropertyOperationalSettingsSections
+            data={appSettings}
+            draft={operationalDraft}
+            residenceName={profileDraft.residenceName}
+            towerUnitLabel={gafTowerUnit}
+            disabled={busy}
+            onChange={setOperationalField}
+            onAutomationToggleChange={setAutomationToggle}
+            resolveFieldError={resolveFieldError}
+            markFieldInteracted={markFieldInteracted}
+            sectionMessages={settingsCompletion.sectionMessages}
+          />
+
+          <PropertyDangerZoneSection
+            propertyName={profileDraft.name.trim() || property.name}
+            isArchived={profileDraft.status === 'INACTIVE'}
+            disabled={busy}
+            archivePending={updateProperty.isPending}
+            restorePending={updateProperty.isPending}
+            deletePending={deleteProperty.isPending}
+            onArchive={handleArchiveProperty}
+            onRestore={handleRestoreProperty}
+            onDelete={handleDeleteProperty}
+          />
+        </AdminSectionNavLayout>
+      ) : null}
+    </div>
+  );
+}
