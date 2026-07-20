@@ -1,0 +1,192 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+
+import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+
+import { supabase } from '@/lib/supabase/client';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
+
+export type PropertyTemplateCategory = 'standard' | 'email' | 'custom';
+
+export type PropertyTemplateDto = {
+  templateKey: string;
+  name: string;
+  category: PropertyTemplateCategory;
+  content: string;
+  defaultContent: string;
+  isDefault: boolean;
+  description: string | null;
+  previewTemplateSlug: string | null;
+  sectionImageUrl: string | null;
+  updatedAt: string | null;
+};
+
+export type PropertyTemplatesData = {
+  templates: PropertyTemplateDto[];
+  placeholdersReference: string[];
+};
+
+export const PROPERTY_TEMPLATES_QUERY_KEY = ['property-templates'] as const;
+
+async function authHeaders() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error('Not signed in');
+  return {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+}
+
+export function usePropertyTemplates() {
+  const propertyId = usePropertyIdParam();
+
+  return useQuery({
+    queryKey: [...PROPERTY_TEMPLATES_QUERY_KEY, propertyId],
+    queryFn: async (): Promise<PropertyTemplatesData> => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
+        headers,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to load templates');
+      }
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: PropertyTemplatesData;
+      };
+      if (!json.success || !json.data?.templates) {
+        throw new Error(json.error ?? 'Failed to load templates');
+      }
+      return {
+        templates: json.data.templates,
+        placeholdersReference: json.data.placeholdersReference ?? [],
+      };
+    },
+    enabled: Boolean(propertyId),
+  });
+}
+
+export function usePropertyTemplateMutations() {
+  const propertyId = usePropertyIdParam();
+  const queryClient = useQueryClient();
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({
+      queryKey: [...PROPERTY_TEMPLATES_QUERY_KEY, propertyId],
+    });
+  };
+
+  const saveTemplate = useMutation({
+    mutationFn: async (input: {
+      templateKey: string;
+      content: string;
+      name?: string;
+      sectionImageUrl?: string | null;
+    }) => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to save template');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Template saved');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to save template'));
+    },
+  });
+
+  const createCustomTemplate = useMutation({
+    mutationFn: async (input: { name: string; content: string }) => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ action: 'create', ...input }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to create template');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Template saved');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to save template'));
+    },
+  });
+
+  const deleteCustomTemplate = useMutation({
+    mutationFn: async (templateKey: string) => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-settings', propertyId), {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ action: 'delete', templateKey }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to delete template');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidate();
+      toast.success('Template saved');
+    },
+    onError: (error: Error) => {
+      toast.error(friendlyToastError(error, 'Failed to save template'));
+    },
+  });
+
+  return { saveTemplate, createCustomTemplate, deleteCustomTemplate };
+}
+
+export function usePropertyTemplatePreview() {
+  const propertyId = usePropertyIdParam();
+
+  return useMutation({
+    mutationFn: async (input: {
+      templateKey: string;
+      category: PropertyTemplateCategory;
+      content: string;
+      name?: string;
+    }): Promise<{ html: string; mode: string }> => {
+      const headers = await authHeaders();
+      const res = await fetch(scopedFunctionsUrl('/property-templates-preview', propertyId), {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(input),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error ?? 'Failed to render preview');
+      }
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        data?: { html: string; mode: string };
+      };
+      if (!json.success || !json.data) {
+        throw new Error(json.error ?? 'Failed to render preview');
+      }
+      return json.data;
+    },
+  });
+}
