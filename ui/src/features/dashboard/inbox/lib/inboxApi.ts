@@ -1,0 +1,418 @@
+import type {
+  ComingSoonPlatform,
+  InboxAutomationSettings,
+  InboxConnection,
+  InboxConversation,
+  InboxMessage,
+  InboxTemplate,
+  MetaPagePickerOption,
+  SaveInboxTemplatePayload,
+  ThreadPlatformFilter,
+  ThreadStatusFilter,
+  ThreadTypeFilter,
+} from '@/features/dashboard/inbox/types/inbox';
+import {
+  scopedOrgFunctionsUrl,
+  useOrgIdParam,
+  useOrgSlugParam,
+} from '@/features/dashboard/org/lib/adminApiScope';
+
+import { supabase } from '@/lib/supabase/client';
+
+async function getJwt(): Promise<string> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('No active session — please sign in');
+  return token;
+}
+
+type EdgeJson = {
+  success?: boolean;
+  error?: string;
+  data?: Record<string, unknown>;
+  [key: string]: unknown;
+};
+
+/** Edge functions return `{ success, data }`; unwrap for typed fields. */
+function unwrapEdgePayload(json: EdgeJson): Record<string, unknown> {
+  if (!json.success) throw new Error(json.error ?? 'Request failed');
+  const payload = json.data;
+  if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+    return payload;
+  }
+  return json;
+}
+
+function orgUrl(path: string, orgSlug: string | null, orgId: string | null): string {
+  return scopedOrgFunctionsUrl(path, orgSlug, orgId);
+}
+
+export const INBOX_THREAD_PAGE_SIZE = 40;
+
+export type InboxThreadsPageParam = string | { mode: 'sync'; cursor: string | null } | null;
+
+export async function fetchInboxConnections(
+  orgSlug: string | null,
+  orgId: string | null
+): Promise<{
+  connections: InboxConnection[];
+  comingSoon: ComingSoonPlatform[];
+  metaConfigured: boolean;
+  metaSyncInProgress: boolean;
+  metaSyncError: string | null;
+  metaHasMore: boolean;
+}> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/meta-inbox-status', orgSlug, orgId), {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return {
+    connections: (payload.connections as InboxConnection[] | undefined) ?? [],
+    comingSoon: (payload.comingSoon as ComingSoonPlatform[] | undefined) ?? [],
+    metaConfigured: !!payload.metaConfigured,
+    metaSyncInProgress: !!payload.metaSyncInProgress,
+    metaSyncError: typeof payload.metaSyncError === 'string' ? payload.metaSyncError : null,
+    metaHasMore: !!payload.metaHasMore,
+  };
+}
+
+export async function startMetaInboxOAuth(
+  orgSlug: string | null,
+  orgId: string | null,
+  returnPath: string
+): Promise<string> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/meta-inbox-oauth-start', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ returnPath }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  if (typeof payload.url !== 'string') {
+    throw new Error('Failed to start Meta connection');
+  }
+  return payload.url;
+}
+
+export async function disconnectMetaInbox(
+  orgSlug: string | null,
+  orgId: string | null,
+  platform = 'meta'
+): Promise<void> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/meta-inbox-disconnect', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ platform }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  unwrapEdgePayload(json);
+}
+
+export async function fetchMetaOAuthPages(
+  orgSlug: string | null,
+  orgId: string | null,
+  pickerState: string
+): Promise<MetaPagePickerOption[]> {
+  const jwt = await getJwt();
+  const base = orgUrl('/meta-inbox-oauth-pages', orgSlug, orgId);
+  const res = await fetch(`${base}&picker=${encodeURIComponent(pickerState)}`, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return (payload.pages as MetaPagePickerOption[] | undefined) ?? [];
+}
+
+export async function completeMetaOAuthPage(
+  orgSlug: string | null,
+  orgId: string | null,
+  pickerState: string,
+  pageId: string
+): Promise<{ pageName: string }> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/meta-inbox-oauth-complete', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ pickerState, pageId }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return { pageName: typeof payload.pageName === 'string' ? payload.pageName : '' };
+}
+
+export type MetaBackfillChunkPhase = 'messenger' | 'instagram';
+
+export type MetaBackfillChunkResult = {
+  done: boolean;
+  phase: MetaBackfillChunkPhase | 'complete';
+  nextUrl: string | null;
+  syncedInChunk: number;
+  metaHasMore: boolean;
+};
+
+export async function runMetaInboxBackfillChunk(
+  orgSlug: string | null,
+  orgId: string | null,
+  state?: {
+    phase?: MetaBackfillChunkPhase;
+    nextUrl?: string | null;
+    finalize?: boolean;
+    light?: boolean;
+  }
+): Promise<MetaBackfillChunkResult> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/meta-inbox-backfill', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      phase: state?.phase ?? 'messenger',
+      nextUrl: state?.nextUrl ?? null,
+      finalize: state?.finalize === true,
+      light: state?.light === true,
+    }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return {
+    done: !!payload.done,
+    phase:
+      payload.phase === 'instagram' || payload.phase === 'messenger' || payload.phase === 'complete'
+        ? (payload.phase as MetaBackfillChunkResult['phase'])
+        : 'complete',
+    nextUrl: typeof payload.nextUrl === 'string' ? payload.nextUrl : null,
+    syncedInChunk: typeof payload.syncedInChunk === 'number' ? payload.syncedInChunk : 0,
+    metaHasMore: !!payload.metaHasMore,
+  };
+}
+
+export async function fetchInboxThreads(
+  orgSlug: string | null,
+  orgId: string | null,
+  filters: {
+    type: ThreadTypeFilter;
+    status: ThreadStatusFilter;
+    platform: ThreadPlatformFilter;
+    search?: string;
+    cursor?: string | null;
+  }
+): Promise<{
+  conversations: InboxConversation[];
+  nextCursor: string | null;
+  metaHasMore: boolean;
+}> {
+  const jwt = await getJwt();
+  const params = new URLSearchParams();
+  if (filters.type !== 'all') params.set('type', filters.type);
+  if (filters.status !== 'all') params.set('status', filters.status);
+  if (filters.platform !== 'all') params.set('platform', filters.platform);
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.cursor) params.set('cursor', filters.cursor);
+  params.set('limit', String(INBOX_THREAD_PAGE_SIZE));
+  const qs = params.toString();
+  const base = orgUrl('/social-inbox-threads', orgSlug, orgId);
+  const res = await fetch(qs ? `${base}&${qs}` : base, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return {
+    conversations: (payload.conversations as InboxConversation[] | undefined) ?? [],
+    nextCursor: (payload.nextCursor as string | null | undefined) ?? null,
+    metaHasMore: !!payload.metaHasMore,
+  };
+}
+
+export async function fetchInboxMessages(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string,
+  before?: string
+): Promise<{ conversation: InboxConversation; messages: InboxMessage[]; hasMore: boolean }> {
+  const jwt = await getJwt();
+  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const params = new URLSearchParams({ conversation_id: conversationId });
+  if (before) params.set('before', before);
+  const res = await fetch(`${base}&${params.toString()}`, {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return {
+    conversation: payload.conversation as InboxConversation,
+    messages: (payload.messages as InboxMessage[] | undefined) ?? [],
+    hasMore: !!payload.hasMore,
+  };
+}
+
+export async function markInboxConversationRead(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string
+): Promise<void> {
+  const jwt = await getJwt();
+  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  await fetch(`${base}&conversation_id=${encodeURIComponent(conversationId)}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+}
+
+export async function sendInboxReply(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string,
+  text: string,
+  privateReply = false
+): Promise<void> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/social-inbox-send', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ conversationId, text, privateReply }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  unwrapEdgePayload(json);
+}
+
+export async function fetchInboxTemplates(
+  orgSlug: string | null,
+  orgId: string | null
+): Promise<InboxTemplate[]> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/social-inbox-templates', orgSlug, orgId), {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return (payload.templates as InboxTemplate[] | undefined) ?? [];
+}
+
+export async function saveInboxTemplate(
+  orgSlug: string | null,
+  orgId: string | null,
+  payload: SaveInboxTemplatePayload
+): Promise<InboxTemplate> {
+  const jwt = await getJwt();
+  const method = payload.id ? 'PATCH' : 'POST';
+  const res = await fetch(orgUrl('/social-inbox-templates', orgSlug, orgId), {
+    method,
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const data = unwrapEdgePayload(json);
+  return data.template as InboxTemplate;
+}
+
+export async function deleteInboxTemplate(
+  orgSlug: string | null,
+  orgId: string | null,
+  id: string
+): Promise<void> {
+  const jwt = await getJwt();
+  const base = orgUrl('/social-inbox-templates', orgSlug, orgId);
+  const res = await fetch(`${base}&id=${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  unwrapEdgePayload(json);
+}
+
+export async function suggestInboxAiReply(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string
+): Promise<{ suggestion: string; flagged: boolean }> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/social-inbox-ai-suggest', orgSlug, orgId), {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ conversationId }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  if (typeof payload.suggestion !== 'string') {
+    throw new Error('AI suggestion unavailable');
+  }
+  return {
+    suggestion: payload.suggestion,
+    flagged: payload.flagged === true,
+  };
+}
+
+function parseAutomationSettings(payload: Record<string, unknown>): InboxAutomationSettings {
+  return {
+    autoReplyEnabled: !!payload.autoReplyEnabled,
+    autoReplyMode:
+      payload.autoReplyMode === 'send' || payload.autoReplyMode === 'draft'
+        ? payload.autoReplyMode
+        : 'draft',
+    aiSystemPrompt: typeof payload.aiSystemPrompt === 'string' ? payload.aiSystemPrompt : '',
+    platformToggles:
+      payload.platformToggles && typeof payload.platformToggles === 'object'
+        ? (payload.platformToggles as InboxAutomationSettings['platformToggles'])
+        : {},
+    aiAvailable: payload.aiAvailable === true,
+    aiError: typeof payload.aiError === 'string' ? payload.aiError : null,
+  };
+}
+
+export async function fetchInboxAutomationSettings(
+  orgSlug: string | null,
+  orgId: string | null
+): Promise<InboxAutomationSettings> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/social-inbox-settings', orgSlug, orgId), {
+    headers: { Authorization: `Bearer ${jwt}` },
+  });
+  const json = (await res.json()) as EdgeJson;
+  return parseAutomationSettings(unwrapEdgePayload(json));
+}
+
+export async function patchInboxAutomationSettings(
+  orgSlug: string | null,
+  orgId: string | null,
+  patch: Partial<InboxAutomationSettings>
+): Promise<InboxAutomationSettings> {
+  const jwt = await getJwt();
+  const res = await fetch(orgUrl('/social-inbox-settings', orgSlug, orgId), {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(patch),
+  });
+  const json = (await res.json()) as EdgeJson;
+  return parseAutomationSettings(unwrapEdgePayload(json));
+}
+
+export function useInboxOrgScope() {
+  return { orgSlug: useOrgSlugParam(), orgId: useOrgIdParam() };
+}
