@@ -1,0 +1,110 @@
+import type { MarketingTemplateRecord } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import {
+  calendarFormatToAspectPreset,
+  type CalendarCanvasFormat,
+} from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+
+export const CALENDAR_LEGACY_AUTOSAVE_GROUP = '__legacy__';
+export const CALENDAR_BLANK_PRESET_ID = 'default';
+export const CALENDAR_CUSTOM_PRESET_ID = 'custom';
+
+export function isCalendarBlankPreset(presetId: string | null | undefined): boolean {
+  return presetId === CALENDAR_BLANK_PRESET_ID;
+}
+
+export function isCalendarCustomPreset(presetId: string | null | undefined): boolean {
+  return presetId === CALENDAR_CUSTOM_PRESET_ID;
+}
+
+/** Designer presets autosave per preset+format; blank does not; saved custom templates autosave by row id. */
+export function isCalendarPresetAutosave(presetId: string | null | undefined): boolean {
+  if (!presetId) return false;
+  return !isCalendarBlankPreset(presetId) && !isCalendarCustomPreset(presetId);
+}
+
+export function readCalendarSourcePreset(
+  designJson: Record<string, unknown> | undefined
+): string | null {
+  const value = designJson?.sourcePresetId;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+export function calendarAutosaveGroupKey(
+  sourcePresetId: string | null | undefined,
+  aspectPreset: string | null | undefined
+): string {
+  const preset = sourcePresetId?.trim() || CALENDAR_LEGACY_AUTOSAVE_GROUP;
+  const aspect = aspectPreset?.trim() || 'instagram-post';
+  return `${preset}:${aspect}`;
+}
+
+export function aspectPresetForCalendarFormat(format: CalendarCanvasFormat): string {
+  return calendarFormatToAspectPreset(format);
+}
+
+export function findCalendarAutosaveTemplate(
+  templates: MarketingTemplateRecord[],
+  sourcePresetId: string,
+  aspectPreset: string
+): MarketingTemplateRecord | undefined {
+  const key = calendarAutosaveGroupKey(sourcePresetId, aspectPreset);
+  return templates.find((template) => {
+    if (template.contentType !== 'calendar') return false;
+    return (
+      calendarAutosaveGroupKey(
+        readCalendarSourcePreset(template.designJson),
+        template.aspectPreset
+      ) === key
+    );
+  });
+}
+
+/** Rows without a preset key cannot be shown in the sidebar — remove after dedupe. */
+export function planCalendarOrphanCleanup(templates: MarketingTemplateRecord[]): string[] {
+  return templates
+    .filter(
+      (template) =>
+        template.contentType === 'calendar' && !readCalendarSourcePreset(template.designJson)
+    )
+    .map((template) => template.id);
+}
+
+/** Autosaved blank/default rows should not exist — remove them. */
+export function planCalendarDefaultAutosaveCleanup(templates: MarketingTemplateRecord[]): string[] {
+  return templates
+    .filter(
+      (template) =>
+        template.contentType === 'calendar' &&
+        isCalendarBlankPreset(readCalendarSourcePreset(template.designJson))
+    )
+    .map((template) => template.id);
+}
+
+/** Keep the newest row per preset+format group; return ids to delete. */
+export function planCalendarTemplateDedupe(templates: MarketingTemplateRecord[]): string[] {
+  const calendarTemplates = templates.filter((template) => template.contentType === 'calendar');
+  const groups = new Map<string, MarketingTemplateRecord[]>();
+
+  for (const template of calendarTemplates) {
+    const sourcePreset = readCalendarSourcePreset(template.designJson);
+    if (isCalendarCustomPreset(sourcePreset) || isCalendarBlankPreset(sourcePreset)) continue;
+
+    const key = calendarAutosaveGroupKey(sourcePreset, template.aspectPreset);
+    const bucket = groups.get(key) ?? [];
+    bucket.push(template);
+    groups.set(key, bucket);
+  }
+
+  const removeIds: string[] = [];
+  for (const bucket of groups.values()) {
+    if (bucket.length <= 1) continue;
+    const sorted = [...bucket].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    for (const duplicate of sorted.slice(1)) {
+      removeIds.push(duplicate.id);
+    }
+  }
+
+  return removeIds;
+}
