@@ -15,6 +15,11 @@ export type BookingRow = {
   created_at: string;
   updated_at: string | null;
 
+  /** Populated on org-scoped list-bookings responses. */
+  property_id?: string | null;
+  property_name?: string | null;
+  property_slug?: string | null;
+
   // ── Guest identity ────────────────────────────────────────────────────────
   guest_facebook_name: string;
   primary_guest_name: string;

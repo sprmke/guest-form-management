@@ -31,8 +31,14 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
+import {
+  resolveBookingListHref,
+  type BookingsListScope,
+} from '@/features/dashboard/bookings/lib/bookingListNavigation';
 
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { orgPropertiesPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
@@ -112,8 +118,15 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
 
 // ─── Page component ──────────────────────────────────────────
 
-export function BookingsListPage() {
-  const { propertySlug } = useOrgContext();
+type BookingsListPageProps = {
+  scope?: BookingsListScope;
+};
+
+export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) {
+  const orgContext = useOptionalOrgContext();
+  const orgSlug = useOrgSlugParam();
+  const propertySlug = orgContext?.propertySlug ?? null;
+  const showProperty = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
@@ -187,8 +200,14 @@ export function BookingsListPage() {
       initialFromDate && initialToDate ? { from: initialFromDate, to: initialToDate } : null,
   });
 
-  const { data, isLoading, isFetching, error } = useBookings(listQuery);
-  const { data: summaryData } = useBookings(summaryQuery);
+  const { data, isLoading, isFetching, error } = useBookings(listQuery, { scope });
+  const { data: summaryData } = useBookings(summaryQuery, { scope });
+
+  const resolveBookingHref = useCallback(
+    (row: Parameters<typeof resolveBookingListHref>[0]) =>
+      resolveBookingListHref(row, { orgSlug, propertySlug, scope }),
+    [orgSlug, propertySlug, scope]
+  );
 
   const stageCounts = useMemo(
     () => countBookingsByStage(summaryData?.rows ?? []),
@@ -309,7 +328,11 @@ export function BookingsListPage() {
         fullWidth={isMobileLayout}
       />
       <Link
-        to={guestFormPath(propertySlug)}
+        to={
+          scope === 'org' && orgSlug
+            ? orgPropertiesPath(orgSlug)
+            : guestFormPath(propertySlug ?? undefined)
+        }
         className={cn(
           'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
           'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
@@ -323,79 +346,88 @@ export function BookingsListPage() {
   );
 
   return (
-    
-      <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="bookings-heading"
-          variant="compact"
-          title="Bookings"
-          subtitle="Manage and track all bookings for this property."
-          actions={bookingActions}
-          actionsClassName="w-full sm:w-auto"
-        />
-        <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
-        <BookingFilters
-          query={query}
-          onChange={patch}
-          onReset={resetFilters}
+    <div className="space-y-3 sm:space-y-4">
+      <AdminPageHeader
+        id="bookings-heading"
+        variant="compact"
+        title="Bookings"
+        subtitle={
+          showProperty
+            ? 'Manage and track bookings across all properties.'
+            : 'Manage and track all bookings for this property.'
+        }
+        actions={bookingActions}
+        actionsClassName="w-full sm:w-auto"
+      />
+      <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
+      <BookingFilters
+        query={query}
+        onChange={patch}
+        onReset={resetFilters}
+        sort={query.sort}
+        onSortChange={handleStaySortChange}
+        view={view}
+        onViewChange={setView}
+        hideTableView={isMobileLayout}
+        showPerPage={view !== 'calendar' && view !== 'kanban'}
+      />
+
+      {/* Active view */}
+      {showTableView && (
+        <BookingTable
+          rows={rows}
+          isLoading={isLoading}
+          error={error ? (error as Error).message : null}
+          isRefreshing={isFetching}
           sort={query.sort}
-          onSortChange={handleStaySortChange}
-          view={view}
-          onViewChange={setView}
-          hideTableView={isMobileLayout}
-          showPerPage={view !== 'calendar' && view !== 'kanban'}
+          onStaySortChange={handleStaySortChange}
+          showProperty={showProperty}
+          resolveBookingHref={resolveBookingHref}
         />
+      )}
+      {view === 'card' && (
+        <BookingCardGrid
+          rows={rows}
+          isLoading={isLoading}
+          error={error ? (error as Error).message : null}
+          isRefreshing={isFetching}
+          showProperty={showProperty}
+          resolveBookingHref={resolveBookingHref}
+        />
+      )}
+      {view === 'kanban' && (
+        <BookingKanban
+          rows={rows}
+          isLoading={isLoading}
+          error={error ? (error as Error).message : null}
+          isRefreshing={isFetching}
+          showProperty={showProperty}
+        />
+      )}
+      {view === 'calendar' && (
+        <BookingCalendarView
+          rows={rows}
+          isLoading={isLoading}
+          error={error ? (error as Error).message : null}
+          isRefreshing={isFetching}
+          initialMonth={dateNav.dateRange.from}
+          onMonthChange={handleCalendarMonthChange}
+          showProperty={showProperty}
+          resolveBookingHref={resolveBookingHref}
+        />
+      )}
 
-        {/* Active view */}
-        {showTableView && (
-          <BookingTable
-            rows={rows}
-            isLoading={isLoading}
-            error={error ? (error as Error).message : null}
-            isRefreshing={isFetching}
-            sort={query.sort}
-            onStaySortChange={handleStaySortChange}
-          />
-        )}
-        {view === 'card' && (
-          <BookingCardGrid
-            rows={rows}
-            isLoading={isLoading}
-            error={error ? (error as Error).message : null}
-            isRefreshing={isFetching}
-          />
-        )}
-        {view === 'kanban' && (
-          <BookingKanban
-            rows={rows}
-            isLoading={isLoading}
-            error={error ? (error as Error).message : null}
-            isRefreshing={isFetching}
-          />
-        )}
-        {view === 'calendar' && (
-          <BookingCalendarView
-            rows={rows}
-            isLoading={isLoading}
-            error={error ? (error as Error).message : null}
-            isRefreshing={isFetching}
-            initialMonth={dateNav.dateRange.from}
-            onMonthChange={handleCalendarMonthChange}
-          />
-        )}
-
-        {/* Pagination — hidden in calendar view (range already filters scope) */}
-        {showPagination && (
-          <AdminListPagination
-            ariaLabel="Bookings pagination"
-            page={query.page}
-            pageCount={pageCount}
-            pageItems={pageItems}
-            isLoading={isLoading}
-            onPageChange={(page) => patch({ page })}
-          />
-        )}
-      </div>
-    
+      {/* Pagination — hidden in calendar view (range already filters scope) */}
+      {showPagination && (
+        <AdminListPagination
+          ariaLabel="Bookings pagination"
+          page={query.page}
+          pageCount={pageCount}
+          pageItems={pageItems}
+          isLoading={isLoading}
+          onPageChange={(page) => patch({ page })}
+        />
+      )}
+    </div>
   );
 }
