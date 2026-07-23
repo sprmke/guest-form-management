@@ -1,0 +1,486 @@
+import { useEffect, useMemo, useState } from 'react';
+
+import { AlertCircle, Car, Home, Loader2 } from 'lucide-react';
+
+import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
+import { useCreateParking } from '@/features/dashboard/org/hooks/useCreateParking';
+import { useCreateProperty } from '@/features/dashboard/org/hooks/useCreateProperty';
+import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
+import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
+import {
+  DEFAULT_DEVELOPMENT_NAME,
+  getOrgDevelopmentNames,
+  getParkingTowersForDevelopment,
+  getPropertyTowersForDevelopment,
+} from '@/features/dashboard/org/lib/orgDevelopments';
+import {
+  getParkingLevelsForTower,
+  DEFAULT_PARKING_LEVEL,
+  DEFAULT_PARKING_TOWER,
+} from '@/features/dashboard/org/lib/parkingResidences';
+import {
+  formatParkingCode,
+  formatParkingDisplayName,
+  inferParkingTypeForTower,
+  isValidParkingSlotNumber,
+  sanitizeParkingSlotNumber,
+} from '@/features/dashboard/org/lib/parkingSlotDisplay';
+import {
+  formatTowerAndUnit,
+  isPropertyTowerForResidence,
+  isValidUnitNumber,
+  sanitizeUnitNumberInput,
+  type PropertyTower,
+} from '@/features/dashboard/org/lib/propertyTowerUnit';
+import type { Parking, Property } from '@/features/dashboard/org/types';
+
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { cn } from '@/lib/utils';
+
+type AssetKind = 'property' | 'parking';
+
+type Props = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  orgId: string;
+  orgSlug: string;
+  orgName: string;
+  canAddProperty?: boolean;
+  canAddParking?: boolean;
+  defaultKind?: AssetKind;
+  onPropertyCreated?: (property: Property) => void;
+  onParkingCreated?: (parking: Parking) => void;
+};
+
+function KindToggle({
+  kind,
+  onKindChange,
+}: {
+  kind: AssetKind;
+  onKindChange: (kind: AssetKind) => void;
+}) {
+  return (
+    <SegmentedControl
+      value={kind}
+      onChange={onKindChange}
+      listClassName="w-full"
+      triggerClassName="min-h-[44px] flex-1 gap-2 px-3"
+      aria-label="Asset type"
+      options={[
+        { value: 'property', label: 'Property', icon: Home },
+        { value: 'parking', label: 'Parking', icon: Car },
+      ]}
+    />
+  );
+}
+
+function DevelopmentField({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (name: string) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor={id}>Development</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} className="h-10">
+          <SelectValue placeholder="Select development" />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          {getOrgDevelopmentNames().map((name) => (
+            <SelectItem key={name} value={name}>
+              {name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+export function AddEntityDialog({
+  open,
+  onOpenChange,
+  orgId,
+  orgSlug,
+  orgName,
+  canAddProperty = true,
+  canAddParking = true,
+  defaultKind = 'property',
+  onPropertyCreated,
+  onParkingCreated,
+}: Props) {
+  const createProperty = useCreateProperty();
+  const createParking = useCreateParking();
+
+  const showKindToggle = canAddProperty && canAddParking;
+  const [kind, setKind] = useState<AssetKind>(defaultKind);
+
+  const [tower, setTower] = useState<PropertyTower | ''>('');
+  const [unitNumber, setUnitNumber] = useState('');
+  const [unitTouched, setUnitTouched] = useState(false);
+  const [propertyDisplayName, setPropertyDisplayName] = useState('');
+  const [developmentName, setDevelopmentName] = useState(DEFAULT_DEVELOPMENT_NAME);
+  const propertyTowerOptions = getPropertyTowersForDevelopment(developmentName);
+  const { conflict, hasDuplicate: propertyDuplicate } = useTowerUnitConflict(tower, unitNumber);
+  const unitInvalid = unitTouched && unitNumber.length > 0 && !isValidUnitNumber(unitNumber);
+  const towerUnitReady =
+    isPropertyTowerForResidence(tower, developmentName) && isValidUnitNumber(unitNumber);
+  const propertyCanSubmit = towerUnitReady && !propertyDuplicate;
+
+  const [parkingTower, setParkingTower] = useState(DEFAULT_PARKING_TOWER);
+  const [level, setLevel] = useState(DEFAULT_PARKING_LEVEL);
+  const [slotNumber, setSlotNumber] = useState('');
+  const parkingDisplayName = useMemo(
+    () => formatParkingDisplayName(parkingTower, level, slotNumber),
+    [parkingTower, level, slotNumber]
+  );
+  const parkingCode = useMemo(
+    () => formatParkingCode(parkingTower, level, slotNumber),
+    [parkingTower, level, slotNumber]
+  );
+  const { hasDuplicate: parkingDuplicate } = useParkingSlotConflict(
+    parkingTower,
+    level,
+    slotNumber,
+    developmentName
+  );
+  const parkingCanSubmit =
+    Boolean(parkingTower && level && isValidParkingSlotNumber(slotNumber)) && !parkingDuplicate;
+
+  const parkingTowerOptions = getParkingTowersForDevelopment(developmentName);
+  const parkingLevelOptions = getParkingLevelsForTower(parkingTower);
+
+  const [error, setError] = useState<string | null>(null);
+  const isPending = createProperty.isPending || createParking.isPending;
+  const activeKind: AssetKind = showKindToggle ? kind : canAddProperty ? 'property' : 'parking';
+  const canSubmit = activeKind === 'property' ? propertyCanSubmit : parkingCanSubmit;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const resolvedKind: AssetKind =
+      canAddProperty && !canAddParking
+        ? 'property'
+        : !canAddProperty && canAddParking
+          ? 'parking'
+          : defaultKind;
+
+    setKind(resolvedKind);
+    setTower('');
+    setUnitNumber('');
+    setUnitTouched(false);
+    setPropertyDisplayName('');
+    setDevelopmentName(DEFAULT_DEVELOPMENT_NAME);
+    setParkingTower(DEFAULT_PARKING_TOWER);
+    setLevel(DEFAULT_PARKING_LEVEL);
+    setSlotNumber('');
+    setError(null);
+  }, [open, canAddProperty, canAddParking, defaultKind]);
+
+  useEffect(() => {
+    setError(null);
+  }, [kind, tower, unitNumber, parkingTower, level, slotNumber, developmentName]);
+
+  const handleDevelopmentChange = (name: string) => {
+    setDevelopmentName(name);
+    setTower('');
+    setUnitNumber('');
+    setUnitTouched(false);
+    setParkingTower(DEFAULT_PARKING_TOWER);
+    setLevel(DEFAULT_PARKING_LEVEL);
+    setSlotNumber('');
+  };
+
+  const handleParkingTowerChange = (value: string) => {
+    setParkingTower(value as typeof DEFAULT_PARKING_TOWER);
+    const levels = getParkingLevelsForTower(value);
+    if (level && !levels.includes(level)) setLevel(DEFAULT_PARKING_LEVEL);
+  };
+
+  const handleSubmit = async () => {
+    if (activeKind === 'property') {
+      setUnitTouched(true);
+      if (!propertyCanSubmit || !isPropertyTowerForResidence(tower, developmentName)) return;
+
+      const resolvedName = propertyDisplayName.trim() || formatTowerAndUnit(tower, unitNumber);
+      if (resolvedName.length < 2) {
+        setError('Display name must be at least 2 characters');
+        return;
+      }
+
+      setError(null);
+      try {
+        const { property } = await createProperty.mutateAsync({
+          orgId,
+          orgSlug,
+          name: resolvedName,
+          tower,
+          unitNumber,
+          residenceName: developmentName,
+        });
+        onOpenChange(false);
+        onPropertyCreated?.(property);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to add property');
+      }
+      return;
+    }
+
+    if (!parkingCanSubmit || !parkingTower || !level || !parkingDisplayName) return;
+    setError(null);
+    try {
+      const { parking } = await createParking.mutateAsync({
+        orgId,
+        orgSlug,
+        name: parkingDisplayName,
+        tower: parkingTower,
+        level,
+        slotLabel: slotNumber.trim(),
+        parkingType: inferParkingTypeForTower(parkingTower),
+        residenceName: developmentName,
+      });
+      onOpenChange(false);
+      onParkingCreated?.(parking);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add parking');
+    }
+  };
+
+  const propertyFieldErrorClass =
+    towerUnitReady && propertyDuplicate ? 'border-destructive' : undefined;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-[min(calc(100vw-1.5rem),26rem)] sm:max-w-[min(90vw,28rem)]">
+        <DialogHeader className="text-left">
+          <DialogTitle>New asset</DialogTitle>
+          <DialogDescription>Add to {orgName}</DialogDescription>
+        </DialogHeader>
+
+        {showKindToggle ? <KindToggle kind={kind} onKindChange={setKind} /> : null}
+
+        <div className="space-y-3">
+          <DevelopmentField
+            id="add-entity-development"
+            value={developmentName}
+            onChange={handleDevelopmentChange}
+          />
+
+          {activeKind === 'property' ? (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="add-entity-property-tower">Tower</Label>
+                  <Select
+                    value={tower || undefined}
+                    onValueChange={(value) => setTower(value as PropertyTower)}
+                  >
+                    <SelectTrigger
+                      id="add-entity-property-tower"
+                      className={cn('h-10', propertyFieldErrorClass)}
+                      aria-invalid={towerUnitReady && propertyDuplicate ? true : undefined}
+                    >
+                      <SelectValue placeholder="Select tower" />
+                    </SelectTrigger>
+                    <SelectContent position="popper">
+                      {propertyTowerOptions.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="add-entity-property-unit">Unit</Label>
+                  <Input
+                    id="add-entity-property-unit"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    value={unitNumber}
+                    onChange={(e) => setUnitNumber(sanitizeUnitNumberInput(e.target.value))}
+                    onBlur={() => setUnitTouched(true)}
+                    placeholder={FORM_PLACEHOLDERS.unitNumber}
+                    maxLength={4}
+                    aria-invalid={unitInvalid || (towerUnitReady && propertyDuplicate) || undefined}
+                    className={cn('h-10 tabular-nums', propertyFieldErrorClass)}
+                  />
+                  {unitInvalid ? (
+                    <p role="alert" className="text-destructive text-xs">
+                      Enter a 4-digit unit number
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              {towerUnitReady && propertyDuplicate ? (
+                <TowerUnitConflictAlert tower={tower} unitNumber={unitNumber} conflict={conflict} />
+              ) : null}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="add-entity-property-name">Display name</Label>
+                <Input
+                  id="add-entity-property-name"
+                  value={propertyDisplayName}
+                  onChange={(e) => setPropertyDisplayName(e.target.value)}
+                  placeholder={
+                    towerUnitReady
+                      ? formatTowerAndUnit(tower, unitNumber)
+                      : FORM_PLACEHOLDERS.towerAndUnit
+                  }
+                  maxLength={120}
+                  autoComplete="off"
+                  className="h-10"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="add-entity-parking-tower">Tower</Label>
+                  <Select
+                    value={parkingTower || undefined}
+                    onValueChange={handleParkingTowerChange}
+                  >
+                    <SelectTrigger id="add-entity-parking-tower" className="h-10">
+                      <SelectValue placeholder="Tower" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {parkingTowerOptions.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {t}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="add-entity-parking-level">Level</Label>
+                  <Select
+                    value={level || undefined}
+                    onValueChange={(value) => setLevel(value as typeof DEFAULT_PARKING_LEVEL)}
+                  >
+                    <SelectTrigger id="add-entity-parking-level" className="h-10">
+                      <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {parkingLevelOptions.map((l) => (
+                        <SelectItem key={l} value={l}>
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="add-entity-slot-number">Slot number</Label>
+                <Input
+                  id="add-entity-slot-number"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  value={slotNumber}
+                  onChange={(e) => setSlotNumber(sanitizeParkingSlotNumber(e.target.value))}
+                  placeholder="26"
+                  maxLength={4}
+                  className={cn('h-10 tabular-nums', parkingDuplicate && 'border-destructive')}
+                />
+                {parkingDuplicate ? (
+                  <p role="alert" className="text-destructive text-xs">
+                    This slot is already registered
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="add-entity-parking-code">Code</Label>
+                <Input
+                  id="add-entity-parking-code"
+                  value={parkingCode}
+                  readOnly
+                  aria-readonly="true"
+                  placeholder="—"
+                  className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="add-entity-parking-name">Display name</Label>
+                <Input
+                  id="add-entity-parking-name"
+                  value={parkingDisplayName}
+                  readOnly
+                  aria-readonly="true"
+                  placeholder="—"
+                  className="bg-muted/40 text-muted-foreground h-10 cursor-default"
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {error ? (
+          <div
+            className="border-destructive/20 bg-destructive/5 text-destructive flex items-start gap-2 rounded-xl border p-3"
+            role="alert"
+          >
+            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p className="text-[13px] leading-snug">{error}</p>
+          </div>
+        ) : null}
+
+        <DialogFooter className="gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+            className="min-h-[44px]"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => void handleSubmit()}
+            disabled={!canSubmit || isPending}
+            className="min-h-[44px]"
+          >
+            {isPending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : activeKind === 'property' ? (
+              'Add property'
+            ) : (
+              'Add parking'
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
