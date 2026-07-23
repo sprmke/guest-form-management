@@ -1,0 +1,64 @@
+import { useMemo, useRef } from 'react';
+
+import { Loader2 } from 'lucide-react';
+
+import { CalendarBuilder } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarBuilder';
+import { useCalendarExport } from '@/features/dashboard/marketing/components/calendar-builder/hooks/use-calendar-export';
+import { useCalendarBuilderStore } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
+import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
+import { bookedDatesToPreviewBookings } from '@/features/dashboard/marketing/lib/marketingBookedDates';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+
+type Props = {
+  onPublish?: (blob: Blob) => void;
+};
+
+export function MarketingCalendarSection({ onPublish }: Props) {
+  const { property } = useOrgContext();
+  const previewRef = useRef<HTMLDivElement>(null);
+  const previewMonth = useCalendarBuilderStore((s) => s.previewMonth);
+  const { data: bookedDates, isLoading } = useMarketingBookedDates();
+
+  const bookings = useMemo(
+    () => bookedDatesToPreviewBookings(bookedDates ?? [], previewMonth),
+    [bookedDates, previewMonth]
+  );
+
+  const {
+    handleDownload: handleDownloadFromHook,
+    handleExportBlob,
+    isExporting,
+  } = useCalendarExport(previewRef, property.name);
+
+  const handleDownload = async () => {
+    await handleDownloadFromHook();
+  };
+
+  const handlePublish = async () => {
+    if (!onPublish) return;
+    const blob = await handleExportBlob();
+    if (blob) onPublish(blob);
+  };
+
+  return (
+    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+      {isLoading && (
+        <div
+          className="bg-background/60 absolute inset-0 z-10 flex items-center justify-center rounded-xl"
+          role="status"
+        >
+          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+        </div>
+      )}
+      <CalendarBuilder
+        propertyName={property.name}
+        propertySlug={property.slug}
+        bookings={bookings}
+        exportContainerRef={previewRef}
+        onExport={() => void handleDownload()}
+        onPublish={onPublish ? () => void handlePublish() : undefined}
+        isExporting={isExporting}
+      />
+    </div>
+  );
+}
