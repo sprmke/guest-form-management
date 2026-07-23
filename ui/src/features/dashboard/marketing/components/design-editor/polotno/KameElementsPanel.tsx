@@ -1,0 +1,232 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+
+import { observer } from 'mobx-react-lite';
+
+import {
+  KameSidePanelGroup,
+  KameSidePanelShell,
+} from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelShell';
+import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import {
+  buildKamePolotnoShapes,
+  KAME_POLOTNO_DEFAULT_SHAPE_FILL,
+  type KamePolotnoShape,
+} from '@/features/dashboard/marketing/lib/polotno/kamePolotnoShapes';
+
+import { InputGroup } from '@blueprintjs/core';
+import { Search } from '@blueprintjs/icons';
+import { ImagesGrid } from 'openpolotno/side-panel/side-panel';
+import { NounprojectPanel } from 'openpolotno/side-panel/elements-panel';
+import { selectImage } from 'openpolotno/side-panel/select-image';
+
+const LINE_STYLES = [
+  {
+    preview: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><path stroke="#C0BFBF" strokeWidth="4" d="M 1 8 L 30 8"></path></svg>`)}`,
+    data: {},
+  },
+  {
+    preview: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><path stroke="#C0BFBF" strokeWidth="4" stroke-dasharray="4 2" d="M 1 8 L 30 8"></path></svg>`)}`,
+    data: { dash: [4, 2] },
+  },
+  {
+    preview: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><path stroke="#C0BFBF" strokeWidth="4" stroke-dasharray="1 1" d="M 1 8 L 30 8"></path></svg>`)}`,
+    data: { dash: [1, 1] },
+  },
+];
+
+function addShapeToCanvas(
+  store: PolotnoStore,
+  item: KamePolotnoShape,
+  pos?: { x: number; y: number }
+) {
+  const page = (
+    store as {
+      activePage?: {
+        computedWidth: number;
+        computedHeight: number;
+        addElement: (el: Record<string, unknown>) => void;
+      };
+    }
+  ).activePage;
+  if (!page) return;
+
+  const ratio = (page.computedWidth + page.computedHeight) / 2160;
+  const baseW = item.canvasWidth ?? item.width;
+  const baseH = item.canvasHeight ?? item.height;
+  const w = baseW * ratio;
+  const h = baseH * ratio;
+  const x = (pos?.x ?? page.computedWidth / 2) - w / 2;
+  const y = (pos?.y ?? page.computedHeight / 2) - h / 2;
+
+  const element: Record<string, unknown> = {
+    type: 'figure',
+    subType: item.subType,
+    x,
+    y,
+    width: w,
+    height: h,
+    fill: KAME_POLOTNO_DEFAULT_SHAPE_FILL,
+    stroke: item.stroke,
+    strokeWidth: item.strokeWidth,
+  };
+
+  if (item.cornerRadius != null) {
+    element.cornerRadius = (item.cornerRadius / item.height) * h;
+  }
+
+  page.addElement(element);
+}
+
+const KameLinesGrid = observer(function KameLinesGrid({ store }: { store: PolotnoStore }) {
+  return (
+    <ImagesGrid
+      shadowEnabled={false}
+      rowsNumber={3}
+      images={LINE_STYLES}
+      getPreview={(item) => item.preview}
+      itemHeight={50}
+      isLoading={false}
+      onSelect={async (item, pos) => {
+        const page = (
+          store as {
+            activePage?: {
+              computedWidth: number;
+              computedHeight: number;
+              addElement: (el: Record<string, unknown>) => void;
+            };
+          }
+        ).activePage;
+        if (!page) return;
+        const w = page.computedWidth / 3;
+        page.addElement({
+          type: 'line',
+          x: pos ? pos.x : page.computedWidth / 2 - w / 2,
+          y: pos ? pos.y : page.computedHeight / 2,
+          color: KAME_POLOTNO_DEFAULT_SHAPE_FILL,
+          width: w,
+          ...item.data,
+        });
+      }}
+    />
+  );
+});
+
+const KameLogoGrid = observer(function KameLogoGrid({
+  store,
+  logoUrl,
+}: {
+  store: PolotnoStore;
+  logoUrl: string;
+}) {
+  const images = useMemo(() => [{ url: logoUrl }], [logoUrl]);
+
+  return (
+    <div className="kame-image-grid">
+      <ImagesGrid
+        shadowEnabled={false}
+        rowsNumber={1}
+        images={images}
+        getPreview={(item) => item.url}
+        isLoading={false}
+        itemHeight={100}
+        onSelect={async (item) => {
+          await selectImage({ src: item.url, store: store as never });
+        }}
+      />
+    </div>
+  );
+});
+
+const KameShapesGrid = observer(function KameShapesGrid({ store }: { store: PolotnoStore }) {
+  const shapes = useMemo(() => buildKamePolotnoShapes(), []);
+  const rows = Math.ceil(shapes.length / 4) || 1;
+
+  return (
+    <div style={{ height: `${110 * rows}px` }}>
+      <ImagesGrid
+        shadowEnabled={false}
+        rowsNumber={4}
+        images={shapes}
+        getPreview={(item) => item.url}
+        isLoading={false}
+        itemHeight={100}
+        onSelect={async (item, pos, el) => {
+          if (
+            el &&
+            (el as { type?: string }).type === 'image' &&
+            (el as { contentEditable?: boolean }).contentEditable
+          ) {
+            (el as { set: (patch: Record<string, unknown>) => void }).set({ clipSrc: item.url });
+            return;
+          }
+          if (
+            el &&
+            (el as { type?: string }).type === 'video' &&
+            (el as { contentEditable?: boolean }).contentEditable
+          ) {
+            (el as { set: (patch: Record<string, unknown>) => void }).set({ clipSrc: item.url });
+            return;
+          }
+          addShapeToCanvas(store, item as KamePolotnoShape, pos ?? undefined);
+        }}
+      />
+    </div>
+  );
+});
+
+export const KameElementsPanel = observer(function KameElementsPanel({
+  store,
+  logoUrl = null,
+}: {
+  store: PolotnoStore;
+  logoUrl?: string | null;
+}) {
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const [inputValue, setInputValue] = useState('');
+  const [query, setQuery] = useState('');
+
+  useEffect(() => {
+    timerRef.current = setTimeout(() => {
+      setQuery(inputValue);
+    }, 500);
+    return () => {
+      clearTimeout(timerRef.current);
+    };
+  }, [inputValue]);
+
+  const hasQuery = query.length > 0;
+
+  return (
+    <KameSidePanelShell
+      title="Elements"
+      header={
+        <InputGroup
+          leftIcon={<Search />}
+          placeholder="Search icons"
+          onChange={(e) => {
+            setInputValue(e.target.value);
+          }}
+          type="search"
+        />
+      }
+    >
+      {hasQuery ? (
+        <NounprojectPanel store={store as never} query={query} />
+      ) : (
+        <div className="space-y-4">
+          {logoUrl?.trim() ? (
+            <KameSidePanelGroup label="Logo">
+              <KameLogoGrid store={store} logoUrl={logoUrl.trim()} />
+            </KameSidePanelGroup>
+          ) : null}
+          <KameSidePanelGroup label="Lines">
+            <KameLinesGrid store={store} />
+          </KameSidePanelGroup>
+          <KameSidePanelGroup label="Shapes">
+            <KameShapesGrid store={store} />
+          </KameSidePanelGroup>
+        </div>
+      )}
+    </KameSidePanelShell>
+  );
+});
