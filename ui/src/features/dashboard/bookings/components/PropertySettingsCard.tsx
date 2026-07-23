@@ -44,9 +44,12 @@ import {
   PropertyProfileMainSections,
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
+import { PaymentSettingsSaveConfirmDialog } from '@/features/dashboard/org/components/property-settings/PaymentSettingsSaveConfirmDialog';
 import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
+import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertySettingsCompletionForDraft } from '@/features/dashboard/org/hooks/usePropertySettingsCompletion';
 import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
@@ -61,6 +64,7 @@ import {
   type PropertyProfileDraft,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
 import { setPropertySettingsIssueSections } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
+import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import {
   applySavedOperationalSections,
   applySavedProfileSections,
@@ -68,6 +72,7 @@ import {
   buildProfilePatchForSections,
   planPropertySettingsSave,
 } from '@/features/dashboard/org/lib/propertySettingsSave';
+import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 
@@ -133,6 +138,7 @@ export function PropertySettingsCard() {
   );
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -181,15 +187,29 @@ export function PropertySettingsCard() {
     });
   }, [gafTowerUnit]);
 
-  const {
-    completion: draftCompletion,
-    nameConflict,
-    towerConflict,
-  } = usePropertySettingsCompletionForDraft({
+  const profileDirty = propertyProfileDraftIsDirty(profileDraft, profileBaseline);
+  profileDirtyRef.current = profileDirty;
+
+  const nameChanged =
+    profileDraft.name.trim().toLowerCase() !== profileBaseline.name.trim().toLowerCase();
+
+  const nameCheck = useCheckPropertyName(profileDraft.name, property.id, nameChanged);
+
+  const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+
+  const { conflict: towerConflictDetail, hasDuplicate: towerUnitDuplicate } = useTowerUnitConflict(
+    profileDraft.tower,
+    profileDraft.unitNumber,
+    property.id
+  );
+
+  const { completion: draftCompletion } = usePropertySettingsCompletionForDraft({
     profile: profileDraft,
     operational: operationalDraft,
     propertyId: property.id,
     orgSlug,
+    nameUnavailable,
+    towerUnitConflict: towerUnitDuplicate,
   });
 
   const { completion: savedCompletion } = usePropertySettingsCompletionForDraft({
@@ -197,7 +217,11 @@ export function PropertySettingsCard() {
     operational: operationalBaseline,
     propertyId: property.id,
     orgSlug,
+    nameUnavailable: false,
+    towerUnitConflict: false,
   });
+
+  const towerConflict = towerUnitDuplicate ? towerConflictDetail : null;
 
   const settingsCompletion = draftCompletion;
 
@@ -211,9 +235,6 @@ export function PropertySettingsCard() {
       ),
     [settingsCompletion.fieldErrors, interactedFields, showValidationErrors]
   );
-
-  const profileDirty = propertyProfileDraftIsDirty(profileDraft, profileBaseline);
-  profileDirtyRef.current = profileDirty;
   const operationalDirty =
     operationalDraft && operationalBaseline && appSettings
       ? operationalSettingsDraftIsDirty(operationalDraft, operationalBaseline, inheritedBrandColor)
@@ -227,10 +248,7 @@ export function PropertySettingsCard() {
     deleteProperty.isPending ||
     (updateProperty.isPending && !mediaGalleryBusy);
 
-  const propertySlugPrefix =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/org/${orgSlug}/property/`
-      : `/org/${orgSlug}/property/`;
+  const propertySlugPrefix = publicPropertySlugUrlPrefix();
 
   const slugPreview = propertySlugPreview(profileDraft.name, property.slug, profileBaseline.name);
 
@@ -304,7 +322,7 @@ export function PropertySettingsCard() {
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = async (options?: { skipPaymentConfirm?: boolean }) => {
     if (!operationalDraft || !operationalBaseline || !appSettings) return;
 
     if (towerConflict) {
@@ -331,6 +349,17 @@ export function PropertySettingsCard() {
       if (plan.firstBlockedSectionId) {
         scrollToSettingsSection(plan.firstBlockedSectionId);
       }
+      return;
+    }
+
+    const paymentWillSave = plan.operationalSections.includes('payment');
+    const paymentChanged = paymentMethodsDraftIsDirty(
+      operationalDraft.paymentMethods,
+      operationalBaseline.paymentMethods
+    );
+
+    if (paymentWillSave && paymentChanged && !options?.skipPaymentConfirm) {
+      setPaymentConfirmOpen(true);
       return;
     }
 
@@ -402,7 +431,13 @@ export function PropertySettingsCard() {
       }
     } catch (error) {
       toast.error(friendlyToastError(error, 'Could not save settings'));
+    } finally {
+      setPaymentConfirmOpen(false);
     }
+  };
+
+  const handlePaymentConfirmSave = () => {
+    void handleSave({ skipPaymentConfirm: true });
   };
 
   const handleArchiveProperty = async () => {
@@ -439,6 +474,12 @@ export function PropertySettingsCard() {
 
   return (
     <div className="space-y-3 sm:space-y-4" aria-labelledby="property-settings-heading">
+      <PaymentSettingsSaveConfirmDialog
+        open={paymentConfirmOpen}
+        onOpenChange={setPaymentConfirmOpen}
+        onConfirm={handlePaymentConfirmSave}
+        busy={busy}
+      />
       {operationalDraft && appSettings ? (
         <PropertySettingsBrandColorPreview
           brandColor={operationalDraft.brandColor}
@@ -465,7 +506,7 @@ export function PropertySettingsCard() {
                   <Button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={busy || Boolean(towerConflict) || Boolean(nameConflict)}
+                    disabled={busy || Boolean(towerConflict) || nameUnavailable}
                     className="min-h-[44px] gap-1.5 lg:hidden"
                   >
                     <Save className="size-4" aria-hidden />
@@ -488,7 +529,7 @@ export function PropertySettingsCard() {
                   <Button
                     type="button"
                     onClick={() => void handleSave()}
-                    disabled={busy || Boolean(towerConflict) || Boolean(nameConflict)}
+                    disabled={busy || Boolean(towerConflict) || nameUnavailable}
                     className="min-h-[44px] w-full sm:w-auto"
                     size="sm"
                   >
@@ -506,7 +547,8 @@ export function PropertySettingsCard() {
             propertySlugPrefix={propertySlugPrefix}
             slugPreview={slugPreview}
             towerConflict={towerConflict}
-            nameConflict={nameConflict}
+            nameUnavailable={nameUnavailable}
+            nameChecking={nameChanged && nameCheck.isFetching}
             newCustomAmenityInputs={newCustomAmenityInputs}
             onNewCustomAmenityInputChange={(categoryId, value) =>
               setNewCustomAmenityInputs((current) => ({

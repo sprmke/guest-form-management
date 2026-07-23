@@ -22,6 +22,7 @@ import {
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
 import {
+  orgBookingsPath,
   orgDashboardPath,
   orgInboxPath,
   orgParkingsPath,
@@ -70,6 +71,11 @@ export function buildOrgNavSections(
       label: 'Dashboard',
       href: orgDashboardPath(orgSlug),
       Icon: LayoutDashboard,
+    },
+    {
+      label: 'Bookings',
+      href: orgBookingsPath(orgSlug),
+      Icon: BookOpen,
     },
   ];
 

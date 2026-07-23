@@ -276,7 +276,6 @@ export function operationalFormIsDirty(
   inheritedBrandColor: string
 ): boolean {
   return (
-    draft.emailTo.trim() !== baseline.emailTo.trim() ||
     draft.emailReplyTo.trim() !== baseline.emailReplyTo.trim() ||
     draft.parkingOwnerEmails.trim() !== baseline.parkingOwnerEmails.trim() ||
     draft.sdRefundCronEmailLeadHours !== baseline.sdRefundCronEmailLeadHours ||

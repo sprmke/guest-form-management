@@ -24,6 +24,7 @@ import {
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
 import { GmailReconnectProvider } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import {
   buildOrgNavSections,
   buildParkingNavSections,
@@ -565,6 +566,8 @@ function AdminSidebarContent({
           ))}
         </div>
       </nav>
+
+      {!superAdmin ? <GetVerifiedSidebarCta collapsed={collapsed} /> : null}
 
       <AdminProfileFooter
         collapsed={collapsed}

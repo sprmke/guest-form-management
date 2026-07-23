@@ -3,6 +3,7 @@ import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookin
 import { useNavigate } from 'react-router-dom';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
+import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
@@ -20,14 +21,27 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
+  showProperty?: boolean;
+  resolveBookingHref?: (row: BookingRow) => string;
 };
 
 /**
  * Card grid view for the bookings dashboard.
  * Uses a 2×2 grid on mobile (native dashboard density), scaling up on larger breakpoints.
  */
-export function BookingCardGrid({ rows, isLoading, error, isRefreshing }: Props) {
+export function BookingCardGrid({
+  rows,
+  isLoading,
+  error,
+  isRefreshing,
+  showProperty = false,
+  resolveBookingHref,
+}: Props) {
   const navigate = useNavigate();
+
+  const openRow = (row: BookingRow) => {
+    navigate(resolveBookingHref ? resolveBookingHref(row) : `/bookings/${row.id}`);
+  };
 
   if (error) {
     return (
@@ -68,13 +82,26 @@ export function BookingCardGrid({ rows, isLoading, error, isRefreshing }: Props)
       )}
     >
       {rows.map((row) => (
-        <BookingCard key={row.id} row={row} onOpen={() => navigate(`/bookings/${row.id}`)} />
+        <BookingCard
+          key={row.id}
+          row={row}
+          showProperty={showProperty}
+          onOpen={() => openRow(row)}
+        />
       ))}
     </div>
   );
 }
 
-function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
+function BookingCard({
+  row,
+  showProperty,
+  onOpen,
+}: {
+  row: BookingRow;
+  showProperty: boolean;
+  onOpen: () => void;
+}) {
   const name = row.primary_guest_name || row.guest_facebook_name || row.guest_email || 'Guest';
   const pax = (row.number_of_adults ?? 0) + (row.number_of_children ?? 0);
   const hasInvalidReceiptAi = bookingHasInvalidReceiptAi(row);
@@ -116,6 +143,9 @@ function BookingCard({ row, onOpen }: { row: BookingRow; onOpen: () => void }) {
                 {name}
               </p>
               <p className="text-data-secondary mt-0.5 truncate">{row.guest_email}</p>
+              {showProperty ? (
+                <BookingPropertyLabel name={row.property_name} className="mt-0.5 font-medium" />
+              ) : null}
             </div>
           </div>
         </div>

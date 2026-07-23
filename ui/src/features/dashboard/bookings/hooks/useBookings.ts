@@ -13,6 +13,7 @@
 
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
+import type { BookingsListScope } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import {
   compareBookingsForListSort,
   manilaTodayIso,
@@ -20,7 +21,14 @@ import {
   passesListCheckInDateRangeFilter,
 } from '@/features/dashboard/bookings/lib/bookingsListSort';
 import type { BookingRow, BookingsQuery } from '@/features/dashboard/bookings/lib/types';
-import { appendPropertyId, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import {
+  appendOrgId,
+  appendPropertyId,
+  useOrgIdParam,
+  useOrgScopeKey,
+  useOrgSlugParam,
+  usePropertyIdParam,
+} from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -35,9 +43,16 @@ const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 
 const GENERIC_BOOKINGS_ERROR = 'We could not load bookings. Please try again in a moment.';
 
+type FetchScope = {
+  scope: BookingsListScope;
+  propertyId: string | null;
+  orgSlug: string | null;
+  orgId: string | null;
+};
+
 async function fetchBookingsFromEdgeFunction(
   query: BookingsQuery,
-  propertyId: string | null
+  fetchScope: FetchScope
 ): Promise<BookingsResult> {
   const { data: sessionData } = await supabase.auth.getSession();
   const jwt = sessionData.session?.access_token;
@@ -56,7 +71,12 @@ async function fetchBookingsFromEdgeFunction(
   if (query.showCompletedBookings) {
     params.set('show_completed_bookings', 'true');
   }
-  appendPropertyId(params, propertyId);
+
+  if (fetchScope.scope === 'org') {
+    appendOrgId(params, fetchScope.orgSlug, fetchScope.orgId);
+  } else {
+    appendPropertyId(params, fetchScope.propertyId);
+  }
 
   const res = await fetch(`${FUNCTIONS_URL}/list-bookings?${params.toString()}`, {
     headers: {
@@ -72,15 +92,39 @@ async function fetchBookingsFromEdgeFunction(
   return { rows: json.data as BookingRow[], total: json.total as number };
 }
 
-export function useBookings(query: BookingsQuery) {
+export function useBookings(query: BookingsQuery, options?: { scope?: BookingsListScope }) {
   const propertyId = usePropertyIdParam();
+  const { orgSlug, orgId } = useOrgScopeKey();
+  const routeOrgSlug = useOrgSlugParam();
+
+  const scope: BookingsListScope =
+    options?.scope ?? (propertyId ? 'property' : routeOrgSlug || orgId ? 'org' : 'property');
+
+  const fetchScope: FetchScope = {
+    scope,
+    propertyId,
+    orgSlug: routeOrgSlug ?? orgSlug,
+    orgId,
+  };
 
   return useQuery<BookingsResult>({
-    queryKey: [...BOOKINGS_QUERY_KEY, propertyId, query] as const,
+    queryKey: [
+      ...BOOKINGS_QUERY_KEY,
+      scope,
+      fetchScope.orgSlug,
+      fetchScope.orgId,
+      propertyId,
+      query,
+    ] as const,
     queryFn: async () => {
       try {
-        return await fetchBookingsFromEdgeFunction(query, propertyId);
+        return await fetchBookingsFromEdgeFunction(query, fetchScope);
       } catch (err) {
+        if (scope === 'org') {
+          console.error('[useBookings] Org-scoped edge function failed:', err);
+          throw err instanceof Error ? err : new Error(GENERIC_BOOKINGS_ERROR);
+        }
+
         console.error('[useBookings] Edge function failed, falling back to PostgREST:', err);
 
         // PostgREST fallback — fetch matches, sort in JS (mirrors list-bookings).
@@ -91,9 +135,6 @@ export function useBookings(query: BookingsQuery) {
         }
 
         if (query.q.trim()) {
-          // Mirror the broadened search in `_shared/databaseService.ts#listBookings`.
-          // Keep these two field lists in lockstep — diverging hides results
-          // intermittently whenever the edge function is unreachable.
           const needle = `%${query.q.trim()}%`;
           request = request.or(
             [
@@ -157,5 +198,6 @@ export function useBookings(query: BookingsQuery) {
     },
     placeholderData: keepPreviousData,
     staleTime: 15_000,
+    enabled: scope === 'property' ? true : Boolean(fetchScope.orgSlug || fetchScope.orgId),
   });
 }

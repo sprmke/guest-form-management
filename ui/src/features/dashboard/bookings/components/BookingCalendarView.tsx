@@ -33,6 +33,8 @@ type Props = {
   datePreset?: DatePreset;
   /** Mini calendar day pills: guest first name or booking rate. */
   pillLabelMode?: BookingCalendarPillLabelMode;
+  showProperty?: boolean;
+  resolveBookingHref?: (row: BookingRow) => string;
 };
 
 function bookingPillLabel(row: BookingRow): string {
@@ -57,6 +59,8 @@ export function BookingCalendarView({
   rangeTo,
   datePreset,
   pillLabelMode = 'name',
+  showProperty = false,
+  resolveBookingHref,
 }: Props) {
   const navigate = useNavigate();
   const mini = variant === 'mini';
@@ -71,9 +75,9 @@ export function BookingCalendarView({
 
   const openBooking = useCallback(
     (row: BookingRow) => {
-      navigate(`/bookings/${row.id}`);
+      navigate(resolveBookingHref ? resolveBookingHref(row) : `/bookings/${row.id}`);
     },
-    [navigate]
+    [navigate, resolveBookingHref]
   );
 
   const handleDayClick = useCallback(
@@ -96,12 +100,13 @@ export function BookingCalendarView({
         const guestName = bookingListDisplayName(row);
         const priceLabel = bookingPillPriceLabel(row);
         const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
+        const propertySuffix = showProperty && row.property_name ? ` · ${row.property_name}` : '';
 
         return (
           <CalendarOccupancyPill
             status={row.status}
             label={label}
-            title={`${guestName} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+            title={`${guestName}${propertySuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
             labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
           />
         );
@@ -110,6 +115,7 @@ export function BookingCalendarView({
         <CalendarDayBookingCard
           row={row}
           amount={{ mode: 'booking_rate', amount: row.booking_rate }}
+          showProperty={showProperty}
           onOpen={() => openBooking(row)}
         />
       )}

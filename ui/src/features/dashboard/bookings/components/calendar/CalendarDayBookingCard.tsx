@@ -3,6 +3,7 @@ import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
 
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
+import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { hostNetToneClass } from '@/features/dashboard/bookings/lib/bookingFinance';
 import {
@@ -25,6 +26,7 @@ type CalendarDayBookingCardSource = {
   check_in_date: string;
   check_out_date: string;
   number_of_nights: number | null;
+  property_name?: string | null;
 };
 
 type CalendarDayBookingCardAmount =
@@ -38,10 +40,11 @@ type CalendarDayBookingCardAmount =
 type Props = {
   row: CalendarDayBookingCardSource;
   amount: CalendarDayBookingCardAmount;
+  showProperty?: boolean;
   onOpen: () => void;
 };
 
-export function CalendarDayBookingCard({ row, amount, onOpen }: Props) {
+export function CalendarDayBookingCard({ row, amount, showProperty = false, onOpen }: Props) {
   const name = row.primary_guest_name || row.guest_facebook_name || row.guest_email || 'Guest';
 
   return (
@@ -58,7 +61,12 @@ export function CalendarDayBookingCard({ row, amount, onOpen }: Props) {
       <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="md" className="shrink-0" />
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-foreground truncate text-[13px] font-bold">{name}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-foreground truncate text-[13px] font-bold">{name}</p>
+            {showProperty ? (
+              <BookingPropertyLabel name={row.property_name} className="mt-0.5 font-medium" />
+            ) : null}
+          </div>
           <ArrowUpRight
             className="text-muted-foreground/50 group-hover:text-muted-foreground size-3.5 shrink-0 transition-colors"
             aria-hidden

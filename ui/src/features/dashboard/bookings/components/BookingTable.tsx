@@ -1,4 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
 import { useNavigate } from 'react-router-dom';
 
 import {
@@ -14,15 +13,16 @@ import {
   adminTableMoneyClass,
   adminTableRowClass,
 } from '@/features/dashboard/bookings/components/AdminDataTable';
+import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
 import { BookingStayDatesCell } from '@/features/dashboard/bookings/components/BookingStayDatesCell';
 import { BookingStaySortControl } from '@/features/dashboard/bookings/components/BookingStaySortControl';
 import { bookingHasInvalidReceiptAi } from '@/features/dashboard/bookings/lib/bookingFlags';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
-
 import type { BookingRow, BookingsSort } from '@/features/dashboard/bookings/lib/types';
 
 import { BookingsTableSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   rows: BookingRow[];
@@ -33,6 +33,8 @@ type Props = {
   onStaySortChange: (next: BookingsSort) => void;
   /** Shown under the default empty hint when the list has no rows. */
   emptyExtraHint?: string | null;
+  showProperty?: boolean;
+  resolveBookingHref?: (row: BookingRow) => string;
 };
 
 export function BookingTable({
@@ -43,8 +45,14 @@ export function BookingTable({
   sort,
   onStaySortChange,
   emptyExtraHint,
+  showProperty = false,
+  resolveBookingHref,
 }: Props) {
   const navigate = useNavigate();
+
+  const openRow = (row: BookingRow) => {
+    navigate(resolveBookingHref ? resolveBookingHref(row) : `/bookings/${row.id}`);
+  };
 
   if (error) {
     return (
@@ -84,6 +92,9 @@ export function BookingTable({
     >
       <AdminTableHeadRow>
         <AdminTableTh className="pl-4 pr-3 sm:pl-5">Status</AdminTableTh>
+        {showProperty ? (
+          <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Property</AdminTableTh>
+        ) : null}
         <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">
           <BookingStaySortControl sort={sort} onChange={onStaySortChange} variant="header" />
@@ -101,7 +112,8 @@ export function BookingTable({
             key={row.id}
             row={row}
             index={i}
-            onOpen={() => navigate(`/bookings/${row.id}`)}
+            showProperty={showProperty}
+            onOpen={() => openRow(row)}
           />
         ))}
       </tbody>
@@ -112,10 +124,12 @@ export function BookingTable({
 function BookingTableRow({
   row,
   index,
+  showProperty,
   onOpen,
 }: {
   row: BookingRow;
   index: number;
+  showProperty: boolean;
   onOpen: () => void;
 }) {
   const name = bookingListDisplayName(row);
@@ -141,6 +155,15 @@ function BookingTableRow({
       <td className={adminTableCell.status}>
         <AdminTableStatusBadge status={row.status} />
       </td>
+
+      {showProperty ? (
+        <td className={cn('hidden sm:table-cell', adminTableCell.body)}>
+          <BookingPropertyLabel
+            name={row.property_name}
+            className="max-w-[10rem] text-xs font-medium sm:text-[13px]"
+          />
+        </td>
+      ) : null}
 
       <td className={adminTableCell.body}>
         <AdminTableGuestCell

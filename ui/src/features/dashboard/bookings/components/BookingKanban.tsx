@@ -6,6 +6,7 @@ import { Check, GripVertical, X } from 'lucide-react';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { BookingKanbanWorkflowModal } from '@/features/dashboard/bookings/components/BookingKanbanWorkflowModal';
+import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
@@ -29,6 +30,7 @@ type Props = {
   isLoading: boolean;
   error: string | null;
   isRefreshing?: boolean;
+  showProperty?: boolean;
 };
 
 function guestName(row: BookingRow): string {
@@ -41,13 +43,21 @@ function guestPax(row: BookingRow): number {
 
 type KanbanCardProps = {
   row: BookingRow;
+  showProperty: boolean;
   onOpen: (row: BookingRow) => void;
   onDragStart: (e: React.DragEvent, row: BookingRow) => void;
   onDragEnd: (e: React.DragEvent) => void;
   isDragging: boolean;
 };
 
-function KanbanCard({ row, onOpen, onDragStart, onDragEnd, isDragging }: KanbanCardProps) {
+function KanbanCard({
+  row,
+  showProperty,
+  onOpen,
+  onDragStart,
+  onDragEnd,
+  isDragging,
+}: KanbanCardProps) {
   const name = guestName(row);
   const pax = guestPax(row);
   const hasInvalidReceiptAi = bookingHasInvalidReceiptAi(row);
@@ -90,6 +100,9 @@ function KanbanCard({ row, onOpen, onDragStart, onDragEnd, isDragging }: KanbanC
             <div className="min-w-0 flex-1">
               <p className="text-foreground truncate text-sm font-bold leading-tight">{name}</p>
               <p className="text-data-secondary truncate">{row.guest_email}</p>
+              {showProperty ? (
+                <BookingPropertyLabel name={row.property_name} className="mt-0.5 font-medium" />
+              ) : null}
             </div>
           </div>
 
@@ -133,6 +146,7 @@ function KanbanCard({ row, onOpen, onDragStart, onDragEnd, isDragging }: KanbanC
 type KanbanColumnProps = {
   status: BookingStatus;
   rows: BookingRow[];
+  showProperty: boolean;
   onOpen: (row: BookingRow) => void;
   onDragStart: (e: React.DragEvent, row: BookingRow) => void;
   onDragEnd: (e: React.DragEvent) => void;
@@ -145,6 +159,7 @@ type KanbanColumnProps = {
 function KanbanColumn({
   status,
   rows,
+  showProperty,
   onOpen,
   onDragStart,
   onDragEnd,
@@ -178,6 +193,7 @@ function KanbanColumn({
           <KanbanCard
             key={row.id}
             row={row}
+            showProperty={showProperty}
             onOpen={onOpen}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
@@ -246,7 +262,13 @@ function BookingsErrorState({ error }: { error: string }) {
   );
 }
 
-export function BookingKanban({ rows, isLoading, error, isRefreshing }: Props) {
+export function BookingKanban({
+  rows,
+  isLoading,
+  error,
+  isRefreshing,
+  showProperty = false,
+}: Props) {
   const [draggedRow, setDraggedRow] = useState<BookingRow | null>(null);
   const suppressClickRef = useRef(false);
   const [dropTargetStatus, setDropTargetStatus] = useState<BookingStatus | null>(null);
@@ -340,6 +362,7 @@ export function BookingKanban({ rows, isLoading, error, isRefreshing }: Props) {
             <KanbanColumn
               status={status}
               rows={rowsByStatus[status] ?? []}
+              showProperty={showProperty}
               onOpen={handleCardOpen}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
