@@ -1,0 +1,71 @@
+import { Bike, Car } from 'lucide-react';
+
+import {
+  DEFAULT_PARKING_RESIDENCE_NAME,
+  PARKING_TYPES,
+} from '@/features/dashboard/org/lib/parkingResidences';
+import { resolveParkingCompactLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
+import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
+import type { Parking } from '@/features/dashboard/org/types';
+
+import type { LucideIcon } from 'lucide-react';
+
+export { formatOrgPropertyCurrency as formatOrgParkingCurrency };
+
+export type OrgParkingStatus = 'ACTIVE' | 'INACTIVE';
+
+export const ORG_PARKING_STATUSES: {
+  value: OrgParkingStatus;
+  label: string;
+}[] = [
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'INACTIVE', label: 'Inactive' },
+];
+
+export const ORG_PARKING_TYPES = PARKING_TYPES.map((entry) => ({
+  value: entry.value,
+  label: entry.label,
+}));
+
+export function orgParkingTypeLabel(type: string): string {
+  const normalized = type.trim();
+  return (
+    ORG_PARKING_TYPES.find((entry) => entry.value === normalized)?.label ??
+    normalized.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
+  );
+}
+
+export function orgParkingTypeIcon(type: string): LucideIcon {
+  return type === 'motorcycle' ? Bike : Car;
+}
+
+export function orgParkingStatsOrEmpty(parking: Parking) {
+  return (
+    parking.stats ?? {
+      activeReservations: 0,
+      monthlyRevenue: 0,
+      occupancyRate: 0,
+    }
+  );
+}
+
+export function orgParkingLocationLine(parking: Parking): string {
+  return parking.residenceName?.trim() || DEFAULT_PARKING_RESIDENCE_NAME;
+}
+
+export function orgParkingSearchHaystack(parking: Parking): string {
+  return [
+    parking.name,
+    parking.slug,
+    resolveParkingCompactLabel(parking),
+    parking.tower,
+    parking.level,
+    parking.slotLabel,
+    parking.residenceName,
+    parking.parkingType,
+    parking.status,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+}
