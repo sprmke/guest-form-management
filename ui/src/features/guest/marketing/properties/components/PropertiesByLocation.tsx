@@ -1,0 +1,38 @@
+import { Home } from 'lucide-react';
+
+import { PropertiesLocationRow } from './PropertiesLocationRow';
+import { groupPropertiesByLocation } from '../lib/groupPropertiesByLocation';
+
+import type { Property } from './PropertyCard';
+
+interface PropertiesByLocationProps {
+  properties: Property[];
+}
+
+export function PropertiesByLocation({ properties }: PropertiesByLocationProps) {
+  const groups = groupPropertiesByLocation(properties);
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center">
+        <div className="bg-muted mb-4 rounded-full p-5">
+          <Home className="text-muted-foreground h-8 w-8" />
+        </div>
+        <h3 className="text-foreground text-lg font-semibold">No properties found</h3>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-w-0 space-y-10 sm:space-y-12">
+      {groups.map((group) => (
+        <PropertiesLocationRow
+          key={group.place}
+          title={group.title}
+          viewAllTo={`/properties/in/${group.locationSlug}`}
+          properties={group.properties}
+        />
+      ))}
+    </div>
+  );
+}
