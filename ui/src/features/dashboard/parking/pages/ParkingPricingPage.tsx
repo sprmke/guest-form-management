@@ -1,0 +1,343 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
+import { Loader2 } from 'lucide-react';
+
+import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { ParkingPricingRatesFormCard } from '@/features/dashboard/parking/components/ParkingPricingRatesFormCard';
+import { ParkingPricingStatsRow } from '@/features/dashboard/parking/components/ParkingPricingStatsRow';
+import {
+  useParkingPricing,
+  useSaveParkingPricing,
+} from '@/features/dashboard/parking/hooks/useParkingPricing';
+import {
+  dateKey,
+  resolveParkingNightlyRateForDate,
+} from '@/features/dashboard/parking/lib/parkingPricingCompute';
+import {
+  DEFAULT_PARKING_WEEKDAY_NIGHTLY_RATE,
+  DEFAULT_PARKING_WEEKEND_NIGHTLY_RATE,
+  parkingPricingDefaultsFromDto,
+} from '@/features/dashboard/parking/lib/parkingPricingDefaults';
+import {
+  buildParkingPricingSavePatch,
+  dateOverridesRecordFromMap,
+  parkingPricingBaselineFromDto,
+  parkingPricingFormHasBaseRateChanges,
+  type ParkingPricingFormBaseline,
+  type ParkingPricingSaveOptions,
+} from '@/features/dashboard/parking/lib/parkingPricingSave';
+import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
+import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
+import { PricingSaveDialog } from '@/features/dashboard/pricing/components/PricingSaveDialog';
+import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
+import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
+
+export function ParkingPricingPage() {
+  const { data: orgAccess } = useOrgPermissions();
+  const canEdit = hasOrgPermission(orgAccess?.permissions, 'org:parkings:manage');
+
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const { data: pricingData, isLoading, isError, error } = useParkingPricing(currentMonth);
+  const saveMutation = useSaveParkingPricing();
+
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
+  const [isSelecting, setIsSelecting] = useState(false);
+  const justSelectedRef = useRef(false);
+  const selectedDatesRef = useRef(selectedDates);
+  selectedDatesRef.current = selectedDates;
+
+  const [weekdayRate, setWeekdayRate] = useState(DEFAULT_PARKING_WEEKDAY_NIGHTLY_RATE);
+  const [weekendRate, setWeekendRate] = useState(DEFAULT_PARKING_WEEKEND_NIGHTLY_RATE);
+  const [bookedDateKeys, setBookedDateKeys] = useState<Set<string>>(() => new Set());
+  const [customDatePrices, setCustomDatePrices] = useState<Map<string, number>>(() => new Map());
+
+  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [newPrice, setNewPrice] = useState('');
+  const [hasChanges, setHasChanges] = useState(false);
+  const hydratedRef = useRef(false);
+  const baselineRef = useRef<ParkingPricingFormBaseline | null>(null);
+
+  const syncBaselineFromDto = useCallback((data: NonNullable<typeof pricingData>) => {
+    baselineRef.current = parkingPricingBaselineFromDto(data);
+  }, []);
+
+  useEffect(() => {
+    if (!pricingData) return;
+
+    setBookedDateKeys(new Set(pricingData.bookedDateKeys));
+
+    if (hasChanges || hydratedRef.current) return;
+
+    const defaults = parkingPricingDefaultsFromDto(pricingData);
+    setWeekdayRate(defaults.weekdayNightlyRate);
+    setWeekendRate(defaults.weekendNightlyRate);
+    setCustomDatePrices(new Map(Object.entries(pricingData.dateOverrides)));
+    syncBaselineFromDto(pricingData);
+    hydratedRef.current = true;
+  }, [pricingData, hasChanges, syncBaselineFromDto]);
+
+  const getPriceForDate = useCallback(
+    (date: Date) => {
+      const key = dateKey(date);
+      const isBooked = bookedDateKeys.has(key);
+      const customPrice = customDatePrices.get(key);
+      if (customPrice !== undefined) {
+        return { price: customPrice, isCustom: true as const, isBooked };
+      }
+
+      const price = resolveParkingNightlyRateForDate(date, {
+        weekdayNightlyRate: weekdayRate,
+        weekendNightlyRate: weekendRate,
+      });
+
+      return { price, isCustom: false as const, isBooked };
+    },
+    [bookedDateKeys, customDatePrices, weekdayRate, weekendRate]
+  );
+
+  const openDateModal = useCallback(
+    (dates: Date[]) => {
+      if (dates.length === 0) {
+        setDateModalOpen(false);
+        setNewPrice('');
+        return;
+      }
+      const first = [...dates].sort((a, b) => a.getTime() - b.getTime())[0];
+      if (first) {
+        setNewPrice(String(getPriceForDate(first).price));
+      }
+      setDateModalOpen(true);
+    },
+    [getPriceForDate]
+  );
+
+  const handleDateClick = (date: Date) => {
+    if (isBefore(date, startOfToday()) || !canEdit || bookedDateKeys.has(dateKey(date))) {
+      return;
+    }
+    if (justSelectedRef.current) {
+      justSelectedRef.current = false;
+      return;
+    }
+
+    let next: Date[];
+    if (selectedDates.some((d) => isSameDay(d, date))) {
+      next = selectedDates.filter((d) => !isSameDay(d, date));
+    } else {
+      next = [...selectedDates, date];
+    }
+    setSelectedDates(next);
+    openDateModal(next);
+  };
+
+  const handleDateMouseDown = (date: Date) => {
+    if (isBefore(date, startOfToday()) || !canEdit || bookedDateKeys.has(dateKey(date))) {
+      return;
+    }
+    setIsSelecting(true);
+    justSelectedRef.current = true;
+    const next = [date];
+    setSelectedDates(next);
+  };
+
+  const handleDateMouseEnter = (date: Date) => {
+    if (
+      !isSelecting ||
+      isBefore(date, startOfToday()) ||
+      !canEdit ||
+      bookedDateKeys.has(dateKey(date))
+    ) {
+      return;
+    }
+    const firstDate = selectedDates[0];
+    if (!firstDate) return;
+
+    const start = firstDate < date ? firstDate : date;
+    const end = firstDate < date ? date : firstDate;
+    const range = eachDayOfInterval({ start, end }).filter((d) => !isBefore(d, startOfToday()));
+    setSelectedDates(range);
+  };
+
+  const handleSelectionEnd = () => {
+    if (!isSelecting) return;
+    setIsSelecting(false);
+    setTimeout(() => {
+      justSelectedRef.current = false;
+    }, 100);
+    if (selectedDatesRef.current.length > 0) {
+      openDateModal(selectedDatesRef.current);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedDates([]);
+    setNewPrice('');
+    setDateModalOpen(false);
+  };
+
+  const persistDateOverrides = (next: Map<string, number>, onSuccess?: () => void) => {
+    saveMutation.mutate(
+      { dateOverrides: dateOverridesRecordFromMap(next) },
+      {
+        onSuccess: (data) => {
+          setCustomDatePrices(new Map(Object.entries(data.dateOverrides)));
+          onSuccess?.();
+        },
+      }
+    );
+  };
+
+  const applyCustomPrice = () => {
+    if (!newPrice.trim() || selectedDates.length === 0) return;
+    const price = parseFloat(newPrice);
+    if (!Number.isFinite(price) || price < 0) return;
+
+    const next = new Map(customDatePrices);
+    selectedDates.forEach((date) => {
+      next.set(format(date, 'yyyy-MM-dd'), price);
+    });
+    persistDateOverrides(next, clearSelection);
+  };
+
+  const resetSelectedToDefault = () => {
+    const next = new Map(customDatePrices);
+    selectedDates.forEach((date) => {
+      next.delete(format(date, 'yyyy-MM-dd'));
+    });
+    persistDateOverrides(next, clearSelection);
+  };
+
+  const handleSaveConfirm = (options: ParkingPricingSaveOptions) => {
+    const patch = buildParkingPricingSavePatch(
+      {
+        weekdayRate,
+        weekendRate,
+        customDatePrices,
+        currentMonth,
+        bookedDateKeys,
+      },
+      options
+    );
+
+    saveMutation.mutate(patch, {
+      onSuccess: (data) => {
+        setHasChanges(false);
+        setSaveDialogOpen(false);
+        setCustomDatePrices(new Map(Object.entries(data.dateOverrides)));
+        syncBaselineFromDto(data);
+        if (options.baseRateScope === 'all_future') {
+          const defaults = parkingPricingDefaultsFromDto(data);
+          setWeekdayRate(defaults.weekdayNightlyRate);
+          setWeekendRate(defaults.weekendNightlyRate);
+        }
+      },
+    });
+  };
+
+  const handleSaveClick = () => {
+    const baseline = baselineRef.current;
+    if (!baseline) return;
+
+    if (parkingPricingFormHasBaseRateChanges(baseline, weekdayRate, weekendRate)) {
+      setSaveDialogOpen(true);
+    }
+  };
+
+  const suggestedPrice = useMemo(() => {
+    if (selectedDates.length === 0) return weekdayRate;
+    const first = [...selectedDates].sort((a, b) => a.getTime() - b.getTime())[0];
+    return first ? getPriceForDate(first).price : weekdayRate;
+  }, [getPriceForDate, selectedDates, weekdayRate]);
+
+  if (isLoading && !hydratedRef.current) {
+    return (
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-4 text-sm">
+        {(error as Error)?.message ?? 'Failed to load pricing'}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-3 sm:space-y-4">
+        <AdminPageHeader
+          id="parking-pricing-heading"
+          title="Pricing"
+          subtitle="Manage nightly rates for this parking slot."
+          variant="compact"
+        />
+
+        <ParkingPricingStatsRow
+          weekdayRate={weekdayRate}
+          weekendRate={weekendRate}
+          customDatesCount={customDatePrices.size}
+        />
+
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-5">
+          <PricingCalendarGrid
+            currentMonth={currentMonth}
+            selectedDates={selectedDates}
+            onMonthChange={setCurrentMonth}
+            onDateClick={handleDateClick}
+            onDateMouseDown={handleDateMouseDown}
+            onDateMouseEnter={handleDateMouseEnter}
+            onSelectionEnd={handleSelectionEnd}
+            getPriceForDate={getPriceForDate}
+          />
+
+          <div className="lg:sticky lg:top-5">
+            <ParkingPricingRatesFormCard
+              weekdayRate={weekdayRate}
+              weekendRate={weekendRate}
+              readOnly={!canEdit}
+              hasChanges={hasChanges}
+              saving={saveMutation.isPending}
+              onWeekdayChange={(value) => {
+                setWeekdayRate(value);
+                setHasChanges(true);
+              }}
+              onWeekendChange={(value) => {
+                setWeekendRate(value);
+                setHasChanges(true);
+              }}
+              onSaveClick={handleSaveClick}
+            />
+          </div>
+        </div>
+      </div>
+
+      <PricingDateModal
+        open={dateModalOpen && selectedDates.length > 0 && canEdit}
+        onOpenChange={(open) => {
+          setDateModalOpen(open);
+          if (!open) clearSelection();
+        }}
+        selectedDates={selectedDates}
+        suggestedPrice={suggestedPrice}
+        newPrice={newPrice}
+        onNewPriceChange={setNewPrice}
+        onClearSelection={clearSelection}
+        onResetToDefault={resetSelectedToDefault}
+        onApply={applyCustomPrice}
+        saving={saveMutation.isPending}
+      />
+
+      <PricingSaveDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        saving={saveMutation.isPending}
+        onConfirm={handleSaveConfirm}
+      />
+    </>
+  );
+}
