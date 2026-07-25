@@ -8,9 +8,10 @@ import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadg
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 
+import { resolveBookingListHref } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -29,13 +30,22 @@ function modalGuestName(row: BookingRow): string {
 }
 
 export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, previewRow }: Props) {
-  const { orgSlug, propertySlug } = useOrgContext();
+  const orgContext = useOptionalOrgContext();
+  const orgSlug = useOrgSlugParam();
   const {
     data: booking,
     isLoading,
     error,
   } = useBooking(open ? (bookingId ?? undefined) : undefined);
   const displayRow = booking ?? previewRow ?? null;
+  const detailHref =
+    bookingId && displayRow
+      ? resolveBookingListHref(displayRow, {
+          orgSlug,
+          propertySlug: orgContext?.propertySlug,
+          scope: orgContext ? 'property' : 'org',
+        })
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,13 +72,9 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
                 </div>
               ) : null}
             </div>
-            {bookingId ? (
+            {detailHref ? (
               <Button variant="outline" size="sm" className="h-9 shrink-0 gap-1.5 px-2.5" asChild>
-                <Link
-                  to={bookingDetailPath(orgSlug, propertySlug, bookingId)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <Link to={detailHref} target="_blank" rel="noopener noreferrer">
                   Open booking
                   <ExternalLink className="size-3.5 shrink-0" aria-hidden />
                 </Link>

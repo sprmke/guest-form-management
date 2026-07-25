@@ -19,3 +19,11 @@ export function resolveBookingListHref(
   }
   return `/bookings/${row.id}`;
 }
+
+/** Property slug from route context, falling back to the booking row on org-wide lists. */
+export function resolveBookingPropertySlug(
+  booking: Pick<BookingRow, 'property_slug'>,
+  propertySlugFromContext?: string | null
+): string | null {
+  return propertySlugFromContext ?? booking.property_slug ?? null;
+}

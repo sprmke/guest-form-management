@@ -95,7 +95,8 @@ import {
   resolveAssetUrlForBrowser,
 } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { guestSdFormPath, guestStayGuidePath } from '@/features/guest/lib/guestPublicPaths';
 import {
   arePendingDocumentsComplete,
@@ -157,7 +158,8 @@ type Props = {
 };
 
 export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
-  const { propertySlug } = useOrgContext();
+  const orgContext = useOptionalOrgContext();
+  const propertySlug = resolveBookingPropertySlug(booking, orgContext?.propertySlug) ?? '';
   const isModal = variant === 'modal';
   const formVariant = isModal ? 'modal' : 'workflow';
   const queryClient = useQueryClient();
