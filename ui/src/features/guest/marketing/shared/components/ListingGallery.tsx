@@ -211,7 +211,7 @@ export function ListingGallery({
             <button
               type="button"
               onClick={() => setLightboxOpen(false)}
-              className="absolute left-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white backdrop-blur-sm transition-colors hover:bg-white/20"
               aria-label="Close gallery"
             >
               <X className="h-6 w-6" />

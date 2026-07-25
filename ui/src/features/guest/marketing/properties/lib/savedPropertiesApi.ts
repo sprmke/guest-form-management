@@ -29,11 +29,16 @@ export async function savePropertySlug(propertySlug: string): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Sign in to save properties.');
 
-  const { error } = await supabase
-    .from('guest_saved_properties')
-    .upsert({ user_id: user.id, property_slug: slug }, { onConflict: 'user_id,property_slug' });
+  const { error } = await supabase.from('guest_saved_properties').insert({
+    user_id: user.id,
+    property_slug: slug,
+  });
 
-  if (error) throw error;
+  if (error) {
+    // Already saved — treat as success.
+    if (error.code === '23505') return;
+    throw error;
+  }
 }
 
 export async function unsavePropertySlug(propertySlug: string): Promise<void> {

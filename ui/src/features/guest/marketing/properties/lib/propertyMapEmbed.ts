@@ -1,3 +1,5 @@
+import { getGoogleMapsApiKey } from '@/lib/google-maps/useGoogleMapsLoader';
+
 export type PropertyMapEmbedInput = {
   latitude?: number | null;
   longitude?: number | null;
@@ -5,8 +7,8 @@ export type PropertyMapEmbedInput = {
   placeId?: string | null;
 };
 
-function getGoogleMapsApiKey(): string {
-  return (import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined)?.trim() ?? '';
+function getGoogleMapsApiKeyLocal(): string {
+  return getGoogleMapsApiKey();
 }
 
 function hasCoordinates(latitude?: number | null, longitude?: number | null): latitude is number {
@@ -60,8 +62,15 @@ export function buildGoogleMapsEmbedApiSrc(
   return `https://www.google.com/maps/embed/v1/place?${params.toString()}`;
 }
 
+export function hasPropertyMapCoordinates(
+  latitude?: number | null,
+  longitude?: number | null
+): latitude is number {
+  return hasCoordinates(latitude, longitude);
+}
+
 export function resolvePropertyMapEmbedSrc(input: PropertyMapEmbedInput): string | null {
-  const apiKey = getGoogleMapsApiKey();
+  const apiKey = getGoogleMapsApiKeyLocal();
   const fullAddress = input.address?.trim() || null;
 
   const withAddress: PropertyMapEmbedInput = {
