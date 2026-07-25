@@ -122,6 +122,7 @@ Todos
   - ✅ Public guest form: `?source=airbnb` switches all "Facebook" labels/text to "Airbnb". Source saved to DB (`booking_source` column), Google Calendar description, and Google Sheets (new AL/BA column).
   - ✅ Booking Detail page: `booking_source` shown in Other Information card with color-coded badge (blue=Facebook, orange=Airbnb). Airbnb bookings default Down Payment = 0, Security Deposit = 0 in the Review Pricing form.
 - ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
+- ✅ **Guest account + host public profile** — explore nav avatar → **`/account/*`** (profile, stays, wishlist, messages); edge **`guest-profile`**, **`guest-trips`**, **`guest-messages`**, **`upload-guest-profile-asset`**; **`guest_profiles`** + **`guest_submissions.guest_user_id`** migration; **`/hosts/:orgSlug`** uses team owner OAuth profile + org team display name. Guide: **`docs/guides/routes/account/profile.md`**.
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
 - ✅ **Property Pricing page (`/pricing`) E2E** — migration `20260910130000_property_pricing.sql` (`app_settings` rate/fee columns + `property_pricing_date_overrides`); edge function **`property-pricing`**; UI save/load; **`ReviewPricingForm`** + booking edit use saved defaults + date overrides (Fri–Sun weekend rule). Guide: **`docs/guides/routes/org/property/pricing.md`**.
@@ -283,7 +284,7 @@ Multi-users/multi-tenant todos:
 - [x] Guest Inbox — **default 10 quick replies** — Airbnb/booking FAQ seed templates
 - [ ] Guest Inbox — **quick reply attachments** — images/videos per template
 - [x] Guest Inbox — **automation suggest-first** — AI fills composer; auto-send opt-in only
-- [ ] Guest Inbox — **AI booking/property context** — scoped read-only tools; block finance/guest PII leaks
+- [x] Guest Inbox — **AI booking/property context** — scoped facts injection + output guard (`inboxAiGuestContext.ts`, `inboxAiSafetyGuard.ts`); blocks finance/guest PII leaks
 - [ ] Guest Inbox — **AI property showcase images** in suggestions
 - [ ] Guest Inbox — **booking ↔ thread link** — booking detail open chat; inbox link/view booking; badges
 - [ ] Guest Inbox — **conversation intelligence** — summary, high-potential / follow-up flags + actions
@@ -342,11 +343,15 @@ Multi-users/multi-tenant todos:
 
 ### Onboarding
 
-- [ ] **Org + property onboarding flow.** Guided, user-friendly wizard when creating a new org and property. Reuse existing settings sections and other key UI blocks (integrations, pricing, templates, team, etc.) inside onboarding steps with dedicated onboarding chrome/wrapper.
+- [x] **Host onboarding + verification.** 3-step `/onboarding`: Organization → Hosting (property/parking/both + details) → Verify (valid ID + property/parking proof). Private bucket `org-verification-assets`; `upload-org-verification-asset` + `submit-org-verification`. Parking **Renting** / **Sublessee** capture **`parkingContractEndDate`**. Sidebar **Get Verified** for enhanced tier → public **Verified** badge. Super-admin approve/reject UI still open.
+- [ ] **Parking lease reverification.** When **`organizations.settings.verification.parkingContractEndDate`** (Asia/Manila) is past, require hosts to re-submit parking proof and pass admin review again (cron or scheduled job + dashboard banner; listing visibility rules TBD). Onboarding + submit API store the date today; automation and super-admin workflow to finalize later.
 
 ### Guest ↔ host communication
 
-- [x] **Public property page — guest chat.** Contact host (dates + guest sign-in) → **`/properties/:slug/messages`**; threads land in org Guest Inbox (**Web** tab) via **`platform=web`** on **`social_conversations`**. Guide: **`docs/guides/routes/properties/chat.md`**.
+- [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **`docs/guides/routes/properties/chat.md`**.
+- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Send; **`/messages`** for return visits only. Spec: **`docs/temp/guest-contact-host-flow.md`**.
+- [x] **Guest Messages hub (Phase 2).** Cross-property thread list + inline chat on `/account/messages` for signed-in guests.
+- [ ] **Booking bridge in thread (Phase 3).** Host booking link / reserve CTA inside pre-booking chat.
 
 ### Help & support (per org)
 
@@ -474,29 +479,32 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 
 Mind map todos:
 
+Things to plan
+
+- Parking booking process
+- Legit check, Proof submission
+- Plan a way for agent to use and make a profit on using our platform
+- Provider service module where guest/user can avail cleaning, maintenance, breakfast services, etc
+- Payment process
+- Subscription process
+- Refund/scam protection
+
 Big modules:
 
 - Refined onboarding flow/process for adding new properties & parking
-- Parking booking process
-- Plan a way for agent to use and make a profit on using our platform
-- Provider service module where guest/user can avail cleaning, maintenance, breakfast services, etc
-- Create new super admin module for managing developments, approvals, etc
+- [WIP] Create new super admin module for managing developments, approvals, etc
   - New host listings
   - Approve external reviews
 - Provide help and support
 - Create stunning and animated customizable or templated landing/showcase page
-- Payment process
-- Subscription process
-- Refund/scam protection
-- Chat app between guest and host
+- [WIP] Chat app between guest and host
 - Improve app responsiveness & skeleton loaders
-- Legit check, Proof submission
 - Add info modal for some module or sections
   - Telegram notifications setup
 
 Random:
 
-- Add confirmation modal when adding new payment modals that all information are correct
+- ✅ Add confirmation modal when adding new payment modals that all information are correct
   ✅ Apply the same slide-in animation we have from PMA when switching between host & explore mode
 - Improve /for-hosts landing page
 - ✅ Improve external reviews modal UI/UX
@@ -511,6 +519,7 @@ Random:
 - Save updated base rates pricing should only be applicable for all future unbooked dates
 - ✅ Let's support up to 9 images in property photos
 - Update superhost to have duration or implement our own Superhost logics
+- Able to block dates without booking?
 
 - UI to make consistent/improve:
   - Modal
@@ -523,8 +532,14 @@ Random:
   - Improve UI/UX when transition bookings
   - Property/Parking default amenities lists
   - Refine public filters, search functionality
+  - Quick replies list
   - Standard and email templates
   - Refine footer links and info
   - Finance transaction categories
   - Legal: Privacy policy, terms of service, cookie policy
   - PDF Reporting
+
+Needs to finalize:
+
+- Chat
+  - display sent info, able to edit message until seen or reply
