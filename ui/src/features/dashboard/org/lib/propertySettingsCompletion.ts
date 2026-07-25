@@ -1,0 +1,477 @@
+import type {
+  AppSettingsDto,
+  AppSettingsFormValues,
+} from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
+import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
+import {
+  validatePaymentAccountName,
+  validatePaymentAccountNumber,
+  validatePaymentProvider,
+} from '@/features/dashboard/org/lib/paymentProviders';
+import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
+import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
+import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
+import {
+  getResidencePropertyDefaults,
+  validateNumericField,
+  validatePropertyDetailsForResidence,
+} from '@/features/dashboard/org/lib/propertyResidenceDefaults';
+import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
+import type { PropertyProfileDraft } from '@/features/dashboard/org/lib/propertySettingsForm';
+import {
+  isPropertyTowerForResidence,
+  isValidUnitNumber,
+} from '@/features/dashboard/org/lib/propertyTowerUnit';
+import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
+
+import {
+  validateAdminEmailList,
+  validateOptionalAdminEmail,
+  validateOptionalAdminUrl,
+  validateRequiredAdminUrl,
+} from '@/lib/validation/adminSettings';
+import {
+  validateEmailAddress,
+  validateFullPersonName,
+  validatePhilippineMobilePhone,
+  validatePropertyContactField,
+} from '@/lib/validation/fieldValidation';
+
+function requireText(value: string, message: string): string | null {
+  return value.trim() ? null : message;
+}
+
+function requireAdminEmail(raw: string, label: string, emptyMessage: string): string | null {
+  const empty = requireText(raw, emptyMessage);
+  if (empty) return empty;
+  const formatErr = validateEmailAddress(raw);
+  if (formatErr) return formatErr;
+  return validateOptionalAdminEmail(raw, label);
+}
+
+function requirePersonName(raw: string, emptyMessage: string): string | null {
+  const empty = requireText(raw, emptyMessage);
+  if (empty) return empty;
+  return validateFullPersonName(raw);
+}
+
+function requirePhone(raw: string, emptyMessage: string): string | null {
+  const empty = requireText(raw, emptyMessage);
+  if (empty) return empty;
+  return validatePhilippineMobilePhone(raw);
+}
+
+function requireTowerUnit(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return 'Enter the tower and unit number';
+  if (value.length < 3) return 'Enter a valid tower and unit number';
+  return null;
+}
+
+export const MIN_PROPERTY_PHOTOS = 3;
+export const MIN_PROPERTY_AMENITIES = 5;
+
+export type PropertySettingsSectionId =
+  | 'basic'
+  | 'media'
+  | 'details'
+  | 'amenities'
+  | 'house-rules'
+  | 'cancellation'
+  | 'location'
+  | 'branding'
+  | 'payment'
+  | 'building-forms'
+  | 'email-automations'
+  | 'integrations';
+
+export type PropertySettingsCompletionInput = {
+  profile: PropertyProfileDraft;
+  operational: AppSettingsFormValues | null;
+  appSettings: AppSettingsDto | null;
+  gmailConnected: boolean;
+  gmailNeedsReconnect: boolean;
+  nameConflict?: boolean;
+  towerConflict?: boolean;
+};
+
+export type PropertySettingsCompletionResult = {
+  fieldErrors: Record<string, string>;
+  sectionMessages: Partial<Record<PropertySettingsSectionId, string>>;
+  issueSectionIds: PropertySettingsSectionId[];
+  firstIssueSectionId: PropertySettingsSectionId | null;
+  firstErrorMessage: string | null;
+  isComplete: boolean;
+};
+
+function contactFieldError(
+  field: 'contactName' | 'contactPhone' | 'contactEmail',
+  value: string
+): string | null {
+  const emptyMessages: Record<typeof field, string> = {
+    contactName: "Enter the contact person's full name",
+    contactPhone: 'Enter a phone number',
+    contactEmail: 'Enter an email address',
+  };
+  const empty = requireText(value, emptyMessages[field]);
+  if (empty) return empty;
+  return validatePropertyContactField(field, value);
+}
+
+function googleIntegrationReady(input: PropertySettingsCompletionInput): boolean {
+  const integrations = input.appSettings?.propertyIntegrations;
+  return (
+    input.gmailConnected &&
+    !input.gmailNeedsReconnect &&
+    Boolean(integrations?.googleCalendar.configured) &&
+    Boolean(integrations?.googleSpreadsheet.configured) &&
+    Boolean(integrations?.gmail.connected)
+  );
+}
+
+function paymentQrConfigured(appSettings: AppSettingsDto | null): boolean {
+  if (!appSettings) return false;
+  if (appSettings.fieldSources.gcashQrImageUrl === 'db') return true;
+  return appSettings.gcashQrImageUrl.trim().length > 0;
+}
+
+function signatureConfigured(appSettings: AppSettingsDto | null): boolean {
+  if (!appSettings) return false;
+  if (appSettings.fieldSources.gafUnitOwnerSignatureUrl === 'db') return true;
+  return appSettings.gafUnitOwnerSignatureUrl.trim().length > 0;
+}
+
+export function computePropertySettingsCompletion(
+  input: PropertySettingsCompletionInput
+): PropertySettingsCompletionResult {
+  const { profile, operational, appSettings } = input;
+  const fieldErrors: Record<string, string> = {};
+  const sectionMessages: Partial<Record<PropertySettingsSectionId, string>> = {};
+  const issueSectionIds: PropertySettingsSectionId[] = [];
+
+  const addSectionIssue = (sectionId: PropertySettingsSectionId, message: string) => {
+    if (!sectionMessages[sectionId]) sectionMessages[sectionId] = message;
+    if (!issueSectionIds.includes(sectionId)) issueSectionIds.push(sectionId);
+  };
+
+  const addFieldError = (
+    fieldId: string,
+    message: string,
+    sectionId: PropertySettingsSectionId
+  ) => {
+    fieldErrors[fieldId] = message;
+    if (!issueSectionIds.includes(sectionId)) issueSectionIds.push(sectionId);
+  };
+
+  // ── Basic ──
+  if (profile.name.trim().length < 2) {
+    addFieldError('property-name', 'Enter a property name', 'basic');
+  } else if (input.nameConflict) {
+    addFieldError('property-name', 'A property with this name already exists', 'basic');
+  }
+
+  if (!profile.type.trim()) {
+    addFieldError('property-type', 'Select a property type', 'basic');
+  }
+
+  const isCondo = isCondoPropertyType(profile.type);
+  const residenceName = profile.residenceName.trim();
+
+  if (isCondo) {
+    if (!residenceName) {
+      addFieldError('property-residence', 'Select a residence', 'basic');
+    }
+    if (!profile.tower) {
+      addFieldError('property-tower', 'Select a tower', 'basic');
+    } else if (residenceName && !isPropertyTowerForResidence(profile.tower, residenceName)) {
+      addFieldError('property-tower', 'Select a valid tower for this residence', 'basic');
+    }
+    if (!isValidUnitNumber(profile.unitNumber)) {
+      addFieldError('property-unit', 'Enter a valid 4-digit unit number', 'basic');
+    } else if (input.towerConflict) {
+      addFieldError('property-unit', 'This tower and unit combination is already in use', 'basic');
+    }
+  }
+
+  if (operational) {
+    const brandColorErr = validateOrgBrandColor(operational.brandColor);
+    if (brandColorErr) {
+      addFieldError('property-brand-color', brandColorErr, 'basic');
+    }
+  }
+
+  // ── Socials ──
+  if (operational) {
+    const facebookErr = validateRequiredAdminUrl(
+      operational.facebookPageUrl,
+      'Facebook page URL',
+      'Enter Facebook page URL'
+    );
+    if (facebookErr) {
+      addFieldError('property-facebook-page-url', facebookErr, 'branding');
+    }
+
+    const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
+    if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
+
+    const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
+    if (instagramErr) {
+      addFieldError('property-instagram-url', instagramErr, 'branding');
+    }
+
+    const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
+    if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+
+    const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);
+    if (externalReviewsErr) {
+      addFieldError('property-external-reviews', externalReviewsErr, 'branding');
+    }
+
+    const superhostErr = validateOptionalAdminUrl(
+      operational.superhostVerificationUrl,
+      'Superhost verification URL'
+    );
+    if (superhostErr) {
+      addFieldError('property-superhost-verification-url', superhostErr, 'branding');
+    }
+  }
+
+  // ── Media ──
+  const photoCount = countPropertyMedia(profile.media).images;
+  if (photoCount < MIN_PROPERTY_PHOTOS) {
+    addSectionIssue(
+      'media',
+      `Add at least ${MIN_PROPERTY_PHOTOS} photos. Guests rely on photos when choosing a stay.`
+    );
+  }
+
+  // ── Details ──
+  const detailDefaults = getResidencePropertyDefaults(
+    profile.residenceName.trim() || DEFAULT_RESIDENCE_NAME
+  );
+  const detailFieldChecks: {
+    value: number;
+    range: (typeof detailDefaults)['bedrooms'];
+    id: string;
+    label: string;
+  }[] = [
+    {
+      value: profile.bedrooms,
+      range: detailDefaults.bedrooms,
+      id: 'property-bedrooms',
+      label: 'Bedrooms',
+    },
+    {
+      value: profile.bathrooms,
+      range: detailDefaults.bathrooms,
+      id: 'property-bathrooms',
+      label: 'Bathrooms',
+    },
+    {
+      value: profile.floors,
+      range: detailDefaults.floors,
+      id: 'property-floors',
+      label: 'Floor',
+    },
+    {
+      value: profile.maxAdults,
+      range: detailDefaults.maxAdults,
+      id: 'property-max-adults',
+      label: 'Max adults',
+    },
+    {
+      value: profile.maxChildren,
+      range: detailDefaults.maxChildren,
+      id: 'property-max-children',
+      label: 'Max children',
+    },
+  ];
+  for (const field of detailFieldChecks) {
+    const err = validateNumericField(field.value, field.range, field.label);
+    if (err) addFieldError(field.id, err, 'details');
+  }
+  // Fallback if residence validator returns a message we did not map
+  if (!detailFieldChecks.some((field) => fieldErrors[field.id])) {
+    const detailsErr = validatePropertyDetailsForResidence(profile);
+    if (detailsErr) {
+      addFieldError('property-bedrooms', detailsErr, 'details');
+    }
+  }
+
+  if (!profile.checkInTime.trim()) {
+    addFieldError('property-check-in', 'Set a check-in time', 'details');
+  }
+  if (!profile.checkOutTime.trim()) {
+    addFieldError('property-check-out', 'Set a check-out time', 'details');
+  }
+
+  // ── Amenities ──
+  const amenityCount = profile.enabledAmenities.length;
+  if (amenityCount < MIN_PROPERTY_AMENITIES) {
+    addSectionIssue(
+      'amenities',
+      `Select at least ${MIN_PROPERTY_AMENITIES} amenities (${amenityCount} selected). This helps guests know what your property offers.`
+    );
+  }
+
+  // ── Cancellation ──
+  if (profile.cancellationPolicy.type === 'custom') {
+    const cancellationErr = validateCancellationPolicySettings(profile.cancellationPolicy);
+    if (cancellationErr) {
+      if (cancellationErr.includes('title')) {
+        addFieldError('cancellation-custom-title', cancellationErr, 'cancellation');
+      } else if (cancellationErr.includes('description')) {
+        addFieldError('cancellation-custom-description', cancellationErr, 'cancellation');
+      } else {
+        addFieldError('cancellation-custom-title', cancellationErr, 'cancellation');
+      }
+    }
+  }
+
+  // ── Location ──
+  if (!profile.address.trim()) {
+    addFieldError('property-address', 'Enter the street address', 'location');
+  }
+  if (!profile.city.trim()) {
+    addFieldError('property-city', 'Enter the city', 'location');
+  }
+  if (!profile.province.trim()) {
+    addFieldError('property-province', 'Enter the province or state', 'location');
+  }
+  if (!profile.country.trim()) {
+    addFieldError('property-country', 'Enter the country', 'location');
+  }
+  if (profile.latitude == null || profile.longitude == null) {
+    addFieldError('property-location-map', 'Pin your property on the map', 'location');
+  }
+
+  // ── Payment ──
+  if (operational) {
+    if (operational.paymentMethods.length === 0) {
+      addFieldError('payment-methods', 'Add at least one payment method', 'payment');
+    } else if (operational.paymentMethods.length > MAX_PROPERTY_PAYMENT_METHODS) {
+      addFieldError(
+        'payment-methods',
+        `You can add up to ${MAX_PROPERTY_PAYMENT_METHODS} payment methods`,
+        'payment'
+      );
+    } else if (operational.paymentMethods.filter((m) => m.isPrimary).length !== 1) {
+      addFieldError('payment-methods', 'Mark exactly one payment method as primary', 'payment');
+    }
+
+    for (const method of operational.paymentMethods) {
+      const prefix = `payment-method-${method.id}`;
+      const providerErr = validatePaymentProvider(method.provider);
+      if (providerErr) {
+        addFieldError(`${prefix}-provider`, providerErr, 'payment');
+      }
+
+      const accountNameErr = validatePaymentAccountName(method.accountName);
+      if (accountNameErr) {
+        addFieldError(`${prefix}-name`, accountNameErr, 'payment');
+      } else if (!method.accountName.trim()) {
+        addFieldError(`${prefix}-name`, 'Enter the account name', 'payment');
+      } else if (method.accountName.trim().length < 2) {
+        addFieldError(`${prefix}-name`, 'Enter the full account holder name', 'payment');
+      }
+
+      const accountNumberErr = validatePaymentAccountNumber(method.provider, method.accountNumber);
+      if (accountNumberErr) {
+        addFieldError(`${prefix}-number`, accountNumberErr, 'payment');
+      } else if (!method.accountNumber.trim()) {
+        addFieldError(`${prefix}-number`, 'Enter the account number', 'payment');
+      }
+    }
+
+    if (!paymentQrConfigured(appSettings)) {
+      addFieldError('payment-qr-image', 'Upload a payment QR code', 'payment');
+    }
+  }
+
+  // ── Building forms ──
+  if (operational) {
+    const ownerErr = requirePersonName(operational.gafUnitOwner, 'Enter the unit owner name');
+    if (ownerErr) addFieldError('gaf-unit-owner', ownerErr, 'building-forms');
+
+    const towerUnitErr = requireTowerUnit(operational.gafTowerAndUnitNumber);
+    if (towerUnitErr) addFieldError('gaf-tower-unit', towerUnitErr, 'building-forms');
+
+    const onsiteErr = requirePersonName(
+      operational.gafGuestsOnsiteContactPerson,
+      'Enter the on-site contact person'
+    );
+    if (onsiteErr) addFieldError('gaf-onsite-contact', onsiteErr, 'building-forms');
+
+    const ownerPhoneErr = requirePhone(
+      operational.gafOwnerContactNumber,
+      'Enter the owner contact number'
+    );
+    if (ownerPhoneErr) addFieldError('gaf-owner-phone', ownerPhoneErr, 'building-forms');
+
+    if (!signatureConfigured(appSettings)) {
+      addFieldError('gaf-owner-signature', 'Upload the unit owner signature', 'building-forms');
+    }
+  }
+
+  // ── Email automations ──
+  if (operational) {
+    const emailReplyErr = requireAdminEmail(
+      operational.emailReplyTo,
+      'Property email',
+      'Enter property email'
+    );
+    if (emailReplyErr) {
+      addFieldError('email-reply-to', emailReplyErr, 'email-automations');
+    }
+
+    const parkingOwnersErr = validateAdminEmailList(
+      operational.parkingOwnerEmails,
+      'parking owner'
+    );
+    if (parkingOwnersErr) {
+      addFieldError('parking-owner-emails', parkingOwnersErr, 'email-automations');
+    }
+
+    const leadHours = operational.sdRefundCronEmailLeadHours;
+    if (
+      !Number.isFinite(leadHours) ||
+      leadHours < 0 ||
+      leadHours > SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS
+    ) {
+      addFieldError(
+        'sd-lead-hours',
+        `SD refund email lead must be 0–${SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS} hours`,
+        'email-automations'
+      );
+    }
+
+    const maxAgeDays = operational.sdRefundCronMaxCheckoutAgeDays;
+    if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0 || maxAgeDays > 365) {
+      addFieldError('sd-max-age', 'Days after checkout must be 0–365', 'email-automations');
+    }
+  }
+
+  // ── Integrations ──
+  if (!googleIntegrationReady(input)) {
+    addSectionIssue(
+      'integrations',
+      'Connect Google (Gmail, Calendar, and Spreadsheet) to automate bookings, calendar updates, and sheet sync.'
+    );
+  }
+
+  const firstIssueSectionId = issueSectionIds[0] ?? null;
+  const firstFieldError = Object.values(fieldErrors)[0] ?? null;
+  const firstErrorMessage =
+    firstFieldError || (firstIssueSectionId ? sectionMessages[firstIssueSectionId] : null) || null;
+
+  return {
+    fieldErrors,
+    sectionMessages,
+    issueSectionIds,
+    firstIssueSectionId,
+    firstErrorMessage,
+    isComplete: issueSectionIds.length === 0,
+  };
+}
