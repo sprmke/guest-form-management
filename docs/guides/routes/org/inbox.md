@@ -7,7 +7,7 @@
 | Messages tab  | Partial | Partial    | Yes  | Facebook Messenger DMs live; Instagram DMs blocked (see Known issues); comments not in thread list UI |
 | Channels tab  | Partial | Partial    | Yes  | Meta OAuth + disconnect; Instagram link status incorrect when IG Business is on Page                  |
 | Quick replies | Yes     | Yes        | Yes  | 10 default booking templates seeded; no media attachments                                             |
-| Automation    | Partial | Yes        | Yes  | Suggest-on-open toggle; auto-send opt-in only                                                         |
+| Automation    | Partial | Yes        | Yes  | Suggest-on-open; auto-send opt-in with per-platform toggles (Facebook, Instagram, Chat)               |
 
 **Status:** Documented (roadmap below is authoritative for next work)
 
@@ -46,48 +46,72 @@ Org operators view and reply to guest messages from Facebook Messenger, on-site 
 
 - **Channels** — Meta block (Facebook Messenger + Instagram DMs): Connect / Reconnect / Disconnect. Disconnect hard-deletes Meta connections, OAuth picker state, and all Facebook/Instagram conversations for the org. Connect/Reconnect wipes prior Meta inbox data before saving the new Page token. Initial connect syncs **one** Graph page (~25–50 conversations); older threads load on scroll. Multi-Page OAuth → **Choose Facebook Page** dialog. TikTok/Airbnb coming soon (Preview in mock mode).
 - **Quick replies** — CRUD on `social_reply_templates`; **10 default templates** auto-seeded when org has none (on Meta connect + first Quick replies open). Platform filter All / Facebook / Instagram.
-- **Automation** — **Suggest when opening a thread** (`auto_reply_mode=draft`) fills composer with AI draft + “Suggested by AI” label. **Send automatically** is opt-in (`auto_reply_mode=send`).
+- **Automation** — **Manage AI response** row opens a nested modal (`InboxAiResponseDialog`) editing free-text `aiSystemPrompt` (org instructions layered on top of the base prompt — never replaces Known facts/quick-reply guidance or the safety policy); includes a **Reset to default** button that fills a starter template. Composer still has a manual **Suggest** (sparkles) button per-thread — there is no auto-fill-on-open toggle. **Send automatically** is opt-in (`auto_reply_mode=send`); when enabled, per-platform toggles for Facebook, Instagram, and **Chat** (`platform_toggles.web`). Web auto-reply fires after guest sends via `guest-web-chat-messages` (no Meta 24h window). Settings GET/PATCH returns **`aiAvailable`** / **`aiError`** when Gemini/Groq keys are missing or invalid.
 
 ## API reference
 
-| Function                    | Method    | Notes                                                             |
-| --------------------------- | --------- | ----------------------------------------------------------------- |
-| `meta-inbox-oauth-start`    | POST      | Returns OAuth URL                                                 |
-| `meta-inbox-oauth-callback` | GET       | Public redirect                                                   |
-| `meta-inbox-oauth-pages`    | GET       | Pending Pages for picker                                          |
-| `meta-inbox-oauth-complete` | POST      | Connect selected Page                                             |
-| `meta-inbox-backfill`       | POST      | One Graph page per request; `light: true` for scroll sync         |
-| `meta-inbox-status`         | GET       | Connections; `metaSyncInProgress` / `metaHasMore`                 |
-| `meta-inbox-disconnect`     | POST      | Disconnect Meta                                                   |
-| `meta-inbox-webhook`        | GET/POST  | Meta events (DMs, comments webhook handlers exist)                |
-| `social-inbox-threads`      | GET       | DB-only list (`limit`, `cursor`, `search`); returns `metaHasMore` |
-| `social-inbox-messages`     | GET/POST  | Messages (`before` + `hasMore`) / mark read                       |
-| `social-inbox-send`         | POST      | Text reply to DM or comment                                       |
-| `social-inbox-templates`    | CRUD      | Quick replies                                                     |
-| `social-inbox-ai-suggest`   | POST      | AI draft (no booking/property tools yet)                          |
-| `social-inbox-settings`     | GET/PATCH | Automation toggles                                                |
+| Function                    | Method    | Notes                                                                                             |
+| --------------------------- | --------- | ------------------------------------------------------------------------------------------------- |
+| `meta-inbox-oauth-start`    | POST      | Returns OAuth URL                                                                                 |
+| `meta-inbox-oauth-callback` | GET       | Public redirect                                                                                   |
+| `meta-inbox-oauth-pages`    | GET       | Pending Pages for picker                                                                          |
+| `meta-inbox-oauth-complete` | POST      | Connect selected Page                                                                             |
+| `meta-inbox-backfill`       | POST      | One Graph page per request; `light: true` for scroll sync                                         |
+| `meta-inbox-status`         | GET       | Connections; `metaSyncInProgress` / `metaHasMore`                                                 |
+| `meta-inbox-disconnect`     | POST      | Disconnect Meta                                                                                   |
+| `meta-inbox-webhook`        | GET/POST  | Meta events (DMs, comments webhook handlers exist)                                                |
+| `social-inbox-threads`      | GET       | DB-only list (`limit`, `cursor`, `search`); returns `metaHasMore`                                 |
+| `social-inbox-messages`     | GET/POST  | Messages (`before` + `hasMore`) / mark read                                                       |
+| `social-inbox-send`         | POST      | Text reply to DM or comment                                                                       |
+| `social-inbox-templates`    | CRUD      | Quick replies                                                                                     |
+| `social-inbox-ai-suggest`   | POST      | AI draft with guest-safe property/org grounding + output guard; returns `{ suggestion, flagged }` |
+| `social-inbox-settings`     | GET/PATCH | Automation toggles                                                                                |
 
 ## Implementation map
 
-| Area         | Path                                                                                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page         | `ui/src/features/dashboard/inbox/pages/OrgInboxPage.tsx`                                                                                               |
-| Thread list  | `ui/src/features/dashboard/inbox/components/InboxThreadList.tsx`                                                                                       |
-| Conversation | `ui/src/features/dashboard/inbox/components/InboxConversationView.tsx`                                                                                 |
-| Channels     | `ui/src/features/dashboard/inbox/components/InboxChannelsTab.tsx`                                                                                      |
-| Hooks        | `ui/src/features/dashboard/inbox/hooks/useInbox.ts`                                                                                                    |
-| API client   | `ui/src/features/dashboard/inbox/lib/inboxApi.ts`                                                                                                      |
-| Mock data    | `ui/src/features/dashboard/inbox/lib/inboxMockData.ts`, `inboxMockStore.ts`, `inboxMockMode.ts`                                                        |
-| Webhook      | `supabase/functions/meta-inbox-webhook/index.ts`                                                                                                       |
-| Shared       | `supabase/functions/_shared/socialInboxService.ts`, `metaInboxGraph.ts`, `metaInboxBackfill.ts`, `metaInboxAutoReply.ts`, `metaInboxWebhookHandler.ts` |
-| Migrations   | `20260910120000_social_inbox.sql`, `20260914120000_social_inbox_meta_backfill_state.sql`, `20260914130000_social_inbox_meta_backfill_done.sql`         |
-| E2E runbook  | `docs/operations/inbox-e2e-runbook.md`                                                                                                                 |
+| Area         | Path                                                                                                                                                                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page         | `ui/src/features/dashboard/inbox/pages/OrgInboxPage.tsx`                                                                                                                                                                             |
+| Thread list  | `ui/src/features/dashboard/inbox/components/InboxThreadList.tsx`                                                                                                                                                                     |
+| Conversation | `ui/src/features/dashboard/inbox/components/InboxConversationView.tsx`                                                                                                                                                               |
+| Channels     | `ui/src/features/dashboard/inbox/components/InboxChannelsTab.tsx`                                                                                                                                                                    |
+| Hooks        | `ui/src/features/dashboard/inbox/hooks/useInbox.ts`                                                                                                                                                                                  |
+| API client   | `ui/src/features/dashboard/inbox/lib/inboxApi.ts`                                                                                                                                                                                    |
+| Mock data    | `ui/src/features/dashboard/inbox/lib/inboxMockData.ts`, `inboxMockStore.ts`, `inboxMockMode.ts`                                                                                                                                      |
+| Webhook      | `supabase/functions/meta-inbox-webhook/index.ts`                                                                                                                                                                                     |
+| Shared       | `supabase/functions/_shared/socialInboxService.ts`, `metaInboxGraph.ts`, `metaInboxBackfill.ts`, `metaInboxAutoReply.ts`, `metaInboxWebhookHandler.ts`, `inboxAiGuestContext.ts`, `inboxAiSafetyGuard.ts`, `socialInboxAiService.ts` |
+| Migrations   | `20260910120000_social_inbox.sql`, `20260914120000_social_inbox_meta_backfill_state.sql`, `20260914130000_social_inbox_meta_backfill_done.sql`                                                                                       |
+| E2E runbook  | `docs/operations/inbox-e2e-runbook.md`                                                                                                                                                                                               |
 
 ## Backend notes
 
 - DM `external_thread_id` = `{platform}:{participantId}`; legacy Meta conversation IDs migrated on connect/webhook.
 - OAuth persists Page token immediately; **initial** backfill = one Graph page via `meta-inbox-backfill`; further pages on scroll (`light: true`) then `social-inbox-threads` (DB-only).
 - Comment webhooks (`handleMetaFeedWebhook`, `handleMetaIgCommentWebhook`) write `conversation_type = 'comment'` rows, but the Messages UI does not surface them in the thread list yet (type filter exists; no comment threads synced from typical DM-only backfill).
+
+### AI grounding & guard
+
+`suggestInboxReply` (`socialInboxAiService.ts`) loads guest-safe facts before every Gemini/Groq call:
+
+| Layer   | Module                    | Role                                                                                                                         |
+| ------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Context | `inboxAiGuestContext.ts`  | Org active properties; property rates/amenities/rules/cancellation/payment/location; blocked dates; org quick reply snippets |
+| Guard   | `inboxAiSafetyGuard.ts`   | Intent-aware: allow normal guest topics; block other-guest PII, owner finance, internal ops; reject ungrounded PHP amounts   |
+| Prompt  | `socialInboxAiService.ts` | Injects `Known facts` block; prefers property facts, then quick replies; fallback copy when flagged                          |
+
+**Scope:** uses `social_conversations.property_id` when set (web chat). Meta threads without property fall back to org property list (single property auto-expands full facts). When `inquiry_check_in/out` are set, facts include computed availability + estimated stay total for those dates.
+
+**Fact priority:** property settings (rates, address, map link, payment methods with account name/number, cancellation title + description, today availability) → org **Quick reply** templates (`social_reply_templates`, platform-filtered) when property facts do not cover the question.
+
+**Allowed:** weekday/weekend rates, fees, holiday % rules, amenities, house rules, full address/residence/tower/unit/floor, map link, payment methods (including GCash account name/number/QR context), cancellation policy, today/immediate availability, inquiry-date quote, booking/calendar URLs, quick reply snippets.
+
+**Intent-aware guard:** normal inquiries (availability, rates, payment, location, cancellation, parking, pets, check-in/out) should be answered from facts — not refused. Sensitive inquiries (other guests, owner revenue/profit, internal ops) → polite decline is allowed; finance data in reply is blocked.
+
+**Denied:** other guests' bookings/PII, owner finance, maintenance, Telegram/internal settings, secrets, ungrounded prices.
+
+**Org custom instructions (`ai_system_prompt`, managed via Automation → Manage AI response):** layered on top of the base prompt and Known facts/quick-reply guidance — never replaces them, so a host's free-text tone/context notes cannot suppress the safety policy or fact grounding.
+
+**API:** `social-inbox-ai-suggest` returns `{ suggestion, flagged }`. UI shows **AI declined to answer** when `flagged: true`.
 
 ---
 
@@ -129,10 +153,7 @@ Prioritized themes for Guest Inbox v2. Check items in `docs/TODOS.md` as they sh
 9. **Default quick replies** — ~~Seed **10** org-level templates~~ **Done** (`inboxDefaultQuickReplies.ts`).
 10. **Quick reply media** — Attach image/video per template; send as Meta attachment bundle with template text.
 11. **Automation: suggest-first** — ~~Remove default auto-send~~ **Done:** suggest-on-open toggle; auto-send opt-in.
-12. **AI with property/booking context** — Extend `social-inbox-ai-suggest` (and automation) with scoped tools:
-    - **Allowed:** property name/address, public calendar availability, published pricing hints, template snippets, check-in/out policy from org/property settings, guest form link.
-    - **Denied:** other guests’ PII, finance (revenue/expenses/profits), internal notes, full booking lists, admin-only fields.
-    - May require new edge helper(s) mirroring read-only slices of `list-bookings` / `app-settings` / `property-templates` with strict guest-thread scoping.
+12. **AI with property/booking context** — **Done:** scoped facts injection + output guard (`inboxAiGuestContext.ts`, `inboxAiSafetyGuard.ts`). Allowed: property details, public availability ranges, published rates/fees/holiday rules, amenities, house rules, cancellation policy, booking form link. Denied: other guests' PII, finance, maintenance, internal fields. Returns `{ suggestion, flagged }` on suggest.
 13. **AI property showcase images** — When AI suggests replies, optionally attach curated property/amenity images from `app_settings` / property media (operator-configured set per org/property).
 
 ### P3 — Booking ↔ Inbox integration

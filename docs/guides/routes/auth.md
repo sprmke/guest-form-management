@@ -16,6 +16,7 @@ Routes:
 | Host Google login    | ✅       | —          | Documented | Google only — full-width Continue with Google              |
 | Host register Google | ✅       | —          | Documented | Google only; default redirect `/onboarding`                |
 | Guest checkout auth  | ✅       | Client     | Documented | Modal at calendar Proceed + form Submit + save heart       |
+| Guest account nav    | ✅       | —          | Documented | Avatar on explore; `/account/*` when signed in             |
 | Mode switcher        | —        | —          | Documented | Admin sidebar + host auth layout only (no marketing float) |
 
 ---
@@ -32,6 +33,8 @@ Guests browse dates and fill the booking form **without signing in**. Auth appea
 
 Marketing **Become a host?** on explore pages links to **`/for-hosts`**. On `/for-hosts` the nav shows **Sign In** → **`/for-hosts/login`**.
 
+When a guest session exists on **explore** pages, a **rounded avatar** appears beside **Become a host?** with links to **`/account/*`** (profile, stays, wishlist, messages). See **`docs/guides/routes/account/profile.md`**.
+
 ### Guest checkout modal
 
 - Single email field → **Continue** → OTP code emailed (unified sign-in/sign-up via `signInWithOtp` + `shouldCreateUser: true`)
@@ -39,7 +42,7 @@ Marketing **Become a host?** on explore pages links to **`/for-hosts`**. On `/fo
 - No phone sign-in
 - No dedicated `/for-guests/login` page
 
-Resume after OAuth: `sessionStorage` (`guestAuthResume.ts`) restores navigation to the form or auto-submits after social/email auth.
+Resume after OAuth: `sessionStorage` (`guestAuthResume.ts`) restores navigation to the form, contact-host sheet, or auto-submits after social/email auth. After a full-page OAuth redirect, `GuestAuthContext` reads the stored resume when the session becomes active (in-memory pending callbacks are lost on reload).
 
 ### Host sign-in (Google only)
 
@@ -53,21 +56,21 @@ Guards send unauthenticated hosts to **`hostLoginPath(currentPath)`**.
 
 ## Implementation map
 
-| Concern               | Path                                                                            |
-| --------------------- | ------------------------------------------------------------------------------- |
-| Guest modal + context | `ui/src/features/guest/auth/components/GuestAuthModal.tsx`                      |
-|                       | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                       |
-| Session / OTP / OAuth | `ui/src/features/guest/auth/hooks/useGuestSession.ts`                           |
-|                       | `ui/src/features/guest/auth/hooks/useGuestAuthActions.ts`                       |
-| OAuth resume          | `ui/src/features/guest/auth/lib/guestAuthResume.ts`                             |
-| Calendar gate         | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                         |
-| Property Reserve gate | `ui/src/features/guest/marketing/properties/hooks/usePropertyReserve.ts`        |
-| Property save gate    | `ui/src/features/guest/marketing/properties/hooks/usePropertySave.ts`           |
-| Saved properties      | `ui/src/features/guest/marketing/properties/context/SavedPropertiesContext.tsx` |
-| Save button UI        | `ui/src/features/guest/marketing/properties/components/PropertySaveButton.tsx`  |
-| Form gate             | `ui/src/features/guest/form/components/GuestForm.tsx`                           |
-| Host OAuth hook       | `ui/src/features/guest/auth/hooks/useHostGoogleAuth.ts`                         |
-| Host routes           | `ui/src/features/guest/auth/routes/index.tsx`                                   |
+| Concern               | Path                                                                                                                                      |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Guest modal + context | `ui/src/features/guest/auth/components/GuestAuthModal.tsx`                                                                                |
+|                       | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                                                                                 |
+| Session / OTP / OAuth | `ui/src/features/guest/auth/hooks/useGuestSession.ts`                                                                                     |
+|                       | `ui/src/features/guest/auth/hooks/useGuestAuthActions.ts`                                                                                 |
+| OAuth resume          | `ui/src/features/guest/auth/lib/guestAuthResume.ts`                                                                                       |
+| Calendar gate         | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                                                                                   |
+| Property Reserve gate | `ui/src/features/guest/marketing/properties/hooks/usePropertyReserve.ts`                                                                  |
+| Property save gate    | `ui/src/features/guest/marketing/properties/hooks/usePropertySave.ts`                                                                     |
+| Saved properties      | `ui/src/features/guest/marketing/properties/hooks/useSavedPropertySlugsQuery.ts`, `useSavePropertyMutation.ts`, `SavedPropertiesSync.tsx` |
+| Save button UI        | `ui/src/features/guest/marketing/properties/components/PropertySaveButton.tsx`                                                            |
+| Form gate             | `ui/src/features/guest/form/components/GuestForm.tsx`                                                                                     |
+| Host OAuth hook       | `ui/src/features/guest/auth/hooks/useHostGoogleAuth.ts`                                                                                   |
+| Host routes           | `ui/src/features/guest/auth/routes/index.tsx`                                                                                             |
 
 ---
 

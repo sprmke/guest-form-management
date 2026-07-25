@@ -28,13 +28,13 @@ Routes:
 
 Browse and view rental listings. Ported from PMA `features/marketing/properties/**`. Uses **`MarketingLayoutShell`**.
 
-**Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** (guest OTP / OAuth modal) then navigates to **`/form?property=<slug>&checkInDate=&checkOutDate=`**. Without dates, desktop opens the booking calendar modal; mobile navigates to **`/properties/:propertySlug/calendar`**.
+**Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** then navigates to **`/properties/:propertySlug/form?checkInDate=&checkOutDate=`**. Without dates, opens the booking calendar modal on the listing (desktop + mobile).
 
-**Contact host:** **`ListingHostCard`** → **`usePropertyContactHost`** (same date + auth gates as Reserve) → **`/properties/:propertySlug/messages?checkInDate=&checkOutDate=`**. Host replies in org **Guest Inbox** (**Web** tab). See **[chat.md](./properties/chat.md)**.
+**Contact host:** **`ListingHostCard`** → auth if needed → **`ContactHostSheet`** centered modal. See **[chat.md](./properties/chat.md)**.
 
 **Save / wishlist:** Heart on **`PropertyCard`** (grid + carousel), **`PropertyListItem`**, and detail **`PropertyGallery`** uses **`usePropertySave`** → **`requireGuestAuth`** when anonymous, then persists to **`guest_saved_properties`** (shared TanStack Query cache). OAuth return resumes via **`save_property`** intent in **`guestAuthResume.ts`**.
 
-**Host profile link:** Org name on the property detail host card links to **`/hosts/:orgSlug`** (e.g. `/hosts/kame-home`). Admin dashboard uses **`/org/:orgSlug`** — public guest URLs use **`/hosts/`** to avoid confusion. API: **`get-public-host?org=`**.
+**Host profile link:** Org name on the property detail host card links to **`/hosts/:orgSlug`** (e.g. `/hosts/kame-homes`). Public page clears the fixed marketing nav (`pt-20` / `lg:pt-24`), applies org **brand color** (`GuestPublicBrandShell`), circular org logo, name → hosted-by → tagline → description → circular social icons, then compact grids of **ACTIVE** homes and **ACTIVE** parkings (when the org has either). Admin dashboard uses **`/org/:orgSlug`** — public guest URLs use **`/hosts/`** to avoid confusion. API: **`get-public-host?org=`**.
 
 **Unknown slug:** detail redirects to **`/properties`**.
 

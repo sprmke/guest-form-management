@@ -12,6 +12,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/onboarding`                                              | [onboarding.md](./onboarding.md)                                     | Documented — host type + optional property/parking          |
 | `/org`                                                     | [org/selector.md](./org/selector.md)                                 | Pending                                                     |
 | `/org/:orgSlug/dashboard`                                  | [org/dashboard.md](./org/dashboard.md)                               | Documented                                                  |
+| `/org/:orgSlug/bookings`                                   | [org/bookings.md](./org/bookings.md)                                 | Documented — all properties; property column in views       |
 | `/org/:orgSlug/settings`                                   | [org/settings.md](./org/settings.md)                                 | Documented                                                  |
 | `/org/:orgSlug/properties`                                 | [org/properties.md](./org/properties.md)                             | Documented                                                  |
 | `/org/:orgSlug/parkings`                                   | [org/parkings.md](./org/parkings.md)                                 | Documented                                                  |
@@ -42,15 +43,16 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 
 ### Marketing site (PMA port — Phase 1 UI, mock data)
 
-| Route                                                                                                                       | Guide                                  | Status                                  |
-| --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------- |
-| `/`                                                                                                                         | [index-landing.md](./index-landing.md) | Documented — UI only                    |
-| `/for-hosts`                                                                                                                | [for-hosts.md](./for-hosts.md)         | Documented — UI only                    |
-| `/properties` · `/properties/in/:location` · `/properties/:propertySlug` · `…/forms/:formId`                                | [properties.md](./properties.md)       | Documented — UI only                    |
-| `/parkings` · `/parkings/in/:location` · `/parkings/:parkingSlug`                                                           | [parkings.md](./parkings.md)           | Documented — list mock; detail live API |
-| `/developments` · `/developments/in/:location` · `/developments/:slug` · `…/properties` · `…/parking/*` · `…/forms/:formId` | [developments.md](./developments.md)   | Documented — UI only                    |
-| `/terms` · `/privacy`                                                                                                       | [legal.md](./legal.md)                 | Documented — UI only                    |
-| `/for-hosts/*` (login, register, …) · guest checkout modal                                                                  | [auth.md](./auth.md)                   | Documented                              |
+| Route                                                                                                                       | Guide                                      | Status                                  |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------- |
+| `/`                                                                                                                         | [index-landing.md](./index-landing.md)     | Documented — UI only                    |
+| `/for-hosts`                                                                                                                | [for-hosts.md](./for-hosts.md)             | Documented — UI only                    |
+| `/properties` · `/properties/in/:location` · `/properties/:propertySlug` · `…/forms/:formId`                                | [properties.md](./properties.md)           | Documented — UI only                    |
+| `/parkings` · `/parkings/in/:location` · `/parkings/:parkingSlug`                                                           | [parkings.md](./parkings.md)               | Documented — list mock; detail live API |
+| `/developments` · `/developments/in/:location` · `/developments/:slug` · `…/properties` · `…/parking/*` · `…/forms/:formId` | [developments.md](./developments.md)       | Documented — UI only                    |
+| `/terms` · `/privacy`                                                                                                       | [legal.md](./legal.md)                     | Documented — UI only                    |
+| `/for-hosts/*` (login, register, …) · guest checkout modal                                                                  | [auth.md](./auth.md)                       | Documented                              |
+| `/account` · `/account/profile` · `/account/stays` · `/account/wishlist` · `/account/messages`                              | [account/profile.md](./account/profile.md) | Documented                              |
 
 ### Operational guest flows (property-scoped)
 

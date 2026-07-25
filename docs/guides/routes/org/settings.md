@@ -42,6 +42,8 @@ Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_s
 
 Guest/operator **contact name, phone, and email** for templates and public surfaces are edited on **Org team** (`/org/:orgSlug/team` → **Contact** on the owner row) and **Property team** (property MANAGER row). Legacy `organizations.settings.contact*` keys remain as read fallback only — not edited on this page.
 
+**Public host page (`/hosts/:orgSlug`):** Owner name and photo come from the **team owner** — OAuth profile (`auth.users` metadata) plus optional **display name** from **Org team** (`organization_members.display_name`). Tagline and description come from **Basic information** above. **Brand color** (`organizations.settings.brandColor`) tints the guest shell and hero accents. **Socials** below render as outbound icon links when URLs are set in **Socials**.
+
 ### Socials
 
 | Field         | Storage                             | Notes                                                                                                                      |

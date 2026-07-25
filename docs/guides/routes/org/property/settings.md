@@ -293,6 +293,10 @@ Per-property operational settings in `app_settings` (not `properties.settings`).
 
 **Save Changes** → `app-settings` PATCH (admin JWT + `property_id` scope).
 
+When provider, account name, account number, or primary QR reference in the payment-methods draft changed since last save, **Save Changes** opens a confirmation modal first. The host must confirm details are correct and acknowledge they are used for guest booking payments; Kame Homes is not liable for misdirected transfers from incorrect details.
+
+QR image upload still saves immediately via `upload-app-settings-asset` (no modal on upload).
+
 Payment details are shown on the guest form and ready-for-check-in email for **this property only**.
 
 ---

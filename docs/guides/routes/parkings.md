@@ -69,28 +69,28 @@ Route is registered at the marketing shell level (no dynamic slug conflict).
 
 ## Implementation map
 
-| Concern        | Path                                                                          |
-| -------------- | ----------------------------------------------------------------------------- |
-| List page      | `ui/src/features/guest/marketing/pages/ParkingsListPage.tsx`                  |
-| Detail page    | `ui/src/features/guest/marketing/pages/ParkingDetailPage.tsx`                 |
-| Overview       | `ui/src/features/guest/marketing/parkings/components/ParkingOverview.tsx`     |
-| Gallery        | `ui/src/features/guest/marketing/shared/components/ListingGallery.tsx`        |
-| Host card      | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`       |
-| Place meta     | `ui/src/features/guest/marketing/shared/components/ListingPlaceMeta.tsx`      |
-| Public host    | `ui/src/features/guest/marketing/properties/hooks/usePublicHost.ts`           |
-| Public hook    | `ui/src/features/guest/marketing/parkings/hooks/usePublicParkingDetail.ts`    |
-| Edge           | `supabase/functions/get-public-parking/index.ts`                              |
-| Location page  | `ui/src/features/guest/marketing/pages/ParkingsLocationPage.tsx`              |
-| Grouping       | `ui/src/features/guest/marketing/parkings/lib/groupParkingsByLocation.ts`     |
-| Entry builder  | `ui/src/features/guest/marketing/parkings/lib/parkingListEntries.ts`          |
-| UI components  | `ui/src/features/guest/marketing/parkings/components/*`                       |
-| Slot cards     | `ui/src/features/guest/marketing/developments/components/ParkingSlotCard.tsx` |
-| Filters / sort | `ui/src/features/guest/marketing/developments/lib/parkingSlotFilters.ts`      |
-| Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                            |
-| Nav link       | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`          |
-| Scroll search  | `ui/src/features/guest/marketing/shared/lib/listingScrollSearchPaths.ts`      |
-| Search default | `ui/src/features/guest/marketing/shared/lib/listingSearchDefaultLocation.ts`  |
-| Per-dev list   | `/developments/:slug/parking` — see [developments.md](./developments.md)      |
+| Concern        | Path                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| List page      | `ui/src/features/guest/marketing/pages/ParkingsListPage.tsx`                                                               |
+| Detail page    | `ui/src/features/guest/marketing/pages/ParkingDetailPage.tsx`                                                              |
+| Overview       | `ui/src/features/guest/marketing/parkings/components/ParkingOverview.tsx`                                                  |
+| Gallery        | `ui/src/features/guest/marketing/shared/components/ListingGallery.tsx`                                                     |
+| Host card      | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                    |
+| Place meta     | `ui/src/features/guest/marketing/shared/components/ListingPlaceMeta.tsx`                                                   |
+| Public host    | `ui/src/features/guest/marketing/properties/hooks/usePublicHost.ts` + `HostPublicPage` (`parkings` from `get-public-host`) |
+| Public hook    | `ui/src/features/guest/marketing/parkings/hooks/usePublicParkingDetail.ts`                                                 |
+| Edge           | `supabase/functions/get-public-parking/index.ts`                                                                           |
+| Location page  | `ui/src/features/guest/marketing/pages/ParkingsLocationPage.tsx`                                                           |
+| Grouping       | `ui/src/features/guest/marketing/parkings/lib/groupParkingsByLocation.ts`                                                  |
+| Entry builder  | `ui/src/features/guest/marketing/parkings/lib/parkingListEntries.ts`                                                       |
+| UI components  | `ui/src/features/guest/marketing/parkings/components/*`                                                                    |
+| Slot cards     | `ui/src/features/guest/marketing/developments/components/ParkingSlotCard.tsx`                                              |
+| Filters / sort | `ui/src/features/guest/marketing/developments/lib/parkingSlotFilters.ts`                                                   |
+| Routes         | `ui/src/features/guest/marketing/routes/index.tsx`                                                                         |
+| Nav link       | `ui/src/features/guest/marketing/shared/components/MarketingNav.tsx`                                                       |
+| Scroll search  | `ui/src/features/guest/marketing/shared/lib/listingScrollSearchPaths.ts`                                                   |
+| Search default | `ui/src/features/guest/marketing/shared/lib/listingSearchDefaultLocation.ts`                                               |
+| Per-dev list   | `/developments/:slug/parking` — see [developments.md](./developments.md)                                                   |
 
 ---
 
