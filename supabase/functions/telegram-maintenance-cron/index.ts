@@ -5,11 +5,7 @@
 import {
   runMaintenanceDueReminders,
   verifyMaintenanceCronSecret,
-} from "../_shared/telegramMaintenance.ts";
-import { serveCronPost } from "../_shared/serveEdge.ts";
+} from '../_shared/telegramMaintenance.ts';
+import { serveCronPost } from '../_shared/serveEdge.ts';
 
-serveCronPost(
-  "telegram-maintenance-cron",
-  verifyMaintenanceCronSecret,
-  runMaintenanceDueReminders,
-);
+serveCronPost('telegram-maintenance-cron', verifyMaintenanceCronSecret, runMaintenanceDueReminders);
