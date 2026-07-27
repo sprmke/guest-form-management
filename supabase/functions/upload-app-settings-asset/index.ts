@@ -1,44 +1,61 @@
 /**
- * upload-app-settings-asset — Admin upload for operator-level assets (GCash QR, team logo, GAF signature).
- * Auth: verifyAdminJwt. Writes public URL to app_settings.
+ * upload-app-settings-asset — Admin upload for operator-level assets (GCash QR, GAF signature, review proof).
+ * Auth: verifyAdminJwt. Writes public URL to app_settings when configured.
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { invalidateAppSettingsCache } from '../_shared/appSettings.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'app-settings-assets';
+
+type AssetConfig = {
+  column?: string;
+  storagePrefix: string;
+  allowedMime?: Set<string>;
+  persistStatusPending?: boolean;
+};
 
 const ASSET_CONFIG = {
   gcash_qr: {
     column: 'gcash_qr_image_url',
     storagePrefix: 'gcash-qr',
   },
-  team_logo: {
-    column: 'email_logo_url',
-    storagePrefix: 'team-logo',
-  },
   gaf_unit_owner_signature: {
     column: 'gaf_unit_owner_signature_url',
     storagePrefix: 'gaf-unit-owner-signature',
     allowedMime: new Set(['image/jpeg', 'image/png']),
   },
-} as const satisfies Record<
-  string,
-  {
-    column: string;
-    storagePrefix: string;
-    allowedMime?: Set<string>;
-  }
->;
+  external_review_image: {
+    storagePrefix: 'external-review',
+  },
+  superhost_proof: {
+    column: 'superhost_proof_image_url',
+    storagePrefix: 'superhost-proof',
+    persistStatusPending: true,
+  },
+} as const satisfies Record<string, AssetConfig>;
 
 type AssetType = keyof typeof ASSET_CONFIG;
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function storagePathForAsset(
+  assetType: AssetType,
+  propertyId: string,
+  ext: string,
+  reviewId?: string
+): string {
+  if (assetType === 'external_review_image') {
+    if (!reviewId) throw new Error('reviewId is required for external_review_image');
+    return `${ASSET_CONFIG.external_review_image.storagePrefix}/${propertyId}/${reviewId}${ext}`;
+  }
+  return `${ASSET_CONFIG[assetType].storagePrefix}/${propertyId}/current${ext}`;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -46,7 +63,8 @@ serve(async (req) => {
   }
 
   try {
-    await verifyAdminJwt(req);
+    const { property } = await resolveScopedPropertyAccess(req, 'settings:edit');
+    const propertyId = property.id;
 
     if (req.method !== 'POST') {
       throw new Error(`Method ${req.method} not allowed`);
@@ -56,6 +74,7 @@ serve(async (req) => {
     const assetType = formData.get('assetType') as AssetType;
     const file = formData.get('file') as File;
     const fileName = (formData.get('fileName') as string) || file?.name;
+    const reviewId = (formData.get('reviewId') as string | null)?.trim() || undefined;
 
     if (!assetType || !ASSET_CONFIG[assetType]) {
       throw new Error(`Invalid assetType: "${assetType}"`);
@@ -69,7 +88,7 @@ serve(async (req) => {
       throw new Error(
         assetType === 'gaf_unit_owner_signature'
           ? 'Signature must be PNG or JPEG'
-          : 'File must be JPEG, PNG, or WebP',
+          : 'File must be JPEG, PNG, or WebP'
       );
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -83,11 +102,11 @@ serve(async (req) => {
         : mime === 'image/webp'
           ? '.webp'
           : '.jpg';
-    const storagePath = `${ASSET_CONFIG[assetType].storagePrefix}/current${ext}`;
+    const storagePath = storagePathForAsset(assetType, propertyId, ext, reviewId);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const { error: uploadError } = await supabase.storage
@@ -103,14 +122,19 @@ serve(async (req) => {
     } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
     const safePublicUrl = formatPublicUrl(publicUrl);
 
-    await DatabaseService.updateAppSettings({
-      [ASSET_CONFIG[assetType].column]: safePublicUrl,
-    });
-    invalidateAppSettingsCache();
+    const config = ASSET_CONFIG[assetType];
+    if (config.column) {
+      const patch: Record<string, string> = {
+        [config.column]: safePublicUrl,
+      };
+      if (config.persistStatusPending) {
+        patch.superhost_status = 'pending';
+      }
+      await DatabaseService.updateAppSettings(patch, propertyId);
+      invalidateAppSettingsCache(propertyId);
+    }
 
-    console.log(
-      `[upload-app-settings-asset] Uploaded ${assetType}: ${safePublicUrl}`,
-    );
+    console.log(`[upload-app-settings-asset] Uploaded ${assetType}: ${safePublicUrl}`);
 
     return new Response(
       JSON.stringify({
@@ -119,10 +143,10 @@ serve(async (req) => {
           url: safePublicUrl,
           bucket: BUCKET,
           path: storagePath,
-          column: ASSET_CONFIG[assetType].column,
+          column: config.column ?? null,
         },
       }),
-      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      { headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('[upload-app-settings-asset]', error);
