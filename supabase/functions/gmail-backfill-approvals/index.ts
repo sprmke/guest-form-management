@@ -16,12 +16,16 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
+import {
+  resolveScopedPropertyAccess,
+  verifyBookingBelongsToProperty,
+} from '../_shared/propertyScope.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { SheetsService } from '../_shared/sheetsService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import { BookingStatus } from '../_shared/statusMachine.ts';
 import { formatDateForEmail, formatPublicUrl } from '../_shared/utils.ts';
+import { bookingAssetStorageKey } from '../_shared/bookingStoragePaths.ts';
 import { getGmailAccessTokenUnified } from '../_shared/gmailMailOAuthAccess.ts';
 import { getGmailApprovalSenderAllowList } from '../_shared/appSettings.ts';
 
@@ -89,7 +93,7 @@ type BookingTask = {
 function supabaseAdmin() {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 }
 
@@ -109,7 +113,7 @@ async function gmailGet(path: string, accessToken: string): Promise<any> {
 async function listMessageIdsByQuery(
   accessToken: string,
   query: string,
-  maxResults: number,
+  maxResults: number
 ): Promise<string[]> {
   const encoded = new URLSearchParams({
     q: query,
@@ -127,7 +131,7 @@ async function getFullMessage(accessToken: string, messageId: string): Promise<a
 async function downloadAttachment(
   accessToken: string,
   messageId: string,
-  attachmentId: string,
+  attachmentId: string
 ): Promise<Uint8Array> {
   const data = await gmailGet(`/messages/${messageId}/attachments/${attachmentId}`, accessToken);
   const b64 = (data.data as string).replace(/-/g, '+').replace(/_/g, '/');
@@ -139,7 +143,10 @@ async function downloadAttachment(
   return bytes;
 }
 
-function getHeader(headers: Array<{ name: string; value: string }> | undefined, name: string): string {
+function getHeader(
+  headers: Array<{ name: string; value: string }> | undefined,
+  name: string
+): string {
   if (!headers) return '';
   const h = headers.find((x) => x.name?.toLowerCase() === name.toLowerCase());
   return h?.value ?? '';
@@ -174,7 +181,10 @@ function normalizeAttachmentFilename(filename: string): string {
     .trim();
 }
 
-function findApprovedAttachment(kind: ApprovalKind, attachments: AttachmentInfo[]): AttachmentInfo | undefined {
+function findApprovedAttachment(
+  kind: ApprovalKind,
+  attachments: AttachmentInfo[]
+): AttachmentInfo | undefined {
   const accepted =
     kind === 'gaf'
       ? ['approvedgaf.pdf']
@@ -236,7 +246,7 @@ function parseApprovalSubject(subject: string): ParsedApprovalSubject | null {
 /** Skip only when this Gmail message was already applied to the same booking. */
 async function isBackfillBlockedByProcessed(
   messageId: string,
-  task: BookingTask,
+  task: BookingTask
 ): Promise<boolean> {
   const { data } = await supabaseAdmin()
     .from('processed_emails')
@@ -255,16 +265,18 @@ async function recordProcessedEmail(params: {
   reason?: string;
   bookingId?: string;
 }): Promise<void> {
-  const { error } = await supabaseAdmin().from('processed_emails').upsert(
-    {
-      message_id: params.messageId,
-      kind: params.kind,
-      status: params.status,
-      reason: params.reason ?? null,
-      booking_id: params.bookingId ?? null,
-    },
-    { onConflict: 'message_id' },
-  );
+  const { error } = await supabaseAdmin()
+    .from('processed_emails')
+    .upsert(
+      {
+        message_id: params.messageId,
+        kind: params.kind,
+        status: params.status,
+        reason: params.reason ?? null,
+        booking_id: params.bookingId ?? null,
+      },
+      { onConflict: 'message_id' }
+    );
   if (error) {
     console.error('[gmail-backfill-approvals] Failed to record processed email:', error.message);
   }
@@ -272,12 +284,14 @@ async function recordProcessedEmail(params: {
 
 async function uploadApprovedPdf(params: {
   kind: ApprovalKind;
+  propertyId: string;
   bookingId: string;
   bytes: Uint8Array;
 }): Promise<string> {
   const sb = supabaseAdmin();
   const bucket = params.kind === 'gaf' ? 'approved-gafs' : 'approved-pet-forms';
-  const filename = `${params.bookingId}/${params.kind === 'gaf' ? 'approved-gaf' : 'approved-pet'}.pdf`;
+  const fileName = params.kind === 'gaf' ? 'approved-gaf.pdf' : 'approved-pet.pdf';
+  const filename = bookingAssetStorageKey(params.propertyId, params.bookingId, fileName);
   const { error } = await sb.storage.from(bucket).upload(filename, params.bytes, {
     contentType: 'application/pdf',
     upsert: true,
@@ -290,11 +304,15 @@ async function uploadApprovedPdf(params: {
 
 async function loadCandidateBookings(
   limit: number,
-  bookingId?: string,
+  propertyId: string,
+  bookingId?: string
 ): Promise<CandidateBooking[]> {
   let query = supabaseAdmin()
     .from('guest_submissions')
-    .select('id,status,check_in_date,check_out_date,has_pets,approved_gaf_pdf_url,approved_pet_pdf_url');
+    .select(
+      'id,status,check_in_date,check_out_date,has_pets,approved_gaf_pdf_url,approved_pet_pdf_url'
+    )
+    .eq('property_id', propertyId);
 
   const scopedId = (bookingId ?? '').trim();
   if (scopedId) {
@@ -349,15 +367,12 @@ function buildTasksFromBooking(booking: CandidateBooking): BookingTask[] {
  * Try the precise subject first, then a broader search filtered in code.
  */
 function buildGmailSearchQueries(task: BookingTask, lookbackDays: number): string[] {
-  const subjectPrefix = task.kind === 'gaf'
-    ? 'Monaco 2604 - GAF Request'
-    : 'Monaco 2604 - Pet Request';
+  const subjectPrefix =
+    task.kind === 'gaf' ? 'Monaco 2604 - GAF Request' : 'Monaco 2604 - Pet Request';
   const emailCheckIn = formatDateForEmail(task.checkInDate);
   const emailCheckOut = formatDateForEmail(task.checkOutDate);
-  const precise =
-    `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix} (${emailCheckIn} to ${emailCheckOut})" has:attachment filename:pdf`;
-  const broad =
-    `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix}" has:attachment filename:pdf`;
+  const precise = `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix} (${emailCheckIn} to ${emailCheckOut})" has:attachment filename:pdf`;
+  const broad = `in:anywhere newer_than:${lookbackDays}d subject:"${subjectPrefix}" has:attachment filename:pdf`;
   return [precise, broad];
 }
 
@@ -365,7 +380,7 @@ async function listMessageIdsForTask(
   accessToken: string,
   task: BookingTask,
   lookbackDays: number,
-  maxMessagesPerKind: number,
+  maxMessagesPerKind: number
 ): Promise<string[]> {
   const seen = new Set<string>();
   const ids: string[] = [];
@@ -402,10 +417,7 @@ async function persistApprovedPdfOnly(params: {
   }
 }
 
-async function applyBackfillApproval(params: {
-  task: BookingTask;
-  pdfUrl: string;
-}): Promise<void> {
+async function applyBackfillApproval(params: { task: BookingTask; pdfUrl: string }): Promise<void> {
   const { task, pdfUrl } = params;
 
   if (!WORKFLOW_BACKFILL_STATUSES.includes(task.bookingStatus)) {
@@ -418,8 +430,7 @@ async function applyBackfillApproval(params: {
   }
 
   const targetStatus: BookingStatus =
-    task.bookingStatus === 'PENDING_GAF' ||
-    task.bookingStatus === 'PENDING_PET_REQUEST'
+    task.bookingStatus === 'PENDING_GAF' || task.bookingStatus === 'PENDING_PET_REQUEST'
       ? 'PENDING_DOCUMENTS'
       : task.bookingStatus;
 
@@ -439,7 +450,7 @@ async function applyBackfillApproval(params: {
     targetStatus,
     payload,
     { ...BACKFILL_DEV_CONTROLS },
-    false,
+    false
   );
 }
 
@@ -453,7 +464,8 @@ serve(async (req) => {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
-    await verifyAdminJwt(req);
+    const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+    const propertyId = property.id;
 
     const body = (await req.json().catch(() => ({}))) as BackfillRequest;
     const dryRun = body.dryRun ?? true;
@@ -461,12 +473,12 @@ serve(async (req) => {
     const limitBookings = Math.max(1, Math.min(body.limitBookings ?? DEFAULT_LIMIT_BOOKINGS, 300));
     const maxMessagesPerKind = Math.max(
       1,
-      Math.min(body.maxMessagesPerKind ?? DEFAULT_MAX_MESSAGES_PER_KIND, 20),
+      Math.min(body.maxMessagesPerKind ?? DEFAULT_MAX_MESSAGES_PER_KIND, 20)
     );
 
     let accessToken: string;
     try {
-      ({ accessToken } = await getGmailAccessTokenUnified());
+      ({ accessToken } = await getGmailAccessTokenUnified(propertyId));
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       console.error('[gmail-backfill-approvals] Gmail OAuth failed:', msg);
@@ -474,18 +486,19 @@ serve(async (req) => {
         (e as { needsReAuth?: boolean })?.needsReAuth === true ||
         msg.includes('invalid_grant') ||
         msg.includes('Reconnect Gmail');
-      return new Response(
-        JSON.stringify({ success: false, error: msg, needsReAuth }),
-        {
-          status: 200,
-          headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-        },
-      );
+      return new Response(JSON.stringify({ success: false, error: msg, needsReAuth }), {
+        status: 200,
+        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+      });
     }
     const scopedBookingId = (body.bookingId ?? '').trim() || undefined;
+    if (scopedBookingId) {
+      await verifyBookingBelongsToProperty(scopedBookingId, propertyId);
+    }
     const candidates = await loadCandidateBookings(
       scopedBookingId ? 1 : limitBookings,
-      scopedBookingId,
+      propertyId,
+      scopedBookingId
     );
     const tasks = candidates.flatMap(buildTasksFromBooking);
 
@@ -494,14 +507,14 @@ serve(async (req) => {
     let skipped = 0;
     let failed = 0;
     const results: Array<Record<string, unknown>> = [];
-    const allowedApprovers = await getGmailApprovalSenderAllowList();
+    const allowedApprovers = await getGmailApprovalSenderAllowList(propertyId);
 
     for (const task of tasks) {
       const messageIds = await listMessageIdsForTask(
         accessToken,
         task,
         lookbackDays,
-        maxMessagesPerKind,
+        maxMessagesPerKind
       );
       let matched = false;
 
@@ -526,13 +539,16 @@ serve(async (req) => {
             skipped++;
             continue;
           }
-          if (parsed.checkInDate !== task.checkInDate || parsed.checkOutDate !== task.checkOutDate) {
+          if (
+            parsed.checkInDate !== task.checkInDate ||
+            parsed.checkOutDate !== task.checkOutDate
+          ) {
             skipped++;
             continue;
           }
           if (allowedApprovers.length > 0 && !allowedApprovers.includes(senderEmail)) {
             console.warn(
-              `[gmail-backfill-approvals] Sender not in EMAIL_TO allow-list: "${senderEmail || fromHeader || 'unknown'}"`,
+              `[gmail-backfill-approvals] Sender not in EMAIL_TO allow-list: "${senderEmail || fromHeader || 'unknown'}"`
             );
             skipped++;
             continue;
@@ -563,6 +579,7 @@ serve(async (req) => {
           const bytes = await downloadAttachment(accessToken, messageId, approvedPdf.attachmentId);
           const pdfUrl = await uploadApprovedPdf({
             kind: task.kind,
+            propertyId,
             bookingId: task.bookingId,
             bytes,
           });
@@ -636,7 +653,7 @@ serve(async (req) => {
       {
         status: 200,
         headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      },
+      }
     );
   } catch (error) {
     if (error instanceof Response) {
@@ -647,12 +664,9 @@ serve(async (req) => {
     }
 
     console.error('[gmail-backfill-approvals] Fatal error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      {
-        status: 500,
-        headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
-      },
-    );
+    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
+      status: 500,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 });

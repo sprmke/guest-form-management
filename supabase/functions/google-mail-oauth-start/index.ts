@@ -1,14 +1,13 @@
 /**
- * Admin-only: returns a Google OAuth URL to connect Gmail (gmail.readonly) for gmail-listener.
+ * Admin-only: returns a Google OAuth URL to connect Google (Gmail + Calendar + Sheets) for this property.
  *
  * Env: GMAIL_API_WEB_CLIENT_JSON, GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS (optional)
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
 import {
-  GMAIL_READONLY_SCOPE,
+  GOOGLE_CONNECT_OAUTH_SCOPES,
   getGmailApiWebClientFromEnv,
   gmailMailOAuthRedirectUri,
   supabaseServiceRole,
@@ -18,6 +17,7 @@ import {
   normalizeReturnOrigin,
   sanitizeReturnPath,
 } from '../_shared/gmailMailOAuthReturnUrl.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 
 function randomState(): string {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
@@ -37,7 +37,8 @@ serve(async (req) => {
   }
 
   try {
-    await verifyAdminJwt(req);
+    const { property } = await resolveScopedPropertyAccess(req, 'settings:edit');
+    const propertyId = property.id;
 
     let returnPath = '/settings';
     try {
@@ -67,7 +68,7 @@ serve(async (req) => {
           error:
             'Missing or disallowed Origin. Ensure the SPA Origin is listed in GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS.',
         }),
-        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -86,6 +87,7 @@ serve(async (req) => {
       expires_at: expiresAt,
       return_origin: returnOrigin,
       return_path: returnPath,
+      property_id: propertyId,
     });
     if (insErr) {
       console.error('[google-mail-oauth-start] state insert:', insErr);
@@ -99,7 +101,7 @@ serve(async (req) => {
       client_id: clientId,
       redirect_uri: redirectUri,
       response_type: 'code',
-      scope: GMAIL_READONLY_SCOPE,
+      scope: GOOGLE_CONNECT_OAUTH_SCOPES,
       access_type: 'offline',
       prompt: 'consent',
       state,
@@ -114,9 +116,9 @@ serve(async (req) => {
   } catch (error) {
     if (error instanceof Response) return error;
     console.error('[google-mail-oauth-start]', error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 500, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
+      status: 500,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 });

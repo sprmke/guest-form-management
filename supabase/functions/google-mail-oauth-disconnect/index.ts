@@ -4,8 +4,8 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
 import { supabaseServiceRole } from '../_shared/gmailMailOAuthAccess.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,7 +20,8 @@ serve(async (req) => {
   }
 
   try {
-    await verifyAdminJwt(req);
+    const { property } = await resolveScopedPropertyAccess(req, 'settings:edit');
+    const propertyId = property.id;
     const sb = supabaseServiceRole();
     const { error } = await sb
       .from('gmail_mail_integration')
@@ -30,7 +31,7 @@ serve(async (req) => {
         connected_at: null,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', 'default');
+      .eq('property_id', propertyId);
 
     if (error) {
       return new Response(JSON.stringify({ success: false, error: error.message }), {

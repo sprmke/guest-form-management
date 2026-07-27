@@ -4,11 +4,11 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { corsHeaders } from '../_shared/cors.ts';
-import { verifyAdminJwt } from '../_shared/auth.ts';
 import {
   getGmailAccessTokenUnified,
   supabaseServiceRole,
 } from '../_shared/gmailMailOAuthAccess.ts';
+import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -23,12 +23,13 @@ serve(async (req) => {
   }
 
   try {
-    await verifyAdminJwt(req);
+    const { property } = await resolveScopedPropertyAccess(req, 'settings:view');
+    const propertyId = property.id;
     const sb = supabaseServiceRole();
     const { data, error } = await sb
       .from('gmail_mail_integration')
       .select('google_account_email, connected_at, refresh_token_encrypted')
-      .eq('id', 'default')
+      .eq('property_id', propertyId)
       .maybeSingle();
 
     if (error) {
@@ -38,12 +39,12 @@ serve(async (req) => {
       });
     }
 
-    const connected = !!(data?.refresh_token_encrypted);
+    const connected = !!data?.refresh_token_encrypted;
     let needsReconnect = false;
 
     if (connected) {
       try {
-        await getGmailAccessTokenUnified();
+        await getGmailAccessTokenUnified(propertyId);
       } catch (e: unknown) {
         const err = e as Error & { needsReAuth?: boolean };
         if (
@@ -64,7 +65,7 @@ serve(async (req) => {
         googleAccountEmail: connected ? (data?.google_account_email ?? null) : null,
         connectedAt: connected ? (data?.connected_at ?? null) : null,
       }),
-      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     if (error instanceof Response) return error;

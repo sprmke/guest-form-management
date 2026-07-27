@@ -12,6 +12,12 @@ import {
   supabaseServiceRole,
 } from '../_shared/gmailMailOAuthAccess.ts';
 import { encryptGmailRefreshToken } from '../_shared/gmailMailOAuthCrypto.ts';
+import { upsertPropertyGmailIntegration } from '../_shared/gmailMailIntegrationUpsert.ts';
+import {
+  persistProvisionedGoogleIds,
+  provisionPropertyGoogleResources,
+} from '../_shared/propertyGoogleOAuthProvision.ts';
+import { ensurePropertySettings } from '../_shared/propertySettingsSeed.ts';
 import {
   buildErrorRedirect,
   buildSuccessRedirect,
@@ -38,11 +44,12 @@ serve(async (req) => {
   async function loadState(): Promise<{
     return_origin: string;
     return_path: string;
+    property_id: string | null;
   } | null> {
     if (!state) return null;
     const { data, error } = await sb
       .from('gmail_mail_oauth_state')
-      .select('return_origin, return_path, expires_at')
+      .select('return_origin, return_path, property_id, expires_at')
       .eq('state', state)
       .maybeSingle();
     if (error || !data) return null;
@@ -52,6 +59,7 @@ serve(async (req) => {
     return {
       return_origin: data.return_origin as string,
       return_path: (data.return_path as string) || '/settings',
+      property_id: (data.property_id as string | null) ?? null,
     };
   }
 
@@ -85,11 +93,7 @@ serve(async (req) => {
     });
 
     if (!tokens.refresh_token) {
-      const dest = buildErrorRedirect(
-        st.return_origin,
-        st.return_path,
-        'missing_refresh_token',
-      );
+      const dest = buildErrorRedirect(st.return_origin, st.return_path, 'missing_refresh_token');
       await sb.from('gmail_mail_oauth_state').delete().eq('state', state);
       return Response.redirect(dest, 302);
     }
@@ -97,16 +101,18 @@ serve(async (req) => {
     const encrypted = await encryptGmailRefreshToken(tokens.refresh_token);
     const profileEmail = await fetchGmailProfileEmail(tokens.access_token);
 
-    const { error: upErr } = await sb.from('gmail_mail_integration').upsert(
-      {
-        id: 'default',
-        refresh_token_encrypted: encrypted,
-        google_account_email: profileEmail,
-        connected_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' },
-    );
+    const propertyId = st.property_id;
+    if (!propertyId) {
+      const dest = buildErrorRedirect(st.return_origin, st.return_path, 'missing_property');
+      await sb.from('gmail_mail_oauth_state').delete().eq('state', state);
+      return Response.redirect(dest, 302);
+    }
+
+    const { error: upErr } = await upsertPropertyGmailIntegration(sb, propertyId, {
+      refresh_token_encrypted: encrypted,
+      google_account_email: profileEmail,
+      connected_at: new Date().toISOString(),
+    });
 
     if (upErr) {
       console.error('[google-mail-oauth-callback] upsert:', upErr);
@@ -117,12 +123,46 @@ serve(async (req) => {
 
     await sb.from('gmail_listener_state').upsert(
       {
-        id: 'default',
+        id: propertyId,
+        property_id: propertyId,
         email_address: profileEmail,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'id' },
+      { onConflict: 'id' }
     );
+
+    try {
+      await ensurePropertySettings(propertyId);
+
+      const { data: appRow } = await sb
+        .from('app_settings')
+        .select('google_calendar_id, google_spreadsheet_id')
+        .eq('property_id', propertyId)
+        .maybeSingle();
+
+      const calendarId = String(appRow?.google_calendar_id ?? '').trim();
+      const spreadsheetId = String(appRow?.google_spreadsheet_id ?? '').trim();
+      const createCalendar = !calendarId;
+      const createSpreadsheet = !spreadsheetId;
+
+      if (createCalendar || createSpreadsheet) {
+        const { data: propRow } = await sb
+          .from('properties')
+          .select('name')
+          .eq('id', propertyId)
+          .maybeSingle();
+        const propertyName = String(propRow?.name ?? '').trim() || 'Property';
+
+        const provisioned = await provisionPropertyGoogleResources(
+          tokens.access_token,
+          propertyName,
+          { createCalendar, createSpreadsheet }
+        );
+        await persistProvisionedGoogleIds(propertyId, provisioned);
+      }
+    } catch (provisionErr) {
+      console.error('[google-mail-oauth-callback] Google resource provision:', provisionErr);
+    }
 
     await sb.from('gmail_mail_oauth_state').delete().eq('state', state);
 
