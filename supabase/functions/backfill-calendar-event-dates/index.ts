@@ -13,19 +13,20 @@
  *   { dryRun?: boolean, limit?: number, bookingId?: string }
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import { CalendarService } from "../_shared/calendarService.ts";
-import { buildGoogleCalendarOccupiedEndDateTime } from "../_shared/utils.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
+import { CalendarService } from '../_shared/calendarService.ts';
+import { buildGoogleCalendarOccupiedEndDateTime } from '../_shared/utils.ts';
 import {
   manilaTodayYmd,
   normalizeBookingDateToYmd,
-} from "../_shared/calendarAvailabilityManila.ts";
+} from '../_shared/calendarAvailabilityManila.ts';
+import { jsonResponse, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
-  jsonResponse,
-  readJsonBody,
-  requireHttpMethod,
-} from "../_shared/httpResponse.ts";
-import { serveAdmin } from "../_shared/serveEdge.ts";
+  applyPropertyIdFilter,
+  resolveScopedPropertyAccess,
+  verifyBookingBelongsToProperty,
+} from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 type BackfillRequest = {
   dryRun?: boolean;
@@ -37,45 +38,52 @@ type BackfillRequest = {
 
 function isEligibleForCalendarWindowFix(
   row: { number_of_nights?: number | null; check_out_date?: string | null },
-  futureStaysOnly: boolean,
+  futureStaysOnly: boolean
 ): boolean {
   const nights = Number(row.number_of_nights) || 1;
   if (nights < 2) return false;
   if (!futureStaysOnly) return true;
-  const checkoutYmd = normalizeBookingDateToYmd(
-    String(row.check_out_date ?? ""),
-  );
+  const checkoutYmd = normalizeBookingDateToYmd(String(row.check_out_date ?? ''));
   if (!checkoutYmd) return false;
   return checkoutYmd >= manilaTodayYmd();
 }
 
 function supabaseAdmin() {
   return createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 }
 
-serveAdmin("backfill-calendar-event-dates", async (req) => {
-  requireHttpMethod(req, "POST");
+serveAuthenticated('backfill-calendar-event-dates', async (req) => {
+  requireHttpMethod(req, 'POST');
   const body = (await readJsonBody(req)) as BackfillRequest;
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings:workflow');
+  const propertyId = property.id;
   const dryRun = body.dryRun !== false;
   const limit = Math.min(Math.max(1, Number(body.limit) || 200), 500);
-  const scopedBookingId = body.bookingId?.trim() || "";
+  const scopedBookingId = body.bookingId?.trim() || '';
   const futureStaysOnly = body.futureStaysOnly === true;
 
+  if (scopedBookingId) {
+    await verifyBookingBelongsToProperty(scopedBookingId, propertyId);
+  }
+
   const supabase = supabaseAdmin();
-  let query = supabase
-    .from("guest_submissions")
-    .select("*")
-    .not("status", "eq", "CANCELLED")
-    .not("status", "eq", "canceled")
-    .order("check_in_date", { ascending: true });
+  let query = applyPropertyIdFilter(
+    supabase
+      .from('guest_submissions')
+      .select('*')
+      .not('status', 'eq', 'CANCELLED')
+      .not('status', 'eq', 'CANCELLED')
+      .order('check_in_date', { ascending: true }),
+    propertyId
+  );
 
   if (scopedBookingId) {
-    query = query.eq("id", scopedBookingId);
+    query = query.eq('id', scopedBookingId);
   } else {
-    query = query.gt("number_of_nights", 1);
+    query = query.gt('number_of_nights', 1);
   }
 
   const { data: bookings, error } = await query;
@@ -84,7 +92,7 @@ serveAdmin("backfill-calendar-event-dates", async (req) => {
   let rows = bookings ?? [];
   if (scopedBookingId) {
     if (rows.length === 0) {
-      throw new Error("Booking not found");
+      throw new Error('Booking not found');
     }
     if ((Number(rows[0].number_of_nights) || 1) < 2) {
       return jsonResponse(req, {
@@ -92,20 +100,15 @@ serveAdmin("backfill-calendar-event-dates", async (req) => {
         dryRun,
         count: 0,
         preview: [],
-        message:
-          "Single-night stays were already correct on Google Calendar — nothing to fix.",
+        message: 'Single-night stays were already correct on Google Calendar — nothing to fix.',
         filter: { multiNightOnly: true, futureStaysOnly: false },
       });
     }
   } else {
-    rows = rows.filter((row) =>
-      isEligibleForCalendarWindowFix(row, futureStaysOnly),
-    );
+    rows = rows.filter((row) => isEligibleForCalendarWindowFix(row, futureStaysOnly));
     rows.sort((a, b) => {
-      const aCi =
-        normalizeBookingDateToYmd(String(a.check_in_date ?? "")) ?? "";
-      const bCi =
-        normalizeBookingDateToYmd(String(b.check_in_date ?? "")) ?? "";
+      const aCi = normalizeBookingDateToYmd(String(a.check_in_date ?? '')) ?? '';
+      const bCi = normalizeBookingDateToYmd(String(b.check_in_date ?? '')) ?? '';
       return bCi.localeCompare(aCi);
     });
     rows = rows.slice(0, limit);
@@ -122,13 +125,13 @@ serveAdmin("backfill-calendar-event-dates", async (req) => {
     const nights = Number(row.number_of_nights) || 1;
     preview.push({
       bookingId: row.id,
-      checkIn: String(row.check_in_date ?? ""),
-      checkOut: String(row.check_out_date ?? ""),
+      checkIn: String(row.check_in_date ?? ''),
+      checkOut: String(row.check_out_date ?? ''),
       nights,
       newEndDateTime: buildGoogleCalendarOccupiedEndDateTime(
-        String(row.check_in_date ?? ""),
-        String(row.check_out_date ?? "").trim() || undefined,
-        nights,
+        String(row.check_in_date ?? ''),
+        String(row.check_out_date ?? '').trim() || undefined,
+        nights
       ),
     });
   }
@@ -144,9 +147,7 @@ serveAdmin("backfill-calendar-event-dates", async (req) => {
         futureStaysOnly: scopedBookingId ? false : futureStaysOnly,
       },
       message:
-        preview.length === 0
-          ? "No multi-night stays need a calendar window fix."
-          : undefined,
+        preview.length === 0 ? 'No multi-night stays need a calendar window fix.' : undefined,
     });
   }
 
@@ -161,10 +162,7 @@ serveAdmin("backfill-calendar-event-dates", async (req) => {
   }> = [];
 
   for (const row of rows) {
-    const outcome = await CalendarService.resyncCalendarEventWindow(
-      row.id,
-      row,
-    );
+    const outcome = await CalendarService.resyncCalendarEventWindow(row.id, row);
     results.push({ bookingId: row.id, ...outcome });
   }
 

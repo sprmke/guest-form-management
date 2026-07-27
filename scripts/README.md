@@ -9,7 +9,6 @@ scripts/
   dev/           Local Supabase + edge functions env
   data/          Prod → local Postgres sync
   deploy/        Linked Supabase project deploy
-  integrations/  Gmail OAuth one-shot setup
   preview/       Email template preview from DB
 ```
 
@@ -36,14 +35,6 @@ scripts/
 | Script               | npm script                | Purpose                                          |
 | -------------------- | ------------------------- | ------------------------------------------------ |
 | `deploy-supabase.sh` | `bun run deploy:supabase` | `db push` + `functions deploy` to linked project |
-
-## Integrations (`scripts/integrations/`)
-
-| Script           | npm script           | Purpose                                              |
-| ---------------- | -------------------- | ---------------------------------------------------- |
-| `gmail-auth.mjs` | `bun run gmail-auth` | One-time Gmail Desktop OAuth → `supabase/.env.local` |
-
-Place **`gmail-credentials.json`** (gitignored) next to `gmail-auth.mjs`.
 
 ## Preview (`scripts/preview/`)
 
