@@ -1,5 +1,11 @@
 import { supabase } from '@/lib/supabase/client';
 
+import type { ChatActionMessage } from '@/lib/chat/chatMessageActions';
+import {
+  canGuestEditMessage as canGuestEditMessageInThread,
+  canGuestUnsendMessage as canGuestUnsendMessageInThread,
+} from '@/lib/chat/chatMessageActions';
+
 const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
@@ -86,14 +92,56 @@ export type GuestChatResumeResult = {
   } | null;
 };
 
+async function guestEdgePatch(path: string, body: Record<string, unknown>) {
+  const jwt = await guestJwt();
+  const res = await fetch(`${FUNCTIONS_URL}/${path}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const json = (await res.json()) as EdgeJson;
+  return unwrapEdgePayload(json);
+}
+
+export type GuestChatAttachment = {
+  kind: 'image' | 'file';
+  url: string;
+  label?: string;
+};
+
 export type GuestChatMessage = {
   id: string;
   conversation_id: string;
   direction: 'inbound' | 'outbound';
   body_text: string | null;
+  attachments?: unknown[];
   sent_at: string;
+  delivery_status?: string | null;
   is_ai_generated: boolean;
+  read_at?: string | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  reply_to_message_id?: string | null;
+  reply_preview_text?: string | null;
 };
+
+export function canGuestEditMessage(
+  message: GuestChatMessage,
+  messages: GuestChatMessage[]
+): boolean {
+  return canGuestEditMessageInThread(message as ChatActionMessage, messages);
+}
+
+export function canGuestUnsendMessage(
+  message: GuestChatMessage,
+  messages: GuestChatMessage[]
+): boolean {
+  return canGuestUnsendMessageInThread(message as ChatActionMessage, messages);
+}
 
 export async function startGuestWebChat(input: {
   propertySlug: string;
@@ -125,6 +173,72 @@ export async function fetchGuestChatMessages(
   };
 }
 
-export async function sendGuestChatMessage(conversationId: string, text: string): Promise<void> {
-  await guestEdgePost('guest-web-chat-messages', { conversationId, text });
+async function guestEdgePostForm(path: string, formData: FormData) {
+  const jwt = await guestJwt();
+  const res = await fetch(`${FUNCTIONS_URL}/${path}`, {
+    method: 'POST',
+    headers: {
+      apikey: ANON_KEY,
+      Authorization: `Bearer ${jwt}`,
+    },
+    body: formData,
+  });
+  const json = (await res.json()) as EdgeJson;
+  return unwrapEdgePayload(json);
+}
+
+export async function uploadGuestChatAttachment(
+  conversationId: string,
+  file: File
+): Promise<GuestChatAttachment> {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('fileName', file.name);
+  formData.append('conversationId', conversationId);
+  const payload = await guestEdgePostForm('upload-guest-chat-asset', formData);
+  return payload.attachment as GuestChatAttachment;
+}
+
+export async function sendGuestChatMessage(
+  conversationId: string,
+  text: string,
+  opts?: { replyToMessageId?: string; attachments?: GuestChatAttachment[] }
+): Promise<void> {
+  await guestEdgePost('guest-web-chat-messages', {
+    conversationId,
+    text,
+    replyToMessageId: opts?.replyToMessageId,
+    attachments: opts?.attachments,
+  });
+}
+
+export async function markGuestChatRead(conversationId: string): Promise<void> {
+  await guestEdgePost('guest-web-chat-messages', {
+    action: 'mark_read',
+    conversationId,
+  });
+}
+
+export async function editGuestChatMessage(
+  conversationId: string,
+  messageId: string,
+  text: string
+): Promise<GuestChatMessage> {
+  const payload = await guestEdgePatch('guest-web-chat-messages', {
+    conversationId,
+    messageId,
+    text,
+  });
+  return payload.message as GuestChatMessage;
+}
+
+export async function unsendGuestChatMessage(
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  await guestEdgePost('guest-web-chat-messages', {
+    action: 'unsend',
+    conversationId,
+    messageId,
+  });
 }

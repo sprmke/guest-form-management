@@ -1,46 +1,123 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { Loader2, SendHorizontal } from 'lucide-react';
+import { Loader2, Paperclip, Pencil, Reply, SendHorizontal, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import type { GuestChatMessage } from '@/features/guest/chat/lib/guestChatApi';
+import {
+  InboxMediaPreviewDialog,
+  InboxMessageMediaTile,
+} from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
+import type { InboxAttachmentPreview } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
+import {
+  canGuestEditMessage,
+  canGuestUnsendMessage,
+  type GuestChatAttachment,
+  type GuestChatMessage,
+} from '@/features/guest/chat/lib/guestChatApi';
 
+import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
+import { ChatInThreadSearch, filterThreadMessages } from '@/components/chat/ChatInThreadSearch';
+import { ChatMessageActionsMenu } from '@/components/chat/ChatMessageActionsMenu';
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
+import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { chatAttachmentPreviews } from '@/lib/chat/chatAttachments';
+import {
+  formatChatBubbleTime,
+  isChatMessageUnsent,
+  unsentMessageLabel,
+} from '@/lib/chat/chatMessageFormat';
+import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
+import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
+
+type ComposerMode =
+  | { kind: 'compose' }
+  | { kind: 'reply'; messageId: string; preview: string }
+  | { kind: 'edit'; messageId: string; preview: string };
+
+type SendOpts = {
+  replyToMessageId?: string;
+  attachments?: GuestChatAttachment[];
+};
 
 type Props = {
   className?: string;
+  conversationId?: string | null;
   messages: GuestChatMessage[];
   isLoading: boolean;
-  onSend: (text: string) => Promise<void>;
+  onSend: (text: string, opts?: SendOpts) => Promise<void>;
+  onUploadAttachment?: (file: File) => Promise<GuestChatAttachment>;
+  onEdit?: (messageId: string, text: string) => Promise<void>;
+  onUnsend?: (messageId: string) => Promise<void>;
+  onRetryFailed?: (messageId: string, text: string) => void;
   sending: boolean;
+  uploadingAttachment?: boolean;
+  editing?: boolean;
+  unsending?: boolean;
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
 };
 
+const ACCEPTED_FILE_TYPES =
+  'image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf';
+
 export function GuestChatThread({
   className,
+  conversationId = null,
   messages,
   isLoading,
   onSend,
+  onUploadAttachment,
+  onEdit,
+  onUnsend,
+  onRetryFailed,
   sending,
+  uploadingAttachment = false,
+  editing = false,
+  unsending = false,
   hasOlderMessages = false,
   loadingOlder = false,
   onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [pendingAttachments, setPendingAttachments] = useState<GuestChatAttachment[]>([]);
+  const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
+  const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const shouldSmoothScrollRef = useRef(false);
   const prevTailKeyRef = useRef('');
   const prevScrollHeightRef = useRef(0);
   const loadingOlderRef = useRef(loadingOlder);
   loadingOlderRef.current = loadingOlder;
 
+  const { peerTyping, signalTyping } = useChatTyping(conversationId, 'guest', !!conversationId);
+
+  const visibleMessages = useMemo(
+    () => filterThreadMessages(messages, searchQuery),
+    [messages, searchQuery]
+  );
+
   const messageTailKey = messages[messages.length - 1]?.id ?? '';
+  const isBusy = sending || editing || unsending || uploadingAttachment;
+  const canSend =
+    composerMode.kind !== 'edit' &&
+    (draft.trim().length > 0 || pendingAttachments.length > 0) &&
+    !isBusy;
+
+  useEffect(() => {
+    setComposerMode({ kind: 'compose' });
+    setDraft('');
+    setSearchQuery('');
+    setPendingAttachments([]);
+  }, [conversationId]);
 
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;
@@ -87,20 +164,123 @@ export function GuestChatThread({
     return () => observer.disconnect();
   }, [hasOlderMessages, loadingOlder, onLoadOlder, messages.length]);
 
-  const handleSend = async () => {
-    const text = draft.trim();
-    if (!text || sending) return;
+  const clearComposerMode = () => {
+    setComposerMode({ kind: 'compose' });
+    setDraft('');
+    setPendingAttachments([]);
+  };
+
+  const startReply = (message: GuestChatMessage) => {
+    const preview = message.body_text?.trim() || '(attachment)';
+    setComposerMode({ kind: 'reply', messageId: message.id, preview });
+    setDraft('');
+    setPendingAttachments([]);
+  };
+
+  const startEdit = (message: GuestChatMessage) => {
+    if (!canGuestEditMessage(message, messages)) return;
+    const preview = message.body_text?.trim() || '';
+    setComposerMode({ kind: 'edit', messageId: message.id, preview });
+    setDraft(preview);
+    setPendingAttachments([]);
+  };
+
+  useEffect(() => {
+    if (composerMode.kind !== 'edit') return;
+    const target = messages.find((m) => m.id === composerMode.messageId);
+    if (!target || !canGuestEditMessage(target, messages)) {
+      clearComposerMode();
+    }
+  }, [messages, composerMode]);
+
+  const openPreview = (att: InboxAttachmentPreview) => {
+    if (att.kind === 'image' || att.kind === 'video') {
+      setPreviewAttachment(att);
+      return;
+    }
+    window.open(att.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handlePickFile = () => {
+    if (!onUploadAttachment || composerMode.kind === 'edit') return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !onUploadAttachment) return;
+
     try {
-      shouldSmoothScrollRef.current = true;
-      await onSend(text);
-      setDraft('');
+      const attachment = await onUploadAttachment(file);
+      setPendingAttachments((prev) => [...prev, attachment]);
     } catch (e) {
       toast.error((e as Error).message);
     }
   };
 
+  const handleSend = async () => {
+    const text = draft.trim();
+    const attachments = pendingAttachments.length > 0 ? pendingAttachments : undefined;
+
+    if (composerMode.kind === 'edit') {
+      if (!text || isBusy || !onEdit) return;
+    } else if (!text && !attachments?.length) {
+      return;
+    }
+    if (isBusy) return;
+
+    try {
+      shouldSmoothScrollRef.current = true;
+
+      if (composerMode.kind === 'edit') {
+        if (!onEdit) return;
+        await onEdit(composerMode.messageId, text);
+      } else {
+        await onSend(
+          text,
+          composerMode.kind === 'reply'
+            ? { replyToMessageId: composerMode.messageId, attachments }
+            : { attachments }
+        );
+      }
+
+      clearComposerMode();
+    } catch (e) {
+      const message = (e as Error).message;
+      if (isChatActionEligibilityError(message)) {
+        clearComposerMode();
+        return;
+      }
+      toast.error(message);
+    }
+  };
+
+  const composerBar =
+    composerMode.kind === 'reply' ? (
+      <ChatComposerContextBar
+        mode="reply"
+        preview={composerMode.preview}
+        onClear={clearComposerMode}
+      />
+    ) : composerMode.kind === 'edit' ? (
+      <ChatComposerContextBar
+        mode="edit"
+        preview={composerMode.preview}
+        onClear={clearComposerMode}
+      />
+    ) : null;
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className={cn('flex min-h-0 flex-1 flex-col', className)}>
+      <InboxMediaPreviewDialog
+        attachment={previewAttachment}
+        open={!!previewAttachment}
+        onOpenChange={(open) => {
+          if (!open) setPreviewAttachment(null);
+        }}
+      />
+
       <div
         ref={scrollContainerRef}
         className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4"
@@ -112,10 +292,10 @@ export function GuestChatThread({
             ))}
           </div>
         ) : (
-          <div className="space-y-4">
+          <>
             <div ref={topSentinelRef} className="h-px w-full shrink-0" aria-hidden />
             {hasOlderMessages && onLoadOlder ? (
-              <div className="flex justify-center">
+              <div className="mb-4 flex justify-center">
                 <Button
                   type="button"
                   variant="ghost"
@@ -132,43 +312,218 @@ export function GuestChatThread({
                 </Button>
               </div>
             ) : null}
-            {messages.map((msg) => {
-              const outbound = msg.direction === 'inbound';
-              return (
-                <div
-                  key={msg.id}
-                  className={cn('flex flex-col gap-1.5', outbound ? 'items-end' : 'items-start')}
-                >
-                  <div
-                    className={cn(
-                      'max-w-[min(100%,28rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm',
-                      outbound
-                        ? 'bg-primary text-primary-foreground'
-                        : 'border-border/60 bg-card text-foreground border'
-                    )}
-                  >
-                    {msg.body_text?.trim() || '—'}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+            {searchQuery.trim() && visibleMessages.length === 0 ? (
+              <p className="text-muted-foreground py-8 text-center text-sm">No matches</p>
+            ) : (
+              <ChatMessageList
+                messages={visibleMessages}
+                getOutbound={(msg) => msg.direction === 'inbound'}
+                renderMessage={(msg) => {
+                  const outbound = msg.direction === 'inbound';
+                  const isUnsent = isChatMessageUnsent(msg);
+                  const attachments = isUnsent ? [] : chatAttachmentPreviews(msg.attachments);
+                  const bodyText = msg.body_text ?? '';
+                  const hasText = !!bodyText.trim();
+                  const hasMedia = attachments.length > 0;
+                  const showEdit =
+                    !isUnsent && outbound && canGuestEditMessage(msg, messages) && !!onEdit;
+                  const showUnsend =
+                    !isUnsent && outbound && canGuestUnsendMessage(msg, messages) && !!onUnsend;
+                  const showMessageMenu = true;
+                  const deliveryStatus =
+                    !isUnsent && outbound
+                      ? (msg.delivery_status ?? (msg.read_at ? 'read' : 'sent'))
+                      : null;
+
+                  const messageActions = (
+                    <ChatMessageActionsMenu outbound={outbound}>
+                      <DropdownMenuItem onClick={() => startReply(msg)}>
+                        <Reply className="size-4" aria-hidden />
+                        Reply
+                      </DropdownMenuItem>
+                      {showEdit ? (
+                        <DropdownMenuItem onClick={() => startEdit(msg)}>
+                          <Pencil className="size-4" aria-hidden />
+                          Edit
+                        </DropdownMenuItem>
+                      ) : null}
+                      {showUnsend ? (
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => {
+                            void onUnsend?.(msg.id).catch((e) => {
+                              const message = (e as Error).message;
+                              if (isChatActionEligibilityError(message)) return;
+                              toast.error(message);
+                            });
+                          }}
+                        >
+                          <Undo2 className="size-4" aria-hidden />
+                          Unsend
+                        </DropdownMenuItem>
+                      ) : null}
+                    </ChatMessageActionsMenu>
+                  );
+
+                  const bubble =
+                    isUnsent || hasText || (!hasText && !hasMedia) ? (
+                      <ChatMessageBubble
+                        bodyText={
+                          isUnsent
+                            ? unsentMessageLabel(outbound)
+                            : hasText
+                              ? bodyText
+                              : '(attachment)'
+                        }
+                        outbound={outbound}
+                        unsent={isUnsent}
+                        sentAt={msg.sent_at}
+                        deliveryStatus={deliveryStatus}
+                        isAiGenerated={!isUnsent && msg.is_ai_generated}
+                        edited={!isUnsent && Boolean(msg.edited_at)}
+                        replyPreviewText={isUnsent ? null : msg.reply_preview_text}
+                        onRetry={
+                          !isUnsent && msg.delivery_status === 'failed' && onRetryFailed
+                            ? () => onRetryFailed(msg.id, bodyText)
+                            : undefined
+                        }
+                        actions={messageActions}
+                      />
+                    ) : null;
+
+                  return (
+                    <div
+                      className={cn(
+                        'flex w-full flex-col gap-1.5',
+                        outbound ? 'items-end' : 'items-start'
+                      )}
+                    >
+                      {bubble}
+                      {hasMedia ? (
+                        <div
+                          className={cn(
+                            'flex flex-col gap-1.5',
+                            outbound ? 'items-end' : 'items-start'
+                          )}
+                        >
+                          {attachments.map((att, i) => (
+                            <InboxMessageMediaTile
+                              key={`${msg.id}-att-${i}`}
+                              attachment={att}
+                              outbound={outbound}
+                              onOpen={() => openPreview(att)}
+                            />
+                          ))}
+                          {!hasText ? (
+                            <time
+                              className="text-muted-foreground px-1 text-[11px] tabular-nums"
+                              dateTime={msg.sent_at}
+                            >
+                              {formatChatBubbleTime(msg.sent_at)}
+                            </time>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }}
+              />
+            )}
+          </>
         )}
       </div>
 
-      <div className="border-border bg-background shrink-0 border-t pt-4">
-        <div className="flex items-end gap-2">
+      <div className="border-border bg-background shrink-0 border-t px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
+        {peerTyping ? (
+          <p className="text-muted-foreground px-1 pt-3 text-xs" aria-live="polite">
+            Host is typing…
+          </p>
+        ) : null}
+        {composerBar}
+        {pendingAttachments.length > 0 ? (
+          <div
+            className={cn(
+              'flex flex-wrap gap-2',
+              composerBar ? 'pt-3' : peerTyping ? 'pt-2' : 'pt-4'
+            )}
+          >
+            {pendingAttachments.map((att, index) => (
+              <div
+                key={`${att.url}-${index}`}
+                className="bg-muted flex max-w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs"
+              >
+                <span className="truncate">
+                  {att.label ?? (att.kind === 'image' ? 'Image' : 'File')}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 min-h-[32px] min-w-[32px] shrink-0"
+                  aria-label="Remove attachment"
+                  onClick={() =>
+                    setPendingAttachments((prev) => prev.filter((_, i) => i !== index))
+                  }
+                >
+                  <X className="size-3.5" aria-hidden />
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div
+          className={cn(
+            'flex items-end gap-2',
+            composerBar || pendingAttachments.length > 0 ? 'pt-3' : peerTyping ? 'pt-2' : 'pt-4'
+          )}
+        >
+          <ChatInThreadSearch
+            messages={messages}
+            onQueryChange={setSearchQuery}
+            className="hidden sm:flex"
+          />
+          {onUploadAttachment && composerMode.kind !== 'edit' ? (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPTED_FILE_TYPES}
+                className="sr-only"
+                onChange={(e) => void handleFileChange(e)}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="min-h-[44px] min-w-[44px] shrink-0"
+                disabled={isBusy}
+                aria-label="Attach file"
+                onClick={handlePickFile}
+              >
+                {uploadingAttachment ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                ) : (
+                  <Paperclip className="size-4" aria-hidden />
+                )}
+              </Button>
+            </>
+          ) : null}
           <Textarea
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder="Message"
+            onChange={(e) => {
+              setDraft(e.target.value);
+              signalTyping();
+            }}
+            placeholder={composerMode.kind === 'edit' ? 'Edit message' : 'Message'}
             rows={1}
-            className="max-h-32 min-h-[44px] resize-none py-3"
+            className="max-h-32 min-h-[44px] flex-1 resize-none py-3"
             aria-label="Message"
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                void handleSend();
+                if (canSend || (composerMode.kind === 'edit' && draft.trim())) {
+                  void handleSend();
+                }
               }
             }}
           />
@@ -176,16 +531,19 @@ export function GuestChatThread({
             type="button"
             size="icon"
             className="min-h-[44px] min-w-[44px] shrink-0"
-            disabled={!draft.trim() || sending}
+            disabled={composerMode.kind === 'edit' ? !draft.trim() || isBusy : !canSend}
             onClick={() => void handleSend()}
-            aria-label="Send message"
+            aria-label={composerMode.kind === 'edit' ? 'Save edit' : 'Send message'}
           >
-            {sending ? (
+            {isBusy ? (
               <Loader2 className="size-5 animate-spin" aria-hidden />
             ) : (
               <SendHorizontal className="size-5" aria-hidden />
             )}
           </Button>
+        </div>
+        <div className="flex sm:hidden">
+          <ChatInThreadSearch messages={messages} onQueryChange={setSearchQuery} />
         </div>
       </div>
     </div>

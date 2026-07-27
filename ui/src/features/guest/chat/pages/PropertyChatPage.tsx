@@ -91,8 +91,18 @@ function PropertyChatContent({
   });
 
   const conversationId = startQuery.data?.conversationId ?? null;
-  const { messages, isLoading, send, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useGuestChatMessages(conversationId);
+  const {
+    messages,
+    isLoading,
+    send,
+    edit,
+    unsend,
+    uploadAttachment,
+    retryFailedMessage,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useGuestChatMessages(conversationId);
 
   if (startQuery.isError) {
     return (
@@ -168,15 +178,31 @@ function PropertyChatContent({
           </div>
         ) : (
           <GuestChatThread
+            conversationId={conversationId}
             messages={messages}
             isLoading={isLoading}
             sending={send.isPending}
+            editing={edit.isPending}
             hasOlderMessages={!!hasNextPage}
             loadingOlder={isFetchingNextPage}
             onLoadOlder={() => void fetchNextPage()}
-            onSend={async (text) => {
-              await send.mutateAsync(text);
+            onRetryFailed={retryFailedMessage}
+            onSend={async (text, opts) => {
+              await send.mutateAsync({
+                text,
+                replyToMessageId: opts?.replyToMessageId,
+                attachments: opts?.attachments,
+              });
             }}
+            onUploadAttachment={(file) => uploadAttachment.mutateAsync(file)}
+            uploadingAttachment={uploadAttachment.isPending}
+            onEdit={async (messageId, text) => {
+              await edit.mutateAsync({ messageId, text });
+            }}
+            onUnsend={async (messageId) => {
+              await unsend.mutateAsync(messageId);
+            }}
+            unsending={unsend.isPending}
           />
         )}
       </div>

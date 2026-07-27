@@ -13,6 +13,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 | `mobile-responsive.mdc`         | Breakpoints, touch targets, admin shell       |
 | `ui-minimal-copy.mdc`           | No extra UI prose                             |
 | `competitive-ux-research.mdc`   | Airbnb + PMS UX research before features      |
+| `git-commits.mdc`               | No Cursor author/co-author in commits         |
 
 ## Conditional rules (by file glob — loaded when relevant)
 
@@ -69,6 +70,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 | `minimal-ui-copy`         | Sparse copy                                   |
 | `route-guides`            | `docs/guides/routes/*`                        |
 | `performance`             | Vite bundle, query tuning                     |
+| `batch-commit`            | Daily N commits × 5–10 files (not whole tree) |
 
 ## Subagents (`.cursor/agents/`)
 

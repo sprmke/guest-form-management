@@ -96,6 +96,10 @@ export function ContactHostSheet({
     messages,
     isLoading: messagesLoading,
     send,
+    edit,
+    unsend,
+    uploadAttachment,
+    retryFailedMessage,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -285,16 +289,31 @@ export function ContactHostSheet({
               </div>
             ) : showThread && conversationId ? (
               <GuestChatThread
-                className="px-3 py-4 sm:px-4"
+                conversationId={conversationId}
                 messages={messages}
                 isLoading={messagesLoading}
                 sending={send.isPending}
+                editing={edit.isPending}
                 hasOlderMessages={!!hasNextPage}
                 loadingOlder={isFetchingNextPage}
                 onLoadOlder={() => void fetchNextPage()}
-                onSend={async (text) => {
-                  await send.mutateAsync(text);
+                onRetryFailed={retryFailedMessage}
+                onSend={async (text, opts) => {
+                  await send.mutateAsync({
+                    text,
+                    replyToMessageId: opts?.replyToMessageId,
+                    attachments: opts?.attachments,
+                  });
                 }}
+                onUploadAttachment={(file) => uploadAttachment.mutateAsync(file)}
+                uploadingAttachment={uploadAttachment.isPending}
+                onEdit={async (messageId, text) => {
+                  await edit.mutateAsync({ messageId, text });
+                }}
+                onUnsend={async (messageId) => {
+                  await unsend.mutateAsync(messageId);
+                }}
+                unsending={unsend.isPending}
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col justify-end">
