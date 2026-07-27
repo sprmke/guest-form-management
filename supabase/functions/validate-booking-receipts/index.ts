@@ -11,45 +11,46 @@
  * Auth:    verifyAdminJwt(req)
  */
 
-import { DatabaseService } from "../_shared/databaseService.ts";
+import { DatabaseService } from '../_shared/databaseService.ts';
 import {
   backfillMissingReceiptAiVerdicts,
   dbPatchFromReceiptBackfillItems,
-} from "../_shared/receiptValidationService.ts";
+} from '../_shared/receiptValidationService.ts';
+import { jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import {
-  jsonSuccess,
-  readJsonBody,
-  requireHttpMethod,
-} from "../_shared/httpResponse.ts";
-import { serveAdmin } from "../_shared/serveEdge.ts";
+  resolveScopedPropertyAccess,
+  verifyBookingBelongsToProperty,
+} from '../_shared/propertyScope.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-serveAdmin("validate-booking-receipts", async (req) => {
-  requireHttpMethod(req, "POST");
+serveAuthenticated('validate-booking-receipts', async (req) => {
+  requireHttpMethod(req, 'POST');
+  const { property } = await resolveScopedPropertyAccess(req, 'bookings:edit');
+  const propertyId = property.id;
   const body = await readJsonBody(req);
-  const bookingId = String(body.bookingId ?? "").trim();
-  if (!bookingId) throw new Error("bookingId is required");
+  const bookingId = String(body.bookingId ?? '').trim();
+  if (!bookingId) throw new Error('bookingId is required');
+
+  await verifyBookingBelongsToProperty(bookingId, propertyId);
 
   const booking = await DatabaseService.getBookingById(bookingId);
   if (!booking) throw new Error(`Booking not found: ${bookingId}`);
 
   const { validated, errors } = await backfillMissingReceiptAiVerdicts(
-    booking as Record<string, unknown>,
+    booking as Record<string, unknown>
   );
 
   if (validated.length > 0) {
-    await DatabaseService.setWorkflowFields(
-      bookingId,
-      dbPatchFromReceiptBackfillItems(validated),
-    );
+    await DatabaseService.setWorkflowFields(bookingId, dbPatchFromReceiptBackfillItems(validated));
     console.log(
-      `[validate-booking-receipts] ${bookingId}: validated ${validated.length} receipt(s)`,
+      `[validate-booking-receipts] ${bookingId}: validated ${validated.length} receipt(s)`
     );
   }
 
   if (errors.length > 0) {
     console.warn(
       `[validate-booking-receipts] ${bookingId}: AI model errors for ${errors.length} receipt(s)`,
-      errors,
+      errors
     );
   }
 
