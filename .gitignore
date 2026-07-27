@@ -66,8 +66,4 @@ supabase_backup*.dump
 # Local development
 **/.local
 
-# Gmail OAuth credentials (contain secrets — never commit)
-scripts/integrations/gmail-credentials.json
-scripts/gmail-credentials.json
-
 cli-develop
