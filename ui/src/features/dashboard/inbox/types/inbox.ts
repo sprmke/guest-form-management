@@ -2,6 +2,12 @@ export type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'airbnb' | 'w
 export type ConversationType = 'dm' | 'comment';
 export type ReplyStatus = 'pending' | 'replied' | 'none';
 
+import type { ChatActionMessage } from '@/lib/chat/chatMessageActions';
+import {
+  canHostEditMessage as canHostEditMessageInThread,
+  canHostUnsendMessage as canHostUnsendMessageInThread,
+} from '@/lib/chat/chatMessageActions';
+
 export type InboxConnection = {
   id: string;
   platform: SocialPlatform;
@@ -51,7 +57,20 @@ export type InboxMessage = {
   sent_at: string;
   delivery_status: string | null;
   is_ai_generated: boolean;
+  read_at?: string | null;
+  edited_at?: string | null;
+  deleted_at?: string | null;
+  reply_to_message_id?: string | null;
+  reply_preview_text?: string | null;
 };
+
+export function canHostEditMessage(message: InboxMessage, messages: InboxMessage[]): boolean {
+  return canHostEditMessageInThread(message as ChatActionMessage, messages);
+}
+
+export function canHostUnsendMessage(message: InboxMessage, messages: InboxMessage[]): boolean {
+  return canHostUnsendMessageInThread(message as ChatActionMessage, messages);
+}
 
 export type InboxTemplate = {
   id: string;

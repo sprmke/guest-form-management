@@ -187,6 +187,20 @@ Prioritized themes for Guest Inbox v2. Check items in `docs/TODOS.md` as they sh
 
 ---
 
+## Chat UX roadmap (guest web + inbox)
+
+Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/guides/routes/properties/chat.md`** § UX roadmap and **`docs/TODOS.md`**.
+
+| Phase | Inbox impact                                                                                            |
+| ----- | ------------------------------------------------------------------------------------------------------- |
+| **1** | Timestamps, date pills, sent ✓ on outbound, AI “Automated” label — **shipped**                          |
+| **2** | Read receipts; mark-read on open; Realtime UPDATE — **shipped**                                         |
+| **3** | Host edit outbound until guest read/reply; Edit/Unsend hidden when unavailable — **shipped**            |
+| **4** | Reply-to with quote in composer + bubble — **shipped** (Meta `reply_to.mid` on FB/IG DMs)               |
+| **5** | Typing (web Broadcast), guest attachments + upload, in-thread search, offline guest email — **shipped** |
+
+---
+
 ## Related docs
 
 - `.cursor/rules/social-inbox.mdc`

@@ -69,10 +69,19 @@ export function inboxAttachmentPreviews(raw: unknown): InboxAttachmentPreview[] 
     const type = typeof obj.type === 'string' ? obj.type : undefined;
     const mime = typeof obj.mime_type === 'string' ? obj.mime_type : undefined;
     const name = typeof obj.name === 'string' ? obj.name : undefined;
+    const directKind = obj.kind;
+    const kind =
+      directKind === 'image' ||
+      directKind === 'video' ||
+      directKind === 'audio' ||
+      directKind === 'file'
+        ? directKind
+        : kindFromType(type, mime);
+    const label = typeof obj.label === 'string' ? obj.label : name;
     out.push({
-      kind: kindFromType(type, mime),
+      kind,
       url,
-      label: name,
+      label,
     });
   }
   return out;

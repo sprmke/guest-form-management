@@ -278,7 +278,7 @@ export async function sendInboxReply(
   orgId: string | null,
   conversationId: string,
   text: string,
-  privateReply = false
+  opts?: { privateReply?: boolean; replyToMessageId?: string }
 ): Promise<void> {
   const jwt = await getJwt();
   const res = await fetch(orgUrl('/social-inbox-send', orgSlug, orgId), {
@@ -287,7 +287,56 @@ export async function sendInboxReply(
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ conversationId, text, privateReply }),
+    body: JSON.stringify({
+      conversationId,
+      text,
+      privateReply: opts?.privateReply ?? false,
+      replyToMessageId: opts?.replyToMessageId,
+    }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  unwrapEdgePayload(json);
+}
+
+export async function editInboxMessage(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string,
+  messageId: string,
+  text: string
+): Promise<InboxMessage> {
+  const jwt = await getJwt();
+  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const params = new URLSearchParams({ conversation_id: conversationId });
+  const res = await fetch(`${base}&${params.toString()}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ messageId, text }),
+  });
+  const json = (await res.json()) as EdgeJson;
+  const payload = unwrapEdgePayload(json);
+  return payload.message as InboxMessage;
+}
+
+export async function unsendInboxMessage(
+  orgSlug: string | null,
+  orgId: string | null,
+  conversationId: string,
+  messageId: string
+): Promise<void> {
+  const jwt = await getJwt();
+  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const params = new URLSearchParams({ conversation_id: conversationId });
+  const res = await fetch(`${base}&${params.toString()}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${jwt}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ action: 'unsend', messageId }),
   });
   const json = (await res.json()) as EdgeJson;
   unwrapEdgePayload(json);

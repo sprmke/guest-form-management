@@ -75,9 +75,11 @@ API: **`guest-trips`** GET (internal name unchanged)
 
 - Master-detail hub: thread list (left) + inline chat history (right); on mobile, list then conversation with back
 - Lists **`social_conversations`** where **`platform=web`**, guest owns the thread (`guest_user_id` or linked `external_participant_id`), and at least one message exists (`subject_preview`)
-- Compose in-place via **`guest-web-chat-messages`** POST; realtime updates on **`social_messages`**
+- Compose in-place via **`guest-web-chat-messages`** POST (optional **`replyToMessageId`**); edit via PATCH; unsend via POST **`action: unsend`** until host read; mark-read on open
+- Realtime **`INSERT`** + **`UPDATE`** on **`social_messages`**
+- Thread list includes **`unreadCount`** (`guest_unread_count`); unread dot in sidebar
 
-API: **`guest-messages`** GET · **`guest-web-chat-messages`** GET/POST
+API: **`guest-messages`** GET · **`guest-web-chat-messages`** GET/POST/PATCH
 
 ---
 

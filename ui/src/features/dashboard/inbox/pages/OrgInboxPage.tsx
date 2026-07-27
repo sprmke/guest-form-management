@@ -98,10 +98,8 @@ export function OrgInboxPage() {
     hasNextPage: hasOlderMessages,
     isFetchingNextPage: loadingOlderMessages,
   } = useInboxMessages(orgSlug ?? null, orgId, selectedId);
-  const { connectMeta, disconnectMeta, sendReply, aiSuggest } = useInboxMutations(
-    orgSlug ?? null,
-    orgId
-  );
+  const { connectMeta, disconnectMeta, sendReply, editMessage, unsendMessage, aiSuggest } =
+    useInboxMutations(orgSlug ?? null, orgId);
   const templatesQuery = useInboxTemplates(orgSlug ?? null, orgId);
   const automationQuery = useInboxAutomationSettings(orgSlug ?? null, orgId);
   const pagePicker = useMetaOAuthPagePicker(orgSlug ?? null, orgId, pagePickerState);
@@ -266,15 +264,30 @@ export function OrgInboxPage() {
               hasOlderMessages={!!hasOlderMessages}
               loadingOlder={loadingOlderMessages}
               onLoadOlder={() => void fetchOlderMessages()}
-              onSend={async (text, privateReply) => {
+              onSend={async (text, opts) => {
                 if (!selectedId) return;
-                await sendReply.mutateAsync({ conversationId: selectedId, text, privateReply });
+                await sendReply.mutateAsync({
+                  conversationId: selectedId,
+                  text,
+                  privateReply: opts?.privateReply,
+                  replyToMessageId: opts?.replyToMessageId,
+                });
+              }}
+              onEdit={async (messageId, text) => {
+                if (!selectedId) return;
+                await editMessage.mutateAsync({ conversationId: selectedId, messageId, text });
+              }}
+              onUnsend={async (messageId) => {
+                if (!selectedId) return;
+                await unsendMessage.mutateAsync({ conversationId: selectedId, messageId });
               }}
               onSuggest={async () => {
                 if (!selectedId) throw new Error('No conversation selected');
                 return aiSuggest.mutateAsync(selectedId);
               }}
               sending={sendReply.isPending}
+              editing={editMessage.isPending}
+              unsending={unsendMessage.isPending}
               suggesting={aiSuggest.isPending}
             />
           </div>

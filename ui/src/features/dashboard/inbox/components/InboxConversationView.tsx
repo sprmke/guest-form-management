@@ -1,6 +1,15 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { ArrowLeft, Loader2, SendHorizontal, Sparkles, Zap } from 'lucide-react';
+import {
+  ArrowLeft,
+  Loader2,
+  Pencil,
+  Reply,
+  SendHorizontal,
+  Sparkles,
+  Undo2,
+  Zap,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -18,13 +27,28 @@ import {
   type InboxAttachmentPreview,
 } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
 import { templatesForConversationPlatform } from '@/features/dashboard/inbox/lib/quickReplyGroups';
-import type {
-  InboxConversation,
-  InboxMessage,
-  InboxTemplate,
+import {
+  type InboxConversation,
+  type InboxMessage,
+  type InboxTemplate,
+  canHostEditMessage,
+  canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
 
+import {
+  formatChatBubbleTime,
+  isChatMessageUnsent,
+  unsentMessageLabel,
+} from '@/lib/chat/chatMessageFormat';
+import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
+import { useChatTyping } from '@/lib/chat/useChatTyping';
+
 import { Button } from '@/components/ui/button';
+import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
+import { ChatInThreadSearch, filterThreadMessages } from '@/components/chat/ChatInThreadSearch';
+import { ChatMessageActionsMenu } from '@/components/chat/ChatMessageActionsMenu';
+import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
+import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,6 +60,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
+type ComposerMode =
+  | { kind: 'compose' }
+  | { kind: 'reply'; messageId: string; preview: string }
+  | { kind: 'edit'; messageId: string; preview: string };
+
 type Props = {
   conversation: InboxConversation | null;
   messages: InboxMessage[];
@@ -43,9 +72,16 @@ type Props = {
   canReply: boolean;
   templates: InboxTemplate[];
   onBack?: () => void;
-  onSend: (text: string, privateReply?: boolean) => Promise<void>;
+  onSend: (
+    text: string,
+    opts?: { privateReply?: boolean; replyToMessageId?: string }
+  ) => Promise<void>;
+  onEdit?: (messageId: string, text: string) => Promise<void>;
+  onUnsend?: (messageId: string) => Promise<void>;
   onSuggest: () => Promise<{ suggestion: string; flagged: boolean }>;
   sending: boolean;
+  editing?: boolean;
+  unsending?: boolean;
   suggesting: boolean;
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
@@ -60,14 +96,20 @@ export function InboxConversationView({
   templates,
   onBack,
   onSend,
+  onEdit,
+  onUnsend,
   onSuggest,
   sending,
+  editing = false,
+  unsending = false,
   suggesting,
   hasOlderMessages = false,
   loadingOlder = false,
   onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
   const [draftFromAi, setDraftFromAi] = useState(false);
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
@@ -84,6 +126,18 @@ export function InboxConversationView({
     return templatesForConversationPlatform(templates, conversation.platform);
   }, [templates, conversation?.platform]);
 
+  const isWeb = conversation?.platform === 'web';
+  const { peerTyping, signalTyping } = useChatTyping(
+    conversation?.id ?? null,
+    'host',
+    !!conversation && isWeb && canReply
+  );
+
+  const visibleMessages = useMemo(
+    () => filterThreadMessages(messages, searchQuery),
+    [messages, searchQuery]
+  );
+
   const messageTailKey = useMemo(() => {
     const last = messages[messages.length - 1];
     if (!last) return '';
@@ -92,6 +146,8 @@ export function InboxConversationView({
 
   useEffect(() => {
     setDraft('');
+    setSearchQuery('');
+    setComposerMode({ kind: 'compose' });
     setDraftFromAi(false);
     setDraftAiFlagged(false);
     shouldSmoothScrollRef.current = false;
@@ -136,6 +192,21 @@ export function InboxConversationView({
     return () => observer.disconnect();
   }, [hasOlderMessages, loadingOlder, onLoadOlder, conversation?.id, messages.length]);
 
+  const clearComposerMode = useCallback(() => {
+    setComposerMode({ kind: 'compose' });
+    setDraft('');
+    setDraftFromAi(false);
+    setDraftAiFlagged(false);
+  }, []);
+
+  useEffect(() => {
+    if (composerMode.kind !== 'edit') return;
+    const target = messages.find((m) => m.id === composerMode.messageId);
+    if (!target || !canHostEditMessage(target, messages)) {
+      clearComposerMode();
+    }
+  }, [messages, composerMode, clearComposerMode]);
+
   const openPreview = (att: InboxAttachmentPreview) => {
     if (att.kind === 'image' || att.kind === 'video') {
       setPreviewAttachment(att);
@@ -155,7 +226,6 @@ export function InboxConversationView({
   const name =
     conversation.participant_name?.trim() ||
     (conversation.conversation_type === 'comment' ? 'Comment' : 'Guest');
-  const isWeb = conversation.platform === 'web';
   const windowLabel = isWeb
     ? null
     : messagingWindowLabel(conversation.messaging_window_expires_at, conversation.last_inbound_at);
@@ -163,21 +233,50 @@ export function InboxConversationView({
     isWeb ||
     conversation.conversation_type === 'comment' ||
     isMessagingWindowOpen(conversation.messaging_window_expires_at, conversation.last_inbound_at);
+  const isBusy = sending || editing || unsending;
   const canSend =
     draft.trim().length > 0 &&
-    !sending &&
+    !isBusy &&
     (windowOpen || conversation.conversation_type === 'comment');
+
+  const startReply = (message: InboxMessage) => {
+    const preview = message.body_text?.trim() || '(attachment)';
+    setComposerMode({ kind: 'reply', messageId: message.id, preview });
+    setDraft('');
+    setDraftFromAi(false);
+    setDraftAiFlagged(false);
+  };
+
+  const startEdit = (message: InboxMessage) => {
+    if (!canHostEditMessage(message, messages)) return;
+    const preview = message.body_text?.trim() || '';
+    setComposerMode({ kind: 'edit', messageId: message.id, preview });
+    setDraft(preview);
+    setDraftFromAi(false);
+    setDraftAiFlagged(false);
+  };
 
   const handleSend = async (privateReply = false) => {
     const text = draft.trim();
     if (!text) return;
     try {
-      await onSend(text, privateReply);
-      setDraft('');
-      setDraftFromAi(false);
-      setDraftAiFlagged(false);
+      if (composerMode.kind === 'edit') {
+        if (!onEdit) return;
+        await onEdit(composerMode.messageId, text);
+      } else {
+        await onSend(text, {
+          privateReply,
+          replyToMessageId: composerMode.kind === 'reply' ? composerMode.messageId : undefined,
+        });
+      }
+      clearComposerMode();
     } catch (e) {
-      toast.error((e as Error).message);
+      const message = (e as Error).message;
+      if (isChatActionEligibilityError(message)) {
+        clearComposerMode();
+        return;
+      }
+      toast.error(message);
     }
   };
 
@@ -300,76 +399,150 @@ export function InboxConversationView({
                 </Button>
               </div>
             )}
-            {messages.map((msg) => {
-              const outbound = msg.direction === 'outbound';
-              const attachments = inboxAttachmentPreviews(msg.attachments);
-              const hasText = !!msg.body_text?.trim();
-              const hasMedia = attachments.length > 0;
-              const bubbleClass = cn(
-                'max-w-[min(100%,28rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm',
-                outbound
-                  ? 'bg-primary text-primary-foreground'
-                  : 'border-border/60 bg-card text-foreground border'
-              );
+            {messages.length > 0 ? (
+              searchQuery.trim() && visibleMessages.length === 0 ? (
+                <p className="text-muted-foreground py-8 text-center text-sm">No matches</p>
+              ) : (
+                <ChatMessageList
+                  messages={visibleMessages}
+                  getOutbound={(msg) => msg.direction === 'outbound'}
+                  renderMessage={(msg) => {
+                    const outbound = msg.direction === 'outbound';
+                    const isUnsent = isChatMessageUnsent(msg);
+                    const attachments = isUnsent ? [] : inboxAttachmentPreviews(msg.attachments);
+                    const hasText = !!msg.body_text?.trim();
+                    const hasMedia = attachments.length > 0;
+                    const showEdit =
+                      !isUnsent && outbound && canHostEditMessage(msg, messages) && !!onEdit;
+                    const showUnsend =
+                      !isUnsent && outbound && canHostUnsendMessage(msg, messages) && !!onUnsend;
+                    const showMessageMenu = canReply;
+                    const deliveryStatus =
+                      !isUnsent && outbound
+                        ? (msg.delivery_status ?? (msg.read_at ? 'read' : 'sent'))
+                        : null;
 
-              return (
-                <div
-                  key={msg.id}
-                  className={cn('flex flex-col gap-1.5', outbound ? 'items-end' : 'items-start')}
-                >
-                  {hasText && (
-                    <div className={bubbleClass}>
-                      <p className="whitespace-pre-wrap break-words">{msg.body_text}</p>
-                      {msg.is_ai_generated && (
-                        <span className="mt-1.5 inline-flex items-center gap-1 text-[10px] opacity-75">
-                          <Sparkles className="size-3" aria-hidden />
-                          AI
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {hasMedia && (
-                    <div
-                      className={cn(
-                        'flex flex-col gap-1.5',
-                        outbound ? 'items-end' : 'items-start'
-                      )}
-                    >
-                      {attachments.map((att, i) => (
-                        <InboxMessageMediaTile
-                          key={`${msg.id}-att-${i}`}
-                          attachment={att}
+                    const messageActions = showMessageMenu ? (
+                      <ChatMessageActionsMenu outbound={outbound}>
+                        <DropdownMenuItem onClick={() => startReply(msg)}>
+                          <Reply className="size-4" aria-hidden />
+                          Reply
+                        </DropdownMenuItem>
+                        {showEdit ? (
+                          <DropdownMenuItem onClick={() => startEdit(msg)}>
+                            <Pencil className="size-4" aria-hidden />
+                            Edit
+                          </DropdownMenuItem>
+                        ) : null}
+                        {showUnsend ? (
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => {
+                              void onUnsend?.(msg.id).catch((e) => {
+                                const message = (e as Error).message;
+                                if (isChatActionEligibilityError(message)) return;
+                                toast.error(message);
+                              });
+                            }}
+                          >
+                            <Undo2 className="size-4" aria-hidden />
+                            Unsend
+                          </DropdownMenuItem>
+                        ) : null}
+                      </ChatMessageActionsMenu>
+                    ) : null;
+
+                    const bubble =
+                      isUnsent || hasText || (!hasText && !hasMedia) ? (
+                        <ChatMessageBubble
+                          bodyText={
+                            isUnsent
+                              ? unsentMessageLabel(outbound)
+                              : hasText
+                                ? msg.body_text
+                                : '(attachment)'
+                          }
                           outbound={outbound}
-                          onOpen={() => openPreview(att)}
+                          unsent={isUnsent}
+                          sentAt={msg.sent_at}
+                          deliveryStatus={deliveryStatus}
+                          isAiGenerated={!isUnsent && msg.is_ai_generated}
+                          edited={!isUnsent && Boolean(msg.edited_at)}
+                          replyPreviewText={isUnsent ? null : msg.reply_preview_text}
+                          actions={messageActions}
                         />
-                      ))}
-                    </div>
-                  )}
-                  {!hasText && !hasMedia && (
-                    <div className={cn(bubbleClass, 'text-muted-foreground')}>(attachment)</div>
-                  )}
-                  {!hasText && hasMedia && msg.is_ai_generated && (
-                    <span className="text-muted-foreground inline-flex items-center gap-1 text-[10px] opacity-75">
-                      <Sparkles className="size-3" aria-hidden />
-                      AI
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                      ) : null;
+
+                    return (
+                      <div
+                        className={cn(
+                          'flex w-full flex-col gap-1.5',
+                          outbound ? 'items-end' : 'items-start'
+                        )}
+                      >
+                        {bubble}
+                        {hasMedia ? (
+                          <div
+                            className={cn(
+                              'flex flex-col gap-1.5',
+                              outbound ? 'items-end' : 'items-start'
+                            )}
+                          >
+                            {attachments.map((att, i) => (
+                              <InboxMessageMediaTile
+                                key={`${msg.id}-att-${i}`}
+                                attachment={att}
+                                outbound={outbound}
+                                onOpen={() => openPreview(att)}
+                              />
+                            ))}
+                            {!hasText ? (
+                              <time
+                                className="text-muted-foreground px-1 text-[11px] tabular-nums"
+                                dateTime={msg.sent_at}
+                              >
+                                {formatChatBubbleTime(msg.sent_at)}
+                              </time>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  }}
+                />
+              )
+            ) : null}
           </div>
         )}
       </div>
 
       {canReply && (
         <div className="border-border/80 bg-muted/20 shrink-0 border-t p-3 sm:p-4">
+          {isWeb && peerTyping ? (
+            <p className="text-muted-foreground mb-2 px-1 text-xs" aria-live="polite">
+              Guest is typing…
+            </p>
+          ) : null}
           <div
             className={cn(
               'border-border/80 bg-background overflow-hidden rounded-xl border shadow-sm transition-shadow',
               'focus-within:border-primary/40 focus-within:ring-primary/10 focus-within:ring-2'
             )}
           >
-            {draftFromAi && draft.trim().length > 0 && (
+            {composerMode.kind === 'reply' ? (
+              <ChatComposerContextBar
+                mode="reply"
+                preview={composerMode.preview}
+                onClear={clearComposerMode}
+              />
+            ) : composerMode.kind === 'edit' ? (
+              <ChatComposerContextBar
+                mode="edit"
+                preview={composerMode.preview}
+                onClear={clearComposerMode}
+              />
+            ) : null}
+            {draftFromAi && draft.trim().length > 0 && composerMode.kind === 'compose' && (
               <div className="border-border/60 flex items-center gap-1.5 border-b px-3.5 py-2 text-[11px] font-medium text-violet-600 dark:text-violet-400">
                 <Sparkles className="size-3.5 shrink-0" aria-hidden />
                 {draftAiFlagged ? 'AI declined to answer' : 'Suggested by AI'}
@@ -381,6 +554,7 @@ export function InboxConversationView({
                 setDraft(e.target.value);
                 setDraftFromAi(false);
                 setDraftAiFlagged(false);
+                if (isWeb) signalTyping();
               }}
               placeholder={
                 windowOpen || conversation.conversation_type === 'comment'
@@ -398,7 +572,14 @@ export function InboxConversationView({
             />
             <div className="border-border/60 flex items-center justify-between gap-2 border-t px-2 py-1.5">
               <TooltipProvider delayDuration={300}>
-                <div className="flex items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-1">
+                  {isWeb ? (
+                    <ChatInThreadSearch
+                      messages={messages}
+                      onQueryChange={setSearchQuery}
+                      className="mr-1 hidden min-w-0 sm:flex"
+                    />
+                  ) : null}
                   {visibleTemplates.length > 0 && (
                     <DropdownMenu>
                       <Tooltip>
@@ -476,7 +657,7 @@ export function InboxConversationView({
                   disabled={!canSend}
                   onClick={() => void handleSend()}
                 >
-                  {sending ? (
+                  {sending || editing || unsending ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <>
@@ -487,6 +668,11 @@ export function InboxConversationView({
                 </Button>
               </div>
             </div>
+            {isWeb ? (
+              <div className="border-border/60 flex border-t px-2 py-1.5 sm:hidden">
+                <ChatInThreadSearch messages={messages} onQueryChange={setSearchQuery} />
+              </div>
+            ) : null}
           </div>
         </div>
       )}

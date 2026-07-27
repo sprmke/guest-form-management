@@ -22,13 +22,14 @@ export function InboxPlatformTabs({ value, onChange, showComingSoonPlatforms = f
     <SlidingTabs
       value={value}
       onValueChange={(next) => onChange(next as ThreadPlatformFilter)}
-      className="border-border bg-card/50 shrink-0 border-b"
+      className="border-border shrink-0 border-b"
     >
       <SlidingTabsList
-        className="w-full justify-start gap-0 rounded-none bg-transparent p-0"
+        size="compact"
+        className="w-full max-w-none justify-start gap-0 overflow-x-auto rounded-none bg-transparent px-2 py-1.5 sm:px-3"
         pillClassName="bg-muted rounded-md shadow-none"
         aria-label="Platform"
-        remeasureDeps={[platforms.length]}
+        remeasureDeps={[platforms.length, value]}
       >
         {platforms.map((platform) => {
           const label = platform === 'all' ? 'All' : platformLabel(platform);
@@ -36,7 +37,7 @@ export function InboxPlatformTabs({ value, onChange, showComingSoonPlatforms = f
             <SlidingTabsTrigger
               key={platform}
               value={platform}
-              className="min-h-[44px] shrink-0 gap-2 rounded-md px-3 py-3 sm:px-4"
+              className="shrink-0 gap-2 font-medium"
             >
               {platform !== 'all' && <PlatformLogo platform={platform} size="xs" />}
               {label}

@@ -22,7 +22,9 @@ import {
   patchInboxAutomationSettings,
   saveInboxTemplate,
   deleteInboxTemplate,
+  editInboxMessage,
   sendInboxReply,
+  unsendInboxMessage,
   startMetaInboxOAuth,
   suggestInboxAiReply,
   runMetaInboxBackfillChunk,
@@ -227,10 +229,18 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
   });
 
   const sendReply = useMutation({
-    mutationFn: (opts: { conversationId: string; text: string; privateReply?: boolean }) =>
+    mutationFn: (opts: {
+      conversationId: string;
+      text: string;
+      privateReply?: boolean;
+      replyToMessageId?: string;
+    }) =>
       mockMode
         ? mockSendReply(opts.conversationId, opts.text, opts.privateReply).then(() => undefined)
-        : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, opts.privateReply),
+        : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
+            privateReply: opts.privateReply,
+            replyToMessageId: opts.replyToMessageId,
+          }),
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
       const prev = qc.getQueryData<{
@@ -281,7 +291,29 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
         : suggestInboxAiReply(orgSlug, orgId, conversationId),
   });
 
-  return { connectMeta, disconnectMeta, sendReply, aiSuggest };
+  const editMessage = useMutation({
+    mutationFn: (opts: { conversationId: string; messageId: string; text: string }) =>
+      mockMode
+        ? Promise.reject(new Error('Edit not available in preview mode'))
+        : editInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId, opts.text),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      scheduleThreadsInvalidate(qc);
+    },
+  });
+
+  const unsendMessage = useMutation({
+    mutationFn: (opts: { conversationId: string; messageId: string }) =>
+      mockMode
+        ? Promise.reject(new Error('Unsend not available in preview mode'))
+        : unsendInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId),
+    onSuccess: (_, vars) => {
+      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      scheduleThreadsInvalidate(qc);
+    },
+  });
+
+  return { connectMeta, disconnectMeta, sendReply, editMessage, unsendMessage, aiSuggest };
 }
 
 export function useMetaOAuthPagePicker(
