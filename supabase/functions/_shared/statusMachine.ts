@@ -7,9 +7,9 @@
  *   • Admin-only "force advance" edges (manual override / automation catch-up)
  *   • Google Calendar colorId + summary label map
  *
- * Mirror: ui/src/features/admin/lib/workflow.ts (kept in sync manually).
+ * Mirror: ui/src/features/dashboard/bookings/lib/workflow.ts (kept in sync manually).
  * Rule:   .cursor/rules/booking-workflow.mdc
- * Plan:   docs/NEW_FLOW_PLAN.md §1.3 + §1.4 + §6.1 Q1.3
+ * Plan:   docs/planning/NEW_FLOW_PLAN.md §1.3 + §1.4 + §6.1 Q1.3
  */
 
 // ─── Status enum ─────────────────────────────────────────────────────────────
@@ -54,11 +54,10 @@ export function isLatePendingParkingDocumentTransition(
     document_completion_target?: string;
     document_completion_clear_target?: string;
   },
-  manual: boolean,
+  manual: boolean
 ): boolean {
   if (!manual || from !== to || !isPostPendingDocumentsStatus(from)) return false;
-  const target =
-    payload.document_completion_target ?? payload.document_completion_clear_target;
+  const target = payload.document_completion_target ?? payload.document_completion_clear_target;
   return target === 'PENDING_PARKING_REQUEST';
 }
 
@@ -76,9 +75,14 @@ export const GUEST_FIELD_EDIT_REVERT_STATUSES = new Set<BookingStatus>([
 ]);
 
 export function shouldRevertGuestFieldEditsToPendingReview(
-  status: string | null | undefined,
+  status: string | null | undefined
 ): boolean {
   return !!status && isBookingStatus(status) && GUEST_FIELD_EDIT_REVERT_STATUSES.has(status);
+}
+
+/** Public `/form?bookingId=` updates are allowed only while the booking awaits admin review. */
+export function canGuestPublicUpdateForm(status: string | null | undefined): boolean {
+  return String(status ?? '').trim() === 'PENDING_REVIEW';
 }
 
 /**
@@ -97,12 +101,9 @@ export function shouldRevertGuestFieldEditsToPendingReview(
  * Documents” (pricing on the row is preserved unless the transition payload
  * overwrites it).
  *
- * Mirror: `ui/src/features/admin/lib/bookingStatus.ts#pendingDocumentsClearPatchForGuestEditRevert`.
+ * Mirror: `ui/src/features/dashboard/bookings/lib/bookingStatus.ts#pendingDocumentsClearPatchForGuestEditRevert`.
  */
-export function pendingDocumentsClearPatchForGuestEditRevert(): Record<
-  string,
-  null | false
-> {
+export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, null | false> {
   return {
     gaf_completed_at: null,
     parking_completed_at: null,
@@ -137,17 +138,17 @@ export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED
  * Any call from workflowOrchestrator or the Gmail listener uses this.
  */
 const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW:          ['PENDING_DOCUMENTS', 'CANCELLED'],
-  PENDING_DOCUMENTS:       ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'CANCELLED'],
+  PENDING_DOCUMENTS: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   // Legacy edges (existing rows may still be here):
-  PENDING_GAF:             ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  PENDING_GAF: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
-  READY_FOR_CHECKIN:       ['READY_FOR_CHECKOUT', 'CANCELLED'],
+  PENDING_PET_REQUEST: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
+  READY_FOR_CHECKIN: ['READY_FOR_CHECKOUT', 'CANCELLED'],
   READY_FOR_CHECKOUT: ['PENDING_SD_REFUND', 'COMPLETED', 'CANCELLED'],
-  PENDING_SD_REFUND:       ['COMPLETED', 'CANCELLED'],
-  COMPLETED:               [],
-  CANCELLED:               [],
+  PENDING_SD_REFUND: ['COMPLETED', 'CANCELLED'],
+  COMPLETED: [],
+  CANCELLED: [],
 };
 
 /**
@@ -164,12 +165,12 @@ const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
  * See: .cursor/rules/booking-workflow.mdc §2.2
  */
 const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW:          [],
-  PENDING_DOCUMENTS:       ['PENDING_REVIEW'],
-  PENDING_GAF:             ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  PENDING_REVIEW: [],
+  PENDING_DOCUMENTS: ['PENDING_REVIEW'],
+  PENDING_GAF: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
   PENDING_PARKING_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
-  PENDING_PET_REQUEST:     ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
-  READY_FOR_CHECKIN:       [
+  PENDING_PET_REQUEST: ['PENDING_DOCUMENTS', 'PENDING_REVIEW'],
+  READY_FOR_CHECKIN: [
     'PENDING_DOCUMENTS',
     'PENDING_PET_REQUEST',
     'PENDING_PARKING_REQUEST',
@@ -178,9 +179,9 @@ const MANUAL_OVERRIDE_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>>
     'PENDING_SD_REFUND',
   ],
   READY_FOR_CHECKOUT: ['READY_FOR_CHECKIN'],
-  PENDING_SD_REFUND:       ['READY_FOR_CHECKOUT'],
-  COMPLETED:               [],
-  CANCELLED:               [],
+  PENDING_SD_REFUND: ['READY_FOR_CHECKOUT'],
+  COMPLETED: [],
+  CANCELLED: [],
 };
 
 export type TransitionContext = {
@@ -192,7 +193,11 @@ export type TransitionContext = {
  * Returns true when the `from → to` transition is valid for the given context.
  * This is the primary guard — call it before writing any side effects.
  */
-export function canTransition(from: BookingStatus, to: BookingStatus, ctx: TransitionContext): boolean {
+export function canTransition(
+  from: BookingStatus,
+  to: BookingStatus,
+  ctx: TransitionContext
+): boolean {
   const primary = TRANSITION_GRAPH[from] ?? [];
   if (primary.includes(to)) return true;
 
@@ -221,7 +226,7 @@ export function availableTransitions(from: BookingStatus, ctx: TransitionContext
 // ─── Calendar color + summary label map ──────────────────────────────────────
 // colorId values are Google Calendar API integers.
 // Summary label is the first segment of the event title (no brackets in production).
-// See: docs/NEW_FLOW_PLAN.md §1.4, .cursor/rules/booking-workflow.mdc §4
+// See: docs/planning/NEW_FLOW_PLAN.md §1.4, .cursor/rules/booking-workflow.mdc §4
 
 export type CalendarStatusMeta = {
   /** Google Calendar API colorId. */
@@ -231,16 +236,16 @@ export type CalendarStatusMeta = {
 };
 
 export const STATUS_CALENDAR_META: Record<BookingStatus, CalendarStatusMeta> = {
-  PENDING_REVIEW:          { colorId: '11', label: 'PENDING REVIEW' },
-  PENDING_DOCUMENTS:       { colorId: '5',  label: 'PENDING DOCUMENTS' },
-  PENDING_GAF:             { colorId: '5',  label: 'PENDING GAF' },
-  PENDING_PARKING_REQUEST: { colorId: '5',  label: 'PENDING PARKING REQUEST' },
-  PENDING_PET_REQUEST:     { colorId: '5',  label: 'PENDING PET REQUEST' },
-  READY_FOR_CHECKIN:       { colorId: '10', label: 'READY FOR CHECK-IN' },
+  PENDING_REVIEW: { colorId: '11', label: 'PENDING REVIEW' },
+  PENDING_DOCUMENTS: { colorId: '5', label: 'PENDING DOCUMENTS' },
+  PENDING_GAF: { colorId: '5', label: 'PENDING GAF' },
+  PENDING_PARKING_REQUEST: { colorId: '5', label: 'PENDING PARKING REQUEST' },
+  PENDING_PET_REQUEST: { colorId: '5', label: 'PENDING PET REQUEST' },
+  READY_FOR_CHECKIN: { colorId: '10', label: 'READY FOR CHECK-IN' },
   READY_FOR_CHECKOUT: { colorId: '6', label: 'READY FOR CHECK-OUT' },
-  PENDING_SD_REFUND:       { colorId: '6',  label: 'PENDING SD REFUND' },
-  COMPLETED:               { colorId: '9',  label: 'COMPLETED' },
-  CANCELLED:               { colorId: '3',  label: 'CANCELED' },
+  PENDING_SD_REFUND: { colorId: '6', label: 'PENDING SD REFUND' },
+  COMPLETED: { colorId: '9', label: 'COMPLETED' },
+  CANCELLED: { colorId: '3', label: 'CANCELED' },
 };
 
 /** DB fields used to derive nested “what is still pending” under PENDING_DOCUMENTS (calendar). */
@@ -283,17 +288,13 @@ export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCal
   const gafManualIncomplete = bookingFlagTrue(booking.gaf_manual_incomplete);
   const petManualIncomplete = bookingFlagTrue(booking.pet_manual_incomplete);
   const gafDone =
-    !gafManualIncomplete &&
-    (!!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url);
+    !gafManualIncomplete && (!!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url);
   // Parking: URL alone does not clear the nested step — only `parking_completed_at`
   // (admin "Mark as Complete — Pending Parking Request" / same-field transition).
-  const parkingDone =
-    !needParking ||
-    !!booking.parking_completed_at;
+  const parkingDone = !needParking || !!booking.parking_completed_at;
   const petDone =
     !hasPets ||
-    (!petManualIncomplete &&
-      (!!booking.pet_completed_at || !!booking.approved_pet_pdf_url));
+    (!petManualIncomplete && (!!booking.pet_completed_at || !!booking.approved_pet_pdf_url));
   return { needParking, hasPets, gafDone, parkingDone, petDone };
 }
 
@@ -304,7 +305,7 @@ export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCal
  * falls back to `PENDING DOCUMENTS` (parent not yet advanced to ready).
  */
 export function buildPendingDocumentsCalendarSummaryPrefix(
-  booking: PendingDocumentsCalendarBooking,
+  booking: PendingDocumentsCalendarBooking
 ): string {
   const { needParking, hasPets, gafDone, parkingDone, petDone } =
     getPendingDocumentsNestedCompletion(booking);
@@ -345,7 +346,7 @@ export function buildCalendarSummary(
   pax: number,
   nights: number,
   guestName: string,
-  booking?: PendingDocumentsCalendarBooking | null,
+  booking?: PendingDocumentsCalendarBooking | null
 ): string {
   const label =
     status === 'PENDING_DOCUMENTS' && booking != null
@@ -366,7 +367,7 @@ export function buildCalendarSummary(
  */
 export function resolveCalendarSummaryStatus(
   status: BookingStatus,
-  booking?: PendingDocumentsCalendarBooking | null,
+  booking?: PendingDocumentsCalendarBooking | null
 ): BookingStatus {
   if (status !== 'PENDING_DOCUMENTS' || !booking) return status;
 
@@ -385,14 +386,14 @@ export function resolveCalendarSummaryStatus(
 // ─── Human labels (for admin UI display) ─────────────────────────────────────
 
 export const STATUS_HUMAN_LABEL: Record<BookingStatus, string> = {
-  PENDING_REVIEW:          'Pending Review',
-  PENDING_DOCUMENTS:       'Pending Documents',
-  PENDING_GAF:             'Pending GAF',
+  PENDING_REVIEW: 'Pending Review',
+  PENDING_DOCUMENTS: 'Pending Documents',
+  PENDING_GAF: 'Pending GAF',
   PENDING_PARKING_REQUEST: 'Pending Parking Request',
-  PENDING_PET_REQUEST:     'Pending Pet Request',
-  READY_FOR_CHECKIN:       'Ready for Check-in',
+  PENDING_PET_REQUEST: 'Pending Pet Request',
+  READY_FOR_CHECKIN: 'Ready for Check-in',
   READY_FOR_CHECKOUT: 'Ready for Check-out',
-  PENDING_SD_REFUND:       'Pending SD Refund',
-  COMPLETED:               'Completed',
-  CANCELLED:               'Cancelled',
+  PENDING_SD_REFUND: 'Pending SD Refund',
+  COMPLETED: 'Completed',
+  CANCELLED: 'Cancelled',
 };
