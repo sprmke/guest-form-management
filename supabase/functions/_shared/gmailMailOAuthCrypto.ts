@@ -19,7 +19,7 @@ function decodeEncryptionKey(raw: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   if (out.length !== 32) {
     throw new Error(
-      'GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (use 64 hex chars or 32-byte base64)',
+      'GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY must decode to exactly 32 bytes (use 64 hex chars or 32-byte base64)'
     );
   }
   return out;
@@ -52,7 +52,7 @@ export async function encryptGmailRefreshToken(plaintext: string): Promise<strin
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const enc = new TextEncoder();
   const ct = new Uint8Array(
-    await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, enc.encode(plaintext)),
+    await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, enc.encode(plaintext))
   );
   const combined = new Uint8Array(iv.length + ct.length);
   combined.set(iv, 0);

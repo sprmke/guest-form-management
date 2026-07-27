@@ -11,12 +11,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 
-export type ReceiptValidationVerdict =
-  | 'valid'
-  | 'likely_valid'
-  | 'unclear'
-  | 'invalid'
-  | 'skipped';
+export type ReceiptValidationVerdict = 'valid' | 'likely_valid' | 'unclear' | 'invalid' | 'skipped';
 
 export type ReceiptValidationResult = {
   verdict: ReceiptValidationVerdict;
@@ -32,8 +27,7 @@ export type ReceiptValidationResult = {
 };
 
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 const GROQ_MODEL = 'meta-llama/llama-4-scout-17b-16e-instruct';
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -45,7 +39,10 @@ let geminiKeyIndex = 0;
 function getGeminiApiKeys(): string[] {
   const multi = Deno.env.get('GEMINI_API_KEYS')?.trim();
   if (multi) {
-    return multi.split(',').map((k) => k.trim()).filter(Boolean);
+    return multi
+      .split(',')
+      .map((k) => k.trim())
+      .filter(Boolean);
   }
   const single = Deno.env.get('GEMINI_API_KEY')?.trim();
   return single ? [single] : [];
@@ -98,9 +95,11 @@ export async function verifyGeminiIntegration(): Promise<GeminiIntegrationVerify
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [{ text: 'Reply with exactly: ok' }],
-        }],
+        contents: [
+          {
+            parts: [{ text: 'Reply with exactly: ok' }],
+          },
+        ],
         generationConfig: {
           temperature: 0,
           maxOutputTokens: 8,
@@ -212,9 +211,7 @@ function parseGeminiApiError(status: number, errText: string): string {
 }
 
 /** True when a real verdict was produced and may be written to guest_submissions. */
-export function shouldPersistReceiptValidation(
-  result: ReceiptValidationResult,
-): boolean {
+export function shouldPersistReceiptValidation(result: ReceiptValidationResult): boolean {
   return !result.aiModelError;
 }
 
@@ -228,7 +225,9 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 function normalizeVerdict(raw: unknown): ReceiptValidationVerdict {
-  const v = String(raw ?? '').trim().toLowerCase();
+  const v = String(raw ?? '')
+    .trim()
+    .toLowerCase();
   if (v === 'valid' || v === 'likely_valid' || v === 'unclear' || v === 'invalid') {
     return v;
   }
@@ -237,7 +236,7 @@ function normalizeVerdict(raw: unknown): ReceiptValidationVerdict {
 
 function parseGeminiJson(
   text: string,
-  defaultSummary = 'Document analyzed.',
+  defaultSummary = 'Document analyzed.'
 ): ReceiptValidationResult | null {
   const trimmed = text.trim();
   const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
@@ -248,8 +247,10 @@ function parseGeminiJson(
     const confidence = Number.isFinite(confidenceRaw)
       ? Math.min(1, Math.max(0, confidenceRaw))
       : null;
-    const summary = String(parsed.summary ?? '').trim().slice(0, 200) ||
-      defaultSummary;
+    const summary =
+      String(parsed.summary ?? '')
+        .trim()
+        .slice(0, 200) || defaultSummary;
     return {
       verdict: normalizeVerdict(parsed.verdict),
       confidence,
@@ -281,19 +282,18 @@ async function tryGeminiKey(
   base64: string,
   safeMime: string,
   logTag: string,
-  defaultSummary: string,
+  defaultSummary: string
 ): Promise<ReceiptValidationResult | null> {
   try {
     const res = await fetch(`${GEMINI_URL}?key=${encodeURIComponent(apiKey)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: safeMime, data: base64 } },
-          ],
-        }],
+        contents: [
+          {
+            parts: [{ text: prompt }, { inline_data: { mime_type: safeMime, data: base64 } }],
+          },
+        ],
         generationConfig: {
           temperature: 0.1,
           responseMimeType: 'application/json',
@@ -312,7 +312,7 @@ async function tryGeminiKey(
       return aiModelFailure('AI validation failed', detail);
     }
 
-    const body = await res.json() as {
+    const body = (await res.json()) as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: string }> };
       }>;
@@ -323,23 +323,24 @@ async function tryGeminiKey(
       console.warn(`[${logTag}] Could not parse Gemini response:`, text.slice(0, 200));
       return aiModelFailure(
         'AI validation returned unreadable result',
-        'The AI model returned a response we could not parse. Try again.',
+        'The AI model returned a response we could not parse. Try again.'
       );
     }
 
     console.log(
-      `[${logTag}] [gemini] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
+      `[${logTag}] [gemini] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`
     );
     return { ...parsed, provider: 'gemini' };
   } catch (err) {
-    console.warn(`[${logTag}] Gemini key threw (network?):`, err instanceof Error ? err.message : err);
+    console.warn(
+      `[${logTag}] Gemini key threw (network?):`,
+      err instanceof Error ? err.message : err
+    );
     return null; // treat network errors as transient → try next
   }
 }
 
-const GROQ_SUPPORTED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-]);
+const GROQ_SUPPORTED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
 /** Groq (Llama 4 Scout) fallback — OpenAI-compatible vision API. */
 async function tryGroq(
@@ -348,7 +349,7 @@ async function tryGroq(
   base64: string,
   safeMime: string,
   logTag: string,
-  defaultSummary: string,
+  defaultSummary: string
 ): Promise<ReceiptValidationResult | null> {
   if (!GROQ_SUPPORTED_MIME_TYPES.has(safeMime)) {
     console.warn(`[${logTag}] Groq skipped — unsupported MIME type: ${safeMime}`);
@@ -360,20 +361,22 @@ async function tryGroq(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
+        Authorization: `Bearer ${groqKey}`,
       },
       body: JSON.stringify({
         model: GROQ_MODEL,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: { url: `data:${safeMime};base64,${base64}` },
-            },
-          ],
-        }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${safeMime};base64,${base64}` },
+              },
+            ],
+          },
+        ],
         temperature: 0.1,
         max_tokens: 512,
         response_format: { type: 'json_object' },
@@ -390,7 +393,7 @@ async function tryGroq(
       return aiModelFailure('AI validation failed (fallback)', `Groq returned ${res.status}`);
     }
 
-    const body = await res.json() as {
+    const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
     const text = body.choices?.[0]?.message?.content ?? '';
@@ -399,12 +402,12 @@ async function tryGroq(
       console.warn(`[${logTag}] Could not parse Groq response:`, text.slice(0, 200));
       return aiModelFailure(
         'AI validation returned unreadable result',
-        'Fallback AI model returned a response we could not parse.',
+        'Fallback AI model returned a response we could not parse.'
       );
     }
 
     console.log(
-      `[${logTag}] [groq] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`,
+      `[${logTag}] [groq] verdict=${parsed.verdict} confidence=${parsed.confidence} summary=${parsed.summary}`
     );
     return { ...parsed, provider: 'groq' };
   } catch (err) {
@@ -424,7 +427,7 @@ async function callGeminiVision(
   imageBytes: Uint8Array,
   mimeType: string,
   logTag: string,
-  defaultSummary: string,
+  defaultSummary: string
 ): Promise<ReceiptValidationResult> {
   const geminiKeys = getGeminiApiKeys();
   const groqKey = getGroqApiKey();
@@ -446,14 +449,21 @@ async function callGeminiVision(
     for (let i = 0; i < geminiKeys.length; i++) {
       const idx = (startIdx + i) % geminiKeys.length;
       const result = await tryGeminiKey(
-        geminiKeys[idx], prompt, base64, safeMime, logTag, defaultSummary,
+        geminiKeys[idx],
+        prompt,
+        base64,
+        safeMime,
+        logTag,
+        defaultSummary
       );
       if (result) {
         geminiKeyIndex = (idx + 1) % geminiKeys.length; // advance for next call
         return result;
       }
     }
-    console.warn(`[${logTag}] All ${geminiKeys.length} Gemini key(s) failed, trying Groq fallback...`);
+    console.warn(
+      `[${logTag}] All ${geminiKeys.length} Gemini key(s) failed, trying Groq fallback...`
+    );
   }
 
   // Layer 2: Groq fallback
@@ -464,7 +474,8 @@ async function callGeminiVision(
 
   // All providers exhausted
   const providers = [];
-  if (geminiKeys.length > 0) providers.push(`Gemini (${geminiKeys.length} key${geminiKeys.length > 1 ? 's' : ''})`);
+  if (geminiKeys.length > 0)
+    providers.push(`Gemini (${geminiKeys.length} key${geminiKeys.length > 1 ? 's' : ''})`);
   if (groqKey) providers.push('Groq');
   const detail = `All AI providers exhausted: ${providers.join(', ')}. Try again later.`;
   console.error(`[${logTag}] ${detail}`);
@@ -473,48 +484,45 @@ async function callGeminiVision(
 
 async function validateReceiptImage(
   imageBytes: Uint8Array,
-  mimeType: string,
+  mimeType: string
 ): Promise<ReceiptValidationResult> {
   return callGeminiVision(
     RECEIPT_PROMPT,
     imageBytes,
     mimeType,
     'receipt-validation',
-    'Receipt analyzed.',
+    'Receipt analyzed.'
   );
 }
 
 async function validateValidIdImage(
   imageBytes: Uint8Array,
   mimeType: string,
-  path?: string,
+  path?: string
 ): Promise<ReceiptValidationResult> {
   return callGeminiVision(
     VALID_ID_PROMPT,
     imageBytes,
     normalizeVisionMimeType(mimeType, path),
     'valid-id-validation',
-    'ID analyzed.',
+    'ID analyzed.'
   );
 }
 
 export async function validateReceiptFile(file: File | Blob): Promise<ReceiptValidationResult> {
-  const mimeType = file instanceof File ? (file.type || 'image/jpeg') : 'image/jpeg';
+  const mimeType = file instanceof File ? file.type || 'image/jpeg' : 'image/jpeg';
   const bytes = new Uint8Array(await file.arrayBuffer());
   return validateReceiptImage(bytes, mimeType);
 }
 
 export async function validateValidIdFile(file: File | Blob): Promise<ReceiptValidationResult> {
   const fileName = file instanceof File ? file.name : '';
-  const mimeType = file instanceof File
-    ? (file.type || mimeTypeFromPath(fileName))
-    : 'image/jpeg';
+  const mimeType = file instanceof File ? file.type || mimeTypeFromPath(fileName) : 'image/jpeg';
   const bytes = new Uint8Array(await file.arrayBuffer());
   return validateValidIdImage(bytes, mimeType, fileName);
 }
 
-const STORAGE_OBJECT_PATH_RE =
-  /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
+const STORAGE_OBJECT_PATH_RE = /\/storage\/v1\/object\/(?:public|sign)\/([^/]+)\/(.+)$/;
 
 function parseStorageUrl(url: string): { bucket: string; path: string } | null {
   const trimmed = url?.trim();
@@ -542,7 +550,7 @@ async function validateDocumentFromStorageUrl(
   url: string,
   validate: (bytes: Uint8Array, mimeType: string, path: string) => Promise<ReceiptValidationResult>,
   parseErrorSummary: string,
-  downloadErrorSummary: string,
+  downloadErrorSummary: string
 ): Promise<ReceiptValidationResult> {
   const loc = parseStorageUrl(url);
   if (!loc) {
@@ -551,7 +559,7 @@ async function validateDocumentFromStorageUrl(
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 
   try {
@@ -561,9 +569,10 @@ async function validateDocumentFromStorageUrl(
       return skipped(downloadErrorSummary);
     }
     const bytes = new Uint8Array(await data.arrayBuffer());
-    const mimeType = data.type?.startsWith('image/') || data.type === 'application/pdf'
-      ? data.type
-      : mimeTypeFromPath(loc.path);
+    const mimeType =
+      data.type?.startsWith('image/') || data.type === 'application/pdf'
+        ? data.type
+        : mimeTypeFromPath(loc.path);
     return await validate(bytes, mimeType, loc.path);
   } catch (err) {
     console.error('[document-validation] Storage download error:', err);
@@ -572,26 +581,22 @@ async function validateDocumentFromStorageUrl(
 }
 
 /** Download a stored receipt image and run Gemini validation (admin backfill). */
-async function validateReceiptFromStorageUrl(
-  url: string,
-): Promise<ReceiptValidationResult> {
+async function validateReceiptFromStorageUrl(url: string): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
     url,
     (bytes, mimeType) => validateReceiptImage(bytes, mimeType),
     'Could not parse receipt URL',
-    'Could not download receipt image',
+    'Could not download receipt image'
   );
 }
 
 /** Download a stored valid ID and run Gemini validation (admin backfill). */
-async function validateValidIdFromStorageUrl(
-  url: string,
-): Promise<ReceiptValidationResult> {
+async function validateValidIdFromStorageUrl(url: string): Promise<ReceiptValidationResult> {
   return validateDocumentFromStorageUrl(
     url,
     (bytes, mimeType, path) => validateValidIdImage(bytes, mimeType, path),
     'Could not parse valid ID URL',
-    'Could not download valid ID image',
+    'Could not download valid ID image'
   );
 }
 
@@ -616,7 +621,7 @@ export type ReceiptBackfillResult = {
 /** Returns true when a receipt URL exists but AI verdict was never persisted. */
 function receiptUrlNeedsAiBackfill(
   url: string | null | undefined,
-  verdict: string | null | undefined,
+  verdict: string | null | undefined
 ): boolean {
   return Boolean(url?.trim()) && !String(verdict ?? '').trim();
 }
@@ -628,7 +633,7 @@ const TERMINAL_BOOKING_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
  * received an AI verdict during submit/upload.
  */
 export async function backfillMissingReceiptAiVerdicts(
-  booking: Record<string, unknown>,
+  booking: Record<string, unknown>
 ): Promise<ReceiptBackfillResult> {
   const status = String(booking.status ?? '');
   if (TERMINAL_BOOKING_STATUSES.has(status)) {
@@ -643,41 +648,27 @@ export async function backfillMissingReceiptAiVerdicts(
   }
 
   const balanceUrl = String(booking.guest_balance_payment_receipt_url ?? '').trim();
-  if (
-    receiptUrlNeedsAiBackfill(
-      balanceUrl,
-      booking.balance_receipt_ai_verdict as string,
-    )
-  ) {
+  if (receiptUrlNeedsAiBackfill(balanceUrl, booking.balance_receipt_ai_verdict as string)) {
     targets.push({ kind: 'balance', url: balanceUrl });
   }
 
   const parkingUrl = String(booking.parking_payment_receipt_url ?? '').trim();
-  if (
-    receiptUrlNeedsAiBackfill(
-      parkingUrl,
-      booking.parking_receipt_ai_verdict as string,
-    )
-  ) {
+  if (receiptUrlNeedsAiBackfill(parkingUrl, booking.parking_receipt_ai_verdict as string)) {
     targets.push({ kind: 'parking', url: parkingUrl });
   }
 
   const validIdUrl = String(booking.valid_id_url ?? '').trim();
-  if (
-    receiptUrlNeedsAiBackfill(
-      validIdUrl,
-      booking.valid_id_ai_verdict as string,
-    )
-  ) {
+  if (receiptUrlNeedsAiBackfill(validIdUrl, booking.valid_id_ai_verdict as string)) {
     targets.push({ kind: 'valid_id', url: validIdUrl });
   }
 
   const validated: ReceiptBackfillItem[] = [];
   const errors: ReceiptBackfillError[] = [];
   for (const target of targets) {
-    const validation = target.kind === 'valid_id'
-      ? await validateValidIdFromStorageUrl(target.url)
-      : await validateReceiptFromStorageUrl(target.url);
+    const validation =
+      target.kind === 'valid_id'
+        ? await validateValidIdFromStorageUrl(target.url)
+        : await validateReceiptFromStorageUrl(target.url);
     if (validation.aiModelError) {
       errors.push({
         kind: target.kind,
@@ -695,23 +686,28 @@ export async function backfillMissingReceiptAiVerdicts(
 }
 
 export function dbPatchFromReceiptBackfillItems(
-  items: ReceiptBackfillItem[],
+  items: ReceiptBackfillItem[]
 ): Record<string, string> {
   const patch: Record<string, string> = {};
   for (const item of items) {
-    Object.assign(patch, dbPatchForDocumentAiValidation(item.kind, {
-      verdict: item.verdict,
-      confidence: null,
-      summary: item.summary,
-      has_amount: false,
-      has_date: false,
-      has_reference: false,
-    }));
+    Object.assign(
+      patch,
+      dbPatchForDocumentAiValidation(item.kind, {
+        verdict: item.verdict,
+        confidence: null,
+        summary: item.summary,
+        has_amount: false,
+        has_date: false,
+        has_reference: false,
+      })
+    );
   }
   return patch;
 }
 
-export function formatReceiptVerdictLabel(verdict: ReceiptValidationVerdict | string | null | undefined): string {
+export function formatReceiptVerdictLabel(
+  verdict: ReceiptValidationVerdict | string | null | undefined
+): string {
   switch (String(verdict ?? '').toLowerCase()) {
     case 'valid':
       return 'Valid';
@@ -729,32 +725,32 @@ export function formatReceiptVerdictLabel(verdict: ReceiptValidationVerdict | st
 }
 
 export function receiptVerdictBlocksAdminTransition(
-  verdict: ReceiptValidationVerdict | string | null | undefined,
+  verdict: ReceiptValidationVerdict | string | null | undefined
 ): boolean {
   return String(verdict ?? '').toLowerCase() === 'invalid';
 }
 
 export type ReceiptValidationDbPatch =
   | {
-    dp_receipt_ai_verdict: string;
-    dp_receipt_ai_summary: string;
-  }
+      dp_receipt_ai_verdict: string;
+      dp_receipt_ai_summary: string;
+    }
   | {
-    balance_receipt_ai_verdict: string;
-    balance_receipt_ai_summary: string;
-  }
+      balance_receipt_ai_verdict: string;
+      balance_receipt_ai_summary: string;
+    }
   | {
-    parking_receipt_ai_verdict: string;
-    parking_receipt_ai_summary: string;
-  }
+      parking_receipt_ai_verdict: string;
+      parking_receipt_ai_summary: string;
+    }
   | {
-    valid_id_ai_verdict: string;
-    valid_id_ai_summary: string;
-  };
+      valid_id_ai_verdict: string;
+      valid_id_ai_summary: string;
+    };
 
 export function dbPatchForDocumentAiValidation(
   kind: ReceiptBackfillKind,
-  result: ReceiptValidationResult,
+  result: ReceiptValidationResult
 ): ReceiptValidationDbPatch {
   if (kind === 'downpayment') {
     return {
@@ -783,14 +779,12 @@ export function dbPatchForDocumentAiValidation(
 /** @deprecated Use dbPatchForDocumentAiValidation */
 export function dbPatchForReceiptValidation(
   kind: 'downpayment' | 'balance' | 'parking',
-  result: ReceiptValidationResult,
+  result: ReceiptValidationResult
 ): ReceiptValidationDbPatch {
   return dbPatchForDocumentAiValidation(kind, result);
 }
 
-function receiptKindForAssetType(
-  assetType: string,
-): 'downpayment' | 'balance' | 'parking' | null {
+function receiptKindForAssetType(assetType: string): 'downpayment' | 'balance' | 'parking' | null {
   switch (assetType) {
     case 'payment_receipt':
       return 'downpayment';
@@ -803,9 +797,7 @@ function receiptKindForAssetType(
   }
 }
 
-export function documentAiKindForAssetType(
-  assetType: string,
-): ReceiptBackfillKind | null {
+export function documentAiKindForAssetType(assetType: string): ReceiptBackfillKind | null {
   if (
     assetType === 'valid_id' ||
     assetType === 'guest2_valid_id' ||
