@@ -1,11 +1,18 @@
 /**
- * Gmail API access tokens: Web OAuth client + refresh token (DB or legacy env JSON).
+ * Gmail API access tokens: Web OAuth client (platform env) + per-property refresh token (DB).
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { decryptGmailRefreshToken } from './gmailMailOAuthCrypto.ts';
 
 export const GMAIL_READONLY_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+
+/** Scopes for Settings → Connect Google (Gmail listener + Calendar + Sheets). */
+export const GOOGLE_CONNECT_OAUTH_SCOPES = [
+  GMAIL_READONLY_SCOPE,
+  'https://www.googleapis.com/auth/calendar',
+  'https://www.googleapis.com/auth/spreadsheets',
+].join(' ');
 
 export type WebClientCredentials = { clientId: string; clientSecret: string };
 
@@ -23,7 +30,7 @@ export function getGmailApiWebClientFromEnv(): WebClientCredentials {
   const raw = Deno.env.get('GMAIL_API_WEB_CLIENT_JSON');
   if (!raw) {
     throw new Error(
-      'Missing GMAIL_API_WEB_CLIENT_JSON — download OAuth 2.0 Web client JSON from Google Cloud Console',
+      'Missing GMAIL_API_WEB_CLIENT_JSON — download OAuth 2.0 Web client JSON from Google Cloud Console'
     );
   }
   try {
@@ -37,14 +44,14 @@ export function getGmailApiWebClientFromEnv(): WebClientCredentials {
 export function supabaseServiceRole() {
   return createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
   );
 }
 
 async function exchangeRefreshForAccessToken(
   clientId: string,
   clientSecret: string,
-  refreshToken: string,
+  refreshToken: string
 ): Promise<string> {
   const resp = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
@@ -61,7 +68,7 @@ async function exchangeRefreshForAccessToken(
     const body = await resp.text();
     if (body.includes('invalid_grant')) {
       const err = new Error(
-        'Gmail OAuth failed: invalid_grant. Refresh token is expired or revoked — reconnect Gmail in Admin → Settings.',
+        'Google OAuth failed: invalid_grant. Refresh token is expired or revoked — reconnect Google in Admin → Settings.'
       );
       (err as Error & { needsReAuth?: boolean }).needsReAuth = true;
       throw err;
@@ -99,49 +106,19 @@ export async function exchangeCodeForTokens(params: {
   return (await resp.json()) as { refresh_token?: string; access_token: string };
 }
 
-/**
- * Supabase API base URL that **browsers and Google OAuth** can reach.
- *
- * Local `supabase functions serve` / Edge often injects `SUPABASE_URL=http://kong:8000`
- * (internal Docker). That host is **not** valid as `redirect_uri` for Google — register
- * `http://127.0.0.1:54321/.../google-mail-oauth-callback` instead and either set
- * `SUPABASE_PUBLIC_URL=http://127.0.0.1:54321` in `supabase/.env.local`, or rely on the
- * kong→127.0.0.1:54321 fallback below (default local API port).
- */
-function publicSupabaseUrlForOAuth(): string {
-  const explicit = (Deno.env.get('SUPABASE_PUBLIC_URL') ?? '').trim().replace(/\/+$/, '');
-  if (explicit) return explicit;
-
-  let base = (Deno.env.get('SUPABASE_URL') ?? '').trim().replace(/\/+$/, '');
-  if (!base) {
-    throw new Error(
-      'Set SUPABASE_URL or SUPABASE_PUBLIC_URL for Gmail OAuth redirect_uri (see supabase/.env.example)',
-    );
-  }
-
-  try {
-    const u = new URL(base);
-    if (u.hostname === 'kong') {
-      return 'http://127.0.0.1:54321';
-    }
-  } catch {
-    /* ignore parse errors; return base below */
-  }
-
-  return base;
-}
+import { publicApiBaseUrl } from './publicApiBaseUrl.ts';
 
 /** Canonical redirect_uri registered with Google for this deployment. */
 export function gmailMailOAuthRedirectUri(): string {
-  return `${publicSupabaseUrlForOAuth()}/functions/v1/google-mail-oauth-callback`;
+  return `${publicApiBaseUrl()}/functions/v1/google-mail-oauth-callback`;
 }
 
-async function loadRefreshTokenFromDb(): Promise<string | null> {
+async function loadRefreshTokenFromDb(propertyId: string): Promise<string | null> {
   const sb = supabaseServiceRole();
   const { data, error } = await sb
     .from('gmail_mail_integration')
     .select('refresh_token_encrypted')
-    .eq('id', 'default')
+    .eq('property_id', propertyId)
     .maybeSingle();
 
   if (error) {
@@ -158,57 +135,24 @@ async function loadRefreshTokenFromDb(): Promise<string | null> {
   }
 }
 
-function loadRefreshTokenFromLegacyEnv(): string | null {
-  const tokenJsonRaw = Deno.env.get('GMAIL_OAUTH_TOKEN_JSON');
-  if (!tokenJsonRaw) return null;
-  try {
-    const tokenJson = JSON.parse(tokenJsonRaw);
-    return typeof tokenJson.refresh_token === 'string' ? tokenJson.refresh_token : null;
-  } catch {
-    return null;
-  }
-}
-
-function loadLegacyClientCredentials(): WebClientCredentials | null {
-  const clientJsonRaw = Deno.env.get('GMAIL_OAUTH_CLIENT_JSON');
-  if (!clientJsonRaw) return null;
-  try {
-    return parseGmailApiWebClientJson(clientJsonRaw);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Returns a short-lived Gmail access token.
- * Order: DB-stored refresh (GMAIL_API_WEB_CLIENT_JSON) → legacy GMAIL_OAUTH_* env pair.
- */
-export async function getGmailAccessTokenUnified(): Promise<{ accessToken: string }> {
-  const web = Deno.env.get('GMAIL_API_WEB_CLIENT_JSON');
-  if (web) {
-    const { clientId, clientSecret } = getGmailApiWebClientFromEnv();
-    const fromDb = await loadRefreshTokenFromDb();
-    if (fromDb) {
-      const accessToken = await exchangeRefreshForAccessToken(clientId, clientSecret, fromDb);
-      return { accessToken };
-    }
+/** Returns a short-lived Gmail access token for a connected property inbox. */
+export async function getGmailAccessTokenUnified(
+  propertyId: string
+): Promise<{ accessToken: string }> {
+  if (!propertyId.trim()) {
+    throw new Error('propertyId required for Gmail access');
   }
 
-  const legacyClient = loadLegacyClientCredentials();
-  const legacyRefresh = loadRefreshTokenFromLegacyEnv();
-  if (legacyClient && legacyRefresh) {
-    const accessToken = await exchangeRefreshForAccessToken(
-      legacyClient.clientId,
-      legacyClient.clientSecret,
-      legacyRefresh,
+  const { clientId, clientSecret } = getGmailApiWebClientFromEnv();
+  const fromDb = await loadRefreshTokenFromDb(propertyId);
+  if (!fromDb) {
+    throw new Error(
+      'Gmail is not connected for this property — connect from Admin → Settings → Integrations'
     );
-    return { accessToken };
   }
 
-  throw new Error(
-    'Gmail is not connected: set up web OAuth (GMAIL_API_WEB_CLIENT_JSON + connect from Admin → Settings) ' +
-      'or legacy GMAIL_OAUTH_CLIENT_JSON + GMAIL_OAUTH_TOKEN_JSON — see supabase/.env.example',
-  );
+  const accessToken = await exchangeRefreshForAccessToken(clientId, clientSecret, fromDb);
+  return { accessToken };
 }
 
 export async function fetchGmailProfileEmail(accessToken: string): Promise<string> {
