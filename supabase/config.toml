@@ -46,6 +46,12 @@ secret = "env(GOOGLE_CLIENT_SECRET)"
 redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
 skip_nonce_check = false
 
+[auth.external.facebook]
+enabled = true
+client_id = "env(FACEBOOK_CLIENT_ID)"
+secret = "env(FACEBOOK_CLIENT_SECRET)"
+redirect_uri = "http://127.0.0.1:54321/auth/v1/callback"
+
 [storage]
 enabled = true
 file_size_limit = "50MiB"
@@ -60,7 +66,7 @@ public = true
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/png", "image/jpeg"]
 
-# --- New-flow buckets (Phase 0, see docs/NEW_FLOW_PLAN.md §2) ---
+# --- New-flow buckets (Phase 0, see docs/planning/NEW_FLOW_PLAN.md §2) ---
 
 [storage.buckets.parking-endorsements]
 public = true
@@ -81,6 +87,18 @@ allowed_mime_types = ["application/pdf"]
 public = false
 file_size_limit = "5MiB"
 allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "application/pdf"]
+
+[storage.buckets.property-media]
+public = true
+file_size_limit = "25MiB"
+allowed_mime_types = [
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+  "image/heic", "image/heif", "image/bmp", "image/tiff", "image/avif", "image/svg+xml",
+  "video/mp4", "video/webm", "video/quicktime", "video/x-msvideo",
+  "video/x-matroska", "video/ogg", "video/mpeg",
+  "audio/mpeg", "audio/mp3", "audio/wav", "audio/x-wav",
+  "audio/ogg", "audio/mp4", "audio/x-m4a", "audio/aac", "audio/webm",
+]
 
 [edge_runtime]
 enabled = true
@@ -110,7 +128,19 @@ verify_jwt = false
 [functions.get-guest-payment-info]
 verify_jwt = false
 
+[functions.get-public-property]
+verify_jwt = false
+
+[functions.get-public-host]
+verify_jwt = false
+
+[functions.get-guest-review]
+verify_jwt = false
+
 [functions.get-sd-form]
+verify_jwt = false
+
+[functions.get-guest-stay-guide]
 verify_jwt = false
 
 [functions.submit-sd-form]
@@ -120,6 +150,9 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
   "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
+
+[functions.submit-guest-review]
+verify_jwt = false
 
 [functions.claim-sd-voucher]
 verify_jwt = false
@@ -186,6 +219,12 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
   "./functions/_shared/email-assets/kame-home-gcash-qr-payment.jpg",
 ]
+
+[functions.preview-guest-stay-guide]
+verify_jwt = false
+
+[functions.issue-guest-stay-guide-token]
+verify_jwt = false
 
 [functions.google-mail-oauth-start]
 verify_jwt = false
@@ -289,6 +328,268 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.upload-app-settings-asset]
+verify_jwt = false
+
+[functions.org-settings]
+verify_jwt = false
+
+[functions.upload-org-settings-asset]
+verify_jwt = false
+
+[functions.upload-property-media]
+verify_jwt = false
+
+[functions.upload-development-media]
+verify_jwt = false
+
+[functions.create-organization]
+verify_jwt = false
+
+[functions.upload-org-verification-asset]
+verify_jwt = false
+
+[functions.submit-org-verification]
+verify_jwt = false
+
+[functions.list-organizations]
+verify_jwt = false
+
+[functions.update-organization]
+verify_jwt = false
+
+[functions.check-organization-name]
+verify_jwt = false
+
+[functions.check-property-name]
+verify_jwt = false
+
+[functions.check-tower-unit]
+verify_jwt = false
+
+[functions.delete-organization]
+verify_jwt = false
+
+[functions.create-property]
+verify_jwt = false
+
+[functions.list-properties]
+verify_jwt = false
+
+[functions.update-property]
+verify_jwt = false
+
+[functions.delete-property]
+verify_jwt = false
+
+[functions.create-parking]
+verify_jwt = false
+
+[functions.list-parkings]
+verify_jwt = false
+
+[functions.update-parking]
+verify_jwt = false
+
+[functions.delete-parking]
+verify_jwt = false
+
+[functions.parking-settings]
+verify_jwt = false
+
+[functions.upload-parking-media]
+verify_jwt = false
+
+[functions.upload-parking-settings-asset]
+verify_jwt = false
+
+[functions.telegram-parking-settings]
+verify_jwt = false
+
+[functions.parking-pricing]
+verify_jwt = false
+
+[functions.get-public-parking]
+verify_jwt = false
+
+[functions.property-templates-settings]
+verify_jwt = false
+
+[functions.property-pricing]
+verify_jwt = false
+
+[functions.property-templates-preview]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.upload-property-template-asset]
+verify_jwt = false
+
+[functions.property-team-members]
+verify_jwt = false
+
+[functions.property-team-invitations]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.property-team-custom-roles]
+verify_jwt = false
+
+[functions.accept-property-invite]
+verify_jwt = false
+
+[functions.org-team-members]
+verify_jwt = false
+
+[functions.org-team-invitations]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.accept-org-invite]
+verify_jwt = false
+
+[functions.get-team-invite-preview]
+verify_jwt = false
+
+[functions.property-access]
+verify_jwt = false
+
+[functions.parking-team-members]
+verify_jwt = false
+
+[functions.parking-team-invitations]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+
+[functions.parking-team-custom-roles]
+verify_jwt = false
+
+[functions.accept-parking-invite]
+verify_jwt = false
+
+[functions.parking-access]
+verify_jwt = false
+
+[functions.org-access]
+verify_jwt = false
+
+[functions.meta-inbox-oauth-start]
+verify_jwt = false
+
+[functions.meta-inbox-oauth-callback]
+verify_jwt = false
+
+[functions.meta-inbox-oauth-pages]
+verify_jwt = false
+
+[functions.meta-inbox-oauth-complete]
+verify_jwt = false
+
+[functions.meta-inbox-disconnect]
+verify_jwt = false
+
+[functions.meta-inbox-status]
+verify_jwt = false
+
+[functions.meta-inbox-backfill]
+verify_jwt = false
+
+[functions.meta-inbox-webhook]
+verify_jwt = false
+
+[functions.social-inbox-threads]
+verify_jwt = false
+
+[functions.social-inbox-messages]
+verify_jwt = false
+
+[functions.social-inbox-send]
+verify_jwt = false
+
+[functions.social-inbox-templates]
+verify_jwt = false
+
+[functions.social-inbox-ai-suggest]
+verify_jwt = false
+
+[functions.social-inbox-settings]
+verify_jwt = false
+
+[functions.guest-web-chat-start]
+verify_jwt = false
+
+[functions.guest-web-chat-resume]
+verify_jwt = false
+
+[functions.guest-web-chat-messages]
+verify_jwt = false
+
+[functions.guest-profile]
+verify_jwt = false
+
+[functions.guest-trips]
+verify_jwt = false
+
+[functions.guest-messages]
+verify_jwt = false
+
+[functions.upload-guest-profile-asset]
+verify_jwt = false
+
+[functions.upload-guest-chat-asset]
+verify_jwt = false
+
+[functions.marketing-templates]
+verify_jwt = false
+
+[functions.publish-to-meta]
+verify_jwt = false
+
+[functions.generate-marketing-caption]
+verify_jwt = false
+
+[functions.marketing-music]
+verify_jwt = false
+
+[functions.list-developments]
+verify_jwt = false
+
+[functions.get-development]
+verify_jwt = false
+
+[functions.create-development]
+verify_jwt = false
+
+[functions.update-development]
+verify_jwt = false
+
+[functions.delete-development]
+verify_jwt = false
+
+[functions.list-hosts]
+verify_jwt = false
+
+[functions.get-host]
+verify_jwt = false
+
+[functions.list-host-organizations]
+verify_jwt = false
+
+[functions.list-host-properties]
+verify_jwt = false
+
+[functions.list-platform-properties]
 verify_jwt = false
 
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
