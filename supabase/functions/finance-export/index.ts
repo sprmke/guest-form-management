@@ -3,47 +3,39 @@
  * GET ?type=overview|stays|operating|transactions|combined&basis=&from=&to=...
  */
 
-import { corsHeaders } from "../_shared/cors.ts";
-import { buildFinanceExportCsv } from "../_shared/financeExport.ts";
-import type { FinancePeriodBasis } from "../_shared/financePeriodFilter.ts";
-import { jsonError } from "../_shared/httpResponse.ts";
-import { serveAdmin } from "../_shared/serveEdge.ts";
+import { corsHeaders } from '../_shared/cors.ts';
+import { buildFinanceExportCsv } from '../_shared/financeExport.ts';
+import { financeDbScope, resolveFinanceAssetAccess } from '../_shared/financeAssetScope.ts';
+import { parseFinanceExportType, parseFinanceListQueryParams } from '../_shared/financeHttp.ts';
+import { jsonError } from '../_shared/httpResponse.ts';
+import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-function parseBasis(raw: string | null): FinancePeriodBasis {
-  if (raw === "check_out" || raw === "completed") return raw;
-  return "check_in";
-}
-
-function parseType(
-  raw: string | null,
-): "overview" | "stays" | "operating" | "combined" {
-  if (raw === "transactions") return "operating";
-  if (raw === "stays" || raw === "operating" || raw === "combined") return raw;
-  return "overview";
-}
-
-serveAdmin("finance-export", async (req) => {
-  if (req.method !== "GET") {
-    return jsonError(req, "Method not allowed", 405);
+serveAuthenticated('finance-export', async (req) => {
+  if (req.method !== 'GET') {
+    return jsonError(req, 'Method not allowed', 405);
   }
 
+  const asset = await resolveFinanceAssetAccess(req, 'finance:view');
+  const scope = financeDbScope(asset);
   const url = new URL(req.url);
   const p = url.searchParams;
+  const query = parseFinanceListQueryParams(url);
   const { filename, body } = await buildFinanceExportCsv({
-    type: parseType(p.get("type")),
-    from: p.get("from"),
-    to: p.get("to"),
-    basis: parseBasis(p.get("basis")),
-    includeCancelled: p.get("include_cancelled") === "true",
-    completedOnly: p.get("completed_only") === "true",
-    q: p.get("q") ?? undefined,
+    ...scope,
+    type: parseFinanceExportType(p.get('type')),
+    from: query.from,
+    to: query.to,
+    basis: query.basis,
+    includeCancelled: query.includeCancelled,
+    completedOnly: query.completedOnly,
+    q: query.q,
   });
 
   return new Response(body, {
     headers: {
       ...corsHeaders(req),
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${filename}"`,
     },
   });
 });
