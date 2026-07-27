@@ -41,6 +41,7 @@ import {
   unsentMessageLabel,
 } from '@/lib/chat/chatMessageFormat';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
+import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
 
 import { Button } from '@/components/ui/button';
@@ -115,6 +116,8 @@ export function InboxConversationView({
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingComposerFocusRef = useRef<ComposerFocusMode | null>(null);
   const shouldSmoothScrollRef = useRef(false);
   const prevTailKeyRef = useRef('');
   const prevScrollHeightRef = useRef(0);
@@ -207,6 +210,13 @@ export function InboxConversationView({
     }
   }, [messages, composerMode, clearComposerMode]);
 
+  useLayoutEffect(() => {
+    const mode = pendingComposerFocusRef.current;
+    if (!mode || composerMode.kind !== mode) return;
+    pendingComposerFocusRef.current = null;
+    focusComposerInput(composerInputRef.current, mode);
+  }, [composerMode]);
+
   const openPreview = (att: InboxAttachmentPreview) => {
     if (att.kind === 'image' || att.kind === 'video') {
       setPreviewAttachment(att);
@@ -245,6 +255,7 @@ export function InboxConversationView({
     setDraft('');
     setDraftFromAi(false);
     setDraftAiFlagged(false);
+    pendingComposerFocusRef.current = 'reply';
   };
 
   const startEdit = (message: InboxMessage) => {
@@ -254,6 +265,7 @@ export function InboxConversationView({
     setDraft(preview);
     setDraftFromAi(false);
     setDraftAiFlagged(false);
+    pendingComposerFocusRef.current = 'edit';
   };
 
   const handleSend = async (privateReply = false) => {
@@ -488,14 +500,29 @@ export function InboxConversationView({
                               outbound ? 'items-end' : 'items-start'
                             )}
                           >
-                            {attachments.map((att, i) => (
-                              <InboxMessageMediaTile
-                                key={`${msg.id}-att-${i}`}
-                                attachment={att}
-                                outbound={outbound}
-                                onOpen={() => openPreview(att)}
-                              />
-                            ))}
+                            <div
+                              className={cn(
+                                'group/msg flex max-w-full items-center gap-0.5',
+                                outbound ? 'flex-row-reverse' : 'flex-row'
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  'flex flex-col gap-1.5',
+                                  outbound ? 'items-end' : 'items-start'
+                                )}
+                              >
+                                {attachments.map((att, i) => (
+                                  <InboxMessageMediaTile
+                                    key={`${msg.id}-att-${i}`}
+                                    attachment={att}
+                                    outbound={outbound}
+                                    onOpen={() => openPreview(att)}
+                                  />
+                                ))}
+                              </div>
+                              {!hasText && !isUnsent ? messageActions : null}
+                            </div>
                             {!hasText ? (
                               <time
                                 className="text-muted-foreground px-1 text-[11px] tabular-nums"
@@ -549,6 +576,7 @@ export function InboxConversationView({
               </div>
             )}
             <Textarea
+              ref={composerInputRef}
               value={draft}
               onChange={(e) => {
                 setDraft(e.target.value);

@@ -7,6 +7,9 @@ globs:
   - supabase/functions/_shared/socialInbox*.ts
   - supabase/functions/**/guest-web-chat-*/**
   - supabase/functions/_shared/webGuestChatService.ts
+  - supabase/functions/_shared/webInboxAutoReply.ts
+  - supabase/functions/_shared/inboxAiGuestContext.ts
+  - supabase/functions/_shared/inboxAiSafetyGuard.ts
   - ui/src/features/guest/chat/**
   - ui/src/features/dashboard/inbox/**
   - docs/guides/routes/org/inbox.md
@@ -41,10 +44,45 @@ Keep in sync: `supabase/functions/_shared/orgTeamPermissions.ts` and `ui/src/fea
 
 ## AI auto-reply
 
-- Default mode: **suggest only** (`auto_reply_mode = draft`).
-- Auto-send (`send`) requires explicit org opt-in in Automation tab.
-- Never auto-reply outside Meta messaging window.
+- No auto-fill-on-open — operators trigger AI drafts manually via the composer's **Suggest** (sparkles) button on any thread. There is no `auto_reply_mode = draft` UI path; the column stays in `social_inbox_settings` for backward compat but is not surfaced.
+- Auto-send (`send`, `auto_reply_mode = 'send'`) requires explicit org opt-in in Automation tab.
+- Never auto-reply outside Meta messaging window (**Meta only** — web chat has no 24h window).
+- Platform toggles under auto-send: Facebook, Instagram, **Chat** (`platform_toggles.web`).
+- Web auto-send runs from `guest-web-chat-messages` POST via `webInboxAutoReply.ts` after guest inbound.
 - Flag outbound AI messages with `is_ai_generated = true`.
+- **Manage AI response** (Automation → Manage button → `InboxAiResponseDialog`) edits `ai_system_prompt` — free-text org instructions layered on top of the base prompt in `socialInboxAiService.ts`. This custom text is additive; it never replaces Known facts, quick-reply guidance, or the mandatory safety policy. Includes a **Reset to default** action that fills `DEFAULT_AI_RESPONSE_CONTEXT`.
+
+## AI grounding & guard
+
+Before every AI call, `suggestInboxReply` builds a guest-safe facts bundle via **`inboxAiGuestContext.ts`** and runs output through **`inboxAiSafetyGuard.ts`**.
+
+**Allowed in facts (org/property scoped):**
+
+- Active property list (org-level fallback when thread has no `property_id`)
+- Property name, full address, city, residence, tower/unit, floor, capacity, check-in/out times, map link
+- Payment methods with account name and number (same as guest form / property settings)
+- Weekday/weekend rates, security deposit, pet fee, parking rate, holiday % rules
+- Amenities, house rules, cancellation policy (title + description)
+- Today/tomorrow availability, next open check-in dates, blocked stay date ranges
+- Inquiry-date availability + estimated stay total when thread has inquiry dates
+- Booking form URL, calendar URL
+- Org quick reply snippets (`social_reply_templates`, platform-filtered) as fallback when property facts are incomplete
+
+**Never in facts or replies:**
+
+- Other guests' PII (names, email, phone, IDs, receipts)
+- Finance (revenue, expenses, profit, ledger rows)
+- Maintenance/reminders, Telegram settings, OAuth tokens, internal ops fields
+- Ungrounded PHP amounts (guard rejects amounts not derivable from allowed pricing facts)
+
+**Enforcement:**
+
+- Facts injected into user prompt under `Known facts (property/booking data + quick reply snippets):`
+- `classifyGuestInquiryIntent` distinguishes normal vs sensitive guest asks
+- `assertSafeGuestReply` blocks other-guest name leaks, owner/internal topics, ungrounded prices; allows polite refusals on sensitive asks
+- On flag: return safe fallback copy; `social-inbox-ai-suggest` sets `flagged: true` for operator UI
+
+**Do not** wire guest AI to admin endpoints (`list-bookings`, `app-settings`, `finance-*`, `maintenance-*`) or raw `guest_submissions` rows with PII.
 
 ## Edge functions
 

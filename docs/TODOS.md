@@ -498,6 +498,7 @@ Big modules:
 - Provide help and support
 - Create stunning and animated customizable or templated landing/showcase page
 - [WIP] Chat app between guest and host
+  - Support for AI to analyze attachments
 - Improve app responsiveness & skeleton loaders
 - Add info modal for some module or sections
   - Telegram notifications setup

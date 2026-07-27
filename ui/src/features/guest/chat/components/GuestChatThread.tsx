@@ -31,6 +31,7 @@ import {
   unsentMessageLabel,
 } from '@/lib/chat/chatMessageFormat';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
+import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
 
@@ -92,6 +93,8 @@ export function GuestChatThread({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingComposerFocusRef = useRef<ComposerFocusMode | null>(null);
   const shouldSmoothScrollRef = useRef(false);
   const prevTailKeyRef = useRef('');
   const prevScrollHeightRef = useRef(0);
@@ -175,6 +178,7 @@ export function GuestChatThread({
     setComposerMode({ kind: 'reply', messageId: message.id, preview });
     setDraft('');
     setPendingAttachments([]);
+    pendingComposerFocusRef.current = 'reply';
   };
 
   const startEdit = (message: GuestChatMessage) => {
@@ -183,6 +187,7 @@ export function GuestChatThread({
     setComposerMode({ kind: 'edit', messageId: message.id, preview });
     setDraft(preview);
     setPendingAttachments([]);
+    pendingComposerFocusRef.current = 'edit';
   };
 
   useEffect(() => {
@@ -192,6 +197,13 @@ export function GuestChatThread({
       clearComposerMode();
     }
   }, [messages, composerMode]);
+
+  useLayoutEffect(() => {
+    const mode = pendingComposerFocusRef.current;
+    if (!mode || composerMode.kind !== mode) return;
+    pendingComposerFocusRef.current = null;
+    focusComposerInput(composerInputRef.current, mode);
+  }, [composerMode]);
 
   const openPreview = (att: InboxAttachmentPreview) => {
     if (att.kind === 'image' || att.kind === 'video') {
@@ -406,14 +418,29 @@ export function GuestChatThread({
                             outbound ? 'items-end' : 'items-start'
                           )}
                         >
-                          {attachments.map((att, i) => (
-                            <InboxMessageMediaTile
-                              key={`${msg.id}-att-${i}`}
-                              attachment={att}
-                              outbound={outbound}
-                              onOpen={() => openPreview(att)}
-                            />
-                          ))}
+                          <div
+                            className={cn(
+                              'group/msg flex max-w-full items-center gap-0.5',
+                              outbound ? 'flex-row-reverse' : 'flex-row'
+                            )}
+                          >
+                            <div
+                              className={cn(
+                                'flex flex-col gap-1.5',
+                                outbound ? 'items-end' : 'items-start'
+                              )}
+                            >
+                              {attachments.map((att, i) => (
+                                <InboxMessageMediaTile
+                                  key={`${msg.id}-att-${i}`}
+                                  attachment={att}
+                                  outbound={outbound}
+                                  onOpen={() => openPreview(att)}
+                                />
+                              ))}
+                            </div>
+                            {!hasText && !isUnsent ? messageActions : null}
+                          </div>
                           {!hasText ? (
                             <time
                               className="text-muted-foreground px-1 text-[11px] tabular-nums"
@@ -509,6 +536,7 @@ export function GuestChatThread({
             </>
           ) : null}
           <Textarea
+            ref={composerInputRef}
             value={draft}
             onChange={(e) => {
               setDraft(e.target.value);
