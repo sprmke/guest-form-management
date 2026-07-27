@@ -11,10 +11,7 @@ import { DatabaseService } from '../_shared/databaseService.ts';
 import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
 import type { TransitionPayload } from '../_shared/workflowOrchestrator.ts';
 import { notifyTelegramAdminSdFormSubmitted } from '../_shared/telegramAdmin.ts';
-import {
-  isSdRefundBank,
-  type SdRefundBank,
-} from '../_shared/sdRefundBank.ts';
+import { isSdRefundBank, type SdRefundBank } from '../_shared/sdRefundBank.ts';
 
 type RefundBody = {
   method: 'same_phone' | 'other_bank' | 'cash';
@@ -64,17 +61,14 @@ serve(async (req) => {
       throw new Error(`Method ${req.method} not allowed`);
     }
 
-    const body = await req.json().catch(() => null) as {
+    const body = (await req.json().catch(() => null)) as {
       bookingId?: string;
       guestFeedback?: string;
       refund?: RefundBody;
     } | null;
 
     const bookingId = (body?.bookingId ?? '').trim();
-    const guestFeedback =
-      typeof body?.guestFeedback === 'string'
-        ? body.guestFeedback.trim()
-        : '';
+    const guestFeedback = typeof body?.guestFeedback === 'string' ? body.guestFeedback.trim() : '';
     const refund = body?.refund;
 
     if (!bookingId) throw new Error('bookingId is required');
@@ -89,17 +83,15 @@ serve(async (req) => {
           error: 'not_available',
           message: 'This form is no longer available for this booking.',
         }),
-        { status: 409, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+        { status: 409, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
       );
     }
 
     const payload: TransitionPayload = {
       sd_refund_guest_feedback: guestFeedback || null,
       sd_refund_method: refund!.method,
-      sd_refund_phone_confirmed:
-        refund!.method === 'same_phone' ? true : null,
-      sd_refund_bank:
-        refund!.method === 'other_bank' ? refund!.bank ?? null : null,
+      sd_refund_phone_confirmed: refund!.method === 'same_phone' ? true : null,
+      sd_refund_bank: refund!.method === 'other_bank' ? (refund!.bank ?? null) : null,
       sd_refund_account_name:
         refund!.method === 'other_bank' ? (refund!.accountName ?? '').trim() : null,
       sd_refund_account_number:
@@ -121,7 +113,7 @@ serve(async (req) => {
         sendReadyForCheckinEmail: false,
         sendSdRefundFormEmail: false,
       },
-      false,
+      false
     );
 
     try {
@@ -139,13 +131,13 @@ serve(async (req) => {
         success: true,
         message: 'Thank you — we have received your security deposit refund information.',
       }),
-      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
+      { status: 200, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('[submit-sd-form]', error);
-    return new Response(
-      JSON.stringify({ success: false, error: (error as Error).message }),
-      { status: 400, headers: { ...corsHeaders(req), 'Content-Type': 'application/json' } },
-    );
+    return new Response(JSON.stringify({ success: false, error: (error as Error).message }), {
+      status: 400,
+      headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+    });
   }
 });
