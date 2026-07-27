@@ -34,12 +34,27 @@ export function GuestMessageThreadRow({ thread, selected, onSelect }: Props) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <span className="text-foreground truncate text-sm font-medium">{title}</span>
-          {thread.lastMessageAt ? (
-            <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">
-              {formatInboxTime(thread.lastMessageAt)}
-            </span>
-          ) : null}
+          <span
+            className={cn(
+              'truncate text-sm font-medium',
+              thread.unreadCount > 0 ? 'text-foreground' : 'text-foreground'
+            )}
+          >
+            {title}
+          </span>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {thread.unreadCount > 0 ? (
+              <span
+                className="bg-primary size-2 rounded-full"
+                aria-label={`${thread.unreadCount} unread`}
+              />
+            ) : null}
+            {thread.lastMessageAt ? (
+              <span className="text-muted-foreground text-[11px] tabular-nums">
+                {formatInboxTime(thread.lastMessageAt)}
+              </span>
+            ) : null}
+          </div>
         </div>
         {thread.hostName ? (
           <p className="text-muted-foreground mt-0.5 truncate text-xs">{thread.hostName}</p>

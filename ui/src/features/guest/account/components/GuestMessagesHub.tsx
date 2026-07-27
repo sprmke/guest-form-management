@@ -41,6 +41,10 @@ export function GuestMessagesHub({ threads }: Props) {
     messages,
     isLoading: messagesLoading,
     send,
+    edit,
+    unsend,
+    uploadAttachment,
+    retryFailedMessage,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -124,13 +128,28 @@ export function GuestMessagesHub({ threads }: Props) {
               </div>
 
               <GuestChatThread
-                className="px-3 py-4 sm:px-4"
+                conversationId={selectedId}
                 messages={messages}
                 isLoading={messagesLoading && !!selectedId}
-                onSend={async (text) => {
-                  await send.mutateAsync(text);
+                onSend={async (text, opts) => {
+                  await send.mutateAsync({
+                    text,
+                    replyToMessageId: opts?.replyToMessageId,
+                    attachments: opts?.attachments,
+                  });
                 }}
+                onUploadAttachment={(file) => uploadAttachment.mutateAsync(file)}
+                uploadingAttachment={uploadAttachment.isPending}
+                onEdit={async (messageId, text) => {
+                  await edit.mutateAsync({ messageId, text });
+                }}
+                onUnsend={async (messageId) => {
+                  await unsend.mutateAsync(messageId);
+                }}
+                onRetryFailed={retryFailedMessage}
                 sending={send.isPending}
+                editing={edit.isPending}
+                unsending={unsend.isPending}
                 hasOlderMessages={!!hasNextPage}
                 loadingOlder={isFetchingNextPage}
                 onLoadOlder={() => void fetchNextPage()}

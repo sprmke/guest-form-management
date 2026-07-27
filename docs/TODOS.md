@@ -541,5 +541,48 @@ Random:
 
 Needs to finalize:
 
-- Chat
-  - display sent info, able to edit message until seen or reply
+### Guest + host chat UX roadmap
+
+**Phase 1 — bubble presentation (shipped Jul 2026)**
+
+- [x] Per-message timestamp under bubbles (Asia/Manila)
+- [x] Date group headers (Today / Yesterday / …)
+- [x] Shared `ChatMessageBubble`, `ChatMessageList`, `chatMessageFormat`
+- [x] Guest optimistic send + failed state + Retry
+- [x] Sent indicator (✓) on own messages; sending spinner while posting
+- [x] “Automated” badge on AI-generated replies (guest + inbox)
+
+**Phase 2 — read & delivery**
+
+- [x] Per-message read receipts (seen ✓✓) for guest and host
+- [x] Mark-read on thread view (`guest_last_read_at` / `host_last_read_at`)
+- [x] Delivery lifecycle: `sent` → `read` on web (Meta `delivered` unchanged)
+- [x] Realtime `UPDATE` on `social_messages` (guest + inbox)
+- [x] Guest unread badge on `/account/messages`
+
+**Phase 3 — edit & unsend**
+
+- [x] Edit own message until host read or reply (`edited_at`, PATCH endpoint)
+- [x] “Edited” label on modified bubbles
+- [x] Optional unsend before read (soft delete)
+
+**Phase 4 — reply threading**
+
+- [x] Reply-to-message with quoted preview (`reply_to_message_id`)
+- [x] Message actions → Reply in composer (guest + inbox)
+- [x] Persist Meta `reply_to.mid` for FB/IG DMs
+
+**Phase 5 — rich compose & realtime**
+
+- [x] Typing indicator (Broadcast or ephemeral row)
+- [x] Guest image/file attachments
+- [x] In-conversation search
+- [x] Guest push/email when host replies offline
+
+**Phase 6 — trust & inbox parity**
+
+- [ ] Guest “Awaiting reply” when `reply_status=pending`
+- [ ] Quick replies on Web tab
+- [ ] Report / block (public guest chat)
+
+See **`docs/guides/routes/properties/chat.md`** § UX roadmap and **`docs/guides/routes/org/inbox.md`** § Chat UX roadmap.

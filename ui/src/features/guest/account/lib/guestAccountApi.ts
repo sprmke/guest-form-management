@@ -98,6 +98,8 @@ export type GuestMessageThreadDto = {
   inquiryCheckOut: string | null;
   lastMessagePreview: string | null;
   lastMessageAt: string | null;
+  unreadCount: number;
+  replyStatus: string | null;
 };
 
 export const GUEST_PROFILE_QUERY_KEY = ['guest-profile'] as const;
