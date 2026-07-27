@@ -1,20 +1,17 @@
-import { DatabaseService } from "../_shared/databaseService.ts";
-import { extractRouteParam } from "../_shared/utils.ts";
-import {
-  jsonError,
-  jsonResponse,
-  requireHttpMethod,
-} from "../_shared/httpResponse.ts";
-import { servePublic } from "../_shared/serveEdge.ts";
+import { DatabaseService } from '../_shared/databaseService.ts';
+import { canGuestPublicUpdateForm } from '../_shared/statusMachine.ts';
+import { extractRouteParam } from '../_shared/utils.ts';
+import { jsonError, jsonResponse, requireHttpMethod } from '../_shared/httpResponse.ts';
+import { servePublic } from '../_shared/serveEdge.ts';
 
-servePublic("get-form", async (req) => {
-  requireHttpMethod(req, "GET");
+servePublic('get-form', async (req) => {
+  requireHttpMethod(req, 'GET');
 
   const url = new URL(req.url);
-  const bookingId = extractRouteParam(url.pathname, "/get-form/");
+  const bookingId = extractRouteParam(url.pathname, '/get-form/');
 
   if (!bookingId) {
-    throw new Error("bookingId is required");
+    throw new Error('bookingId is required');
   }
 
   const formData = await DatabaseService.getFormData(bookingId);
@@ -24,16 +21,21 @@ servePublic("get-form", async (req) => {
       req,
       {
         success: false,
-        error: "Booking not found",
-        message: "No booking found with the provided ID",
+        error: 'Booking not found',
+        message: 'No booking found with the provided ID',
       },
-      404,
+      404
     );
   }
+
+  const row = await DatabaseService.getBookingById(bookingId);
+  const guestCanUpdate = canGuestPublicUpdateForm(row?.status);
 
   return jsonResponse(req, {
     success: true,
     data: formData,
-    message: "Form data retrieved successfully.",
+    status: row?.status ?? null,
+    guestCanUpdate,
+    message: 'Form data retrieved successfully.',
   });
 });
