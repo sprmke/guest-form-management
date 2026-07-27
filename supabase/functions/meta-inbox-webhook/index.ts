@@ -1,0 +1,115 @@
+/**
+ * Meta webhook receiver — GET verify, POST messaging + comments.
+ */
+
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { corsHeaders } from '../_shared/cors.ts';
+import { maybeAutoReplyToInboundDm } from '../_shared/metaInboxAutoReply.ts';
+import { metaWebhookVerifyToken } from '../_shared/metaInboxConfig.ts';
+import {
+  handleMetaFeedWebhook,
+  handleMetaIgCommentWebhook,
+  handleMetaMessagingWebhook,
+  handleMetaReadReceipt,
+} from '../_shared/metaInboxWebhookHandler.ts';
+import { verifyMetaWebhookSignatureAsync } from '../_shared/metaInboxGraph.ts';
+import { jsonError } from '../_shared/httpResponse.ts';
+import { buildDmThreadId, getConnectionByMetaPageId } from '../_shared/socialInboxService.ts';
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders(req) });
+  }
+
+  const url = new URL(req.url);
+
+  if (req.method === 'GET') {
+    const mode = url.searchParams.get('hub.mode');
+    const token = url.searchParams.get('hub.verify_token');
+    const challenge = url.searchParams.get('hub.challenge');
+    if (mode === 'subscribe' && token === metaWebhookVerifyToken() && challenge) {
+      return new Response(challenge, {
+        status: 200,
+        headers: { 'Content-Type': 'text/plain' },
+      });
+    }
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  if (req.method !== 'POST') {
+    return jsonError(req, 'Method not allowed', 405);
+  }
+
+  const rawBody = await req.text();
+  const signature = req.headers.get('X-Hub-Signature-256');
+  const valid = await verifyMetaWebhookSignatureAsync(rawBody, signature);
+  if (!valid) {
+    return jsonError(req, 'Invalid signature', 403);
+  }
+
+  let payload: {
+    object?: string;
+    entry?: Array<{
+      id: string;
+      messaging?: unknown[];
+      changes?: unknown[];
+    }>;
+  };
+  try {
+    payload = JSON.parse(rawBody);
+  } catch {
+    return jsonError(req, 'Invalid JSON', 400);
+  }
+
+  for (const entry of payload.entry ?? []) {
+    const pageOrIgId = entry.id;
+
+    for (const messaging of (entry.messaging ?? []) as Record<string, unknown>[]) {
+      const recipientId = (messaging.recipient as { id?: string })?.id;
+      const platform =
+        payload.object === 'instagram' || recipientId?.startsWith('17')
+          ? ('instagram' as const)
+          : ('facebook' as const);
+
+      if (messaging.read) {
+        const senderId = (messaging.sender as { id?: string })?.id ?? '';
+        await handleMetaReadReceipt(pageOrIgId, senderId, platform);
+        continue;
+      }
+
+      if (messaging.message) {
+        await handleMetaMessagingWebhook(pageOrIgId, messaging as never, platform);
+        const guestId = (messaging.sender as { id?: string })?.id;
+        if (guestId && !(messaging.message as { is_echo?: boolean }).is_echo) {
+          const conn = await getConnectionByMetaPageId(pageOrIgId);
+          const inboundMid = (messaging.message as { mid?: string }).mid;
+          if (conn && inboundMid) {
+            try {
+              await maybeAutoReplyToInboundDm(
+                conn.organization_id,
+                buildDmThreadId(platform, guestId),
+                platform,
+                inboundMid
+              );
+            } catch (autoErr) {
+              console.warn('[meta-inbox-webhook] auto-reply:', autoErr);
+            }
+          }
+        }
+      }
+    }
+
+    for (const change of (entry.changes ?? []) as Record<string, unknown>[]) {
+      if (payload.object === 'instagram') {
+        await handleMetaIgCommentWebhook(pageOrIgId, change as never);
+      } else {
+        await handleMetaFeedWebhook(pageOrIgId, change as never);
+      }
+    }
+  }
+
+  return new Response(JSON.stringify({ success: true }), {
+    status: 200,
+    headers: { ...corsHeaders(req), 'Content-Type': 'application/json' },
+  });
+});
