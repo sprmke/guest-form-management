@@ -75,9 +75,7 @@ const VOUCHER_WIN_WEIGHTS: ReadonlyArray<{
   { code: 'KAME-STAY', weight: 5 },
 ];
 
-const VOUCHER_INDEX = new Map<VoucherCode, number>(
-  VOUCHER_CATALOG.map((v) => [v.code, v.amount]),
-);
+const VOUCHER_INDEX = new Map<VoucherCode, number>(VOUCHER_CATALOG.map((v) => [v.code, v.amount]));
 
 function isVoucherCode(value: string): value is VoucherCode {
   if (value === 'FREE-STAY') return true;
