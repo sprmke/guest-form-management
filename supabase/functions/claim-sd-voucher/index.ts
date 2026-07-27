@@ -10,43 +10,39 @@
  * Status guard: only available while the booking is `READY_FOR_CHECKOUT`.
  */
 
-import { DatabaseService } from "../_shared/databaseService.ts";
-import { rollVoucher } from "../_shared/voucher.ts";
-import type { VoucherCode } from "../_shared/voucher.ts";
+import { DatabaseService } from '../_shared/databaseService.ts';
+import { canClaimGuestReviewVoucher } from '../_shared/guestReviewEligibility.ts';
+import { rollVoucher } from '../_shared/voucher.ts';
+import type { VoucherCode } from '../_shared/voucher.ts';
 import {
   jsonResponse,
   jsonSuccess,
   readJsonBody,
   requireHttpMethod,
-} from "../_shared/httpResponse.ts";
-import { servePublic } from "../_shared/serveEdge.ts";
+} from '../_shared/httpResponse.ts';
+import { servePublic } from '../_shared/serveEdge.ts';
 
-servePublic("claim-sd-voucher", async (req) => {
-  requireHttpMethod(req, "POST");
+servePublic('claim-sd-voucher', async (req) => {
+  requireHttpMethod(req, 'POST');
   const body = await readJsonBody(req);
-  const bookingId = (
-    typeof body.bookingId === "string" ? body.bookingId : ""
-  ).trim();
-  if (!bookingId) throw new Error("bookingId is required");
+  const bookingId = (typeof body.bookingId === 'string' ? body.bookingId : '').trim();
+  if (!bookingId) throw new Error('bookingId is required');
 
   const row = await DatabaseService.getBookingById(bookingId);
-  if (!row || row.status !== "READY_FOR_CHECKOUT") {
+  if (!row || !canClaimGuestReviewVoucher(row)) {
     return jsonResponse(
       req,
       {
         success: false,
-        error: "not_available",
-        message: "This form is no longer available for this booking.",
+        error: 'not_available',
+        message: 'This form is no longer available for this booking.',
       },
-      409,
+      409
     );
   }
 
   let code = (row.next_stay_voucher_code ?? null) as VoucherCode | null;
-  let amount =
-    row.next_stay_voucher_amount != null
-      ? Number(row.next_stay_voucher_amount)
-      : null;
+  let amount = row.next_stay_voucher_amount != null ? Number(row.next_stay_voucher_amount) : null;
   const alreadyAwarded = !!code;
 
   if (!code) {
