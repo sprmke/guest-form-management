@@ -1,7 +1,9 @@
 import { formatInboxTime } from '@/features/dashboard/inbox/lib/inboxFormat';
+import { GuestChatAwaitingReplyBadge } from '@/components/chat/GuestChatAwaitingReplyBadge';
 import type { GuestMessageThreadDto } from '@/features/guest/account/lib/guestAccountApi';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
+import { isAwaitingHostReply } from '@/lib/chat/chatReplyStatus';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -58,6 +60,9 @@ export function GuestMessageThreadRow({ thread, selected, onSelect }: Props) {
         </div>
         {thread.hostName ? (
           <p className="text-muted-foreground mt-0.5 truncate text-xs">{thread.hostName}</p>
+        ) : null}
+        {isAwaitingHostReply(thread.replyStatus) ? (
+          <GuestChatAwaitingReplyBadge className="mt-1" />
         ) : null}
         {thread.lastMessagePreview ? (
           <p className="text-muted-foreground mt-1 line-clamp-2 text-xs leading-relaxed">

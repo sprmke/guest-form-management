@@ -4,11 +4,16 @@ import { ArrowLeft } from 'lucide-react';
 
 import { GuestMessageThreadRow } from '@/features/guest/account/components/GuestMessageThreadRow';
 import type { GuestMessageThreadDto } from '@/features/guest/account/lib/guestAccountApi';
+import {
+  GuestChatHeaderBar,
+  GuestChatSearchPanelRow,
+} from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
 import { useGuestChatMessages } from '@/features/guest/chat/hooks/useGuestChat';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
+import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 import { cn } from '@/lib/utils';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
@@ -40,6 +45,7 @@ export function GuestMessagesHub({ threads }: Props) {
   const {
     messages,
     isLoading: messagesLoading,
+    replyStatus: liveReplyStatus,
     send,
     edit,
     unsend,
@@ -49,6 +55,13 @@ export function GuestMessagesHub({ threads }: Props) {
     hasNextPage,
     isFetchingNextPage,
   } = useGuestChatMessages(selectedId);
+
+  const threadSearch = useChatThreadSearch(selectedThread ? messages : []);
+  const headerReplyStatus = liveReplyStatus ?? selectedThread?.replyStatus ?? null;
+
+  useEffect(() => {
+    threadSearch.close();
+  }, [selectedId, threadSearch.close]);
 
   const handleSelect = (conversationId: string) => {
     setSelectedId(conversationId);
@@ -87,50 +100,59 @@ export function GuestMessagesHub({ threads }: Props) {
         >
           {selectedThread ? (
             <>
-              <div className="border-border flex shrink-0 items-center gap-3 border-b px-3 py-3 sm:px-4">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="min-h-[44px] min-w-[44px] shrink-0 lg:hidden"
-                  onClick={() => setMobileShowConversation(false)}
-                  aria-label="Back to conversations"
-                >
-                  <ArrowLeft className="size-5" aria-hidden />
-                </Button>
-                <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-lg">
-                  {thumb ? (
-                    <Image
-                      src={thumb}
-                      alt=""
-                      width={40}
-                      height={40}
-                      className="size-full object-cover"
-                    />
-                  ) : null}
+              <div className="border-border shrink-0 border-b">
+                <div className="px-2.5 py-2.5 sm:px-3">
+                  <GuestChatHeaderBar
+                    leading={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="min-h-[44px] min-w-[44px] shrink-0 lg:hidden"
+                        onClick={() => setMobileShowConversation(false)}
+                        aria-label="Back to conversations"
+                      >
+                        <ArrowLeft className="size-5" aria-hidden />
+                      </Button>
+                    }
+                    avatar={
+                      <div className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-lg">
+                        {thumb ? (
+                          <Image
+                            src={thumb}
+                            alt=""
+                            width={40}
+                            height={40}
+                            className="size-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                    }
+                    title={selectedThread.propertyName ?? 'Property'}
+                    subtitle={
+                      [
+                        selectedThread.hostName,
+                        selectedThread.inquiryCheckIn && selectedThread.inquiryCheckOut
+                          ? `${formatIsoDateForDisplay(selectedThread.inquiryCheckIn)} → ${formatIsoDateForDisplay(selectedThread.inquiryCheckOut)}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ') || null
+                    }
+                    replyStatus={headerReplyStatus}
+                    threadSearch={threadSearch}
+                    searchEnabled={!messagesLoading && messages.length > 0}
+                  />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-foreground line-clamp-1 text-sm font-semibold">
-                    {selectedThread.propertyName ?? 'Property'}
-                  </p>
-                  {selectedThread.hostName ? (
-                    <p className="text-muted-foreground truncate text-xs">
-                      {selectedThread.hostName}
-                    </p>
-                  ) : null}
-                  {selectedThread.inquiryCheckIn && selectedThread.inquiryCheckOut ? (
-                    <p className="text-muted-foreground mt-0.5 text-xs">
-                      {formatIsoDateForDisplay(selectedThread.inquiryCheckIn)} →{' '}
-                      {formatIsoDateForDisplay(selectedThread.inquiryCheckOut)}
-                    </p>
-                  ) : null}
-                </div>
+                <GuestChatSearchPanelRow threadSearch={threadSearch} />
               </div>
 
               <GuestChatThread
                 conversationId={selectedId}
                 messages={messages}
                 isLoading={messagesLoading && !!selectedId}
+                threadSearch={threadSearch}
+                searchInHeader
                 onSend={async (text, opts) => {
                   await send.mutateAsync({
                     text,
