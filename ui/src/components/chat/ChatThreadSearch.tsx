@@ -50,7 +50,7 @@ export function ChatThreadSearchPanel({
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="Search in conversation"
-        className="h-9 min-h-[36px] flex-1 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+        className="h-7 min-h-[30px] flex-1 border-0 bg-transparent shadow-none"
         aria-label="Search in conversation"
         onKeyDown={(e) => {
           if (e.key === 'Enter') {

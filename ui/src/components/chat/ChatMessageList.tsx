@@ -9,6 +9,7 @@ type Props<T extends { id: string; sent_at: string }> = {
   messages: T[];
   getOutbound: (message: T) => boolean;
   renderMessage: (message: T) => ReactNode;
+  focusedMessageId?: string | null;
   className?: string;
 };
 
@@ -16,6 +17,7 @@ export function ChatMessageList<T extends { id: string; sent_at: string }>({
   messages,
   getOutbound,
   renderMessage,
+  focusedMessageId = null,
   className,
 }: Props<T>) {
   const rows = buildChatMessageRows(messages);
@@ -31,9 +33,11 @@ export function ChatMessageList<T extends { id: string; sent_at: string }>({
         return (
           <div
             key={row.key}
+            data-chat-message-id={message.id}
             className={cn(
-              'flex flex-col gap-1.5',
-              getOutbound(message) ? 'items-end' : 'items-start'
+              'flex scroll-mt-24 flex-col gap-1.5',
+              getOutbound(message) ? 'items-end' : 'items-start',
+              focusedMessageId === message.id && 'ring-primary/20 rounded-2xl ring-2'
             )}
           >
             {renderMessage(message)}
