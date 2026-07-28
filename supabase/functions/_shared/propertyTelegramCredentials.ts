@@ -7,7 +7,7 @@ import { trimOrEmpty } from './stringUtils.ts';
 import { decryptPropertySecret } from './propertySecretCrypto.ts';
 
 export type TelegramChannel =
-  'marketing' | 'staff' | 'admin' | 'finance' | 'maintenance' | 'parking';
+  'marketing' | 'staff' | 'admin' | 'finance' | 'maintenance' | 'parking' | 'chat';
 
 const TABLE_BY_CHANNEL: Record<TelegramChannel, string> = {
   marketing: 'telegram_marketing_settings',
@@ -16,6 +16,7 @@ const TABLE_BY_CHANNEL: Record<TelegramChannel, string> = {
   finance: 'telegram_finance_settings',
   maintenance: 'telegram_maintenance_settings',
   parking: 'telegram_parking_settings',
+  chat: 'telegram_chat_settings',
 };
 
 export type TelegramAssetScopeRef = {

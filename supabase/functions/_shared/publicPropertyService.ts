@@ -28,6 +28,7 @@ import {
 } from './propertyExternalReviews.ts';
 import { loadGuestFacingContactInfo } from './guestContactInfo.ts';
 import { resolveAppSettings } from './appSettings.ts';
+import { isOrgVerifiedBadge, readOrgVerificationFromSettings } from './orgVerification.ts';
 
 export type PublicPropertyMediaDto = {
   id: string;
@@ -94,6 +95,7 @@ export type PublicPropertyDetailDto = {
   reviewCount: number;
   guestReviews: PublicGuestReviewDto[];
   isSuperhost: boolean;
+  verifiedBadge: boolean;
   updatedAt: string;
 };
 
@@ -322,7 +324,7 @@ export async function loadPublicPropertyById(
     loadResolvedBrandColorByPropertyId(propertyId),
     supabase
       .from('organizations')
-      .select('name, slug, logo_url, owner_id')
+      .select('name, slug, logo_url, owner_id, settings')
       .eq('id', row.organization_id)
       .maybeSingle(),
     resolveOrgSettings(row.organization_id),
@@ -345,7 +347,12 @@ export async function loadPublicPropertyById(
 
   const contact = await loadGuestFacingContactInfo(propertyId, appSettings);
 
-  const org = orgResult.data as OrganizationRow | null;
+  const org = orgResult.data as (OrganizationRow & { settings?: unknown }) | null;
+  const orgSettings =
+    org?.settings && typeof org.settings === 'object' && !Array.isArray(org.settings)
+      ? (org.settings as Record<string, unknown>)
+      : {};
+  const verifiedBadge = isOrgVerifiedBadge(readOrgVerificationFromSettings(orgSettings));
   const organizationName = org?.name?.trim() || contact.contactName || 'Host';
   const orgLogoUrl = orgSettingsResolved.emailLogoUrl.trim() || org?.logo_url?.trim() || null;
   const unitName = resolvePublicUnitName(row);
@@ -426,6 +433,7 @@ export async function loadPublicPropertyById(
     reviewCount: mergedReviews.length,
     guestReviews: mergedReviews,
     isSuperhost,
+    verifiedBadge,
     updatedAt: row.updated_at,
   };
 }

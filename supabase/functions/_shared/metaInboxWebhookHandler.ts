@@ -109,6 +109,20 @@ export async function handleMetaMessagingWebhook(
     reply_status: isFromPage ? 'replied' : 'pending',
     messaging_window_expires_at: isFromPage ? undefined : metaMessagingWindowExpiry(sentAt),
   });
+
+  if (!isFromPage) {
+    try {
+      const { notifyTelegramChatInbound } = await import('./telegramChat.ts');
+      await notifyTelegramChatInbound({
+        conversation: conv,
+        text: text || null,
+        attachments: [],
+        sentAt,
+      });
+    } catch (e) {
+      console.warn('[handleMetaMessagingWebhook] telegram notify:', e);
+    }
+  }
 }
 
 type MetaFeedChange = {

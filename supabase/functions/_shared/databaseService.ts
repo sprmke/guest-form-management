@@ -1175,6 +1175,40 @@ export class DatabaseService {
     return data;
   }
 
+  static async getTelegramChatSettings(
+    propertyId: string
+  ): Promise<Record<string, unknown> | null> {
+    const { data, error } = await this.supabase
+      .from('telegram_chat_settings')
+      .select('*')
+      .eq('property_id', propertyId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('getTelegramChatSettings:', error);
+      const pg = `${error.code ?? ''} ${error.message ?? ''}`.trim();
+      throw new Error(
+        `Failed to load Telegram chat settings${pg ? `: ${pg}` : ''}. ` +
+          `Run migration 20260929120000_telegram_chat_settings.sql on this project.`
+      );
+    }
+    return data;
+  }
+
+  static async updateTelegramChatSettings(
+    patch: Record<string, unknown>,
+    propertyId: string
+  ): Promise<Record<string, unknown>> {
+    return updateAssetScopedSingleton(
+      this.supabase,
+      'telegram_chat_settings',
+      patch,
+      { propertyId },
+      'updateTelegramChatSettings',
+      'Failed to update Telegram chat settings'
+    );
+  }
+
   static async updateTelegramMaintenanceSettings(
     patch: Record<string, unknown>,
     propertyId?: string,

@@ -96,6 +96,9 @@ const FINANCE_DEFAULT_REMINDER_TEMPLATE =
 const MAINTENANCE_DEFAULT_REMINDER_TEMPLATE =
   '🔧 Maintenance reminder\n\n{{label}}\nDue: {{due_date}} ({{days_until_due}} day(s) left)\nCategory: {{category}}\n\n{{notes}}';
 
+const CHAT_DEFAULT_NEW_MESSAGE_TEMPLATE =
+  '💬 New guest chat\n\nProperty: {{property_name}}\nSource: {{chat_source}}\n\nGuest: {{guest_name}}\nMessage:\n{{chat_content}}\n{{attachment_line}}\n\nReply now:\n{{conversation_link}}';
+
 async function upsertIfMissing(
   table: string,
   propertyId: string,
@@ -195,6 +198,12 @@ export async function seedPropertySettings(
     enabled: false,
     default_reminder_template: MAINTENANCE_DEFAULT_REMINDER_TEMPLATE,
     daily_check_time_manila: { hour: 9, minute: 0 },
+  });
+
+  await upsertIfMissing('telegram_chat_settings', pid, {
+    enabled: false,
+    notify_on_new_message: true,
+    new_message_template: CHAT_DEFAULT_NEW_MESSAGE_TEMPLATE,
   });
 }
 

@@ -130,12 +130,13 @@ export async function buildPropertyIntegrationStatus(
 
   const gmailConnected = !!trimOrEmpty(gmailRow?.refresh_token_encrypted as string | null);
 
-  const [marketing, staff, admin, finance, maintenance] = await Promise.all([
+  const [marketing, staff, admin, finance, maintenance, chat] = await Promise.all([
     getPropertyTelegramCredentialsStatus('marketing', propertyId),
     getPropertyTelegramCredentialsStatus('staff', propertyId),
     getPropertyTelegramCredentialsStatus('admin', propertyId),
     getPropertyTelegramCredentialsStatus('finance', propertyId),
     getPropertyTelegramCredentialsStatus('maintenance', propertyId),
+    getPropertyTelegramCredentialsStatus('chat', propertyId),
   ]);
 
   return {
@@ -148,6 +149,6 @@ export async function buildPropertyIntegrationStatus(
         ? trimOrEmpty(gmailRow?.google_account_email as string | null) || null
         : null,
     },
-    telegram: { marketing, staff, admin, finance, maintenance },
+    telegram: { marketing, staff, admin, finance, maintenance, chat },
   };
 }
