@@ -1,0 +1,169 @@
+import type { CSSProperties, ReactNode } from 'react';
+
+import { TrendingDown, TrendingUp } from 'lucide-react';
+
+import { Skeleton } from '@/components/ui/skeleton';
+import { formatMoney } from '@/utils/format/currency';
+import { cn } from '@/lib/utils';
+
+import type { LucideIcon } from 'lucide-react';
+
+export type StatCardProps = {
+  title: string;
+  value: string;
+  icon?: LucideIcon;
+  iconClassName?: string;
+  iconBgClassName?: string;
+  valueClassName?: string;
+  className?: string;
+  change?: number;
+  changeLabel?: string;
+  /** When true, `change` is shown as percentage points (e.g. occupancy). */
+  changeIsPoints?: boolean;
+  footer?: ReactNode;
+  onClick?: () => void;
+  active?: boolean;
+};
+
+function formatChange(change: number, isPoints: boolean): string {
+  const sign = change > 0 ? '+' : '';
+  if (isPoints) return `${sign}${Math.round(change)} pts`;
+  return `${sign}${change.toFixed(1)}%`;
+}
+
+export function StatCard({
+  title,
+  value,
+  icon: Icon,
+  iconClassName = 'text-white',
+  iconBgClassName,
+  valueClassName,
+  className,
+  change,
+  changeLabel = 'vs last period',
+  changeIsPoints = false,
+  footer,
+  onClick,
+  active,
+}: StatCardProps) {
+  const hasChange = change !== undefined;
+  const isPositive = change !== undefined && change >= 0;
+  const interactive = onClick !== undefined;
+
+  const shellClassName = cn(
+    'surface-card group relative w-full overflow-hidden p-2.5 transition-all duration-300 sm:p-3.5 md:p-5',
+    'sm:hover:shadow-elevated-lg sm:hover:-translate-y-0.5',
+    interactive &&
+      'focus-visible:ring-primary/40 text-left focus-visible:outline-none focus-visible:ring-2',
+    active && 'ring-primary/50 ring-offset-background ring-2 ring-offset-2',
+    className
+  );
+
+  const body = (
+    <>
+      <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className={cn('relative', footer && 'space-y-1.5 sm:space-y-2')}>
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
+          <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1.5">
+            <p className="text-muted-foreground line-clamp-2 text-[11px] font-medium leading-tight sm:line-clamp-none sm:text-sm">
+              {title}
+            </p>
+            <p
+              className={cn(
+                'truncate text-lg font-bold tabular-nums tracking-tight sm:text-2xl',
+                valueClassName ?? 'text-foreground'
+              )}
+            >
+              {value}
+            </p>
+            {hasChange ? (
+              <div className="flex flex-wrap items-center gap-1">
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium',
+                    isPositive
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                  )}
+                >
+                  {isPositive ? (
+                    <TrendingUp className="size-3" aria-hidden />
+                  ) : (
+                    <TrendingDown className="size-3" aria-hidden />
+                  )}
+                  {formatChange(change, changeIsPoints)}
+                </span>
+                <span className="text-muted-foreground text-xs">{changeLabel}</span>
+              </div>
+            ) : null}
+          </div>
+          {Icon && iconBgClassName ? (
+            <div
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-lg transition-transform sm:size-10 sm:rounded-xl sm:group-hover:scale-110',
+                iconBgClassName
+              )}
+            >
+              <Icon className={cn('size-4 sm:size-5', iconClassName)} aria-hidden />
+            </div>
+          ) : null}
+        </div>
+        {footer}
+      </div>
+    </>
+  );
+
+  if (interactive) {
+    return (
+      <button type="button" onClick={onClick} aria-pressed={active} className={shellClassName}>
+        {body}
+      </button>
+    );
+  }
+
+  return <div className={shellClassName}>{body}</div>;
+}
+
+type StatCardSkeletonProps = {
+  showTrend?: boolean;
+  className?: string;
+  style?: CSSProperties;
+};
+
+export function StatCardSkeleton({ showTrend = false, className, style }: StatCardSkeletonProps) {
+  return (
+    <div className={cn('surface-card p-2.5 sm:p-3.5 md:p-4', className)} style={style}>
+      <div className="flex items-start justify-between gap-2 sm:gap-3">
+        <div className="min-w-0 flex-1 space-y-1 sm:space-y-2">
+          <Skeleton className="h-3 w-20 sm:h-4 sm:w-24" />
+          <Skeleton className="h-6 w-16 sm:h-8 sm:w-32" />
+          {showTrend ? (
+            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+              <Skeleton className="h-6 w-14 rounded-full" />
+              <Skeleton className="h-3 w-20" />
+            </div>
+          ) : null}
+        </div>
+        <Skeleton className="size-8 shrink-0 rounded-lg sm:size-10 sm:rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+type MoneyStatCardProps = Omit<StatCardProps, 'value'> & {
+  value: number;
+};
+
+/** Stat card with PHP currency formatting. */
+export function MoneyStatCard({ value, ...props }: MoneyStatCardProps) {
+  return <StatCard {...props} value={formatMoney(value)} />;
+}
+
+/** Responsive 4-column grid used by dashboard KPI rows. */
+export function StatCardGrid({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <div className={cn('grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4', className)}>
+      {children}
+    </div>
+  );
+}

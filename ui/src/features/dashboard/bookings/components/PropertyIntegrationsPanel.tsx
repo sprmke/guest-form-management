@@ -22,7 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { cn } from '@/lib/utils';
 
 type TelegramChannel = {
-  id: 'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'parking';
+  id: 'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'parking' | 'chat';
   label: string;
   status: PropertyTelegramCredentialsStatus;
 };
@@ -360,6 +360,17 @@ export function PropertyIntegrationsPanel({
             id: 'maintenance',
             label: 'Maintenance',
             status: status.telegram.maintenance,
+          },
+          {
+            id: 'chat',
+            label: 'Chat',
+            status: status.telegram.chat ?? {
+              tokenConfigured: false,
+              chatIdConfigured: false,
+              tokenSource: 'none' as const,
+              chatIdSource: 'none' as const,
+              secretsEncryptionConfigured: false,
+            },
           },
         ];
 

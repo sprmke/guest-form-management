@@ -39,9 +39,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
 
 type EditorTab = 'edit' | 'preview';
+
+const EDITOR_VIEW_OPTIONS = [
+  { value: 'edit' as const, label: 'Edit', icon: Pencil },
+  { value: 'preview' as const, label: 'Preview', icon: Eye },
+];
 
 type Props = {
   template: PropertyTemplateDto;
@@ -243,34 +249,13 @@ export function PropertyTemplateEditorCard({
 
       <CardContent className="p-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2 sm:px-4">
-          <div className="bg-muted inline-flex rounded-lg p-0.5">
-            <button
-              type="button"
-              className={cn(
-                'inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 text-xs font-medium',
-                activeTab === 'edit'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              )}
-              onClick={() => handleTabChange('edit')}
-            >
-              <Pencil className="h-3 w-3" aria-hidden />
-              Edit
-            </button>
-            <button
-              type="button"
-              className={cn(
-                'inline-flex min-h-[44px] items-center gap-1.5 rounded-md px-3 text-xs font-medium',
-                activeTab === 'preview'
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground'
-              )}
-              onClick={() => handleTabChange('preview')}
-            >
-              <Eye className="h-3 w-3" aria-hidden />
-              Preview
-            </button>
-          </div>
+          <SegmentedControl
+            value={activeTab}
+            onChange={handleTabChange}
+            options={EDITOR_VIEW_OPTIONS}
+            size="dense"
+            aria-label={`${template.name} view`}
+          />
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"

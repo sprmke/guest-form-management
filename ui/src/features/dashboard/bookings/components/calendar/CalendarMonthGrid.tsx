@@ -5,7 +5,6 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  getDay,
   isSameDay,
   isSameMonth,
   isToday,
@@ -16,9 +15,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import {
   CALENDAR_WEEKDAYS,
+  buildCalendarWeekRows,
+  buildOccupancySegmentsForWeeks,
   buildRangeCalendarDays,
+  calendarPaddingStart,
   type CalendarVisibleRange,
+  type OccupancySegment,
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { CalendarOccupancySpanTrack } from '@/features/dashboard/bookings/components/calendar/CalendarOccupancySpanTrack';
 import { statusToneStyle } from '@/features/dashboard/bookings/components/StatusBadge';
 
 import { cn } from '@/lib/utils';
@@ -44,6 +48,12 @@ type Props<T> = {
   /** When set, day clicks navigate instead of selecting a sidebar day. */
   onDayClick?: (day: Date, items: T[]) => void;
   onItemClick?: (item: T) => void;
+  /** Multi-night stays: one bar per row instead of per-cell pills. */
+  occupancyRows?: T[];
+  getCheckIn?: (item: T) => string | null | undefined;
+  getCheckOut?: (item: T) => string | null | undefined;
+  renderOccupancySegment?: (segment: OccupancySegment<T>) => ReactNode;
+  maxSpanLanes?: number;
 };
 
 export function CalendarMonthGrid<T>({
@@ -62,6 +72,11 @@ export function CalendarMonthGrid<T>({
   embedded = false,
   onDayClick,
   onItemClick,
+  occupancyRows,
+  getCheckIn,
+  getCheckOut,
+  renderOccupancySegment,
+  maxSpanLanes,
 }: Props<T>) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => initialMonth ?? new Date());
 
@@ -80,9 +95,20 @@ export function CalendarMonthGrid<T>({
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
-    const startDay = getDay(start);
-    return { days, paddingStart: startDay };
+    return { days, paddingStart: calendarPaddingStart(start) };
   }, [currentMonth, rangeGrid]);
+
+  const spanMode = Boolean(occupancyRows && getCheckIn && getCheckOut && renderOccupancySegment);
+
+  const weeks = useMemo(
+    () => buildCalendarWeekRows(calendarGrid.days, calendarGrid.paddingStart),
+    [calendarGrid.days, calendarGrid.paddingStart]
+  );
+
+  const segmentsByWeek = useMemo(() => {
+    if (!spanMode || !occupancyRows || !getCheckIn || !getCheckOut) return null;
+    return buildOccupancySegmentsForWeeks(occupancyRows, weeks, getCheckIn, getCheckOut);
+  }, [spanMode, occupancyRows, getCheckIn, getCheckOut, weeks]);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     if (visibleRange) return;
@@ -101,6 +127,134 @@ export function CalendarMonthGrid<T>({
   /** Full calendar: pills on sm+; compact embed: pills unless range is dense (year-style). */
   const showPillLabels = !compact || !dense;
   const showWeekdayHeaders = true;
+  const spanLaneCap = maxSpanLanes ?? (compact ? 1 : 2);
+
+  const renderDayCell = (day: Date) => {
+    const key = format(day, 'yyyy-MM-dd');
+    const dayItems = itemsByDay.get(key) ?? [];
+    const isSelected = !onDayClick && selectedDay && isSameDay(day, selectedDay);
+    const isCurrentMonth = visibleRange ? true : isSameMonth(day, currentMonth);
+    const hasItems = dayItems.length > 0;
+    const todayFlag = isToday(day);
+    const navigable = Boolean(onDayClick && hasItems);
+
+    return (
+      <button
+        key={key}
+        type="button"
+        onClick={() => {
+          if (onDayClick) {
+            if (hasItems) onDayClick(day, dayItems);
+            return;
+          }
+          onSelectedDayChange(isSelected ? null : day);
+        }}
+        disabled={onDayClick ? !hasItems : false}
+        aria-label={`${format(day, 'MMMM d, yyyy')} – ${
+          hasItems
+            ? `${dayItems.length} ${entityLabel}${dayItems.length === 1 ? '' : 's'}`
+            : `no ${entityLabel}s`
+        }`}
+        className={cn(
+          'relative flex flex-col items-stretch justify-start rounded-lg p-1.5 transition-all duration-100',
+          'aspect-square outline-none sm:aspect-auto',
+          cellMinHeight,
+          navigable &&
+            'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2',
+          !navigable &&
+            !onDayClick &&
+            'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 focus-visible:ring-2',
+          onDayClick && !hasItems && 'cursor-default',
+          isSelected && 'ring-sidebar-primary/60 bg-sidebar-accent/30 ring-2',
+          !isCurrentMonth && 'opacity-35'
+        )}
+      >
+        <div className="flex min-h-[20px] items-center justify-between gap-1">
+          <span
+            className={cn(
+              'text-[12px] font-semibold leading-none',
+              todayFlag
+                ? 'gradient-primary text-primary-foreground inline-flex size-5 items-center justify-center rounded-full'
+                : 'text-foreground px-1'
+            )}
+          >
+            {format(day, 'd')}
+          </span>
+          {hasItems && (
+            <span className="text-muted-foreground text-[9px] font-black tabular-nums">
+              {dayItems.length}
+            </span>
+          )}
+        </div>
+
+        {hasItems && showPillLabels && !spanMode && (
+          <div
+            className={cn(
+              'mt-1.5 flex flex-col gap-0.5 overflow-hidden',
+              !compact && 'hidden sm:flex'
+            )}
+          >
+            {dayItems.slice(0, compact ? 1 : 2).map((item) => (
+              <div
+                key={getItemKey(item)}
+                onClick={
+                  onItemClick
+                    ? (event) => {
+                        event.stopPropagation();
+                        onItemClick(item);
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  onItemClick
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onItemClick(item);
+                        }
+                      }
+                    : undefined
+                }
+                role={onItemClick ? 'link' : undefined}
+                tabIndex={onItemClick ? 0 : undefined}
+                className={cn(onItemClick && 'cursor-pointer rounded-md')}
+              >
+                {renderPill(item)}
+              </div>
+            ))}
+            {dayItems.length > (compact ? 1 : 2) && (
+              <span className="text-muted-foreground mt-0.5 px-1 text-[9px] font-bold">
+                +{dayItems.length - (compact ? 1 : 2)} more
+              </span>
+            )}
+          </div>
+        )}
+
+        {hasItems && getItemStatus && (compact ? dense : true) && (
+          <div
+            className={cn(
+              'mt-auto flex justify-center gap-0.5 pb-0.5',
+              spanMode && !compact && 'sm:hidden',
+              !spanMode && !compact && 'sm:hidden',
+              !spanMode && compact && !dense && 'hidden'
+            )}
+          >
+            {dayItems.slice(0, 4).map((item) => {
+              const tone = statusToneStyle(getItemStatus(item));
+              return (
+                <span
+                  key={getItemKey(item)}
+                  aria-hidden
+                  className={cn('size-1.5 shrink-0 rounded-full', tone.dot)}
+                />
+              );
+            })}
+          </div>
+        )}
+      </button>
+    );
+  };
 
   return (
     <div
@@ -175,137 +329,45 @@ export function CalendarMonthGrid<T>({
         </div>
       ) : null}
 
-      <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
-        {Array.from({ length: calendarGrid.paddingStart }).map((_, idx) => (
-          <div key={`pad-${idx}`} className={cn('aspect-square', padCellMinHeight)} />
-        ))}
-
-        {calendarGrid.days.map((day) => {
-          const key = format(day, 'yyyy-MM-dd');
-          const dayItems = itemsByDay.get(key) ?? [];
-          const isSelected = !onDayClick && selectedDay && isSameDay(day, selectedDay);
-          const isCurrentMonth = visibleRange ? true : isSameMonth(day, currentMonth);
-          const hasItems = dayItems.length > 0;
-          const todayFlag = isToday(day);
-          const navigable = Boolean(onDayClick && hasItems);
-
-          return (
-            <button
-              key={key}
-              type="button"
-              onClick={() => {
-                if (onDayClick) {
-                  if (hasItems) onDayClick(day, dayItems);
-                  return;
-                }
-                onSelectedDayChange(isSelected ? null : day);
-              }}
-              disabled={onDayClick ? !hasItems : false}
-              aria-label={`${format(day, 'MMMM d, yyyy')} – ${
-                hasItems
-                  ? `${dayItems.length} ${entityLabel}${dayItems.length === 1 ? '' : 's'}`
-                  : `no ${entityLabel}s`
-              }`}
-              className={cn(
-                'relative flex flex-col items-stretch justify-start rounded-lg p-1.5 transition-all duration-100',
-                'aspect-square outline-none sm:aspect-auto',
-                cellMinHeight,
-                navigable &&
-                  'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 cursor-pointer focus-visible:ring-2',
-                !navigable &&
-                  !onDayClick &&
-                  'hover:bg-muted/50 focus-visible:ring-sidebar-primary/40 focus-visible:ring-2',
-                onDayClick && !hasItems && 'cursor-default',
-                isSelected && 'ring-sidebar-primary/60 bg-sidebar-accent/30 ring-2',
-                !isCurrentMonth && 'opacity-35'
-              )}
-            >
-              <div className="flex min-h-[20px] items-center justify-between gap-1">
-                <span
-                  className={cn(
-                    'text-[12px] font-semibold leading-none',
-                    todayFlag
-                      ? 'gradient-primary text-primary-foreground inline-flex size-5 items-center justify-center rounded-full'
-                      : 'text-foreground px-1'
-                  )}
-                >
-                  {format(day, 'd')}
-                </span>
-                {hasItems && (
-                  <span className="text-muted-foreground text-[9px] font-black tabular-nums">
-                    {dayItems.length}
-                  </span>
+      {spanMode ? (
+        <div className="flex flex-col gap-1 px-2 pb-3 sm:px-3">
+          {weeks.map((week) => (
+            <div key={week.weekIndex}>
+              <div className="grid grid-cols-7 gap-1">
+                {week.days.map((day, colIdx) =>
+                  day ? (
+                    renderDayCell(day)
+                  ) : (
+                    <div
+                      key={`pad-${week.weekIndex}-${colIdx}`}
+                      className={cn('aspect-square', padCellMinHeight)}
+                    />
+                  )
                 )}
               </div>
+              {renderOccupancySegment ? (
+                <CalendarOccupancySpanTrack
+                  segments={segmentsByWeek?.get(week.weekIndex) ?? []}
+                  getSegmentKey={(segment) =>
+                    `${week.weekIndex}-${getItemKey(segment.item)}-${segment.startCol}-${segment.endCol}`
+                  }
+                  renderSegment={renderOccupancySegment}
+                  maxLanes={spanLaneCap}
+                  hiddenClassName={cn(!compact && 'hidden sm:grid', compact && dense && 'hidden')}
+                />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-7 gap-1 px-2 pb-3 sm:px-3">
+          {Array.from({ length: calendarGrid.paddingStart }).map((_, idx) => (
+            <div key={`pad-${idx}`} className={cn('aspect-square', padCellMinHeight)} />
+          ))}
 
-              {hasItems && showPillLabels && (
-                <div
-                  className={cn(
-                    'mt-1.5 flex flex-col gap-0.5 overflow-hidden',
-                    !compact && 'hidden sm:flex'
-                  )}
-                >
-                  {dayItems.slice(0, compact ? 1 : 2).map((item) => (
-                    <div
-                      key={getItemKey(item)}
-                      onClick={
-                        onItemClick
-                          ? (event) => {
-                              event.stopPropagation();
-                              onItemClick(item);
-                            }
-                          : undefined
-                      }
-                      onKeyDown={
-                        onItemClick
-                          ? (event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                onItemClick(item);
-                              }
-                            }
-                          : undefined
-                      }
-                      role={onItemClick ? 'link' : undefined}
-                      tabIndex={onItemClick ? 0 : undefined}
-                      className={cn(onItemClick && 'cursor-pointer rounded-md')}
-                    >
-                      {renderPill(item)}
-                    </div>
-                  ))}
-                  {dayItems.length > (compact ? 1 : 2) && (
-                    <span className="text-muted-foreground mt-0.5 px-1 text-[9px] font-bold">
-                      +{dayItems.length - (compact ? 1 : 2)} more
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {hasItems && getItemStatus && (compact ? dense : true) && (
-                <div
-                  className={cn(
-                    'mt-auto flex justify-center gap-0.5 pb-0.5',
-                    !compact && 'sm:hidden',
-                    compact && !dense && 'hidden'
-                  )}
-                >
-                  {dayItems.slice(0, 4).map((item) => {
-                    const tone = statusToneStyle(getItemStatus(item));
-                    return (
-                      <span
-                        key={getItemKey(item)}
-                        aria-hidden
-                        className={cn('size-1.5 shrink-0 rounded-full', tone.dot)}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
+          {calendarGrid.days.map((day) => renderDayCell(day))}
+        </div>
+      )}
     </div>
   );
 }

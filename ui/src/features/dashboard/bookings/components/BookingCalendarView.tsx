@@ -10,6 +10,7 @@ import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
 } from '@/features/dashboard/bookings/components/calendar/OccupancyCalendarView';
+import { calendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 
@@ -17,6 +18,7 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import type { DatePreset } from '@/lib/date/navigation';
 import { fromIsoDate } from '@/lib/date/navigation';
+import { cn } from '@/lib/utils';
 
 type Props = {
   rows: BookingRow[];
@@ -109,6 +111,49 @@ export function BookingCalendarView({
             title={`${guestName}${propertySuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
             labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
           />
+        );
+      }}
+      renderOccupancySegment={(segment) => {
+        const row = segment.item;
+        const guestName = bookingListDisplayName(row);
+        const priceLabel = bookingPillPriceLabel(row);
+        const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
+        const propertySuffix = showProperty && row.property_name ? ` · ${row.property_name}` : '';
+
+        return (
+          <div
+            onClick={
+              mini
+                ? (event) => {
+                    event.stopPropagation();
+                    openBooking(row);
+                  }
+                : undefined
+            }
+            onKeyDown={
+              mini
+                ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      openBooking(row);
+                    }
+                  }
+                : undefined
+            }
+            role={mini ? 'link' : undefined}
+            tabIndex={mini ? 0 : undefined}
+            className={cn(mini && 'h-full cursor-pointer')}
+          >
+            <CalendarOccupancyPill
+              status={row.status}
+              label={label}
+              showLabel={segment.showLabel}
+              spanPosition={calendarOccupancySpanPosition(segment)}
+              title={`${guestName}${propertySuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+              labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
+            />
+          </div>
         );
       }}
       renderDayItem={(row) => (

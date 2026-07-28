@@ -59,6 +59,7 @@ export type PropertyIntegrationStatus = {
     admin: PropertyTelegramCredentialsStatus;
     finance: PropertyTelegramCredentialsStatus;
     maintenance: PropertyTelegramCredentialsStatus;
+    chat?: PropertyTelegramCredentialsStatus;
   };
 };
 

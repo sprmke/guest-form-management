@@ -1,4 +1,4 @@
-import { eachDayOfInterval, format, getDay, parse, subDays } from 'date-fns';
+import { eachDayOfInterval, format, getDay, isSameDay, parse, subDays } from 'date-fns';
 
 /** Parse MM-DD-YYYY or YYYY-MM-DD stay dates from the DB. */
 export function parseOccupancyDate(value: string | null | undefined): Date | null {
@@ -59,10 +59,144 @@ export function buildOccupancyByDay<T>(
 
 export const CALENDAR_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+export type CalendarWeekRow = {
+  weekIndex: number;
+  /** Seven slots; null = padding cell outside the visible month/range. */
+  days: (Date | null)[];
+};
+
+export type OccupancySegment<T> = {
+  item: T;
+  weekIndex: number;
+  startCol: number;
+  endCol: number;
+  lane: number;
+  /** Guest label only on the first occupied night of the stay (or first visible segment). */
+  showLabel: boolean;
+  spanStart: boolean;
+  spanEnd: boolean;
+};
+
+export type CalendarOccupancySpanPosition = 'single' | 'start' | 'middle' | 'end';
+
+export function calendarOccupancySpanPosition(segment: {
+  spanStart: boolean;
+  spanEnd: boolean;
+}): CalendarOccupancySpanPosition {
+  if (segment.spanStart && segment.spanEnd) return 'single';
+  if (segment.spanStart) return 'start';
+  if (segment.spanEnd) return 'end';
+  return 'middle';
+}
+
+/** Week rows for a month/range grid (Sunday-first, 7 columns). */
+export function buildCalendarWeekRows(days: Date[], paddingStart: number): CalendarWeekRow[] {
+  const slots: (Date | null)[] = [...Array.from({ length: paddingStart }, () => null), ...days];
+  while (slots.length % 7 !== 0) {
+    slots.push(null);
+  }
+
+  const weeks: CalendarWeekRow[] = [];
+  for (let index = 0; index < slots.length; index += 7) {
+    weeks.push({
+      weekIndex: weeks.length,
+      days: slots.slice(index, index + 7),
+    });
+  }
+  return weeks;
+}
+
+function occupiedNightRange<T>(
+  row: T,
+  getCheckIn: (row: T) => string | null | undefined,
+  getCheckOut: (row: T) => string | null | undefined
+): { start: Date; end: Date } | null {
+  const start = parseOccupancyDate(getCheckIn(row));
+  const end = parseOccupancyDate(getCheckOut(row));
+  if (!start || !end || start >= end) return null;
+  return { start, end: subDays(end, 1) };
+}
+
+function assignOccupancyLanes<T>(
+  segments: Omit<OccupancySegment<T>, 'lane'>[]
+): OccupancySegment<T>[] {
+  const sorted = [...segments].sort((a, b) => a.startCol - b.startCol || a.endCol - b.endCol);
+  const laneEnds: number[] = [];
+
+  return sorted.map((segment) => {
+    let lane = laneEnds.findIndex((endCol) => endCol < segment.startCol);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(segment.endCol);
+    } else {
+      laneEnds[lane] = segment.endCol;
+    }
+    return { ...segment, lane };
+  });
+}
+
+/** Multi-night stays become one bar segment per calendar week row (not one pill per cell). */
+export function buildOccupancySegmentsForWeeks<T>(
+  rows: T[],
+  weeks: CalendarWeekRow[],
+  getCheckIn: (row: T) => string | null | undefined,
+  getCheckOut: (row: T) => string | null | undefined
+): Map<number, OccupancySegment<T>[]> {
+  const segmentsByWeek = new Map<number, OccupancySegment<T>[]>();
+
+  for (const week of weeks) {
+    const raw: Omit<OccupancySegment<T>, 'lane'>[] = [];
+
+    for (const row of rows) {
+      const range = occupiedNightRange(row, getCheckIn, getCheckOut);
+      if (!range) continue;
+
+      let startCol: number | null = null;
+      let endCol: number | null = null;
+      let showLabel = false;
+
+      for (let col = 0; col < 7; col++) {
+        const day = week.days[col];
+        if (!day) continue;
+        if (day < range.start || day > range.end) continue;
+        if (startCol === null) startCol = col;
+        endCol = col;
+        if (isSameDay(day, range.start)) showLabel = true;
+      }
+
+      if (startCol === null || endCol === null) continue;
+
+      const spanStart = isSameDay(week.days[startCol]!, range.start);
+      const spanEnd = isSameDay(week.days[endCol]!, range.end);
+
+      raw.push({
+        item: row,
+        weekIndex: week.weekIndex,
+        startCol,
+        endCol,
+        showLabel,
+        spanStart,
+        spanEnd,
+      });
+    }
+
+    segmentsByWeek.set(week.weekIndex, assignOccupancyLanes(raw));
+  }
+
+  return segmentsByWeek;
+}
+
 export type CalendarVisibleRange = {
   from: Date;
   to: Date;
 };
+
+/** Leading empty cells before the first day of a month/range grid. */
+export function calendarPaddingStart(date: Date, weekStartsOn: 0 | 1 = 0): number {
+  const weekday = getDay(date);
+  if (weekStartsOn === 1) return weekday === 0 ? 6 : weekday - 1;
+  return weekday;
+}
 
 /** Week-aligned day list for a visible date range (dashboard filter). */
 export function buildRangeCalendarDays(range: CalendarVisibleRange): {
@@ -70,5 +204,5 @@ export function buildRangeCalendarDays(range: CalendarVisibleRange): {
   paddingStart: number;
 } {
   const days = eachDayOfInterval({ start: range.from, end: range.to });
-  return { days, paddingStart: getDay(range.from) };
+  return { days, paddingStart: calendarPaddingStart(range.from) };
 }

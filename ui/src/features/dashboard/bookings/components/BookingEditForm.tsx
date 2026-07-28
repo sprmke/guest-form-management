@@ -5,7 +5,7 @@
  * While the booking is in **Pending documents** (parent or GAF / parking / pet)
  * or **Ready for check-in**, saving **workflow-sensitive** guest/stay fields
  * reverts status to PENDING_REVIEW (see `hasWorkflowSensitiveGuestFieldDiff`
- * + docs/TODOS.md). Other edits keep status unchanged.
+ * + docs/todos/). Other edits keep status unchanged.
  *
  * Uses React Hook Form (no Zod for now — lightweight admin-only form).
  */

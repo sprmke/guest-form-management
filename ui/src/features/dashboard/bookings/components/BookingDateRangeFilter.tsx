@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { Calendar } from '@/components/ui/calendar';
+import { ButtonGroup, ButtonGroupItem } from '@/components/ui/button-group';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   type DateNavigationState,
@@ -119,262 +120,249 @@ export function BookingDateRangeFilter({
     ? formatDateRangeDisplay(dateRange.from, dateRange.to, datePreset)
     : 'Date';
 
-  return (
-    <div
-      ref={containerRef}
-      className={cn('flex items-center gap-1', fullWidth ? 'w-full' : 'shrink-0')}
-    >
-      {/* ← Prev period (preset modes only) */}
-      {canNavigate && (
-        <button
-          type="button"
-          onClick={() => navigatePeriod('prev')}
-          aria-label="Previous period"
-          className={cn(
-            'inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg',
-            'bg-card text-muted-foreground border-border border',
-            'hover:bg-accent hover:text-accent-foreground',
-            'transition-all duration-100'
-          )}
-        >
-          <ChevronLeft className="size-3.5" aria-hidden />
-        </button>
+  const triggerActive = isActive || open || calendarOpen;
+  const showNav = canNavigate;
+
+  const triggerButton = (
+    <ButtonGroupItem
+      type="button"
+      position={showNav ? 'middle' : 'only'}
+      active={triggerActive}
+      onClick={() => (isCustomMode && isActive ? setCalendarOpen((v) => !v) : setOpen((v) => !v))}
+      aria-expanded={open || calendarOpen}
+      aria-haspopup="dialog"
+      className={cn(
+        'select-none gap-1.5 whitespace-nowrap',
+        showNav && fullWidth && 'w-full justify-center',
+        !showNav && fullWidth && 'w-full justify-center'
       )}
+    >
+      <CalendarDays
+        className={cn(
+          'size-3.5 shrink-0',
+          triggerActive ? 'text-foreground' : 'text-muted-foreground'
+        )}
+        aria-hidden
+      />
+      <span className={cn('truncate', fullWidth ? 'max-w-[min(100%,14rem)]' : 'max-w-[180px]')}>
+        {triggerLabel}
+      </span>
+      <ChevronDown
+        className={cn(
+          'size-3.5 shrink-0 transition-transform duration-150',
+          (open || calendarOpen) && 'rotate-180'
+        )}
+        aria-hidden
+      />
+    </ButtonGroupItem>
+  );
 
-      {/* Trigger button + popover */}
-      <div className={cn('relative min-w-0', fullWidth && 'flex-1')}>
-        <button
-          type="button"
-          onClick={() =>
-            isCustomMode && isActive ? setCalendarOpen((v) => !v) : setOpen((v) => !v)
-          }
-          aria-expanded={open || calendarOpen}
-          aria-haspopup="dialog"
+  return (
+    <div ref={containerRef} className={cn('relative min-w-0', fullWidth ? 'w-full' : 'shrink-0')}>
+      <ButtonGroup fullWidth={fullWidth}>
+        {showNav ? (
+          <ButtonGroupItem
+            type="button"
+            position="first"
+            onClick={() => navigatePeriod('prev')}
+            aria-label="Previous period"
+            className="text-muted-foreground hover:text-accent-foreground"
+          >
+            <ChevronLeft className="size-3.5" aria-hidden />
+          </ButtonGroupItem>
+        ) : null}
+
+        {triggerButton}
+
+        {showNav ? (
+          <ButtonGroupItem
+            type="button"
+            position="last"
+            onClick={() => navigatePeriod('next')}
+            aria-label="Next period"
+            className="text-muted-foreground hover:text-accent-foreground"
+          >
+            <ChevronRight className="size-3.5" aria-hidden />
+          </ButtonGroupItem>
+        ) : null}
+      </ButtonGroup>
+
+      {/* Preset dropdown */}
+      {open && (
+        <div
           className={cn(
-            'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2.5 text-[13px] font-semibold',
-            'select-none border transition-all duration-100',
-            fullWidth ? 'w-full justify-center' : 'whitespace-nowrap',
-            isActive || open || calendarOpen
-              ? 'interactive-primary border-border'
-              : 'border-border bg-card text-foreground hover:bg-muted/60'
+            'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border',
+            'max-w-[calc(100vw-24px)]',
+            popoverAlign === 'end' ? 'right-0' : 'left-0'
           )}
         >
-          <CalendarDays
-            className={cn(
-              'size-3.5 shrink-0',
-              isActive || open || calendarOpen ? 'text-foreground' : 'text-muted-foreground'
-            )}
-            aria-hidden
-          />
-          <span className={cn('truncate', fullWidth ? 'max-w-[min(100%,14rem)]' : 'max-w-[180px]')}>
-            {triggerLabel}
-          </span>
-          <ChevronDown
-            className={cn(
-              'size-3.5 shrink-0 transition-transform duration-150',
-              (open || calendarOpen) && 'rotate-180'
-            )}
-            aria-hidden
-          />
-        </button>
-
-        {/* Preset dropdown */}
-        {open && (
-          <div
-            className={cn(
-              'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border',
-              'max-w-[calc(100vw-24px)]',
-              popoverAlign === 'end' ? 'right-0' : 'left-0'
-            )}
-          >
-            <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
-              <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                View by
-              </span>
-              {isActive && !isCurrent && datePreset !== 'custom' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    goToToday();
-                    setOpen(false);
-                  }}
-                  className="text-sidebar-primary text-[12px] font-semibold transition-opacity hover:opacity-80"
-                >
-                  Today
-                </button>
-              )}
-            </div>
-            <div className="py-1">
-              {PRESET_OPTIONS.map((opt) => {
-                const isSelected = opt.value === datePreset && isActive;
-                const Icon = opt.value === 'custom' ? CalendarDays : CalendarIcon;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => handlePresetChange(opt.value)}
-                    className={cn(
-                      'flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
-                      isSelected ? 'bg-muted/50' : 'hover:bg-muted/50'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'size-3.5 shrink-0',
-                        isSelected ? 'text-sidebar-primary' : 'text-muted-foreground'
-                      )}
-                      aria-hidden
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className={cn(
-                          'text-[13px] leading-tight',
-                          isSelected
-                            ? 'text-foreground font-semibold'
-                            : 'text-foreground/75 font-medium'
-                        )}
-                      >
-                        {opt.label}
-                      </p>
-                      <p className="text-muted-foreground mt-[2px] text-[11px] leading-tight">
-                        {opt.description}
-                      </p>
-                    </div>
-                    {isSelected && (
-                      <Check
-                        className="text-sidebar-primary ml-auto size-3.5 shrink-0"
-                        aria-hidden
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {isActive && (
-              <div className="border-separator flex justify-end border-t px-3.5 py-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClear();
-                    setOpen(false);
-                  }}
-                  className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
-                >
-                  Clear date filter
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Custom range calendar popover */}
-        {calendarOpen && (
-          <div
-            className={cn(
-              'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 rounded-xl border',
-              'max-w-[calc(100vw-24px)]',
-              popoverAlign === 'end' ? 'right-0' : 'left-0',
-              calendarMonths === 2
-                ? 'w-[min(calc(100vw-24px),34rem)]'
-                : 'w-[min(calc(100vw-24px),18.5rem)]'
-            )}
-          >
-            <div className="border-separator flex items-center justify-between gap-4 border-b px-3.5 py-2.5">
-              <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                Select date range
-              </span>
+          <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
+            <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+              View by
+            </span>
+            {isActive && !isCurrent && datePreset !== 'custom' && (
               <button
                 type="button"
                 onClick={() => {
-                  setDatePreset('month');
-                  setCalendarOpen(false);
+                  goToToday();
+                  setOpen(false);
+                }}
+                className="text-sidebar-primary text-[12px] font-semibold transition-opacity hover:opacity-80"
+              >
+                Today
+              </button>
+            )}
+          </div>
+          <div className="py-1">
+            {PRESET_OPTIONS.map((opt) => {
+              const isSelected = opt.value === datePreset && isActive;
+              const Icon = opt.value === 'custom' ? CalendarDays : CalendarIcon;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handlePresetChange(opt.value)}
+                  className={cn(
+                    'flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
+                    isSelected ? 'bg-muted/50' : 'hover:bg-muted/50'
+                  )}
+                >
+                  <Icon
+                    className={cn(
+                      'size-3.5 shrink-0',
+                      isSelected ? 'text-sidebar-primary' : 'text-muted-foreground'
+                    )}
+                    aria-hidden
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className={cn(
+                        'text-[13px] leading-tight',
+                        isSelected
+                          ? 'text-foreground font-semibold'
+                          : 'text-foreground/75 font-medium'
+                      )}
+                    >
+                      {opt.label}
+                    </p>
+                    <p className="text-muted-foreground mt-[2px] text-[11px] leading-tight">
+                      {opt.description}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <Check className="text-sidebar-primary ml-auto size-3.5 shrink-0" aria-hidden />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {isActive && (
+            <div className="border-separator flex justify-end border-t px-3.5 py-2">
+              <button
+                type="button"
+                onClick={() => {
+                  onClear();
+                  setOpen(false);
                 }}
                 className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
               >
-                Back to presets
+                Clear date filter
               </button>
             </div>
-            <div className={cn('p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}>
-              <Calendar
-                mode="range"
-                defaultMonth={dateRange.from}
-                selected={localRange}
-                onSelect={setLocalRange}
-                numberOfMonths={calendarMonths}
-                weekStartsOn={0}
-                classNames={
-                  calendarMonths === 2 ? CALENDAR_CLASSNAMES_TWO_MONTHS : CALENDAR_CLASSNAMES
-                }
-              />
-            </div>
-            <div className="border-separator flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
-              <div className="text-muted-foreground min-w-0 text-[12px]">
-                {localRange?.from ? (
-                  <>
-                    <span className="text-foreground font-semibold">
-                      {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-                    </span>
-                    {localRange.to ? (
-                      <>
-                        <span className="text-muted-foreground/50 mx-1.5">→</span>
-                        <span className="text-foreground font-semibold">
-                          {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-                        </span>
-                      </>
-                    ) : (
-                      <span className="text-muted-foreground"> · select end date</span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-muted-foreground">Select start date</span>
-                )}
-              </div>
-              <div className="flex shrink-0 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCalendarOpen(false)}
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-                    'bg-card text-sidebar-muted border-sidebar-border border',
-                    'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
-                  )}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleApplyRange}
-                  disabled={!localRange?.from || !localRange?.to}
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-                    'bg-primary text-primary-foreground shadow-sm transition-all duration-100',
-                    'disabled:pointer-events-none disabled:opacity-40',
-                    'hover:brightness-[1.03] active:scale-[0.98]'
-                  )}
-                >
-                  Apply
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* → Next period (preset modes only) */}
-      {canNavigate && (
-        <button
-          type="button"
-          onClick={() => navigatePeriod('next')}
-          aria-label="Next period"
+      {/* Custom range calendar popover */}
+      {calendarOpen && (
+        <div
           className={cn(
-            'inline-flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-lg',
-            'bg-card text-muted-foreground border-border border',
-            'hover:bg-accent hover:text-accent-foreground',
-            'transition-all duration-100'
+            'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 rounded-xl border',
+            'max-w-[calc(100vw-24px)]',
+            popoverAlign === 'end' ? 'right-0' : 'left-0',
+            calendarMonths === 2
+              ? 'w-[min(calc(100vw-24px),34rem)]'
+              : 'w-[min(calc(100vw-24px),18.5rem)]'
           )}
         >
-          <ChevronRight className="size-3.5" aria-hidden />
-        </button>
+          <div className="border-separator flex items-center justify-between gap-4 border-b px-3.5 py-2.5">
+            <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+              Select date range
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setDatePreset('month');
+                setCalendarOpen(false);
+              }}
+              className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
+            >
+              Back to presets
+            </button>
+          </div>
+          <div className={cn('p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}>
+            <Calendar
+              mode="range"
+              defaultMonth={dateRange.from}
+              selected={localRange}
+              onSelect={setLocalRange}
+              numberOfMonths={calendarMonths}
+              weekStartsOn={0}
+              classNames={
+                calendarMonths === 2 ? CALENDAR_CLASSNAMES_TWO_MONTHS : CALENDAR_CLASSNAMES
+              }
+            />
+          </div>
+          <div className="border-separator flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
+            <div className="text-muted-foreground min-w-0 text-[12px]">
+              {localRange?.from ? (
+                <>
+                  <span className="text-foreground font-semibold">
+                    {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
+                  </span>
+                  {localRange.to ? (
+                    <>
+                      <span className="text-muted-foreground/50 mx-1.5">→</span>
+                      <span className="text-foreground font-semibold">
+                        {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground"> · select end date</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-muted-foreground">Select start date</span>
+              )}
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setCalendarOpen(false)}
+                className={cn(
+                  'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
+                  'bg-card text-sidebar-muted border-sidebar-border border',
+                  'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleApplyRange}
+                disabled={!localRange?.from || !localRange?.to}
+                className={cn(
+                  'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
+                  'bg-primary text-primary-foreground shadow-sm transition-all duration-100',
+                  'disabled:pointer-events-none disabled:opacity-40',
+                  'hover:brightness-[1.03] active:scale-[0.98]'
+                )}
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

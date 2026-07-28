@@ -3,7 +3,10 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { format } from 'date-fns';
 
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
-import type { CalendarVisibleRange } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import type {
+  CalendarVisibleRange,
+  OccupancySegment,
+} from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { CalendarDayDetailPanel } from '@/features/dashboard/bookings/components/calendar/CalendarDayDetailPanel';
 import { CalendarMonthGrid } from '@/features/dashboard/bookings/components/calendar/CalendarMonthGrid';
 import { CalendarYearGrid } from '@/features/dashboard/bookings/components/calendar/CalendarYearGrid';
@@ -29,6 +32,8 @@ type Props<T extends OccupancyRow> = {
   getItemKey: (item: T) => string;
   getItemStatus: (item: T) => string;
   renderPill: (item: T) => ReactNode;
+  /** When set, renders multi-night bars; falls back to per-cell pills if omitted. */
+  renderOccupancySegment?: (segment: OccupancySegment<T>) => ReactNode;
   renderDayItem: (item: T) => ReactNode;
   entityLabel: string;
   entityLabelSingular?: string;
@@ -56,6 +61,7 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
   getItemKey,
   getItemStatus,
   renderPill,
+  renderOccupancySegment,
   renderDayItem,
   entityLabel,
   entityLabelSingular,
@@ -125,6 +131,11 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
     ) : (
       <CalendarMonthGrid
         itemsByDay={itemsByDay}
+        occupancyRows={renderOccupancySegment ? rows : undefined}
+        getCheckIn={renderOccupancySegment ? (row) => row.check_in_date : undefined}
+        getCheckOut={renderOccupancySegment ? (row) => row.check_out_date : undefined}
+        renderOccupancySegment={renderOccupancySegment}
+        maxSpanLanes={compact ? 1 : 2}
         getItemKey={getItemKey}
         getItemStatus={getItemStatus}
         renderPill={renderPill}
@@ -187,31 +198,51 @@ export function CalendarOccupancyPill({
   label,
   title,
   labelClassName,
+  spanPosition = 'single',
+  showLabel = true,
 }: {
   status: string;
   label: string;
   title?: string;
   labelClassName?: string;
+  spanPosition?: import('@/features/dashboard/bookings/components/calendar/calendarDateUtils').CalendarOccupancySpanPosition;
+  showLabel?: boolean;
 }) {
   const tone = statusToneStyle(status);
+  const roundedClass =
+    spanPosition === 'start'
+      ? 'rounded-l-md rounded-r-none'
+      : spanPosition === 'end'
+        ? 'rounded-r-md rounded-l-none'
+        : spanPosition === 'middle'
+          ? 'rounded-none'
+          : 'rounded-md';
+
   return (
     <div
       className={cn(
-        'flex min-w-0 items-center gap-1 truncate rounded-md border px-1.5 py-0.5',
+        'flex h-full min-w-0 items-center gap-1 truncate border px-1.5 py-0.5',
         'text-[10px] font-semibold leading-tight',
+        roundedClass,
         tone.badge
       )}
       title={title ?? `${label} · ${statusLabel(status)}`}
     >
-      <span
-        aria-hidden
-        className={cn(
-          'size-1.5 shrink-0 rounded-full',
-          tone.dot,
-          tone.pulse && 'motion-safe:animate-pulse'
-        )}
-      />
-      <span className={cn('truncate', labelClassName)}>{label}</span>
+      {showLabel ? (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              'size-1.5 shrink-0 rounded-full',
+              tone.dot,
+              tone.pulse && 'motion-safe:animate-pulse'
+            )}
+          />
+          <span className={cn('truncate', labelClassName)}>{label}</span>
+        </>
+      ) : (
+        <span aria-hidden className="block min-h-[10px] w-full" />
+      )}
     </div>
   );
 }

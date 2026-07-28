@@ -17,10 +17,16 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type EditorTab = 'edit' | 'preview';
+
+const EDITOR_VIEW_OPTIONS = [
+  { value: 'edit' as const, label: 'Edit', icon: Pencil },
+  { value: 'preview' as const, label: 'Preview', icon: Eye },
+];
 
 type Props = {
   id: string;
@@ -199,38 +205,13 @@ export function TelegramTemplateEditor({
         >
           {label}
         </Label>
-        <div
-          role="group"
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          options={EDITOR_VIEW_OPTIONS.map((option) => ({ ...option, disabled }))}
+          size="dense"
           aria-label={`${label} view`}
-          className="border-border/70 bg-muted/40 inline-flex shrink-0 items-center rounded-lg border p-0.5"
-        >
-          {(
-            [
-              { value: 'edit' as const, label: 'Edit', Icon: Pencil },
-              { value: 'preview' as const, label: 'Preview', Icon: Eye },
-            ] as const
-          ).map(({ value: tabValue, label: tabLabel, Icon }) => {
-            const active = tab === tabValue;
-            return (
-              <button
-                key={tabValue}
-                type="button"
-                disabled={disabled}
-                onClick={() => setTab(tabValue)}
-                aria-pressed={active}
-                className={cn(
-                  'inline-flex min-h-8 items-center justify-center gap-1 rounded-md px-2 text-[11px] font-semibold transition-colors',
-                  active
-                    ? 'bg-card text-foreground shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-              >
-                <Icon className="size-3 shrink-0" aria-hidden />
-                <span>{tabLabel}</span>
-              </button>
-            );
-          })}
-        </div>
+        />
       </div>
 
       {onSendDraft || templateDialog || onReset ? (
