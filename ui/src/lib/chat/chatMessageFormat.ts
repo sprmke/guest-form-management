@@ -61,3 +61,17 @@ export function isChatMessageUnsent(message: { deleted_at?: string | null }): bo
 export function unsentMessageLabel(viewerIsAuthor: boolean): string {
   return viewerIsAuthor ? 'You unsent a message' : 'Message unsent';
 }
+
+export type OutboundDeliveryStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
+/** Normalize DB fields into a single outbound delivery state for tick UI. */
+export function resolveOutboundDeliveryStatus(message: {
+  delivery_status?: string | null;
+  read_at?: string | null;
+}): OutboundDeliveryStatus {
+  const status = message.delivery_status?.trim().toLowerCase();
+  if (status === 'sending' || status === 'failed') return status;
+  if (message.read_at || status === 'read') return 'read';
+  if (status === 'delivered') return 'delivered';
+  return 'sent';
+}

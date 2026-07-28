@@ -1,5 +1,7 @@
 import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 
+import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
+
 export type SocialMessageRealtimeRow = {
   id: string;
   conversation_id: string;
@@ -51,6 +53,26 @@ export function patchSocialMessageInInfiniteCache<T extends { id: string }>(
   });
 
   return patched;
+}
+
+type MessagesPageWithMeta<T> = { messages: T[]; hasMore: boolean; replyStatus?: ChatReplyStatus };
+
+/** Patch conversation reply_status on the newest messages page in cache. */
+export function patchGuestChatReplyStatusInCache<T>(
+  qc: QueryClient,
+  queryKey: readonly unknown[],
+  replyStatus: ChatReplyStatus
+): void {
+  qc.setQueryData<InfiniteData<MessagesPageWithMeta<T>>>(queryKey, (prev) => {
+    if (!prev?.pages?.length) return prev;
+
+    const pages = [...prev.pages];
+    const head = pages[0];
+    if (!head) return prev;
+    pages[0] = { ...head, replyStatus };
+
+    return { ...prev, pages };
+  });
 }
 
 /** Mark all messages in one direction as read (peer opened the thread). */

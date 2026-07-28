@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, Loader2, Shield } from 'lucide-react';
+import { BadgeCheck, Check, ChevronDown, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { VerificationChecklist } from '@/features/dashboard/org/components/verification/VerificationChecklist';
-import { VerificationTierCard } from '@/features/dashboard/org/components/verification/VerificationTierCard';
+import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import { VerificationTierProgress } from '@/features/dashboard/org/components/verification/VerificationTierProgress';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
@@ -26,14 +26,15 @@ import { cn } from '@/lib/utils';
 import {
   buildHostTierChecklist,
   buildVerificationTiers,
-  buildVerifiedTierChecklist,
   canSubmitVerifiedTier,
   readOrgVerificationDetail,
   resolveHostModes,
   verificationSidebarLabel,
+  type VerificationTierDefinition,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -106,6 +107,83 @@ function slotReady(slot: ProofSlot): boolean {
   return Boolean(slot.file || slot.path);
 }
 
+function HostTierSummary({
+  tier,
+  checklist,
+  pendingNote,
+  rejectedNote,
+}: {
+  tier: VerificationTierDefinition;
+  checklist: ReturnType<typeof buildHostTierChecklist>;
+  pendingNote: boolean;
+  rejectedNote: boolean;
+}) {
+  const [open, setOpen] = useState(tier.status === 'rejected');
+  const doneCount = checklist.filter((item) => item.complete).length;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <div className="border-border bg-muted/30 rounded-xl border">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="hover:bg-muted/50 flex min-h-[52px] w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
+          >
+            <span
+              className={cn(
+                'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                tier.status === 'approved'
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-background text-muted-foreground border-border border'
+              )}
+              aria-hidden
+            >
+              {tier.status === 'approved' ? (
+                <Check className="size-3.5" strokeWidth={2.5} />
+              ) : (
+                tier.level
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="text-foreground flex flex-wrap items-center gap-2 text-sm font-semibold">
+                {tier.title}
+                <VerificationStatusBadge status={tier.status} />
+              </span>
+              <span className="text-muted-foreground mt-0.5 block text-xs">
+                {tier.status === 'approved'
+                  ? 'Required to host — complete'
+                  : `${doneCount}/${checklist.length} docs · Required to host`}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                'text-muted-foreground size-4 shrink-0 transition-transform',
+                open && 'rotate-180'
+              )}
+              aria-hidden
+            />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="border-border space-y-3 border-t px-4 py-3">
+            <VerificationChecklist items={checklist} compact />
+            {pendingNote ? (
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                Submitted during onboarding. Review usually takes a few hours up to 3 days.
+              </p>
+            ) : null}
+            {rejectedNote ? (
+              <p className="text-destructive text-xs leading-relaxed">
+                Contact support to resubmit onboarding documents.
+              </p>
+            ) : null}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export function GetVerifiedModal({ open, onOpenChange }: Props) {
   const queryClient = useQueryClient();
   const org = useCurrentOrganization();
@@ -113,7 +191,6 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
   const hostModes = resolveHostModes(org);
   const tiers = buildVerificationTiers(detail);
   const hostChecklist = buildHostTierChecklist(detail, hostModes);
-  const verifiedChecklist = buildVerifiedTierChecklist(detail);
 
   const [selfie, setSelfie] = useState<ProofSlot>(emptySlot);
   const [ownership, setOwnership] = useState<ProofSlot>(emptySlot);
@@ -140,6 +217,7 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
     setTouched(false);
   }, [open, org]);
 
+  const hostTier = tiers[0]!;
   const verifiedTier = tiers[1]!;
   const verifiedApproved = verifiedTier.status === 'approved';
   const verifiedPending = verifiedTier.status === 'pending';
@@ -204,12 +282,13 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
       <DialogContent
         showCloseButton
         className={cn(
-          'flex max-h-[min(90dvh,720px)] w-[min(calc(100vw-1.5rem),42rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-          'sm:w-[min(90vw,42rem)]'
+          // Override Dialog defaults: grid → flex, narrow sm:max-w, outer overflow-y-auto
+          'flex h-[min(90dvh,40rem)] max-h-[min(90dvh,40rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'sm:h-[min(90dvh,42rem)] sm:max-h-[min(90dvh,42rem)] sm:w-[min(92vw,40rem)] sm:max-w-[40rem] sm:p-0'
         )}
       >
-        <DialogHeader className="border-border shrink-0 space-y-4 border-b px-5 pb-4 pt-5 sm:px-6">
-          <DialogTitle className="flex items-center gap-2.5 text-left text-lg font-semibold">
+        <DialogHeader className="border-border shrink-0 space-y-4 border-b px-5 pb-4 pt-5 text-left sm:px-6">
+          <DialogTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
             <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
               <BadgeCheck className="size-5" aria-hidden />
             </span>
@@ -218,36 +297,64 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
           <VerificationTierProgress tiers={tiers} />
         </DialogHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 sm:py-5">
-          <div className="space-y-4">
-            <VerificationTierCard tier={tiers[0]!}>
-              <VerificationChecklist items={hostChecklist} compact />
-              {detail.baseStatus === 'pending' ? (
-                <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-                  Submitted during onboarding. Review usually takes a few hours up to 3 days.
-                </p>
-              ) : null}
-              {detail.baseStatus === 'rejected' ? (
-                <p className="text-destructive mt-3 text-xs leading-relaxed">
-                  Contact support to resubmit onboarding documents.
-                </p>
-              ) : null}
-            </VerificationTierCard>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+          <div className="space-y-4 pb-1">
+            <HostTierSummary
+              tier={hostTier}
+              checklist={hostChecklist}
+              pendingNote={detail.baseStatus === 'pending'}
+              rejectedNote={detail.baseStatus === 'rejected'}
+            />
 
-            <VerificationTierCard tier={verifiedTier} active={verifiedEditable}>
-              {verifiedApproved || verifiedPending ? (
-                <>
-                  <VerificationChecklist items={verifiedChecklist} compact />
-                  {verifiedApproved ? (
-                    <p className="text-foreground mt-3 text-sm font-medium">
-                      Verified badge is live on your host page and listings.
-                    </p>
-                  ) : (
-                    <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-                      Tier 2 is in review. You can submit Tier 2 without waiting for Tier 1.
-                    </p>
+            <section
+              className={cn(
+                'bg-card rounded-xl border p-4 sm:p-5',
+                verifiedEditable ? 'border-primary/35 shadow-sm' : 'border-border'
+              )}
+              aria-labelledby="verification-tier-verified-title"
+            >
+              <header className="mb-4 flex items-start gap-3">
+                <span
+                  className={cn(
+                    'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                    verifiedApproved
+                      ? 'bg-emerald-600 text-white'
+                      : verifiedPending
+                        ? 'border-2 border-amber-500 bg-amber-50 text-amber-700'
+                        : 'bg-primary text-primary-foreground'
                   )}
-                </>
+                  aria-hidden
+                >
+                  {verifiedApproved ? (
+                    <Check className="size-3.5" strokeWidth={2.5} />
+                  ) : (
+                    verifiedTier.level
+                  )}
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3
+                      id="verification-tier-verified-title"
+                      className="text-foreground text-[15px] font-semibold leading-tight"
+                    >
+                      {verifiedTier.title}
+                    </h3>
+                    <VerificationStatusBadge status={verifiedTier.status} />
+                  </div>
+                  <p className="text-muted-foreground text-xs leading-relaxed">
+                    {verifiedTier.benefit}
+                  </p>
+                </div>
+              </header>
+
+              {verifiedApproved ? (
+                <p className="text-foreground text-sm font-medium">
+                  Verified badge is live on your host page and listings.
+                </p>
+              ) : verifiedPending ? (
+                <p className="text-muted-foreground text-xs leading-relaxed">
+                  Tier 2 is in review. You can submit without waiting for Tier 1.
+                </p>
               ) : (
                 <div className="space-y-5">
                   {detail.enhancedStatus === 'rejected' ? (
@@ -293,15 +400,15 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
                   />
                 </div>
               )}
-            </VerificationTierCard>
+            </section>
           </div>
         </div>
 
-        {verifiedEditable ? (
-          <DialogFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-4 sm:justify-end sm:px-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
+        <DialogFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          {verifiedEditable ? (
             <Button
               type="button"
               disabled={submitting || !canSubmit}
@@ -317,14 +424,8 @@ export function GetVerifiedModal({ open, onOpenChange }: Props) {
                 'Submit for review'
               )}
             </Button>
-          </DialogFooter>
-        ) : (
-          <DialogFooter className="border-border bg-background shrink-0 border-t px-5 py-4 sm:justify-end sm:px-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        )}
+          ) : null}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

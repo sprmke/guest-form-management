@@ -39,8 +39,10 @@ export function VerificationFieldLabel({
             </button>
           </TooltipTrigger>
           <TooltipContent
-            side="top"
+            side="bottom"
             align="start"
+            sideOffset={6}
+            collisionPadding={16}
             className="max-w-[min(calc(100vw-2rem),18rem)] text-left text-xs leading-snug"
           >
             {help}
