@@ -327,6 +327,9 @@ verify_jwt = false
 [functions.telegram-maintenance-settings]
 verify_jwt = false
 
+[functions.telegram-chat-settings]
+verify_jwt = false
+
 [functions.upload-app-settings-asset]
 verify_jwt = false
 

@@ -22,6 +22,8 @@ scripts/
 | `check-ui-filename-conventions.sh`     | `bun run check:filenames`          | Verify `ui/src` filenames match naming rules                                                   |
 | `port-pma-public-ui.sh`                | (manual)                           | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes) |
 | `migrate-shared-imports.sh`            | (one-shot reference)               | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                     |
+| `gh-issue.mjs`                         | (manual)                           | View / create / update / **ship** GitHub issues → `docs/todos/shipped/` (see `/github-issue`)  |
+| `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`              | Auto-label heuristics for new issues                                                           |
 
 ## Data (`scripts/data/`)
 
