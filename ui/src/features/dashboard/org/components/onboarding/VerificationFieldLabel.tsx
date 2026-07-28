@@ -32,7 +32,7 @@ export function VerificationFieldLabel({
           <TooltipTrigger asChild>
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-colors"
+              className="text-muted-foreground hover:text-foreground inline-flex shrink-0 items-center justify-center rounded-full transition-colors"
               aria-label={`About ${label}`}
             >
               <HelpCircle className="size-3.5" aria-hidden />

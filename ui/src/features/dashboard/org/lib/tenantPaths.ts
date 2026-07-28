@@ -95,7 +95,8 @@ export function propertySectionPath(
   return section === 'dashboard' ? base : `${base}/${section}`;
 }
 
-export type NotificationModule = 'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance';
+export type NotificationModule =
+  'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'chat';
 
 export function parkingNotificationsPath(
   orgSlug: string,

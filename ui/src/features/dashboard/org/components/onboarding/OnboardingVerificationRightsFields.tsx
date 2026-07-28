@@ -94,8 +94,8 @@ export function OnboardingVerificationRightsFields({
             label="Contract end date"
             help={
               kind === 'parking'
-                ? 'When your parking authorization, lease, or sublease ends. We will require verification again after this date.'
-                : 'When your property authorization, lease, or sublease ends. We will require verification again after this date.'
+                ? 'When your parking authorization, lease, or sublease ends. We will require verification again after this date incase you renew your authorization.'
+                : 'When your property authorization, lease, or sublease ends. We will require verification again after this date incase you renew your authorization.'
             }
             required
           />

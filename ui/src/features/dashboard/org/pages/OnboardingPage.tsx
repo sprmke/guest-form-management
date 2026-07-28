@@ -18,6 +18,7 @@ import {
 } from '@/features/dashboard/org/components/onboarding/OnboardingProfileHeader';
 import { OnboardingStepHeader } from '@/features/dashboard/org/components/onboarding/OnboardingStepHeader';
 import { OnboardingTrustNotice } from '@/features/dashboard/org/components/onboarding/OnboardingTrustNotice';
+import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
@@ -674,7 +675,11 @@ export function OnboardingPage() {
                             Property
                           </div>
                           <div className="space-y-1.5">
-                            <Label htmlFor="residence">Residence</Label>
+                            <VerificationFieldLabel
+                              htmlFor="residence"
+                              label="Residence"
+                              help="For now we only support Azure North residence. More residences and property types are coming soon."
+                            />
                             <Input
                               id="residence"
                               name="residenceName"
@@ -877,27 +882,30 @@ export function OnboardingPage() {
                               </p>
                             ) : null}
                           </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="parking-code">Code</Label>
-                            <Input
-                              id="parking-code"
-                              value={parkingCode}
-                              readOnly
-                              aria-readonly="true"
-                              placeholder="—"
-                              className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label htmlFor="parking-display-name">Parking name</Label>
-                            <Input
-                              id="parking-display-name"
-                              value={parkingDisplayName}
-                              readOnly
-                              aria-readonly="true"
-                              placeholder="—"
-                              className="bg-muted/40 text-muted-foreground h-10 cursor-default"
-                            />
+
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="parking-code">Code</Label>
+                              <Input
+                                id="parking-code"
+                                value={parkingCode}
+                                readOnly
+                                aria-readonly="true"
+                                placeholder="—"
+                                className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label htmlFor="parking-display-name">Parking name</Label>
+                              <Input
+                                id="parking-display-name"
+                                value={parkingDisplayName}
+                                readOnly
+                                aria-readonly="true"
+                                placeholder="—"
+                                className="bg-muted/40 text-muted-foreground h-10 cursor-default"
+                              />
+                            </div>
                           </div>
                         </div>
                       ) : null}
