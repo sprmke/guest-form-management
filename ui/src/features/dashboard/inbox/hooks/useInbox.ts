@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import {
   useInfiniteQuery,
@@ -63,6 +63,13 @@ import type {
   ThreadTypeFilter,
 } from '@/features/dashboard/inbox/types/inbox';
 
+import {
+  markDirectionMessagesDeliveredInCache,
+  markDirectionMessagesReadInCache,
+  patchSocialMessageInInfiniteCache,
+  type SocialMessageRealtimeRow,
+} from '@/lib/chat/chatMessageCache';
+import { useChatReadReceiptSync } from '@/lib/chat/useChatReadReceiptSync';
 import { supabase } from '@/lib/supabase/client';
 
 export const INBOX_THREADS_KEY = 'inbox-threads';
@@ -436,6 +443,43 @@ export function useInboxMessages(
     enabled: (mockMode || !!(orgSlug || orgId)) && !!conversationId,
   });
 
+  const refreshMessages = useCallback(() => {
+    if (!conversationId) return;
+    void qc.refetchQueries({ queryKey: [INBOX_MESSAGES_KEY, conversationId, mockMode] });
+  }, [conversationId, qc]);
+
+  const applyGuestReadToCache = useCallback(
+    (readAt: string) => {
+      if (!conversationId) return;
+      markDirectionMessagesReadInCache(
+        qc,
+        [INBOX_MESSAGES_KEY, conversationId, mockMode],
+        'outbound',
+        readAt
+      );
+    },
+    [conversationId, qc]
+  );
+
+  const applyGuestDeliveredToCache = useCallback(() => {
+    if (!conversationId) return;
+    markDirectionMessagesDeliveredInCache(
+      qc,
+      [INBOX_MESSAGES_KEY, conversationId, mockMode],
+      'outbound'
+    );
+  }, [conversationId, qc]);
+
+  const { notifyPeerRead, notifyPeerDelivered } = useChatReadReceiptSync(
+    conversationId,
+    'host',
+    applyGuestReadToCache,
+    applyGuestDeliveredToCache,
+    !mockMode && !!conversationId
+  );
+
+  useInboxConversationReadRealtime(orgId, conversationId, qc, notifyPeerDelivered);
+
   useEffect(() => {
     if (!conversationId) return;
     if (mockMode) {
@@ -445,12 +489,84 @@ export function useInboxMessages(
       return;
     }
     if (!orgId) return;
-    void markInboxConversationRead(orgSlug, orgId, conversationId).then(() => {
+    void markInboxConversationRead(orgSlug, orgId, conversationId).then(async () => {
+      await notifyPeerRead();
       scheduleThreadsInvalidate(qc);
+      refreshMessages();
     });
-  }, [conversationId, orgId, orgSlug, qc]);
+  }, [conversationId, orgId, orgSlug, qc, notifyPeerRead, refreshMessages]);
 
   return query;
+}
+
+function useInboxConversationReadRealtime(
+  orgId: string | null,
+  conversationId: string | null,
+  qc: QueryClient,
+  onGuestMessageReceived?: () => void | Promise<void>
+) {
+  const onGuestMessageReceivedRef = useRef(onGuestMessageReceived);
+  onGuestMessageReceivedRef.current = onGuestMessageReceived;
+
+  useEffect(() => {
+    if (mockMode || !orgId || !conversationId) return;
+
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token || cancelled) return;
+
+      await supabase.realtime.setAuth(token);
+
+      channel = supabase
+        .channel(`inbox-conversation-${conversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'social_messages',
+            filter: `conversation_id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const row = payload.new as { direction?: string };
+            if (row.direction === 'inbound') {
+              void onGuestMessageReceivedRef.current?.();
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'social_conversations',
+            filter: `id=eq.${conversationId}`,
+          },
+          (payload) => {
+            const row = payload.new as { guest_last_read_at?: string | null };
+            const prev = payload.old as { guest_last_read_at?: string | null };
+            const readAt = row.guest_last_read_at?.trim();
+            if (!readAt || readAt === prev.guest_last_read_at) return;
+            markDirectionMessagesReadInCache(
+              qc,
+              [INBOX_MESSAGES_KEY, conversationId, mockMode],
+              'outbound',
+              readAt
+            );
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }, [conversationId, orgId, qc]);
 }
 
 export function useInboxRealtime(orgId: string | null) {
@@ -501,7 +617,20 @@ export function useInboxRealtime(orgId: string | null) {
             table: 'social_messages',
             filter: `organization_id=eq.${orgId}`,
           },
-          () => scheduleInboxInvalidate(qc)
+          (payload) => {
+            const row = payload.new as SocialMessageRealtimeRow;
+            if (!row?.id || !row.conversation_id) {
+              scheduleInboxInvalidate(qc);
+              return;
+            }
+            const patched = patchSocialMessageInInfiniteCache(
+              qc,
+              [INBOX_MESSAGES_KEY, row.conversation_id, mockMode],
+              row
+            );
+            if (!patched) scheduleInboxInvalidate(qc);
+            scheduleThreadsInvalidate(qc);
+          }
         )
         .on(
           'postgres_changes',
@@ -521,8 +650,14 @@ export function useInboxRealtime(orgId: string | null) {
       }
     })();
 
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session?.access_token || cancelled) return;
+      void supabase.realtime.setAuth(session.access_token);
+    });
+
     return () => {
       cancelled = true;
+      authListener.subscription.unsubscribe();
       if (channel) void supabase.removeChannel(channel);
     };
   }, [orgId, qc]);

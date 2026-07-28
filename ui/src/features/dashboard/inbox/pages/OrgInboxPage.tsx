@@ -55,11 +55,18 @@ export function OrgInboxPage() {
 
   const [manageModal, setManageModal] = useState<InboxManageModal>(null);
   const [pagePickerState, setPagePickerState] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [mobileShowConversation, setMobileShowConversation] = useState(false);
+  const conversationIdParam = searchParams.get('conversationId');
+  const platformParam = searchParams.get('platform');
+  const [selectedId, setSelectedId] = useState<string | null>(() => conversationIdParam);
+  const [mobileShowConversation, setMobileShowConversation] = useState(() => !!conversationIdParam);
   const [statusFilter, setStatusFilter] = useState<ThreadStatusFilter>('all');
   const [typeFilter, setTypeFilter] = useState<ThreadTypeFilter>('all');
-  const [platformFilter, setPlatformFilter] = useState<ThreadPlatformFilter>('all');
+  const [platformFilter, setPlatformFilter] = useState<ThreadPlatformFilter>(() => {
+    if (platformParam === 'web' || platformParam === 'facebook' || platformParam === 'instagram') {
+      return platformParam;
+    }
+    return 'all';
+  });
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
 
@@ -67,6 +74,23 @@ export function OrgInboxPage() {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    if (!conversationIdParam) return;
+    setSelectedId(conversationIdParam);
+    setMobileShowConversation(true);
+    if (platformParam === 'web' || platformParam === 'facebook' || platformParam === 'instagram') {
+      setPlatformFilter(platformParam);
+    }
+  }, [conversationIdParam, platformParam]);
+
+  const selectConversation = (id: string) => {
+    setSelectedId(id);
+    setMobileShowConversation(true);
+    const next = new URLSearchParams(searchParams);
+    next.set('conversationId', id);
+    setSearchParams(next, { replace: true });
+  };
 
   const mockActive = useInboxMockActive();
 
@@ -183,7 +207,11 @@ export function OrgInboxPage() {
       setManageModal('channels');
     }
     if (metaStatus || metaError || metaPicker) {
-      setSearchParams({}, { replace: true });
+      const next = new URLSearchParams(searchParams);
+      next.delete('meta_inbox');
+      next.delete('meta_inbox_error');
+      next.delete('meta_picker');
+      setSearchParams(next, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
@@ -229,10 +257,7 @@ export function OrgInboxPage() {
               isLoading={threadsLoading && conversations.length === 0 && !metaSyncInProgress}
               selectedId={selectedId}
               platformFilter={platformFilter}
-              onSelect={(id) => {
-                setSelectedId(id);
-                setMobileShowConversation(true);
-              }}
+              onSelect={selectConversation}
               statusFilter={statusFilter}
               typeFilter={typeFilter}
               search={searchInput}
@@ -310,6 +335,9 @@ export function OrgInboxPage() {
             onSuccess: () => {
               setSelectedId(null);
               setMobileShowConversation(false);
+              const next = new URLSearchParams(searchParams);
+              next.delete('conversationId');
+              setSearchParams(next, { replace: true });
               toast.success(mockActive ? 'Preview: disconnected' : 'Meta disconnected');
             },
             onError: (e) => toast.error(e.message),

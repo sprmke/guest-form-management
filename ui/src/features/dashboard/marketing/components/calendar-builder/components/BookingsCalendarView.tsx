@@ -4,11 +4,9 @@ import {
   eachDayOfInterval,
   endOfMonth,
   format,
-  getDay,
   isSameDay,
   isSameMonth,
   isToday,
-  parseISO,
   startOfMonth,
   subMonths,
 } from 'date-fns';
@@ -18,8 +16,16 @@ import { Link, useParams } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import {
+  buildCalendarWeekRows,
+  buildOccupancyByDay,
+  buildOccupancySegmentsForWeeks,
+  calendarOccupancySpanPosition,
+  calendarPaddingStart,
+} from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { CalendarOccupancySpanTrack } from '@/features/dashboard/bookings/components/calendar/CalendarOccupancySpanTrack';
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { cn } from '@/lib/utils';
 
 import type { CalendarBooking } from '../types';
 
@@ -54,15 +60,56 @@ function getStatusDisplay(status: string) {
   return STATUS_DISPLAY[status] ?? { label: status, variant: 'secondary' as const };
 }
 
+function MarketingBookingSpanPill({
+  booking,
+  showLabel,
+  spanPosition,
+}: {
+  booking: CalendarBooking;
+  showLabel: boolean;
+  spanPosition: ReturnType<typeof calendarOccupancySpanPosition>;
+}) {
+  const statusDisplay = getStatusDisplay(booking.status);
+  const roundedClass =
+    spanPosition === 'start'
+      ? 'rounded-l-md rounded-r-none'
+      : spanPosition === 'end'
+        ? 'rounded-r-md rounded-l-none'
+        : spanPosition === 'middle'
+          ? 'rounded-none'
+          : 'rounded-md';
+
+  return (
+    <div
+      className={cn(
+        'bg-muted/60 border-border flex h-full min-w-0 items-center gap-1 truncate border px-1 py-0.5',
+        roundedClass
+      )}
+      title={booking.guestName}
+    >
+      {showLabel ? (
+        <>
+          <span className="bg-primary size-1.5 shrink-0 rounded-full" aria-hidden />
+          <span className="text-foreground truncate text-[10px] font-medium">
+            {booking.guestName}
+          </span>
+          <Badge
+            variant={statusDisplay.variant}
+            className="ml-auto h-4 shrink-0 truncate px-1 text-[8px] font-medium"
+          >
+            {statusDisplay.label}
+          </Badge>
+        </>
+      ) : (
+        <span aria-hidden className="bg-primary/30 block min-h-[10px] w-full rounded-sm" />
+      )}
+    </div>
+  );
+}
+
 interface BookingsCalendarViewProps {
   bookings: CalendarBooking[];
   propertySlug: string;
-}
-
-/** At property level we expect at most one booking per day; we show the first if multiple exist */
-interface DayBooking {
-  date: Date;
-  booking: CalendarBooking | null;
 }
 
 export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalendarViewProps) {
@@ -70,40 +117,44 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
-  const bookingByDay = useMemo(() => {
-    const map = new Map<string, DayBooking>();
+  const itemsByDay = useMemo(
+    () =>
+      buildOccupancyByDay(
+        bookings,
+        (booking) => booking.checkIn,
+        (booking) => booking.checkOut
+      ),
+    [bookings]
+  );
 
-    bookings.forEach((booking) => {
-      const checkIn = parseISO(booking.checkIn);
-      const checkOut = parseISO(booking.checkOut);
-      const days = eachDayOfInterval({ start: checkIn, end: checkOut });
-
-      days.forEach((day) => {
-        const key = format(day, 'yyyy-MM-dd');
-        if (!map.has(key)) {
-          map.set(key, { date: day, booking });
-        }
-        // At property level we expect 1 booking per day; keep first
-      });
-    });
-
-    return map;
-  }, [bookings]);
-
-  const calendarDays = useMemo(() => {
+  const calendarGrid = useMemo(() => {
     const start = startOfMonth(currentMonth);
     const end = endOfMonth(currentMonth);
     const days = eachDayOfInterval({ start, end });
-    const startDay = getDay(start);
-    const paddingStart = startDay === 0 ? 6 : startDay - 1;
-    return { days, paddingStart };
+    return { days, paddingStart: calendarPaddingStart(start, 1) };
   }, [currentMonth]);
+
+  const weeks = useMemo(
+    () => buildCalendarWeekRows(calendarGrid.days, calendarGrid.paddingStart),
+    [calendarGrid.days, calendarGrid.paddingStart]
+  );
+
+  const segmentsByWeek = useMemo(
+    () =>
+      buildOccupancySegmentsForWeeks(
+        bookings,
+        weeks,
+        (booking) => booking.checkIn,
+        (booking) => booking.checkOut
+      ),
+    [bookings, weeks]
+  );
 
   const selectedDayBooking = useMemo((): CalendarBooking | null => {
     if (!selectedDay) return null;
     const key = format(selectedDay, 'yyyy-MM-dd');
-    return bookingByDay.get(key)?.booking ?? null;
-  }, [selectedDay, bookingByDay]);
+    return itemsByDay.get(key)?.[0] ?? null;
+  }, [selectedDay, itemsByDay]);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentMonth((current) =>
@@ -114,7 +165,6 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
-      {/* Calendar */}
       <Card className="bg-card border-border lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <CardTitle className="text-foreground text-lg">
@@ -150,66 +200,68 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: calendarDays.paddingStart }).map((_, index) => (
-              <div key={`pad-${index}`} className="aspect-square" />
-            ))}
+          <div className="flex flex-col gap-1">
+            {weeks.map((week) => (
+              <div key={week.weekIndex}>
+                <div className="grid grid-cols-7 gap-1">
+                  {week.days.map((day, colIdx) => {
+                    if (!day) {
+                      return (
+                        <div key={`pad-${week.weekIndex}-${colIdx}`} className="aspect-square" />
+                      );
+                    }
 
-            {calendarDays.days.map((day) => {
-              const key = format(day, 'yyyy-MM-dd');
-              const dayData = bookingByDay.get(key);
-              const booking = dayData?.booking ?? null;
-              const isSelected = selectedDay && isSameDay(day, selectedDay);
-              const isCurrentMonth = isSameMonth(day, currentMonth);
-              const hasBooking = !!booking;
-              const statusDisplay = booking ? getStatusDisplay(booking.status) : null;
+                    const key = format(day, 'yyyy-MM-dd');
+                    const isSelected = selectedDay && isSameDay(day, selectedDay);
+                    const isCurrentMonth = isSameMonth(day, currentMonth);
 
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setSelectedDay(isSelected ? null : day)}
-                  className={cn(
-                    'relative flex aspect-square flex-col items-center justify-start rounded-lg p-1 transition-all',
-                    'hover:bg-muted/50',
-                    isSelected && 'ring-primary bg-primary/10 ring-2',
-                    !isCurrentMonth && 'opacity-30',
-                    isToday(day) && 'font-bold'
-                  )}
-                >
-                  <span
-                    className={cn(
-                      'text-sm',
-                      isToday(day) &&
-                        'bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full'
-                    )}
-                  >
-                    {format(day, 'd')}
-                  </span>
-
-                  {hasBooking && (
-                    <div className="mt-1 flex w-full flex-col gap-0.5 overflow-hidden">
-                      <span className="text-foreground truncate text-[10px] font-medium">
-                        {booking.guestName}
-                      </span>
-                      {statusDisplay && (
-                        <Badge
-                          variant={statusDisplay.variant}
-                          className="h-4 truncate px-1 text-[9px] font-medium"
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedDay(isSelected ? null : day)}
+                        className={cn(
+                          'relative flex aspect-square flex-col items-center justify-start rounded-lg p-1 transition-all',
+                          'hover:bg-muted/50',
+                          isSelected && 'ring-primary bg-primary/10 ring-2',
+                          !isCurrentMonth && 'opacity-30',
+                          isToday(day) && 'font-bold'
+                        )}
+                      >
+                        <span
+                          className={cn(
+                            'text-sm',
+                            isToday(day) &&
+                              'bg-primary text-primary-foreground flex h-6 w-6 items-center justify-center rounded-full'
+                          )}
                         >
-                          {statusDisplay.label}
-                        </Badge>
-                      )}
-                    </div>
+                          {format(day, 'd')}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <CalendarOccupancySpanTrack
+                  segments={segmentsByWeek.get(week.weekIndex) ?? []}
+                  getSegmentKey={(segment) =>
+                    `${week.weekIndex}-${segment.item.id}-${segment.startCol}-${segment.endCol}`
+                  }
+                  renderSegment={(segment) => (
+                    <MarketingBookingSpanPill
+                      booking={segment.item}
+                      showLabel={segment.showLabel}
+                      spanPosition={calendarOccupancySpanPosition(segment)}
+                    />
                   )}
-                </button>
-              );
-            })}
+                  maxLanes={2}
+                />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Selected Day – Complete booking information */}
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="text-foreground text-lg">
@@ -236,11 +288,11 @@ export function BookingsCalendarView({ bookings, propertySlug }: BookingsCalenda
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt>Check-in</dt>
-                      <dd>{format(parseISO(selectedDayBooking.checkIn), 'MMM d, yyyy')}</dd>
+                      <dd>{format(new Date(selectedDayBooking.checkIn), 'MMM d, yyyy')}</dd>
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt>Check-out</dt>
-                      <dd>{format(parseISO(selectedDayBooking.checkOut), 'MMM d, yyyy')}</dd>
+                      <dd>{format(new Date(selectedDayBooking.checkOut), 'MMM d, yyyy')}</dd>
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt>Nights</dt>

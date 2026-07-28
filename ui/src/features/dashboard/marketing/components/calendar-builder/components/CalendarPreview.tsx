@@ -1,5 +1,12 @@
 import { forwardRef, useMemo } from 'react';
+import { addDays, eachDayOfInterval, format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+import {
+  buildCalendarWeekRows,
+  buildOccupancySegmentsForWeeks,
+  calendarOccupancySpanPosition,
+} from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 
 import {
   type CalendarStyles,
@@ -190,39 +197,54 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
 
       const firstDayOfMonth = new Date(year, month, 1);
       const lastDayOfMonth = new Date(year, month + 1, 0);
-      const daysInMonth = lastDayOfMonth.getDate();
       const firstDayWeekday = firstDayOfMonth.getDay();
+      const monthDays = eachDayOfInterval({ start: firstDayOfMonth, end: lastDayOfMonth });
+      const weeks = buildCalendarWeekRows(monthDays, firstDayWeekday);
 
-      const days: Array<{
+      const previewCheckIn = (booking: PreviewBooking) =>
+        format(new Date(year, month, booking.startDay), 'yyyy-MM-dd');
+      const previewCheckOut = (booking: PreviewBooking) =>
+        format(addDays(new Date(year, month, booking.endDay), 1), 'yyyy-MM-dd');
+
+      const segmentsByWeek = buildOccupancySegmentsForWeeks(
+        bookings,
+        weeks,
+        previewCheckIn,
+        previewCheckOut
+      );
+
+      type DayCell = {
         day: number | null;
         isBooked: boolean;
         isBlocked: boolean;
         isToday: boolean;
         booking?: PreviewBooking;
-      }> = [];
+      };
 
-      // Empty cells before first day
-      for (let i = 0; i < firstDayWeekday; i++) {
-        days.push({ day: null, isBooked: false, isBlocked: false, isToday: false });
-      }
-
-      // Actual days
-      for (let d = 1; d <= daysInMonth; d++) {
-        const booking = bookings.find((b) => d >= b.startDay && d <= b.endDay);
-        days.push({
-          day: d,
-          isBooked: !!booking,
-          isBlocked: blockedDays.includes(d),
-          isToday: d === todayDate,
-          booking,
-        });
-      }
+      const weeksWithCells = weeks.map((week) => ({
+        weekIndex: week.weekIndex,
+        cells: week.days.map((day): DayCell => {
+          if (!day) {
+            return { day: null, isBooked: false, isBlocked: false, isToday: false };
+          }
+          const dayNum = day.getDate();
+          const booking = bookings.find((b) => dayNum >= b.startDay && dayNum <= b.endDay);
+          return {
+            day: dayNum,
+            isBooked: !!booking,
+            isBlocked: blockedDays.includes(dayNum),
+            isToday: dayNum === todayDate,
+            booking,
+          };
+        }),
+      }));
 
       return {
         year,
         month,
         monthName: MONTH_NAMES[month],
-        days,
+        weeks: weeksWithCells,
+        segmentsByWeek,
         todayDate,
       };
     }, [effectiveMonth, bookings, blockedDays]);
@@ -383,319 +405,366 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
         {/* Calendar Grid */}
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(7, 1fr)',
-            gap: styles.grid.gap,
             ...getBackgroundStyle(styles.grid.background),
             ...getBorderStyle(styles.grid.border),
             ...getSpacingStyle(styles.grid.padding, 'padding'),
           }}
         >
-          {calendarData.days.map((dayData, index) => {
-            const { day, isBooked, isToday, booking } = dayData;
-
-            // Empty cell
-            if (day === null) {
-              return (
-                <div
-                  key={`empty-${index}`}
-                  style={{
-                    aspectRatio: '1 / 1',
-                    ...getBackgroundStyle(styles.cell.empty.background),
-                    opacity: styles.cell.empty.opacity,
-                    borderRadius: styles.cell.borderRadius,
-                  }}
-                />
-              );
-            }
-
-            // Determine cell styles based on state
-            let cellBackground = styles.cell.background;
-            let cellBorder = styles.cell.border;
-            let dayNumberColor = styles.cell.dayNumber.color;
-            let textContent = null;
-            let patternOverlay = null;
-
-            if (isToday && styles.today.enabled) {
-              cellBackground = styles.today.background;
-              cellBorder = styles.today.border;
-              dayNumberColor = styles.today.dayNumberColor;
-            } else if (isBooked) {
-              cellBackground = styles.booked.background;
-              cellBorder = styles.booked.border;
-              dayNumberColor = styles.booked.dayNumberColor;
-
-              // Show icon/image if enabled, otherwise show text
-              if (styles.booked.icon.show) {
-                const iconPositionStyles: React.CSSProperties = {
-                  position: 'absolute',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                };
-
-                switch (styles.booked.icon.position) {
-                  case 'center':
-                    iconPositionStyles.top = '50%';
-                    iconPositionStyles.left = '50%';
-                    iconPositionStyles.transform = 'translate(-50%, -50%)';
-                    break;
-                  case 'top-left':
-                    iconPositionStyles.top = 8;
-                    iconPositionStyles.left = 8;
-                    break;
-                  case 'top-right':
-                    iconPositionStyles.top = 8;
-                    iconPositionStyles.right = 8;
-                    break;
-                  case 'bottom-left':
-                    iconPositionStyles.bottom = 8;
-                    iconPositionStyles.left = 8;
-                    break;
-                  case 'bottom-right':
-                    iconPositionStyles.bottom = 8;
-                    iconPositionStyles.right = 8;
-                    break;
-                }
-
-                // Icon mapping for predefined icons
-                const ICON_MAP: Record<string, string> = {
-                  check: '✓',
-                  x: '✕',
-                  'calendar-check': '📅',
-                  user: '👤',
-                  bed: '🛏️',
-                  house: '🏠',
-                  key: '🔑',
-                  lock: '🔒',
-                  star: '⭐',
-                  heart: '❤️',
-                  ban: '🚫',
-                  reserved: '📌',
-                };
-
-                if (styles.booked.icon.type === 'icon') {
-                  textContent = (
-                    <span
-                      style={{
-                        ...iconPositionStyles,
-                        fontSize: styles.booked.icon.size,
-                        color: styles.booked.icon.color,
-                        opacity: styles.booked.icon.opacity,
-                      }}
-                    >
-                      {ICON_MAP[styles.booked.icon.value] || styles.booked.icon.value}
-                    </span>
-                  );
-                } else if (styles.booked.icon.type === 'image' && styles.booked.icon.value) {
-                  textContent = (
-                    <img
-                      src={styles.booked.icon.value}
-                      alt="Booked"
-                      style={{
-                        ...iconPositionStyles,
-                        width: styles.booked.icon.size,
-                        height: styles.booked.icon.size,
-                        objectFit: 'contain',
-                        opacity: styles.booked.icon.opacity,
-                      }}
-                    />
-                  );
-                }
-              } else if (styles.booked.text.show) {
-                textContent = (
-                  <span
-                    style={{
-                      ...getFontStyle(styles.booked.text.font),
-                      color: styles.booked.text.color,
-                      position: 'absolute',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      ...(styles.booked.text.position === 'center' && {
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                      }),
-                      ...(styles.booked.text.position === 'bottom' && { bottom: 8 }),
-                      ...(styles.booked.text.position === 'top' && { top: 24 }),
-                    }}
-                  >
-                    {styles.booked.text.content}
-                  </span>
-                );
-              }
-
-              if (styles.booked.pattern.show && styles.booked.pattern.type !== 'none') {
-                patternOverlay = (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      opacity: styles.booked.pattern.opacity,
-                      pointerEvents: 'none',
-                      borderRadius: styles.cell.borderRadius,
-                      ...(styles.booked.pattern.type === 'stripes' && {
-                        backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent ${styles.booked.pattern.size}px, ${styles.booked.pattern.color} ${styles.booked.pattern.size}px, ${styles.booked.pattern.color} ${styles.booked.pattern.size * 2}px)`,
-                      }),
-                      ...(styles.booked.pattern.type === 'diagonal' && {
-                        backgroundImage: `repeating-linear-gradient(45deg, ${styles.booked.pattern.color}, ${styles.booked.pattern.color} 1px, transparent 1px, transparent ${styles.booked.pattern.size}px)`,
-                      }),
-                      ...(styles.booked.pattern.type === 'dots' && {
-                        backgroundImage: `radial-gradient(${styles.booked.pattern.color} 1px, transparent 1px)`,
-                        backgroundSize: `${styles.booked.pattern.size}px ${styles.booked.pattern.size}px`,
-                      }),
-                      ...(styles.booked.pattern.type === 'cross' && {
-                        backgroundImage: `linear-gradient(${styles.booked.pattern.color} 1px, transparent 1px), linear-gradient(to right, ${styles.booked.pattern.color} 1px, transparent 1px)`,
-                        backgroundSize: `${styles.booked.pattern.size}px ${styles.booked.pattern.size}px`,
-                      }),
-                    }}
-                  />
-                );
-              }
-            } else {
-              // Available state
-              cellBackground = styles.available.background;
-              cellBorder = styles.available.border;
-              dayNumberColor = styles.available.dayNumberColor;
-
-              if (styles.available.price.show) {
-                textContent = (
-                  <span
-                    style={{
-                      ...getFontStyle(styles.available.price.font),
-                      color: styles.available.price.color,
-                      position: 'absolute',
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      ...(styles.available.price.position === 'bottom' && { bottom: 8 }),
-                      ...(styles.available.price.position === 'center' && {
-                        top: '50%',
-                        transform: 'translate(-50%, -50%)',
-                      }),
-                      ...(styles.available.price.position === 'top-right' && {
-                        top: 8,
-                        right: 8,
-                        left: 'auto',
-                        transform: 'none',
-                      }),
-                    }}
-                  >
-                    {styles.available.price.format === 'currency' ? '₱2,500' : '2500'}
-                  </span>
-                );
-              }
-            }
-
-            // Day number position
-            const dayNumberPositionStyles: React.CSSProperties = {
-              position: 'absolute' as const,
-              ...getSpacingStyle(styles.cell.dayNumber.padding, 'padding'),
-            };
-
-            switch (styles.cell.dayNumber.position) {
-              case 'top-left':
-                dayNumberPositionStyles.top = 8;
-                dayNumberPositionStyles.left = 8;
-                break;
-              case 'top-center':
-                dayNumberPositionStyles.top = 8;
-                dayNumberPositionStyles.left = '50%';
-                dayNumberPositionStyles.transform = 'translateX(-50%)';
-                break;
-              case 'top-right':
-                dayNumberPositionStyles.top = 8;
-                dayNumberPositionStyles.right = 8;
-                break;
-              case 'center':
-                dayNumberPositionStyles.top = '50%';
-                dayNumberPositionStyles.left = '50%';
-                dayNumberPositionStyles.transform = 'translate(-50%, -50%)';
-                break;
-            }
-
-            return (
+          {calendarData.weeks.map((week) => (
+            <div key={week.weekIndex} style={{ marginBottom: styles.grid.gap }}>
               <div
-                key={day}
                 style={{
-                  position: 'relative',
-                  aspectRatio: '1 / 1',
-                  ...getBackgroundStyle(cellBackground),
-                  ...getBorderStyle(cellBorder),
-                  ...getSpacingStyle(styles.cell.padding, 'padding'),
-                  transition: `all ${styles.cell.hover.transition}ms`,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(7, 1fr)',
+                  gap: styles.grid.gap,
                 }}
-                className="group"
               >
-                {patternOverlay}
+                {week.cells.map((dayData, index) => {
+                  const { day, isBooked, isToday } = dayData;
 
-                {/* Day Number */}
-                <span
+                  // Empty cell
+                  if (day === null) {
+                    return (
+                      <div
+                        key={`empty-${index}`}
+                        style={{
+                          aspectRatio: '1 / 1',
+                          ...getBackgroundStyle(styles.cell.empty.background),
+                          opacity: styles.cell.empty.opacity,
+                          borderRadius: styles.cell.borderRadius,
+                        }}
+                      />
+                    );
+                  }
+
+                  // Determine cell styles based on state
+                  let cellBackground = styles.cell.background;
+                  let cellBorder = styles.cell.border;
+                  let dayNumberColor = styles.cell.dayNumber.color;
+                  let textContent = null;
+                  let patternOverlay = null;
+
+                  if (isToday && styles.today.enabled) {
+                    cellBackground = styles.today.background;
+                    cellBorder = styles.today.border;
+                    dayNumberColor = styles.today.dayNumberColor;
+                  } else if (isBooked) {
+                    cellBackground = styles.booked.background;
+                    cellBorder = styles.booked.border;
+                    dayNumberColor = styles.booked.dayNumberColor;
+
+                    // Show icon/image if enabled, otherwise show text
+                    if (styles.booked.icon.show) {
+                      const iconPositionStyles: React.CSSProperties = {
+                        position: 'absolute',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      };
+
+                      switch (styles.booked.icon.position) {
+                        case 'center':
+                          iconPositionStyles.top = '50%';
+                          iconPositionStyles.left = '50%';
+                          iconPositionStyles.transform = 'translate(-50%, -50%)';
+                          break;
+                        case 'top-left':
+                          iconPositionStyles.top = 8;
+                          iconPositionStyles.left = 8;
+                          break;
+                        case 'top-right':
+                          iconPositionStyles.top = 8;
+                          iconPositionStyles.right = 8;
+                          break;
+                        case 'bottom-left':
+                          iconPositionStyles.bottom = 8;
+                          iconPositionStyles.left = 8;
+                          break;
+                        case 'bottom-right':
+                          iconPositionStyles.bottom = 8;
+                          iconPositionStyles.right = 8;
+                          break;
+                      }
+
+                      // Icon mapping for predefined icons
+                      const ICON_MAP: Record<string, string> = {
+                        check: '✓',
+                        x: '✕',
+                        'calendar-check': '📅',
+                        user: '👤',
+                        bed: '🛏️',
+                        house: '🏠',
+                        key: '🔑',
+                        lock: '🔒',
+                        star: '⭐',
+                        heart: '❤️',
+                        ban: '🚫',
+                        reserved: '📌',
+                      };
+
+                      if (styles.booked.icon.type === 'icon') {
+                        textContent = (
+                          <span
+                            style={{
+                              ...iconPositionStyles,
+                              fontSize: styles.booked.icon.size,
+                              color: styles.booked.icon.color,
+                              opacity: styles.booked.icon.opacity,
+                            }}
+                          >
+                            {ICON_MAP[styles.booked.icon.value] || styles.booked.icon.value}
+                          </span>
+                        );
+                      } else if (styles.booked.icon.type === 'image' && styles.booked.icon.value) {
+                        textContent = (
+                          <img
+                            src={styles.booked.icon.value}
+                            alt="Booked"
+                            style={{
+                              ...iconPositionStyles,
+                              width: styles.booked.icon.size,
+                              height: styles.booked.icon.size,
+                              objectFit: 'contain',
+                              opacity: styles.booked.icon.opacity,
+                            }}
+                          />
+                        );
+                      }
+                    } else if (styles.booked.text.show) {
+                      textContent = (
+                        <span
+                          style={{
+                            ...getFontStyle(styles.booked.text.font),
+                            color: styles.booked.text.color,
+                            position: 'absolute',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            ...(styles.booked.text.position === 'center' && {
+                              top: '50%',
+                              transform: 'translate(-50%, -50%)',
+                            }),
+                            ...(styles.booked.text.position === 'bottom' && { bottom: 8 }),
+                            ...(styles.booked.text.position === 'top' && { top: 24 }),
+                          }}
+                        >
+                          {styles.booked.text.content}
+                        </span>
+                      );
+                    }
+
+                    if (styles.booked.pattern.show && styles.booked.pattern.type !== 'none') {
+                      patternOverlay = (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            opacity: styles.booked.pattern.opacity,
+                            pointerEvents: 'none',
+                            borderRadius: styles.cell.borderRadius,
+                            ...(styles.booked.pattern.type === 'stripes' && {
+                              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent ${styles.booked.pattern.size}px, ${styles.booked.pattern.color} ${styles.booked.pattern.size}px, ${styles.booked.pattern.color} ${styles.booked.pattern.size * 2}px)`,
+                            }),
+                            ...(styles.booked.pattern.type === 'diagonal' && {
+                              backgroundImage: `repeating-linear-gradient(45deg, ${styles.booked.pattern.color}, ${styles.booked.pattern.color} 1px, transparent 1px, transparent ${styles.booked.pattern.size}px)`,
+                            }),
+                            ...(styles.booked.pattern.type === 'dots' && {
+                              backgroundImage: `radial-gradient(${styles.booked.pattern.color} 1px, transparent 1px)`,
+                              backgroundSize: `${styles.booked.pattern.size}px ${styles.booked.pattern.size}px`,
+                            }),
+                            ...(styles.booked.pattern.type === 'cross' && {
+                              backgroundImage: `linear-gradient(${styles.booked.pattern.color} 1px, transparent 1px), linear-gradient(to right, ${styles.booked.pattern.color} 1px, transparent 1px)`,
+                              backgroundSize: `${styles.booked.pattern.size}px ${styles.booked.pattern.size}px`,
+                            }),
+                          }}
+                        />
+                      );
+                    }
+                  } else {
+                    // Available state
+                    cellBackground = styles.available.background;
+                    cellBorder = styles.available.border;
+                    dayNumberColor = styles.available.dayNumberColor;
+
+                    if (styles.available.price.show) {
+                      textContent = (
+                        <span
+                          style={{
+                            ...getFontStyle(styles.available.price.font),
+                            color: styles.available.price.color,
+                            position: 'absolute',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            ...(styles.available.price.position === 'bottom' && { bottom: 8 }),
+                            ...(styles.available.price.position === 'center' && {
+                              top: '50%',
+                              transform: 'translate(-50%, -50%)',
+                            }),
+                            ...(styles.available.price.position === 'top-right' && {
+                              top: 8,
+                              right: 8,
+                              left: 'auto',
+                              transform: 'none',
+                            }),
+                          }}
+                        >
+                          {styles.available.price.format === 'currency' ? '₱2,500' : '2500'}
+                        </span>
+                      );
+                    }
+                  }
+
+                  // Day number position
+                  const dayNumberPositionStyles: React.CSSProperties = {
+                    position: 'absolute' as const,
+                    ...getSpacingStyle(styles.cell.dayNumber.padding, 'padding'),
+                  };
+
+                  switch (styles.cell.dayNumber.position) {
+                    case 'top-left':
+                      dayNumberPositionStyles.top = 8;
+                      dayNumberPositionStyles.left = 8;
+                      break;
+                    case 'top-center':
+                      dayNumberPositionStyles.top = 8;
+                      dayNumberPositionStyles.left = '50%';
+                      dayNumberPositionStyles.transform = 'translateX(-50%)';
+                      break;
+                    case 'top-right':
+                      dayNumberPositionStyles.top = 8;
+                      dayNumberPositionStyles.right = 8;
+                      break;
+                    case 'center':
+                      dayNumberPositionStyles.top = '50%';
+                      dayNumberPositionStyles.left = '50%';
+                      dayNumberPositionStyles.transform = 'translate(-50%, -50%)';
+                      break;
+                  }
+
+                  return (
+                    <div
+                      key={day}
+                      style={{
+                        position: 'relative',
+                        aspectRatio: '1 / 1',
+                        ...getBackgroundStyle(cellBackground),
+                        ...getBorderStyle(cellBorder),
+                        ...getSpacingStyle(styles.cell.padding, 'padding'),
+                        transition: `all ${styles.cell.hover.transition}ms`,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                      className="group"
+                    >
+                      {patternOverlay}
+
+                      {/* Day Number */}
+                      <span
+                        style={{
+                          ...getFontStyle(styles.cell.dayNumber.font),
+                          color: dayNumberColor,
+                          ...dayNumberPositionStyles,
+                          ...(isToday &&
+                            styles.today.dayNumberBackground && {
+                              backgroundColor: styles.today.dayNumberBackground,
+                              paddingTop: 2,
+                              paddingRight: 6,
+                              paddingBottom: 2,
+                              paddingLeft: 6,
+                              borderRadius: 4,
+                            }),
+                        }}
+                      >
+                        {day}
+                      </span>
+
+                      {/* Today Indicator */}
+                      {isToday && styles.today.indicator.show && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: 8,
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            ...(styles.today.indicator.type === 'dot' && {
+                              width: styles.today.indicator.size,
+                              height: styles.today.indicator.size,
+                              borderRadius: '50%',
+                              backgroundColor: styles.today.indicator.color,
+                            }),
+                            ...(styles.today.indicator.type === 'underline' && {
+                              width: 16,
+                              height: 2,
+                              backgroundColor: styles.today.indicator.color,
+                            }),
+                          }}
+                        />
+                      )}
+
+                      {textContent}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {styles.booked.guestInfo.show ? (
+                <div
                   style={{
-                    ...getFontStyle(styles.cell.dayNumber.font),
-                    color: dayNumberColor,
-                    ...dayNumberPositionStyles,
-                    ...(isToday &&
-                      styles.today.dayNumberBackground && {
-                        backgroundColor: styles.today.dayNumberBackground,
-                        paddingTop: 2,
-                        paddingRight: 6,
-                        paddingBottom: 2,
-                        paddingLeft: 6,
-                        borderRadius: 4,
-                      }),
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(7, 1fr)',
+                    gap: styles.grid.gap,
+                    marginTop: 4,
+                    minHeight: 18,
                   }}
                 >
-                  {day}
-                </span>
+                  {(calendarData.segmentsByWeek.get(week.weekIndex) ?? []).map((segment) => {
+                    const spanPosition = calendarOccupancySpanPosition(segment);
+                    const radius = styles.cell.borderRadius;
+                    const borderRadius =
+                      spanPosition === 'start'
+                        ? `${radius}px 0 0 ${radius}px`
+                        : spanPosition === 'end'
+                          ? `0 ${radius}px ${radius}px 0`
+                          : spanPosition === 'middle'
+                            ? '0'
+                            : `${radius}px`;
 
-                {/* Today Indicator */}
-                {isToday && styles.today.indicator.show && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      bottom: 8,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      ...(styles.today.indicator.type === 'dot' && {
-                        width: styles.today.indicator.size,
-                        height: styles.today.indicator.size,
-                        borderRadius: '50%',
-                        backgroundColor: styles.today.indicator.color,
-                      }),
-                      ...(styles.today.indicator.type === 'underline' && {
-                        width: 16,
-                        height: 2,
-                        backgroundColor: styles.today.indicator.color,
-                      }),
-                    }}
-                  />
-                )}
-
-                {textContent}
-
-                {/* Guest info for booked cells */}
-                {isBooked && booking && styles.booked.guestInfo.show && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      bottom: 8,
-                      left: 8,
-                      right: 8,
-                      ...getFontStyle(styles.booked.guestInfo.font),
-                      color: styles.booked.guestInfo.color,
-                      overflow: styles.booked.guestInfo.truncate ? 'hidden' : 'visible',
-                      textOverflow: styles.booked.guestInfo.truncate ? 'ellipsis' : 'clip',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {booking.guestName}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+                    return (
+                      <div
+                        key={`${week.weekIndex}-${segment.item.id}-${segment.startCol}-${segment.endCol}`}
+                        style={{
+                          gridColumn: `${segment.startCol + 1} / ${segment.endCol + 2}`,
+                          gridRow: segment.lane + 1,
+                          minWidth: 0,
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: segment.showLabel ? '2px 6px' : '2px 0',
+                          borderRadius,
+                          ...(segment.showLabel
+                            ? {
+                                ...getFontStyle(styles.booked.guestInfo.font),
+                                color: styles.booked.guestInfo.color,
+                                overflow: styles.booked.guestInfo.truncate ? 'hidden' : 'visible',
+                                textOverflow: styles.booked.guestInfo.truncate
+                                  ? 'ellipsis'
+                                  : 'clip',
+                                whiteSpace: 'nowrap',
+                              }
+                            : { opacity: 0.75 }),
+                          ...(styles.booked.background.type === 'solid'
+                            ? { backgroundColor: styles.booked.background.color }
+                            : {}),
+                          border: `${styles.booked.border.width}px ${styles.booked.border.style} ${styles.booked.border.color}`,
+                        }}
+                      >
+                        {segment.showLabel ? segment.item.guestName : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          ))}
         </div>
 
         {/* Legend */}

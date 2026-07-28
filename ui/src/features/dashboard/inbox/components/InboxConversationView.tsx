@@ -38,18 +38,23 @@ import {
 import {
   formatChatBubbleTime,
   isChatMessageUnsent,
+  resolveOutboundDeliveryStatus,
   unsentMessageLabel,
 } from '@/lib/chat/chatMessageFormat';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
+import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
 
 import { Button } from '@/components/ui/button';
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
-import { ChatInThreadSearch, filterThreadMessages } from '@/components/chat/ChatInThreadSearch';
-import { ChatMessageActionsMenu } from '@/components/chat/ChatMessageActionsMenu';
+import {
+  ChatMessageActionItem,
+  ChatMessageActionsMenu,
+} from '@/components/chat/ChatMessageActionsMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { ChatMessageList } from '@/components/chat/ChatMessageList';
+import { ChatThreadSearchPanel, ChatThreadSearchTrigger } from '@/components/chat/ChatThreadSearch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +114,6 @@ export function InboxConversationView({
   onLoadOlder,
 }: Props) {
   const [draft, setDraft] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
   const [draftFromAi, setDraftFromAi] = useState(false);
   const [draftAiFlagged, setDraftAiFlagged] = useState(false);
@@ -135,11 +139,7 @@ export function InboxConversationView({
     'host',
     !!conversation && isWeb && canReply
   );
-
-  const visibleMessages = useMemo(
-    () => filterThreadMessages(messages, searchQuery),
-    [messages, searchQuery]
-  );
+  const threadSearch = useChatThreadSearch(messages);
 
   const messageTailKey = useMemo(() => {
     const last = messages[messages.length - 1];
@@ -149,12 +149,20 @@ export function InboxConversationView({
 
   useEffect(() => {
     setDraft('');
-    setSearchQuery('');
+    threadSearch.close();
     setComposerMode({ kind: 'compose' });
     setDraftFromAi(false);
     setDraftAiFlagged(false);
     shouldSmoothScrollRef.current = false;
-  }, [conversation?.id]);
+  }, [conversation?.id, threadSearch.close]);
+
+  useEffect(() => {
+    if (!threadSearch.open || !threadSearch.activeMatch) return;
+    const root = scrollContainerRef.current;
+    if (!root) return;
+    const el = root.querySelector(`[data-chat-message-id="${threadSearch.activeMatch.messageId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [threadSearch.open, threadSearch.activeMatch, threadSearch.activeIndex]);
 
   useLayoutEffect(() => {
     if (isLoading || !conversation || messages.length === 0) return;
@@ -381,7 +389,25 @@ export function InboxConversationView({
             {conversation.conversation_type === 'comment' ? 'View post' : 'View conversation'}
           </a>
         )}
+        {messages.length > 0 ? (
+          <ChatThreadSearchTrigger
+            active={threadSearch.open}
+            onClick={() => (threadSearch.open ? threadSearch.close() : threadSearch.openSearch())}
+          />
+        ) : null}
       </div>
+
+      {threadSearch.open ? (
+        <ChatThreadSearchPanel
+          query={threadSearch.query}
+          onQueryChange={threadSearch.setQuery}
+          matchCount={threadSearch.matches.length}
+          activeIndex={threadSearch.activeIndex}
+          onPrev={threadSearch.goPrev}
+          onNext={threadSearch.goNext}
+          onClose={threadSearch.close}
+        />
+      ) : null}
 
       <div ref={scrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5">
         {isLoading ? (
@@ -412,132 +438,137 @@ export function InboxConversationView({
               </div>
             )}
             {messages.length > 0 ? (
-              searchQuery.trim() && visibleMessages.length === 0 ? (
-                <p className="text-muted-foreground py-8 text-center text-sm">No matches</p>
-              ) : (
-                <ChatMessageList
-                  messages={visibleMessages}
-                  getOutbound={(msg) => msg.direction === 'outbound'}
-                  renderMessage={(msg) => {
-                    const outbound = msg.direction === 'outbound';
-                    const isUnsent = isChatMessageUnsent(msg);
-                    const attachments = isUnsent ? [] : inboxAttachmentPreviews(msg.attachments);
-                    const hasText = !!msg.body_text?.trim();
-                    const hasMedia = attachments.length > 0;
-                    const showEdit =
-                      !isUnsent && outbound && canHostEditMessage(msg, messages) && !!onEdit;
-                    const showUnsend =
-                      !isUnsent && outbound && canHostUnsendMessage(msg, messages) && !!onUnsend;
-                    const showMessageMenu = canReply;
-                    const deliveryStatus =
-                      !isUnsent && outbound
-                        ? (msg.delivery_status ?? (msg.read_at ? 'read' : 'sent'))
-                        : null;
+              <ChatMessageList
+                messages={messages}
+                focusedMessageId={threadSearch.activeMessageId}
+                getOutbound={(msg) => msg.direction === 'outbound'}
+                renderMessage={(msg) => {
+                  const outbound = msg.direction === 'outbound';
+                  const isUnsent = isChatMessageUnsent(msg);
+                  const attachments = isUnsent ? [] : inboxAttachmentPreviews(msg.attachments);
+                  const hasText = !!msg.body_text?.trim();
+                  const hasMedia = attachments.length > 0;
+                  const highlightQuery = threadSearch.open ? threadSearch.trimmedQuery : '';
+                  const activeHighlightRange =
+                    threadSearch.activeMatch?.messageId === msg.id
+                      ? {
+                          start: threadSearch.activeMatch.start,
+                          end: threadSearch.activeMatch.end,
+                        }
+                      : null;
+                  const showEdit =
+                    !isUnsent && outbound && canHostEditMessage(msg, messages) && !!onEdit;
+                  const showUnsend =
+                    !isUnsent && outbound && canHostUnsendMessage(msg, messages) && !!onUnsend;
+                  const showMessageMenu = canReply;
+                  const deliveryStatus =
+                    !isUnsent && outbound ? resolveOutboundDeliveryStatus(msg) : null;
 
-                    const messageActions = showMessageMenu ? (
-                      <ChatMessageActionsMenu outbound={outbound}>
-                        <DropdownMenuItem onClick={() => startReply(msg)}>
-                          <Reply className="size-4" aria-hidden />
-                          Reply
-                        </DropdownMenuItem>
-                        {showEdit ? (
-                          <DropdownMenuItem onClick={() => startEdit(msg)}>
-                            <Pencil className="size-4" aria-hidden />
-                            Edit
-                          </DropdownMenuItem>
-                        ) : null}
-                        {showUnsend ? (
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => {
-                              void onUnsend?.(msg.id).catch((e) => {
-                                const message = (e as Error).message;
-                                if (isChatActionEligibilityError(message)) return;
-                                toast.error(message);
-                              });
-                            }}
-                          >
-                            <Undo2 className="size-4" aria-hidden />
-                            Unsend
-                          </DropdownMenuItem>
-                        ) : null}
-                      </ChatMessageActionsMenu>
+                  const messageActions = showMessageMenu ? (
+                    <ChatMessageActionsMenu outbound={outbound}>
+                      <ChatMessageActionItem onSelect={() => startReply(msg)}>
+                        <Reply className="size-3.5" aria-hidden />
+                        Reply
+                      </ChatMessageActionItem>
+                      {showEdit ? (
+                        <ChatMessageActionItem onSelect={() => startEdit(msg)}>
+                          <Pencil className="size-3.5" aria-hidden />
+                          Edit
+                        </ChatMessageActionItem>
+                      ) : null}
+                      {showUnsend ? (
+                        <ChatMessageActionItem
+                          destructive
+                          onSelect={() => {
+                            void onUnsend?.(msg.id).catch((e) => {
+                              const message = (e as Error).message;
+                              if (isChatActionEligibilityError(message)) return;
+                              toast.error(message);
+                            });
+                          }}
+                        >
+                          <Undo2 className="size-3.5" aria-hidden />
+                          Unsend
+                        </ChatMessageActionItem>
+                      ) : null}
+                    </ChatMessageActionsMenu>
+                  ) : null;
+
+                  const bubble =
+                    isUnsent || hasText || (!hasText && !hasMedia) ? (
+                      <ChatMessageBubble
+                        bodyText={
+                          isUnsent
+                            ? unsentMessageLabel(outbound)
+                            : hasText
+                              ? msg.body_text
+                              : '(attachment)'
+                        }
+                        outbound={outbound}
+                        unsent={isUnsent}
+                        sentAt={msg.sent_at}
+                        deliveryStatus={deliveryStatus}
+                        isAiGenerated={!isUnsent && msg.is_ai_generated}
+                        edited={!isUnsent && Boolean(msg.edited_at)}
+                        replyPreviewText={isUnsent ? null : msg.reply_preview_text}
+                        highlightQuery={highlightQuery}
+                        activeHighlightRange={activeHighlightRange}
+                        actions={messageActions}
+                      />
                     ) : null;
 
-                    const bubble =
-                      isUnsent || hasText || (!hasText && !hasMedia) ? (
-                        <ChatMessageBubble
-                          bodyText={
-                            isUnsent
-                              ? unsentMessageLabel(outbound)
-                              : hasText
-                                ? msg.body_text
-                                : '(attachment)'
-                          }
-                          outbound={outbound}
-                          unsent={isUnsent}
-                          sentAt={msg.sent_at}
-                          deliveryStatus={deliveryStatus}
-                          isAiGenerated={!isUnsent && msg.is_ai_generated}
-                          edited={!isUnsent && Boolean(msg.edited_at)}
-                          replyPreviewText={isUnsent ? null : msg.reply_preview_text}
-                          actions={messageActions}
-                        />
-                      ) : null;
-
-                    return (
-                      <div
-                        className={cn(
-                          'flex w-full flex-col gap-1.5',
-                          outbound ? 'items-end' : 'items-start'
-                        )}
-                      >
-                        {bubble}
-                        {hasMedia ? (
+                  return (
+                    <div
+                      className={cn(
+                        'flex w-full flex-col gap-1.5',
+                        outbound ? 'items-end' : 'items-start'
+                      )}
+                    >
+                      {bubble}
+                      {hasMedia ? (
+                        <div
+                          className={cn(
+                            'flex flex-col gap-1.5',
+                            outbound ? 'items-end' : 'items-start'
+                          )}
+                        >
                           <div
                             className={cn(
-                              'flex flex-col gap-1.5',
-                              outbound ? 'items-end' : 'items-start'
+                              'group/msg flex max-w-full items-center gap-0.5',
+                              outbound ? 'flex-row-reverse' : 'flex-row'
                             )}
                           >
                             <div
                               className={cn(
-                                'group/msg flex max-w-full items-center gap-0.5',
-                                outbound ? 'flex-row-reverse' : 'flex-row'
+                                'flex flex-col gap-1.5',
+                                outbound ? 'items-end' : 'items-start'
                               )}
                             >
-                              <div
-                                className={cn(
-                                  'flex flex-col gap-1.5',
-                                  outbound ? 'items-end' : 'items-start'
-                                )}
-                              >
-                                {attachments.map((att, i) => (
-                                  <InboxMessageMediaTile
-                                    key={`${msg.id}-att-${i}`}
-                                    attachment={att}
-                                    outbound={outbound}
-                                    onOpen={() => openPreview(att)}
-                                  />
-                                ))}
-                              </div>
-                              {!hasText && !isUnsent ? messageActions : null}
+                              {attachments.map((att, i) => (
+                                <InboxMessageMediaTile
+                                  key={`${msg.id}-att-${i}`}
+                                  attachment={att}
+                                  outbound={outbound}
+                                  onOpen={() => openPreview(att)}
+                                />
+                              ))}
                             </div>
-                            {!hasText ? (
-                              <time
-                                className="text-muted-foreground px-1 text-[11px] tabular-nums"
-                                dateTime={msg.sent_at}
-                              >
-                                {formatChatBubbleTime(msg.sent_at)}
-                              </time>
-                            ) : null}
+                            {!hasText && !isUnsent ? messageActions : null}
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  }}
-                />
-              )
+                          {!hasText ? (
+                            <time
+                              className="text-muted-foreground px-1 text-[11px] tabular-nums"
+                              dateTime={msg.sent_at}
+                            >
+                              {formatChatBubbleTime(msg.sent_at)}
+                            </time>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                }}
+              />
             ) : null}
           </div>
         )}
@@ -601,13 +632,6 @@ export function InboxConversationView({
             <div className="border-border/60 flex items-center justify-between gap-2 border-t px-2 py-1.5">
               <TooltipProvider delayDuration={300}>
                 <div className="flex min-w-0 flex-1 items-center gap-1">
-                  {isWeb ? (
-                    <ChatInThreadSearch
-                      messages={messages}
-                      onQueryChange={setSearchQuery}
-                      className="mr-1 hidden min-w-0 sm:flex"
-                    />
-                  ) : null}
                   {visibleTemplates.length > 0 && (
                     <DropdownMenu>
                       <Tooltip>
@@ -626,7 +650,10 @@ export function InboxConversationView({
                         </TooltipTrigger>
                         <TooltipContent side="top">Quick reply</TooltipContent>
                       </Tooltip>
-                      <DropdownMenuContent align="start" className="max-w-[min(90vw,320px)]">
+                      <DropdownMenuContent
+                        align="start"
+                        className="z-[110] max-w-[min(90vw,320px)]"
+                      >
                         {visibleTemplates.map((t) => (
                           <DropdownMenuItem
                             key={t.id}
@@ -696,11 +723,6 @@ export function InboxConversationView({
                 </Button>
               </div>
             </div>
-            {isWeb ? (
-              <div className="border-border/60 flex border-t px-2 py-1.5 sm:hidden">
-                <ChatInThreadSearch messages={messages} onQueryChange={setSearchQuery} />
-              </div>
-            ) : null}
           </div>
         </div>
       )}
