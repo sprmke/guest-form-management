@@ -76,7 +76,7 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 - **All transitions go through the orchestrator.** UI → `transition-booking` → orchestrator. Gmail listener → orchestrator. Cron → orchestrator. Never call `calendarService` / `sheetsService` / Azure GAF `sendEmail` / `sendPetEmail` directly from a handler for workflow work — **exception:** `submit-form` may call **`sendNewBookingRequestNotify`** (owner inbox only).
 - **Never CC the guest** on GAF or pet request emails.
 - **Pricing math** lives in one helper (`_shared/pricing.ts`): **`balance = booking_rate - down_payment`**. SD (`security_deposit`, default ₱1500) and parking/pet line items are **not** in balance — they are separate fields shown in breakdown UIs/emails. UI must import the same helper (or call a tiny `compute-pricing` edge function) — no duplicated math.
-- **Update the docs** in the same change (`PROJECT.md`, `TODOS.md`, and flip the relevant question/phase in `NEW_FLOW_PLAN.md`).
+- **Update the docs** in the same change (`PROJECT.md`, ship the GitHub issue via `gh-issue.mjs ship`, and flip the relevant question/phase in `NEW_FLOW_PLAN.md`).
 
 ## Testing checklist for a transition PR
 

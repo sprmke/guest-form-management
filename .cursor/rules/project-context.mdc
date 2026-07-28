@@ -10,7 +10,7 @@ alwaysApply: true
 1. `docs/README.md` — doc index; then **`docs/PROJECT.md`** for architecture, API tables, env vars, routes.
 2. **`docs/reference/project-structure.md`** — guest vs dashboard feature folders.
 3. `docs/guides/routes/README.md` — per-page behavior guides (update via `.cursor/rules/route-guides.mdc` when changing a page/section).
-4. `docs/TODOS.md` — shipped/planned backlog (do not assume a feature exists).
+4. **`docs/todos/README.md`** — product backlog on GitHub Issues; shipped history in `docs/todos/shipped/`.
 5. `docs/planning/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
 6. `docs/planning/NEW_FLOW.md` — original product spec for the redesign.
 
@@ -93,7 +93,7 @@ Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
 
 ## Docs workflow
 
-Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, `docs/TODOS.md`, and — for redesign work — `docs/planning/NEW_FLOW_PLAN.md` in the same change set as code. Don't leave code and docs out of sync.
+Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, close/ship the matching **GitHub Issue** (`gh-issue.mjs ship`), and — for redesign work — `docs/planning/NEW_FLOW_PLAN.md` in the same change set as code.
 
 For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, local `functions serve`, curl / admin “Run now” testing), see **`docs/operations/scheduled-jobs-and-testing.md`**.
 

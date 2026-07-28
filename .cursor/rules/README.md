@@ -17,21 +17,22 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Conditional rules (by file glob — loaded when relevant)
 
-| File                          | Globs / topic                      |
-| ----------------------------- | ---------------------------------- |
-| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router   |
-| `architecture.mdc`            | Feature folders, imports, tooling  |
-| `naming-conventions.mdc`      | File naming                        |
-| `components.mdc`              | `*.tsx` — shadcn, theme, structure |
-| `state-management.mdc`        | `hooks/`, TanStack Query v5        |
-| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod   |
-| `security.mdc`                | Edge auth, org/property RBAC       |
-| `public-ui.mdc`               | Guest form, calendar, sd-form      |
-| `supabase-platform.mdc`       | Migrations, env, Storage           |
-| `supabase-edge-functions.mdc` | `supabase/functions/**`            |
-| `accessibility.mdc`           | WCAG for UI                        |
-| `route-guides.mdc`            | Page behavior docs                 |
-| `social-inbox.mdc`            | Meta inbox                         |
+| File                          | Globs / topic                           |
+| ----------------------------- | --------------------------------------- |
+| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router        |
+| `architecture.mdc`            | Feature folders, imports, tooling       |
+| `naming-conventions.mdc`      | File naming                             |
+| `components.mdc`              | `*.tsx` — shadcn, theme, structure      |
+| `state-management.mdc`        | `hooks/`, TanStack Query v5             |
+| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod        |
+| `security.mdc`                | Edge auth, org/property RBAC            |
+| `public-ui.mdc`               | Guest form, calendar, sd-form           |
+| `supabase-platform.mdc`       | Migrations, env, Storage                |
+| `supabase-edge-functions.mdc` | `supabase/functions/**`                 |
+| `accessibility.mdc`           | WCAG for UI                             |
+| `route-guides.mdc`            | Page behavior docs                      |
+| `github-issues.mdc`           | GitHub Issues backlog + shipped archive |
+| `social-inbox.mdc`            | Meta inbox                              |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
@@ -71,6 +72,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 | `route-guides`            | `docs/guides/routes/*`                        |
 | `performance`             | Vite bundle, query tuning                     |
 | `batch-commit`            | Daily N commits × 5–10 files (not whole tree) |
+| `github-issues`           | GitHub Issues — view, create, ship            |
 
 ## Subagents (`.cursor/agents/`)
 

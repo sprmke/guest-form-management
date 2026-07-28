@@ -227,7 +227,7 @@ When the task is…
 - After the migration ships, **application code** should treat `status` as the **new canonical literals only**. The migration itself may still read legacy `'booked'` / `'canceled'` — that's OK, but delete dead branches once backfill is done.
 - Don't put calendar/sheet/email calls inside `DatabaseService`; keep services single-responsibility.
 - Don't add side effects inline to transition endpoints — go through the orchestrator so every caller (UI, Gmail listener, cron) behaves identically.
-- Don't forget to update `docs/PROJECT.md` and `docs/TODOS.md` per `documentation-maintenance.mdc`.
+- Don't forget to update `docs/PROJECT.md` and `docs/todos/` (GitHub Issues + epic specs) per `documentation-maintenance.mdc`.
 
 ## 8. Related docs & rules
 

@@ -52,7 +52,7 @@ Document new vars in `docs/PROJECT.md` §11.
 
 ## RLS
 
-Admin scoping is primarily **edge-function checks** today; tighten RLS per backlog in `docs/TODOS.md`.
+Admin scoping is primarily **edge-function checks** today; tighten RLS per [`docs/todos/`](../../docs/todos/README.md) (Epic 14).
 
 ## MCP (optional)
 
