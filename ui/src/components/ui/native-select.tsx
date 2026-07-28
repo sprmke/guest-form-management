@@ -1,5 +1,7 @@
 import * as React from 'react';
+
 import { ChevronDown } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 /** Matches booking edit inputs; hides the OS chevron and centers a custom icon. */
@@ -11,15 +13,11 @@ export const NativeSelect = React.forwardRef<
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(({ className, children, ...props }, ref) => (
   <div className="relative">
-    <select
-      ref={ref}
-      className={cn(nativeSelectClassName, className)}
-      {...props}
-    >
+    <select ref={ref} className={cn(nativeSelectClassName, className)} {...props}>
       {children}
     </select>
     <ChevronDown
-      className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+      className="text-muted-foreground pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2"
       aria-hidden
     />
   </div>
