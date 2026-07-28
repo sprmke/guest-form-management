@@ -1,3 +1,5 @@
+import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
+
 import { supabase } from '@/lib/supabase/client';
 
 import type { ChatActionMessage } from '@/lib/chat/chatMessageActions';
@@ -73,6 +75,7 @@ export type GuestChatStartResult = {
   };
   inquiryCheckIn: string;
   inquiryCheckOut: string;
+  replyStatus: ChatReplyStatus;
 };
 
 export type GuestChatResumeResult = {
@@ -80,6 +83,7 @@ export type GuestChatResumeResult = {
   conversationId: string | null;
   inquiryCheckIn: string | null;
   inquiryCheckOut: string | null;
+  replyStatus: ChatReplyStatus | null;
   property: {
     id: string;
     slug: string;
@@ -163,13 +167,14 @@ export async function fetchGuestWebChatResume(
 export async function fetchGuestChatMessages(
   conversationId: string,
   before?: string
-): Promise<{ messages: GuestChatMessage[]; hasMore: boolean }> {
+): Promise<{ messages: GuestChatMessage[]; hasMore: boolean; replyStatus?: ChatReplyStatus }> {
   const params = new URLSearchParams({ conversation_id: conversationId });
   if (before) params.set('before', before);
   const payload = await guestEdgeGet('guest-web-chat-messages', params);
   return {
     messages: (payload.messages as GuestChatMessage[] | undefined) ?? [],
     hasMore: !!payload.hasMore,
+    replyStatus: payload.replyStatus as ChatReplyStatus | undefined,
   };
 }
 

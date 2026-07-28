@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { Loader2, Paperclip, Pencil, Reply, SendHorizontal, Undo2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,22 +16,29 @@ import {
 } from '@/features/guest/chat/lib/guestChatApi';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
-import { ChatInThreadSearch, filterThreadMessages } from '@/components/chat/ChatInThreadSearch';
-import { ChatMessageActionsMenu } from '@/components/chat/ChatMessageActionsMenu';
+import {
+  ChatMessageActionItem,
+  ChatMessageActionsMenu,
+} from '@/components/chat/ChatMessageActionsMenu';
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { ChatMessageList } from '@/components/chat/ChatMessageList';
+import { ChatThreadSearchPanel } from '@/components/chat/ChatThreadSearch';
 import { Button } from '@/components/ui/button';
-import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { chatAttachmentPreviews } from '@/lib/chat/chatAttachments';
 import {
   formatChatBubbleTime,
   isChatMessageUnsent,
+  resolveOutboundDeliveryStatus,
   unsentMessageLabel,
 } from '@/lib/chat/chatMessageFormat';
 import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
+import {
+  useChatThreadSearch,
+  type ChatThreadSearchController,
+} from '@/lib/chat/useChatThreadSearch';
 import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +69,9 @@ type Props = {
   hasOlderMessages?: boolean;
   loadingOlder?: boolean;
   onLoadOlder?: () => void;
+  /** When set, search UI is rendered in `GuestChatHeaderBar` instead of this thread. */
+  threadSearch?: ChatThreadSearchController;
+  searchInHeader?: boolean;
 };
 
 const ACCEPTED_FILE_TYPES =
@@ -84,9 +94,10 @@ export function GuestChatThread({
   hasOlderMessages = false,
   loadingOlder = false,
   onLoadOlder,
+  threadSearch: threadSearchProp,
+  searchInHeader = false,
 }: Props) {
   const [draft, setDraft] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
   const [pendingAttachments, setPendingAttachments] = useState<GuestChatAttachment[]>([]);
   const [previewAttachment, setPreviewAttachment] = useState<InboxAttachmentPreview | null>(null);
   const [composerMode, setComposerMode] = useState<ComposerMode>({ kind: 'compose' });
@@ -102,11 +113,9 @@ export function GuestChatThread({
   loadingOlderRef.current = loadingOlder;
 
   const { peerTyping, signalTyping } = useChatTyping(conversationId, 'guest', !!conversationId);
-
-  const visibleMessages = useMemo(
-    () => filterThreadMessages(messages, searchQuery),
-    [messages, searchQuery]
-  );
+  const internalSearch = useChatThreadSearch(messages);
+  const threadSearch = threadSearchProp ?? internalSearch;
+  const headerSearch = searchInHeader || !!threadSearchProp;
 
   const messageTailKey = messages[messages.length - 1]?.id ?? '';
   const isBusy = sending || editing || unsending || uploadingAttachment;
@@ -118,9 +127,17 @@ export function GuestChatThread({
   useEffect(() => {
     setComposerMode({ kind: 'compose' });
     setDraft('');
-    setSearchQuery('');
+    threadSearch.close();
     setPendingAttachments([]);
-  }, [conversationId]);
+  }, [conversationId, threadSearch.close]);
+
+  useEffect(() => {
+    if (!threadSearch.open || !threadSearch.activeMatch) return;
+    const root = scrollContainerRef.current;
+    if (!root) return;
+    const el = root.querySelector(`[data-chat-message-id="${threadSearch.activeMatch.messageId}"]`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [threadSearch.open, threadSearch.activeMatch, threadSearch.activeIndex]);
 
   useLayoutEffect(() => {
     const el = scrollContainerRef.current;
@@ -293,9 +310,21 @@ export function GuestChatThread({
         }}
       />
 
+      {!headerSearch && threadSearch.open ? (
+        <ChatThreadSearchPanel
+          query={threadSearch.query}
+          onQueryChange={threadSearch.setQuery}
+          matchCount={threadSearch.matches.length}
+          activeIndex={threadSearch.activeIndex}
+          onPrev={threadSearch.goPrev}
+          onNext={threadSearch.goNext}
+          onClose={threadSearch.close}
+        />
+      ) : null}
+
       <div
         ref={scrollContainerRef}
-        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-4"
+        className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-2 py-2.5 sm:px-2.5"
       >
         {isLoading ? (
           <div className="space-y-3">
@@ -324,145 +353,149 @@ export function GuestChatThread({
                 </Button>
               </div>
             ) : null}
-            {searchQuery.trim() && visibleMessages.length === 0 ? (
-              <p className="text-muted-foreground py-8 text-center text-sm">No matches</p>
-            ) : (
-              <ChatMessageList
-                messages={visibleMessages}
-                getOutbound={(msg) => msg.direction === 'inbound'}
-                renderMessage={(msg) => {
-                  const outbound = msg.direction === 'inbound';
-                  const isUnsent = isChatMessageUnsent(msg);
-                  const attachments = isUnsent ? [] : chatAttachmentPreviews(msg.attachments);
-                  const bodyText = msg.body_text ?? '';
-                  const hasText = !!bodyText.trim();
-                  const hasMedia = attachments.length > 0;
-                  const showEdit =
-                    !isUnsent && outbound && canGuestEditMessage(msg, messages) && !!onEdit;
-                  const showUnsend =
-                    !isUnsent && outbound && canGuestUnsendMessage(msg, messages) && !!onUnsend;
-                  const showMessageMenu = true;
-                  const deliveryStatus =
-                    !isUnsent && outbound
-                      ? (msg.delivery_status ?? (msg.read_at ? 'read' : 'sent'))
-                      : null;
+            <ChatMessageList
+              messages={messages}
+              focusedMessageId={threadSearch.activeMessageId}
+              getOutbound={(msg) => msg.direction === 'inbound'}
+              renderMessage={(msg) => {
+                const outbound = msg.direction === 'inbound';
+                const isUnsent = isChatMessageUnsent(msg);
+                const attachments = isUnsent ? [] : chatAttachmentPreviews(msg.attachments);
+                const bodyText = msg.body_text ?? '';
+                const hasText = !!bodyText.trim();
+                const hasMedia = attachments.length > 0;
+                const highlightQuery = threadSearch.open ? threadSearch.trimmedQuery : '';
+                const activeHighlightRange =
+                  threadSearch.activeMatch?.messageId === msg.id
+                    ? {
+                        start: threadSearch.activeMatch.start,
+                        end: threadSearch.activeMatch.end,
+                      }
+                    : null;
+                const showEdit =
+                  !isUnsent && outbound && canGuestEditMessage(msg, messages) && !!onEdit;
+                const showUnsend =
+                  !isUnsent && outbound && canGuestUnsendMessage(msg, messages) && !!onUnsend;
+                const deliveryStatus =
+                  !isUnsent && outbound ? resolveOutboundDeliveryStatus(msg) : null;
 
-                  const messageActions = (
-                    <ChatMessageActionsMenu outbound={outbound}>
-                      <DropdownMenuItem onClick={() => startReply(msg)}>
-                        <Reply className="size-4" aria-hidden />
-                        Reply
-                      </DropdownMenuItem>
-                      {showEdit ? (
-                        <DropdownMenuItem onClick={() => startEdit(msg)}>
-                          <Pencil className="size-4" aria-hidden />
-                          Edit
-                        </DropdownMenuItem>
-                      ) : null}
-                      {showUnsend ? (
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => {
-                            void onUnsend?.(msg.id).catch((e) => {
-                              const message = (e as Error).message;
-                              if (isChatActionEligibilityError(message)) return;
-                              toast.error(message);
-                            });
-                          }}
-                        >
-                          <Undo2 className="size-4" aria-hidden />
-                          Unsend
-                        </DropdownMenuItem>
-                      ) : null}
-                    </ChatMessageActionsMenu>
-                  );
+                const messageActions = (
+                  <ChatMessageActionsMenu outbound={outbound}>
+                    <ChatMessageActionItem onSelect={() => startReply(msg)}>
+                      <Reply className="size-3.5" aria-hidden />
+                      Reply
+                    </ChatMessageActionItem>
+                    {showEdit ? (
+                      <ChatMessageActionItem onSelect={() => startEdit(msg)}>
+                        <Pencil className="size-3.5" aria-hidden />
+                        Edit
+                      </ChatMessageActionItem>
+                    ) : null}
+                    {showUnsend ? (
+                      <ChatMessageActionItem
+                        destructive
+                        onSelect={() => {
+                          void onUnsend?.(msg.id).catch((e) => {
+                            const message = (e as Error).message;
+                            if (isChatActionEligibilityError(message)) return;
+                            toast.error(message);
+                          });
+                        }}
+                      >
+                        <Undo2 className="size-3.5" aria-hidden />
+                        Unsend
+                      </ChatMessageActionItem>
+                    ) : null}
+                  </ChatMessageActionsMenu>
+                );
 
-                  const bubble =
-                    isUnsent || hasText || (!hasText && !hasMedia) ? (
-                      <ChatMessageBubble
-                        bodyText={
-                          isUnsent
-                            ? unsentMessageLabel(outbound)
-                            : hasText
-                              ? bodyText
-                              : '(attachment)'
-                        }
-                        outbound={outbound}
-                        unsent={isUnsent}
-                        sentAt={msg.sent_at}
-                        deliveryStatus={deliveryStatus}
-                        isAiGenerated={!isUnsent && msg.is_ai_generated}
-                        edited={!isUnsent && Boolean(msg.edited_at)}
-                        replyPreviewText={isUnsent ? null : msg.reply_preview_text}
-                        onRetry={
-                          !isUnsent && msg.delivery_status === 'failed' && onRetryFailed
-                            ? () => onRetryFailed(msg.id, bodyText)
-                            : undefined
-                        }
-                        actions={messageActions}
-                      />
-                    ) : null;
+                const bubble =
+                  isUnsent || hasText || (!hasText && !hasMedia) ? (
+                    <ChatMessageBubble
+                      bodyText={
+                        isUnsent
+                          ? unsentMessageLabel(outbound)
+                          : hasText
+                            ? bodyText
+                            : '(attachment)'
+                      }
+                      outbound={outbound}
+                      unsent={isUnsent}
+                      sentAt={msg.sent_at}
+                      deliveryStatus={deliveryStatus}
+                      isAiGenerated={!isUnsent && msg.is_ai_generated}
+                      edited={!isUnsent && Boolean(msg.edited_at)}
+                      replyPreviewText={isUnsent ? null : msg.reply_preview_text}
+                      highlightQuery={highlightQuery}
+                      activeHighlightRange={activeHighlightRange}
+                      onRetry={
+                        !isUnsent && msg.delivery_status === 'failed' && onRetryFailed
+                          ? () => onRetryFailed(msg.id, bodyText)
+                          : undefined
+                      }
+                      actions={messageActions}
+                    />
+                  ) : null;
 
-                  return (
-                    <div
-                      className={cn(
-                        'flex w-full flex-col gap-1.5',
-                        outbound ? 'items-end' : 'items-start'
-                      )}
-                    >
-                      {bubble}
-                      {hasMedia ? (
+                return (
+                  <div
+                    className={cn(
+                      'flex w-full flex-col gap-1.5',
+                      outbound ? 'items-end' : 'items-start'
+                    )}
+                  >
+                    {bubble}
+                    {hasMedia ? (
+                      <div
+                        className={cn(
+                          'flex flex-col gap-1.5',
+                          outbound ? 'items-end' : 'items-start'
+                        )}
+                      >
                         <div
                           className={cn(
-                            'flex flex-col gap-1.5',
-                            outbound ? 'items-end' : 'items-start'
+                            'group/msg flex max-w-full items-center gap-0.5',
+                            outbound ? 'flex-row-reverse' : 'flex-row'
                           )}
                         >
                           <div
                             className={cn(
-                              'group/msg flex max-w-full items-center gap-0.5',
-                              outbound ? 'flex-row-reverse' : 'flex-row'
+                              'flex flex-col gap-1.5',
+                              outbound ? 'items-end' : 'items-start'
                             )}
                           >
-                            <div
-                              className={cn(
-                                'flex flex-col gap-1.5',
-                                outbound ? 'items-end' : 'items-start'
-                              )}
-                            >
-                              {attachments.map((att, i) => (
-                                <InboxMessageMediaTile
-                                  key={`${msg.id}-att-${i}`}
-                                  attachment={att}
-                                  outbound={outbound}
-                                  onOpen={() => openPreview(att)}
-                                />
-                              ))}
-                            </div>
-                            {!hasText && !isUnsent ? messageActions : null}
+                            {attachments.map((att, i) => (
+                              <InboxMessageMediaTile
+                                key={`${msg.id}-att-${i}`}
+                                attachment={att}
+                                outbound={outbound}
+                                onOpen={() => openPreview(att)}
+                              />
+                            ))}
                           </div>
-                          {!hasText ? (
-                            <time
-                              className="text-muted-foreground px-1 text-[11px] tabular-nums"
-                              dateTime={msg.sent_at}
-                            >
-                              {formatChatBubbleTime(msg.sent_at)}
-                            </time>
-                          ) : null}
+                          {!hasText && !isUnsent ? messageActions : null}
                         </div>
-                      ) : null}
-                    </div>
-                  );
-                }}
-              />
-            )}
+                        {!hasText ? (
+                          <time
+                            className="text-muted-foreground px-1 text-[11px] tabular-nums"
+                            dateTime={msg.sent_at}
+                          >
+                            {formatChatBubbleTime(msg.sent_at)}
+                          </time>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              }}
+            />
           </>
         )}
       </div>
 
-      <div className="border-border bg-background shrink-0 border-t px-3 pb-3 pt-0 sm:px-4 sm:pb-4">
+      <div className="border-border bg-background shrink-0 border-t px-2 pb-2 pt-0 sm:px-0 sm:pb-2.5">
         {peerTyping ? (
-          <p className="text-muted-foreground px-1 pt-3 text-xs" aria-live="polite">
+          <p className="text-muted-foreground px-0.5 pt-2 text-xs" aria-live="polite">
             Host is typing…
           </p>
         ) : null}
@@ -471,7 +504,7 @@ export function GuestChatThread({
           <div
             className={cn(
               'flex flex-wrap gap-2',
-              composerBar ? 'pt-3' : peerTyping ? 'pt-2' : 'pt-4'
+              composerBar ? 'pt-2' : peerTyping ? 'pt-1.5' : 'pt-2.5'
             )}
           >
             {pendingAttachments.map((att, index) => (
@@ -501,14 +534,9 @@ export function GuestChatThread({
         <div
           className={cn(
             'flex items-end gap-2',
-            composerBar || pendingAttachments.length > 0 ? 'pt-3' : peerTyping ? 'pt-2' : 'pt-4'
+            composerBar || pendingAttachments.length > 0 ? 'pt-2' : peerTyping ? 'pt-1.5' : 'pt-4'
           )}
         >
-          <ChatInThreadSearch
-            messages={messages}
-            onQueryChange={setSearchQuery}
-            className="hidden sm:flex"
-          />
           {onUploadAttachment && composerMode.kind !== 'edit' ? (
             <>
               <input
@@ -569,9 +597,6 @@ export function GuestChatThread({
               <SendHorizontal className="size-5" aria-hidden />
             )}
           </Button>
-        </div>
-        <div className="flex sm:hidden">
-          <ChatInThreadSearch messages={messages} onQueryChange={setSearchQuery} />
         </div>
       </div>
     </div>

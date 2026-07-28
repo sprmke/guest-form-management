@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarDays, Loader2, SendHorizontal } from 'lucide-react';
+import { CalendarDays, Loader2, SendHorizontal, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { takeContactHostDraft } from '@/features/guest/auth/lib/guestAuthResume';
+import {
+  GuestChatHeaderBar,
+  GuestChatSearchPanelRow,
+  headerIconButtonClass,
+} from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
 import {
   GUEST_CHAT_MESSAGES_KEY,
@@ -20,9 +25,16 @@ import type { ListingHostInfo } from '@/features/guest/marketing/shared/componen
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
+import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 import { formatDateToYYYYMMDD, formatIsoDateForDisplay } from '@/utils/format/dates';
 
 export type ContactHostSheetProps = {
@@ -95,6 +107,7 @@ export function ContactHostSheet({
   const {
     messages,
     isLoading: messagesLoading,
+    replyStatus,
     send,
     edit,
     unsend,
@@ -118,6 +131,12 @@ export function ContactHostSheet({
   const showThread =
     Boolean(conversationId) &&
     (messages.length > 0 || isReturningGuest || Boolean(localConversationId));
+
+  const threadSearch = useChatThreadSearch(showThread ? messages : []);
+
+  useEffect(() => {
+    if (!open) threadSearch.close();
+  }, [open, threadSearch.close]);
 
   const sendFirstMessage = useCallback(
     async (text: string) => {
@@ -241,6 +260,24 @@ export function ContactHostSheet({
 
   const canComposeWithoutDates = !requiresDatesForSend || hasDates;
 
+  const hostAvatarNode = (
+    <div className="from-primary to-primary/80 ring-background relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br ring-2">
+      {hostAvatar ? (
+        <Image
+          src={hostAvatar}
+          alt={hostLabel}
+          width={40}
+          height={40}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
+          {hostLabel.charAt(0)}
+        </div>
+      )}
+    </div>
+  );
+
   const loading =
     status === 'loading' ||
     (open && status === 'authenticated' && resumeQuery.isLoading && !localConversationId) ||
@@ -252,35 +289,48 @@ export function ContactHostSheet({
       !showThread &&
       !composeDraft);
 
+  const headerCloseButton = (
+    <DialogClose asChild>
+      <button type="button" className={headerIconButtonClass} aria-label="Close">
+        <X className="size-5" aria-hidden />
+      </button>
+    </DialogClose>
+  );
+
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="flex h-[min(85dvh,560px)] max-h-[min(90dvh,560px)] w-full max-w-[min(calc(100vw-1.5rem),28rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
-          <DialogHeader className="border-border shrink-0 space-y-0 border-b pb-5 pr-8 text-left">
-            <div className="flex items-center gap-3">
-              <div className="from-primary to-primary/80 ring-background relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br ring-2">
-                {hostAvatar ? (
-                  <Image
-                    src={hostAvatar}
-                    alt={hostLabel}
-                    width={40}
-                    height={40}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
-                    {hostLabel.charAt(0)}
-                  </div>
-                )}
+        <DialogContent
+          showCloseButton={false}
+          className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:px-4 sm:py-3"
+        >
+          <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-0 pb-4 pr-0 pt-2 text-left">
+            {showThread ? (
+              <GuestChatHeaderBar
+                avatar={hostAvatarNode}
+                title={hostLabel}
+                subtitle={dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
+                replyStatus={replyStatus}
+                threadSearch={threadSearch}
+                searchEnabled={!messagesLoading && messages.length > 0}
+                trailing={headerCloseButton}
+              />
+            ) : (
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                {hostAvatarNode}
+                <div className="min-w-0 flex-1">
+                  <DialogTitle className="truncate text-sm font-semibold leading-tight">
+                    {hostLabel}
+                  </DialogTitle>
+                  <p className="text-muted-foreground truncate text-xs leading-tight">
+                    {dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
+                  </p>
+                </div>
+                {headerCloseButton}
               </div>
-              <div className="min-w-0 flex-1">
-                <DialogTitle className="truncate text-base font-semibold">{hostLabel}</DialogTitle>
-                <p className="text-muted-foreground truncate text-xs">
-                  {dateLabel ? `${propertyName} · ${dateLabel}` : propertyName}
-                </p>
-              </div>
-            </div>
+            )}
           </DialogHeader>
+          {showThread ? <GuestChatSearchPanelRow threadSearch={threadSearch} /> : null}
 
           <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
             {loading ? (
@@ -292,6 +342,8 @@ export function ContactHostSheet({
                 conversationId={conversationId}
                 messages={messages}
                 isLoading={messagesLoading}
+                threadSearch={threadSearch}
+                searchInHeader
                 sending={send.isPending}
                 editing={edit.isPending}
                 hasOlderMessages={!!hasNextPage}
@@ -317,7 +369,7 @@ export function ContactHostSheet({
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col justify-end">
-                <div className="border-border bg-background shrink-0 border-t pt-4">
+                <div className="border-border bg-background shrink-0 border-t px-2.5 pb-2 pt-2 sm:px-3 sm:pb-2.5">
                   <div className="flex items-end gap-2">
                     {canComposeWithoutDates ? (
                       <>

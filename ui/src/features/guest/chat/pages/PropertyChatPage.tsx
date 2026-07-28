@@ -5,6 +5,10 @@ import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
+import {
+  GuestChatHeaderBar,
+  GuestChatSearchPanelRow,
+} from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
 import { useGuestChatMessages, useGuestChatStart } from '@/features/guest/chat/hooks/useGuestChat';
 import {
@@ -17,6 +21,7 @@ import { formatIsoDateForDisplay, parseGuestInquiryDateRange } from '@/utils/for
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
 
 function parseInquiryDates(searchParams: URLSearchParams): {
   checkInDate: string;
@@ -94,6 +99,7 @@ function PropertyChatContent({
   const {
     messages,
     isLoading,
+    replyStatus,
     send,
     edit,
     unsend,
@@ -103,6 +109,8 @@ function PropertyChatContent({
     hasNextPage,
     isFetchingNextPage,
   } = useGuestChatMessages(conversationId);
+
+  const threadSearch = useChatThreadSearch(messages);
 
   if (startQuery.isError) {
     return (
@@ -127,49 +135,68 @@ function PropertyChatContent({
   const hostAvatar = host?.ownerAvatarUrl ?? null;
   const dateLabel = `${formatIsoDateForDisplay(checkInDate)} – ${formatIsoDateForDisplay(checkOutDate)}`;
 
+  const hostAvatarNode = (
+    <div className="from-primary to-primary/80 relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br">
+      {hostAvatar ? (
+        <Image
+          src={hostAvatar}
+          alt={hostLabel}
+          width={40}
+          height={40}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
+          {hostLabel.charAt(0)}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <GuestPublicBrandShell>
       <div className="mx-auto flex h-[calc(100dvh-4rem)] max-w-2xl flex-col sm:h-[calc(100dvh-5rem)]">
-        <div className="border-border shrink-0 border-b px-3 py-3 sm:px-4">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="min-h-[44px] min-w-[44px] shrink-0"
-              asChild
-            >
-              <Link to={propertyPath} aria-label="Back to property">
-                <ChevronLeft className="size-5" />
-              </Link>
-            </Button>
-            <div className="from-primary to-primary/80 relative h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-br">
-              {hostAvatar ? (
-                <Image
-                  src={hostAvatar}
-                  alt={hostLabel}
-                  width={40}
-                  height={40}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-sm font-bold text-white">
-                  {hostLabel.charAt(0)}
-                </div>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              {startQuery.isLoading ? (
+        <div className="border-border shrink-0 border-b">
+          <div className="px-2.5 py-2.5 sm:px-3">
+            {startQuery.isLoading ? (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="min-h-[44px] min-w-[44px] shrink-0"
+                  asChild
+                >
+                  <Link to={propertyPath} aria-label="Back to property">
+                    <ChevronLeft className="size-5" />
+                  </Link>
+                </Button>
+                <Skeleton className="h-10 w-10 rounded-full" />
                 <Skeleton className="h-4 w-32" />
-              ) : (
-                <>
-                  <p className="text-foreground truncate text-sm font-semibold">{hostLabel}</p>
-                  <p className="text-muted-foreground truncate text-xs">
-                    {propertyName} · {dateLabel}
-                  </p>
-                </>
-              )}
-            </div>
+              </div>
+            ) : (
+              <GuestChatHeaderBar
+                leading={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="min-h-[44px] min-w-[44px] shrink-0"
+                    asChild
+                  >
+                    <Link to={propertyPath} aria-label="Back to property">
+                      <ChevronLeft className="size-5" />
+                    </Link>
+                  </Button>
+                }
+                avatar={hostAvatarNode}
+                title={hostLabel}
+                subtitle={`${propertyName} · ${dateLabel}`}
+                replyStatus={replyStatus}
+                threadSearch={threadSearch}
+                searchEnabled={!!conversationId && !isLoading && messages.length > 0}
+              />
+            )}
           </div>
+          {!startQuery.isLoading ? <GuestChatSearchPanelRow threadSearch={threadSearch} /> : null}
         </div>
 
         {startQuery.isLoading || !conversationId ? (
@@ -181,6 +208,8 @@ function PropertyChatContent({
             conversationId={conversationId}
             messages={messages}
             isLoading={isLoading}
+            threadSearch={threadSearch}
+            searchInHeader
             sending={send.isPending}
             editing={edit.isPending}
             hasOlderMessages={!!hasNextPage}

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { MoreVertical, Search } from 'lucide-react';
 
 import { ChatThreadSearchPanel } from '@/components/chat/ChatThreadSearch';
+import { GuestChatAwaitingReplyBadge } from '@/components/chat/GuestChatAwaitingReplyBadge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { ChatThreadSearchController } from '@/lib/chat/useChatThreadSearch';
+import { isAwaitingHostReply } from '@/lib/chat/chatReplyStatus';
 import { cn } from '@/lib/utils';
 
 type HeaderProps = {
@@ -17,6 +19,7 @@ type HeaderProps = {
   avatar: ReactNode;
   title: string;
   subtitle?: string | null;
+  replyStatus?: string | null;
   threadSearch: ChatThreadSearchController;
   searchEnabled?: boolean;
   /** e.g. inline dialog close — rendered after the options menu. */
@@ -33,11 +36,14 @@ export function GuestChatHeaderBar({
   avatar,
   title,
   subtitle,
+  replyStatus,
   threadSearch,
   searchEnabled = true,
   trailing,
   className,
 }: HeaderProps) {
+  const awaitingReply = isAwaitingHostReply(replyStatus);
+
   return (
     <div className={cn('flex min-w-0 flex-nowrap items-center gap-2 sm:gap-2.5', className)}>
       {leading}
@@ -47,6 +53,7 @@ export function GuestChatHeaderBar({
         {subtitle ? (
           <p className="text-muted-foreground truncate text-xs leading-tight">{subtitle}</p>
         ) : null}
+        {awaitingReply ? <GuestChatAwaitingReplyBadge className="mt-0.5" /> : null}
       </div>
       {searchEnabled ? (
         <DropdownMenu modal>
