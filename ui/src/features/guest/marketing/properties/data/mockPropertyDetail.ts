@@ -20,7 +20,6 @@ export interface PropertyDetail extends Property {
     securityDeposit: number | null;
     parkingRate: number | null;
     petFee: number | null;
-    taxRate: number;
   };
 }
 
@@ -96,7 +95,6 @@ Perfect for families, groups of friends, or special celebrations. Our dedicated 
       securityDeposit: 5000,
       parkingRate: null,
       petFee: 1000,
-      taxRate: 0.12,
     },
   },
   '2': {
@@ -163,7 +161,6 @@ Highlights:
       securityDeposit: 3000,
       parkingRate: 300,
       petFee: null,
-      taxRate: 0.12,
     },
   },
   '3': {
@@ -228,7 +225,6 @@ Wake up to the refreshing Tagaytay breeze and enjoy your morning coffee with pan
       securityDeposit: 3000,
       parkingRate: null,
       petFee: 500,
-      taxRate: 0.12,
     },
   },
 };

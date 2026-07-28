@@ -60,7 +60,6 @@ interface BookingCardProps {
   securityDeposit?: number | null;
   parkingRate?: number | null;
   petFee?: number | null;
-  taxRate?: number;
   rating?: number;
   reviews?: number;
   maxGuests?: number | null;
@@ -92,7 +91,6 @@ export function BookingCard({
   securityDeposit = 2000,
   parkingRate: _parkingRate,
   petFee: _petFee,
-  taxRate = 0.12,
   rating = 4.9,
   reviews = 127,
   maxGuests = 6,
@@ -213,12 +211,8 @@ export function BookingCard({
     weekendNightlyRate,
   ]);
 
-  const taxesAmount =
-    staySubtotal != null && showPropertyFees ? Math.round(staySubtotal * taxRate) : 0;
   const grandTotal =
-    staySubtotal != null
-      ? staySubtotal + (showPropertyFees ? (cleaningFee ?? 0) + taxesAmount : 0)
-      : null;
+    staySubtotal != null ? staySubtotal + (showPropertyFees ? (cleaningFee ?? 0) : 0) : null;
 
   return (
     <motion.div
@@ -426,15 +420,6 @@ export function BookingCard({
                       <Info className="h-3.5 w-3.5" />
                     </span>
                     <span>{formatCurrency(cleaningFee)}</span>
-                  </div>
-                ) : null}
-                {showPropertyFees ? (
-                  <div className="text-muted-foreground flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      Taxes ({Math.round(taxRate * 100)}%)
-                      <Info className="h-3.5 w-3.5" />
-                    </span>
-                    <span>{formatCurrency(taxesAmount)}</span>
                   </div>
                 ) : null}
                 <div className="border-border text-foreground flex items-center justify-between border-t pt-3 font-semibold">

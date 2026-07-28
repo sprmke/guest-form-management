@@ -15,6 +15,7 @@ import {
   type ListingHostInfo,
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
+import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildPropertyPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
@@ -46,6 +47,7 @@ interface PropertyOverviewProps {
   rating?: number;
   reviews?: number;
   isSuperhost?: boolean;
+  verifiedBadge?: boolean;
   host?: ResolvedPropertyHost;
   selfCheckIn?: boolean;
   showMarketingFeatures?: boolean;
@@ -79,6 +81,7 @@ export function PropertyOverview({
   rating,
   reviews,
   isSuperhost = false,
+  verifiedBadge = false,
   host,
   selfCheckIn = false,
   showMarketingFeatures = true,
@@ -107,6 +110,7 @@ export function PropertyOverview({
         ownerAvatarUrl: hostAvatar,
         organizationLogoUrl: host.organizationLogoUrl,
         isSuperhost,
+        verifiedBadge,
       }
     : null;
 
@@ -129,6 +133,7 @@ export function PropertyOverview({
               Superhost
             </span>
           ) : null}
+          {verifiedBadge ? <ListingVerifiedBadge size="md" /> : null}
         </motion.div>
 
         <motion.h1

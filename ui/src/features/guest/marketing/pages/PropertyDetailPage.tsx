@@ -189,6 +189,7 @@ export function PropertyDetailPage() {
     ownerAvatarUrl: propertyData.host?.ownerAvatarUrl ?? null,
     organizationLogoUrl: propertyData.host?.organizationLogoUrl ?? null,
     isSuperhost: propertyData.isSuperhost,
+    verifiedBadge: propertyData.verifiedBadge,
   };
 
   return (
@@ -231,6 +232,7 @@ export function PropertyDetailPage() {
                 rating={propertyData.rating}
                 reviews={propertyData.reviews}
                 isSuperhost={propertyData.isSuperhost}
+                verifiedBadge={propertyData.verifiedBadge}
                 host={propertyData.host}
                 selfCheckIn={propertyData.selfCheckIn}
                 showMarketingFeatures={propertyData.source === 'mock'}
@@ -285,7 +287,6 @@ export function PropertyDetailPage() {
                 securityDeposit={propertyData.pricing.securityDeposit}
                 parkingRate={propertyData.pricing.parkingRate}
                 petFee={propertyData.pricing.petFee}
-                taxRate={propertyData.pricing.taxRate ?? 0}
                 rating={showRatingInBooking ? propertyData.rating : undefined}
                 reviews={showRatingInBooking ? propertyData.reviews : undefined}
                 maxGuests={propertyData.guests}

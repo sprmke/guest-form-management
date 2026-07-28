@@ -98,6 +98,7 @@ export function ParkingDetailPage() {
         ownerName: hostProfile.ownerName,
         ownerAvatarUrl: hostProfile.ownerAvatarUrl,
         organizationLogoUrl: hostProfile.logoUrl,
+        verifiedBadge: hostProfile.verifiedBadge,
       }
     : null;
 

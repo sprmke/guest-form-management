@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Award } from 'lucide-react';
 
 import { guestHostPath } from '@/features/guest/lib/guestPublicPaths';
+import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 export type ListingHostInfo = {
@@ -13,6 +14,7 @@ export type ListingHostInfo = {
   ownerAvatarUrl: string | null;
   organizationLogoUrl: string | null;
   isSuperhost?: boolean;
+  verifiedBadge?: boolean;
 };
 
 type Props = {
@@ -61,9 +63,12 @@ export function ListingHostCard({ host, motionDelay = 0.2, className, onContactH
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-foreground truncate text-sm font-semibold sm:text-base">
-          Hosted by {hostLabel}
-        </p>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <p className="text-foreground truncate text-sm font-semibold sm:text-base">
+            Hosted by {hostLabel}
+          </p>
+          {host.verifiedBadge ? <ListingVerifiedBadge /> : null}
+        </div>
         {orgHref ? (
           <Link
             to={orgHref}

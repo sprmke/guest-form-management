@@ -63,6 +63,7 @@ export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): Resolved
     reviews: dto.reviewCount > 0 ? dto.reviewCount : undefined,
     guestReviews: dto.guestReviews,
     isSuperhost: dto.isSuperhost,
+    verifiedBadge: dto.verifiedBadge,
     host: {
       unitName: dto.host.unitName,
       organizationName: dto.host.organizationName,
@@ -80,7 +81,6 @@ export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): Resolved
       securityDeposit: dto.pricing.securityDeposit,
       parkingRate: dto.pricing.parkingRateGuest,
       petFee: dto.pricing.petFee,
-      taxRate: null,
     },
   };
 }
@@ -151,7 +151,6 @@ export function mapMockPropertyToResolved(detail: PropertyDetail): ResolvedPrope
       securityDeposit: detail.pricing.securityDeposit,
       parkingRate: detail.pricing.parkingRate,
       petFee: detail.pricing.petFee,
-      taxRate: detail.pricing.taxRate,
     },
   };
 }
@@ -215,7 +214,6 @@ export function mapBasicMockToResolved(basic: Property): ResolvedPropertyDetail 
       securityDeposit: null,
       parkingRate: null,
       petFee: null,
-      taxRate: null,
     },
   };
 }

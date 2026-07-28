@@ -81,7 +81,7 @@ export function BookingCalendarModal({
         aria-describedby={undefined}
       >
         {/* ── Header ─ single line, step-based instruction ─────────────────── */}
-        <div className="border-border flex items-center gap-3 border-b px-5 pb-4">
+        <div className="border-border flex items-center gap-3 border-b pb-4 pr-5">
           <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
             {hasRange ? (
               <Check className="text-primary h-3.5 w-3.5" />
@@ -97,7 +97,7 @@ export function BookingCalendarModal({
         </div>
 
         {/* ── Calendar (compact = no internal date summary) ─────────────────── */}
-        <div className="flex-1 overflow-y-auto px-5 pb-2 pt-3">
+        <div className="flex-1 p-5">
           <PublicPropertyCalendar
             propertyName={propertyName}
             propertySlug={propertySlug}
@@ -109,7 +109,7 @@ export function BookingCalendarModal({
         </div>
 
         {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <div className="border-border flex items-center justify-between gap-3 border-t px-5 py-4">
+        <div className="border-border flex items-center justify-between gap-3 border-t pt-4">
           <button
             onClick={() => onDatesChange(null, null)}
             disabled={!hasCheckIn}

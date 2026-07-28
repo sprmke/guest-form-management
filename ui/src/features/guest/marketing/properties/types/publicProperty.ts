@@ -73,6 +73,7 @@ export type PublicPropertyDetailDto = {
   reviewCount: number;
   guestReviews: PublicGuestReview[];
   isSuperhost?: boolean;
+  verifiedBadge?: boolean;
   updatedAt: string;
 };
 
@@ -137,6 +138,7 @@ export type ResolvedPropertyDetail = {
   reviews?: number;
   guestReviews?: PublicGuestReview[];
   isSuperhost?: boolean;
+  verifiedBadge?: boolean;
   host?: ResolvedPropertyHost;
   /** @deprecated Use host.organizationName — kept for mock marketing copy */
   hostName?: string;
@@ -149,6 +151,5 @@ export type ResolvedPropertyDetail = {
     securityDeposit: number | null;
     parkingRate: number | null;
     petFee: number | null;
-    taxRate: number | null;
   };
 };
