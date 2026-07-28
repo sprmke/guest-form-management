@@ -1,15 +1,13 @@
-import type { CSSProperties } from "react";
-import { cn } from "@/lib/utils";
-import { Skeleton } from "@/components/ui/skeleton";
-import { AdminMetricCardSkeleton } from "@/features/admin/components/AdminMetricCard";
+import type { CSSProperties } from 'react';
 
-function AdminSurfaceCard({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"section">) {
+import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
+
+import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
+
+function AdminSurfaceCard({ className, children, ...props }: React.ComponentProps<'section'>) {
   return (
-    <section className={cn("w-full mb-3", className)} {...props}>
+    <section className={cn('mb-3 w-full', className)} {...props}>
       {children}
     </section>
   );
@@ -28,13 +26,12 @@ function AdminPageHeaderSkeleton({
   const content = (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between",
-        compact && "sm:items-center",
+        'flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between',
+        compact && 'sm:items-center'
       )}
     >
       <div className="min-w-0 space-y-2">
-        <div className="flex items-center gap-2.5">
-          <Skeleton className="size-[18px] shrink-0 rounded" />
+        <div className="flex items-center">
           <Skeleton className="h-6 w-32 sm:h-7 sm:w-36" />
         </div>
         <Skeleton className="h-4 w-full max-w-md" />
@@ -46,7 +43,7 @@ function AdminPageHeaderSkeleton({
     return content;
   }
 
-  return <section className="w-full mb-3">{content}</section>;
+  return <section className="mb-3 w-full">{content}</section>;
 }
 
 function CollapsibleSectionSkeleton({
@@ -61,223 +58,17 @@ function CollapsibleSectionSkeleton({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-border/50 bg-muted/30",
-        nested && "rounded-lg bg-background/80",
+        'border-border/50 bg-muted/30 overflow-hidden rounded-xl border',
+        nested && 'bg-background/80 rounded-lg'
       )}
     >
       <div className="flex min-h-[44px] items-center gap-3 px-3 py-2.5">
         <Skeleton className="h-4 max-w-[160px] flex-1" />
-        {showBadge ? (
-          <Skeleton className="h-4 w-14 shrink-0 rounded-full" />
-        ) : null}
+        {showBadge ? <Skeleton className="h-4 w-14 shrink-0 rounded-full" /> : null}
         <Skeleton className="size-4 shrink-0 rounded" />
       </div>
-      <div className="space-y-3 border-t border-separator px-3 pb-3 pt-3 sm:space-y-4">
+      <div className="border-separator space-y-3 border-t px-3 pb-3 pt-3 sm:space-y-4">
         {children}
-      </div>
-    </div>
-  );
-}
-
-function ButtonRowSkeleton({ count = 2 }: { count?: number }) {
-  return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-      {Array.from({ length: count }).map((_, i) => (
-        <Skeleton key={i} className="h-11 w-full rounded-lg sm:w-36" />
-      ))}
-    </div>
-  );
-}
-
-function CheckboxPanelSkeleton() {
-  return (
-    <div className="rounded-md border border-border/60 bg-background/50 px-3 py-2">
-      <div className="flex min-h-[44px] items-start gap-3 py-1.5">
-        <Skeleton className="mt-1 size-[18px] shrink-0 rounded" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-3 w-full max-w-sm" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function InfoBannerSkeleton() {
-  return (
-    <div className="flex gap-2.5 rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
-      <Skeleton className="mt-0.5 size-4 shrink-0 rounded" />
-      <div className="min-w-0 flex-1 space-y-2">
-        <Skeleton className="h-3.5 w-36" />
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-4/5" />
-      </div>
-    </div>
-  );
-}
-
-function TemplateEditorSkeleton({ rows = 8 }: { rows?: number }) {
-  return (
-    <div className="space-y-2">
-      <Skeleton className="h-3 w-32" />
-      <Skeleton
-        className="min-h-[96px] w-full rounded-xl"
-        style={{ height: rows * 12 }}
-      />
-      <Skeleton className="h-11 w-full rounded-lg sm:w-36" />
-    </div>
-  );
-}
-
-function ScenarioSectionSkeleton() {
-  return (
-    <CollapsibleSectionSkeleton nested showBadge>
-      <Skeleton className="h-10 w-full rounded-md" />
-      <CheckboxPanelSkeleton />
-      <TemplateEditorSkeleton rows={8} />
-    </CollapsibleSectionSkeleton>
-  );
-}
-
-function AdminFooterActionsSkeleton() {
-  return (
-    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-      <Skeleton className="h-11 w-full rounded-lg sm:w-24" />
-      <Skeleton className="h-11 w-full rounded-lg sm:w-28" />
-    </div>
-  );
-}
-
-export function TelegramOperationsSettingsSkeleton() {
-  return (
-    <div
-      className="space-y-3 sm:space-y-4"
-      aria-busy="true"
-      aria-label="Loading operations settings"
-    >
-      <AdminPageHeaderSkeleton compact />
-      <div className="space-y-4">
-        <CollapsibleSectionSkeleton>
-          <ButtonRowSkeleton count={2} />
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          <Skeleton className="h-3 w-full max-w-lg" />
-          <div className="flex flex-wrap gap-1.5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-5 w-16 rounded" />
-            ))}
-          </div>
-        </CollapsibleSectionSkeleton>
-        <CheckboxPanelSkeleton />
-        <InfoBannerSkeleton />
-        <CollapsibleSectionSkeleton>
-          <div className="space-y-2.5">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <ScenarioSectionSkeleton key={i} />
-            ))}
-          </div>
-        </CollapsibleSectionSkeleton>
-        <AdminFooterActionsSkeleton />
-      </div>
-    </div>
-  );
-}
-
-export function TelegramStaffSettingsSkeleton() {
-  return (
-    <div
-      className="space-y-3 sm:space-y-4"
-      aria-busy="true"
-      aria-label="Loading staff settings"
-    >
-      <AdminPageHeaderSkeleton compact />
-      <div className="space-y-4">
-        <CollapsibleSectionSkeleton>
-          <ButtonRowSkeleton count={2} />
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-3 w-full"
-                style={{ maxWidth: `${90 - i * 8}%` }}
-              />
-            ))}
-          </div>
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          <CheckboxPanelSkeleton />
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="h-11 w-full rounded-xl sm:max-w-[10rem]" />
-            </div>
-            <Skeleton className="h-3 w-24" />
-          </div>
-          <TemplateEditorSkeleton rows={10} />
-        </CollapsibleSectionSkeleton>
-        <AdminFooterActionsSkeleton />
-      </div>
-    </div>
-  );
-}
-
-export function TelegramMarketingSettingsSkeleton() {
-  return (
-    <div
-      className="space-y-3 sm:space-y-4"
-      aria-busy="true"
-      aria-label="Loading marketing settings"
-    >
-      <AdminPageHeaderSkeleton compact />
-      <div className="space-y-4">
-        <CollapsibleSectionSkeleton>
-          <ButtonRowSkeleton count={3} />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Skeleton className="h-11 w-full rounded-xl" />
-            <Skeleton className="h-11 w-full rounded-xl" />
-          </div>
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-3 w-full"
-                style={{ maxWidth: `${88 - i * 6}%` }}
-              />
-            ))}
-          </div>
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          <CheckboxPanelSkeleton />
-          <div className="space-y-2">
-            <Skeleton className="h-3 w-40" />
-            <div className="flex flex-wrap gap-2">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-28 rounded-lg" />
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Skeleton className="h-11 w-full rounded-xl" />
-            <Skeleton className="h-11 w-full rounded-xl" />
-          </div>
-        </CollapsibleSectionSkeleton>
-        <CollapsibleSectionSkeleton>
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="grid grid-cols-1 gap-2 rounded-md border border-border/80 bg-background/80 p-3 sm:grid-cols-[minmax(0,1fr)_auto]"
-            >
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="col-span-full h-20 w-full rounded-xl sm:col-span-2" />
-              <Skeleton className="h-9 w-full rounded-lg sm:col-start-2 sm:row-start-1 sm:w-28" />
-            </div>
-          ))}
-        </CollapsibleSectionSkeleton>
-        <AdminFooterActionsSkeleton />
       </div>
     </div>
   );
@@ -285,11 +76,7 @@ export function TelegramMarketingSettingsSkeleton() {
 
 export function AppSettingsCardSkeleton() {
   return (
-    <div
-      className="space-y-3 sm:space-y-4"
-      aria-busy="true"
-      aria-label="Loading settings"
-    >
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading settings">
       <AdminPageHeaderSkeleton compact />
       <div className="space-y-3">
         {Array.from({ length: 4 }).map((_, i) => (
@@ -309,18 +96,14 @@ export function AppSettingsCardSkeleton() {
           </CollapsibleSectionSkeleton>
         ))}
       </div>
-      <div className="border-t border-separator pt-3">
+      <div className="border-separator border-t pt-3">
         <Skeleton className="ml-auto h-11 w-full rounded-lg sm:w-32" />
       </div>
     </div>
   );
 }
 
-export function GmailMailIntegrationCardSkeleton({
-  embedded = false,
-}: {
-  embedded?: boolean;
-}) {
+export function GmailMailIntegrationCardSkeleton({ embedded = false }: { embedded?: boolean }) {
   const inner = (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
@@ -343,7 +126,7 @@ export function GmailMailIntegrationCardSkeleton({
       <div
         aria-busy="true"
         aria-label="Loading Gmail integration"
-        className="rounded-lg bg-muted/20 px-3 py-3"
+        className="bg-muted/20 rounded-lg px-3 py-3"
       >
         {inner}
       </div>
@@ -359,7 +142,7 @@ export function GmailMailIntegrationCardSkeleton({
 
 function DetailCardSkeleton({ lines = 3 }: { lines?: number }) {
   return (
-    <div className="rounded-xl border border-border/50 bg-card p-4 shadow-sm sm:p-5">
+    <div className="border-border/50 bg-card rounded-xl border p-4 shadow-sm sm:p-5">
       <Skeleton className="mb-4 h-4 w-32" />
       <div className="space-y-3">
         {Array.from({ length: lines }).map((_, i) => (
@@ -379,7 +162,7 @@ export function BookingDetailPageSkeleton() {
       <Skeleton className="h-3 w-28" />
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:gap-5 lg:gap-6">
         <div className="min-w-0 flex-1 space-y-5">
-          <div className="rounded-xl border border-border/50 bg-card p-4 sm:p-5">
+          <div className="border-border/50 bg-card rounded-xl border p-4 sm:p-5">
             <div className="flex flex-col gap-4">
               <div className="space-y-2">
                 <Skeleton className="h-5 w-40 max-w-full" />
@@ -399,16 +182,13 @@ export function BookingDetailPageSkeleton() {
           <DetailCardSkeleton lines={3} />
         </div>
         <div className="w-full space-y-3 md:w-[min(100%,20rem)] md:shrink-0 xl:w-[370px]">
-          <div className="rounded-xl border border-border/50 bg-card p-4">
+          <div className="border-border/50 bg-card rounded-xl border p-4">
             <Skeleton className="mb-4 h-4 w-24" />
             <div className="space-y-2">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="flex items-center gap-2">
                   <Skeleton className="size-6 shrink-0 rounded-full" />
-                  <Skeleton
-                    className="h-3 flex-1"
-                    style={{ maxWidth: `${100 - i * 8}%` }}
-                  />
+                  <Skeleton className="h-3 flex-1" style={{ maxWidth: `${100 - i * 8}%` }} />
                 </div>
               ))}
             </div>
@@ -430,15 +210,15 @@ export function BookingsTableSkeleton() {
     >
       <div className="overflow-x-auto">
         <div className="min-w-[560px]">
-          <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3 sm:px-5">
+          <div className="border-separator bg-card flex items-center gap-4 border-b px-4 py-3 sm:px-5">
             {[56, 96, 88, 32, 40, 56, 24].map((w, i) => (
               <Skeleton
                 key={i}
                 className={cn(
-                  "h-2.5 shrink-0 rounded-full",
-                  i === 3 && "hidden md:block",
-                  i === 4 && "hidden sm:block",
-                  i === 5 && "hidden lg:block",
+                  'h-2.5 shrink-0 rounded-full',
+                  i === 3 && 'hidden md:block',
+                  i === 4 && 'hidden sm:block',
+                  i === 5 && 'hidden lg:block'
                 )}
                 style={{ width: w }}
               />
@@ -448,8 +228,8 @@ export function BookingsTableSkeleton() {
             <div
               key={i}
               className={cn(
-                "flex items-center gap-3 bg-card px-4 py-4 sm:gap-4 sm:px-5",
-                i > 0 && "border-t border-separator",
+                'bg-card flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-5',
+                i > 0 && 'border-separator border-t'
               )}
               style={{ opacity: 1 - i * 0.08 }}
             >
@@ -479,17 +259,17 @@ export function BookingsTableSkeleton() {
 export function BookingsCardGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4"
       aria-busy="true"
       aria-label="Loading bookings"
     >
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="overflow-hidden rounded-xl border border-border/50 bg-card"
+          className="border-border/50 bg-card overflow-hidden rounded-xl border"
           style={{ opacity: 1 - i * 0.06 }}
         >
-          <div className="space-y-4 p-4 pb-3">
+          <div className="space-y-3 p-3 pb-2.5 sm:space-y-4 sm:p-4">
             <Skeleton className="h-6 w-28 rounded-full" />
             <div className="flex items-center gap-3">
               <Skeleton className="size-12 shrink-0 rounded-full" />
@@ -504,7 +284,7 @@ export function BookingsCardGridSkeleton() {
             <Skeleton className="h-3.5 w-full" />
             <Skeleton className="h-3 w-1/2" />
           </div>
-          <div className="flex items-center justify-between gap-2 border-t border-separator bg-muted/20 px-4 py-3 dark:bg-muted/30">
+          <div className="border-separator bg-muted/20 dark:bg-muted/30 flex items-center justify-between gap-2 border-t px-4 py-3">
             <div className="flex gap-1.5">
               <Skeleton className="size-7 rounded-md" />
             </div>
@@ -520,17 +300,14 @@ function FinanceKpiGridSkeleton({ count = 4 }: { count?: number }) {
   return (
     <div
       className={cn(
-        "grid gap-3",
-        count === 3 && "grid-cols-1 sm:grid-cols-3",
-        count === 4 && "grid-cols-2 lg:grid-cols-4",
-        count === 2 && "grid-cols-2",
+        'grid gap-2 sm:gap-3 lg:gap-4',
+        count === 3 && 'grid-cols-2 sm:grid-cols-3',
+        count === 4 && 'grid-cols-2 lg:grid-cols-4',
+        count === 2 && 'grid-cols-2'
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
-        <AdminMetricCardSkeleton
-          key={i}
-          style={{ opacity: 1 - i * 0.05 } as CSSProperties}
-        />
+        <AdminMetricCardSkeleton key={i} style={{ opacity: 1 - i * 0.05 } as CSSProperties} />
       ))}
     </div>
   );
@@ -539,7 +316,7 @@ function FinanceKpiGridSkeleton({ count = 4 }: { count?: number }) {
 export function FinanceOverviewSkeleton() {
   return (
     <div
-      className="space-y-4 sm:space-y-5"
+      className="space-y-3 sm:space-y-4 lg:space-y-5"
       aria-busy="true"
       aria-label="Loading finance overview"
     >
@@ -559,21 +336,21 @@ export function FinanceOverviewSkeleton() {
 export function FinanceStaysCardGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4"
       aria-busy="true"
       aria-label="Loading stays"
     >
       {Array.from({ length: 8 }).map((_, i) => (
         <div
           key={i}
-          className="rounded-xl border border-border/50 bg-card p-3.5 sm:p-4"
+          className="border-border/50 bg-card rounded-xl border p-3.5 sm:p-4"
           style={{ opacity: 1 - i * 0.06 }}
         >
           <Skeleton className="h-6 w-24 rounded-full" />
           <Skeleton className="mt-2 h-3.5 w-2/3" />
           <Skeleton className="mt-2 h-3 w-full max-w-[14rem]" />
           <Skeleton className="mt-1.5 size-7 rounded-md" />
-          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-separator pt-3">
+          <div className="border-separator mt-3 grid grid-cols-2 gap-3 border-t pt-3">
             <div className="space-y-1.5">
               <Skeleton className="h-2.5 w-14" />
               <Skeleton className="h-3.5 w-16" />
@@ -591,29 +368,21 @@ export function FinanceStaysCardGridSkeleton() {
 
 export function FinanceStaysTableSkeleton() {
   return (
-    <div
-      className="space-y-3"
-      aria-busy="true"
-      aria-label="Loading stays ledger"
-    >
+    <div className="space-y-3" aria-busy="true" aria-label="Loading stays ledger">
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[640px]">
-            <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3">
+            <div className="border-separator bg-card flex items-center gap-4 border-b px-4 py-3">
               {[56, 120, 88, 40, 56, 48, 48, 40].map((w, i) => (
-                <Skeleton
-                  key={i}
-                  className="h-2.5 shrink-0 rounded-full"
-                  style={{ width: w }}
-                />
+                <Skeleton key={i} className="h-2.5 shrink-0 rounded-full" style={{ width: w }} />
               ))}
             </div>
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className={cn(
-                  "flex items-center gap-3 bg-card px-4 py-4",
-                  i > 0 && "border-t border-separator",
+                  'bg-card flex items-center gap-3 px-4 py-4',
+                  i > 0 && 'border-separator border-t'
                 )}
                 style={{ opacity: 1 - i * 0.08 }}
               >
@@ -650,11 +419,7 @@ export function FinanceStaysTableSkeleton() {
 
 export function FinanceOperatingTabSkeleton() {
   return (
-    <div
-      className="space-y-4"
-      aria-busy="true"
-      aria-label="Loading transactions"
-    >
+    <div className="space-y-4" aria-busy="true" aria-label="Loading transactions">
       <FinanceKpiGridSkeleton count={3} />
       <div className="flex items-center justify-between">
         <Skeleton className="h-3 w-16" />
@@ -663,14 +428,11 @@ export function FinanceOperatingTabSkeleton() {
       <div className="surface-card overflow-hidden">
         <div className="overflow-x-auto">
           <div className="min-w-[520px]">
-            <div className="flex items-center gap-4 border-b border-separator bg-card px-4 py-3">
+            <div className="border-separator bg-card flex items-center gap-4 border-b px-4 py-3">
               {[48, 40, 120, 64, 56].map((w, i) => (
                 <Skeleton
                   key={i}
-                  className={cn(
-                    "h-2.5 shrink-0 rounded-full",
-                    i === 2 && "flex-1",
-                  )}
+                  className={cn('h-2.5 shrink-0 rounded-full', i === 2 && 'flex-1')}
                   style={{ width: i === 2 ? undefined : w }}
                 />
               ))}
@@ -679,13 +441,13 @@ export function FinanceOperatingTabSkeleton() {
               <div
                 key={i}
                 className={cn(
-                  "flex items-center gap-3 bg-card px-4 py-3.5",
-                  i > 0 && "border-t border-separator",
+                  'bg-card flex items-center gap-3 px-4 py-3.5',
+                  i > 0 && 'border-separator border-t'
                 )}
               >
                 <Skeleton className="h-3 w-20" />
                 <Skeleton className="h-5 w-16 rounded-full" />
-                <Skeleton className="h-3 flex-1 max-w-[180px]" />
+                <Skeleton className="h-3 max-w-[180px] flex-1" />
                 <Skeleton className="hidden h-3 w-16 md:block" />
                 <Skeleton className="h-3 w-14" />
               </div>
@@ -705,18 +467,18 @@ export function BookingsCalendarSkeleton({
   compact?: boolean;
 } = {}) {
   const cellClass = compact
-    ? "aspect-square rounded-lg sm:min-h-[72px] sm:aspect-auto"
-    : "aspect-square rounded-lg sm:min-h-[88px] sm:aspect-auto";
+    ? 'aspect-square rounded-lg sm:min-h-[72px] sm:aspect-auto'
+    : 'aspect-square rounded-lg sm:min-h-[88px] sm:aspect-auto';
 
   const grid = (
     <div
       className={
         gridOnly
-          ? "overflow-hidden"
-          : "overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm dark:shadow-none lg:col-span-2"
+          ? 'overflow-hidden'
+          : 'border-border/50 bg-card overflow-hidden rounded-xl border shadow-sm lg:col-span-2 dark:shadow-none'
       }
     >
-      <div className="flex items-center justify-between border-b border-separator bg-muted/30 px-3 py-3 sm:px-4">
+      <div className="border-separator bg-muted/30 flex items-center justify-between border-b px-3 py-3 sm:px-4">
         <Skeleton className="h-4 w-28" />
         <div className="flex gap-1">
           <Skeleton className="size-9 rounded-lg" />
@@ -752,8 +514,8 @@ export function BookingsCalendarSkeleton({
       aria-label="Loading calendar"
     >
       {grid}
-      <div className="overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm dark:shadow-none">
-        <div className="border-b border-separator bg-muted/30 px-4 py-3">
+      <div className="border-border/50 bg-card overflow-hidden rounded-xl border shadow-sm dark:shadow-none">
+        <div className="border-separator bg-muted/30 border-b px-4 py-3">
           <Skeleton className="h-4 w-24" />
           <Skeleton className="mt-1.5 h-3 w-32" />
         </div>
@@ -767,18 +529,14 @@ export function BookingsCalendarSkeleton({
   );
 }
 
-function DashboardChartCardHeaderSkeleton({
-  showAction = false,
-}: {
-  showAction?: boolean;
-}) {
+function DashboardChartCardHeaderSkeleton({ showAction = false }: { showAction?: boolean }) {
   return (
     <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 items-start gap-2">
         <Skeleton className="icon-well-sm shrink-0 rounded-lg" />
         <div className="min-w-0 space-y-1">
-          <Skeleton className="h-4 w-28" />
-          <Skeleton className="h-3 w-40 max-w-full" />
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-4 w-40 max-w-full" />
         </div>
       </div>
       {showAction ? (
@@ -797,15 +555,11 @@ function DashboardTrendStatCardSkeleton() {
 
 export function DashboardSkeleton() {
   return (
-    <div
-      className="space-y-3 sm:space-y-4"
-      aria-busy="true"
-      aria-label="Loading dashboard"
-    >
+    <div className="space-y-3 sm:space-y-4" aria-busy="true" aria-label="Loading dashboard">
       <section aria-hidden>
         <Skeleton className="section-eyebrow mb-3 h-3 w-28 px-0.5" />
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <DashboardTrendStatCardSkeleton key={`trend-${i}`} />
           ))}
         </div>
@@ -816,7 +570,7 @@ export function DashboardSkeleton() {
           <section className="surface-card flex min-w-0 flex-col p-3 sm:p-4 lg:col-span-3">
             <DashboardChartCardHeaderSkeleton />
             <div className="flex min-h-0 flex-1 flex-col">
-              <Skeleton className="h-[220px] w-full min-w-0 rounded-xl sm:h-[300px]" />
+              <Skeleton className="h-[180px] w-full min-w-0 rounded-xl sm:h-[240px] lg:h-[300px]" />
               <div className="mt-4 flex justify-center gap-6">
                 <Skeleton className="h-4 w-16" />
                 <Skeleton className="h-4 w-20" />
@@ -830,13 +584,10 @@ export function DashboardSkeleton() {
               <div className="flex min-h-0 flex-1 items-center justify-center px-2 pb-10">
                 <Skeleton className="size-40 shrink-0 rounded-full sm:size-48" />
               </div>
-              <div className="shrink-0 border-t border-border/50 pt-2">
+              <div className="border-border/50 shrink-0 border-t pt-2">
                 <div className="grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-2">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton
-                      key={`breakdown-legend-${i}`}
-                      className="h-4 w-full"
-                    />
+                    <Skeleton key={`breakdown-legend-${i}`} className="h-4 w-full" />
                   ))}
                 </div>
               </div>
@@ -850,15 +601,12 @@ export function DashboardSkeleton() {
                 <Skeleton key={`dow-${i}`} className="mx-auto h-3 w-6" />
               ))}
               {Array.from({ length: 35 }).map((_, i) => (
-                <Skeleton
-                  key={`day-${i}`}
-                  className="aspect-square w-full rounded-lg"
-                />
+                <Skeleton key={`day-${i}`} className="aspect-square w-full rounded-lg" />
               ))}
             </div>
           </section>
 
-          <section className="surface-card flex min-h-[280px] min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-2 lg:col-start-4 lg:row-start-2 sm:min-h-[320px]">
+          <section className="surface-card flex min-h-[280px] min-w-0 flex-col overflow-hidden p-3 sm:min-h-[320px] sm:p-4 lg:col-span-2 lg:col-start-4 lg:row-start-2">
             <DashboardChartCardHeaderSkeleton showAction />
             <div className="mb-3 flex flex-wrap gap-2">
               <Skeleton className="h-7 w-16 rounded-full" />

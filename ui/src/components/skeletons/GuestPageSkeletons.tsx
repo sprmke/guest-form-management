@@ -1,11 +1,11 @@
-import { cn } from '@/lib/utils';
+import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
 import { Skeleton } from '@/components/ui/skeleton';
-import { KameFormBrandHeader } from '@/components/KameFormBrandHeader';
+import { cn } from '@/lib/utils';
 
 function GuestFormStepperSkeleton() {
   return (
     <div
-      className="space-y-3 rounded-xl border border-primary/15 bg-gradient-to-br from-primary/5 via-card to-card px-3 py-4 sm:px-5"
+      className="border-primary/15 from-primary/5 via-card to-card space-y-3 rounded-xl border bg-gradient-to-br px-3 py-4 sm:px-5"
       aria-hidden
     >
       <div className="space-y-1.5 sm:hidden">
@@ -51,25 +51,20 @@ function GuestFormStepPanelSkeleton({
   twoColumn?: boolean;
 }) {
   return (
-    <div className="space-y-5 rounded-xl border border-border/80 bg-card px-4 py-5 shadow-sm sm:px-6 sm:py-6">
-      <header className="flex items-center gap-3 border-b border-separator pb-4">
+    <div className="border-border/80 bg-card space-y-5 rounded-xl border px-4 py-5 shadow-sm sm:px-6 sm:py-6">
+      <header className="border-separator flex items-center gap-3 border-b pb-4">
         <Skeleton className="size-10 shrink-0 rounded-lg" />
         <div className="min-w-0 flex-1 space-y-2">
           <Skeleton className="h-4 w-40" />
           <Skeleton className="h-3 w-full max-w-md" />
         </div>
       </header>
-      <div
-        className={cn(
-          'grid gap-4',
-          twoColumn && 'grid-cols-1 md:grid-cols-2 md:[&>*]:min-w-0',
-        )}
-      >
+      <div className={cn('grid gap-4', twoColumn && 'grid-cols-1 md:grid-cols-2 md:[&>*]:min-w-0')}>
         {Array.from({ length: fieldCount }).map((_, i) => (
           <GuestFormFieldSkeleton key={i} />
         ))}
       </div>
-      <div className="flex flex-col-reverse gap-2 border-t border-separator pt-5 sm:flex-row sm:items-center sm:justify-between">
+      <div className="border-separator flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
         <Skeleton className="h-11 w-full rounded-xl sm:w-28" />
         <Skeleton className="h-11 w-full rounded-xl sm:w-32" />
       </div>
@@ -145,7 +140,11 @@ export function CalendarPageSkeleton() {
 
 export function SdFormPageSkeleton({ title }: { title: string }) {
   return (
-    <div className="relative space-y-6 p-4 sm:p-6 lg:p-8" aria-busy="true" aria-label="Loading form">
+    <div
+      className="relative space-y-6 p-4 sm:p-6 lg:p-8"
+      aria-busy="true"
+      aria-label="Loading form"
+    >
       <KameFormBrandHeader title={title} />
       <GuestFormStepperSkeleton />
       <GuestFormStepPanelSkeleton fieldCount={3} twoColumn={false} />
@@ -155,9 +154,13 @@ export function SdFormPageSkeleton({ title }: { title: string }) {
 
 export function PayParkingPageSkeleton({ title }: { title: string }) {
   return (
-    <div className="relative space-y-6 p-4 sm:p-6 lg:p-8" aria-busy="true" aria-label="Loading form">
+    <div
+      className="relative space-y-6 p-4 sm:p-6 lg:p-8"
+      aria-busy="true"
+      aria-label="Loading form"
+    >
       <KameFormBrandHeader title={title} />
-      <div className="space-y-4 rounded-xl border border-border/80 bg-card px-4 py-5 shadow-sm sm:px-6">
+      <div className="border-border/80 bg-card space-y-4 rounded-xl border px-4 py-5 shadow-sm sm:px-6">
         <Skeleton className="h-4 w-40" />
         <Skeleton className="h-3 w-full max-w-lg" />
         <div className="grid gap-4 sm:grid-cols-2">
