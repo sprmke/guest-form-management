@@ -376,7 +376,7 @@ export const compareFormData = (
  * Form keys emitted by compareFormData().changedFields whose edits require
  * status → PENDING_REVIEW when saving from public /form, while the row is in
  * the documents pipeline or Ready for check-in (see statusMachine
- * `shouldRevertGuestFieldEditsToPendingReview`; docs/TODOS.md + booking-workflow.mdc §2.3).
+ * `shouldRevertGuestFieldEditsToPendingReview`; docs/todos/ + booking-workflow.mdc §2.3).
  */
 const WORKFLOW_SENSITIVE_FORM_FIELDS = new Set<string>([
   'guestFacebookName',

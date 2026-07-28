@@ -87,6 +87,7 @@ export type WebChatStartResult = {
   };
   inquiryCheckIn: string;
   inquiryCheckOut: string;
+  replyStatus: 'pending' | 'replied' | 'none';
 };
 
 export type WebChatResumeResult = {
@@ -94,6 +95,7 @@ export type WebChatResumeResult = {
   conversationId: string | null;
   inquiryCheckIn: string | null;
   inquiryCheckOut: string | null;
+  replyStatus: 'pending' | 'replied' | 'none' | null;
   property: {
     id: string;
     slug: string;
@@ -115,6 +117,7 @@ export async function resumeGuestWebChat(
     conversationId: null,
     inquiryCheckIn: null,
     inquiryCheckOut: null,
+    replyStatus: null,
     property: null,
     host: null,
   };
@@ -131,7 +134,7 @@ export async function resumeGuestWebChat(
   const threadId = buildWebThreadId(property.id, user.id);
   const { data: conv, error } = await sb
     .from('social_conversations')
-    .select('id, inquiry_check_in, inquiry_check_out, subject_preview')
+    .select('id, inquiry_check_in, inquiry_check_out, subject_preview, reply_status')
     .eq('platform', 'web')
     .eq('external_thread_id', threadId)
     .maybeSingle();
@@ -148,6 +151,7 @@ export async function resumeGuestWebChat(
     conversationId: conv.id as string,
     inquiryCheckIn: (conv.inquiry_check_in as string | null) ?? null,
     inquiryCheckOut: (conv.inquiry_check_out as string | null) ?? null,
+    replyStatus: (conv.reply_status as WebChatResumeResult['replyStatus']) ?? 'none',
     property: {
       id: property.id,
       slug: property.slug,
@@ -223,6 +227,7 @@ export async function startGuestWebChat(
     },
     inquiryCheckIn: dates.checkIn,
     inquiryCheckOut: dates.checkOut,
+    replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
   };
 }
 
@@ -292,6 +297,18 @@ export async function sendGuestWebMessage(
   } catch (autoErr) {
     console.warn('[webGuestChat] auto-reply:', autoErr);
   }
+
+  try {
+    const { notifyTelegramChatInbound } = await import('./telegramChat.ts');
+    await notifyTelegramChatInbound({
+      conversation: conv,
+      text: trimmed || null,
+      attachments,
+      sentAt: now,
+    });
+  } catch (tgErr) {
+    console.warn('[webGuestChat] telegram notify:', tgErr);
+  }
 }
 
 export async function editGuestWebMessage(
@@ -344,6 +361,7 @@ export async function listGuestWebMessages(
     conversation: conv,
     messages: slice.reverse(),
     hasMore,
+    replyStatus: conv.reply_status ?? 'none',
   };
 }
 
