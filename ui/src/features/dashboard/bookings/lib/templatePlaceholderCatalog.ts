@@ -315,6 +315,19 @@ export const TELEGRAM_MAINTENANCE_PLACEHOLDER_KEYS = [
   'kind',
 ] as const;
 
+export const TELEGRAM_CHAT_PLACEHOLDER_KEYS = [
+  'guest_name',
+  'property_name',
+  'chat_source',
+  'chat_content',
+  'attachment_summary',
+  'attachment_line',
+  'conversation_link',
+  'check_in_date',
+  'check_out_date',
+  'sent_at',
+] as const;
+
 export function telegramPlaceholderLinesByTab(
   map: Record<string, readonly string[]>
 ): Record<string, string[]> {

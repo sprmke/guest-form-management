@@ -97,3 +97,8 @@ export const FINANCE_TEMPLATE_DEFAULTS = {
 export const MAINTENANCE_TEMPLATE_DEFAULTS = {
   defaultReminderTemplate: MAINTENANCE_DEFAULT_REMINDER_TEMPLATE,
 } as const;
+
+export const CHAT_TEMPLATE_DEFAULTS = {
+  newMessageTemplate:
+    '💬 New guest chat\n\nProperty: {{property_name}}\nSource: {{chat_source}}\n\nGuest: {{guest_name}}\nMessage:\n{{chat_content}}\n{{attachment_line}}\n\nReply now:\n{{conversation_link}}',
+} as const;

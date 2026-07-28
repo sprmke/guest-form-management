@@ -47,7 +47,7 @@ function normDate(d: string | null | undefined): string {
 /**
  * True when `draft` differs from `baseline` on any field that should force
  * status → PENDING_REVIEW while the booking is in the documents pipeline or
- * Ready for check-in (see docs/TODOS.md + booking-workflow.mdc §2.3).
+ * Ready for check-in (see docs/todos/ + booking-workflow.mdc §2.3).
  *
  * Compare two payloads built via `bookingEditPayloadFromValues` so form
  * defaults (empty ages, trimmed names) match the saved baseline on open.

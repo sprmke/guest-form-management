@@ -1,5 +1,5 @@
 export type TelegramPreviewSampleSet =
-  'admin' | 'staff' | 'marketing' | 'finance' | 'maintenance' | 'parking';
+  'admin' | 'staff' | 'marketing' | 'finance' | 'maintenance' | 'parking' | 'chat';
 
 const SHARED_STAY_SAMPLES: Record<string, string> = {
   check_in_date: 'June 18, 2026',
@@ -98,6 +98,20 @@ const PARKING_SAMPLES: Record<string, string> = {
   amount: '₱1,200',
 };
 
+const CHAT_SAMPLES: Record<string, string> = {
+  guest_name: 'Juan Dela Cruz',
+  property_name: 'Azure North',
+  chat_source: 'Web chat',
+  chat_content: 'Hi! Is June 18–20 still available for 2 guests?',
+  attachment_summary: '1 image',
+  attachment_line: '\n📎 Photo',
+  conversation_link:
+    'https://kamehomes.space/org/demo/inbox?conversationId=00000000-0000-4000-8000-000000000001&platform=web',
+  check_in_date: 'June 18, 2026',
+  check_out_date: 'June 20, 2026',
+  sent_at: 'Jun 15, 2026, 3:42 PM',
+};
+
 const SAMPLE_SETS: Record<TelegramPreviewSampleSet, Record<string, string>> = {
   admin: ADMIN_SAMPLES,
   staff: STAFF_SAMPLES,
@@ -105,6 +119,7 @@ const SAMPLE_SETS: Record<TelegramPreviewSampleSet, Record<string, string>> = {
   finance: FINANCE_SAMPLES,
   maintenance: MAINTENANCE_SAMPLES,
   parking: PARKING_SAMPLES,
+  chat: CHAT_SAMPLES,
 };
 
 export function getTelegramPreviewSamples(set: TelegramPreviewSampleSet): Record<string, string> {

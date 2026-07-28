@@ -9,6 +9,7 @@ const GROUP_ORDER = [
   'Guest',
   'Stay',
   'Booking',
+  'Chat',
   'Flags',
   'Sections',
   'Workflow',
@@ -112,6 +113,36 @@ const PLACEHOLDER_META: Record<string, PlaceholderMeta> = {
     group: 'Booking',
     description: 'Admin booking URL',
     example: 'kamehomes.space/bookings/…',
+  },
+  chat_source: {
+    group: 'Chat',
+    description: 'Channel (Web chat, Facebook Messenger, Instagram)',
+    example: 'Web chat',
+  },
+  chat_content: {
+    group: 'Chat',
+    description: 'Guest message text (or attachment note)',
+    example: 'Hi! Is June 18–20 still available?',
+  },
+  attachment_summary: {
+    group: 'Chat',
+    description: 'Short attachment count (e.g. 1 image)',
+    example: '1 image',
+  },
+  attachment_line: {
+    group: 'Chat',
+    description: 'Optional attachment line (empty when none)',
+    example: '📎 Photo',
+  },
+  conversation_link: {
+    group: 'Chat',
+    description: 'Inbox deep link to this conversation',
+    example: 'kamehomes.space/org/…/inbox?conversationId=…',
+  },
+  sent_at: {
+    group: 'Chat',
+    description: 'Message time (Asia/Manila)',
+    example: 'Jun 15, 2026, 3:42 PM',
   },
   booking_vehicle_copy: {
     group: 'Sections',

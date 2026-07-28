@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
-import { Bell, DollarSign, HardHat, Megaphone, Wrench } from 'lucide-react';
+import { Bell, DollarSign, HardHat, Megaphone, MessageCircle, Wrench } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
@@ -13,6 +13,7 @@ import {
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { TelegramAdminSettingsCard } from '@/features/dashboard/bookings/components/TelegramAdminSettingsCard';
+import { TelegramChatSettingsCard } from '@/features/dashboard/bookings/components/TelegramChatSettingsCard';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { TelegramMaintenanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramMaintenanceSettingsCard';
 import { TelegramMarketingSettingsCard } from '@/features/dashboard/bookings/components/TelegramMarketingSettingsCard';
@@ -25,6 +26,7 @@ const NOTIFICATION_MODULES: NotificationModule[] = [
   'operations',
   'finance',
   'maintenance',
+  'chat',
 ];
 
 function isNotificationModule(value: string | null): value is NotificationModule {
@@ -37,6 +39,7 @@ const MODULE_SECTIONS: AdminSectionNavItem[] = [
   { id: 'operations', label: 'Operations', icon: Bell },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
+  { id: 'chat', label: 'Chat', icon: MessageCircle },
 ];
 
 const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
@@ -58,42 +61,44 @@ export function NotificationsPage() {
   }, [deepLinkModule]);
 
   return (
-    
-      <AdminSectionNavLayout
-        sectionGroups={NOTIFICATION_SECTION_GROUPS}
-        header={
-          <AdminPageHeader
-            id="notifications-heading"
-            variant="compact"
-            title="Notifications"
-            subtitle="Configure Telegram notifications for this property."
-          />
-        }
-      >
-        <div className="space-y-3 sm:space-y-4">
-          <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
+    <AdminSectionNavLayout
+      sectionGroups={NOTIFICATION_SECTION_GROUPS}
+      header={
+        <AdminPageHeader
+          id="notifications-heading"
+          variant="compact"
+          title="Notifications"
+          subtitle="Configure Telegram notifications for this property."
+        />
+      }
+    >
+      <div className="space-y-3 sm:space-y-4">
+        <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
 
-          <AdminSection id="marketing" title="Marketing" icon={Megaphone}>
-            <TelegramMarketingSettingsCard embedded />
-          </AdminSection>
+        <AdminSection id="marketing" title="Marketing" icon={Megaphone}>
+          <TelegramMarketingSettingsCard embedded />
+        </AdminSection>
 
-          <AdminSection id="staff" title="Staff" icon={HardHat}>
-            <TelegramStaffSettingsCard embedded />
-          </AdminSection>
+        <AdminSection id="staff" title="Staff" icon={HardHat}>
+          <TelegramStaffSettingsCard embedded />
+        </AdminSection>
 
-          <AdminSection id="operations" title="Operations" icon={Bell}>
-            <TelegramAdminSettingsCard embedded />
-          </AdminSection>
+        <AdminSection id="operations" title="Operations" icon={Bell}>
+          <TelegramAdminSettingsCard embedded />
+        </AdminSection>
 
-          <AdminSection id="finance" title="Finance" icon={DollarSign}>
-            <TelegramFinanceSettingsCard embedded />
-          </AdminSection>
+        <AdminSection id="finance" title="Finance" icon={DollarSign}>
+          <TelegramFinanceSettingsCard embedded />
+        </AdminSection>
 
-          <AdminSection id="maintenance" title="Maintenance" icon={Wrench}>
-            <TelegramMaintenanceSettingsCard embedded />
-          </AdminSection>
-        </div>
-      </AdminSectionNavLayout>
-    
+        <AdminSection id="maintenance" title="Maintenance" icon={Wrench}>
+          <TelegramMaintenanceSettingsCard embedded />
+        </AdminSection>
+
+        <AdminSection id="chat" title="Chat" icon={MessageCircle}>
+          <TelegramChatSettingsCard embedded />
+        </AdminSection>
+      </div>
+    </AdminSectionNavLayout>
   );
 }

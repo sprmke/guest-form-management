@@ -3,7 +3,8 @@ import { scopedAssetFunctionsUrl } from '@/features/dashboard/org/lib/adminAsset
 
 import { supabase } from '@/lib/supabase/client';
 
-export type TelegramPreviewBot = 'marketing' | 'staff' | 'admin' | 'finance' | 'maintenance';
+export type TelegramPreviewBot =
+  'marketing' | 'staff' | 'admin' | 'finance' | 'maintenance' | 'chat';
 
 export type TelegramPreviewContext = {
   bot: TelegramPreviewBot;
@@ -25,6 +26,7 @@ const SETTINGS_ENDPOINT: Record<TelegramPreviewBot, string> = {
   admin: 'telegram-admin-settings',
   finance: 'telegram-finance-settings',
   maintenance: 'telegram-maintenance-settings',
+  chat: 'telegram-chat-settings',
 };
 
 async function getAdminJwt(): Promise<string> {
