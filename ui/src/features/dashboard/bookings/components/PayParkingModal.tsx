@@ -1,5 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useNavigate } from 'react-router-dom';
@@ -7,10 +5,6 @@ import { useNavigate } from 'react-router-dom';
 import { Car, Copy, ExternalLink, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useSaveParkingRateGuest } from '@/features/dashboard/bookings/hooks/useSaveParkingRateGuest';
-
-import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   buildPayParkingAbsoluteUrl,
   buildPayParkingPath,
@@ -28,6 +22,10 @@ import {
   parkingUsesBookingStayDates,
 } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
+import { useSaveParkingRateGuest } from '@/features/dashboard/bookings/hooks/useSaveParkingRateGuest';
+import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -39,6 +37,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { formatBookingDate } from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 import { DATE_PICKER_DISPLAY_FORMAT } from '@/utils/format/dates';
 
 type Props = {

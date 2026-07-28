@@ -35,18 +35,6 @@ import {
   canHostUnsendMessage,
 } from '@/features/dashboard/inbox/types/inbox';
 
-import {
-  formatChatBubbleTime,
-  isChatMessageUnsent,
-  resolveOutboundDeliveryStatus,
-  unsentMessageLabel,
-} from '@/lib/chat/chatMessageFormat';
-import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
-import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
-import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
-import { useChatTyping } from '@/lib/chat/useChatTyping';
-
-import { Button } from '@/components/ui/button';
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {
   ChatMessageActionItem,
@@ -55,6 +43,7 @@ import {
 import { ChatMessageBubble } from '@/components/chat/ChatMessageBubble';
 import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import { ChatThreadSearchPanel, ChatThreadSearchTrigger } from '@/components/chat/ChatThreadSearch';
+import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +53,16 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
+import {
+  formatChatBubbleTime,
+  isChatMessageUnsent,
+  resolveOutboundDeliveryStatus,
+  unsentMessageLabel,
+} from '@/lib/chat/chatMessageFormat';
+import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
+import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
+import { useChatTyping } from '@/lib/chat/useChatTyping';
 import { cn } from '@/lib/utils';
 
 type ComposerMode =

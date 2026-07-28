@@ -39,9 +39,5 @@ export function AdminSettingsPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, qc]);
 
-  return (
-    
-      <AppSettingsCard />
-    
-  );
+  return <AppSettingsCard />;
 }

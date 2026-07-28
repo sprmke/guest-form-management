@@ -20,15 +20,14 @@ import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettin
 import { CalendarPropertyMediaProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
 import { CalendarThumbnailsProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
-import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
-import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
-import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
+import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
+import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
+import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
-import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   aspectPresetForCalendarFormat,
   findCalendarAutosaveTemplate,
@@ -37,6 +36,7 @@ import {
   isCalendarPresetAutosave,
   CALENDAR_CUSTOM_PRESET_ID,
 } from '@/features/dashboard/marketing/lib/calendarAutosave';
+import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   calendarFormatToAspectPreset,
   calendarPreviewLayout,

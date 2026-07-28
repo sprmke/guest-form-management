@@ -1,7 +1,9 @@
 import { motion } from 'framer-motion';
 import { MapPin, Navigation, Train, Plane, Coffee, ShoppingBag } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
 import { PropertyMapEmbed } from '@/features/guest/marketing/properties/components/property-detail/PropertyMapEmbed';
+
+import { Button } from '@/components/ui/button';
 
 interface PropertyLocationProps {
   address: string;

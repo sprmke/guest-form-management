@@ -1,5 +1,6 @@
-import type { DashboardStats, DashboardTrendWindow } from '@/features/dashboard/property/lib/types';
 import type { DashboardPeriod } from '@/features/dashboard/property/lib/dashboardPeriod';
+import type { DashboardStats, DashboardTrendWindow } from '@/features/dashboard/property/lib/types';
+
 import { formatDateRangeDisplay, fromIsoDate, type DatePreset } from '@/lib/date/navigation';
 
 function periodLabel(period: DashboardPeriod, preset: DatePreset = 'month'): string {

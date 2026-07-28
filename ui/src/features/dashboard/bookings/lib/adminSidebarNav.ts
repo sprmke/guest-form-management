@@ -19,8 +19,6 @@ import {
   Wrench,
 } from 'lucide-react';
 
-import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
-
 import {
   orgBookingsPath,
   orgDashboardPath,
@@ -32,19 +30,20 @@ import {
   parkingSectionPath,
   propertySectionPath,
 } from '@/features/dashboard/org/lib/tenantPaths';
+import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import type { OrgPermissionId } from '@/features/dashboard/team/lib/orgPermissions';
 import {
   hasOrgPermission,
   ORG_NAV_VIEW_PERMISSION,
 } from '@/features/dashboard/team/lib/orgPermissions';
 import {
-  hasPropertyPermission,
-  PROPERTY_NAV_VIEW_PERMISSION,
-} from '@/features/dashboard/team/lib/propertyPermissions';
-import {
   hasParkingPermission,
   PARKING_NAV_VIEW_PERMISSION,
 } from '@/features/dashboard/team/lib/parkingPermissions';
+import {
+  hasPropertyPermission,
+  PROPERTY_NAV_VIEW_PERMISSION,
+} from '@/features/dashboard/team/lib/propertyPermissions';
 
 export type SidebarNavItem = {
   label: string;

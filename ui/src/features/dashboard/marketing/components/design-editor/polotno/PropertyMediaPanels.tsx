@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 
+import { Icon } from '@blueprintjs/core';
+import { CloudUpload, LayoutGrid } from '@blueprintjs/icons';
 import { observer } from 'mobx-react-lite';
+import { selectImage } from 'openpolotno/side-panel/select-image';
+import { ImagesGrid, SectionTab } from 'openpolotno/side-panel/side-panel';
 
 import {
   KameSidePanelGroup,
@@ -11,22 +15,19 @@ import {
   mergePropertyMediaItems,
   type PolotnoSessionMedia,
 } from '@/features/dashboard/marketing/components/design-editor/polotno/usePolotnoSessionMedia';
-import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 
-import { cn } from '@/lib/utils';
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
-
-import { Icon } from '@blueprintjs/core';
-import { CloudUpload, LayoutGrid } from '@blueprintjs/icons';
-import { ImagesGrid, SectionTab } from 'openpolotno/side-panel/side-panel';
-import { selectImage } from 'openpolotno/side-panel/select-image';
+import { cn } from '@/lib/utils';
 
 type PanelProps = {
   store: PolotnoStore;
   propertyImages: PropertyMediaItem[];
   sessionMedia: PolotnoSessionMedia;
 };
+
+type PropertyMediaGridItem = { url: string; preview: string };
 
 const BASE_BG_PRESETS = ['#0f172a', '#ffffff', '#5c3d2e', '#16a34a', '#2563eb'] as const;
 
@@ -70,8 +71,8 @@ export const PropertyUploadPanel = observer(function PropertyUploadPanel({
               images={allImages}
               isLoading={isUploading}
               hideNoResults
-              getPreview={(item) => item.preview}
-              onSelect={(item) => addImageToCanvas(item.url)}
+              getPreview={(item: PropertyMediaGridItem) => item.preview}
+              onSelect={(item: PropertyMediaGridItem) => addImageToCanvas(item.url)}
             />
           </div>
         </KameSidePanelGroup>
@@ -142,8 +143,8 @@ export const PropertyBackgroundPanel = observer(function PropertyBackgroundPanel
                 images={allImages}
                 isLoading={isUploading}
                 hideNoResults
-                getPreview={(item) => item.preview}
-                onSelect={(item) => setBackground(item.url)}
+                getPreview={(item: PropertyMediaGridItem) => item.preview}
+                onSelect={(item: PropertyMediaGridItem) => setBackground(item.url)}
               />
             </div>
           ) : (

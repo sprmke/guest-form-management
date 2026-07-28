@@ -4,8 +4,8 @@ import { Check, X } from 'lucide-react';
 
 import { CustomRolesSection } from '@/features/dashboard/team/components/CustomRolesSection';
 import { RoleDot } from '@/features/dashboard/team/components/RoleBadge';
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import { buildRoleMatrixColumnsForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

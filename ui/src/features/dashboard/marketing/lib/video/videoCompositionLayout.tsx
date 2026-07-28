@@ -1,11 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-import type { VideoScene } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import type { VideoSceneLayer } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   layerUsesWidthPct,
   resolveLayerWidthPct,
 } from '@/features/dashboard/marketing/lib/video/videoLayerSizing';
+import type { VideoScene } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type { VideoSceneLayer } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   type VideoTextSlotId,
   resolveTextSlotPosition,

@@ -1,4 +1,5 @@
 import { forwardRef, useMemo } from 'react';
+
 import { addDays, eachDayOfInterval, format } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -8,6 +9,7 @@ import {
   calendarOccupancySpanPosition,
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 
+import { useCalendarBuilderStore, MOCK_PREVIEW_BOOKINGS } from '../stores/calendar-builder-store';
 import {
   type CalendarStyles,
   type PreviewBooking,
@@ -17,7 +19,6 @@ import {
   type FontConfig,
   type ShadowConfig,
 } from '../types';
-import { useCalendarBuilderStore, MOCK_PREVIEW_BOOKINGS } from '../stores/calendar-builder-store';
 
 interface CalendarPreviewProps {
   styles: CalendarStyles;

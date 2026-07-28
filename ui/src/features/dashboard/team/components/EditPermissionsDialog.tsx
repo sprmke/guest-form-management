@@ -1,10 +1,10 @@
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
+import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   getRoleLabelForScope,
   getRolePermissionsForScope,
 } from '@/features/dashboard/team/lib/teamRoleHelpers';
-import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type {
   CustomPropertyRole,
   PropertyRoleId,

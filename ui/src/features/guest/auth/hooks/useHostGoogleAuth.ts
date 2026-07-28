@@ -2,12 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import { hostGoogleOAuthRedirectTo, safeRedirect } from '@/features/guest/auth/lib/hostAuthPaths';
+
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { resolvePostSignInPath } from '@/features/dashboard/org/lib/postSignInRouting';
 
 import { supabase } from '@/lib/supabase/client';
-
-import { hostGoogleOAuthRedirectTo, safeRedirect } from '@/features/guest/auth/lib/hostAuthPaths';
 
 type Options = {
   /** Pathname for OAuth callback (e.g. `/for-hosts/login`). */

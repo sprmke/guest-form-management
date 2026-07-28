@@ -1,4 +1,5 @@
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 const MAX_CACHE_ENTRIES = 80;

@@ -2,8 +2,8 @@ import { ExternalLink, Mail, Phone } from 'lucide-react';
 
 import type { GuestStayGuideDto } from '@/features/guest/stay-guide/lib/api';
 
-import { formatPhilippineMobileDisplay } from '@/lib/validation/fieldValidation';
 import { cn } from '@/lib/utils';
+import { formatPhilippineMobileDisplay } from '@/lib/validation/fieldValidation';
 
 interface StayGuideHelpSectionProps {
   host: GuestStayGuideDto['host'];

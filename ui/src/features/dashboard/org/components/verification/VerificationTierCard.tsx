@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import type { VerificationTierDefinition } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
+import type { VerificationTierDefinition } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 import { cn } from '@/lib/utils';
 

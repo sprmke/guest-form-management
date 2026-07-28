@@ -9,9 +9,9 @@ import {
 } from 'react';
 
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { applyBrandCssVariables } from '@/lib/theme/applyBrandCssVariables';

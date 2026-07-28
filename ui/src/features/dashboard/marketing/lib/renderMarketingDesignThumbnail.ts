@@ -1,8 +1,8 @@
 import { createStore } from 'openpolotno/model/store';
 
+import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import { captureDesignPresetThumbnail } from '@/features/dashboard/marketing/lib/designPresetThumbnailCapture';
 import { blobToDataUrl } from '@/features/dashboard/marketing/lib/exportVideoMedia';
-import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 

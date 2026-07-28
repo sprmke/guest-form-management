@@ -2,15 +2,16 @@ import { Link } from 'react-router-dom';
 
 import { LogOut } from 'lucide-react';
 
+import { useGuestProfile } from '@/features/guest/account/hooks/useGuestProfile';
+import { useGuestSignOut } from '@/features/guest/account/hooks/useGuestSignOut';
 import {
   guestInitials,
   resolveGuestAvatarUrl,
   resolveGuestDisplayName,
 } from '@/features/guest/account/lib/guestAccountIdentity';
 import { GUEST_ACCOUNT_NAV_ITEMS } from '@/features/guest/account/lib/guestAccountNav';
-import { useGuestProfile } from '@/features/guest/account/hooks/useGuestProfile';
-import { useGuestSignOut } from '@/features/guest/account/hooks/useGuestSignOut';
 import { useGuestSession } from '@/features/guest/auth/hooks/useGuestSession';
+
 import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

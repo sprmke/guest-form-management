@@ -1,6 +1,7 @@
 import type { AuthAudience } from '@/features/guest/auth/config/auth-page-config';
-import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { HOST_LOGIN_PATH } from '@/features/guest/auth/lib/hostAuthPaths';
+
+import { getLastOrgSlug, orgDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 
 /** Derive host vs guest (Explore) mode from the current pathname. */
 export function getAuthAudienceFromPath(pathname: string): AuthAudience {

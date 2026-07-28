@@ -3,13 +3,14 @@ import type { ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { Loader2 } from 'lucide-react';
-
-import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
-import { RequireAdminSignOutButton } from '@/features/dashboard/bookings/components/RequireAdmin';
-import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
-import { isSuperAdminEmail } from '@/lib/auth/superAdminAllowList';
-
 import { ShieldX } from 'lucide-react';
+
+import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
+
+import { RequireAdminSignOutButton } from '@/features/dashboard/bookings/components/RequireAdmin';
+import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+
+import { isSuperAdminEmail } from '@/lib/auth/superAdminAllowList';
 
 type Props = {
   children: ReactNode;

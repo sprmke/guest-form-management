@@ -1,10 +1,14 @@
 import { useState } from 'react';
 
 import { Link } from 'react-router-dom';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, MapPin, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
+import { cn } from '@/lib/utils';
+
 import type { Property } from './PropertyCard';
 
 interface PropertiesMapProps {

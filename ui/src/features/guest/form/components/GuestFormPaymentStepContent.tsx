@@ -1,9 +1,6 @@
-import { formatMoney } from '@/utils/format/currency';
 import { useCallback, useMemo } from 'react';
 
 import { toast } from 'sonner';
-
-import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
 
 import {
   useGuestPaymentInfo,
@@ -15,6 +12,8 @@ import {
   GUEST_PARKING_RATE_PER_NIGHT,
 } from '@/features/guest/form/lib/guestFormPayment';
 import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
+
+import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
 import {
   DEFAULT_PAYMENT_PROVIDER,
   normalizePaymentProvider,
@@ -22,6 +21,8 @@ import {
   paymentQrAltText,
   paymentSectionTitle,
 } from '@/features/dashboard/org/lib/paymentProviders';
+
+import { formatMoney } from '@/utils/format/currency';
 
 import type { UseFormReturn } from 'react-hook-form';
 

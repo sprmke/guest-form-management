@@ -30,7 +30,6 @@ import { SettingsField } from '@/features/dashboard/org/components/property-sett
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
-import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   AZURE_NORTH_PARKING_TOWERS,
   DEFAULT_PARKING_LEVEL,
@@ -49,6 +48,7 @@ import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
+import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   orgParkingsPath,
   parkingNotificationsPath,

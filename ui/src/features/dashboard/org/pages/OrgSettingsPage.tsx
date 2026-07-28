@@ -32,6 +32,7 @@ import {
   useSavedOrgSettingsCompletion,
 } from '@/features/dashboard/org/hooks/useOrgSettingsCompletion';
 import { useUpdateOrganization } from '@/features/dashboard/org/hooks/useUpdateOrganization';
+import { publicHostSlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { type OrgSettingsSectionId } from '@/features/dashboard/org/lib/orgSettingsCompletion';
 import { resolveOrgSettingsFieldError } from '@/features/dashboard/org/lib/orgSettingsFieldError';
 import {
@@ -42,7 +43,6 @@ import {
   type OrgSettingsDraft,
 } from '@/features/dashboard/org/lib/orgSettingsForm';
 import { setOrgSettingsIssueSections } from '@/features/dashboard/org/lib/orgSettingsIssuesStore';
-import { publicHostSlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { planOrgSettingsSave } from '@/features/dashboard/org/lib/orgSettingsSave';
 
 import { Button } from '@/components/ui/button';

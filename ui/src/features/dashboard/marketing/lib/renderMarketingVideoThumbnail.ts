@@ -2,9 +2,9 @@ import { renderStillOnWeb } from '@remotion/web-renderer';
 
 import { CampaignVideoComposition } from '@/features/dashboard/marketing/components/video-editor/VideoCompositions';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import { resolveMarketingThumbBinding } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
 import { blobToDataUrl } from '@/features/dashboard/marketing/lib/exportVideoMedia';
-import { runVideoThumbnailCapture } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
+import { resolveMarketingThumbBinding } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
+import { VIDEO_FORMAT_DIMENSIONS } from '@/features/dashboard/marketing/lib/video/videoFormatDimensions';
 import { buildDefaultVideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectDefaults';
 import type {
   VideoFormat,
@@ -15,11 +15,11 @@ import {
   sceneStartFrame,
   videoProjectDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
-import { VIDEO_FORMAT_DIMENSIONS } from '@/features/dashboard/marketing/lib/video/videoFormatDimensions';
 import {
   getVideoCampaignTemplate,
   type VideoCampaignTemplateDef,
 } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
+import { runVideoThumbnailCapture } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
 
 const THUMB_SCALE = 0.16;
 

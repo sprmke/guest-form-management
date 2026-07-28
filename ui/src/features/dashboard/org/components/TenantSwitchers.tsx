@@ -11,14 +11,15 @@ import {
   useAllOrgProperties,
   useOrganizations,
 } from '@/features/dashboard/org/hooks/useOrganizations';
-import { useAllOrgParkings } from '@/features/dashboard/org/hooks/useParkings';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
+import { useAllOrgParkings } from '@/features/dashboard/org/hooks/useParkings';
 import {
   canCreateParkingsInOrg,
   canCreatePropertiesInOrg,
   canSelectOrgInSwitcher,
   isPropertyOnlyOrgAccess,
 } from '@/features/dashboard/org/lib/orgAccessKind';
+import { resolveParkingCompactLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import {
   orgDashboardPath,
   parkingSectionPath,
@@ -26,7 +27,6 @@ import {
   setLastParkingContext,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
-import { resolveParkingCompactLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import type { Organization, Parking, Property } from '@/features/dashboard/org/types';
 
 import { TeamLogoMark } from '@/components/branding/TeamLogoMark';

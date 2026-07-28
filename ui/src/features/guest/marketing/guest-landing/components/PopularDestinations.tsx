@@ -1,8 +1,9 @@
 import { useRef } from 'react';
 
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
+
 import { motion, useInView } from 'framer-motion';
+import { ArrowUpRight } from 'lucide-react';
 
 import { editorialDestinations } from '@/features/guest/marketing/guest-landing/data/landingContent';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';

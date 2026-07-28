@@ -1,3 +1,6 @@
+import { VideoPropertyImagePicker } from '@/features/dashboard/marketing/components/video-editor/VideoPropertyImagePicker';
+import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
+import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
 import type {
   VideoScene,
   VideoSceneKind,
@@ -5,9 +8,6 @@ import type {
   VideoTransition,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { VIDEO_SCENE_DURATION } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { VideoPropertyImagePicker } from '@/features/dashboard/marketing/components/video-editor/VideoPropertyImagePicker';
-import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
-import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { applySceneKindChange } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
 
 import { Input } from '@/components/ui/input';

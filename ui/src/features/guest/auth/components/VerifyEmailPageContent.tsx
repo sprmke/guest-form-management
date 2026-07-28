@@ -1,10 +1,14 @@
 import { useState, Suspense, useEffect } from 'react';
+
 import { Link } from 'react-router-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { ArrowLeft, ArrowRight, CheckCircle2, Mail, RefreshCw } from 'lucide-react';
+
+import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
+
 import { Button } from '@/components/ui/button';
 import { SpinnerIcon } from '@/components/ui/icons';
-import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
 
 interface VerifyEmailPageContentProps {
   config: AuthPageConfig;

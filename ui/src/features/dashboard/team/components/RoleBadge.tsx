@@ -1,10 +1,10 @@
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import {
   CUSTOM_ROLE_COLOR,
   getRoleColorForScope,
   getRoleLabelForScope,
   isBuiltinRoleIdForScope,
 } from '@/features/dashboard/team/lib/teamRoleHelpers';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type {
   CustomPropertyRole,
   PropertyRoleId,

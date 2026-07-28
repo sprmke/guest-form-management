@@ -6,7 +6,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import {
@@ -31,10 +30,11 @@ import {
   type TeamInvitePreview,
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
+import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/lib/supabase/client';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { supabase } from '@/lib/supabase/client';
 
 const DEFAULT_LOGO_SRC = '/images/logo.png';
 

@@ -10,6 +10,9 @@ import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
+import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { usePropertyGoogleAttentionItem } from '@/features/dashboard/org/hooks/usePropertyGoogleAttentionItem';
+import { absoluteGuestPropertyUrl } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
@@ -19,9 +22,6 @@ import {
   resolveDashboardPeriod,
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
-import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { absoluteGuestPropertyUrl } from '@/features/dashboard/org/lib/guestPublicPaths';
-import { usePropertyGoogleAttentionItem } from '@/features/dashboard/org/hooks/usePropertyGoogleAttentionItem';
 
 import { DashboardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
@@ -103,49 +103,47 @@ export function DashboardPage() {
   );
 
   return (
-    
-      <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="dashboard-heading"
-          variant="compact"
-          title="Dashboard"
-          subtitle="Overview of your property's performance and activity."
-          actions={dashboardActions}
-          actionsClassName="w-full sm:w-auto"
-        />
+    <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
+      <AdminPageHeader
+        id="dashboard-heading"
+        variant="compact"
+        title="Dashboard"
+        subtitle="Overview of your property's performance and activity."
+        actions={dashboardActions}
+        actionsClassName="w-full sm:w-auto"
+      />
 
-        {isLoading && !data ? (
-          <DashboardSkeleton />
-        ) : error ? (
-          <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
-            <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
-            <p className="text-caption max-w-sm">
-              {error instanceof Error ? error.message : 'Please try again.'}
-            </p>
-            <button
-              type="button"
-              onClick={() => refetch()}
-              className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
-            >
-              Retry
-            </button>
-          </div>
-        ) : data ? (
-          <>
-            <DashboardAttentionStrip items={attentionItems} />
+      {isLoading && !data ? (
+        <DashboardSkeleton />
+      ) : error ? (
+        <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
+          <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
+          <p className="text-caption max-w-sm">
+            {error instanceof Error ? error.message : 'Please try again.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
+          >
+            Retry
+          </button>
+        </div>
+      ) : data ? (
+        <>
+          <DashboardAttentionStrip items={attentionItems} />
 
-            <DashboardStatCards stats={data} periodLabel={trendLabel} />
+          <DashboardStatCards stats={data} periodLabel={trendLabel} />
 
-            {period.from && period.to ? (
-              <DashboardFinanceCalendarSection
-                from={period.from}
-                to={period.to}
-                datePreset={dateNav.datePreset}
-              />
-            ) : null}
-          </>
-        ) : null}
-      </div>
-    
+          {period.from && period.to ? (
+            <DashboardFinanceCalendarSection
+              from={period.from}
+              to={period.to}
+              datePreset={dateNav.datePreset}
+            />
+          ) : null}
+        </>
+      ) : null}
+    </div>
   );
 }

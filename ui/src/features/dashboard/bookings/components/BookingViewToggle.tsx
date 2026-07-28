@@ -1,8 +1,7 @@
 import { Kanban } from 'lucide-react';
 
-import type { AdminListView } from '@/features/dashboard/bookings/lib/listView';
-
 import { ADMIN_LIST_VIEW_OPTIONS } from '@/features/dashboard/bookings/components/AdminListViewToggle';
+import type { AdminListView } from '@/features/dashboard/bookings/lib/listView';
 
 import {
   AdminViewToggle,

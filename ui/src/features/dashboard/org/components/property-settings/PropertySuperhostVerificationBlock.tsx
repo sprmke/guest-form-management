@@ -2,8 +2,8 @@ import { useState } from 'react';
 
 import { Award } from 'lucide-react';
 
-import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/useUploadAppSettingsAsset';
 import { useClearAppSettingsImage } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/useUploadAppSettingsAsset';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import {
   superhostStatusLabel,

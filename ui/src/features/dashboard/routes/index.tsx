@@ -2,7 +2,6 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
-import { dashboardPropertyRoute } from '@/features/dashboard/property/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
 import { maintenancePropertyRoute } from '@/features/dashboard/maintenance/routes';
 import { marketingPropertyRoute } from '@/features/dashboard/marketing/routes';
@@ -16,12 +15,13 @@ import {
 import { orgRoute, parkingRoute, propertyRoute } from '@/features/dashboard/org/routes/guards';
 import { parkingAdminRoutes } from '@/features/dashboard/parking/routes';
 import { pricingPropertyRoute } from '@/features/dashboard/pricing/routes';
+import { dashboardPropertyRoute } from '@/features/dashboard/property/routes';
+import { superAdminRoutes } from '@/features/dashboard/super-admin/routes';
 import {
   parkingTeamRoute,
   propertyTeamRoute,
   teamAuthRoutes,
 } from '@/features/dashboard/team/routes';
-import { superAdminRoutes } from '@/features/dashboard/super-admin/routes';
 
 /** Dashboard / admin routes: org, property shell, bookings, finance, etc. */
 export const dashboardRoutes: ReactNode[] = [

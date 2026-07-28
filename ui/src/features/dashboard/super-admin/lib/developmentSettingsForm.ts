@@ -1,3 +1,4 @@
+import { AZURE_PMO_EMAIL } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 import {
   developmentMediaToLegacyFields,
@@ -7,7 +8,6 @@ import {
   normalizeDevelopmentParkingLevels,
   readDevelopmentParkingLevels,
 } from '@/features/dashboard/super-admin/lib/developmentParking';
-import { AZURE_PMO_EMAIL } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
 import type { Development } from '@/features/dashboard/super-admin/types/development';
 
 function readStringArray(settings: Record<string, unknown>, key: string): string[] {

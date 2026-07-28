@@ -13,20 +13,20 @@ import { TelegramModalNumberField } from '@/features/dashboard/bookings/componen
 import { TelegramModalSaveFooter } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramModalSaveFooter';
 import { TelegramNotificationModuleLayout } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout';
 import { TelegramSettingsManageCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramSettingsManageCard';
+import { TelegramSettingsModuleGate } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramSettingsModuleGate';
 import {
   TELEGRAM_TEMPLATE_EDITOR_ROWS,
   TELEGRAM_TEMPLATE_MIN_HEIGHT,
   TelegramTemplatesManageDialog,
 } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramTemplatesManageDialog';
-import { TelegramSettingsModuleGate } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramSettingsModuleGate';
 import { TelegramTemplateTabPanel } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramTemplateTabPanel';
 import { TelegramTemplateEditor } from '@/features/dashboard/bookings/components/TelegramTemplateEditor';
-import { useTelegramNotificationModuleBase } from '@/features/dashboard/bookings/hooks/useTelegramNotificationModuleBase';
 import {
   useTelegramMarketingSettings,
   useTelegramMarketingTestSend,
   useUpdateTelegramMarketingSettings,
 } from '@/features/dashboard/bookings/hooks/useTelegramMarketingSettings';
+import { useTelegramNotificationModuleBase } from '@/features/dashboard/bookings/hooks/useTelegramNotificationModuleBase';
 import type { TelegramPreviewContext } from '@/features/dashboard/bookings/lib/telegramDraftPreviewApi';
 import {
   DEFAULT_MARKETING_NEW_BOOKING_DATES_LIMIT,

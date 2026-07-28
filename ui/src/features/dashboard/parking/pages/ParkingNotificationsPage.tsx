@@ -51,30 +51,28 @@ export function ParkingNotificationsPage() {
   }, [deepLinkModule]);
 
   return (
-    
-      <AdminSectionNavLayout
-        sectionGroups={NOTIFICATION_SECTION_GROUPS}
-        header={
-          <AdminPageHeader
-            id="parking-notifications-heading"
-            variant="compact"
-            title="Notifications"
-            subtitle="Configure Telegram notifications for this parking slot."
-          />
-        }
-      >
-        <div className="space-y-3 sm:space-y-4">
-          <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
+    <AdminSectionNavLayout
+      sectionGroups={NOTIFICATION_SECTION_GROUPS}
+      header={
+        <AdminPageHeader
+          id="parking-notifications-heading"
+          variant="compact"
+          title="Notifications"
+          subtitle="Configure Telegram notifications for this parking slot."
+        />
+      }
+    >
+      <div className="space-y-3 sm:space-y-4">
+        <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
 
-          <AdminSection id="parking" title="Parking" icon={Car}>
-            <TelegramParkingSettingsCard />
-          </AdminSection>
+        <AdminSection id="parking" title="Parking" icon={Car}>
+          <TelegramParkingSettingsCard />
+        </AdminSection>
 
-          <AdminSection id="finance" title="Finance" icon={DollarSign}>
-            <TelegramFinanceSettingsCard embedded />
-          </AdminSection>
-        </div>
-      </AdminSectionNavLayout>
-    
+        <AdminSection id="finance" title="Finance" icon={DollarSign}>
+          <TelegramFinanceSettingsCard embedded />
+        </AdminSection>
+      </div>
+    </AdminSectionNavLayout>
   );
 }

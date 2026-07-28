@@ -2,16 +2,17 @@ import type {
   AppSettingsDto,
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
+import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
 import {
   validatePaymentAccountName,
   validatePaymentAccountNumber,
   validatePaymentProvider,
 } from '@/features/dashboard/org/lib/paymentProviders';
-import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
+import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
@@ -24,7 +25,6 @@ import {
   isPropertyTowerForResidence,
   isValidUnitNumber,
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
-import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
 
 import {
   validateAdminEmailList,
@@ -36,7 +36,6 @@ import {
   validateEmailAddress,
   validateFullPersonName,
   validatePhilippineMobilePhone,
-  validatePropertyContactField,
 } from '@/lib/validation/fieldValidation';
 
 function requireText(value: string, message: string): string | null {
@@ -105,20 +104,6 @@ export type PropertySettingsCompletionResult = {
   firstErrorMessage: string | null;
   isComplete: boolean;
 };
-
-function contactFieldError(
-  field: 'contactName' | 'contactPhone' | 'contactEmail',
-  value: string
-): string | null {
-  const emptyMessages: Record<typeof field, string> = {
-    contactName: "Enter the contact person's full name",
-    contactPhone: 'Enter a phone number',
-    contactEmail: 'Enter an email address',
-  };
-  const empty = requireText(value, emptyMessages[field]);
-  if (empty) return empty;
-  return validatePropertyContactField(field, value);
-}
 
 function googleIntegrationReady(input: PropertySettingsCompletionInput): boolean {
   const integrations = input.appSettings?.propertyIntegrations;

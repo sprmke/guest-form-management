@@ -1,8 +1,9 @@
-import { formatInboxTime } from '@/features/dashboard/inbox/lib/inboxFormat';
-import { GuestChatAwaitingReplyBadge } from '@/components/chat/GuestChatAwaitingReplyBadge';
 import type { GuestMessageThreadDto } from '@/features/guest/account/lib/guestAccountApi';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
+import { formatInboxTime } from '@/features/dashboard/inbox/lib/inboxFormat';
+
+import { GuestChatAwaitingReplyBadge } from '@/components/chat/GuestChatAwaitingReplyBadge';
 import { isAwaitingHostReply } from '@/lib/chat/chatReplyStatus';
 import { cn } from '@/lib/utils';
 

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
-import { getPropertyDetail } from '@/features/guest/marketing/properties/data/mockPropertyDetail';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
+import { getPropertyDetail } from '@/features/guest/marketing/properties/data/mockPropertyDetail';
 import {
   mapApiPropertyToResolved,
   mapBasicMockToResolved,

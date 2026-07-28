@@ -1,5 +1,8 @@
 import { Stamp } from 'lucide-react';
 
+import { useCalendarPropertyMedia } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
+import { PropertyImagePicker } from '@/features/dashboard/marketing/components/shared/PropertyImagePicker';
+
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +15,6 @@ import {
 } from '@/components/ui/select';
 
 import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
-import { useCalendarPropertyMedia } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
-import { PropertyImagePicker } from '@/features/dashboard/marketing/components/shared/PropertyImagePicker';
 import { FontSelector, ColorPicker, NumberSlider } from '../controls';
 import { StyleSection, StyleSubSection } from './StyleSection';
 

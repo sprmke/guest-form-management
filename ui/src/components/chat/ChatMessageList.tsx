@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
 
+import { ChatDateSeparator } from '@/components/chat/ChatDateSeparator';
 import { buildChatMessageRows } from '@/lib/chat/chatMessageFormat';
 import { cn } from '@/lib/utils';
-
-import { ChatDateSeparator } from '@/components/chat/ChatDateSeparator';
 
 type Props<T extends { id: string; sent_at: string }> = {
   messages: T[];

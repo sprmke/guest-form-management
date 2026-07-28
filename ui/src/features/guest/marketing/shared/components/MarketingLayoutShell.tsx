@@ -2,8 +2,8 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import { MarketingFooter } from '@/features/guest/marketing/shared/components/MarketingFooter';
 import { MarketingNav } from '@/features/guest/marketing/shared/components/MarketingNav';
-import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 import { ListingScrollSearchProvider } from '@/features/guest/marketing/shared/context/ListingScrollSearchContext';
+import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 import { getListingScrollSearchConfig } from '@/features/guest/marketing/shared/lib/listingScrollSearchPaths';
 import { getListingSearchDefaultLocation } from '@/features/guest/marketing/shared/lib/listingSearchDefaultLocation';
 import { getListingSearchFields } from '@/features/guest/marketing/shared/lib/listingSearchFields';

@@ -1,9 +1,7 @@
-import { formatMoney } from '@/utils/format/currency';
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
 
-import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
+import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { hostNetToneClass } from '@/features/dashboard/bookings/lib/bookingFinance';
 import {
@@ -12,6 +10,8 @@ import {
 } from '@/features/dashboard/bookings/lib/bookingFlags';
 
 import { cn } from '@/lib/utils';
+import { formatBookingDate } from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 
 type CalendarDayBookingCardSource = {
   id: string;

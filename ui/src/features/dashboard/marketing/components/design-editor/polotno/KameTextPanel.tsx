@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 
+import { Icon } from '@blueprintjs/core';
+import { NewTextBox } from '@blueprintjs/icons';
 import { observer } from 'mobx-react-lite';
+import { SectionTab } from 'openpolotno/side-panel/side-panel';
 
 import {
   KameSidePanelGroup,
@@ -9,10 +12,6 @@ import {
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 
 import { cn } from '@/lib/utils';
-
-import { SectionTab } from 'openpolotno/side-panel/side-panel';
-import { Icon } from '@blueprintjs/core';
-import { NewTextBox } from '@blueprintjs/icons';
 
 type TextPreset = {
   id: string;

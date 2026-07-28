@@ -105,8 +105,10 @@ export function resolveHouseRulesForDisplay(input: {
   checkInTime: string;
   checkOutTime: string;
 }): ResolvedHouseRule[] {
-  const customById = new Map(
-    input.customRules.map((entry) => [entry.id, entry.name.trim()]).filter(([, name]) => name)
+  const customById = new Map<string, string>(
+    input.customRules
+      .map((entry) => [entry.id, entry.name.trim()] as const)
+      .filter(([, name]) => Boolean(name))
   );
   const resolved: ResolvedHouseRule[] = [];
   const seen = new Set<string>();

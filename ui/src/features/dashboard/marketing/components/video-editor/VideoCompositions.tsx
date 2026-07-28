@@ -1,5 +1,9 @@
 import { useState, type ReactNode } from 'react';
 
+import { TransitionSeries, linearTiming } from '@remotion/transitions';
+import { fade } from '@remotion/transitions/fade';
+import { slide } from '@remotion/transitions/slide';
+import { wipe } from '@remotion/transitions/wipe';
 import {
   AbsoluteFill,
   Audio,
@@ -10,10 +14,6 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { TransitionSeries, linearTiming } from '@remotion/transitions';
-import { fade } from '@remotion/transitions/fade';
-import { slide } from '@remotion/transitions/slide';
-import { wipe } from '@remotion/transitions/wipe';
 
 import { PositionedLayer } from '@/features/dashboard/marketing/lib/video/videoCompositionLayout';
 import {
@@ -28,13 +28,13 @@ import type {
   VideoTransition,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
-  getSceneLayers,
-  sceneBackgroundLayer,
-} from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
-import {
   sceneDurationInFrames,
   transitionDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
+import {
+  getSceneLayers,
+  sceneBackgroundLayer,
+} from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import { scaleForVideoFormat } from '@/features/dashboard/marketing/lib/video/videoTextSlotContent';
 
 export type VideoCompositionProps = {

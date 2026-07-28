@@ -52,6 +52,19 @@ export function textSlotsForSceneKind(kind: VideoSceneKind): VideoTextSlotId[] {
   return Object.keys(DEFAULT_LAYOUT_BY_KIND[kind]) as VideoTextSlotId[];
 }
 
+const VIDEO_TEXT_SLOT_IDS = new Set<string>([
+  'headline',
+  'subheadline',
+  'promoLine',
+  'ctaLine',
+  'rulesLine',
+  'slotLabels',
+]);
+
+export function isVideoTextSlotId(id: string): id is VideoTextSlotId {
+  return VIDEO_TEXT_SLOT_IDS.has(id);
+}
+
 export function defaultTextLayoutForSceneKind(kind: VideoSceneKind): VideoSceneTextLayout {
   return { ...DEFAULT_LAYOUT_BY_KIND[kind] };
 }

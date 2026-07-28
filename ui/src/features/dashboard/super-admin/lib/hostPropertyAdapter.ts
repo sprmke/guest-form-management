@@ -1,5 +1,5 @@
-import type { HostProperty } from '@/features/dashboard/super-admin/types/host';
 import type { Property } from '@/features/dashboard/org/types';
+import type { HostProperty } from '@/features/dashboard/super-admin/types/host';
 
 export function hostPropertyToProperty(property: HostProperty): Property {
   return {

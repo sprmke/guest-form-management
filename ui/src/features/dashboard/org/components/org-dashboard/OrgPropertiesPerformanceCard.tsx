@@ -2,9 +2,9 @@ import { Link } from 'react-router-dom';
 
 import { ArrowUpRight, Building2, Calendar, Home } from 'lucide-react';
 
-import type { DashboardPropertyPerformance } from '@/features/dashboard/property/lib/types';
 import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { DashboardPropertyPerformance } from '@/features/dashboard/property/lib/types';
 
 type Props = {
   orgSlug: string;

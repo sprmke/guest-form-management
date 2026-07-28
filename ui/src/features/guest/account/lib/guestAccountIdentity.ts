@@ -1,6 +1,6 @@
-import type { Session } from '@supabase/supabase-js';
-
 import type { GuestProfileDto } from '@/features/guest/account/lib/guestAccountApi';
+
+import type { Session } from '@supabase/supabase-js';
 
 export function resolveGuestDisplayName(
   session: Session | null,

@@ -12,13 +12,13 @@ import {
   DEFAULT_BOOKINGS_QUERY,
   type BookingsQuery,
 } from '@/features/dashboard/bookings/lib/types';
-import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
 import { FinanceTransactionsChart } from '@/features/dashboard/finance/components/FinanceTransactionsChart';
 import { useFinanceBookings } from '@/features/dashboard/finance/hooks/useFinanceBookings';
 import { useFinanceLineItems } from '@/features/dashboard/finance/hooks/useFinanceLineItems';
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
 import { FINANCE_CHART_BOOKINGS_LIMIT } from '@/features/dashboard/finance/lib/financePeriod';
 import { DEFAULT_FINANCE_QUERY, type FinanceQuery } from '@/features/dashboard/finance/lib/types';
+import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
 
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { formatDateRangeDisplay, fromIsoDate, type DatePreset } from '@/lib/date/navigation';

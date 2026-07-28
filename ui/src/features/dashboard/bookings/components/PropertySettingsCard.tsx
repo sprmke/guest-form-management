@@ -35,6 +35,7 @@ import {
   applyBuildingFormsTeamDefaults,
   pickBuildingFormsTeamContact,
 } from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
+import { PaymentSettingsSaveConfirmDialog } from '@/features/dashboard/org/components/property-settings/PaymentSettingsSaveConfirmDialog';
 import {
   operationalSettingsDraftIsDirty,
   PropertyOperationalSettingsSections,
@@ -44,15 +45,16 @@ import {
   PropertyProfileMainSections,
 } from '@/features/dashboard/org/components/property-settings/PropertyProfileSettingsSections';
 import { PropertySettingsBrandColorPreview } from '@/features/dashboard/org/components/property-settings/PropertySettingsBrandColorPreview';
-import { PaymentSettingsSaveConfirmDialog } from '@/features/dashboard/org/components/property-settings/PaymentSettingsSaveConfirmDialog';
 import { PropertySocialsBrandingSection } from '@/features/dashboard/org/components/property-settings/PropertySocialsBrandingSection';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
-import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
 import { usePropertySettingsCompletionForDraft } from '@/features/dashboard/org/hooks/usePropertySettingsCompletion';
+import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
+import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
+import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
@@ -64,7 +66,6 @@ import {
   type PropertyProfileDraft,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
 import { setPropertySettingsIssueSections } from '@/features/dashboard/org/lib/propertySettingsIssuesStore';
-import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestPublicPaths';
 import {
   applySavedOperationalSections,
   applySavedProfileSections,
@@ -72,7 +73,6 @@ import {
   buildProfilePatchForSections,
   planPropertySettingsSave,
 } from '@/features/dashboard/org/lib/propertySettingsSave';
-import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 

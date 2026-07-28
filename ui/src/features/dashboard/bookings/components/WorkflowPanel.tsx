@@ -15,7 +15,6 @@
  * Auth: admin-auth.mdc §5 (Dev controls panel)
  */
 
-import { formatRelative } from '@/utils/format/bookingDisplay';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
@@ -36,6 +35,8 @@ import {
 } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
+
+import { guestSdFormPath, guestStayGuidePath } from '@/features/guest/lib/guestPublicPaths';
 
 import { useGmailReconnectPrompt } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import {
@@ -60,15 +61,7 @@ import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadg
 import { SurpriseDecorAckCard } from '@/features/dashboard/bookings/components/SurpriseDecorAckCard';
 import { WorkflowDevControlsChecklist } from '@/features/dashboard/bookings/components/WorkflowDevControlsChecklist';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
-import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
-import {
-  loadPersistedWorkflowDevControls,
-  mergeWorkflowDevControlsWithDefaults,
-  persistWorkflowDevControls,
-  workflowDevControlsForCancel,
-  workflowDevControlsForTransition,
-  type WorkflowDevControlDef,
-} from '@/features/dashboard/bookings/lib/workflowDevControls';
+import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
   useTransitionBooking,
   useCancelBooking,
@@ -79,14 +72,14 @@ import {
   type DevControlFlags,
   type TransitionPayload,
 } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
-import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
+import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
+import { shouldWarnPastBookingStayForProceed } from '@/features/dashboard/bookings/lib/bookingPastPipelineManila';
 import {
   TERMINAL_STATUSES,
   isStayGuideEligibleStatus,
   statusLabel,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
-
 import {
   isStorageObjectNotFoundError,
   normalizeStoragePublicUrl,
@@ -95,9 +88,6 @@ import {
   resolveAssetUrlForBrowser,
 } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import { resolveBookingPropertySlug } from '@/features/dashboard/bookings/lib/bookingListNavigation';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { guestSdFormPath, guestStayGuidePath } from '@/features/guest/lib/guestPublicPaths';
 import {
   arePendingDocumentsComplete,
   bookingNeedsGmailListenerPoll,
@@ -124,6 +114,15 @@ import {
   workflowPrimaryActionClass,
   workflowWarningActionClass,
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
+import {
+  loadPersistedWorkflowDevControls,
+  mergeWorkflowDevControlsWithDefaults,
+  persistWorkflowDevControls,
+  workflowDevControlsForCancel,
+  workflowDevControlsForTransition,
+  type WorkflowDevControlDef,
+} from '@/features/dashboard/bookings/lib/workflowDevControls';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyPricingDefaults } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 
 import {
@@ -132,6 +131,7 @@ import {
   sdRefundCronSuccessMessage,
 } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
+import { formatRelative } from '@/utils/format/bookingDisplay';
 
 /** Shared copy for manual “Run Gmail poll” and auto-poll on Pending Documents load. */
 function buildGmailPollSuccessMessage(

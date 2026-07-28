@@ -3,7 +3,6 @@ import { useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown } from 'lucide-react';
 
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
-
 import { cn } from '@/lib/utils';
 
 export type AdminMultiSelectOption<T extends string = string> = {

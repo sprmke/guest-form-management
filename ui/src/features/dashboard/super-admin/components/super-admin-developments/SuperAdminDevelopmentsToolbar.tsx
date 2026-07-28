@@ -1,7 +1,6 @@
-import { Building2, Filter, Landmark, Search } from 'lucide-react';
+import { Filter, Landmark, Search } from 'lucide-react';
 
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
-
 import {
   DEVELOPMENT_STATUSES,
   DEVELOPMENT_TYPES,

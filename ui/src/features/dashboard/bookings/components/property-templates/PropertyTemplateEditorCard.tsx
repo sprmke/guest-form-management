@@ -2,13 +2,15 @@ import * as React from 'react';
 
 import { Braces, Eye, Mail, Pencil, RotateCcw, Save, Trash2 } from 'lucide-react';
 
+import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
+
 import { PropertyTemplatePlaceholdersDialog } from '@/features/dashboard/bookings/components/property-templates/PropertyTemplatePlaceholdersDialog';
-import { TemplateSectionImageField } from '@/features/dashboard/bookings/components/property-templates/TemplateSectionImageField';
 import {
   RichTextDisplay,
   RichTextEditor,
   type RichTextEditorHandle,
 } from '@/features/dashboard/bookings/components/property-templates/RichTextEditor';
+import { TemplateSectionImageField } from '@/features/dashboard/bookings/components/property-templates/TemplateSectionImageField';
 import {
   usePropertyTemplatePreview,
   type PropertyTemplateDto,
@@ -20,6 +22,7 @@ import {
   applyPropertyTemplatePlaceholders,
   PROPERTY_TEMPLATE_SAMPLE_VARS,
 } from '@/features/dashboard/bookings/lib/propertyTemplatePlaceholders';
+import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import { buildValidPlaceholderKeySet } from '@/features/dashboard/bookings/lib/telegramPlaceholderGroups';
 import { propertyPlaceholderLinesForTemplate } from '@/features/dashboard/bookings/lib/templatePlaceholderCatalog';
 import {
@@ -27,8 +30,6 @@ import {
   blockTemplatePreviewAction,
   blockTemplatePreviewKeydown,
 } from '@/features/dashboard/bookings/lib/templatePreviewReadonly';
-import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
-import { extractLeadingSectionHeading } from '@/features/guest/stay-guide/lib/stayGuideContent';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

@@ -8,22 +8,55 @@ import { Upload, Loader2, Settings, ClipboardPaste, XCircle, PartyPopper } from 
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
-import { GuestFormGuestsSection } from '@/features/guest/form/components/GuestFormGuestsSection';
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { guestEdgeAuthHeaders } from '@/features/guest/auth/lib/guestEdgeAuthHeaders';
+import { GuestFormGuestsSection } from '@/features/guest/form/components/GuestFormGuestsSection';
 import {
   GuestFormInfoCallout,
   GuestFormOptionCard,
 } from '@/features/guest/form/components/GuestFormOptionCard';
 import { GuestFormParkingDates } from '@/features/guest/form/components/GuestFormParkingDates';
+import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
+import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
+import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
 import {
   defaultFormValues,
   getGuestFormDefaultValuesFromSearchParams,
 } from '@/features/guest/form/constants/guestFormData';
 import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import {
+  formatBookingInfoForClipboard,
+  parseBookingInfoFromClipboard,
+} from '@/features/guest/form/lib/bookingFormatter';
+import {
+  bookingSourceFromUrlSearchParams,
+  stripLegacyFromQueryParam,
+} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
+import {
+  clampGuestFormStep,
+  getFieldsForGuestFormStep,
+  isGuestFormStepComplete,
+  getGuestFormSteps,
+  getGuestFormStepCount,
+  type GuestFormStepId,
+} from '@/features/guest/form/lib/guestFormSteps';
+import {
+  appendGuestPropertyToParams,
+  guestBookedDatesUrl,
+} from '@/features/guest/form/lib/guestPropertyScope';
+import {
   createGuestFormSchema,
   type GuestFormData,
 } from '@/features/guest/form/schemas/guestFormSchema';
+
+import {
+  useGuestPropertySearchParams,
+  useGuestPropertySlug,
+} from '@/features/guest/hooks/useGuestPropertySlug';
 import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import type { GuestNavState } from '@/layouts/guest/navState';
@@ -64,18 +97,6 @@ import { toCapitalCase, transformFieldValues } from '@/utils/text/formatters';
 import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
 
 import {
-  bookingSourceFromUrlSearchParams,
-  stripLegacyFromQueryParam,
-} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
-import {
-  appendGuestPropertyToParams,
-  guestBookedDatesUrl,
-} from '@/features/guest/form/lib/guestPropertyScope';
-import {
-  useGuestPropertySearchParams,
-  useGuestPropertySlug,
-} from '@/features/guest/hooks/useGuestPropertySlug';
-import {
   guestCalendarPath,
   guestFormPath,
   guestSuccessPath,
@@ -87,30 +108,8 @@ import {
   fetchImageAsFile,
   handleFileUpload,
 } from '@/utils/text/helpers';
-
 import { DatePicker } from '@/components/ui/date-picker';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
-import {
-  formatBookingInfoForClipboard,
-  parseBookingInfoFromClipboard,
-} from '@/features/guest/form/lib/bookingFormatter';
-
-import { GuestFormPaymentStepContent } from '@/features/guest/form/components/GuestFormPaymentStepContent';
-import {
-  DEFAULT_GUEST_PAYMENT_INFO,
-  useGuestPaymentInfo,
-} from '@/features/guest/form/hooks/useGuestPaymentInfo';
-import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
-import { GuestFormStepNavigation } from '@/features/guest/form/components/GuestFormStepNavigation';
-import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
-import {
-  clampGuestFormStep,
-  getFieldsForGuestFormStep,
-  isGuestFormStepComplete,
-  getGuestFormSteps,
-  getGuestFormStepCount,
-  type GuestFormStepId,
-} from '@/features/guest/form/lib/guestFormSteps';
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;

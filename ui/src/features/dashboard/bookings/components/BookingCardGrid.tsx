@@ -1,5 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
-import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 import { useNavigate } from 'react-router-dom';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
@@ -10,11 +8,12 @@ import {
   bookingHasInvalidReceiptAi,
   bookingRequestsSurpriseDecor,
 } from '@/features/dashboard/bookings/lib/bookingFlags';
-
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
+import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   rows: BookingRow[];

@@ -5,16 +5,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { format, differenceInDays } from 'date-fns';
 import { CalendarCheck, ArrowRight, CalendarX, Info } from 'lucide-react';
 
+import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
+import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 import {
   useGuestPropertySearchParams,
   useGuestPropertySlug,
 } from '@/features/guest/hooks/useGuestPropertySlug';
 import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
-import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
-import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
-import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 
-import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
 import { CalendarPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';

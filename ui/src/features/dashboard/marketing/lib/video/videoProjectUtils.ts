@@ -1,6 +1,7 @@
 import {
   type VideoProject,
   type VideoScene,
+  type VideoTransition,
   VIDEO_SCENE_DURATION,
   VIDEO_FPS,
   VIDEO_TRANSITION_FRAMES,

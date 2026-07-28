@@ -6,6 +6,20 @@ import {
 } from '@/features/dashboard/org/lib/parkingResidences';
 import { parseParkingSlotNumberFromLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
 import {
+  normalizePaymentMethodsDraft,
+  paymentMethodsEqual,
+  syncLegacyPaymentFieldsFromMethods,
+  type PropertyPaymentMethod,
+} from '@/features/dashboard/org/lib/paymentMethods';
+import {
+  readNullableLatitude,
+  readNullableLongitude,
+  withAzureNorthLocationDefaultsIfEmpty,
+  type PropertyLocationFields,
+} from '@/features/dashboard/org/lib/propertyLocation';
+import type { Parking } from '@/features/dashboard/org/types';
+import type { ParkingSettingsPayload } from '@/features/dashboard/parking/hooks/useParkingSettings';
+import {
   DEFAULT_PARKING_HEIGHT_CLEARANCE_M,
   DEFAULT_PARKING_SPACE_LENGTH_M,
   DEFAULT_PARKING_SPACE_WIDTH_M,
@@ -14,22 +28,8 @@ import {
   resolveParkingSpaceLengthM,
   resolveParkingSpaceWidthM,
 } from '@/features/dashboard/parking/lib/parkingDimensionDefaults';
-import {
-  readNullableLatitude,
-  readNullableLongitude,
-  withAzureNorthLocationDefaultsIfEmpty,
-  type PropertyLocationFields,
-} from '@/features/dashboard/org/lib/propertyLocation';
-import { propertyBrandColorFormValue, propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
-import type { ParkingSettingsPayload } from '@/features/dashboard/parking/hooks/useParkingSettings';
-import type { Parking } from '@/features/dashboard/org/types';
 
-import {
-  normalizePaymentMethodsDraft,
-  paymentMethodsEqual,
-  syncLegacyPaymentFieldsFromMethods,
-  type PropertyPaymentMethod,
-} from '@/features/dashboard/org/lib/paymentMethods';
+import { propertyBrandColorFormValue, propertyBrandColorStoredValue } from '@/lib/theme/brandColor';
 
 export type ParkingLocationDraft = PropertyLocationFields;
 

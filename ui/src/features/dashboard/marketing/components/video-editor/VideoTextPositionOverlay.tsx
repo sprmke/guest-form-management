@@ -1,7 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
-import type { VideoScene } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import type { VideoLayerPosition } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { overlayPositionedLayerStyle } from '@/features/dashboard/marketing/lib/video/videoCompositionLayout';
 import {
   layerHasContent,
@@ -11,11 +9,14 @@ import {
   layerUsesWidthPct,
   widthPctFromPointerX,
 } from '@/features/dashboard/marketing/lib/video/videoLayerSizing';
+import type { VideoLayerPosition } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type { VideoScene } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   getSceneLayers,
   layerLabel,
   overlayLayersForScene,
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+
 import { cn } from '@/lib/utils';
 
 type Props = {

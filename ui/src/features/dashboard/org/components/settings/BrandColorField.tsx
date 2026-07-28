@@ -26,11 +26,10 @@ function BrandColorControls({
   disabled,
   error,
   resetValue = DEFAULT_ORG_BRAND_COLOR,
-  layout = 'property',
   onChange,
 }: Pick<
   Props,
-  'id' | 'value' | 'resolvedColor' | 'disabled' | 'error' | 'resetValue' | 'layout' | 'onChange'
+  'id' | 'value' | 'resolvedColor' | 'disabled' | 'error' | 'resetValue' | 'onChange'
 >) {
   const pickerValue = value.trim() || resolvedColor;
   const isAtResetValue = value.trim().toLowerCase() === resetValue.trim().toLowerCase();
@@ -103,7 +102,6 @@ export function BrandColorField({
           disabled={disabled}
           error={error}
           resetValue={effectiveResetValue}
-          layout={layout}
           onChange={onChange}
         />
       </OrgSettingsField>
@@ -119,7 +117,6 @@ export function BrandColorField({
         disabled={disabled}
         error={error}
         resetValue={effectiveResetValue}
-        layout={layout}
         onChange={onChange}
       />
     </SettingsField>

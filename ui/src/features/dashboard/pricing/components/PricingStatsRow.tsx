@@ -1,7 +1,8 @@
-import { formatMoneyCompact } from '@/utils/format/currency';
 import { Calendar, DollarSign, Tag, TrendingUp } from 'lucide-react';
 
 import { AdminMetricCard } from '@/features/dashboard/bookings/components/AdminMetricCard';
+
+import { formatMoneyCompact } from '@/utils/format/currency';
 
 type Props = {
   weekdayRate: number;

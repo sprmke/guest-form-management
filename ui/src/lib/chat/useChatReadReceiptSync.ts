@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { supabase } from '@/lib/supabase/client';
-
 import type { ChatTypingRole } from '@/lib/chat/useChatTyping';
+import { supabase } from '@/lib/supabase/client';
 
 type ReadReceiptPayload = {
   role: ChatTypingRole;

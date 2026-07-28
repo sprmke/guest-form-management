@@ -1,11 +1,11 @@
 import { Bike, Car } from 'lucide-react';
 
+import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import {
   DEFAULT_PARKING_RESIDENCE_NAME,
   PARKING_TYPES,
 } from '@/features/dashboard/org/lib/parkingResidences';
 import { resolveParkingCompactLabel } from '@/features/dashboard/org/lib/parkingSlotDisplay';
-import { formatOrgPropertyCurrency } from '@/features/dashboard/org/lib/orgPropertyDisplay';
 import type { Parking } from '@/features/dashboard/org/types';
 
 import type { LucideIcon } from 'lucide-react';

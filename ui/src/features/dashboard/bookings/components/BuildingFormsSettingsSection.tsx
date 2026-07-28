@@ -6,13 +6,13 @@ import { GafOwnerSignatureUploadField } from '@/features/dashboard/bookings/comp
 import { GafPdfPreview } from '@/features/dashboard/bookings/components/GafPdfPreview';
 import { PetPdfPreview } from '@/features/dashboard/bookings/components/PetPdfPreview';
 import type { AppSettingsFieldSource } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-
-import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
-import { Input } from '@/components/ui/input';
-import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import type { GafDetailsValues } from '@/features/dashboard/bookings/lib/gafDefaults';
 import type { PetDetailsValues } from '@/features/dashboard/bookings/lib/petDefaults';
+import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+
+import { Input } from '@/components/ui/input';
+import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
+import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 
 type PreviewTab = 'gaf' | 'pet';

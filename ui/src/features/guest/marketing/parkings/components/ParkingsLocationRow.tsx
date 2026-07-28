@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { ParkingSlotCard } from '@/features/guest/marketing/developments/components/ParkingSlotCard';
+
 import { cn } from '@/lib/utils';
 
 import type { ParkingListEntry } from '../lib/parkingListEntries';

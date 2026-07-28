@@ -3,10 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { Flame, Link2, Loader2, Pause, Play, Search, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   type ImportedMarketingMusic,
   type JamendoTrack,
@@ -26,6 +22,11 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoMusicPresets';
 import type { VideoProjectMusic } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type MusicTab = 'trending' | 'search' | 'upload' | 'link';

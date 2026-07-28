@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import type { PlayerRef } from '@remotion/player';
-
 import type { VideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   sceneEndFrame,
@@ -10,6 +8,8 @@ import {
   sceneStartFrame,
   videoProjectDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
+
+import type { PlayerRef } from '@remotion/player';
 
 function isPageHidden(): boolean {
   return typeof document !== 'undefined' && document.hidden;

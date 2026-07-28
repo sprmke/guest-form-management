@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-import { ChevronLeft, ArrowRight, Car } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { ContactHostSheet } from '@/features/guest/chat/components/ContactHostSheet';
@@ -20,15 +19,14 @@ import {
 } from '@/features/guest/marketing/properties/components/property-detail';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { usePropertyContactHost } from '@/features/guest/marketing/properties/hooks/usePropertyContactHost';
-import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
-import { getParkingFormForProperty } from '@/features/guest/marketing/forms/data/mockForms';
-import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
-import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
+import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
+import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import { Button } from '@/components/ui/button';
+import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
 
 export function PropertyDetailPage() {
   const { propertySlug = '' } = useParams<{ propertySlug: string }>();
@@ -36,7 +34,6 @@ export function PropertyDetailPage() {
   const { data: propertyData, isLoading, isError } = usePublicPropertyDetail(propertySlug);
   const { setBrandColor } = useMarketingBrandColor();
   const { status, requireGuestAuth } = useGuestAuth();
-  const parkingForm = getParkingFormForProperty(propertySlug);
 
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);

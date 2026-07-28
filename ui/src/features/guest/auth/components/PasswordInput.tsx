@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Input } from '@/components/ui/input';
+
 import { Button } from '@/components/ui/button';
 import { EyeIcon, EyeOffIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 interface PasswordInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {

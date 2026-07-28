@@ -1,5 +1,6 @@
-import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
 import type { BackgroundConfig } from '@/features/dashboard/marketing/components/calendar-builder/types';
+import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
+
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
 
 export type CalendarCanvasFormat = 'square' | 'portrait' | 'landscape';

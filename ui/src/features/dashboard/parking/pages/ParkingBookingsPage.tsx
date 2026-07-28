@@ -3,12 +3,9 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 
 import { endOfMonth, format, startOfMonth } from 'date-fns';
-import { CalendarPlus, ExternalLink } from 'lucide-react';
+import { CalendarPlus } from 'lucide-react';
 
-import {
-  absoluteGuestParkingUrl,
-  guestParkingFormPath,
-} from '@/features/guest/lib/guestPublicPaths';
+import { guestParkingFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
@@ -112,7 +109,7 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
 }
 
 export function ParkingBookingsPage() {
-  const { parking, parkingSlug } = useParkingContext();
+  const { parking } = useParkingContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
@@ -242,7 +239,6 @@ export function ParkingBookingsPage() {
     [patch]
   );
 
-  const publicParkingDetailHref = absoluteGuestParkingUrl(parkingSlug);
   const publicParkingFormHref = guestParkingFormPath(parking.slug);
 
   const headerActions = (
@@ -269,86 +265,79 @@ export function ParkingBookingsPage() {
   );
 
   return (
-    
-      <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="bookings-heading"
-          variant="compact"
-          title="Bookings"
-          subtitle="Manage and track reservations for this parking slot."
-          actions={headerActions}
-          actionsClassName="w-full sm:w-auto"
-        />
-        <BookingsSummaryCards
-          counts={stageCounts}
-          activeStage={stage}
-          onStageChange={setStage}
-          stageLabels={PARKING_STAGE_LABELS}
-          hideStatusFooter
-        />
-        <BookingFilters
-          query={query}
-          onChange={patch}
-          onReset={resetFilters}
+    <div className="space-y-3 sm:space-y-4">
+      <AdminPageHeader
+        id="bookings-heading"
+        variant="compact"
+        title="Bookings"
+        subtitle="Manage and track reservations for this parking slot."
+        actions={headerActions}
+        actionsClassName="w-full sm:w-auto"
+      />
+      <BookingsSummaryCards
+        counts={stageCounts}
+        activeStage={stage}
+        onStageChange={setStage}
+        stageLabels={PARKING_STAGE_LABELS}
+        hideStatusFooter
+      />
+      <BookingFilters
+        query={query}
+        onChange={patch}
+        onReset={resetFilters}
+        sort={query.sort}
+        onSortChange={handleStaySortChange}
+        view={view}
+        onViewChange={setView}
+        hideTableView={isMobileLayout}
+        showPerPage={view !== 'calendar' && view !== 'kanban'}
+        hideGuestStayFilters
+        searchPlaceholder="Search guest, email, phone, plate…"
+      />
+
+      {showTableView && (
+        <BookingTable
+          rows={rows}
+          isLoading={isLoading}
+          error={error}
+          isRefreshing={isFetching}
           sort={query.sort}
-          onSortChange={handleStaySortChange}
-          view={view}
-          onViewChange={setView}
-          hideTableView={isMobileLayout}
-          showPerPage={view !== 'calendar' && view !== 'kanban'}
-          hideGuestStayFilters
-          searchPlaceholder="Search guest, email, phone, plate…"
+          onStaySortChange={handleStaySortChange}
+          emptyExtraHint="Parking reservations will appear here once the booking flow is connected."
         />
+      )}
+      {view === 'card' && (
+        <BookingCardGrid
+          rows={rows}
+          isLoading={isLoading}
+          error={error}
+          isRefreshing={isFetching}
+        />
+      )}
+      {view === 'kanban' && (
+        <BookingKanban rows={rows} isLoading={isLoading} error={error} isRefreshing={isFetching} />
+      )}
+      {view === 'calendar' && (
+        <BookingCalendarView
+          rows={rows}
+          isLoading={isLoading}
+          error={error}
+          isRefreshing={isFetching}
+          initialMonth={dateNav.dateRange.from}
+          onMonthChange={handleCalendarMonthChange}
+        />
+      )}
 
-        {showTableView && (
-          <BookingTable
-            rows={rows}
-            isLoading={isLoading}
-            error={error}
-            isRefreshing={isFetching}
-            sort={query.sort}
-            onStaySortChange={handleStaySortChange}
-            emptyExtraHint="Parking reservations will appear here once the booking flow is connected."
-          />
-        )}
-        {view === 'card' && (
-          <BookingCardGrid
-            rows={rows}
-            isLoading={isLoading}
-            error={error}
-            isRefreshing={isFetching}
-          />
-        )}
-        {view === 'kanban' && (
-          <BookingKanban
-            rows={rows}
-            isLoading={isLoading}
-            error={error}
-            isRefreshing={isFetching}
-          />
-        )}
-        {view === 'calendar' && (
-          <BookingCalendarView
-            rows={rows}
-            isLoading={isLoading}
-            error={error}
-            isRefreshing={isFetching}
-            initialMonth={dateNav.dateRange.from}
-            onMonthChange={handleCalendarMonthChange}
-          />
-        )}
-
-        {showPagination && (
-          <AdminListPagination
-            ariaLabel="Bookings pagination"
-            page={listQuery.page}
-            pageCount={pageCount}
-            pageItems={pageItems}
-            isLoading={isLoading}
-            onPageChange={(page) => patch({ page })}
-          />
-        )}
-      </div>
-    
+      {showPagination && (
+        <AdminListPagination
+          ariaLabel="Bookings pagination"
+          page={listQuery.page}
+          pageCount={pageCount}
+          pageItems={pageItems}
+          isLoading={isLoading}
+          onPageChange={(page) => patch({ page })}
+        />
+      )}
+    </div>
   );
 }

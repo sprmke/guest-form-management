@@ -25,8 +25,8 @@ import {
 } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem } from '@/features/dashboard/finance/lib/types';
 
-import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { Checkbox } from '@/components/ui/checkbox';
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';

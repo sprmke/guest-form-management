@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useGmailMailIntegrationStatus } from '@/features/dashboard/bookings/hooks/useGmailMailIntegration';
-import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 
 export function usePropertyGoogleAttentionItem(): DashboardAttentionItem | null {
   const { orgSlug, propertySlug } = useOrgContext();

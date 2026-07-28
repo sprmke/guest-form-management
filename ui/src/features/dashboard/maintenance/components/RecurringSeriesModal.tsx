@@ -1,4 +1,3 @@
-import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
@@ -21,7 +20,6 @@ import {
   adminTableRowClass,
 } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { useTelegramMaintenanceSettings } from '@/features/dashboard/bookings/hooks/useTelegramMaintenanceSettings';
-
 import {
   recurrenceIntervalLabel,
   recurrenceScheduleUpdateFields,
@@ -44,6 +42,7 @@ import type { MaintenanceItem, MaintenanceQuery } from '@/features/dashboard/mai
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
+import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
 type Props = {

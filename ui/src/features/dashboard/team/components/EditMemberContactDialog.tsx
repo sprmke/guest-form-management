@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { ORG_ROLES, getOrgRoleLabel } from '@/features/dashboard/team/lib/orgTeamConstants';
-import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
-import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import { getRoleLabel } from '@/features/dashboard/team/lib/propertyTeamRoles';
+import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
+import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import type {
   EditMemberContactSaveInput,
   EditMemberRoleConfig,

@@ -1,11 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
 
-import { applyPetOwnerSignatureBlock } from '@/features/dashboard/bookings/lib/petPdfSignature';
-
 import {
   petDetailsToPdfFormFields,
   type PetDetailsValues,
 } from '@/features/dashboard/bookings/lib/petDefaults';
+import { applyPetOwnerSignatureBlock } from '@/features/dashboard/bookings/lib/petPdfSignature';
 
 const PET_PDF_TEMPLATE_URL = '/templates/pet-form-template.pdf';
 

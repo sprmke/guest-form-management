@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+
 import {
   ImageIcon,
   Layers,
@@ -11,16 +12,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { VideoPropertyImagePicker } from '@/features/dashboard/marketing/components/video-editor/VideoPropertyImagePicker';
 import { VideoTextStyleControls } from '@/features/dashboard/marketing/components/video-editor/VideoTextStyleControls';
 import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
+import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
 import { resolveLayerWidthPct } from '@/features/dashboard/marketing/lib/video/videoLayerSizing';
 import type {
   VideoScene,
@@ -36,7 +31,14 @@ import {
   sceneBackgroundLayer,
   updateSceneLayer,
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
-import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
+
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 
 type SceneChangeHandler = (scene: VideoScene) => void;

@@ -1,5 +1,6 @@
-import { MessageCircle } from 'lucide-react';
 import type { ComponentType } from 'react';
+
+import { MessageCircle } from 'lucide-react';
 
 import type { SocialPlatform } from '@/features/dashboard/inbox/types/inbox';
 

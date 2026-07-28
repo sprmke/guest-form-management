@@ -9,13 +9,13 @@ import { parseAdminListView } from '@/features/dashboard/bookings/lib/listView';
 import type { FinancePeriodBasis, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 import { DEFAULT_FINANCE_QUERY } from '@/features/dashboard/finance/lib/types';
 
-import { ADMIN_DEFAULT_PAGE_SIZE, normalizeAdminPageLimit } from '@/lib/table/pagination';
 import {
   detectManilaRangePreset,
   manilaRangeForPreset,
   manilaTodayIso,
   type ManilaRangePreset,
 } from '@/lib/date/manilaPeriod';
+import { ADMIN_DEFAULT_PAGE_SIZE, normalizeAdminPageLimit } from '@/lib/table/pagination';
 
 /** Chart needs every stay in the period — not the paginated Stays table cap. */
 export const FINANCE_CHART_BOOKINGS_LIMIT = 5000;

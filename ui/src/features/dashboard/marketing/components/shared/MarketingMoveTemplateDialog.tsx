@@ -1,6 +1,7 @@
+import type { MarketingCategoryItem } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import type { MarketingCategoryItem } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 
 type Props = {
   open: boolean;

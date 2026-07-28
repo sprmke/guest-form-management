@@ -15,13 +15,13 @@ import {
   guestPropertyPath,
   guestPropertyPickDatesPath,
 } from '@/features/guest/lib/guestPublicPaths';
-import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
-import { formatIsoDateForDisplay, parseGuestInquiryDateRange } from '@/utils/format/dates';
+import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChatThreadSearch } from '@/lib/chat/useChatThreadSearch';
+import { formatIsoDateForDisplay, parseGuestInquiryDateRange } from '@/utils/format/dates';
 
 function parseInquiryDates(searchParams: URLSearchParams): {
   checkInDate: string;

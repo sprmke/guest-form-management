@@ -1,9 +1,36 @@
 declare module 'openpolotno' {
-  import type { CSSProperties } from 'react';
+  import type { ComponentType, CSSProperties, HTMLAttributes, ReactNode } from 'react';
+
+  export type PolotnoPage = {
+    id: string;
+    computedWidth: number;
+    computedHeight: number;
+    children?: PolotnoPageChild[];
+    addElement: (el: Record<string, unknown>) => void;
+  };
+
+  export type PolotnoPageChild = {
+    id: string;
+    type: string;
+    height?: number;
+    fontSize?: number;
+    set: (patch: Record<string, unknown>) => void;
+  };
 
   export type PolotnoStore = {
     addPage: () => void;
-    history: { clear: () => void; undo: () => void; redo: () => void };
+    activePage?: PolotnoPage | null;
+    pages?: PolotnoPage[];
+    width: number;
+    height: number;
+    loadFont: (fontFamily: string) => Promise<void>;
+    history: {
+      clear: () => void;
+      undo: () => void;
+      redo: () => void;
+      canUndo?: boolean;
+      canRedo?: boolean;
+    };
     loadJSON: (json: unknown) => void;
     toJSON: () => Record<string, unknown>;
     openSidePanel: (name: string) => void;
@@ -15,13 +42,16 @@ declare module 'openpolotno' {
     }) => Promise<Blob | null>;
   };
 
+  export const SidePanelWrap: ComponentType<{ children?: ReactNode; className?: string }>;
+  export const WorkspaceWrap: ComponentType<{ children?: ReactNode; className?: string }>;
+
   export function RaeditorApp(props: {
     store: PolotnoStore;
     sections?: string[];
     style?: CSSProperties;
   }): JSX.Element;
 
-  export const RaeditorContainer: React.ComponentType<React.HTMLAttributes<HTMLDivElement>>;
+  export const RaeditorContainer: ComponentType<React.HTMLAttributes<HTMLDivElement>>;
 }
 
 declare module 'openpolotno/model/store' {

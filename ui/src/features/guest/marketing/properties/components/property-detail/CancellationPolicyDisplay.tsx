@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react';
 
 import type { ResolvedCancellationPolicyDisplay } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
+
 import { cn } from '@/lib/utils';
 
 export function CancellationPolicyDisplay({

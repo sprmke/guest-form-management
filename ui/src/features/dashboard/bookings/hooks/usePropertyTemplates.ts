@@ -3,8 +3,8 @@ import { toast } from 'sonner';
 
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
-import { supabase } from '@/lib/supabase/client';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
+import { supabase } from '@/lib/supabase/client';
 
 export type PropertyTemplateCategory = 'standard' | 'email' | 'custom';
 

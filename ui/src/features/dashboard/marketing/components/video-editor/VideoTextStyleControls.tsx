@@ -1,5 +1,19 @@
 import { AlignCenter, AlignLeft, AlignRight, Bold } from 'lucide-react';
 
+import { ColorPicker } from '@/features/dashboard/marketing/components/calendar-builder/components/controls/ColorPicker';
+import { NumberSlider } from '@/features/dashboard/marketing/components/calendar-builder/components/controls/NumberSlider';
+import {
+  buildTypographyFromPreset,
+  resolveLayerTypography,
+  VIDEO_FONT_FAMILIES,
+  VIDEO_TEXT_PRESETS,
+  type VideoTextPresetId,
+} from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
+import type {
+  VideoLayerTypography,
+  VideoSceneLayer,
+} from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -8,19 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ColorPicker } from '@/features/dashboard/marketing/components/calendar-builder/components/controls/ColorPicker';
-import { NumberSlider } from '@/features/dashboard/marketing/components/calendar-builder/components/controls/NumberSlider';
-import type {
-  VideoLayerTypography,
-  VideoSceneLayer,
-} from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import {
-  buildTypographyFromPreset,
-  resolveLayerTypography,
-  VIDEO_FONT_FAMILIES,
-  VIDEO_TEXT_PRESETS,
-  type VideoTextPresetId,
-} from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
 import { cn } from '@/lib/utils';
 
 type Props = {

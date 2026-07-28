@@ -1,7 +1,8 @@
 {
   "framework": "vite",
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
+  "installCommand": "cd .. && bun install",
+  "buildCommand": "bun run build",
+  "devCommand": "bun run dev",
   "outputDirectory": "dist",
   "rewrites": [
     {

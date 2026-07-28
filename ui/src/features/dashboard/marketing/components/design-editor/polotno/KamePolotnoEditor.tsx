@@ -3,32 +3,31 @@ import '@/features/dashboard/marketing/lib/polotno/configurePolotnoOverlays';
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 
 import { Popover, Tooltip } from '@blueprintjs/core';
+import { RaeditorContainer, SidePanelWrap, WorkspaceWrap } from 'openpolotno';
+import Workspace from 'openpolotno/canvas/workspace';
+import SidePanel from 'openpolotno/side-panel/side-panel';
+import Toolbar from 'openpolotno/toolbar/toolbar';
+import ZoomButtons from 'openpolotno/toolbar/zoom-buttons';
 
-import {
-  createBackgroundSection,
-  createUploadSection,
-} from '@/features/dashboard/marketing/components/design-editor/polotno/PropertyMediaPanels';
 import {
   createElementsSection,
   createLayersSection,
 } from '@/features/dashboard/marketing/components/design-editor/polotno/KameBuiltinPanels';
-import { KameSidePanelCollapse } from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelCollapse';
 import { KamePolotnoToolbarHistory } from '@/features/dashboard/marketing/components/design-editor/polotno/KamePolotnoToolbarHistory';
+import { KameSidePanelCollapse } from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelCollapse';
 import { createTextSection } from '@/features/dashboard/marketing/components/design-editor/polotno/KameTextPanel';
-import { usePolotnoSessionMedia } from '@/features/dashboard/marketing/components/design-editor/polotno/usePolotnoSessionMedia';
+import {
+  createBackgroundSection,
+  createUploadSection,
+} from '@/features/dashboard/marketing/components/design-editor/polotno/PropertyMediaPanels';
 import { usePolotnoOverlayAnchor } from '@/features/dashboard/marketing/components/design-editor/polotno/usePolotnoOverlayAnchor';
 import { usePolotnoOverlayDebug } from '@/features/dashboard/marketing/components/design-editor/polotno/usePolotnoOverlayDebug';
-import { propertyMediaItems } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
-import { polotnoWorkspaceChrome } from '@/features/dashboard/marketing/lib/polotno/polotnoWorkspaceTheme';
+import { usePolotnoSessionMedia } from '@/features/dashboard/marketing/components/design-editor/polotno/usePolotnoSessionMedia';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import { polotnoWorkspaceChrome } from '@/features/dashboard/marketing/lib/polotno/polotnoWorkspaceTheme';
+import { propertyMediaItems } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
-
-import SidePanel from 'openpolotno/side-panel/side-panel';
-import Toolbar from 'openpolotno/toolbar/toolbar';
-import Workspace from 'openpolotno/canvas/workspace';
-import ZoomButtons from 'openpolotno/toolbar/zoom-buttons';
-import { RaeditorContainer, SidePanelWrap, WorkspaceWrap } from 'openpolotno';
 
 type Props = {
   store: PolotnoStore;

@@ -1,7 +1,7 @@
-import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 import { adminTableBodyText } from '@/features/dashboard/bookings/components/AdminDataTable';
 
 import { cn } from '@/lib/utils';
+import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
 type Props = {
   checkInDate: string | null | undefined;

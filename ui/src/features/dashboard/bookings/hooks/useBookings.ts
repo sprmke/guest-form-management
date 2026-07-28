@@ -24,7 +24,6 @@ import type { BookingRow, BookingsQuery } from '@/features/dashboard/bookings/li
 import {
   appendOrgId,
   appendPropertyId,
-  useOrgIdParam,
   useOrgScopeKey,
   useOrgSlugParam,
   usePropertyIdParam,

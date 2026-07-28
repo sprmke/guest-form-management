@@ -7,6 +7,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { ParkingSlotCard } from '@/features/guest/marketing/developments/components/ParkingSlotCard';
 import { formatParkingSlotLocation } from '@/features/guest/marketing/developments/lib/parkingSlotDisplay';
 import type { ParkingListEntry } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
+
 import { cn } from '@/lib/utils';
 
 interface DevelopmentParkingRowProps {

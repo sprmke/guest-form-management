@@ -11,8 +11,8 @@ import {
 import { PublishHistory } from '@/features/dashboard/marketing/components/publishing/PublishHistory';
 import { MarketingStudioHeaderActionsProvider } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import { MarketingStudioModeTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
-import { MarketingStudioShell } from '@/features/dashboard/marketing/components/shared/MarketingStudioShell';
 import { SlidingTabs } from '@/features/dashboard/marketing/components/shared/MarketingStudioModeTabs';
+import { MarketingStudioShell } from '@/features/dashboard/marketing/components/shared/MarketingStudioShell';
 import { VideoEditor } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 import type { VideoExportPayload } from '@/features/dashboard/marketing/components/video-editor/VideoEditor';
 

@@ -6,7 +6,6 @@
  * Payment balance receipt is required only when total > ₱0.
  */
 
-import { formatMoney } from '@/utils/format/currency';
 import { useEffect, useRef, useState } from 'react';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -29,7 +28,6 @@ import {
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
-
 import {
   resolveAssetUrlForBrowser,
   isStorageObjectNotFoundError,
@@ -47,6 +45,7 @@ import {
 
 import { supabase } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 export type GuestBalanceSettlementValues = {
   guest_balance_paid_amount: number;

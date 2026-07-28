@@ -3,8 +3,8 @@ import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 
 import { RoleDot } from '@/features/dashboard/team/components/RoleBadge';
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import { ADD_CUSTOM_ROLE_VALUE } from '@/features/dashboard/team/lib/roleSelectUtils';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type { CustomPropertyRole } from '@/features/dashboard/team/types/propertyTeam';
 
 import { SelectGroup, SelectItem, SelectLabel, SelectSeparator } from '@/components/ui/select';

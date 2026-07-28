@@ -1,5 +1,5 @@
 import {
-  Canvas,
+  type Canvas,
   FabricImage,
   Point,
   Rect,

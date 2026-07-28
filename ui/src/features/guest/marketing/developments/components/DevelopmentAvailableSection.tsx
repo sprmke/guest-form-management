@@ -1,12 +1,13 @@
 import { motion } from 'framer-motion';
 
+import { getParkingSlotsByDevelopmentSlug } from '@/features/guest/marketing/developments/data/mockParkingSlots';
+import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 import { PropertiesLocationRow } from '@/features/guest/marketing/properties/components/PropertiesLocationRow';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 import { propertiesForDevelopment } from '@/features/guest/marketing/properties/lib/groupPropertiesByDevelopment';
-import { getParkingSlotsByDevelopmentSlug } from '@/features/guest/marketing/developments/data/mockParkingSlots';
-import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 
 import { DevelopmentParkingRow } from './DevelopmentParkingRow';
+
 import type { Development } from '../types';
 
 interface DevelopmentAvailableSectionProps {

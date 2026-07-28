@@ -4,16 +4,17 @@ import { Loader2, Paperclip, Pencil, Reply, SendHorizontal, Undo2, X } from 'luc
 import { toast } from 'sonner';
 
 import {
-  InboxMediaPreviewDialog,
-  InboxMessageMediaTile,
-} from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
-import type { InboxAttachmentPreview } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
-import {
   canGuestEditMessage,
   canGuestUnsendMessage,
   type GuestChatAttachment,
   type GuestChatMessage,
 } from '@/features/guest/chat/lib/guestChatApi';
+
+import {
+  InboxMediaPreviewDialog,
+  InboxMessageMediaTile,
+} from '@/features/dashboard/inbox/components/InboxMediaPreviewDialog';
+import type { InboxAttachmentPreview } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
 
 import { ChatComposerContextBar } from '@/components/chat/ChatComposerContextBar';
 import {
@@ -27,13 +28,13 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { chatAttachmentPreviews } from '@/lib/chat/chatAttachments';
+import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import {
   formatChatBubbleTime,
   isChatMessageUnsent,
   resolveOutboundDeliveryStatus,
   unsentMessageLabel,
 } from '@/lib/chat/chatMessageFormat';
-import { isChatActionEligibilityError } from '@/lib/chat/chatMessageActions';
 import { focusComposerInput, type ComposerFocusMode } from '@/lib/chat/focusComposerInput';
 import {
   useChatThreadSearch,

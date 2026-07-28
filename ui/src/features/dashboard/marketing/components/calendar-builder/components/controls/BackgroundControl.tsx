@@ -1,5 +1,10 @@
 import React, { useRef, useCallback, useState, useMemo } from 'react';
+
 import { Plus, Trash2, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
+
+import { useCalendarPropertyMedia } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
+import { PropertyImagePicker } from '@/features/dashboard/marketing/components/shared/PropertyImagePicker';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,14 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { toast } from 'sonner';
 
-import { useCalendarPropertyMedia } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
-import { PropertyImagePicker } from '@/features/dashboard/marketing/components/shared/PropertyImagePicker';
-
-import { type BackgroundConfig } from '../../types';
 import { ColorPicker } from './ColorPicker';
 import { NumberSlider } from './NumberSlider';
+import { type BackgroundConfig } from '../../types';
 
 interface BackgroundControlProps {
   label?: string;

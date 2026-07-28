@@ -1,6 +1,8 @@
+import { Link } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Building2, FileText } from 'lucide-react';
-import { Link } from 'react-router-dom';
+
 import { Button } from '@/components/ui/button';
 
 interface FormSuccessProps {

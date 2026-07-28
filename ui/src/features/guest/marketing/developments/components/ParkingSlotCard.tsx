@@ -9,6 +9,7 @@ import {
 } from '@/features/guest/marketing/developments/lib/parkingSlotDisplay';
 import { resolveParkingSlotImage } from '@/features/guest/marketing/developments/lib/parkingSlotMedia';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
 import { Button } from '@/components/ui/button';
 
 import type { ParkingSlot } from '../types';

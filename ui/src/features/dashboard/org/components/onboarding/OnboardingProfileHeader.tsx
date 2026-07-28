@@ -2,12 +2,13 @@ import { useNavigate } from 'react-router-dom';
 
 import { ChevronDown, LogOut, Users } from 'lucide-react';
 
-import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import {
   HOST_LOGIN_PATH,
   hostGoogleOAuthRedirectTo,
   hostLoginPath,
 } from '@/features/guest/auth/lib/hostAuthPaths';
+
+import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
 import {
   DropdownMenu,

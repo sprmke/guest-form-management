@@ -7,10 +7,11 @@ import { BadgeCheck, Check, ChevronDown, Loader2, Shield } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
+import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
+import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { VerificationChecklist } from '@/features/dashboard/org/components/verification/VerificationChecklist';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import { VerificationTierProgress } from '@/features/dashboard/org/components/verification/VerificationTierProgress';
-import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import {
   ORGANIZATIONS_QUERY_KEY,
   useOrganizations,
@@ -22,7 +23,6 @@ import {
   validateVerificationFile,
   type OrgSocialProofPlatform,
 } from '@/features/dashboard/org/lib/orgVerification';
-import { cn } from '@/lib/utils';
 import {
   buildHostTierChecklist,
   buildVerificationTiers,
@@ -49,7 +49,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
+import { cn } from '@/lib/utils';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
 

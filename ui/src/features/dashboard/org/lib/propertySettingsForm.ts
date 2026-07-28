@@ -1,5 +1,13 @@
 import { slugifyOrgName } from '@/features/dashboard/org/lib/orgSettingsForm';
+import {
+  readCancellationPolicyFromSettings,
+  type CancellationPolicySettings,
+} from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
+import {
+  INITIAL_ENABLED_HOUSE_RULES,
+  type CustomHouseRule,
+} from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 import {
   readNullableLatitude,
   readNullableLongitude,
@@ -13,14 +21,6 @@ import {
   type PropertyContactRole,
   type PropertyMediaItem,
 } from '@/features/dashboard/org/lib/propertySettingsConstants';
-import {
-  readCancellationPolicyFromSettings,
-  type CancellationPolicySettings,
-} from '@/features/dashboard/org/lib/propertyCancellationPolicy';
-import {
-  INITIAL_ENABLED_HOUSE_RULES,
-  type CustomHouseRule,
-} from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 import {
   formatTowerAndUnit,
   isPropertyTowerForResidence,

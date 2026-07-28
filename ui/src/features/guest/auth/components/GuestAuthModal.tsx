@@ -4,10 +4,11 @@ import { ArrowLeft } from 'lucide-react';
 
 import { AuthDivider } from '@/features/guest/auth/components/AuthDivider';
 import { useGuestAuthActions } from '@/features/guest/auth/hooks/useGuestAuthActions';
+
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { FacebookIcon, GoogleIcon, SpinnerIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 

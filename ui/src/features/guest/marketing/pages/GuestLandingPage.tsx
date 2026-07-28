@@ -2,7 +2,6 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 
 import { readGuestPropertySlug } from '@/features/guest/form/lib/guestPropertyScope';
 import { guestCalendarPath } from '@/features/guest/lib/guestPublicPaths';
-
 import { FeaturedProperties } from '@/features/guest/marketing/guest-landing/components/FeaturedProperties';
 import { GuestHero } from '@/features/guest/marketing/guest-landing/components/GuestHero';
 import { LandingSocialProof } from '@/features/guest/marketing/guest-landing/components/LandingSocialProof';

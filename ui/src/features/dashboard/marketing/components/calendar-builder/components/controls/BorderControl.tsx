@@ -7,9 +7,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { type BorderConfig } from '../../types';
 import { ColorPicker } from './ColorPicker';
 import { NumberSlider } from './NumberSlider';
+import { type BorderConfig } from '../../types';
 
 interface BorderControlProps {
   label?: string;

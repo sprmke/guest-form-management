@@ -29,7 +29,7 @@ export function useVideoProjectHistory() {
   const pushSnapshot = useCallback(
     (next: VideoProject, options?: { force?: boolean }) => {
       const clone = cloneProject(next);
-      let history = historyRef.current.slice(0, indexRef.current + 1);
+      const history = historyRef.current.slice(0, indexRef.current + 1);
       const now = Date.now();
       const coalesce =
         !options?.force &&

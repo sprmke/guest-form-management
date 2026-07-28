@@ -96,7 +96,7 @@ export function propertySectionPath(
 }
 
 export type NotificationModule =
-  'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'chat';
+  'marketing' | 'staff' | 'operations' | 'finance' | 'maintenance' | 'parking' | 'chat';
 
 export function parkingNotificationsPath(
   orgSlug: string,

@@ -4,8 +4,9 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 
 import { Loader2 } from 'lucide-react';
 
-import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
+
+import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 
 import { Button } from '@/components/ui/button';
 

@@ -32,7 +32,6 @@ import { toast } from 'sonner';
 
 import { PropertyMediaPreviewDialog } from '@/features/dashboard/org/components/property-settings/PropertyMediaPreviewDialog';
 import { useUploadPropertyMedia } from '@/features/dashboard/org/hooks/useUploadPropertyMedia';
-import { useUploadDevelopmentMedia } from '@/features/dashboard/super-admin/hooks/useUploadDevelopmentMedia';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   ACCEPT_PROPERTY_IMAGE_INPUT,
@@ -48,6 +47,7 @@ import {
   type PropertyMediaUploadKind,
 } from '@/features/dashboard/org/lib/propertyMedia';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import { useUploadDevelopmentMedia } from '@/features/dashboard/super-admin/hooks/useUploadDevelopmentMedia';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

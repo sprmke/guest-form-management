@@ -7,10 +7,10 @@ import {
   telegramChatIdPlaceholder,
 } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
 import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 import { cn } from '@/lib/utils';
 
 export type { PropertyTelegramCredentialsStatus };

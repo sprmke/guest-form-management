@@ -173,7 +173,7 @@ const generateDummyFile = async (prefix: string): Promise<File> => {
 
 // Set dummy file in file input
 export const setDummyFile = (
-  fileInputRef: React.RefObject<HTMLInputElement>,
+  fileInputRef: React.RefObject<HTMLInputElement | null>,
   file: File | null
 ) => {
   if (!fileInputRef.current || !file) return;

@@ -5,13 +5,22 @@ import type {
   PreviewBooking,
 } from '@/features/dashboard/marketing/components/calendar-builder/types';
 import { captureCalendarPresetThumbnail } from '@/features/dashboard/marketing/components/shared/MarketingCalendarThumbnailHost';
-import type { CalendarCanvasFormat } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 import type { MarketingTemplateRecord } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import type { CalendarCanvasFormat } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import { calendarPreviewThumbKey } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import {
   DEFAULT_MARKETING_THUMB_BINDING,
   resolveMarketingThumbBinding,
 } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
-import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import {
+  waitForMarketingIdle,
+  yieldToMainThread,
+} from '@/features/dashboard/marketing/lib/marketingIdle';
+import {
+  getManyPersistedPresetThumbnails,
+  setPersistedPresetThumbnail,
+} from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
 import {
   calendarPresetThumbnailKey,
   calendarSavedStylesThumbnailKey,
@@ -24,12 +33,7 @@ import {
   subscribeMarketingThumbnailUpdates,
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
-import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
-import { calendarPreviewThumbKey } from '@/features/dashboard/marketing/lib/marketingBookedDates';
-import {
-  getManyPersistedPresetThumbnails,
-  setPersistedPresetThumbnail,
-} from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
+import { runWithConcurrency } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
 import {
   renderDesignPolotnoJsonThumbnail,
   renderDesignPresetThumbnail,
@@ -38,17 +42,14 @@ import {
   renderVideoPresetThumbnail,
   renderVideoProjectThumbnail,
 } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
-import { runWithConcurrency } from '@/features/dashboard/marketing/lib/marketingThumbnailQueue';
-import {
-  waitForMarketingIdle,
-  yieldToMainThread,
-} from '@/features/dashboard/marketing/lib/marketingIdle';
 import { parseVideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectDefaults';
 import type {
   VideoFormat,
   VideoProject,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { getVideoCampaignTemplate } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
+
+import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 type DesignOptions = {
   contentType: 'design';

@@ -9,7 +9,6 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §2 (sd columns), §6.1 Q2.1
  */
 
-import { formatMoney } from '@/utils/format/currency';
 import { useEffect, useRef, useState } from 'react';
 
 import { ExternalLink, FileImage, Loader2, Plus, Trash2, Upload } from 'lucide-react';
@@ -24,7 +23,6 @@ import {
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
-
 import type { BookingRow, SdSettlementLineItem } from '@/features/dashboard/bookings/lib/types';
 import {
   workflowAssetPreviewCard,
@@ -33,6 +31,7 @@ import {
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 function parseNumberArray(raw: unknown): number[] {
   if (Array.isArray(raw)) {

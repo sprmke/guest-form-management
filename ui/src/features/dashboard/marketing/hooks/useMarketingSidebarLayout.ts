@@ -73,7 +73,7 @@ export function useMarketingSidebarLayout(layoutKey: MarketingSidebarLayoutKey) 
   const finishResize = useCallback(
     (width: number, expandedWidthBeforeDrag: number) => {
       if (width < MARKETING_SIDEBAR_COLLAPSE_THRESHOLD) {
-        setLayout((prev) => {
+        setLayout(() => {
           const next = {
             collapsed: true,
             width: clampExpandedWidth(expandedWidthBeforeDrag),
@@ -84,7 +84,7 @@ export function useMarketingSidebarLayout(layoutKey: MarketingSidebarLayoutKey) 
         return;
       }
 
-      setLayout((prev) => {
+      setLayout(() => {
         const next = {
           collapsed: false,
           width: clampExpandedWidth(width),
@@ -108,7 +108,7 @@ export function useMarketingSidebarLayout(layoutKey: MarketingSidebarLayoutKey) 
   );
 
   const expandSidebar = useCallback(() => {
-    setLayout((prev) => {
+    setLayout(() => {
       const next = {
         collapsed: false,
         width: MARKETING_SIDEBAR_DEFAULT_WIDTH,

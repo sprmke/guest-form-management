@@ -4,8 +4,9 @@ import ReactDOM from 'react-dom/client';
 
 import { BrowserRouter } from 'react-router-dom';
 
-import App from './App';
 import { ScrollToTop } from '@/components/navigation/ScrollToTop';
+
+import App from './App';
 import { ThemedToaster } from './components/theme/ThemedToaster';
 import { ThemeProvider } from './components/theme/ThemeProvider';
 import 'react-day-picker/dist/style.css';

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+
 import { useLocation } from 'react-router-dom';
 
 import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';

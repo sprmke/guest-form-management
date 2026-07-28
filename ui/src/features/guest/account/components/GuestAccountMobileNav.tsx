@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
-
 import { GUEST_ACCOUNT_NAV_ITEMS } from '@/features/guest/account/lib/guestAccountNav';
+
+import { resolveActiveNavHref } from '@/features/dashboard/bookings/lib/navActive';
 
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';

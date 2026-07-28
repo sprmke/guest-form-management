@@ -5,11 +5,6 @@ import {
   developmentDetailPath,
   resolvePublicDevelopment,
 } from '@/features/guest/marketing/developments/lib/resolvePublicDevelopment';
-import {
-  DEFAULT_PARKING_HEIGHT_CLEARANCE_M,
-  DEFAULT_PARKING_SPACE_LENGTH_M,
-  DEFAULT_PARKING_SPACE_WIDTH_M,
-} from '@/features/dashboard/parking/lib/parkingDimensionDefaults';
 import { formatParkingDimensionMeters } from '@/features/guest/marketing/parkings/lib/parkingDimensions';
 import { parkingTypeLabel } from '@/features/guest/marketing/parkings/lib/parkingTypeLabel';
 import { ListingCheckInOutTimes } from '@/features/guest/marketing/shared/components/ListingCheckInOutTimes';
@@ -19,9 +14,15 @@ import {
   type ListingHostInfo,
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
-import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
+import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { buildParkingPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
+
+import {
+  DEFAULT_PARKING_HEIGHT_CLEARANCE_M,
+  DEFAULT_PARKING_SPACE_LENGTH_M,
+  DEFAULT_PARKING_SPACE_WIDTH_M,
+} from '@/features/dashboard/parking/lib/parkingDimensionDefaults';
 
 type Props = {
   name: string;

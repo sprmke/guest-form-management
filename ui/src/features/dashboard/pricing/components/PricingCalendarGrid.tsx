@@ -1,4 +1,3 @@
-import { formatMoneyCompact } from '@/utils/format/currency';
 import type { ReactNode } from 'react';
 
 import {
@@ -21,6 +20,7 @@ import type { PricingHolidayRule } from '@/features/dashboard/pricing/lib/phHoli
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatMoneyCompact } from '@/utils/format/currency';
 
 export type PricingDayState = {
   price: number;

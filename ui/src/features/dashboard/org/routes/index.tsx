@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Route } from 'react-router-dom';
 
+import { OrgInboxPage } from '@/features/dashboard/inbox/pages/OrgInboxPage';
 import { LegacyAdminRedirect } from '@/features/dashboard/org/components/LegacyAdminRedirect';
 import { OrgAdminShell } from '@/features/dashboard/org/components/OrgAdminShell';
 import { ParkingAdminShell } from '@/features/dashboard/org/components/ParkingAdminShell';
@@ -13,9 +14,8 @@ import { OrgParkingsPage } from '@/features/dashboard/org/pages/OrgParkingsPage'
 import { OrgPropertiesPage } from '@/features/dashboard/org/pages/OrgPropertiesPage';
 import { OrgSelectorPage } from '@/features/dashboard/org/pages/OrgSelectorPage';
 import { OrgSettingsPage } from '@/features/dashboard/org/pages/OrgSettingsPage';
-import { OrgInboxPage } from '@/features/dashboard/inbox/pages/OrgInboxPage';
-import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 import type { OrgRouteFn } from '@/features/dashboard/org/routes/guards';
+import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 
 export const orgOnboardingRoutes: ReactNode = (
   <>

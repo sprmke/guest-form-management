@@ -1,4 +1,4 @@
-import { Check, Film, MoreHorizontal, Settings2 } from 'lucide-react';
+import { Check, MoreHorizontal, Settings2 } from 'lucide-react';
 
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { useVisibleThumbnailRequest } from '@/features/dashboard/marketing/hooks/useVisibleThumbnailRequest';

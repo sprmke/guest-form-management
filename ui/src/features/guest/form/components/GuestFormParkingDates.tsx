@@ -8,8 +8,8 @@ import {
   parseBookingStayDate,
 } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
-import { DatePicker } from '@/components/ui/date-picker';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import {
   dateToString,

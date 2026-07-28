@@ -2,8 +2,8 @@ import * as React from 'react';
 
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
-import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
 import { cn } from '@/lib/utils';
 

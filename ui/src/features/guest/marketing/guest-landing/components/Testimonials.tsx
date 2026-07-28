@@ -2,9 +2,11 @@ import { useRef, useState } from 'react';
 
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import { Star, Quote, ChevronLeft, ChevronRight } from 'lucide-react';
+
+import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 const testimonials = [
   {

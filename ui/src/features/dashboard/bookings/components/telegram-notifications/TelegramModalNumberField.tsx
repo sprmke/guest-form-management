@@ -1,6 +1,7 @@
+import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
+
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 import { cn } from '@/lib/utils';
 
 type Props = {

@@ -1,6 +1,5 @@
-import type { FinanceStaysView } from '@/features/dashboard/finance/lib/types';
-
 import { ADMIN_LIST_VIEW_OPTIONS } from '@/features/dashboard/bookings/components/AdminListViewToggle';
+import type { FinanceStaysView } from '@/features/dashboard/finance/lib/types';
 
 import { AdminViewToggle } from '@/components/navigation/AdminViewToggle';
 

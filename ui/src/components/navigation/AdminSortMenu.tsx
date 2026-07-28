@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import { ArrowUpDown, Check, ChevronDown } from 'lucide-react';
 
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
-
 import { cn } from '@/lib/utils';
 
 export type AdminSortOption<T extends string> = {

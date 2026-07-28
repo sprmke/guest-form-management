@@ -21,7 +21,11 @@ export const DEFAULT_MARKETING_THUMB_BINDING: DesignBinding = {
   availabilityText: '3 open nights this month',
   monthLabel: 'July 2026',
   monthShort: 'July',
-  openSlots: ['July 12', 'July 18', 'July 25'],
+  openSlots: [
+    { dateNum: '12', dayName: 'Sun' },
+    { dateNum: '18', dayName: 'Sat' },
+    { dateNum: '25', dayName: 'Sat' },
+  ],
 };
 
 export const DEFAULT_MARKETING_THUMB_PROPERTY_NAME = DEFAULT_MARKETING_THUMB_BINDING.propertyName;

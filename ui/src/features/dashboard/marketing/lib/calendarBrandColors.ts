@@ -4,6 +4,7 @@ import {
   canvasFrameBackgroundForFormat,
   normalizeCalendarCanvasFrame,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 
 export type CalendarBrandPalette = {

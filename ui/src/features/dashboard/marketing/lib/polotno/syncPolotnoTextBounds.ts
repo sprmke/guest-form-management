@@ -27,7 +27,7 @@ export async function syncPolotnoTextBounds(store: PolotnoStore): Promise<void> 
   await store.waitLoading();
   await waitForCanvasLayout();
 
-  for (const page of store.pages) {
+  for (const page of store.pages ?? []) {
     const stage = Konva.stages.find((candidate) => candidate.getAttr('pageId') === page.id);
     if (!stage) continue;
 

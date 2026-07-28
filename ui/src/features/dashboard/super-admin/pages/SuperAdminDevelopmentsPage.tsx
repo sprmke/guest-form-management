@@ -11,8 +11,8 @@ import {
   SuperAdminDevelopmentCard,
   SuperAdminDevelopmentsEmptyState,
 } from '@/features/dashboard/super-admin/components/super-admin-developments/SuperAdminDevelopmentCard';
-import { SuperAdminDevelopmentsTable } from '@/features/dashboard/super-admin/components/super-admin-developments/SuperAdminDevelopmentsTable';
 import { SuperAdminDevelopmentsSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-developments/SuperAdminDevelopmentsSummaryCards';
+import { SuperAdminDevelopmentsTable } from '@/features/dashboard/super-admin/components/super-admin-developments/SuperAdminDevelopmentsTable';
 import {
   SuperAdminDevelopmentsResultsMeta,
   SuperAdminDevelopmentsToolbar,

@@ -65,7 +65,7 @@ export function useEnsureDefaultVideoMusic(project: VideoProject | null, setProj
           findJamendoTrackForMusic(tracks, baseMusic) ?? matchDefaultJamendoTrack(tracks);
         if (!track) return;
 
-        let resolvedMusic = baseMusic.url
+        const resolvedMusic = baseMusic.url
           ? baseMusic
           : videoMusicFromJamendoTrack(track, baseMusic);
 

@@ -1,25 +1,33 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { InputGroup } from '@blueprintjs/core';
+import { Search } from '@blueprintjs/icons';
 import { observer } from 'mobx-react-lite';
+import { NounprojectPanel } from 'openpolotno/side-panel/elements-panel';
+import { selectImage } from 'openpolotno/side-panel/select-image';
+import { ImagesGrid } from 'openpolotno/side-panel/side-panel';
 
 import {
   KameSidePanelGroup,
   KameSidePanelShell,
 } from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelShell';
-import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 import {
   buildKamePolotnoShapes,
   KAME_POLOTNO_DEFAULT_SHAPE_FILL,
   type KamePolotnoShape,
 } from '@/features/dashboard/marketing/lib/polotno/kamePolotnoShapes';
+import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 
-import { InputGroup } from '@blueprintjs/core';
-import { Search } from '@blueprintjs/icons';
-import { ImagesGrid } from 'openpolotno/side-panel/side-panel';
-import { NounprojectPanel } from 'openpolotno/side-panel/elements-panel';
-import { selectImage } from 'openpolotno/side-panel/select-image';
+type LineStyleItem = { preview: string; data: Record<string, unknown> };
+type GridPosition = { x: number; y: number };
+type ImageGridItem = { url: string };
+type GridTargetElement = {
+  type?: string;
+  contentEditable?: boolean;
+  set: (patch: Record<string, unknown>) => void;
+};
 
-const LINE_STYLES = [
+const LINE_STYLES: LineStyleItem[] = [
   {
     preview: `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="32" height="16"><path stroke="#C0BFBF" strokeWidth="4" d="M 1 8 L 30 8"></path></svg>`)}`,
     data: {},
@@ -83,10 +91,10 @@ const KameLinesGrid = observer(function KameLinesGrid({ store }: { store: Polotn
       shadowEnabled={false}
       rowsNumber={3}
       images={LINE_STYLES}
-      getPreview={(item) => item.preview}
+      getPreview={(item: LineStyleItem) => item.preview}
       itemHeight={50}
       isLoading={false}
-      onSelect={async (item, pos) => {
+      onSelect={async (item: LineStyleItem, pos?: GridPosition) => {
         const page = (
           store as {
             activePage?: {
@@ -126,10 +134,10 @@ const KameLogoGrid = observer(function KameLogoGrid({
         shadowEnabled={false}
         rowsNumber={1}
         images={images}
-        getPreview={(item) => item.url}
+        getPreview={(item: ImageGridItem) => item.url}
         isLoading={false}
         itemHeight={100}
-        onSelect={async (item) => {
+        onSelect={async (item: ImageGridItem) => {
           await selectImage({ src: item.url, store: store as never });
         }}
       />
@@ -147,10 +155,10 @@ const KameShapesGrid = observer(function KameShapesGrid({ store }: { store: Polo
         shadowEnabled={false}
         rowsNumber={4}
         images={shapes}
-        getPreview={(item) => item.url}
+        getPreview={(item: KamePolotnoShape) => item.url}
         isLoading={false}
         itemHeight={100}
-        onSelect={async (item, pos, el) => {
+        onSelect={async (item: KamePolotnoShape, pos?: GridPosition, el?: GridTargetElement) => {
           if (
             el &&
             (el as { type?: string }).type === 'image' &&
@@ -181,7 +189,7 @@ export const KameElementsPanel = observer(function KameElementsPanel({
   store: PolotnoStore;
   logoUrl?: string | null;
 }) {
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [inputValue, setInputValue] = useState('');
   const [query, setQuery] = useState('');
 

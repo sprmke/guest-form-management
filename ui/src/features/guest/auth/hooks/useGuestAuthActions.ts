@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import { guestOAuthRedirectTo } from '@/features/guest/auth/lib/guestAuthPaths';
+
 import { supabase } from '@/lib/supabase/client';
 
 function normalizeEmail(email: string): string {

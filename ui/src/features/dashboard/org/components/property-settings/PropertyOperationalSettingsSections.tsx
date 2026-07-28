@@ -1,5 +1,3 @@
-import * as React from 'react';
-
 import { ClipboardList, Globe, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 

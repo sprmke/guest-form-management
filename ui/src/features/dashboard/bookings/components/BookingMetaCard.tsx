@@ -1,9 +1,8 @@
-import { formatRelative } from '@/utils/format/bookingDisplay';
 import { InlineCopyIconButton } from '@/features/dashboard/bookings/components/InlineCopyIconButton';
-
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
+import { formatRelative } from '@/utils/format/bookingDisplay';
 
 type Props = {
   booking: BookingRow;

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-import type { PlayerRef } from '@remotion/player';
-
 import type { VideoPreviewMode } from '@/features/dashboard/marketing/components/video-editor/useVideoPlayerTransport';
 import type { VideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { sceneIndexAtFrame } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
+
+import type { PlayerRef } from '@remotion/player';
 
 /** Polls the active scene without re-rendering the Remotion Player each frame. */
 export function useActiveSceneIndex(

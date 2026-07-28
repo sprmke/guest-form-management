@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { onSnapshot } from 'mobx-state-tree';
+import { onSnapshot, type IAnyStateTreeNode } from 'mobx-state-tree';
 
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
@@ -18,7 +18,7 @@ export function usePolotnoStoreFingerprint(
     if (!store) return;
 
     let timer: number | undefined;
-    const dispose = onSnapshot(store, () => {
+    const dispose = onSnapshot(store as unknown as IAnyStateTreeNode, () => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => setRevision((value) => value + 1), SNAPSHOT_COALESCE_MS);
     });

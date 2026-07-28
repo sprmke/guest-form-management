@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ShieldCheck, Star } from 'lucide-react';
 
 import { featuredGuestReview } from '@/features/guest/marketing/guest-landing/data/landingContent';
+
 import { Button } from '@/components/ui/button';
 
 export function LandingSocialProof() {

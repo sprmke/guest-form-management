@@ -2,26 +2,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
-  automationTogglesEqual,
-  DEFAULT_PROPERTY_AUTOMATION_TOGGLES,
-  type PropertyAutomationToggles,
-} from '@/features/dashboard/org/lib/propertyEmailAutomation';
-import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
-import {
   normalizePaymentMethodsDraft,
   paymentMethodsEqual,
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
 import {
+  automationTogglesEqual,
+  DEFAULT_PROPERTY_AUTOMATION_TOGGLES,
+  type PropertyAutomationToggles,
+} from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import {
   externalReviewsEqual,
   normalizeExternalReviewsDraft,
   type PropertyExternalReview,
   type SuperhostStatus,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
 
-import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 import { supabase } from '@/lib/supabase/client';
+import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 
 export type AppSettingsFieldSource = 'db' | 'default';
 

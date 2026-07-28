@@ -1,8 +1,9 @@
-import { formatMoney } from '@/utils/format/currency';
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { AlertCircle, CalendarDays, Car, ParkingCircle, type LucideIcon } from 'lucide-react';
 
 import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
+
+import { formatBookingDate } from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 
 function PayParkingSectionShell({
   icon: Icon,

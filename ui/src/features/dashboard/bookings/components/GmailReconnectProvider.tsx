@@ -15,8 +15,8 @@ import {
   type GmailReconnectModalMode,
 } from '@/features/dashboard/bookings/components/GmailReconnectModal';
 import { useGmailMailIntegrationStatus } from '@/features/dashboard/bookings/hooks/useGmailMailIntegration';
-import { isGmailNeedsReconnectError } from '@/features/dashboard/bookings/lib/gmailReconnect';
 import { isSuperAdminPath } from '@/features/dashboard/bookings/lib/adminSidebarNav';
+import { isGmailNeedsReconnectError } from '@/features/dashboard/bookings/lib/gmailReconnect';
 
 const CONNECT_PROMPT_SESSION_KEY = 'admin-gmail-connect-modal-shown';
 

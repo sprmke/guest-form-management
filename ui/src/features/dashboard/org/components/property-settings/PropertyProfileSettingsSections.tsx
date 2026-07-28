@@ -11,7 +11,6 @@ import {
   Info,
   ListChecks,
   MapPin,
-  Phone,
   Plus,
   Sparkles,
   Users,
@@ -31,13 +30,13 @@ import {
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
-import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   HOUSE_RULE_CATEGORIES,
   HOUSE_RULE_CUSTOM_MAX_LENGTH,
   MUTUALLY_EXCLUSIVE_HOUSE_RULES,
   type CustomHouseRule,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
+import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
   applyResidenceDefaultsToDraft,
   clampToRange,
@@ -54,7 +53,6 @@ import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/pro
 import {
   AMENITY_CATEGORIES,
   CUSTOM_AMENITY_MAX_LENGTH,
-  PROPERTY_CONTACT_ROLES,
   PROPERTY_TYPES,
   type CustomAmenity,
   type PropertyMediaItem,
@@ -96,10 +94,6 @@ import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">{children}</div>;
-}
-
-function SectionDivider() {
-  return <div className="border-border border-t" />;
 }
 
 type ProfileSectionsProps = {

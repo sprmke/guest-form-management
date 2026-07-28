@@ -1,11 +1,16 @@
 import { useState } from 'react';
+
 import { Link } from 'react-router-dom';
+
 import { ArrowLeft, ArrowRight, Mail, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { SpinnerIcon } from '@/components/ui/icons';
-import { FormField } from './FormField';
+
 import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
+
+import { Button } from '@/components/ui/button';
+import { SpinnerIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
+
+import { FormField } from './FormField';
 
 interface ForgotPasswordPageContentProps {
   config: AuthPageConfig;

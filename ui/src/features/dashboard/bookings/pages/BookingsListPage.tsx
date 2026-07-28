@@ -5,6 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { CalendarPlus } from 'lucide-react';
 
+import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
+
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
@@ -21,6 +23,10 @@ import {
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import {
+  resolveBookingListHref,
+  type BookingsListScope,
+} from '@/features/dashboard/bookings/lib/bookingListNavigation';
+import {
   countBookingsByStage,
   effectiveStatusFilter,
   parseBookingStage,
@@ -31,15 +37,9 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
-import {
-  resolveBookingListHref,
-  type BookingsListScope,
-} from '@/features/dashboard/bookings/lib/bookingListNavigation';
-
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { orgPropertiesPath } from '@/features/dashboard/org/lib/tenantPaths';
-import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
@@ -331,7 +331,9 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         to={
           scope === 'org' && orgSlug
             ? orgPropertiesPath(orgSlug)
-            : guestFormPath(propertySlug ?? undefined)
+            : propertySlug
+              ? guestFormPath(propertySlug)
+              : '#'
         }
         className={cn(
           'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',

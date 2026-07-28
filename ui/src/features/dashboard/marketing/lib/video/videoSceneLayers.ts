@@ -1,3 +1,5 @@
+import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
+import { buildTypographyFromPreset } from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
 import type {
   VideoScene,
   VideoSceneKind,
@@ -5,13 +7,11 @@ import type {
   VideoSceneTextFields,
   VideoTextStyle,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
 import {
   defaultTextLayoutForSceneKind,
   textSlotsForSceneKind,
 } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
-import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
-import { buildTypographyFromPreset } from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
-import { inferBackgroundMediaType } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
 
 export function createLayerId(): string {
   return `layer-${crypto.randomUUID().slice(0, 8)}`;

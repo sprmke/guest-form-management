@@ -4,20 +4,19 @@ import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
-import {
-  externalReviewsEqual,
-  type PropertyExternalReview,
-} from '@/features/dashboard/org/lib/propertyExternalReviews';
+import { cancellationPolicySettingsEqual } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import {
   automationTogglesEqual,
   type PropertyAutomationToggles,
 } from '@/features/dashboard/org/lib/propertyEmailAutomation';
+import {
+  externalReviewsEqual,
+  type PropertyExternalReview,
+} from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type {
   PropertySettingsCompletionResult,
   PropertySettingsSectionId,
 } from '@/features/dashboard/org/lib/propertySettingsCompletion';
-import { propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
-import { cancellationPolicySettingsEqual } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import {
   propertyProfileDbFieldsDirty,
   propertyProfileDraftToUpdatePayload,
@@ -25,6 +24,8 @@ import {
   type PropertyProfileDraft,
   type PropertyProfileUpdatePayload,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
+
+import { propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
 
 const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-name': 'basic',

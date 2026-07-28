@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -12,8 +13,9 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import { AbstractBackground } from '@/features/guest/marketing/shared/components/AbstractBackground';
+
+import { Button } from '@/components/ui/button';
 
 export function ForHostsPage() {
   return (

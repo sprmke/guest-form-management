@@ -1,3 +1,10 @@
+import { Check, Shield } from 'lucide-react';
+
+import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import {
+  LimitedCountInput,
+  SettingsField,
+} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
   CANCELLATION_DAYS_BEFORE_OPTIONS,
   CANCELLATION_GRACE_HOUR_OPTIONS,
@@ -11,11 +18,6 @@ import {
   type CancellationPolicyType,
 } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 
-import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import {
-  LimitedCountInput,
-  SettingsField,
-} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -27,7 +29,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
-import { Check, Shield } from 'lucide-react';
 
 type Props = {
   policy: CancellationPolicySettings;

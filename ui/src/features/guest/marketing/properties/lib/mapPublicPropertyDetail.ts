@@ -1,5 +1,10 @@
 import type { Property } from '@/features/guest/marketing/properties/components/PropertyCard';
 import type { PropertyDetail } from '@/features/guest/marketing/properties/data/mockPropertyDetail';
+import type {
+  PublicPropertyDetailDto,
+  ResolvedPropertyDetail,
+} from '@/features/guest/marketing/properties/types/publicProperty';
+
 import {
   DEFAULT_CANCELLATION_POLICY,
   resolveCancellationPolicyDisplay,
@@ -8,11 +13,6 @@ import {
   INITIAL_ENABLED_HOUSE_RULES,
   resolveHouseRulesForDisplay,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
-import type {
-  PublicGuestReview,
-  PublicPropertyDetailDto,
-  ResolvedPropertyDetail,
-} from '@/features/guest/marketing/properties/types/publicProperty';
 
 /** Same default as guest forms / org settings preview */
 export const DEFAULT_ORG_LOGO_URL = '/images/logo.png';

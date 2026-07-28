@@ -11,7 +11,6 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §6.1 Q2.1, Q2.3, Q2.4
  */
 
-import { formatMoney } from '@/utils/format/currency';
 import { useEffect, useMemo } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,7 +22,6 @@ import {
   workflowFormEditTitle,
   type WorkflowFormVariant,
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
-
 import {
   optionalNonNegativeMoney,
   requiredNonNegativeMoney,
@@ -38,6 +36,7 @@ import {
 } from '@/features/dashboard/pricing/lib/pricingCompute';
 
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { formatMoney } from '@/utils/format/currency';
 
 function createReviewPricingSchema(surpriseDecorRequested: boolean) {
   const guestAdditionalFeeSchema = surpriseDecorRequested

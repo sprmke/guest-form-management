@@ -1,8 +1,8 @@
-import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import {
   campaignTemplateBaseId,
   getCampaignTemplate,
 } from '@/features/dashboard/marketing/lib/designCampaignTemplates';
+import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import { DESIGN_FORMAT_DIMENSIONS } from '@/features/dashboard/marketing/lib/templateRegistry';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 

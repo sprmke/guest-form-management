@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { GuestAuthProvider } from '@/features/guest/auth/context/GuestAuthContext';
 import { SavedPropertiesSync } from '@/features/guest/marketing/properties/components/SavedPropertiesSync';
+
 import { AppRoutes } from '@/routes';
 
 // Conservative defaults: short stale time so admins see fresh data, but refetch on window focus

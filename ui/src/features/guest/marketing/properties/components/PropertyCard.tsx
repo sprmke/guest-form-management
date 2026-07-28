@@ -6,7 +6,6 @@ import { motion } from 'framer-motion';
 import { Star, MapPin, Users, Bed, Bath, ChevronLeft, ChevronRight, Wifi, Car } from 'lucide-react';
 
 import { PropertySaveButton } from '@/features/guest/marketing/properties/components/PropertySaveButton';
-
 import { placeLabelFromPropertyLocation } from '@/features/guest/marketing/properties/lib/groupPropertiesByLocation';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 

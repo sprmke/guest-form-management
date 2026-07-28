@@ -8,17 +8,16 @@ import { toast } from 'sonner';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { useOrganizations } from '@/features/dashboard/org/hooks/useOrganizations';
+import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
   defaultOrgInviteRoleId,
   OrgInviteMemberDialog,
 } from '@/features/dashboard/team/components/OrgInviteMemberDialog';
-import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import { OrgTeamInvitationsTab } from '@/features/dashboard/team/components/OrgTeamInvitationsTab';
 import { OrgTeamMembersTab } from '@/features/dashboard/team/components/OrgTeamMembersTab';
 import { OrgTeamPermissionsTab } from '@/features/dashboard/team/components/OrgTeamPermissionsTab';
 import { OrgTeamStatsCards } from '@/features/dashboard/team/components/OrgTeamStatsCards';
 import { RemoveMemberDialog } from '@/features/dashboard/team/components/RemoveMemberDialog';
-import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { useOrgTeam, useOrgTeamMutations } from '@/features/dashboard/team/hooks/useOrgTeam';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
@@ -29,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 
 function OrgTeamPageSkeleton() {
   return (
@@ -297,6 +297,8 @@ export function OrgTeamPage() {
                   name: selectedMember.name,
                   email: selectedMember.email,
                   avatar: selectedMember.avatar,
+                  displayName: selectedMember.displayName,
+                  contactPhone: selectedMember.contactPhone,
                   role: selectedMember.role,
                   permissions: [],
                   status: selectedMember.status,

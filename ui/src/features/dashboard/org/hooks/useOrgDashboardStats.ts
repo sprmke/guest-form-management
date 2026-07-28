@@ -4,9 +4,9 @@ import { useSearchParams } from 'react-router-dom';
 
 import { useQuery } from '@tanstack/react-query';
 
+import { useOrgIdParam, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { resolveDashboardPeriod } from '@/features/dashboard/property/lib/dashboardPeriod';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
-import { useOrgIdParam, useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
 

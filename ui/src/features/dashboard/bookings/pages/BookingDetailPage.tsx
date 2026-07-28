@@ -25,12 +25,6 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §3.1, admin-dashboard.mdc §Detail page
  */
 
-import { formatMoney } from '@/utils/format/currency';
-import {
-  formatBookingDate,
-  formatBookingDateTime,
-  formatRelative,
-} from '@/utils/format/bookingDisplay';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import { useParams, Link, useNavigate } from 'react-router-dom';
@@ -62,28 +56,25 @@ import {
 import { createPortal } from 'react-dom';
 import { toast } from 'sonner';
 
+import { requiresValidId } from '@/features/guest/form/lib/guestCounts';
+import { buildPayParkingPath } from '@/features/guest/pay-parking/lib/api';
+import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
+import { isStaycationVoucher } from '@/features/guest/sd-form/lib/voucher';
+
 import { BookingDetailMobileSummary } from '@/features/dashboard/bookings/components/BookingDetailMobileSummary';
 import { BookingEditForm } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { BookingMetaCard } from '@/features/dashboard/bookings/components/BookingMetaCard';
-import { requiresValidId } from '@/features/guest/form/lib/guestCounts';
-import {
-  normalizeStoragePublicUrl,
-  parseStorageUrl,
-  PRIVATE_STORAGE_BUCKETS,
-  resolveAssetUrlForBrowser,
-  isStorageObjectNotFoundError,
-} from '@/features/dashboard/bookings/lib/storageUrls';
 import { BookingPricingSummary } from '@/features/dashboard/bookings/components/BookingPricingSummary';
-import {
-  ReceiptAiVerdictBadge,
-  type DocumentAiVerdictVariant,
-  type ReceiptAiVerdict,
-} from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import {
   PayParkingHeaderButton,
   PayParkingModal,
 } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
+import {
+  ReceiptAiVerdictBadge,
+  type DocumentAiVerdictVariant,
+  type ReceiptAiVerdict,
+} from '@/features/dashboard/bookings/components/ReceiptAiVerdictBadge';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
@@ -94,17 +85,26 @@ import {
   ADMIN_GUEST_VIEW_SLOTS,
   shouldShowAdminGuestViewSlot,
 } from '@/features/dashboard/bookings/lib/adminGuestSlots';
-
+import {
+  normalizeStoragePublicUrl,
+  parseStorageUrl,
+  PRIVATE_STORAGE_BUCKETS,
+  resolveAssetUrlForBrowser,
+  isStorageObjectNotFoundError,
+} from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
-import { buildPayParkingPath } from '@/features/guest/pay-parking/lib/api';
-import { hasPayParkingAvailed } from '@/features/guest/pay-parking/lib/payParkingHelpers';
-import { isStaycationVoucher } from '@/features/guest/sd-form/lib/voucher';
 
 import { BookingDetailPageSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
+import {
+  formatBookingDate,
+  formatBookingDateTime,
+  formatRelative,
+} from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 
 export function BookingDetailPage() {
   const { bookingId } = useParams<{ bookingId: string }>();

@@ -1,7 +1,6 @@
 import { AdminPdfZoomPreview } from '@/features/dashboard/bookings/components/AdminPdfZoomPreview';
-import { renderGafPdfPreview } from '@/features/dashboard/bookings/lib/gafPdfPreview';
-
 import type { GafDetailsValues } from '@/features/dashboard/bookings/lib/gafDefaults';
+import { renderGafPdfPreview } from '@/features/dashboard/bookings/lib/gafPdfPreview';
 
 type GafPdfPreviewProps = {
   details: GafDetailsValues;

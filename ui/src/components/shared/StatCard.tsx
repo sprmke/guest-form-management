@@ -3,8 +3,8 @@ import type { CSSProperties, ReactNode } from 'react';
 import { TrendingDown, TrendingUp } from 'lucide-react';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMoney } from '@/utils/format/currency';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 import type { LucideIcon } from 'lucide-react';
 

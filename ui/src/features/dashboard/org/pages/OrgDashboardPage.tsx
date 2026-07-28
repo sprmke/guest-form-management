@@ -96,108 +96,103 @@ export function OrgDashboardPage() {
 
   return (
     <RequireAdmin>
-      
-        <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-          <section className="mb-3 w-full min-w-0">
-            <AdminPageHeader
-              id="org-dashboard-heading"
-              title="Dashboard Overview"
-              subtitle="Performance overview across all properties in your organization."
-              actions={
-                <div
-                  className={cn(
-                    'flex flex-wrap items-center gap-2',
-                    isBelowMd && 'w-full justify-end'
-                  )}
-                >
-                  <BookingDateRangeFilter
-                    {...dateNav}
-                    isActive
-                    onClear={handleClearDate}
-                    fullWidth={isBelowMd}
-                  />
-                  {canAddAsset ? (
-                    <Button
-                      type="button"
-                      onClick={() => setAddAssetOpen(true)}
-                      className="min-h-[44px] gap-1.5"
-                    >
-                      <Plus className="size-4" aria-hidden />
-                      Add asset
-                    </Button>
-                  ) : null}
-                </div>
-              }
-              actionsClassName={isBelowMd ? 'w-full justify-end' : 'self-center'}
-            />
-          </section>
-
-          {isLoading && !data ? (
-            <div className="flex justify-center py-16">
-              <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-            </div>
-          ) : error ? (
-            <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
-              <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
-              <p className="text-caption max-w-sm">
-                {error instanceof Error ? error.message : 'Please try again.'}
-              </p>
-              <button
-                type="button"
-                onClick={() => refetch()}
-                className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
+      <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
+        <section className="mb-3 w-full min-w-0">
+          <AdminPageHeader
+            id="org-dashboard-heading"
+            title="Dashboard Overview"
+            subtitle="Performance overview across all properties in your organization."
+            actions={
+              <div
+                className={cn(
+                  'flex flex-wrap items-center gap-2',
+                  isBelowMd && 'w-full justify-end'
+                )}
               >
-                Retry
-              </button>
-            </div>
-          ) : data && orgSlug ? (
-            <>
-              <OrgDashboardStatCards stats={data} periodLabel={trendLabel} />
-
-              <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
-                <OrgRevenueBookingsChart data={data.trendSeries} isLoading={isLoading} />
-                <OrgBookingStatusDonut slices={data.statusBreakdown} />
-              </div>
-
-              <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
-                <OrgRecentBookingsList orgSlug={orgSlug} bookings={data.recentBookings} />
-                <OrgPendingActionsCard
-                  orgSlug={orgSlug}
-                  defaultPropertySlug={defaultPropertySlug}
-                  items={data.attention}
+                <BookingDateRangeFilter
+                  {...dateNav}
+                  isActive
+                  onClear={handleClearDate}
+                  fullWidth={isBelowMd}
                 />
+                {canAddAsset ? (
+                  <Button
+                    type="button"
+                    onClick={() => setAddAssetOpen(true)}
+                    className="min-h-[44px] gap-1.5"
+                  >
+                    <Plus className="size-4" aria-hidden />
+                    Add asset
+                  </Button>
+                ) : null}
               </div>
+            }
+            actionsClassName={isBelowMd ? 'w-full justify-end' : 'self-center'}
+          />
+        </section>
 
-              <OrgPropertiesPerformanceCard
+        {isLoading && !data ? (
+          <div className="flex justify-center py-16">
+            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+          </div>
+        ) : error ? (
+          <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
+            <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
+            <p className="text-caption max-w-sm">
+              {error instanceof Error ? error.message : 'Please try again.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => refetch()}
+              className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
+            >
+              Retry
+            </button>
+          </div>
+        ) : data && orgSlug ? (
+          <>
+            <OrgDashboardStatCards stats={data} periodLabel={trendLabel} />
+
+            <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
+              <OrgRevenueBookingsChart data={data.trendSeries} isLoading={isLoading} />
+              <OrgBookingStatusDonut slices={data.statusBreakdown} />
+            </div>
+
+            <div className="grid min-w-0 gap-3 lg:grid-cols-3 lg:gap-4">
+              <OrgRecentBookingsList orgSlug={orgSlug} bookings={data.recentBookings} />
+              <OrgPendingActionsCard
                 orgSlug={orgSlug}
-                properties={data.propertyPerformance}
+                defaultPropertySlug={defaultPropertySlug}
+                items={data.attention}
               />
-            </>
-          ) : !org ? (
-            <p className="text-muted-foreground text-sm">Organization not found.</p>
-          ) : null}
+            </div>
 
-          {org && orgSlug ? (
-            <AddEntityDialog
-              open={addAssetOpen}
-              onOpenChange={setAddAssetOpen}
-              orgId={org.id}
-              orgSlug={orgSlug}
-              orgName={org.name}
-              canAddProperty={canAddProperty}
-              canAddParking={canAddParking}
-              onPropertyCreated={(property) => {
-                setLastTenantContext(orgSlug, property.slug);
-                navigate(propertySectionPath(orgSlug, property.slug, 'dashboard'));
-              }}
-              onParkingCreated={(parking) => {
-                setLastParkingContext(orgSlug, parking.slug);
-                navigate(parkingSectionPath(orgSlug, parking.slug, 'dashboard'));
-              }}
-            />
-          ) : null}
-        </div>
-      
+            <OrgPropertiesPerformanceCard orgSlug={orgSlug} properties={data.propertyPerformance} />
+          </>
+        ) : !org ? (
+          <p className="text-muted-foreground text-sm">Organization not found.</p>
+        ) : null}
+
+        {org && orgSlug ? (
+          <AddEntityDialog
+            open={addAssetOpen}
+            onOpenChange={setAddAssetOpen}
+            orgId={org.id}
+            orgSlug={orgSlug}
+            orgName={org.name}
+            canAddProperty={canAddProperty}
+            canAddParking={canAddParking}
+            onPropertyCreated={(property) => {
+              setLastTenantContext(orgSlug, property.slug);
+              navigate(propertySectionPath(orgSlug, property.slug, 'dashboard'));
+            }}
+            onParkingCreated={(parking) => {
+              setLastParkingContext(orgSlug, parking.slug);
+              navigate(parkingSectionPath(orgSlug, parking.slug, 'dashboard'));
+            }}
+          />
+        ) : null}
+      </div>
     </RequireAdmin>
   );
 }

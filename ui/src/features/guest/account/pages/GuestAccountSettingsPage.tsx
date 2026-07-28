@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 
-import { GUEST_ACCOUNT_PROFILE_PATH } from '@/features/guest/account/lib/guestAccountPaths';
 import { useGuestProfile } from '@/features/guest/account/hooks/useGuestProfile';
 import { useGuestSignOut } from '@/features/guest/account/hooks/useGuestSignOut';
+import { GUEST_ACCOUNT_PROFILE_PATH } from '@/features/guest/account/lib/guestAccountPaths';
 
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';

@@ -63,94 +63,92 @@ export function OrgPropertiesPage() {
 
   return (
     <RequireAdmin>
-      
-        {isLoading ? (
-          <div className="space-y-3 sm:space-y-4">
-            <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <AdminMetricCardSkeleton key={index} />
-              ))}
-            </div>
-            <div className="flex justify-center py-12">
-              <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-            </div>
+      {isLoading ? (
+        <div className="space-y-3 sm:space-y-4">
+          <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <AdminMetricCardSkeleton key={index} />
+            ))}
           </div>
-        ) : !org ? (
-          <p className="text-muted-foreground text-sm">Organization not found.</p>
-        ) : (
-          <div className="space-y-3 sm:space-y-4">
-            <AdminPageHeader
-              title="Properties"
-              subtitle="Manage all properties in your organization."
-              actions={
-                canCreateProperties ? (
-                  <Button
-                    type="button"
-                    onClick={() => setAddOpen(true)}
-                    className="min-h-[44px] gap-1.5"
-                  >
-                    <Plus className="size-4" aria-hidden />
-                    Add property
-                  </Button>
-                ) : undefined
-              }
-            />
-
-            <OrgPropertiesSummaryCards properties={properties} />
-
-            <OrgPropertiesToolbar
-              filters={filters}
-              viewMode={viewMode}
-              onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
-              onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
-              onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
-              onViewModeChange={setViewMode}
-            />
-
-            {filteredProperties.length > 0 ? (
-              viewMode === 'grid' ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-                  {filteredProperties.map((property) => (
-                    <OrgPropertyCard key={property.id} property={property} orgSlug={org.slug} />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredProperties.map((property) => (
-                    <OrgPropertyListRow key={property.id} property={property} orgSlug={org.slug} />
-                  ))}
-                </div>
-              )
-            ) : (
-              <OrgPropertiesEmptyState
-                filtered={hasActiveFilters}
-                canAdd={canCreateProperties}
-                onAdd={() => setAddOpen(true)}
-              />
-            )}
-
-            <OrgPropertiesResultsMeta
-              visibleCount={filteredProperties.length}
-              totalCount={properties.length}
-            />
+          <div className="flex justify-center py-12">
+            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
           </div>
-        )}
-
-        {org ? (
-          <AddPropertyDialog
-            open={addOpen}
-            onOpenChange={setAddOpen}
-            orgId={org.id}
-            orgSlug={org.slug}
-            orgName={org.name}
-            onCreated={(property) => {
-              setLastTenantContext(org.slug, property.slug);
-              navigate(propertySectionPath(org.slug, property.slug, 'settings'));
-            }}
+        </div>
+      ) : !org ? (
+        <p className="text-muted-foreground text-sm">Organization not found.</p>
+      ) : (
+        <div className="space-y-3 sm:space-y-4">
+          <AdminPageHeader
+            title="Properties"
+            subtitle="Manage all properties in your organization."
+            actions={
+              canCreateProperties ? (
+                <Button
+                  type="button"
+                  onClick={() => setAddOpen(true)}
+                  className="min-h-[44px] gap-1.5"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  Add property
+                </Button>
+              ) : undefined
+            }
           />
-        ) : null}
-      
+
+          <OrgPropertiesSummaryCards properties={properties} />
+
+          <OrgPropertiesToolbar
+            filters={filters}
+            viewMode={viewMode}
+            onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
+            onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
+            onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
+            onViewModeChange={setViewMode}
+          />
+
+          {filteredProperties.length > 0 ? (
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+                {filteredProperties.map((property) => (
+                  <OrgPropertyCard key={property.id} property={property} orgSlug={org.slug} />
+                ))}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredProperties.map((property) => (
+                  <OrgPropertyListRow key={property.id} property={property} orgSlug={org.slug} />
+                ))}
+              </div>
+            )
+          ) : (
+            <OrgPropertiesEmptyState
+              filtered={hasActiveFilters}
+              canAdd={canCreateProperties}
+              onAdd={() => setAddOpen(true)}
+            />
+          )}
+
+          <OrgPropertiesResultsMeta
+            visibleCount={filteredProperties.length}
+            totalCount={properties.length}
+          />
+        </div>
+      )}
+
+      {org ? (
+        <AddPropertyDialog
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          orgId={org.id}
+          orgSlug={org.slug}
+          orgName={org.name}
+          onCreated={(property) => {
+            setLastTenantContext(org.slug, property.slug);
+            navigate(propertySectionPath(org.slug, property.slug, 'settings'));
+          }}
+        />
+      ) : null}
     </RequireAdmin>
   );
 }

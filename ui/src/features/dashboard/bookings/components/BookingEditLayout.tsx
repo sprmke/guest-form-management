@@ -6,8 +6,8 @@ import React from 'react';
 
 import { ChevronDown } from 'lucide-react';
 
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input as ShadcnInput } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 

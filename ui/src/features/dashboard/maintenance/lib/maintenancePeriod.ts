@@ -6,14 +6,13 @@ import { parseAdminListView } from '@/features/dashboard/bookings/lib/listView';
 import type { MaintenanceQuery } from '@/features/dashboard/maintenance/lib/types';
 import { DEFAULT_MAINTENANCE_QUERY } from '@/features/dashboard/maintenance/lib/types';
 
-import { ADMIN_DEFAULT_PAGE_SIZE, normalizeAdminPageLimit } from '@/lib/table/pagination';
-
 import {
   detectManilaRangePreset,
   manilaRangeForPreset,
   manilaTodayIso,
   type ManilaRangePreset,
 } from '@/lib/date/manilaPeriod';
+import { ADMIN_DEFAULT_PAGE_SIZE, normalizeAdminPageLimit } from '@/lib/table/pagination';
 
 export type MaintenanceRangePreset = ManilaRangePreset;
 

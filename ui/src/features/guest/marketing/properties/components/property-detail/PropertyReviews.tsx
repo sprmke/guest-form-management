@@ -1,7 +1,10 @@
 import { useState } from 'react';
+
 import { motion } from 'framer-motion';
 import { Star, ThumbsUp, ChevronRight, Search } from 'lucide-react';
+
 import { guestReviewFeedbackTagLabel } from '@/features/guest/sd-form/lib/guestReviewFeedbackTags';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

@@ -1,10 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { PARKINGS_QUERY_KEY } from '@/features/dashboard/org/hooks/useParkings';
 import {
   scopedParkingFunctionsBaseUrl,
   useParkingIdParam,
 } from '@/features/dashboard/org/lib/adminParkingScope';
-import { PARKINGS_QUERY_KEY } from '@/features/dashboard/org/hooks/useParkings';
 
 import { supabase } from '@/lib/supabase/client';
 

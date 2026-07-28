@@ -8,10 +8,10 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { KamePolotnoEditor } from '@/features/dashboard/marketing/components/design-editor/polotno/KamePolotnoEditor';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
-import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
-import { MarketingPolotnoThumbnailHost } from '@/features/dashboard/marketing/components/shared/MarketingPolotnoThumbnailHost';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
+import { MarketingPolotnoThumbnailHost } from '@/features/dashboard/marketing/components/shared/MarketingPolotnoThumbnailHost';
+import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import {
   MarketingTemplatesPanel,
   type PresetTemplateItem,
@@ -29,6 +29,7 @@ import {
   type CampaignCategory,
   type DesignBinding,
 } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import { isDesignPresetThumbnailCaptureReady } from '@/features/dashboard/marketing/lib/designPresetThumbnailCapture';
 import {
   availabilityTextForMonth,
   openSlotDatesForMonth,
@@ -38,6 +39,12 @@ import {
   waitForMarketingIdle,
   yieldToMainThread,
 } from '@/features/dashboard/marketing/lib/marketingIdle';
+import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
+import {
+  designPresetThumbnailKey,
+  getCachedMarketingThumbnail,
+  publishMarketingPresetThumbnail,
+} from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
@@ -46,13 +53,6 @@ import {
   type PolotnoStore,
 } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 import { syncPolotnoTextBounds } from '@/features/dashboard/marketing/lib/polotno/syncPolotnoTextBounds';
-import { isDesignPresetThumbnailCaptureReady } from '@/features/dashboard/marketing/lib/designPresetThumbnailCapture';
-import {
-  designPresetThumbnailKey,
-  getCachedMarketingThumbnail,
-  publishMarketingPresetThumbnail,
-} from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
-import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
 import {
   renderDesignPresetThumbnail,
   renderDesignStoreThumbnail,

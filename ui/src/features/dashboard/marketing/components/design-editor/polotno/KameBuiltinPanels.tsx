@@ -1,10 +1,9 @@
 import { observer } from 'mobx-react-lite';
+import { ElementsSection, LayersSection } from 'openpolotno/side-panel/side-panel';
 
 import { KameElementsPanel } from '@/features/dashboard/marketing/components/design-editor/polotno/KameElementsPanel';
 import { KameSidePanelShell } from '@/features/dashboard/marketing/components/design-editor/polotno/KameSidePanelShell';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
-
-import { ElementsSection, LayersSection } from 'openpolotno/side-panel/side-panel';
 
 export function createElementsSection(logoUrl?: string | null) {
   return {

@@ -1,13 +1,18 @@
 import { useState, Suspense } from 'react';
+
 import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
+
 import { ArrowLeft, ArrowRight, Check, Lock, ShieldCheck } from 'lucide-react';
+
+import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
+
 import { Button } from '@/components/ui/button';
 import { SpinnerIcon } from '@/components/ui/icons';
-import { PasswordInput } from './PasswordInput';
-import { FormField } from './FormField';
 import { cn } from '@/lib/utils';
-import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
+
+import { FormField } from './FormField';
+import { PasswordInput } from './PasswordInput';
 
 interface ResetPasswordPageContentProps {
   config: AuthPageConfig;

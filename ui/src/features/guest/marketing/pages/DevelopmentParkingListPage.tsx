@@ -22,8 +22,8 @@ import {
   type ParkingFilterState,
   type ParkingSortKey,
 } from '@/features/guest/marketing/developments/lib/parkingSlotFilters';
-import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 import type { HeroSearchValues } from '@/features/guest/marketing/guest-landing/components/HeroSearch';
+import { parkingListEntriesForSlots } from '@/features/guest/marketing/parkings/lib/parkingListEntries';
 
 import { Button } from '@/components/ui/button';
 

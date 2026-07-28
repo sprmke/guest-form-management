@@ -1,11 +1,11 @@
 import { memo, useMemo } from 'react';
 
 import { useCalendarThumbnails } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
+import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/components/calendar-builder/hooks/use-calendar-templates';
 import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
 import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { MarketingTemplateCard } from '@/features/dashboard/marketing/components/shared/MarketingTemplateCard';
-import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/components/calendar-builder/hooks/use-calendar-templates';
 import type { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 import {
   CALENDAR_CANVAS_DIMENSIONS,

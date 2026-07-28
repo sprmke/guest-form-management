@@ -527,24 +527,3 @@ export function PublicPropertyCalendar({
     </div>
   );
 }
-
-// ── Legend item ────────────────────────────────────────────────────────────────
-
-interface LegendItemProps {
-  label: string;
-  isCustom: boolean;
-  children: React.ReactNode;
-}
-
-function LegendItem({ label, isCustom, children }: LegendItemProps) {
-  return (
-    <div className="flex items-center gap-2">
-      {children}
-      <span
-        className={cn('text-xs font-medium', isCustom ? 'text-green-700' : 'text-muted-foreground')}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}

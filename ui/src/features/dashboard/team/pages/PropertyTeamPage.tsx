@@ -19,16 +19,15 @@ import { TeamInvitationsTab } from '@/features/dashboard/team/components/TeamInv
 import { TeamMembersTab } from '@/features/dashboard/team/components/TeamMembersTab';
 import { TeamPermissionsTab } from '@/features/dashboard/team/components/TeamPermissionsTab';
 import { TeamStatsCards } from '@/features/dashboard/team/components/TeamStatsCards';
-import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import {
   usePropertyTeam,
   usePropertyTeamMutations,
 } from '@/features/dashboard/team/hooks/usePropertyTeam';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
-import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
 import { countMembersWithRole } from '@/features/dashboard/team/lib/propertyTeamRoles';
 import { isTeamMemberActive } from '@/features/dashboard/team/lib/teamMemberAccess';
+import { canEditPropertyMemberContact } from '@/features/dashboard/team/lib/teamMemberContact';
 import type {
   CustomPropertyRole,
   CustomRoleFormMode,
@@ -42,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SlidingTabs, SlidingTabsList, SlidingTabsTrigger } from '@/components/ui/sliding-tabs';
 import { TooltipProvider } from '@/components/ui/tooltip';
 
 function PropertyTeamPageSkeleton() {

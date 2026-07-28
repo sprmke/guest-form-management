@@ -16,6 +16,23 @@ import { Info, Plus, Save, X } from 'lucide-react';
 import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
 import { toast } from 'sonner';
 
+import {
+  BOOKING_SOURCE_OPTIONS,
+  normalizeBookingSource,
+} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+import {
+  computeGuestCounts,
+  FIFTH_PARTY_GUEST_MAX_AGE,
+  getActivePartySize,
+  getDefaultAgeForPartyGuest,
+  getInitialVisibleGuestCount,
+  guestPartyPositionLabel,
+  isPartyFifthGuest,
+  MAX_GUESTS,
+  PRIMARY_GUEST_MIN_AGE,
+} from '@/features/guest/form/lib/guestCounts';
+import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
+
 import { AdminAdditionalGuestSlot } from '@/features/dashboard/bookings/components/AdminAdditionalGuestSlot';
 import {
   CollapsibleGroup,
@@ -42,22 +59,6 @@ import {
 import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/dashboard/bookings/lib/workflowSensitiveGuestDiff';
-import {
-  BOOKING_SOURCE_OPTIONS,
-  normalizeBookingSource,
-} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
-import {
-  computeGuestCounts,
-  FIFTH_PARTY_GUEST_MAX_AGE,
-  getActivePartySize,
-  getDefaultAgeForPartyGuest,
-  getInitialVisibleGuestCount,
-  guestPartyPositionLabel,
-  isPartyFifthGuest,
-  MAX_GUESTS,
-  PRIMARY_GUEST_MIN_AGE,
-} from '@/features/guest/form/lib/guestCounts';
-import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 
 import { Button } from '@/components/ui/button';

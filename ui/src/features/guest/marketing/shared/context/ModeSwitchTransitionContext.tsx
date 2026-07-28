@@ -10,6 +10,7 @@ import {
   resolveModeSwitchPath,
   type AppMode,
 } from '@/features/guest/auth/config/mode-switch';
+
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { resolveBrandTransitionGradientStops } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';

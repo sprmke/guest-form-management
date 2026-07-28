@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
 
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ChevronLeft, SlidersHorizontal } from 'lucide-react';
+import { SlidersHorizontal } from 'lucide-react';
 
 import {
   DevelopmentsFilters,

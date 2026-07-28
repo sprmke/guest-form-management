@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 
-import { STATUS_LABELS, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 import { GuestAccountEmptyState } from '@/features/guest/account/components/GuestAccountEmptyState';
 import { useGuestTrips } from '@/features/guest/account/hooks/useGuestTrips';
 import {
@@ -8,9 +7,11 @@ import {
   guestPropertyPath,
   guestSdFormPath,
 } from '@/features/guest/lib/guestPublicPaths';
+import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
+import { STATUS_LABELS, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
 
 import { Badge } from '@/components/ui/badge';
-import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 function tripActionPath(trip: {
   id: string;

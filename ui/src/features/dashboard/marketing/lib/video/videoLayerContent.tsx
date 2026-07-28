@@ -1,10 +1,10 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
-import type { VideoSceneLayer } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   resolveLayerTypography,
   typographyToCss,
 } from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
+import type { VideoSceneLayer } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 
 export function layerHasContent(layer: VideoSceneLayer): boolean {
   switch (layer.kind) {

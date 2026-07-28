@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+
+import { Link, useParams } from 'react-router-dom';
+
 import {
   addMonths,
   eachDayOfInterval,
@@ -11,11 +14,7 @@ import {
   subMonths,
 } from 'date-fns';
 import { CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Link, useParams } from 'react-router-dom';
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   buildCalendarWeekRows,
   buildOccupancyByDay,
@@ -25,6 +24,10 @@ import {
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { CalendarOccupancySpanTrack } from '@/features/dashboard/bookings/components/calendar/CalendarOccupancySpanTrack';
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 import type { CalendarBooking } from '../types';

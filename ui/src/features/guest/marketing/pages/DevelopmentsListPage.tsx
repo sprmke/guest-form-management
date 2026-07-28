@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { SlidersHorizontal } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
 import {
   DevelopmentsHero,
   DevelopmentsFilters,
@@ -12,6 +12,8 @@ import {
   type DevelopmentViewMode,
 } from '@/features/guest/marketing/developments/components';
 import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
+
+import { Button } from '@/components/ui/button';
 
 export function DevelopmentsListPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);

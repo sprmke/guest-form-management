@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 
 import { AlertTriangle, Bell, ChevronRight, Info } from 'lucide-react';
 
-import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 import { orgBookingsPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 
 import { cn } from '@/lib/utils';
 

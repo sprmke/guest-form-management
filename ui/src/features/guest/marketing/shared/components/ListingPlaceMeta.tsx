@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom';
 
 import { motion } from 'framer-motion';
-import { MapPin } from 'lucide-react';
 
 type Props = {
   development?: { name: string; href: string } | null;

@@ -1,6 +1,7 @@
 import { addDays, endOfMonth, startOfDay, startOfMonth } from 'date-fns';
 
 import type { PreviewBooking } from '@/features/dashboard/marketing/components/calendar-builder/types';
+
 import { normalizeDateString, stringToDate, type BookedDateRange } from '@/utils/format/dates';
 
 /** Stable cache segment so calendar thumbnails match the live preview month + occupancy. */

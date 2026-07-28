@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
+import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   canvasFrameDefaultsForFormat,
   canvasFrameBackgroundForFormat,
   type CalendarCanvasFormat,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
-import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 
 import {
   type CalendarStyles,

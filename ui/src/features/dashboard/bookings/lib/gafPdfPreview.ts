@@ -1,11 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
 
-import { applyGafOwnerSignatureBlock } from '@/features/dashboard/bookings/lib/gafPdfSignature';
-
 import {
   gafDetailsToPdfFormFields,
   type GafDetailsValues,
 } from '@/features/dashboard/bookings/lib/gafDefaults';
+import { applyGafOwnerSignatureBlock } from '@/features/dashboard/bookings/lib/gafPdfSignature';
 
 const GAF_PDF_TEMPLATE_URL = '/templates/guest-form-template.pdf';
 

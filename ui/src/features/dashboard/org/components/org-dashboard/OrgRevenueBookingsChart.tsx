@@ -1,4 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
 import { useMemo, useState } from 'react';
 
 import {
@@ -13,15 +12,16 @@ import {
 
 import type { DashboardTrendPoint } from '@/features/dashboard/property/lib/types';
 
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   CHART_HEIGHT_CLASS,
   CHART_INCOME_COLOR,
   defaultChartMargin,
   formatChartMoneyAxis,
 } from '@/lib/charts/chartStyles';
-import { useIsBelowMd } from '@/hooks/useMediaQuery';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 type ChartMetric = 'revenue' | 'bookings';
 

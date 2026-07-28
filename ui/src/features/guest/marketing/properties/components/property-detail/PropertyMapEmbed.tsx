@@ -150,7 +150,7 @@ export function PropertyMapEmbed({
       return <PropertyMapPlaceholder />;
     }
 
-    if (ready) {
+    if (ready && latitude != null && longitude != null) {
       return (
         <PropertyGoogleInteractiveMap
           latitude={latitude}

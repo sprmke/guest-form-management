@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { toBlob } from 'html-to-image';
 
-import { marketingHtmlToImageOptions } from '@/features/dashboard/marketing/lib/marketingHtmlToImageOptions';
-
 import { CalendarCanvasFrame } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarCanvasFrame';
 import { CalendarPreview } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPreview';
 import { resolveCalendarPresetStylesForFormat } from '@/features/dashboard/marketing/components/calendar-builder/stores/calendar-builder-store';
@@ -11,13 +9,14 @@ import type {
   CalendarStyles,
   PreviewBooking,
 } from '@/features/dashboard/marketing/components/calendar-builder/types';
-import { yieldToMainThread } from '@/features/dashboard/marketing/lib/marketingIdle';
 import {
   CALENDAR_CANVAS_DIMENSIONS,
   calendarPreviewWidthForFormat,
   normalizeCalendarCanvasFrame,
   type CalendarCanvasFormat,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+import { marketingHtmlToImageOptions } from '@/features/dashboard/marketing/lib/marketingHtmlToImageOptions';
+import { yieldToMainThread } from '@/features/dashboard/marketing/lib/marketingIdle';
 
 type CaptureRequest = {
   styles: CalendarStyles;

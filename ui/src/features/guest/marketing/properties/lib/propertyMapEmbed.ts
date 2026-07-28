@@ -87,7 +87,7 @@ export function resolvePropertyMapEmbedSrc(input: PropertyMapEmbedInput): string
   if (legacyGoogle) return legacyGoogle;
 
   if (hasCoordinates(input.latitude, input.longitude)) {
-    return buildOpenStreetMapEmbedSrc(input.latitude, input.longitude);
+    return buildOpenStreetMapEmbedSrc(input.latitude, input.longitude as number);
   }
 
   return null;

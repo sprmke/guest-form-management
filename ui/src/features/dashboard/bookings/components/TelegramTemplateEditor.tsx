@@ -17,8 +17,8 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 import { cn } from '@/lib/utils';
 
 type EditorTab = 'edit' | 'preview';

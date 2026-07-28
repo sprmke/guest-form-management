@@ -2,6 +2,31 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { toast } from 'sonner';
 
+import { MarketingCategoryChip } from '@/features/dashboard/marketing/components/shared/MarketingCategoryChip';
+import {
+  MarketingFormatPicker,
+  type MarketingFormatOption,
+} from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
+import { MarketingMoveTemplateDialog } from '@/features/dashboard/marketing/components/shared/MarketingMoveTemplateDialog';
+import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
+import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
+import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
+import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
+import { MarketingTemplateCard } from '@/features/dashboard/marketing/components/shared/MarketingTemplateCard';
+import {
+  useMarketingCatalog,
+  type MarketingCatalogTab,
+} from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+import { useSaveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import { useMarketingTemplateThumbnails } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
+import type {
+  CampaignCategory,
+  DesignBinding,
+} from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
+import { resolveFormatOptionDimensions } from '@/features/dashboard/marketing/lib/marketingFormats';
+import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,30 +37,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { MarketingCategoryChip } from '@/features/dashboard/marketing/components/shared/MarketingCategoryChip';
-import {
-  MarketingFormatPicker,
-  type MarketingFormatOption,
-} from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
-import { MarketingMoveTemplateDialog } from '@/features/dashboard/marketing/components/shared/MarketingMoveTemplateDialog';
-import { MarketingNameDialog } from '@/features/dashboard/marketing/components/shared/MarketingNameDialog';
-import { MarketingSidebarSection } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
-import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
-import { MarketingTemplateCard } from '@/features/dashboard/marketing/components/shared/MarketingTemplateCard';
-import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
-import {
-  useMarketingCatalog,
-  type MarketingCatalogTab,
-} from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
-import { isHiddenCategoryId } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
-import { useSaveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
-import { useMarketingTemplateThumbnails } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
-import type {
-  CampaignCategory,
-  DesignBinding,
-} from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import type { VideoFormat } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { resolveFormatOptionDimensions } from '@/features/dashboard/marketing/lib/marketingFormats';
 
 export type PresetTemplateItem = {
   id: string;

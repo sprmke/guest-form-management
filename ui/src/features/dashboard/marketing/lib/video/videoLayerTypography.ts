@@ -142,10 +142,7 @@ function presetColors(
   return { color: '#fff8f0', backgroundColor: null };
 }
 
-export function typographyPresetForLayer(
-  layer: VideoSceneLayer,
-  brandColor: string
-): VideoTextPresetId {
+export function typographyPresetForLayer(layer: VideoSceneLayer): VideoTextPresetId {
   if (layer.kind === 'cta') return 'cta';
   switch (layer.textStyle) {
     case 'subheadline':

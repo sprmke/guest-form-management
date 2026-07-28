@@ -14,13 +14,13 @@ import {
 } from '@/features/dashboard/super-admin/components/super-admin-platform-properties/SuperAdminPlatformPropertiesToolbar';
 import { usePlatformProperties } from '@/features/dashboard/super-admin/hooks/usePlatformProperties';
 import { platformPropertyToProperty } from '@/features/dashboard/super-admin/lib/platformPropertyAdapter';
+import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import {
   filterSuperAdminPlatformProperties,
   superAdminPlatformPropertiesHasActiveFilters,
   type SuperAdminPlatformPropertiesFilters,
   type SuperAdminPlatformPropertiesViewMode,
 } from '@/features/dashboard/super-admin/lib/superAdminPlatformPropertiesFilters';
-import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 import type { PlatformProperty } from '@/features/dashboard/super-admin/types/platformProperty';
 
 function platformPropertyCardProps(property: PlatformProperty) {

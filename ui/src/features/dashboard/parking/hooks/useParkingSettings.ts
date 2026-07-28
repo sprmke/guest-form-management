@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { appendParkingId, useParkingIdParam } from '@/features/dashboard/org/lib/adminParkingScope';
-import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 import type {
   PlatformSecretsStatus,
   PropertyIntegrationStatus,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { appendParkingId, useParkingIdParam } from '@/features/dashboard/org/lib/adminParkingScope';
+import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
 
 export const PARKING_SETTINGS_QUERY_KEY = ['parking-settings'] as const;
 

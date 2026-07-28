@@ -1,4 +1,5 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
+
 import { Palette, CalendarCheck, CalendarX, CalendarDays, Upload, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
   Select,
   SelectContent,
@@ -13,8 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
+import { StyleSection, StyleSubSection } from './StyleSection';
 import { useCalendarBuilderStore } from '../../stores/calendar-builder-store';
 import { type BookedStateStyles } from '../../types';
 import {
@@ -24,7 +26,6 @@ import {
   ColorPicker,
   NumberSlider,
 } from '../controls';
-import { StyleSection, StyleSubSection } from './StyleSection';
 
 // Predefined icons for booked state
 const BOOKED_ICONS = [

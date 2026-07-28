@@ -10,18 +10,18 @@ import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
-import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
-import {
-  defaultDashboardPeriod,
-  resolveDashboardPeriod,
-  writeDashboardPeriodParams,
-} from '@/features/dashboard/property/lib/dashboardPeriod';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { absoluteGuestParkingUrl } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { ParkingDashboardCalendarSection } from '@/features/dashboard/parking/components/ParkingDashboardCalendarSection';
 import { ParkingDashboardStatCards } from '@/features/dashboard/parking/components/ParkingDashboardStatCards';
 import { buildEmptyParkingDashboardStats } from '@/features/dashboard/parking/lib/parkingDashboardStats';
+import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
+import {
+  defaultDashboardPeriod,
+  resolveDashboardPeriod,
+  writeDashboardPeriodParams,
+} from '@/features/dashboard/property/lib/dashboardPeriod';
 
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
@@ -100,33 +100,31 @@ export function ParkingDashboardPage() {
   );
 
   return (
-    
-      <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="dashboard-heading"
-          variant="compact"
-          title="Dashboard"
-          subtitle={`Overview for ${parking.name}.`}
-          actions={dashboardActions}
-          actionsClassName="w-full sm:w-auto"
+    <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
+      <AdminPageHeader
+        id="dashboard-heading"
+        variant="compact"
+        title="Dashboard"
+        subtitle={`Overview for ${parking.name}.`}
+        actions={dashboardActions}
+        actionsClassName="w-full sm:w-auto"
+      />
+
+      <DashboardAttentionStrip items={stats.attention} />
+
+      <ParkingDashboardStatCards
+        stats={stats}
+        periodLabel={stats.trendWindow.label}
+        reservationsHref={reservationsHref}
+      />
+
+      {period.from && period.to ? (
+        <ParkingDashboardCalendarSection
+          from={period.from}
+          to={period.to}
+          datePreset={dateNav.datePreset}
         />
-
-        <DashboardAttentionStrip items={stats.attention} />
-
-        <ParkingDashboardStatCards
-          stats={stats}
-          periodLabel={stats.trendWindow.label}
-          reservationsHref={reservationsHref}
-        />
-
-        {period.from && period.to ? (
-          <ParkingDashboardCalendarSection
-            from={period.from}
-            to={period.to}
-            datePreset={dateNav.datePreset}
-          />
-        ) : null}
-      </div>
-    
+      ) : null}
+    </div>
   );
 }

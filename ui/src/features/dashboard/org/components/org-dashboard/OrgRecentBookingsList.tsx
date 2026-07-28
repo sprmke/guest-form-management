@@ -1,13 +1,12 @@
-import { formatMoney } from '@/utils/format/currency';
 import { Link } from 'react-router-dom';
 
 import { ChevronRight } from 'lucide-react';
 
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
-
-import type { DashboardRecentBooking } from '@/features/dashboard/property/lib/types';
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+import type { DashboardRecentBooking } from '@/features/dashboard/property/lib/types';
 
+import { formatMoney } from '@/utils/format/currency';
 import { formatDateToLongFormat } from '@/utils/format/dates';
 
 function formatStayRange(checkInIso: string, checkOutIso: string): string {

@@ -1,9 +1,13 @@
 import { useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Building2, Home, Layers } from 'lucide-react';
+
 import { FilterSection } from '@/features/guest/marketing/shared/components/FilterSection';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+
 import type { DevelopmentType } from '../types';
 
 interface DevelopmentsFiltersProps {

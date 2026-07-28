@@ -1,7 +1,8 @@
 import { ArrowDownRight, ArrowUpRight, Clock, Wallet } from 'lucide-react';
 
-import { MoneyStatCard, StatCardGrid } from '@/components/shared/StatCard';
 import type { FinanceSummaryCardStats } from '@/features/dashboard/finance/lib/financeSummaryStats';
+
+import { MoneyStatCard, StatCardGrid } from '@/components/shared/StatCard';
 
 import type { LucideIcon } from 'lucide-react';
 

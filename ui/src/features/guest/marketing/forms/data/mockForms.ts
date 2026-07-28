@@ -3,12 +3,12 @@
  * Simulates forms created by hosts via the dashboard Form Builder
  */
 
-import type { GuestForm } from '@/features/guest/marketing/forms/lib/guest-forms/types';
 import {
   AZURE_GUEST_ADVISE_TEMPLATE,
   PARKING_DETAILS_TEMPLATE,
   PET_INFORMATION_TEMPLATE,
 } from '@/features/guest/marketing/forms/lib/guest-forms/templates';
+import type { GuestForm } from '@/features/guest/marketing/forms/lib/guest-forms/types';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
 
 function propertyIdsForSlugOrId(slugOrId: string): string[] {

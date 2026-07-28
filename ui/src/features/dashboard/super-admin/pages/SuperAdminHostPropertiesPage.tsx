@@ -5,14 +5,14 @@ import { useParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 
 import {
+  OrgPropertiesResultsMeta,
+  OrgPropertiesToolbar,
+} from '@/features/dashboard/org/components/org-properties/OrgPropertiesToolbar';
+import {
   OrgPropertiesEmptyState,
   OrgPropertyCard,
   OrgPropertyListRow,
 } from '@/features/dashboard/org/components/org-properties/OrgPropertyCard';
-import {
-  OrgPropertiesResultsMeta,
-  OrgPropertiesToolbar,
-} from '@/features/dashboard/org/components/org-properties/OrgPropertiesToolbar';
 import {
   filterOrgProperties,
   orgPropertiesHasActiveFilters,

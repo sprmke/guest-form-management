@@ -10,8 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { ChatThreadSearchController } from '@/lib/chat/useChatThreadSearch';
 import { isAwaitingHostReply } from '@/lib/chat/chatReplyStatus';
+import type { ChatThreadSearchController } from '@/lib/chat/useChatThreadSearch';
 import { cn } from '@/lib/utils';
 
 type HeaderProps = {

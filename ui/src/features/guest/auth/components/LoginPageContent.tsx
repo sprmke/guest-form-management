@@ -1,17 +1,22 @@
 import { useState } from 'react';
+
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+
 import { AlertCircle, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { SpinnerIcon } from '@/components/ui/icons';
-import { SocialAuthButtons } from './SocialAuthButtons';
-import { AuthDivider } from './AuthDivider';
-import { PasswordInput } from './PasswordInput';
-import { FormField } from './FormField';
+
 import type { AuthPageConfig } from '@/features/guest/auth/config/auth-page-config';
+
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { SpinnerIcon } from '@/components/ui/icons';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+
+import { AuthDivider } from './AuthDivider';
+import { FormField } from './FormField';
+import { PasswordInput } from './PasswordInput';
+import { SocialAuthButtons } from './SocialAuthButtons';
 
 interface HostGoogleAuthHandlers {
   error: string | null;

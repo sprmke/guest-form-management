@@ -1,10 +1,11 @@
 import { Minus } from 'lucide-react';
 
+import { requiresValidId } from '@/features/guest/form/lib/guestCounts';
+
 import type { BookingEditFormValues } from '@/features/dashboard/bookings/components/BookingEditForm';
 import { Field, Input } from '@/features/dashboard/bookings/components/BookingEditLayout';
 import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
 import type { GuestDocAssetType } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
-import { requiresValidId } from '@/features/guest/form/lib/guestCounts';
 
 import { Button } from '@/components/ui/button';
 

@@ -1,8 +1,5 @@
 import type { CampaignCategory } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import type {
-  VideoSceneTextLayout,
-  VideoTextSlotId,
-} from '@/features/dashboard/marketing/lib/video/videoTextSlots';
+import type { VideoSceneTextLayout } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
 
 export type VideoFormat = 'instagram-story' | 'instagram-post' | 'landscape';
 

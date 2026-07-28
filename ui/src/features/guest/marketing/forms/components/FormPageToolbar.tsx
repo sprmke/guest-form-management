@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
+
 import { LayoutDashboard } from 'lucide-react';
+
+import { HOST_LOGIN_PATH } from '@/features/guest/auth/lib/hostAuthPaths';
 
 import { ThemeToggle } from '@/components/theme/MarketingThemeToggle';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ROUTES } from '@/config/routes';
-import { getLoginHref } from '@/features/guest/auth/config/auth-navigation';
 import { cn } from '@/lib/utils';
+
+import { ROUTES } from '@/config/routes';
 
 interface FormPageToolbarProps {
   /** Property slug for host bookings link (property-scoped forms only) */
@@ -18,7 +21,7 @@ const toolbarButtonClassName =
   'h-10 w-10 rounded-full border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm';
 
 export function FormPageToolbar({ propertySlug, className }: FormPageToolbarProps) {
-  const adminHref = propertySlug ? ROUTES.property.bookings(propertySlug) : getLoginHref('host');
+  const adminHref = propertySlug ? ROUTES.property.bookings(propertySlug) : HOST_LOGIN_PATH;
 
   const adminLabel = propertySlug ? 'Manage bookings' : 'Host sign in';
 

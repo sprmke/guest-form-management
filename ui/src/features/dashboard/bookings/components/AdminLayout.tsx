@@ -24,7 +24,6 @@ import {
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
 import { GmailReconnectProvider } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
-import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import {
   buildOrgNavSections,
   buildParkingNavSections,
@@ -46,6 +45,7 @@ import { SectionNavIssueDot } from '@/features/dashboard/org/components/property
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
+import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
 import {

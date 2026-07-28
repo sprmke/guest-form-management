@@ -1,7 +1,6 @@
 import { Search } from 'lucide-react';
 
 import { SuperAdminListViewToggle } from '@/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle';
-
 import type {
   SuperAdminHostsFilters,
   SuperAdminHostsViewMode,

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -18,8 +19,10 @@ import {
   Sparkles,
   Layers,
 } from 'lucide-react';
+
 import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
 import { FilterSection } from '@/features/guest/marketing/shared/components/FilterSection';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

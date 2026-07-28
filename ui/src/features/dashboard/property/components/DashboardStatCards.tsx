@@ -1,4 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
 import type { ReactNode } from 'react';
 
 import { Link } from 'react-router-dom';
@@ -9,6 +8,7 @@ import { DashboardTrendStatCard } from '@/features/dashboard/property/components
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   stats: DashboardStats;

@@ -1,4 +1,3 @@
-import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 import { Link } from 'react-router-dom';
 
 import { ExternalLink } from 'lucide-react';
@@ -9,11 +8,11 @@ import {
 } from '@/features/dashboard/bookings/components/BookingPricingSummary';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
-
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
 type Props = {
   row: FinanceBookingLedgerRow | null;

@@ -1,17 +1,17 @@
 import { Mail } from 'lucide-react';
 
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
+import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   canSubmitTeamInvite,
   teamInvitePhoneError,
 } from '@/features/dashboard/team/lib/teamInviteContact';
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
-import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
-import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   TEAM_INVITE_GMAIL_ONLY_MESSAGE,
   teamInviteEmailLooksInvalid,
 } from '@/features/dashboard/team/lib/teamInviteEmail';
+import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type {
   BuiltinPropertyRole,
   CustomPropertyRole,

@@ -1,8 +1,11 @@
+import { useState, useRef } from 'react';
+
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useState, useRef } from 'react';
-import { PropertyCard, type Property } from '../PropertyCard';
+
 import { Button } from '@/components/ui/button';
+
+import { PropertyCard, type Property } from '../PropertyCard';
 
 interface SimilarPropertiesProps {
   properties: Property[];

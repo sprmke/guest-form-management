@@ -19,8 +19,6 @@ import { OrgManagedMemberLink } from '@/features/dashboard/team/components/OrgMa
 import { RoleBadge } from '@/features/dashboard/team/components/RoleBadge';
 import { RoleSelectOptions } from '@/features/dashboard/team/components/RoleSelectOptions';
 import { TeamMemberStatusBadge } from '@/features/dashboard/team/components/TeamMemberStatusBadge';
-import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
-import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
 import { handleRoleSelectChange } from '@/features/dashboard/team/lib/roleSelectUtils';
 import {
   currentTeamMemberRowClassName,
@@ -32,6 +30,8 @@ import {
   canEditPropertyMemberContact,
   memberContactLabel,
 } from '@/features/dashboard/team/lib/teamMemberContact';
+import { getRoleLabelForScope } from '@/features/dashboard/team/lib/teamRoleHelpers';
+import { getTeamScopeConfig, type TeamScope } from '@/features/dashboard/team/lib/teamScopeConfig';
 import type {
   CustomPropertyRole,
   PropertyRoleId,

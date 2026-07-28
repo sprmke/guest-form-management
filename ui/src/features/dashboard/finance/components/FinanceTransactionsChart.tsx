@@ -1,4 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
 import { useMemo, useState } from 'react';
 
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
@@ -21,7 +20,10 @@ import {
   type FinanceCategoryBreakdown,
 } from '@/features/dashboard/finance/lib/financeChartData';
 
+import { FinanceChartCard } from '@/components/charts/FinanceChartCard';
+import { Skeleton } from '@/components/ui/skeleton';
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   CHART_EXPENSE_COLOR,
   CHART_HEIGHT_CLASS,
@@ -30,10 +32,8 @@ import {
   defaultChartMargin,
   formatChartMoneyAxis,
 } from '@/lib/charts/chartStyles';
-import { FinanceChartCard } from '@/components/charts/FinanceChartCard';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   cashFlowData: FinanceCashFlowPoint[];

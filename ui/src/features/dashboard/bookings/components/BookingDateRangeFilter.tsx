@@ -10,8 +10,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
-import { Calendar } from '@/components/ui/calendar';
 import { ButtonGroup, ButtonGroupItem } from '@/components/ui/button-group';
+import { Calendar } from '@/components/ui/calendar';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   type DateNavigationState,

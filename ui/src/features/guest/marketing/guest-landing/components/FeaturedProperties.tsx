@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Link } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
+
 import { motion, useInView } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Star } from 'lucide-react';
 
 import { featuredStays } from '@/features/guest/marketing/guest-landing/data/landingContent';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 

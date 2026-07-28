@@ -1,6 +1,5 @@
 import { mockDevelopments } from '@/features/guest/marketing/developments/data/mockDevelopments';
 import { mockParkingSlots } from '@/features/guest/marketing/developments/data/mockParkingSlots';
-
 import type { ParkingSlot } from '@/features/guest/marketing/developments/types';
 
 export interface ParkingListEntry {

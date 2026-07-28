@@ -1,10 +1,10 @@
 import * as React from 'react';
 
-import type { LucideIcon } from 'lucide-react';
-
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
 import { cn } from '@/lib/utils';
+
+import type { LucideIcon } from 'lucide-react';
 
 type SlidingTabsContextValue = {
   value: string;

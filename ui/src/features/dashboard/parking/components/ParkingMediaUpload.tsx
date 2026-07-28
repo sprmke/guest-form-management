@@ -3,12 +3,12 @@ import { useRef, type MouseEvent } from 'react';
 import { Loader2, Plus, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { useUploadParkingMedia } from '@/features/dashboard/parking/hooks/useUploadParkingMedia';
 import {
   ACCEPT_PROPERTY_IMAGE_INPUT,
   formatPropertyMediaSizeLimit,
   validatePropertyMediaFile,
 } from '@/features/dashboard/org/lib/propertyMedia';
+import { useUploadParkingMedia } from '@/features/dashboard/parking/hooks/useUploadParkingMedia';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

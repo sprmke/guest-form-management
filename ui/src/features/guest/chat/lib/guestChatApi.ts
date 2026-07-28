@@ -1,12 +1,10 @@
-import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
-
-import { supabase } from '@/lib/supabase/client';
-
 import type { ChatActionMessage } from '@/lib/chat/chatMessageActions';
 import {
   canGuestEditMessage as canGuestEditMessageInThread,
   canGuestUnsendMessage as canGuestUnsendMessageInThread,
 } from '@/lib/chat/chatMessageActions';
+import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
+import { supabase } from '@/lib/supabase/client';
 
 const FUNCTIONS_URL = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
 const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;

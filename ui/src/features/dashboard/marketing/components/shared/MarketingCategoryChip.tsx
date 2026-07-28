@@ -1,5 +1,7 @@
 import { MoreHorizontal } from 'lucide-react';
 
+import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
+
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -7,7 +9,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import type { MarketingSidebarMenuItem } from '@/features/dashboard/marketing/components/shared/MarketingSidebarSection';
 import { cn } from '@/lib/utils';
 
 type Props = {

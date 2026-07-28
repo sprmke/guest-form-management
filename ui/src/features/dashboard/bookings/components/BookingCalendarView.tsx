@@ -1,24 +1,23 @@
-import { formatMoneyCompact } from '@/utils/format/currency';
 import { useCallback, useMemo } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
 import type { BookingCalendarPillLabelMode } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
+import { calendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { CalendarDayBookingCard } from '@/features/dashboard/bookings/components/calendar/CalendarDayBookingCard';
 import { amountPerOccupiedNight } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
 } from '@/features/dashboard/bookings/components/calendar/OccupancyCalendarView';
-import { calendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
-
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import type { DatePreset } from '@/lib/date/navigation';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { cn } from '@/lib/utils';
+import { formatMoneyCompact } from '@/utils/format/currency';
 
 type Props = {
   rows: BookingRow[];

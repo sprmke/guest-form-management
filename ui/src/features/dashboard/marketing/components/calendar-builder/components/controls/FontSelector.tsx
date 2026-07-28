@@ -7,8 +7,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-import { FONT_FAMILIES, type FontConfig } from '../../types';
 import { NumberSlider } from './NumberSlider';
+import { FONT_FAMILIES, type FontConfig } from '../../types';
 
 interface FontSelectorProps {
   label?: string;

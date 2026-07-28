@@ -1,4 +1,3 @@
-import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { Calendar, Car, ChevronDown, Dog, Edit2, PartyPopper, Users, X } from 'lucide-react';
 
 import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
@@ -6,10 +5,10 @@ import {
   bookingRequestsSurpriseDecor,
   bookingFlagLabelChipClass,
 } from '@/features/dashboard/bookings/lib/bookingFlags';
-
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { cn } from '@/lib/utils';
+import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
 type Props = {
   booking: BookingRow;

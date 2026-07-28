@@ -1,4 +1,3 @@
-import { formatBookingDateShort } from '@/utils/format/bookingDisplay';
 import { Link } from 'react-router-dom';
 
 import { ExternalLink, Loader2 } from 'lucide-react';
@@ -7,7 +6,6 @@ import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/compone
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { WorkflowPanel } from '@/features/dashboard/bookings/components/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
-
 import { resolveBookingListHref } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -16,6 +14,7 @@ import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
 type Props = {
   bookingId: string | null;

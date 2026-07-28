@@ -1,6 +1,6 @@
-import type { LucideIcon } from 'lucide-react';
-
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
+
+import type { LucideIcon } from 'lucide-react';
 
 export type AdminViewToggleOption<T extends string> = {
   value: T;

@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 
 import { Navigate, Route } from 'react-router-dom';
 
-import { SuperAdminShell } from '@/features/dashboard/super-admin/components/SuperAdminShell';
 import { SuperAdminHostShell } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostShell';
+import { SuperAdminShell } from '@/features/dashboard/super-admin/components/SuperAdminShell';
 import { SuperAdminApprovalsPage } from '@/features/dashboard/super-admin/pages/SuperAdminApprovalsPage';
 import { SuperAdminDevelopmentDetailPage } from '@/features/dashboard/super-admin/pages/SuperAdminDevelopmentDetailPage';
 import { SuperAdminDevelopmentsPage } from '@/features/dashboard/super-admin/pages/SuperAdminDevelopmentsPage';

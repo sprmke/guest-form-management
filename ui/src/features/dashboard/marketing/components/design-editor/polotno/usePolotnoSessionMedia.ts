@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
+import type { PropertyMediaItem } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 
 export function mergePropertyMediaItems(
   propertyImages: PropertyMediaItem[],

@@ -1,6 +1,6 @@
-import type { InfiniteData, QueryClient } from '@tanstack/react-query';
-
 import type { ChatReplyStatus } from '@/lib/chat/chatReplyStatus';
+
+import type { InfiniteData, QueryClient } from '@tanstack/react-query';
 
 export type SocialMessageRealtimeRow = {
   id: string;

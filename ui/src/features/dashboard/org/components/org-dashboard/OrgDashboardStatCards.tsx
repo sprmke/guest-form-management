@@ -1,10 +1,10 @@
-import { formatMoney } from '@/utils/format/currency';
 import { Building2, Calendar, DollarSign, Percent } from 'lucide-react';
 
 import { DashboardTrendStatCard } from '@/features/dashboard/property/components/DashboardTrendStatCard';
 import type { DashboardStats } from '@/features/dashboard/property/lib/types';
 
 import { cn } from '@/lib/utils';
+import { formatMoney } from '@/utils/format/currency';
 
 type Props = {
   stats: DashboardStats;

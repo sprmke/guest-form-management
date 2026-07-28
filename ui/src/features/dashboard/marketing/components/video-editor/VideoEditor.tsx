@@ -1,45 +1,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { PlayerRef } from '@remotion/player';
 import { ChevronLeft, Download, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
 
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
-import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
-import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
+import { MarketingPreviewHeader } from '@/features/dashboard/marketing/components/shared/MarketingPreviewHeader';
+import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import {
   MarketingTemplatesPanel,
   type PresetTemplateItem,
 } from '@/features/dashboard/marketing/components/shared/MarketingTemplatesPanel';
-import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
-import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
-import { captureLiveVideoProjectThumbnail } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
+import type { VideoPreviewMode } from '@/features/dashboard/marketing/components/video-editor/useVideoPlayerTransport';
 import {
   CampaignVideoComposition,
   type VideoCompositionProps,
 } from '@/features/dashboard/marketing/components/video-editor/VideoCompositions';
 import { VideoEditorSettings } from '@/features/dashboard/marketing/components/video-editor/VideoEditorSettings';
 import { VideoPreviewWorkspace } from '@/features/dashboard/marketing/components/video-editor/VideoPreviewWorkspace';
-import type { VideoPreviewMode } from '@/features/dashboard/marketing/components/video-editor/useVideoPlayerTransport';
 import { VideoTimeline } from '@/features/dashboard/marketing/components/video-editor/VideoTimeline';
+import { useEnsureDefaultVideoMusic } from '@/features/dashboard/marketing/hooks/useEnsureDefaultVideoMusic';
+import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 import { useMarketingSidebarLayout } from '@/features/dashboard/marketing/hooks/useMarketingSidebarLayout';
-import {
-  useVideoProjectHistory,
-  useVideoProjectHistoryShortcuts,
-} from '@/features/dashboard/marketing/hooks/useVideoProjectHistory';
-import { useEnsureDefaultVideoMusic } from '@/features/dashboard/marketing/hooks/useEnsureDefaultVideoMusic';
 import {
   useDeleteMarketingTemplate,
   useMarketingTemplates,
   useUpdateMarketingTemplate,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import { captureLiveVideoProjectThumbnail } from '@/features/dashboard/marketing/hooks/useMarketingTemplateThumbnails';
+import {
+  useVideoProjectHistory,
+  useVideoProjectHistoryShortcuts,
+} from '@/features/dashboard/marketing/hooks/useVideoProjectHistory';
 import {
   type CampaignCategory,
   type DesignBinding,
@@ -52,17 +50,18 @@ import {
   availabilityTextForMonth,
   openSlotDatesForMonth,
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
+import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import { DEFAULT_MARKETING_THUMB_BINDING } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
 import {
   waitForMarketingIdle,
   yieldToMainThread,
 } from '@/features/dashboard/marketing/lib/marketingIdle';
+import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
 import {
   getCachedMarketingThumbnail,
   publishMarketingPresetThumbnail,
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
-import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
 import {
   propertyMediaItems,
   propertyGalleryMediaItems,
@@ -72,29 +71,26 @@ import {
   primaryBindingPhoto,
   resolveDesignBindingMedia,
 } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
+import { renderVideoPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
 import {
   VIDEO_FORMAT_DIMENSIONS,
   VIDEO_PREVIEW_CONTAINER_MIN_HEIGHT_CLASS,
 } from '@/features/dashboard/marketing/lib/video/videoFormatDimensions';
-import {
-  buildDefaultVideoProject,
-  parseVideoProject,
-} from '@/features/dashboard/marketing/lib/video/videoProjectDefaults';
+import { buildDefaultVideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectDefaults';
 import type {
   VideoFormat,
   VideoProject,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { getSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import {
   addPhotoScene,
   sceneStartFrame,
   videoProjectDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
+import { getSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
 import {
   getVideoCampaignTemplate,
   videoTemplatesForCategory,
 } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
-import { renderVideoPresetThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingVideoThumbnail';
 import { registerVideoThumbnailPlaybackPause } from '@/features/dashboard/marketing/lib/videoThumbnailCapture';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
@@ -102,6 +98,8 @@ import { useOrgSettings } from '@/features/dashboard/org/hooks/useOrgSettings';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatMoneyCompact } from '@/utils/format/currency';
+
+import type { PlayerRef } from '@remotion/player';
 
 export type VideoExportPayload = {
   templateId: string;

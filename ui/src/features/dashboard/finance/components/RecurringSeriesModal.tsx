@@ -1,5 +1,3 @@
-import { formatMoney } from '@/utils/format/currency';
-import { formatIsoDate } from '@/utils/format/bookingDisplay';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import {
@@ -25,7 +23,6 @@ import {
   adminTableRowClass,
 } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { useTelegramFinanceSettings } from '@/features/dashboard/bookings/hooks/useTelegramFinanceSettings';
-
 import {
   OperatingLineItemForm,
   telegramReminderPayloadFromForm,
@@ -48,6 +45,8 @@ import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
+import { formatIsoDate } from '@/utils/format/bookingDisplay';
+import { formatMoney } from '@/utils/format/currency';
 import { formatIsoDateForDisplay } from '@/utils/format/dates';
 
 type Props = {

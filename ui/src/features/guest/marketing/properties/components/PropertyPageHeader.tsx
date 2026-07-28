@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 
 import { MapPin, Star, BadgeCheck, ArrowUpRight } from 'lucide-react';
+
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
+
 import { cn } from '@/lib/utils';
 
 export interface PropertyPageHeaderProps {

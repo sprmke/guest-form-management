@@ -1,6 +1,6 @@
-import { cn } from '@/lib/utils';
-
 import type { FormatOrientation } from '@/features/dashboard/marketing/lib/marketingFormats';
+
+import { cn } from '@/lib/utils';
 
 type Props = {
   orientation: FormatOrientation;

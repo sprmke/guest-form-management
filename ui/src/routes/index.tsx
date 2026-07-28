@@ -1,7 +1,8 @@
 import { Routes } from 'react-router-dom';
 
-import { dashboardRoutes } from '@/features/dashboard/routes';
 import { guestRoutes } from '@/features/guest/routes';
+
+import { dashboardRoutes } from '@/features/dashboard/routes';
 
 export function AppRoutes() {
   return (

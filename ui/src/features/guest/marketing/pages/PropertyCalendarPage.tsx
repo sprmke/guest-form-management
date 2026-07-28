@@ -1,9 +1,9 @@
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
+import { mockPropertyInfo } from '@/features/guest/marketing/forms/data/mockForms';
 import { PublicPropertyCalendar } from '@/features/guest/marketing/properties/components/property-detail/PublicPropertyCalendar';
 import { PropertyPageHeader } from '@/features/guest/marketing/properties/components/PropertyPageHeader';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
-import { mockPropertyInfo } from '@/features/guest/marketing/forms/data/mockForms';
 
 export function PropertyCalendarPage() {
   const { propertySlug = '' } = useParams<{ propertySlug: string }>();

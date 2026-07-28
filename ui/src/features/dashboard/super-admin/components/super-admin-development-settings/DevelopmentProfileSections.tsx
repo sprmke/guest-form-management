@@ -16,17 +16,17 @@ import { AdminSection } from '@/features/dashboard/bookings/components/AdminSect
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
 import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
-import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
 import type { PropertyLocationFields } from '@/features/dashboard/org/lib/propertyLocation';
+import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import {
+  shouldAutoUpdateDevelopmentLocationLine,
+  suggestDevelopmentLocationLine,
+} from '@/features/dashboard/super-admin/lib/developmentLocation';
 import {
   DEVELOPMENT_AMENITY_SUGGESTIONS,
   DEVELOPMENT_STATUSES,
   DEVELOPMENT_TYPES,
 } from '@/features/dashboard/super-admin/lib/developmentSettingsConstants';
-import {
-  shouldAutoUpdateDevelopmentLocationLine,
-  suggestDevelopmentLocationLine,
-} from '@/features/dashboard/super-admin/lib/developmentLocation';
 import {
   developmentPmoEmailPlaceholder,
   type DevelopmentProfileDraft,

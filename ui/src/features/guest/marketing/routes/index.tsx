@@ -1,5 +1,6 @@
 import { Navigate, Route, useParams } from 'react-router-dom';
 
+import { guestAccountRoutes } from '@/features/guest/account/routes';
 import { DevelopmentDetailPage } from '@/features/guest/marketing/pages/DevelopmentDetailPage';
 import { DevelopmentFormPage } from '@/features/guest/marketing/pages/DevelopmentFormPage';
 import { DevelopmentParkingListPage } from '@/features/guest/marketing/pages/DevelopmentParkingListPage';
@@ -7,19 +8,18 @@ import { DevelopmentPropertiesPage } from '@/features/guest/marketing/pages/Deve
 import { DevelopmentsListPage } from '@/features/guest/marketing/pages/DevelopmentsListPage';
 import { DevelopmentsLocationPage } from '@/features/guest/marketing/pages/DevelopmentsLocationPage';
 import { ForHostsPage } from '@/features/guest/marketing/pages/ForHostsPage';
-import { HostPublicPage } from '@/features/guest/marketing/pages/HostPublicPage';
 import { GuestLandingPage } from '@/features/guest/marketing/pages/GuestLandingPage';
-import { PrivacyPage } from '@/features/guest/marketing/pages/PrivacyPage';
+import { HostPublicPage } from '@/features/guest/marketing/pages/HostPublicPage';
 import { ParkingDetailPage } from '@/features/guest/marketing/pages/ParkingDetailPage';
 import { ParkingFormPage } from '@/features/guest/marketing/pages/ParkingFormPage';
 import { ParkingsListPage } from '@/features/guest/marketing/pages/ParkingsListPage';
 import { ParkingsLocationPage } from '@/features/guest/marketing/pages/ParkingsLocationPage';
+import { PrivacyPage } from '@/features/guest/marketing/pages/PrivacyPage';
 import { PropertiesListPage } from '@/features/guest/marketing/pages/PropertiesListPage';
 import { PropertiesLocationPage } from '@/features/guest/marketing/pages/PropertiesLocationPage';
 import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
 import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
-import { guestAccountRoutes } from '@/features/guest/account/routes';
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
 
 function DevelopmentParkingListRedirect() {

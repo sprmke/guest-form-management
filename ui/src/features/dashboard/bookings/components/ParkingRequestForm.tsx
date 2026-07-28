@@ -10,7 +10,6 @@
  * Plan: docs/planning/NEW_FLOW_PLAN.md §6.1 Q4.4, Q4.5
  */
 
-import { formatMoney } from '@/utils/format/currency';
 import { useEffect, useRef, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,7 +33,6 @@ import {
 } from '@/features/dashboard/bookings/components/WorkflowFormShell';
 import { useClearBookingAsset } from '@/features/dashboard/bookings/hooks/useClearBookingAsset';
 import { useUploadBookingAsset } from '@/features/dashboard/bookings/hooks/useUploadBookingAsset';
-
 import { requiredPositiveMoney } from '@/features/dashboard/bookings/lib/moneyFieldSchema';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -45,9 +43,9 @@ import {
   workflowUploadButtonClass,
 } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
-import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
-
 import { Checkbox } from '@/components/ui/checkbox';
+import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
+import { formatMoney } from '@/utils/format/currency';
 
 const parkingRequestFormSchema = z
   .object({

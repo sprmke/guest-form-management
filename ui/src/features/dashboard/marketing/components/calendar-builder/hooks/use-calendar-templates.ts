@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import {
@@ -8,13 +9,13 @@ import {
   useUpdateMarketingTemplate,
 } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { readCalendarSourcePreset } from '@/features/dashboard/marketing/lib/calendarAutosave';
+import { calendarFormatToAspectPreset } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 import { usePropertyIdParam, scopedFunctionsUrl } from '@/features/dashboard/org/lib/adminApiScope';
 import { getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
-import { useQueryClient } from '@tanstack/react-query';
+
+import { createDefaultStyles, normalizeCalendarStyles } from '../types';
 
 import type { CalendarStyles } from '../types';
-import { createDefaultStyles, normalizeCalendarStyles } from '../types';
-import { calendarFormatToAspectPreset } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 
 export interface SavedCalendarTemplate {
   id: string;

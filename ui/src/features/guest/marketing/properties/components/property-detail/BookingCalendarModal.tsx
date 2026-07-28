@@ -8,26 +8,6 @@ import { PublicPropertyCalendar } from './PublicPropertyCalendar';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-const MONTH_NAMES = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-] as const;
-
-function formatDisplayDate(d: Date): string {
-  const month = MONTH_NAMES[d.getMonth()]?.slice(0, 3) ?? '';
-  return `${month} ${d.getDate()}, ${d.getFullYear()}`;
-}
-
 function toMidnight(d: Date): Date {
   const copy = new Date(d);
   copy.setHours(0, 0, 0, 0);
@@ -141,31 +121,5 @@ export function BookingCalendarModal({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-// ── Sub-component: DatePill ──────────────────────────────────────────────────
-
-interface DatePillProps {
-  label: string;
-  date: Date | null;
-  isActive: boolean;
-}
-
-function DatePill({ label, date, isActive }: DatePillProps) {
-  return (
-    <div className={cn('bg-card px-3 py-2.5 transition-colors', isActive && 'bg-primary/10')}>
-      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest">
-        {label}
-      </p>
-      <p
-        className={cn(
-          'mt-0.5 text-sm font-medium',
-          date ? 'text-foreground' : 'text-muted-foreground/50'
-        )}
-      >
-        {date ? formatDisplayDate(date) : 'Add date'}
-      </p>
-    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+
 import { motion, useReducedMotion } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 

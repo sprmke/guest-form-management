@@ -4,13 +4,14 @@ import type {
   VideoSceneKind,
   VideoSceneTextFields,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
 import {
   VIDEO_TEXT_SLOT_LABELS,
   defaultTextLayoutForSceneKind,
   textSlotsForSceneKind,
+  isVideoTextSlotId,
   type VideoTextSlotId,
 } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
-import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
 
 export type { VideoSceneElementId } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 
@@ -122,7 +123,7 @@ export function removeSceneElement(scene: VideoScene, elementId: VideoSceneEleme
 
   if (elementId === 'background') {
     next = { ...next, imageUrl: null };
-  } else {
+  } else if (isVideoTextSlotId(elementId)) {
     next = { ...next, texts: clearSlotText(next.texts, elementId) };
   }
 
@@ -142,7 +143,7 @@ export function addSceneElement(
     hiddenElements: [...hidden],
   };
 
-  if (elementId !== 'background') {
+  if (elementId !== 'background' && isVideoTextSlotId(elementId)) {
     const defaults = defaultTextsForKind(scene.kind, templateSeed);
     const slot = elementId;
     const current = next.texts;

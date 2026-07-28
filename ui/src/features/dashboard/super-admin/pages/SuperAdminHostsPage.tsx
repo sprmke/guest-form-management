@@ -8,8 +8,8 @@ import {
   SuperAdminHostCard,
   SuperAdminHostsEmptyState,
 } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostCard';
-import { SuperAdminHostsTable } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostsTable';
 import { SuperAdminHostsSummaryCards } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostsSummaryCards';
+import { SuperAdminHostsTable } from '@/features/dashboard/super-admin/components/super-admin-hosts/SuperAdminHostsTable';
 import {
   SuperAdminHostsResultsMeta,
   SuperAdminHostsToolbar,

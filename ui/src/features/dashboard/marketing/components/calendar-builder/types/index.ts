@@ -1,11 +1,11 @@
 // Calendar Builder Types - Comprehensive styling configuration
 
+import { calendarBrandPalette } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   createDefaultCanvasFrame,
   normalizeCalendarCanvasFrame,
   type CalendarCanvasFrameStyles,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
-import { calendarBrandPalette } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 
 export type { CalendarCanvasFrameStyles };
 

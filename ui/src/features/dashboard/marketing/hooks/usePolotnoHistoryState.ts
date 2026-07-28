@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { onSnapshot } from 'mobx-state-tree';
+import { onSnapshot, type IAnyStateTreeNode } from 'mobx-state-tree';
 
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 
@@ -21,7 +21,7 @@ export function usePolotnoHistoryState(store: PolotnoStore | null) {
     };
 
     sync();
-    const dispose = onSnapshot(store, sync);
+    const dispose = onSnapshot(store as unknown as IAnyStateTreeNode, sync);
     return dispose;
   }, [store]);
 

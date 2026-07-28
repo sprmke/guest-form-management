@@ -1,7 +1,6 @@
 import { AdminPdfZoomPreview } from '@/features/dashboard/bookings/components/AdminPdfZoomPreview';
-import { renderPetPdfPreview } from '@/features/dashboard/bookings/lib/petPdfPreview';
-
 import type { PetDetailsValues } from '@/features/dashboard/bookings/lib/petDefaults';
+import { renderPetPdfPreview } from '@/features/dashboard/bookings/lib/petPdfPreview';
 
 type PetPdfPreviewProps = {
   details: PetDetailsValues;
