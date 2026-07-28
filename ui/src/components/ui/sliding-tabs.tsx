@@ -13,7 +13,7 @@ type SlidingTabsContextValue = {
 
 const SlidingTabsContext = React.createContext<SlidingTabsContextValue | null>(null);
 
-export type SlidingTabsSize = 'primary' | 'compact';
+export type SlidingTabsSize = 'primary' | 'compact' | 'dense';
 
 type SlidingTabsListContextValue = {
   setItemRef: (key: string) => (node: HTMLElement | null) => void;
@@ -26,6 +26,7 @@ const slidingTabsListClass: Record<SlidingTabsSize, string> = {
   primary: 'inline-flex h-9 items-center justify-center rounded-lg p-1',
   compact:
     'inline-flex h-auto w-fit max-w-full items-center justify-start overflow-x-auto overflow-y-hidden rounded-lg p-0.5',
+  dense: 'inline-flex h-auto w-fit max-w-full items-center justify-start rounded-lg p-0.5',
 };
 
 const slidingTabsTriggerClass: Record<SlidingTabsSize, string> = {
@@ -33,6 +34,8 @@ const slidingTabsTriggerClass: Record<SlidingTabsSize, string> = {
     'inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium',
   compact:
     'inline-flex min-h-[44px] items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium lg:h-8 lg:min-h-0 lg:gap-1 lg:px-2.5 lg:py-1 lg:text-[13px]',
+  dense:
+    'inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-semibold sm:h-8 sm:px-2.5',
 };
 
 function useSlidingTabsContext(): SlidingTabsContextValue {
@@ -203,6 +206,7 @@ type SegmentedControlProps<T extends string> = {
   value: T;
   onChange: (value: T) => void;
   options: SegmentedControlOption<T>[];
+  size?: SlidingTabsSize;
   className?: string;
   listClassName?: string;
   triggerClassName?: string;
@@ -216,6 +220,7 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   options,
+  size = 'compact',
   className,
   listClassName,
   triggerClassName,
@@ -228,15 +233,21 @@ export function SegmentedControl<T extends string>({
     : options;
 
   const handleValueChange = React.useCallback((next: string) => onChange(next as T), [onChange]);
+  const iconClassName = size === 'dense' ? 'size-3 shrink-0' : 'size-4 shrink-0';
+  const resolvedPillClassName =
+    pillClassName ?? (size === 'dense' ? 'bg-card rounded-md shadow-sm' : undefined);
 
   return (
     <SlidingTabs value={value} onValueChange={handleValueChange} className={className}>
       <SlidingTabsList
-        size="compact"
-        className={cn('segment-shell', listClassName)}
-        pillClassName={pillClassName}
+        size={size}
+        className={cn(
+          size === 'dense' ? 'border-border/70 bg-muted/40 border' : 'segment-shell',
+          listClassName
+        )}
+        pillClassName={resolvedPillClassName}
         aria-label={ariaLabel}
-        remeasureDeps={[visible.length, value]}
+        remeasureDeps={[visible.length, value, size]}
       >
         {visible.map(
           ({ value: optionValue, label, icon: Icon, disabled, className: optionClassName }) => (
@@ -246,9 +257,9 @@ export function SegmentedControl<T extends string>({
               disabled={disabled}
               aria-label={typeof label === 'string' ? label : optionValue}
               title={typeof label === 'string' ? label : optionValue}
-              className={cn('segment-item', triggerClassName, optionClassName)}
+              className={cn(size !== 'dense' && 'segment-item', triggerClassName, optionClassName)}
             >
-              {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
+              {Icon ? <Icon className={iconClassName} aria-hidden /> : null}
               {label}
             </SlidingTabsTrigger>
           )
