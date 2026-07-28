@@ -23,10 +23,18 @@ New hosts land here after Google sign-in when they have no organization. Creates
 ## Steps
 
 1. **Organization** — organization name, contact **Name**, **Contact number**
-2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). At least one host type must be selected.
+2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). At least one host type must be selected. Residence is currently Azure-only (field **?** help).
 3. **Verify** — unified step header → trust notice + **Let’s get verified**; upload fields after click. **Valid ID** + **Property verification** (Property Rights + contract end when applicable + proof of ownership + platform + access screenshot) and/or **Parking verification** (Parking Rights + contract end + proof upload).
 
 Contact name pre-fills from the Google account display name when available.
+
+### Unit uniqueness (sublease handoff) — planned
+
+**Today:** tower + unit is unique across **all** properties (ACTIVE and INACTIVE), so a new host cannot claim a unit another org already registered.
+
+**Target ([#120](https://github.com/sprmke/kame-homes/issues/120)):** same residence / tower / unit (and the same display name across different orgs) is allowed for successive hosts — e.g. after a sublease ends — but **only one property may be `ACTIVE`** for that tower+unit at a time. Archived (`INACTIVE`) rows keep history; public listings and booking only use the active host.
+
+Pair with lease/contract end + reverification so the previous listing is archived before (or when) the next host goes live.
 
 ### Property / Parking Rights
 
@@ -62,10 +70,17 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 
 ## Enhanced verification (after onboarding)
 
-- Sidebar **Get Verified** CTA (`AdminLayout`) opens modal
-- Required: selfie with ID, ownership / Azure sublease email, 1–2 Azure PMO email screenshots
+Two-tier model (see **Get Verified** sidebar modal):
+
+| Tier | Name         | Unlock                                     | Documents                                                                 |
+| ---- | ------------ | ------------------------------------------ | ------------------------------------------------------------------------- |
+| 1    | **Host**     | Required to host (onboarding)              | Valid ID + property/parking verification per **`host_modes`**             |
+| 2    | **Verified** | **Verified** badge on host page + listings | Selfie with ID, ownership/sublease proof, 1–2 Azure PMO email screenshots |
+
+- Modal shows **Tier 1 status** from onboarding (read-only checklist + review state).
+- **Tier 2 can be submitted anytime** — does not require Tier 1 approval first; each tier is reviewed independently.
 - `submit-org-verification` `{ tier: 'enhanced' }` → `enhancedStatus = pending`
-- When **approved** (super-admin review later): public **`/hosts/:orgSlug`** shows **Verified** badge (`get-public-host.verifiedBadge`)
+- When **Tier 2 approved**: public **`/hosts/:orgSlug`**, property detail, and parking detail show **Verified** badge (`verifiedBadge` from org enhanced verification)
 
 ---
 

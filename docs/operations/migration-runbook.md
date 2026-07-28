@@ -12,7 +12,7 @@
 >
 > **Never** run `supabase db push` against prod until §5 ("Applying to production") has been read end-to-end and a backup is confirmed. After migrations and function deploy, complete **§11** for Dashboard auth, Edge secrets, Google Cloud, UI env, and **`pg_cron`** scheduling.
 >
-> The UI `.env.development` may point at hosted Supabase — treat prod-linked URLs as sensitive. Phase 0 migrations are additive SQL only; full stack behavior also depends on shipped Edge Functions and UI (see `docs/TODOS.md`).
+> The UI `.env.development` may point at hosted Supabase — treat prod-linked URLs as sensitive. Phase 0 migrations are additive SQL only; full stack behavior also depends on shipped Edge Functions and UI (see [`docs/todos/`](../todos/README.md)).
 
 ---
 

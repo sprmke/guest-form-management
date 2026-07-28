@@ -6,10 +6,10 @@ Navigation for **guest-form-management**.
 
 ## Core
 
-| Doc                          | Purpose                                       |
-| ---------------------------- | --------------------------------------------- |
-| [`PROJECT.md`](./PROJECT.md) | Architecture, API inventory, env vars, routes |
-| [`TODOS.md`](./TODOS.md)     | Backlog and shipped checklist                 |
+| Doc                                    | Purpose                                           |
+| -------------------------------------- | ------------------------------------------------- |
+| [`PROJECT.md`](./PROJECT.md)           | Architecture, API inventory, env vars, routes     |
+| [`todos/README.md`](./todos/README.md) | Product backlog — GitHub Issues + shipped archive |
 
 ## Planning
 
@@ -17,6 +17,12 @@ Navigation for **guest-form-management**.
 | ---------------------------------------------------------- | ------------------------------------ |
 | [`planning/NEW_FLOW_PLAN.md`](./planning/NEW_FLOW_PLAN.md) | Booking redesign — decisions, phases |
 | [`planning/NEW_FLOW.md`](./planning/NEW_FLOW.md)           | Original product spec                |
+
+## Todos (detail)
+
+| Doc                                  | Purpose                                 |
+| ------------------------------------ | --------------------------------------- |
+| [`todos/shipped/`](./todos/shipped/) | Completed issues + legacy phase history |
 
 ## Operations
 

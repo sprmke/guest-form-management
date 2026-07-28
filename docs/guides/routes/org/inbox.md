@@ -17,6 +17,8 @@ Org operators view and reply to guest messages from Facebook Messenger, on-site 
 
 **Route:** `/org/:orgSlug/inbox`
 
+**Deep link:** `?conversationId=<uuid>` selects that thread (and opens the conversation pane on mobile). Optional `?platform=web|facebook|instagram` sets the platform tab filter. Telegram Chat notifications use `conversationId` + `platform=web`.
+
 ## Permissions
 
 | Permission         | UI                                                                       |
@@ -129,7 +131,7 @@ Org operators view and reply to guest messages from Facebook Messenger, on-site 
 
 ## Roadmap & next goals
 
-Prioritized themes for Guest Inbox v2. Check items in `docs/TODOS.md` as they ship.
+Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../todos/README.md) as they ship.
 
 ### P0 — Platform reliability & data foundation
 
@@ -189,15 +191,16 @@ Prioritized themes for Guest Inbox v2. Check items in `docs/TODOS.md` as they sh
 
 ## Chat UX roadmap (guest web + inbox)
 
-Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/guides/routes/properties/chat.md`** § UX roadmap and **`docs/TODOS.md`**.
+Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/guides/routes/properties/chat.md`** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
 
-| Phase | Inbox impact                                                                                            |
-| ----- | ------------------------------------------------------------------------------------------------------- |
-| **1** | Timestamps, date pills, sent ✓ on outbound, AI “Automated” label — **shipped**                          |
-| **2** | Read receipts; mark-read on open; Realtime UPDATE — **shipped**                                         |
-| **3** | Host edit outbound until guest read/reply; Edit/Unsend hidden when unavailable — **shipped**            |
-| **4** | Reply-to with quote in composer + bubble — **shipped** (Meta `reply_to.mid` on FB/IG DMs)               |
-| **5** | Typing (web Broadcast), guest attachments + upload, in-thread search, offline guest email — **shipped** |
+| Phase | Inbox impact                                                                                                                                               |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **1** | Timestamps, date pills, sent ✓ on outbound, AI “Automated” label — **shipped**                                                                             |
+| **2** | Read receipts; mark-read on open; Realtime UPDATE — **shipped**                                                                                            |
+| **3** | Host edit outbound until guest read/reply; Edit/Unsend hidden when unavailable — **shipped**                                                               |
+| **4** | Reply-to with quote in composer + bubble — **shipped** (Meta `reply_to.mid` on FB/IG DMs)                                                                  |
+| **5** | Typing (web Broadcast), guest attachments + upload, in-thread search (floating bar below header; highlight + prev/next), offline guest email — **shipped** |
+| **6** | Guest awaiting-reply badge; Chat quick-reply group + composer on web threads — **shipped**                                                                 |
 
 ---
 
@@ -206,7 +209,7 @@ Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/g
 - `.cursor/rules/social-inbox.mdc`
 - `docs/operations/meta-app-review.md`
 - `docs/operations/inbox-e2e-runbook.md`
-- `docs/TODOS.md` — Guest Inbox backlog checkboxes
+- [`docs/todos/README.md`](../../../todos/README.md) — Guest Inbox backlog on GitHub ([#108](https://github.com/sprmke/kame-homes/issues/108))
 
 ## Pending / follow-ups (legacy checklist)
 

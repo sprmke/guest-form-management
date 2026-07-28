@@ -1,8 +1,8 @@
 # New Booking Flow — Implementation Plan
 
 > Planning document for the redesign described in `docs/planning/NEW_FLOW.md`.
-> Status: **§6.1 decisions locked**; **§6.2** = **Q7.4** (surprise setup) refinement only. **Phases 0–5 are implemented in-repo** (see `docs/TODOS.md`). **Phase 6+** (backfill script) still planned.
-> Companion to `docs/PROJECT.md` (current state) and `docs/TODOS.md` (backlog).
+> Status: **§6.1 decisions locked**; **§6.2** = **Q7.4** (surprise setup) refinement only. **Phases 0–5 are implemented in-repo** (see [`docs/todos/shipped/`](../todos/shipped/README.md)). **Phase 6+** (backfill script) still planned.
+> Companion to `docs/PROJECT.md` (current state) and [`docs/todos/`](../todos/README.md) (backlog).
 
 This doc captures:
 
@@ -331,8 +331,8 @@ ui/package.json
 docs/PROJECT.md
   - Update to reflect new flow once shipped (per .cursor/rules/documentation-maintenance.mdc).
 
-docs/TODOS.md
-  - Mark covered items; add follow-ups uncovered during scoping.
+docs/todos/
+  - Mark covered items; add follow-ups uncovered during scoping (GitHub Issues + epic specs).
 ```
 
 ### 4.3 Files to remove / deprecate

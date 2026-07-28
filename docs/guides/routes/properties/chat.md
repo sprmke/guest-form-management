@@ -49,7 +49,7 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 | ------------------------- | ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `guest-web-chat-resume`   | GET    | Guest JWT | `?property_slug=` — existing thread if messages exist                                                                                                         |
 | `guest-web-chat-start`    | POST   | Guest JWT | `{ propertySlug, checkInDate, checkOutDate }` — first inquiry                                                                                                 |
-| `guest-web-chat-messages` | GET    | Guest JWT | `?conversation_id=`; `before` cursor                                                                                                                          |
+| `guest-web-chat-messages` | GET    | Guest JWT | `?conversation_id=`; `before` cursor; returns `replyStatus` on first page load                                                                                |
 | `guest-web-chat-messages` | POST   | Guest JWT | `{ conversationId, text?, attachments?, replyToMessageId? }`, `{ action: 'mark_read', conversationId }`, or `{ action: 'unsend', conversationId, messageId }` |
 | `guest-web-chat-messages` | PATCH  | Guest JWT | `{ conversationId, messageId, text }` — edit own inbound until host read or reply                                                                             |
 | `upload-guest-chat-asset` | POST   | Guest JWT | Multipart file → **`guest-chat-attachments`** bucket; returns `{ kind, url, label? }` for send payload                                                        |
@@ -59,6 +59,8 @@ Host replies use **`social-inbox-send`** (web branch). When the guest is offline
 **Realtime typing:** Supabase Broadcast channel **`chat-typing:{conversationId}`** (guest ↔ host; not persisted).
 
 **Attachments:** JPEG/PNG/WebP/PDF up to 10 MB via **`upload-guest-chat-asset`**; stored in **`guest-chat-attachments`**; referenced on send as JSON `{ kind, url, label? }`.
+
+**In-thread search:** Compact search control in the **chat header** (guest) or inbox conversation header (host). Opens a **dedicated search row** below the header (same bar as host inbox) with match counter, up/down navigation, and in-bubble highlights. Header identity stays visible while searching.
 
 ## Data model
 
@@ -78,16 +80,16 @@ One thread per guest + property pair.
 
 Shared components: `ui/src/components/chat/*`, `ui/src/lib/chat/chatMessageFormat.ts`.
 
-| Phase | Focus                                                                                            | Status      |
-| ----- | ------------------------------------------------------------------------------------------------ | ----------- |
-| **1** | Timestamps, date separators, shared bubble, guest optimistic send, sent ✓, AI badge              | **Shipped** |
-| **2** | Read receipts, mark-read, delivery lifecycle, Realtime UPDATE, guest unread                      | **Shipped** |
-| **3** | Edit until read/reply, “Edited” label; Edit/Unsend hidden in ⋮ when unavailable (no error toast) | **Shipped** |
-| **4** | Reply-to-message with quote                                                                      | **Shipped** |
-| **5** | Typing, guest attachments, search, offline notify                                                | **Shipped** |
-| **6** | Awaiting-reply UX, web quick replies, safety                                                     | Planned     |
+| Phase | Focus                                                                                                   | Status      |
+| ----- | ------------------------------------------------------------------------------------------------------- | ----------- |
+| **1** | Timestamps, date separators, shared bubble, guest optimistic send, sent ✓, AI badge                     | **Shipped** |
+| **2** | Read receipts, mark-read, delivery lifecycle, Realtime UPDATE, guest unread                             | **Shipped** |
+| **3** | Edit until read/reply, “Edited” label; Edit/Unsend hidden in ⋮ when unavailable (no error toast)        | **Shipped** |
+| **4** | Reply-to-message with quote                                                                             | **Shipped** |
+| **5** | Typing, guest attachments, search, offline notify                                                       | **Shipped** |
+| **6** | Awaiting-reply badge when `reply_status=pending`; Chat quick-reply group in inbox composer + management | **Shipped** |
 
-Backlog: `docs/TODOS.md` → **Guest + host chat UX roadmap**.
+Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/issues/110) (**Guest ↔ host chat**).
 
 ## Implementation map
 
@@ -95,9 +97,9 @@ Backlog: `docs/TODOS.md` → **Guest + host chat UX roadmap**.
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                          |
 | Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                               |
-| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`                                                                                           |
-| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatInThreadSearch.tsx`                              |
-| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `chatAttachments.ts`                                                                      |
+| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                 |
+| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`     |
+| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                     |
 | Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                             |
 | CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                          |
 | Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                               |
