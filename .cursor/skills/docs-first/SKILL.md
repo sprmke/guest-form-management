@@ -17,7 +17,7 @@ Do not implement from memory. Align with repo docs first.
 
 1. **`docs/README.md`** — index; then **`docs/PROJECT.md`** for architecture, API, env vars, routes
 2. **`docs/guides/routes/README.md`** — per-route behavior (update matching guide in the same change)
-3. **`docs/TODOS.md`** — backlog; do not assume unshipped features exist
+3. **`docs/todos/README.md`** — backlog on GitHub Issues; shipped history in `docs/todos/shipped/`
 4. **Booking / admin work** — `docs/planning/NEW_FLOW_PLAN.md`, `.cursor/rules/booking-workflow.mdc`, `.cursor/rules/admin-auth.mdc`
 5. **Edge functions** — `.cursor/rules/supabase-edge-functions.mdc`
 

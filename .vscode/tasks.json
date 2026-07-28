@@ -131,12 +131,6 @@
       },
       "isBackground": true,
       "problemMatcher": []
-    },
-    {
-      "label": "Integrations: Gmail OAuth setup",
-      "type": "shell",
-      "command": "bun run gmail-auth",
-      "options": { "cwd": "${workspaceFolder}" }
     }
   ]
 }

@@ -19,6 +19,10 @@ description: Org-level Guest Inbox — Meta OAuth, webhooks, unified threads, qu
 | Meta Graph     | `supabase/functions/_shared/metaInboxGraph.ts`          |
 | Webhook ingest | `supabase/functions/_shared/metaInboxWebhookHandler.ts` |
 | AI replies     | `supabase/functions/_shared/socialInboxAiService.ts`    |
+| AI grounding   | `supabase/functions/_shared/inboxAiGuestContext.ts`     |
+| AI guard       | `supabase/functions/_shared/inboxAiSafetyGuard.ts`      |
+| Web auto-reply | `supabase/functions/_shared/webInboxAutoReply.ts`       |
+| Web guest chat | `supabase/functions/_shared/webGuestChatService.ts`     |
 | UI API         | `ui/src/features/dashboard/inbox/lib/inboxApi.ts`       |
 | UI hooks       | `ui/src/features/dashboard/inbox/hooks/useInbox.ts`     |
 
@@ -27,7 +31,7 @@ description: Org-level Guest Inbox — Meta OAuth, webhooks, unified threads, qu
 1. **Messages** — thread list + conversation composer
 2. **Channels** — connect Meta (FB + IG); TikTok/Airbnb coming soon
 3. **Quick replies** — `social_reply_templates` CRUD
-4. **Automation** — AI suggest vs auto-send toggles
+4. **Automation** — AI suggest vs auto-send toggles; per-platform toggles include **Chat** (`platform_toggles.web`)
 
 ## Connect flow
 
@@ -45,8 +49,24 @@ description: Org-level Guest Inbox — Meta OAuth, webhooks, unified threads, qu
 ## Outbound flow
 
 1. `POST social-inbox-send` with `org:inbox:reply`
-2. Enforce messaging window for DMs
+2. Enforce messaging window for DMs (**Meta only**)
 3. Insert outbound row + update conversation `reply_status`
+
+## Web guest inbound + auto-reply
+
+1. Guest `POST guest-web-chat-messages` → inbound row + `last_inbound_at`
+2. If automation `auto_reply_mode=send` and `platform_toggles.web !== false`, `maybeAutoReplyToWebInbound` sends AI outbound (no Meta window)
+3. Realtime → guest chat + host inbox
+
+## AI suggest / auto-reply grounding
+
+Before Gemini/Groq, `suggestInboxReply` loads facts via `buildAiGroundingFacts`:
+
+1. **Property settings** — rates, address/map, payment methods (incl. account name/number), cancellation, amenities, availability
+2. **Quick replies** — org `social_reply_templates` (platform-filtered) as fallback when property facts do not cover the question
+3. **Guard** — `classifyGuestInquiryIntent` + `assertSafeGuestReply`; normal guest topics (payment, location, cancellation, availability) should answer; block other-guest PII, owner finance, ungrounded prices
+
+Returns `{ suggestion, flagged }`; flagged → safe fallback + operator badge.
 
 ## Related rules
 
