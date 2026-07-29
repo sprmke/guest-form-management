@@ -1,0 +1,47 @@
+[
+  {
+    "id": "command-center",
+    "text": "See stays, revenue, and today’s work in one calm command center.",
+    "file": "command-center.mp3"
+  },
+  {
+    "id": "booking-workflow",
+    "text": "Watch each booking move from review to ready for check-in, automatically.",
+    "file": "booking-workflow.mp3"
+  },
+  {
+    "id": "guest-inbox",
+    "text": "Guest messages land here, and AI drafts a reply you can send.",
+    "file": "guest-inbox.mp3"
+  },
+  {
+    "id": "finance",
+    "text": "Follow income, expenses, and net profit as every stay settles.",
+    "file": "finance.mp3"
+  },
+  {
+    "id": "pricing",
+    "text": "Tune weekday, weekend, and date rates directly on the calendar.",
+    "file": "pricing.mp3"
+  },
+  {
+    "id": "marketing-studio",
+    "text": "Plan, design, edit, and schedule your property content in one studio.",
+    "file": "marketing-studio.mp3"
+  },
+  {
+    "id": "maintenance",
+    "text": "Keep recurring upkeep scheduled, tracked, and marked done.",
+    "file": "maintenance.mp3"
+  },
+  {
+    "id": "notifications",
+    "text": "Telegram routes the right reminder to the right team, instantly.",
+    "file": "notifications.mp3"
+  },
+  {
+    "id": "ai-assistant",
+    "text": "Receipts, approvals, and replies — AI handles the repetition for you.",
+    "file": "ai-assistant.mp3"
+  }
+]
