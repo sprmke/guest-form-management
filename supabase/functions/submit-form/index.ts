@@ -42,15 +42,32 @@ serve(async (req) => {
     // Get URL parameters
     const url = new URL(req.url);
     const propertyId = await resolvePublicPropertyId(url);
-    const isSaveToDatabaseEnabled = url.searchParams.get('saveToDatabase') !== 'false'; // Default to true for backward compatibility
-    const isSaveImagesToStorageEnabled = url.searchParams.get('saveImagesToStorage') !== 'false'; // Default to true for backward compatibility
-    const isCalendarUpdateEnabled = url.searchParams.get('updateGoogleCalendar') === 'true';
-    const isSheetsUpdateEnabled = url.searchParams.get('updateGoogleSheets') === 'true';
-    /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
-    const isSendEmailEnabled = url.searchParams.get('sendEmail') !== 'false';
 
     // Check if we're in production (Supabase Edge Functions have DENO_DEPLOYMENT_ID)
     const isProduction = Deno.env.get('DENO_DEPLOYMENT_ID') !== undefined;
+
+    // Get and process form data
+    const formData = await req.formData();
+
+    /**
+     * Side-effect flags: production always runs the full happy path (ignore client).
+     * Non-production reads FormData first, then legacy URL query (backward compat).
+     */
+    const readSubmitFlag = (name: string, defaultWhenOmitted: boolean): boolean => {
+      if (isProduction) return true;
+      const fromBody = formData.get(name);
+      if (fromBody === 'true' || fromBody === 'false') return fromBody === 'true';
+      const fromUrl = url.searchParams.get(name);
+      if (fromUrl === 'true' || fromUrl === 'false') return fromUrl === 'true';
+      return defaultWhenOmitted;
+    };
+
+    const isSaveToDatabaseEnabled = readSubmitFlag('saveToDatabase', true);
+    const isSaveImagesToStorageEnabled = readSubmitFlag('saveImagesToStorage', true);
+    const isCalendarUpdateEnabled = readSubmitFlag('updateGoogleCalendar', true);
+    const isSheetsUpdateEnabled = readSubmitFlag('updateGoogleSheets', true);
+    /** New Booking Request → `EMAIL_REPLY_TO`; guest form dev panel sends explicit `sendEmail=false` when unchecked. */
+    const isSendEmailEnabled = readSubmitFlag('sendEmail', true);
 
     // Log enabled features for debugging
     console.log('🎛️ API Action Flags:');
@@ -62,14 +79,11 @@ serve(async (req) => {
     );
     console.log('  Send workflow emails: ❌ (GAF / ack / pet / parking only on admin transitions)');
     console.log(
-      `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (query sendEmail, default on — only sent after a DB save with an id; not this flag alone)`
+      `  New Booking Request email (EMAIL_REPLY_TO): ${isSendEmailEnabled ? '✅' : '❌'} (FormData/sendEmail, default on — only sent after a DB save with an id; not this flag alone)`
     );
     console.log(`  Update Calendar: ${isCalendarUpdateEnabled ? '✅' : '❌'}`);
     console.log(`  Update Google Sheets: ${isSheetsUpdateEnabled ? '✅' : '❌'}`);
     console.log('---');
-
-    // Get and process form data
-    const formData = await req.formData();
 
     // Extract check-in and check-out dates and booking ID to check for overlaps
     const checkInDate = formData.get('checkInDate') as string;

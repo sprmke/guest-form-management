@@ -112,6 +112,19 @@ serveAuthenticated('create-organization', async (req, user) => {
 
   const supabase = createServiceClient();
 
+  const { data: ownedOrgs, error: ownedError } = await supabase
+    .from('organizations')
+    .select('id')
+    .eq('owner_id', user.id)
+    .limit(1);
+  if (ownedError) {
+    console.error('[create-organization] owned org check:', ownedError.message);
+    return jsonError(req, 'Failed to validate organization ownership', 500);
+  }
+  if (ownedOrgs && ownedOrgs.length > 0) {
+    return jsonError(req, 'You already own an organization', 409);
+  }
+
   try {
     const conflict = await findOrganizationNameConflict(supabase, name);
     if (conflict) {

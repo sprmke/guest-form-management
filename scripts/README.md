@@ -6,11 +6,20 @@ Repo automation — local dev, data sync, deploy, integrations. Run from **repo 
 
 ```
 scripts/
+  marketing/     Host marketing asset generators (Edge TTS narration)
   dev/           Local Supabase + edge functions env
   data/          Prod → local Postgres sync
   deploy/        Linked Supabase project deploy
   preview/       Email template preview from DB
 ```
+
+## Marketing (`scripts/marketing/`)
+
+| Script                            | Purpose                                                                                                 |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `generate-host-tour-narration.ts` | Edge TTS → `ui/public/marketing/for-hosts/narration/{chapterId}.mp3` for the `/for-hosts` Remotion tour |
+
+Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNeural`), `--rate` (default `+8%`).
 
 ## Dev (`scripts/dev/`)
 
