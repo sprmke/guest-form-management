@@ -1,6 +1,12 @@
 {
   "version": 1,
   "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/session-superpowers-opt-in.sh",
+        "timeout": 5
+      }
+    ],
     "afterFileEdit": [
       {
         "command": ".cursor/hooks/format-edited-file.sh",

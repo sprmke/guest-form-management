@@ -7,7 +7,8 @@ description: Supabase Auth for admin Google OAuth, session JWT, allow list, org/
 
 ## Admin sign-in
 
-- Route: `/sign-in` → `supabase.auth.signInWithOAuth({ provider: 'google' })`
+- Route: **`/for-hosts/login`** → `supabase.auth.signInWithOAuth({ provider: 'google' })`
+- Legacy: **`/sign-in`** redirects to host login (preserves `?redirect=`)
 - Client: `ui/src/lib/supabase/client.ts` (singleton)
 - Guard: `ui/src/features/dashboard/bookings/components/RequireAdmin.tsx`
 

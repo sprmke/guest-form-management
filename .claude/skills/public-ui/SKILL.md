@@ -35,14 +35,13 @@ ui/src/features/guest/
 
 **Phase 1 (current):** Visual parity with PMA; **mock data**; Reserve / public forms do not hit edge functions.
 
-**Phase 2 (in progress):**
+**Phase 2 (next):**
 
-1. Public property detail API — **`get-public-property`** (shipped for `/properties/:propertySlug`)
-2. Public property/development list catalog API (planned)
-3. `BookingCard` Reserve → `/form?property=&checkInDate=&checkOutDate=` (shipped)
-4. Property marketing calendar → `get-booked-dates`
-5. `PublicFormRenderer` → real form submission endpoint
-6. Replace mock images with Storage URLs from property settings (detail page uses live media when API hits)
+1. Public property/development catalog API
+2. `BookingCard` Reserve → `/form?property=&checkInDate=&checkOutDate=`
+3. Property marketing calendar → `get-booked-dates`
+4. `PublicFormRenderer` → real form submission endpoint
+5. Replace mock images with Storage URLs from property settings
 
 ## Checklist when porting a PMA component
 
