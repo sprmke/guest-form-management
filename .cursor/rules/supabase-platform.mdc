@@ -54,6 +54,6 @@ Document new vars in `docs/PROJECT.md` §11.
 
 Admin scoping is primarily **edge-function checks** today; tighten RLS per [`docs/todos/`](../../docs/todos/README.md) (Epic 14).
 
-## MCP (optional)
+## MCP
 
-Supabase MCP for schema/advisors; Browser MCP for guest/auth flows.
+Configured in `.mcp.json` (root, symlinked at `.cursor/mcp.json`): `supabase` server for schema/logs/advisors (read-only by default), `playwright` server for driving guest/auth flows in a real browser (used by the `verify` skill). See `.claude/README.md` for the full server list and required env vars.

@@ -61,9 +61,9 @@ Do not skip phases. Ship each as a separate PR that is independently deployable.
 
 ### Phase 5 — Submit-form cleanup (shipped)
 
-- `submit-form` is **DB + storage** (optional calendar/sheet via dev query flags). **No PDF** on submit; **no workflow emails** (GAF / ack / pet / parking — orchestrator only).
+- `submit-form` is **DB + storage** (optional calendar/sheet via FormData flags in non-prod; production forces all on). **No PDF** on submit; **no workflow emails** (GAF / ack / pet / parking — orchestrator only).
 - After a successful DB save, when **`sendEmail` ≠ `false`** (guest dev **Send email**; default on), **`sendNewBookingRequestNotify`** emails **New Booking Request** to **`EMAIL_REPLY_TO`** only (`new-booking-request.html`); failures are non-fatal for the guest.
-- **No test-booking mode** — use staging/local Supabase; `?dev=true` remains for optional side-effect flags in non-prod / prod-debug builds.
+- **No test-booking mode** — use staging/local Supabase; non-prod checkbox panel only (no `?dev=true`).
 
 ### Phase 6 — Prod backfill
 

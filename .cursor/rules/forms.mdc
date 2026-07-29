@@ -47,7 +47,7 @@ return (
 
 - **Airbnb** (`?source=airbnb`): 4 steps, no payment receipt required — see `guestFormSchema` `buildGuestFormSchema(isAirbnb)`.
 - Submit via **FormData** + `submit-form` edge function (not JSON-only when files present).
-- Dev toggles on non-prod / `?dev=true` — see `admin-auth.mdc` §4.
+- Dev toggles on non-prod only — see `admin-auth.mdc` §4. Never use `?dev=true`.
 
 ## Admin forms
 

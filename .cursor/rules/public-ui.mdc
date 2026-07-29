@@ -47,7 +47,7 @@ Share links: `guestPublicPaths.guestCalendarPath(slug)` → `/calendar?property=
 | Submit       | `submit-form` edge function (FormData)                |
 | Booked dates | `get-booked-dates`                                    |
 
-Production: full save path. Non-prod / `?dev=true`: dev checkbox panel.
+Production: full save path. Non-prod: checkbox panel; flags via FormData (not URL).
 
 ## SD refund / pay parking
 
