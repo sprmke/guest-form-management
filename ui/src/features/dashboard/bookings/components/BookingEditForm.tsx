@@ -7,46 +7,50 @@
  * reverts status to PENDING_REVIEW (see `hasWorkflowSensitiveGuestFieldDiff`
  * + docs/todos/). Other edits keep status unchanged.
  *
- * Uses React Hook Form (no Zod for now — lightweight admin-only form).
+ * Uses React Hook Form (no Zod for now — lightweight admin-only form). Field
+ * JSX lives in `booking-detail/edit/tabs/*` — this file owns the single
+ * `useForm` instance, save/submit logic, and workflow-sensitive-field
+ * detection; RHF keeps every field's value even while its tab isn't mounted
+ * (default `shouldUnregister: false`).
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
-import { Info, Plus, Save, X } from 'lucide-react';
-import { useForm, useWatch, type SubmitHandler } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type FieldErrors,
+  type SubmitErrorHandler,
+  type SubmitHandler,
+} from 'react-hook-form';
 import { toast } from 'sonner';
 
-import {
-  BOOKING_SOURCE_OPTIONS,
-  normalizeBookingSource,
-} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+
+import { normalizeBookingSource } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import {
   computeGuestCounts,
-  FIFTH_PARTY_GUEST_MAX_AGE,
   getActivePartySize,
   getDefaultAgeForPartyGuest,
   getInitialVisibleGuestCount,
-  guestPartyPositionLabel,
-  isPartyFifthGuest,
   MAX_GUESTS,
-  PRIMARY_GUEST_MIN_AGE,
 } from '@/features/guest/form/lib/guestCounts';
 import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
+import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
-import { AdminAdditionalGuestSlot } from '@/features/dashboard/bookings/components/AdminAdditionalGuestSlot';
+import { BookingEditStickyBar } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import {
-  CollapsibleGroup,
-  Field,
-  Input,
-  Row2,
-  Row3,
-  Section,
-  CheckboxOption,
-  fieldControlClass,
-} from '@/features/dashboard/bookings/components/BookingEditLayout';
-import { BookingGuestDocReplacer } from '@/features/dashboard/bookings/components/BookingGuestDocReplacer';
-import { BookingProgressFormsEdit } from '@/features/dashboard/bookings/components/BookingProgressFormsEdit';
-import { ReadyForCheckinSensitiveFieldsNotice } from '@/features/dashboard/bookings/components/ReadyForCheckinSensitiveFieldsNotice';
+  BookingEditTabs,
+  type BookingEditTabsHandle,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditTabs';
+import {
+  DocumentsTab,
+  shouldShowDocumentsTab,
+} from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/DocumentsTab';
+import { GuestIdentityTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/GuestIdentityTab';
+import { ParkingTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/ParkingTab';
+import { PetsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/PetsTab';
+import { StayDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/StayDetailsTab';
+import { WorkflowDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/WorkflowDetailsTab';
 import {
   useUpdateBooking,
   type UpdateBookingPayload,
@@ -61,24 +65,12 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/dashboard/bookings/lib/workflowSensitiveGuestDiff';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 
-import { Button } from '@/components/ui/button';
-import { DatePicker } from '@/components/ui/date-picker';
-import { NativeSelect } from '@/components/ui/native-select';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
-import { cn } from '@/lib/utils';
-import {
-  createDisabledCheckoutDateMatcher,
-  createDisabledDateMatcher,
-  dateToString,
-  getNextDay,
-  normalizeDateString,
-  stringToDate,
-  DATE_PICKER_DISPLAY_FORMAT,
-  type BookedDateRange,
-} from '@/utils/format/dates';
+import { normalizeDateString, type BookedDateRange } from '@/utils/format/dates';
 
-const bookingEditDatePickerClass =
-  'h-11 border-border/50 bg-muted/40 font-medium hover:border-primary/25 focus-visible:ring-2 focus-visible:ring-ring/30';
+/** Shared date-picker input styling for the edit tabs (Stay + Pet vaccination date). */
+export const bookingEditDatePickerClass =
+  'h-11 border-2 border-border/70 bg-background font-medium hover:border-primary/35 focus-visible:ring-2 focus-visible:ring-ring/40';
 
 type Props = {
   booking: BookingRow;
@@ -150,7 +142,7 @@ function getInitialVisibleAdditionalGuestCount(booking: BookingRow): number {
   return Math.max(0, partyCount - 1);
 }
 
-type AdditionalGuestSlotConfig = {
+export type AdditionalGuestSlotConfig = {
   partyPosition: number;
   nameField: 'guest2_name' | 'guest3_name' | 'guest4_name' | 'guest5_name';
   ageField: 'guest2_age' | 'guest3_age' | 'guest4_age' | 'guest5_age';
@@ -305,6 +297,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
   const updateMut = useUpdateBooking();
   const apiUrl = import.meta.env.VITE_API_URL;
   const orgContext = useOptionalOrgContext();
+  const editTabsRef = useRef<BookingEditTabsHandle>(null);
   const propertySearchParams = React.useMemo(() => {
     const params = new URLSearchParams();
     const slug = orgContext?.property.slug?.trim();
@@ -334,7 +327,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
     handleSubmit,
     setValue,
     control,
-    formState: { isDirty },
+    formState: { isDirty, errors },
   } = useForm<FormValues>({
     defaultValues: bookingToEditFormValues(booking),
   });
@@ -346,7 +339,6 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
   const watchSurpriseDecor = !!formSnapshot?.guest_requests_surprise_decor;
   const surpriseDecorChangedFromSaved =
     watchSurpriseDecor !== !!booking.guest_requests_surprise_decor;
-  const watchCheckInDate = formSnapshot?.check_in_date ?? '';
   const progressDirty = progressTouched;
   const showSensitiveRevertHint =
     guestEditRevertPipeline &&
@@ -389,6 +381,14 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
       mounted = false;
     };
   }, [apiUrl, propertySearchParams]);
+
+  React.useEffect(() => {
+    const checkIn = formSnapshot?.check_in_date?.trim();
+    const checkOut = formSnapshot?.check_out_date?.trim();
+    if (!checkIn || !checkOut) return;
+    const nights = countParkingNights(checkIn, checkOut);
+    setValue('number_of_nights', nights, { shouldDirty: false });
+  }, [formSnapshot?.check_in_date, formSnapshot?.check_out_date, setValue]);
 
   React.useEffect(() => {
     const counts = computeGuestCounts([
@@ -457,9 +457,35 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
 
   const visibleAdditionalGuestSlots = ADDITIONAL_GUEST_SLOTS.slice(0, visibleAdditionalGuestCount);
 
-  const clearAdditionalGuestSlot = (slot: AdditionalGuestSlotConfig) => {
+  const handleAddAdditionalGuest = () => {
+    setVisibleAdditionalGuestCount((count) => {
+      const next = Math.min(MAX_GUESTS - 1, count + 1);
+      const slot = ADDITIONAL_GUEST_SLOTS[next - 1];
+      const currentAge = formSnapshot[slot.ageField];
+      if (currentAge === '' || currentAge == null) {
+        setValue(slot.ageField, getDefaultAgeForPartyGuest(slot.partyPosition, 1 + next), {
+          shouldDirty: true,
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleRemoveAdditionalGuest = (slot: AdditionalGuestSlotConfig) => {
     setValue(slot.nameField, '', { shouldDirty: true });
     setValue(slot.ageField, '', { shouldDirty: true });
+    setVisibleAdditionalGuestCount((count) => Math.max(0, count - 1));
+  };
+
+  const showDocsTab = shouldShowDocumentsTab(
+    booking.booking_source,
+    formSnapshot?.booking_source,
+    watchPets
+  );
+
+  const onInvalid: SubmitErrorHandler<FormValues> = (fieldErrors) => {
+    toast.error('Fix the highlighted fields');
+    editTabsRef.current?.focusFirstError(fieldErrors as FieldErrors<FormValues>);
   };
 
   const onSubmit: SubmitHandler<FormValues> = async (values) => {
@@ -511,490 +537,84 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <ReadyForCheckinSensitiveFieldsNotice visible={showSensitiveRevertHint} />
+  const saveLabel = showSensitiveRevertHint ? 'Save & Revert Status' : 'Save';
+  const formId = `booking-edit-form-${booking.id}`;
 
-      <div
-        className={cn(
-          'border-border/70 bg-card overflow-hidden rounded-2xl border shadow-md',
-          'ring-border/30 dark:ring-border/50 ring-1'
-        )}
-      >
-        <CollapsibleGroup
-          id="booking-details"
-          title="Guest Form Details"
-          variant="nested"
-          defaultOpen
-        >
-          {/* ── Guest Identity ─────────────────────────────────────────────────── */}
-          <Section title="Guest Identity">
-            <Row2>
-              <Field label="Primary Guest Name" required>
-                <Input {...register('primary_guest_name', { required: true })} />
-              </Field>
-              <Field label="Primary Guest Age" required>
-                <Input
-                  type="number"
-                  min={PRIMARY_GUEST_MIN_AGE}
-                  max={120}
-                  placeholder="Ex. 25"
-                  {...register('primary_guest_age', {
-                    required: true,
-                    valueAsNumber: true,
-                    validate: (value) => {
-                      const age = typeof value === 'number' ? value : Number(value);
-                      return !Number.isNaN(age) && age >= PRIMARY_GUEST_MIN_AGE
-                        ? true
-                        : 'Primary guest must be 18 years or older';
-                    },
-                  })}
-                />
-              </Field>
-            </Row2>
-            <Row2>
-              <Field label="Email" required>
-                <Input type="email" {...register('guest_email', { required: true })} />
-              </Field>
-              <Field label="Phone Number" required>
-                <Input {...register('guest_phone_number', { required: true })} />
-              </Field>
-            </Row2>
-            <Row2>
-              <Field label="Facebook / Airbnb Name" required>
-                <Input {...register('guest_facebook_name', { required: true })} />
-              </Field>
-              <Field label="Nationality">
-                <Input {...register('nationality')} />
-              </Field>
-            </Row2>
-            <Row2>
-              <Field label="Address">
-                <Input {...register('guest_address')} />
-              </Field>
-              <div />
-            </Row2>
-            <BookingGuestDocReplacer
-              bookingId={booking.id}
-              assetType="valid_id"
-              label="Valid ID"
-              currentUrl={booking.valid_id_url}
-              accept="image/*,.pdf"
+  return (
+    <form id={formId} onSubmit={handleSubmit(onSubmit, onInvalid)}>
+      <BookingEditTabs
+        ref={editTabsRef}
+        booking={booking}
+        onDiscard={onClose}
+        discardDisabled={updateMut.isPending}
+        errors={errors}
+        showDocsTab={showDocsTab}
+        sensitiveNoticeVisible={showSensitiveRevertHint}
+        tabs={{
+          guest: (
+            <GuestIdentityTab
+              booking={booking}
+              register={register}
+              errors={errors}
+              setValue={setValue}
               onPreview={onPreview}
+              formSnapshot={formSnapshot}
+              adminPartySize={adminPartySize}
+              visibleAdditionalGuestCount={visibleAdditionalGuestCount}
+              visibleAdditionalGuestSlots={visibleAdditionalGuestSlots}
+              onAddAdditionalGuest={handleAddAdditionalGuest}
+              onRemoveAdditionalGuest={handleRemoveAdditionalGuest}
+              surpriseDecorChangedFromSaved={surpriseDecorChangedFromSaved}
             />
-          </Section>
-
-          {/* ── Additional Guests ─────────────────────────────────────────────── */}
-          <Section title="Additional Guests">
-            {visibleAdditionalGuestSlots.length > 0 && (
-              <div className="mb-3 space-y-3">
-                {visibleAdditionalGuestSlots.map((slot, index) => {
-                  const ageValue = formSnapshot[slot.ageField];
-                  const isLastVisible = index === visibleAdditionalGuestSlots.length - 1;
-                  const isFifthPartyGuest = isPartyFifthGuest(slot.partyPosition, adminPartySize);
-
-                  return (
-                    <AdminAdditionalGuestSlot
-                      key={slot.partyPosition}
-                      slotLabel={guestPartyPositionLabel(slot.partyPosition)}
-                      nameField={slot.nameField}
-                      ageField={slot.ageField}
-                      bookingId={booking.id}
-                      register={register}
-                      guestAge={ageValue === '' ? undefined : ageValue}
-                      validIdUrl={booking[slot.validIdUrlKey]}
-                      assetType={slot.assetType}
-                      maxAge={isFifthPartyGuest ? FIFTH_PARTY_GUEST_MAX_AGE : undefined}
-                      agePlaceholder={isFifthPartyGuest ? '3' : 'Ex. 25'}
-                      onPreview={onPreview}
-                      onRemove={
-                        isLastVisible
-                          ? () => {
-                              clearAdditionalGuestSlot(slot);
-                              setVisibleAdditionalGuestCount((count) => Math.max(0, count - 1));
-                            }
-                          : undefined
-                      }
-                    />
-                  );
-                })}
-              </div>
-            )}
-            {visibleAdditionalGuestCount < MAX_GUESTS - 1 && (
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-[44px] w-full"
-                onClick={() => {
-                  setVisibleAdditionalGuestCount((count) => {
-                    const next = Math.min(MAX_GUESTS - 1, count + 1);
-                    const slot = ADDITIONAL_GUEST_SLOTS[next - 1];
-                    const currentAge = formSnapshot[slot.ageField];
-                    if (currentAge === '' || currentAge == null) {
-                      setValue(
-                        slot.ageField,
-                        getDefaultAgeForPartyGuest(slot.partyPosition, 1 + next),
-                        { shouldDirty: true }
-                      );
-                    }
-                    return next;
-                  });
-                }}
-              >
-                <Plus className="size-4" aria-hidden />
-                Add more guest
-              </Button>
-            )}
-          </Section>
-
-          {/* ── Stay Details ──────────────────────────────────────────────────── */}
-          <Section title="Stay Details">
-            <Row2>
-              <Field label="Check-in Date (MM-DD-YYYY)" required>
-                <DatePicker
-                  date={watchCheckInDate ? stringToDate(watchCheckInDate) : undefined}
-                  rangeEnd={
-                    formSnapshot.check_out_date
-                      ? stringToDate(formSnapshot.check_out_date)
-                      : undefined
-                  }
-                  onSelect={(date) => {
-                    if (!date) return;
-                    const selected = dateToString(date);
-                    setValue('check_in_date', selected, { shouldDirty: true });
-                    setValue('check_out_date', getNextDay(selected), {
-                      shouldDirty: true,
-                    });
-                  }}
-                  disabled={(date) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    if (date < today) return true;
-                    return createDisabledDateMatcher(bookedDates, booking.id)(date);
-                  }}
-                  minDate={new Date()}
-                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                  className={bookingEditDatePickerClass}
-                />
-              </Field>
-              <Field label="Check-out Date (MM-DD-YYYY)" required>
-                <DatePicker
-                  date={
-                    formSnapshot.check_out_date
-                      ? stringToDate(formSnapshot.check_out_date)
-                      : undefined
-                  }
-                  rangeEnd={watchCheckInDate ? stringToDate(watchCheckInDate) : undefined}
-                  onSelect={(date) => {
-                    if (!date) return;
-                    setValue('check_out_date', dateToString(date), {
-                      shouldDirty: true,
-                    });
-                  }}
-                  disabled={(date) => {
-                    const isBooked = createDisabledCheckoutDateMatcher(
-                      bookedDates,
-                      booking.id
-                    )(date);
-                    if (watchCheckInDate) {
-                      const checkIn = stringToDate(watchCheckInDate);
-                      if (date <= checkIn) return true;
-                    }
-                    return isBooked;
-                  }}
-                  minDate={
-                    watchCheckInDate ? stringToDate(getNextDay(watchCheckInDate)) : new Date()
-                  }
-                  placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                  className={bookingEditDatePickerClass}
-                />
-              </Field>
-            </Row2>
-            <Row2>
-              <Field label="Check-in Time">
-                <Input type="time" {...register('check_in_time')} placeholder="14:00" />
-              </Field>
-              <Field label="Check-out Time">
-                <Input type="time" {...register('check_out_time')} placeholder="11:00" />
-              </Field>
-            </Row2>
-            <Row3>
-              <Field label="Adults" required>
-                <Input
-                  type="number"
-                  min={1}
-                  readOnly
-                  tabIndex={-1}
-                  className="bg-muted/40 pointer-events-none"
-                  {...register('number_of_adults', {
-                    required: true,
-                    valueAsNumber: true,
-                  })}
-                />
-              </Field>
-              <Field label="Children">
-                <Input
-                  type="number"
-                  min={0}
-                  readOnly
-                  tabIndex={-1}
-                  className="bg-muted/40 pointer-events-none"
-                  {...register('number_of_children', { valueAsNumber: true })}
-                />
-              </Field>
-              <Field label="Nights" required>
-                <Input
-                  type="number"
-                  min={1}
-                  {...register('number_of_nights', {
-                    required: true,
-                    valueAsNumber: true,
-                  })}
-                />
-              </Field>
-            </Row3>
-          </Section>
-
-          {/* ── Parking ───────────────────────────────────────────────────────── */}
-          <Section title="Parking">
-            <CheckboxOption
-              label="Needs parking"
-              checked={watchParking}
-              onCheckedChange={(value) =>
-                setValue('need_parking', value, { shouldDirty: true, shouldValidate: true })
-              }
+          ),
+          stay: (
+            <StayDetailsTab
+              booking={booking}
+              register={register}
+              errors={errors}
+              setValue={setValue}
+              formSnapshot={formSnapshot}
+              bookedDates={bookedDates}
             />
-            {watchParking && (
-              <Row3>
-                <Field label="Plate Number">
-                  <Input {...register('car_plate_number')} placeholder="ABC 123" />
-                </Field>
-                <Field label="Brand / Model">
-                  <Input {...register('car_brand_model')} placeholder="Toyota Vios" />
-                </Field>
-                <Field label="Color">
-                  <Input {...register('car_color')} placeholder="White" />
-                </Field>
-              </Row3>
-            )}
-          </Section>
-
-          {/* ── Pet Information ───────────────────────────────────────────────── */}
-          <Section title="Pet Information">
-            <CheckboxOption
-              label="Has pets"
-              checked={watchPets}
-              onCheckedChange={(value) =>
-                setValue('has_pets', value, { shouldDirty: true, shouldValidate: true })
-              }
+          ),
+          parking: (
+            <ParkingTab register={register} setValue={setValue} watchParking={watchParking} />
+          ),
+          pets: (
+            <PetsTab
+              register={register}
+              setValue={setValue}
+              watchPets={watchPets}
+              petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
             />
-            {watchPets && (
-              <>
-                <Row2>
-                  <Field label="Pet Name">
-                    <Input {...register('pet_name')} />
-                  </Field>
-                  <Field label="Pet Type">
-                    <Input {...register('pet_type')} placeholder="Dog / Cat" />
-                  </Field>
-                </Row2>
-                <Row3>
-                  <Field label="Breed">
-                    <Input {...register('pet_breed')} />
-                  </Field>
-                  <Field label="Age">
-                    <Input {...register('pet_age')} placeholder="2 years" />
-                  </Field>
-                  <Field label="Vaccination Date">
-                    <DatePicker
-                      date={
-                        formSnapshot.pet_vaccination_date
-                          ? stringToDate(formSnapshot.pet_vaccination_date)
-                          : undefined
-                      }
-                      onSelect={(date) => {
-                        setValue('pet_vaccination_date', date ? dateToString(date) : '', {
-                          shouldDirty: true,
-                        });
-                      }}
-                      placeholder={DATE_PICKER_DISPLAY_FORMAT}
-                      className={bookingEditDatePickerClass}
-                    />
-                  </Field>
-                </Row3>
-              </>
-            )}
-          </Section>
-
-          {/* ── Surprise decor ───────────────────────────────────────────────── */}
-          <Section title="Surprise decor">
-            <CheckboxOption
-              label="Guest requested a surprise decor / room setup"
-              checked={!!formSnapshot?.guest_requests_surprise_decor}
-              onCheckedChange={(value) =>
-                setValue('guest_requests_surprise_decor', value, {
-                  shouldDirty: true,
-                  shouldValidate: true,
-                })
-              }
+          ),
+          docs: showDocsTab ? (
+            <DocumentsTab
+              booking={booking}
+              onPreview={onPreview}
+              watchHasPets={watchPets}
+              watchBookingSource={formSnapshot?.booking_source}
             />
-            {surpriseDecorChangedFromSaved && (
-              <div
-                role="status"
-                className="border-primary/25 bg-primary/5 text-foreground dark:border-primary/30 dark:bg-primary/10 dark:text-foreground mt-2 flex gap-2 rounded-lg border px-3 py-2.5 text-[12px] leading-snug sm:text-[13px]"
-              >
-                <Info className="text-primary mt-0.5 size-4 shrink-0 sm:size-[18px]" aria-hidden />
-                <p className="min-w-0">
-                  Please update the <strong>Additional fee</strong> field under{' '}
-                  <strong>Workflow Details → Review Pricing</strong> if you change this checkbox.
-                </p>
-              </div>
-            )}
-          </Section>
-
-          {/* ── Other ─────────────────────────────────────────────────────────── */}
-          <Section title="How They Found Us">
-            <Row2>
-              <Field label="Referral channel">
-                <Input {...register('find_us')} placeholder="Facebook, Airbnb…" />
-              </Field>
-              <Field label="Details">
-                <Input {...register('find_us_details')} placeholder="Referred by…" />
-              </Field>
-            </Row2>
-          </Section>
-
-          <Section title="Special Requests">
-            <Field label="Requests / Notes">
-              <textarea
-                {...register('guest_special_requests')}
-                rows={3}
-                placeholder="Any special requests from the guest…"
-                className={fieldControlClass}
-              />
-            </Field>
-          </Section>
-
-          <Section title="Booking Source">
-            <Row2>
-              <Field label="Platform">
-                <NativeSelect {...register('booking_source', { required: true })}>
-                  {BOOKING_SOURCE_OPTIONS.map((source) => (
-                    <option key={source} value={source}>
-                      {source}
-                    </option>
-                  ))}
-                </NativeSelect>
-              </Field>
-            </Row2>
-          </Section>
-
-          {/* ── Documents ─────────────────────────────────────────────────────── */}
-          <DocumentsSection booking={booking} onPreview={onPreview} />
-        </CollapsibleGroup>
-
-        <CollapsibleGroup
-          id="progress-forms"
-          title="Workflow Details"
-          variant="nested"
-          defaultOpen={false}
-        >
-          <BookingProgressFormsEdit
-            booking={booking}
-            onStateChange={setProgressFormState}
-            onTouchedChange={setProgressTouched}
+          ) : undefined,
+          workflow: (
+            <WorkflowDetailsTab
+              booking={booking}
+              onStateChange={setProgressFormState}
+              onTouchedChange={setProgressTouched}
+            />
+          ),
+        }}
+        footer={
+          <BookingEditStickyBar
+            onCancel={onClose}
+            cancelDisabled={updateMut.isPending}
+            saveDisabled={updateMut.isPending || !canSave}
+            savePending={updateMut.isPending}
+            saveLabel={saveLabel}
+            formId={formId}
           />
-        </CollapsibleGroup>
-
-        <div className="flex items-center justify-end gap-3 px-3 py-3 sm:px-5 sm:py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={updateMut.isPending}
-            className="text-muted-foreground hover:bg-muted flex min-h-[44px] items-center gap-1.5 rounded-lg px-4 py-2 text-sm transition-colors disabled:opacity-50"
-          >
-            <X className="size-3.5" aria-hidden />
-            Cancel
-          </button>
-          <Button
-            type="submit"
-            disabled={updateMut.isPending || !canSave}
-            size="sm"
-            className="min-h-[44px] rounded-lg px-5"
-          >
-            <Save className="size-3.5" />
-            {updateMut.isPending
-              ? 'Saving…'
-              : showSensitiveRevertHint
-                ? 'Save & Revert Status'
-                : 'Save'}
-          </Button>
-        </div>
-      </div>
+        }
+      />
     </form>
-  );
-}
-
-// ─── Documents section ────────────────────────────────────────────────────────
-
-type DocDef = {
-  assetType: GuestDocAssetType;
-  label: string;
-  currentUrl: string | null | undefined;
-  accept: string;
-};
-
-function DocumentsSection({
-  booking,
-  onPreview,
-}: {
-  booking: BookingRow;
-  onPreview: (label: string, rawUrl: string) => void | Promise<void>;
-}) {
-  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
-  const docs: DocDef[] = [
-    ...(!isAirbnb
-      ? ([
-          {
-            assetType: 'payment_receipt',
-            label: 'Downpayment receipt',
-            currentUrl: booking.payment_receipt_url,
-            accept: 'image/*,.pdf',
-          },
-        ] as DocDef[])
-      : []),
-    ...(booking.has_pets
-      ? ([
-          {
-            assetType: 'pet_vaccination',
-            label: 'Pet Vaccination Record',
-            currentUrl: booking.pet_vaccination_url,
-            accept: 'image/*,.pdf',
-          },
-          {
-            assetType: 'pet_image',
-            label: 'Pet Photo',
-            currentUrl: booking.pet_image_url,
-            accept: 'image/*',
-          },
-        ] as DocDef[])
-      : []),
-  ];
-
-  if (docs.length === 0) return null;
-
-  return (
-    <Section title="Documents" className="space-y-4">
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
-        {docs.map((doc) => (
-          <BookingGuestDocReplacer
-            key={doc.assetType}
-            bookingId={booking.id}
-            onPreview={onPreview}
-            {...doc}
-          />
-        ))}
-      </div>
-    </Section>
   );
 }

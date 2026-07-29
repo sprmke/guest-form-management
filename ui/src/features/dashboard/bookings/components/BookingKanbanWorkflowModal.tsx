@@ -4,7 +4,7 @@ import { ExternalLink, Loader2 } from 'lucide-react';
 
 import { PendingReviewWorkflowGate } from '@/features/dashboard/bookings/components/PendingReviewWorkflowGate';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
-import { WorkflowPanel } from '@/features/dashboard/bookings/components/WorkflowPanel';
+import { WorkflowPanel } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPanel';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { resolveBookingListHref } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';

@@ -39,7 +39,7 @@ export const bookingFlagIconChipClass = {
     'inline-flex items-center justify-center rounded-md bg-red-50 text-red-700 ring-1 ring-inset ring-red-200/70 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-500/30',
 } as const;
 
-/** Compact labeled flag chips (mobile summary). */
+/** Compact labeled flag chips (mobile summary, detail header). */
 export const bookingFlagLabelChipClass = {
   parking:
     'inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-800 ring-1 ring-inset ring-sky-200/80 dark:bg-sky-500/15 dark:text-sky-300 dark:ring-sky-500/30',

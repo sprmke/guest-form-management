@@ -16,7 +16,6 @@ import { ChevronUp, ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-re
 
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
-import { ModeSwitchTransitionProvider } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 import {
   AdminBrandTheme,
@@ -267,147 +266,145 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   return (
     <GmailReconnectProvider>
-      <ModeSwitchTransitionProvider>
-        {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
-        <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
-          {/* Mobile drawer — slide + backdrop fade (panel stays mounted for exit animation) */}
-          <div className="lg:hidden" aria-hidden={!mobileMenuOpen}>
-            <div
-              className={cn(
-                'bg-background/80 fixed inset-0 z-40 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none',
-                mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-              )}
-              onClick={() => setMobileMenuOpen(false)}
-              aria-hidden={!mobileMenuOpen}
+      {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
+      <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
+        {/* Mobile drawer — slide + backdrop fade (panel stays mounted for exit animation) */}
+        <div className="lg:hidden" aria-hidden={!mobileMenuOpen}>
+          <div
+            className={cn(
+              'bg-background/80 fixed inset-0 z-40 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none',
+              mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
+            )}
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden={!mobileMenuOpen}
+          />
+          <aside
+            ref={mobileDrawerRef}
+            className={cn(
+              'border-sidebar-border bg-sidebar fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r transition-transform duration-300 ease-out motion-reduce:transition-none',
+              mobileMenuOpen ? 'translate-x-0' : 'pointer-events-none -translate-x-full'
+            )}
+            aria-label="Admin navigation"
+            aria-hidden={!mobileMenuOpen}
+          >
+            <AdminSidebarContent
+              navSections={navSections}
+              activeNavHref={activeNavHref}
+              navHrefsKey={navHrefsKey}
+              pathname={location.pathname}
+              propertySettingsHasIssues={propertySettingsHasIssues}
+              orgSettingsHasIssues={orgSettingsHasIssues}
+              displayName={displayName}
+              initial={initial}
+              email={email}
+              signOut={signOut}
+              menuOpen={mobileMenuOpen}
+              onClose={() => setMobileMenuOpen(false)}
+              superAdmin={isSuperAdminPath(location.pathname)}
             />
-            <aside
-              ref={mobileDrawerRef}
+          </aside>
+        </div>
+
+        <div className="relative flex min-w-0 flex-1">
+          {/* Desktop sidebar */}
+          <aside
+            className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
+            style={{ width: sidebarWidth }}
+            aria-label="Admin navigation"
+            aria-expanded={!sidebarCollapsed}
+          >
+            <AdminSidebarContent
+              navSections={navSections}
+              activeNavHref={activeNavHref}
+              navHrefsKey={navHrefsKey}
+              pathname={location.pathname}
+              propertySettingsHasIssues={propertySettingsHasIssues}
+              orgSettingsHasIssues={orgSettingsHasIssues}
+              displayName={displayName}
+              initial={initial}
+              email={email}
+              signOut={signOut}
+              collapsed={sidebarCollapsed}
+              superAdmin={isSuperAdminPath(location.pathname)}
+            />
+          </aside>
+
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            style={{
+              left: sidebarWidth,
+              top: sidebarCollapsed ? SIDEBAR_TOGGLE_TOP_COLLAPSED : SIDEBAR_TOGGLE_TOP_EXPANDED,
+            }}
+            className={cn(
+              'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
+              'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
+              'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+            )}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-3 w-3" aria-hidden />
+            ) : (
+              <ChevronLeft className="h-3 w-3" aria-hidden />
+            )}
+          </button>
+
+          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+            {!isSuperAdminPath(location.pathname) ? (
+              <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b px-4 backdrop-blur lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <ThemeToggle />
+                </div>
+              </header>
+            ) : (
+              <header className="border-border bg-background sticky top-0 z-20 flex h-14 shrink-0 items-center border-b px-3 lg:hidden">
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(true)}
+                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
+                  aria-label="Open menu"
+                >
+                  <Menu className="h-5 w-5" />
+                </button>
+              </header>
+            )}
+
+            <main
               className={cn(
-                'border-sidebar-border bg-sidebar fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r transition-transform duration-300 ease-out motion-reduce:transition-none',
-                mobileMenuOpen ? 'translate-x-0' : 'pointer-events-none -translate-x-full'
+                'min-h-0 flex-1',
+                fillMain ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
               )}
-              aria-label="Admin navigation"
-              aria-hidden={!mobileMenuOpen}
             >
-              <AdminSidebarContent
-                navSections={navSections}
-                activeNavHref={activeNavHref}
-                navHrefsKey={navHrefsKey}
-                pathname={location.pathname}
-                propertySettingsHasIssues={propertySettingsHasIssues}
-                orgSettingsHasIssues={orgSettingsHasIssues}
-                displayName={displayName}
-                initial={initial}
-                email={email}
-                signOut={signOut}
-                menuOpen={mobileMenuOpen}
-                onClose={() => setMobileMenuOpen(false)}
-                superAdmin={isSuperAdminPath(location.pathname)}
-              />
-            </aside>
-          </div>
-
-          <div className="relative flex min-w-0 flex-1">
-            {/* Desktop sidebar */}
-            <aside
-              className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
-              style={{ width: sidebarWidth }}
-              aria-label="Admin navigation"
-              aria-expanded={!sidebarCollapsed}
-            >
-              <AdminSidebarContent
-                navSections={navSections}
-                activeNavHref={activeNavHref}
-                navHrefsKey={navHrefsKey}
-                pathname={location.pathname}
-                propertySettingsHasIssues={propertySettingsHasIssues}
-                orgSettingsHasIssues={orgSettingsHasIssues}
-                displayName={displayName}
-                initial={initial}
-                email={email}
-                signOut={signOut}
-                collapsed={sidebarCollapsed}
-                superAdmin={isSuperAdminPath(location.pathname)}
-              />
-            </aside>
-
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              style={{
-                left: sidebarWidth,
-                top: sidebarCollapsed ? SIDEBAR_TOGGLE_TOP_COLLAPSED : SIDEBAR_TOGGLE_TOP_EXPANDED,
-              }}
-              className={cn(
-                'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
-                'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
-                'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
-              )}
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              {sidebarCollapsed ? (
-                <ChevronRight className="h-3 w-3" aria-hidden />
-              ) : (
-                <ChevronLeft className="h-3 w-3" aria-hidden />
-              )}
-            </button>
-
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              {!isSuperAdminPath(location.pathname) ? (
-                <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b px-4 backdrop-blur lg:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setMobileMenuOpen(true)}
-                    className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
-                    aria-label="Open menu"
-                  >
-                    <Menu className="h-5 w-5" />
-                  </button>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <ThemeToggle />
-                  </div>
-                </header>
-              ) : (
-                <header className="border-border bg-background sticky top-0 z-20 flex h-14 shrink-0 items-center border-b px-3 lg:hidden">
-                  <button
-                    type="button"
-                    onClick={() => setMobileMenuOpen(true)}
-                    className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
-                    aria-label="Open menu"
-                  >
-                    <Menu className="h-5 w-5" />
-                  </button>
-                </header>
-              )}
-
-              <main
+              <div
                 className={cn(
-                  'min-h-0 flex-1',
-                  fillMain ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
+                  'mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-6 lg:p-8',
+                  fillMain && 'flex min-h-0 flex-1 flex-col'
                 )}
               >
                 <div
                   className={cn(
-                    'mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-6 lg:p-8',
-                    fillMain && 'flex min-h-0 flex-1 flex-col'
+                    fillMain
+                      ? 'flex min-h-0 flex-1 flex-col'
+                      : 'space-y-3 sm:space-y-4 lg:space-y-6'
                   )}
                 >
-                  <div
-                    className={cn(
-                      fillMain
-                        ? 'flex min-h-0 flex-1 flex-col'
-                        : 'space-y-3 sm:space-y-4 lg:space-y-6'
-                    )}
-                  >
-                    {children}
-                  </div>
+                  {children}
                 </div>
-              </main>
-            </div>
+              </div>
+            </main>
           </div>
         </div>
-      </ModeSwitchTransitionProvider>
+      </div>
     </GmailReconnectProvider>
   );
 }

@@ -128,23 +128,23 @@ function TelegramChannelCard({
   status: PropertyTelegramCredentialsStatus;
 }) {
   return (
-    <div className="border-border/60 bg-background/80 space-y-2.5 rounded-lg border p-3">
+    <div className="border-border/60 bg-background/80 flex min-h-[7.5rem] flex-col justify-center space-y-3 rounded-xl border p-5 sm:min-h-[8.5rem] sm:p-6">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-base font-medium">{label}</span>
         <Link
           to={href}
-          className="text-primary inline-flex shrink-0 items-center gap-0.5 text-xs font-medium"
+          className="text-primary inline-flex min-h-[44px] shrink-0 items-center gap-0.5 text-sm font-medium"
         >
           Configure
-          <ChevronRight className="size-3" aria-hidden />
+          <ChevronRight className="size-3.5" aria-hidden />
         </Link>
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
-        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+      <div className="flex flex-wrap gap-x-5 gap-y-2.5">
+        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
           Bot
           <IntegrationSourceBadge source={status.tokenSource} configured={status.tokenConfigured} />
         </span>
-        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs">
+        <span className="text-muted-foreground inline-flex items-center gap-1.5 text-sm">
           Chat
           <IntegrationSourceBadge
             source={status.chatIdSource}
@@ -211,11 +211,11 @@ function TelegramIntegrationBlock({
       </div>
 
       <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),32rem)] overflow-y-auto">
+        <DialogContent className="max-h-[min(90dvh,820px)] max-w-[min(calc(100vw-1.5rem),48rem)] gap-5 overflow-y-auto sm:max-w-[min(90vw,48rem)] sm:p-8">
           <DialogHeader>
             <DialogTitle>Telegram</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {channels.map((channel) => (
               <TelegramChannelCard
                 key={channel.id}
