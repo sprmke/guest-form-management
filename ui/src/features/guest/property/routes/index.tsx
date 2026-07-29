@@ -7,6 +7,7 @@ import { PropertyChatPage } from '@/features/guest/chat/pages/PropertyChatPage';
 import { GuestForm } from '@/features/guest/form/components/GuestForm';
 import { GuestFormSuccess } from '@/features/guest/form/components/GuestFormSuccess';
 import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { readGuestPropertySlug } from '@/features/guest/form/lib/guestPropertyScope';
 import {
   guestCalendarPath,
@@ -36,7 +37,7 @@ function LegacyGuestPathRedirect({ segment }: { segment: LegacySegment }) {
   const property = readGuestPropertySlug(searchParams);
   if (!property) return <Navigate to="/properties" replace />;
 
-  const next = new URLSearchParams(searchParams);
+  const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
   next.delete('property');
   next.delete('property_slug');
 
