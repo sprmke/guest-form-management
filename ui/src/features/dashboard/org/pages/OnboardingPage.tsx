@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, Car, Check, Home, Loader2 } from 'lucide-react';
@@ -22,10 +22,14 @@ import { VerificationFieldLabel } from '@/features/dashboard/org/components/onbo
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
-import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
+import {
+  ORGANIZATIONS_QUERY_KEY,
+  useOrganizations,
+} from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
+import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import {
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
@@ -178,6 +182,7 @@ export function OnboardingPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { email, name, session } = useAdminSession();
+  const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
   const avatarUrl = readGoogleAvatarUrl(
     session?.user?.user_metadata as Record<string, unknown> | undefined
   );
@@ -521,6 +526,24 @@ export function OnboardingPage() {
   };
 
   const submitLabel = step === 3 ? 'Finish setup' : 'Continue';
+
+  const existingOrgs = orgsData?.organizations ?? [];
+  if (orgsLoading) {
+    return (
+      <RequireAdmin>
+        <div className="flex min-h-[40vh] items-center justify-center" role="status">
+          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+        </div>
+      </RequireAdmin>
+    );
+  }
+  if (existingOrgs.length > 0) {
+    return (
+      <RequireAdmin>
+        <Navigate to={resolveOrgLandingPath(existingOrgs)} replace />
+      </RequireAdmin>
+    );
+  }
 
   return (
     <RequireAdmin>

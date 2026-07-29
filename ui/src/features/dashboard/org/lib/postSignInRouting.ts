@@ -13,6 +13,7 @@ import {
   setLastParkingContext,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
+import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 
 const LEGACY_SECTIONS = [
   'dashboard',
@@ -74,7 +75,9 @@ export function mapLegacyAdminPath(path: string, orgSlug: string, propertySlug: 
 export async function resolvePostSignInPath(redirectPath: string): Promise<string> {
   const { callEdgeFunction } = await import('@/features/dashboard/org/lib/edgeClient');
 
-  if (redirectPath.startsWith('/org/') || redirectPath.startsWith('/accept-invite')) {
+  if (redirectPath === '/org') {
+    // Resolve via list-organizations below (hub → dashboard or onboarding).
+  } else if (redirectPath.startsWith('/org/') || redirectPath.startsWith('/accept-invite')) {
     return redirectPath;
   }
 
@@ -84,6 +87,10 @@ export async function resolvePostSignInPath(redirectPath: string): Promise<strin
 
   if (organizations.length === 0) {
     return '/onboarding';
+  }
+
+  if (redirectPath === '/org') {
+    return resolveOrgLandingPath(organizations);
   }
 
   const org = organizations.find((o) => o.slug === getLastOrgSlug()) ?? organizations[0]!;
@@ -101,7 +108,7 @@ export async function resolvePostSignInPath(redirectPath: string): Promise<strin
 
   if (properties.length === 0 && parkings.length === 0) {
     if (org.accessKind === 'property_member') {
-      return '/org';
+      return resolveOrgLandingPath(organizations);
     }
     const hostModes = org.hostModes ?? [];
     if (hostModes.includes('parking') && !hostModes.includes('property')) {

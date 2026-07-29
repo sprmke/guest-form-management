@@ -141,7 +141,7 @@ export function OrgBasicInformationSection({
             resolvedColor={DEFAULT_ORG_BRAND_COLOR}
             disabled={disabled}
             error={brandColorError}
-            hint="Tints org dashboard pages (org selector, org settings, org properties)."
+            hint="Tints org dashboard pages (org dashboard, org settings, org properties)."
             onChange={setBrandColor}
           />
         </OrgSettingsFieldSpan>

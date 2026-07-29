@@ -46,7 +46,7 @@ export function TenantAccessDenied({ scope, orgSlug, orgName, propertyName }: Pr
             variant={orgFallbackHref ? 'outline' : 'default'}
             className="min-h-[44px] w-full"
           >
-            <Link to="/org">Organizations</Link>
+            <Link to="/org">Home</Link>
           </Button>
           <RequireAdminSignOutButton />
         </div>

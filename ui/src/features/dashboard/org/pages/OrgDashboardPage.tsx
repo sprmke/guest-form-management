@@ -100,7 +100,7 @@ export function OrgDashboardPage() {
         <section className="mb-3 w-full min-w-0">
           <AdminPageHeader
             id="org-dashboard-heading"
-            title="Dashboard Overview"
+            title="Dashboard"
             subtitle="Performance overview across all properties in your organization."
             actions={
               <div

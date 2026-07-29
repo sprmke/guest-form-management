@@ -4,7 +4,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 
 import { Loader2 } from 'lucide-react';
 
-import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
+import { TenantAccessDenied } from '@/features/dashboard/org/components/TenantAccessDenied';
+import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
+import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import {
   getLastPropertySlug,
   propertySectionPath,
@@ -19,6 +21,7 @@ type Props = {
 export function PropertyMemberOrgRedirect({ orgSlug }: Props) {
   const navigate = useNavigate();
   const { data, isLoading, isError } = useProperties(orgSlug);
+  const { data: orgsData, isLoading: orgsLoading } = useOrganizations();
 
   useEffect(() => {
     if (isLoading || isError) return;
@@ -33,7 +36,7 @@ export function PropertyMemberOrgRedirect({ orgSlug }: Props) {
     });
   }, [data, isError, isLoading, navigate, orgSlug]);
 
-  if (isLoading) {
+  if (isLoading || orgsLoading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center" role="status">
         <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
@@ -42,7 +45,11 @@ export function PropertyMemberOrgRedirect({ orgSlug }: Props) {
   }
 
   if (isError || !data?.properties.length) {
-    return <Navigate to="/org" replace />;
+    const otherOrgs = (orgsData?.organizations ?? []).filter((org) => org.slug !== orgSlug);
+    if (otherOrgs.length > 0) {
+      return <Navigate to={resolveOrgLandingPath(otherOrgs)} replace />;
+    }
+    return <TenantAccessDenied scope="org" orgSlug={orgSlug} />;
   }
 
   return (
