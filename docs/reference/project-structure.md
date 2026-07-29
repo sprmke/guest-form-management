@@ -65,14 +65,14 @@ utils/
 
 ## Guest features (`features/guest/`)
 
-| Module         | Routes                                                                      | Purpose                                       |
-| -------------- | --------------------------------------------------------------------------- | --------------------------------------------- |
-| `marketing/`   | `/`, `/for-hosts`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` | PMA guest marketing site (Phase 1: mock data) |
-| `calendar/`    | `/calendar`                                                                 | Operational date picker → `/form`             |
-| `form/`        | `/form`, `/success`                                                         | Guest booking form                            |
-| `sd-form/`     | `/sd-form`                                                                  | Security deposit refund                       |
-| `pay-parking/` | `/bookings/:id/parking`                                                     | Parking payment form                          |
-| `auth/`        | `/for-guests/*`, `/for-hosts/*` login/register/…                            | PMA auth UI (Phase 1 mock submit)             |
+| Module         | Routes                                                                                   | Purpose                                       |
+| -------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `marketing/`   | `/`, `/for-hosts`, `/services`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` | PMA guest marketing site (Phase 1: mock data) |
+| `calendar/`    | `/calendar`                                                                              | Operational date picker → `/form`             |
+| `form/`        | `/form`, `/success`                                                                      | Guest booking form                            |
+| `sd-form/`     | `/sd-form`                                                                               | Security deposit refund                       |
+| `pay-parking/` | `/bookings/:id/parking`                                                                  | Parking payment form                          |
+| `auth/`        | `/for-guests/*`, `/for-hosts/*` login/register/…                                         | PMA auth UI (Phase 1 mock submit)             |
 
 Entry: `features/guest/routes/index.tsx` (marketing routes first, then calendar/form/sd-form/pay-parking)
 
