@@ -66,4 +66,7 @@ supabase_backup*.dump
 # Local development
 **/.local
 
+# Tests
+.playwright-mcp
+
 cli-develop

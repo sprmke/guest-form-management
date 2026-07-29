@@ -8,7 +8,9 @@
       "Bash(npx tsc:*)",
       "Bash(bunx tsc:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(ln -s ../.mcp.json .cursor/mcp.json)",
+      "mcp__playwright__browser_run_code_unsafe"
     ]
   }
 }
