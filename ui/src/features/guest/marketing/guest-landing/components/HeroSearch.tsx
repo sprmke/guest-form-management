@@ -120,8 +120,12 @@ interface HeroSearchProps {
   defaultLocation?: string;
   /** Local filter mode — skips navigation */
   onSearch?: (values: HeroSearchValues) => void;
-  /** Visible segments — omit `who` on parking and other non-guest listings. Default: all three. */
+  /** Visible segments — omit `who` on parking, services, and other non-guest listings. Default: all three. */
   fields?: HeroSearchField[];
+  /** First segment label — `What` on `/services`, default `Where`. */
+  whereLabel?: string;
+  wherePlaceholder?: string;
+  whereCompactPlaceholder?: string;
   /** 0 = expanded hero, 1 = compact header. Scroll morph passes this for smooth interpolation. */
   morphProgress?: number;
   /** Raw scroll morph progress (0–1) for mobile width / dock behavior. */
@@ -400,6 +404,9 @@ export function HeroSearch({
   defaultLocation = '',
   onSearch,
   fields = DEFAULT_FIELD_ORDER,
+  whereLabel = 'Where',
+  wherePlaceholder = 'Search destinations',
+  whereCompactPlaceholder = 'Anywhere',
   morphProgress,
   scrollProgress = 0,
   variant = 'default',
@@ -768,10 +775,10 @@ export function HeroSearch({
                   segmentRefs.current.where = node;
                 }}
                 field="where"
-                label="Where"
+                label={whereLabel}
                 value={location}
-                placeholder="Search destinations"
-                compactPlaceholder="Anywhere"
+                placeholder={wherePlaceholder}
+                compactPlaceholder={whereCompactPlaceholder}
                 activeField={activeField}
                 onActivate={activateField}
                 morphProgress={segmentMorph}
@@ -851,10 +858,10 @@ export function HeroSearch({
                   segmentRefs.current.where = node;
                 }}
                 field="where"
-                label="Where"
+                label={whereLabel}
                 value={location}
-                placeholder="Search destinations"
-                compactPlaceholder="Anywhere"
+                placeholder={wherePlaceholder}
+                compactPlaceholder={whereCompactPlaceholder}
                 activeField={activeField}
                 onActivate={activateField}
                 morphProgress={segmentMorph}

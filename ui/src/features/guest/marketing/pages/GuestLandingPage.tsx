@@ -1,5 +1,6 @@
 import { Navigate, useSearchParams } from 'react-router-dom';
 
+import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { readGuestPropertySlug } from '@/features/guest/form/lib/guestPropertyScope';
 import { guestCalendarPath } from '@/features/guest/lib/guestPublicPaths';
 import { FeaturedProperties } from '@/features/guest/marketing/guest-landing/components/FeaturedProperties';
@@ -12,7 +13,7 @@ export function GuestLandingPage() {
   const property = readGuestPropertySlug(searchParams);
 
   if (property) {
-    const next = new URLSearchParams(searchParams);
+    const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
     next.delete('property');
     next.delete('property_slug');
     return <Navigate to={guestCalendarPath(property, next)} replace />;

@@ -1,6 +1,11 @@
-import { Link } from 'react-router-dom';
+import { type MouseEvent } from 'react';
+
+import { Link, useLocation } from 'react-router-dom';
 
 import { Facebook, Instagram, Twitter, Mail, MapPin, Phone } from 'lucide-react';
+
+import { getAppModeFromPath } from '@/features/guest/auth/config/mode-switch';
+import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
 const footerLinks = {
   explore: [
@@ -16,7 +21,7 @@ const footerLinks = {
     { href: '/blog', label: 'Blog' },
   ],
   hosts: [
-    { href: '/for-hosts', label: 'Become a Host' },
+    { href: '/for-hosts', label: 'Become a Host', switchesToHost: true },
     { href: '/pricing', label: 'Pricing' },
     { href: '/resources', label: 'Host Resources' },
     { href: '/support', label: 'Support' },
@@ -37,12 +42,33 @@ const socialLinks = [
 const linkClassName = 'text-muted-foreground hover:text-foreground text-sm transition-colors';
 
 export function MarketingFooter() {
+  const { pathname } = useLocation();
+  const mode = getAppModeFromPath(pathname);
+  const { switchMode, isTransitioning } = useModeSwitchTransition();
+
+  const handleExploreHome = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (mode === 'guest') return;
+    event.preventDefault();
+    switchMode('guest');
+  };
+
+  const handleBecomeHost = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (mode === 'host') return;
+    event.preventDefault();
+    switchMode('host');
+  };
+
   return (
     <footer className="bg-muted text-foreground border-border border-t">
       <div className="container mx-auto px-4 py-16 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-6 lg:gap-12">
           <div className="col-span-2">
-            <Link to="/" className="mb-6 flex items-center gap-2">
+            <Link
+              to="/"
+              onClick={handleExploreHome}
+              className="mb-6 flex items-center gap-2"
+              aria-disabled={isTransitioning}
+            >
               <div className="from-primary to-primary/80 flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br">
                 <span className="text-xl font-bold text-white">K</span>
               </div>
@@ -105,7 +131,11 @@ export function MarketingFooter() {
             <ul className="space-y-3">
               {footerLinks.hosts.map((link) => (
                 <li key={link.href}>
-                  <Link to={link.href} className={linkClassName}>
+                  <Link
+                    to={link.href}
+                    className={linkClassName}
+                    onClick={'switchesToHost' in link ? handleBecomeHost : undefined}
+                  >
                     {link.label}
                   </Link>
                 </li>

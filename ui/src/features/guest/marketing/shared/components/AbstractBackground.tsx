@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 
 import { motion } from 'framer-motion';
 
+import { usePrefersReducedMotion } from '@/hooks/useMediaQuery';
+
 interface Particle {
   x: number;
   y: number;
@@ -12,6 +14,7 @@ interface Particle {
 }
 
 export function AbstractBackground() {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef({ x: 0, y: 0 });
@@ -123,7 +126,9 @@ export function AbstractBackground() {
         });
       });
 
-      animationRef.current = requestAnimationFrame(drawParticles);
+      if (!prefersReducedMotion) {
+        animationRef.current = requestAnimationFrame(drawParticles);
+      }
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -138,18 +143,25 @@ export function AbstractBackground() {
     initParticles();
     drawParticles();
 
-    window.addEventListener('resize', () => {
+    const handleResize = () => {
       resizeCanvas();
       initParticles();
-    });
-    canvas.addEventListener('mousemove', handleMouseMove);
+      if (prefersReducedMotion) {
+        drawParticles();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    if (!prefersReducedMotion) {
+      canvas.addEventListener('mousemove', handleMouseMove);
+    }
 
     return () => {
       cancelAnimationFrame(animationRef.current);
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
       canvas.removeEventListener('mousemove', handleMouseMove);
     };
-  }, []);
+  }, [prefersReducedMotion]);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -159,13 +171,17 @@ export function AbstractBackground() {
       {/* Animated mesh gradient */}
       <motion.div
         className="absolute inset-0"
-        animate={{
-          background: [
-            'radial-gradient(ellipse at 20% 30%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
-            'radial-gradient(ellipse at 30% 40%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
-            'radial-gradient(ellipse at 20% 30%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
-          ],
-        }}
+        animate={
+          prefersReducedMotion
+            ? undefined
+            : {
+                background: [
+                  'radial-gradient(ellipse at 20% 30%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
+                  'radial-gradient(ellipse at 30% 40%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 60%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
+                  'radial-gradient(ellipse at 20% 30%, rgba(45, 212, 191, 0.15) 0%, transparent 50%), radial-gradient(ellipse at 80% 70%, rgba(45, 212, 191, 0.1) 0%, transparent 50%)',
+                ],
+              }
+        }
         transition={{
           duration: 10,
           repeat: Infinity,
@@ -198,10 +214,7 @@ export function AbstractBackground() {
       {/* Floating shapes */}
       <motion.div
         className="bg-primary/5 absolute left-[10%] top-20 h-64 w-64 rounded-full blur-3xl"
-        animate={{
-          y: [0, 30, 0],
-          scale: [1, 1.1, 1],
-        }}
+        animate={prefersReducedMotion ? undefined : { y: [0, 30, 0], scale: [1, 1.1, 1] }}
         transition={{
           duration: 8,
           repeat: Infinity,
@@ -210,10 +223,7 @@ export function AbstractBackground() {
       />
       <motion.div
         className="bg-primary/5 absolute bottom-20 right-[15%] h-96 w-96 rounded-full blur-3xl"
-        animate={{
-          y: [0, -40, 0],
-          scale: [1, 1.15, 1],
-        }}
+        animate={prefersReducedMotion ? undefined : { y: [0, -40, 0], scale: [1, 1.15, 1] }}
         transition={{
           duration: 10,
           repeat: Infinity,

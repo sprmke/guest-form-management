@@ -19,6 +19,7 @@ import { PropertiesListPage } from '@/features/guest/marketing/pages/PropertiesL
 import { PropertiesLocationPage } from '@/features/guest/marketing/pages/PropertiesLocationPage';
 import { PropertyDetailPage } from '@/features/guest/marketing/pages/PropertyDetailPage';
 import { PropertyFormPage } from '@/features/guest/marketing/pages/PropertyFormPage';
+import { ServicesPage } from '@/features/guest/marketing/pages/ServicesPage';
 import { TermsPage } from '@/features/guest/marketing/pages/TermsPage';
 import { MarketingLayoutShell } from '@/features/guest/marketing/shared/components/MarketingLayoutShell';
 
@@ -37,6 +38,7 @@ export const marketingRoutes = [
   <Route key="marketing-shell" element={<MarketingLayoutShell />}>
     <Route index element={<GuestLandingPage />} />
     <Route path="for-hosts" element={<ForHostsPage />} />
+    <Route path="services" element={<ServicesPage />} />
     <Route path="hosts/:orgSlug" element={<HostPublicPage />} />
     <Route path="properties" element={<PropertiesListPage />} />
     {/* Location browse — must be before `:propertySlug` so `in` is not treated as a property slug */}
