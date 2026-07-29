@@ -33,6 +33,7 @@ import {
 } from '@/features/guest/form/lib/bookingFormatter';
 import {
   bookingSourceFromUrlSearchParams,
+  hasStrippedGuestQueryKeys,
   stripLegacyFromQueryParam,
 } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
@@ -158,13 +159,12 @@ export function GuestForm() {
     seededDefaultsRef.current = defaults;
   }
 
-  const isDevMode = searchParams.get('dev') === 'true';
-
   // Get pre-selected dates from URL params (from calendar page)
   const urlCheckInDate = searchParams.get('checkInDate');
   const urlCheckOutDate = searchParams.get('checkOutDate');
 
-  const showDevControls = !isProduction || isDevMode;
+  /** Dev control panel: non-production builds only — never gated by `?dev=true`. */
+  const showDevControls = !isProduction;
 
   // Dev API action controls — all on by default; uncheck to skip (matches admin dev-control UX).
   const [devApiControls, setDevApiControls] = useState({
@@ -200,9 +200,9 @@ export function GuestForm() {
     }
   }, [bookingId]);
 
-  // Legacy `?from=airbnb` → `replace` with `?source=airbnb`; any other `from` is dropped only
+  // Strip `dev` / `testing` / control flags / legacy `from`; migrate `from=airbnb` → `source=airbnb`
   useEffect(() => {
-    if (!searchParams.has('from') || !propertySlug) return;
+    if (!propertySlug || !hasStrippedGuestQueryKeys(searchParams)) return;
     const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
     if (searchParams.get('from')?.trim().toLowerCase() === 'airbnb') {
       next.set('source', 'airbnb');
@@ -531,7 +531,7 @@ export function GuestForm() {
       // Refresh booked dates after cancellation
       await fetchBookedDates();
 
-      // Back to calendar; drop bookingId + legacy `from`; keep source=airbnb, dev, dates, etc.
+      // Back to calendar; drop bookingId + stripped legacy keys; keep source / dates.
       const next = stripLegacyFromQueryParam(new URLSearchParams(scopedSearchParams));
       next.delete('bookingId');
       navigate(
@@ -660,30 +660,19 @@ export function GuestForm() {
         );
       });
 
-      // Build URL with query parameters
+      // Property scope stays on the URL; side-effect flags go in FormData (never browser/share URLs).
       const queryParams = new URLSearchParams();
       appendGuestPropertyToParams(queryParams, propertySlug, searchParams);
 
       if (showDevControls) {
-        queryParams.append('saveToDatabase', devApiControls.saveToDatabase ? 'true' : 'false');
-        queryParams.append(
+        formData.append('saveToDatabase', devApiControls.saveToDatabase ? 'true' : 'false');
+        formData.append(
           'saveImagesToStorage',
           devApiControls.saveImagesToStorage ? 'true' : 'false'
         );
-        queryParams.append(
-          'updateGoogleCalendar',
-          devApiControls.updateCalendar ? 'true' : 'false'
-        );
-        queryParams.append(
-          'updateGoogleSheets',
-          devApiControls.updateGoogleSheets ? 'true' : 'false'
-        );
-        queryParams.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
-      } else {
-        queryParams.append('saveToDatabase', 'true');
-        queryParams.append('saveImagesToStorage', 'true');
-        queryParams.append('updateGoogleCalendar', 'true');
-        queryParams.append('updateGoogleSheets', 'true');
+        formData.append('updateGoogleCalendar', devApiControls.updateCalendar ? 'true' : 'false');
+        formData.append('updateGoogleSheets', devApiControls.updateGoogleSheets ? 'true' : 'false');
+        formData.append('sendEmail', devApiControls.sendEmail ? 'true' : 'false');
       }
 
       const queryParamsString = queryParams.toString() ? `?${queryParams.toString()}` : '';
@@ -1970,7 +1959,7 @@ export function GuestForm() {
                   </div>
                 )}
 
-                {/* Developer API Controls (non-production or ?dev=true) — shown on the last step */}
+                {/* Developer API Controls (non-production only) — shown on the last step */}
                 {showDevControls && currentStep === guestFormStepCount && (
                   <div className="border-border/80 bg-muted/20 space-y-4 rounded-xl border border-dashed px-4 py-4">
                     <div className="border-separator flex items-center gap-3 border-b pb-3">

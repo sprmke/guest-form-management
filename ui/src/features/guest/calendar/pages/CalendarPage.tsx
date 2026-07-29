@@ -7,13 +7,16 @@ import { CalendarCheck, ArrowRight, CalendarX, Info } from 'lucide-react';
 
 import { useGuestAuth } from '@/features/guest/auth/context/GuestAuthContext';
 import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
-import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+import {
+  hasStrippedGuestQueryKeys,
+  stripLegacyFromQueryParam,
+} from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 import {
   useGuestPropertySearchParams,
   useGuestPropertySlug,
 } from '@/features/guest/hooks/useGuestPropertySlug';
-import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
+import { guestCalendarPath, guestFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
 import { CalendarPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
@@ -42,6 +45,13 @@ export function CalendarPage() {
   const [checkInDate, setCheckInDate] = useState<Date | undefined>();
   const [checkOutDate, setCheckOutDate] = useState<Date | undefined>();
   const [isLoading, setIsLoading] = useState(true);
+
+  // Drop deprecated `dev` / `testing` / control flags from the address bar.
+  useEffect(() => {
+    if (!propertySlug || !hasStrippedGuestQueryKeys(searchParams)) return;
+    const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
+    navigate(guestCalendarPath(propertySlug, next), { replace: true });
+  }, [navigate, propertySlug, searchParams]);
 
   // Legacy `/?bookingId=` and `/form?bookingId=` → property form route.
   useEffect(() => {

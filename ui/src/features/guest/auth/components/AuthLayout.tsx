@@ -1,3 +1,5 @@
+import { type MouseEvent } from 'react';
+
 import { Link, Outlet, useLocation } from 'react-router-dom';
 
 import {
@@ -11,10 +13,24 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 
+import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { LogoIcon } from '@/components/ui/icons';
 
 const HOST_AUTH_PREFIX = '/for-hosts/';
+
+function useExploreHomeClick() {
+  const { switchMode, isTransitioning } = useModeSwitchTransition();
+
+  const handleExploreHome = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (isTransitioning) return;
+    switchMode('guest');
+  };
+
+  return { handleExploreHome, isTransitioning };
+}
 
 function AuthBrandingPanel() {
   const { pathname } = useLocation();
@@ -193,6 +209,8 @@ function StatItem({ value, label }: { value: string; label: string }) {
 }
 
 export function AuthLayout() {
+  const { handleExploreHome } = useExploreHomeClick();
+
   return (
     <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
       <div className="relative hidden flex-col overflow-hidden lg:flex">
@@ -206,7 +224,7 @@ export function AuthLayout() {
 
       <div className="bg-background flex min-h-screen flex-col">
         <div className="flex items-center justify-between border-b p-4 lg:hidden">
-          <Link to="/" className="flex items-center gap-2.5">
+          <Link to="/" onClick={handleExploreHome} className="flex items-center gap-2.5">
             <div className="bg-primary shadow-primary/20 flex h-9 w-9 items-center justify-center rounded-xl shadow-lg">
               <LogoIcon className="h-5 w-5 text-white" />
             </div>

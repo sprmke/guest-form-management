@@ -11,7 +11,8 @@ Completed work archived from GitHub Issues and legacy backlogs.
 
 ## Shipped from GitHub Issues
 
-| File | Issue |
-| ---- | ----- |
+| File                                                                                                               | Issue                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| [`35-remove-devtrue-from-google-calendar-event-links.md`](./35-remove-devtrue-from-google-calendar-event-links.md) | [#35](https://github.com/sprmke/kame-homes/issues/35) Remove `dev=true` from Google Calendar event links |
 
 _New rows are appended by `bun scripts/dev/gh-issue.mjs ship --github N`._

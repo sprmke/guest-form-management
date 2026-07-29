@@ -6,6 +6,18 @@
 export const BOOKING_SOURCE_OPTIONS = ['Facebook', 'Airbnb'] as const;
 export type BookingSource = (typeof BOOKING_SOURCE_OPTIONS)[number];
 
+/** Browser URL keys that must never be preserved across guest navigations or share links. */
+export const STRIPPED_GUEST_QUERY_KEYS = [
+  'from',
+  'dev',
+  'testing',
+  'saveToDatabase',
+  'saveImagesToStorage',
+  'updateGoogleCalendar',
+  'updateGoogleSheets',
+  'sendEmail',
+] as const;
+
 export function normalizeBookingSource(value: string | null | undefined): BookingSource {
   return value?.trim() === 'Airbnb' ? 'Airbnb' : 'Facebook';
 }
@@ -16,9 +28,19 @@ export function bookingSourceFromUrlSearchParams(sp: URLSearchParams): BookingSo
   return 'Facebook';
 }
 
-/** Removes deprecated `from=` used for an earlier Airbnb handoff experiment. */
+/** True when the URL still carries a deprecated guest/dev control query key. */
+export function hasStrippedGuestQueryKeys(sp: URLSearchParams): boolean {
+  return STRIPPED_GUEST_QUERY_KEYS.some((key) => sp.has(key));
+}
+
+/**
+ * Removes deprecated guest URL keys (`from`, `dev`, `testing`, submit-form control flags).
+ * Does not touch legitimate params (`property`, `source`, dates, `bookingId`, …).
+ */
 export function stripLegacyFromQueryParam(sp: URLSearchParams): URLSearchParams {
   const next = new URLSearchParams(sp);
-  next.delete('from');
+  for (const key of STRIPPED_GUEST_QUERY_KEYS) {
+    next.delete(key);
+  }
   return next;
 }

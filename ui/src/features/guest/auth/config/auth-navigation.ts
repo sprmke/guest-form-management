@@ -18,7 +18,7 @@ export function getLoginHrefFromPath(pathname: string): string | null {
   return getLoginHref(getAuthAudienceFromPath(pathname));
 }
 
-/** Host marketing nav CTA — Sign In when signed out, Dashboard when session exists. */
+/** Host dashboard href when signed in; Sign In when signed out. */
 export function getHostMarketingNavCta(isSignedIn: boolean): { label: string; href: string } {
   if (isSignedIn) {
     const orgSlug = getLastOrgSlug();

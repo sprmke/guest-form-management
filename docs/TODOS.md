@@ -171,7 +171,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - On Booking detail page, we need to reuse our check-in and check-out date calendar components to see which dates are booked and available
 - ✅ Add additional rate on Pending Review form (early check-in, late check-out, surprise decor, etc)
 - [x] Remove the ability for guest to update the guest form AFTER booking is reviewed by admin and not on PENDING_REVIEW status anymore
-- Remove dev=true query parameter on google calendar event to prevent any issues
+- ✅ Remove `dev=true` / legacy control query params from guest URLs, calendar links, and `submit-form` (FormData flags; production forces full path)
 - ? Only display Sensitive edit warning on edit booking detail page
 - We should add label for additional fee and update the ready for check-in email what's the additional fee is about
 - Update Review process to deduct P50-P100 pesos on SD?
@@ -179,7 +179,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Update Check-in Details email to add check-in instructions
 - ✅ Add Gcash number and name to Check-in email
 - Update public guest form to allow selection of date without check-out date for day tour bookings and minimum of 12pm as check-in time and subject for approval message
-- Cleanup isDevMode. This is unnecessary since we have admin dashboard now
+- ✅ Cleanup isDevMode / `?dev=true` — non-prod panel only; strip legacy URL keys app-wide
 - Update booking confirmed UI and display the complete booking details
 - Improve Other information section UI / cols
 - Update saved reply or auto-reply form link to include the full name of recipient to query parameter of our guest form link, then parse it and pre-populate facebook name if we get a valid FB name
