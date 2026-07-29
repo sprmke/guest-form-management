@@ -10,14 +10,14 @@ Routes:
 
 ## Progress overview
 
-| Section              | E2E save | Validation | Docs       | Notes                                                      |
-| -------------------- | -------- | ---------- | ---------- | ---------------------------------------------------------- |
-| Auth layout          | —        | —          | Documented | Split branding panel + form (host only)                    |
-| Host Google login    | ✅       | —          | Documented | Google only — full-width Continue with Google              |
-| Host register Google | ✅       | —          | Documented | Google only; default redirect `/onboarding`                |
-| Guest checkout auth  | ✅       | Client     | Documented | Modal at calendar Proceed + form Submit + save heart       |
-| Guest account nav    | ✅       | —          | Documented | Avatar on explore; `/account/*` when signed in             |
-| Mode switcher        | —        | —          | Documented | Admin sidebar + host auth layout only (no marketing float) |
+| Section              | E2E save | Validation | Docs       | Notes                                                   |
+| -------------------- | -------- | ---------- | ---------- | ------------------------------------------------------- |
+| Auth layout          | —        | —          | Documented | Split branding panel + form (host only)                 |
+| Host Google login    | ✅       | —          | Documented | Google only — full-width Continue with Google           |
+| Host register Google | ✅       | —          | Documented | Google only; default redirect `/onboarding`             |
+| Guest checkout auth  | ✅       | Client     | Documented | Modal at calendar Proceed + form Submit + save heart    |
+| Guest account nav    | ✅       | —          | Documented | Avatar on explore; `/account/*` when signed in          |
+| Mode switcher        | —        | —          | Documented | Global curtain; admin sidebar + marketing/auth triggers |
 
 ---
 
@@ -31,7 +31,7 @@ Guests browse dates and fill the booking form **without signing in**. Auth appea
 4. **Form → Submit** (final step) — same modal if session expired
 5. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
 
-Marketing **Become a host?** on explore pages links to **`/for-hosts`**. On `/for-hosts` the nav shows **Sign In** → **`/for-hosts/login`**.
+Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**.
 
 When a guest session exists on **explore** pages, a **rounded avatar** appears beside **Become a host?** with links to **`/account/*`** (profile, stays, wishlist, messages). See **`docs/guides/routes/account/profile.md`**.
 

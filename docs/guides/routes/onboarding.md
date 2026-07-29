@@ -18,6 +18,8 @@ Route: `/onboarding`
 
 New hosts land here after Google sign-in when they have no organization. Creates an **organization**, first **property** and/or **parking**, then submits **base host verification** for review.
 
+If the user already has any organization (owned or assigned), the page redirects to **`/org/:slug/dashboard`** (last-used or first) — same rule as the **`/org`** hub. A user may own **at most one** organization; **`create-organization`** rejects a second owned org with **409**.
+
 ---
 
 ## Steps

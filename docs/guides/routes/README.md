@@ -10,7 +10,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | ---------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------- |
 | `/sign-in`                                                 | [sign-in.md](./sign-in.md)                                           | Pending                                                     |
 | `/onboarding`                                              | [onboarding.md](./onboarding.md)                                     | Documented — host type + optional property/parking          |
-| `/org`                                                     | [org/selector.md](./org/selector.md)                                 | Pending                                                     |
+| `/org`                                                     | [org/selector.md](./org/selector.md)                                 | Documented — auto-redirect (no picker)                      |
 | `/org/:orgSlug/dashboard`                                  | [org/dashboard.md](./org/dashboard.md)                               | Documented                                                  |
 | `/org/:orgSlug/bookings`                                   | [org/bookings.md](./org/bookings.md)                                 | Documented — all properties; property column in views       |
 | `/org/:orgSlug/settings`                                   | [org/settings.md](./org/settings.md)                                 | Documented                                                  |
@@ -20,7 +20,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/org/:orgSlug/inbox`                                      | [org/inbox.md](./org/inbox.md)                                       | Documented — Guest Inbox (FB DMs live; v2 roadmap in guide) |
 | `/org/:orgSlug/property/:propertySlug`                     | [org/property/dashboard.md](./org/property/dashboard.md)             | Pending                                                     |
 | `/org/:orgSlug/property/:propertySlug/bookings`            | [org/property/bookings.md](./org/property/bookings.md)               | Documented                                                  |
-| `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Pending                                                     |
+| `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Documented                                                  |
 | `/org/:orgSlug/property/:propertySlug/finance`             | [org/property/finance.md](./org/property/finance.md)                 | Pending                                                     |
 | `/org/:orgSlug/property/:propertySlug/pricing`             | [org/property/pricing.md](./org/property/pricing.md)                 | Documented — E2E                                            |
 | `/org/:orgSlug/property/:propertySlug/maintenance`         | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                  |
@@ -47,6 +47,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | --------------------------------------- |
 | `/`                                                                                                                         | [index-landing.md](./index-landing.md)     | Documented — UI only                    |
 | `/for-hosts`                                                                                                                | [for-hosts.md](./for-hosts.md)             | Documented — UI only                    |
+| `/services`                                                                                                                 | [services.md](./services.md)               | Documented — UI-only coming soon        |
 | `/properties` · `/properties/in/:location` · `/properties/:propertySlug` · `…/forms/:formId`                                | [properties.md](./properties.md)           | Documented — UI only                    |
 | `/parkings` · `/parkings/in/:location` · `/parkings/:parkingSlug`                                                           | [parkings.md](./parkings.md)               | Documented — list mock; detail live API |
 | `/developments` · `/developments/in/:location` · `/developments/:slug` · `…/properties` · `…/parking/*` · `…/forms/:formId` | [developments.md](./developments.md)       | Documented — UI only                    |
@@ -90,6 +91,7 @@ docs/guides/routes/
   README.md                 ← this index
   index-landing.md          ← /
   for-hosts.md
+  services.md
   properties.md
   developments.md
   legal.md

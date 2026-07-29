@@ -14,7 +14,7 @@ Routes (authenticated explore mode):
 
 | Section    | E2E save | Validation | Docs       | Notes                                        |
 | ---------- | -------- | ---------- | ---------- | -------------------------------------------- |
-| Nav avatar | —        | —          | Documented | Explore mode only; beside **Become a host?** |
+| Nav avatar | —        | —          | Documented | Explore: guest menu; host: Dashboard avatar  |
 | Profile    | ✅       | Client     | Documented | `guest-profile` + avatar upload              |
 | Stays      | ✅       | —          | Documented | `guest-trips`; property rental bookings only |
 | Wishlist   | ✅       | —          | Documented | `guest_saved_properties`                     |
@@ -26,7 +26,7 @@ Routes (authenticated explore mode):
 
 Signed-in guests see a **rounded avatar** in the marketing nav (explore pages only). The dropdown links to account pages. Anonymous guests still use the **checkout auth modal** — no `/for-guests/login` pages.
 
-**Host marketing (`/for-hosts`):** unchanged Sign In / Dashboard CTA — no guest avatar.
+**Host marketing (`/for-hosts`):** signed-in hosts see the same pill + avatar pattern — **Explore** switches to guest mode; avatar menu opens **Dashboard**. Signed-out hosts see **Explore** + **Sign In**.
 
 ---
 

@@ -129,7 +129,7 @@ On activate: built-in roles restore `saved_permissions` (or role preset if empty
 
 Enforcement on bookings/finance/etc. uses **`verifyPropertyAccess`** on property-scoped edge functions (see **`property-access`** for UI guards). Org routes use **`org-access`** + **`RequireOrgPermission`**; sidebar filtered via **`filterOrgNavSections`**.
 
-When access is revoked (deactivated member, removed from property, or lost org membership), route guards show **`TenantAccessDenied`** instead of redirecting to `/org`: **No property access** (with link to org properties when org slug is known) or **No organization access** (link to org selector).
+When access is revoked (deactivated member, removed from property, or lost org membership), route guards show **`TenantAccessDenied`** instead of redirecting to `/org`: **No property access** (with link to org properties when org slug is known) or **No organization access** (link **Home** → `/org` hub, which re-resolves dashboard or onboarding).
 
 ---
 

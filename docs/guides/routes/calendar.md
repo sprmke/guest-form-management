@@ -19,7 +19,7 @@ Route: `/properties/:propertySlug/calendar`
 
 Operational **check-in / check-out picker** before the guest booking form.
 
-**Proceed** navigates to **`/properties/:propertySlug/form`** with **`checkInDate`** / **`checkOutDate`** and preserves other query params (`source`, `dev`, etc.).
+**Proceed** navigates to **`/properties/:propertySlug/form`** with **`checkInDate`** / **`checkOutDate`** and preserves legitimate query params (`source`). Deprecated keys (`dev`, `testing`, submit-form control flags) are stripped.
 
 **Share links:** Admin **`guestCalendarPath(slug)`** → **`/properties/<slug>/calendar`**.
 
@@ -32,10 +32,9 @@ Operational **check-in / check-out picker** before the guest booking form.
 | Param       | Purpose                           |
 | ----------- | --------------------------------- |
 | `source`    | e.g. `airbnb` — forwarded to form |
-| `dev`       | Guest form dev panel when `true`  |
 | `bookingId` | Redirects to property form route  |
 
-Property slug is **not** passed as `?property=` on new links — it is the **`:propertySlug`** path segment.
+Property slug is **not** passed as `?property=` on new links — it is the **`:propertySlug`** path segment. Deprecated **`dev`**, **`testing`**, and submit-form flag params are stripped from the URL on load / navigate.
 
 ---
 
