@@ -54,6 +54,9 @@ type ListingScrollSearchContextValue = {
   redirectTo: string;
   defaultLocation: string;
   fields: HeroSearchField[];
+  whereLabel: string;
+  wherePlaceholder: string;
+  whereCompactPlaceholder: string;
   onSearch?: (values: HeroSearchValues) => void;
 };
 
@@ -192,11 +195,17 @@ function ListingSearchFloater({
   redirectTo,
   defaultLocation,
   fields,
+  whereLabel,
+  wherePlaceholder,
+  whereCompactPlaceholder,
   onSearch,
 }: {
   redirectTo: string;
   defaultLocation: string;
   fields: HeroSearchField[];
+  whereLabel: string;
+  wherePlaceholder: string;
+  whereCompactPlaceholder: string;
   onSearch?: (values: HeroSearchValues) => void;
 }) {
   const { morph } = useListingScrollSearch();
@@ -218,6 +227,9 @@ function ListingSearchFloater({
         redirectTo={redirectTo}
         defaultLocation={defaultLocation}
         fields={fields}
+        whereLabel={whereLabel}
+        wherePlaceholder={wherePlaceholder}
+        whereCompactPlaceholder={whereCompactPlaceholder}
         onSearch={onSearch}
       />
     </div>,
@@ -231,6 +243,9 @@ type ProviderProps = {
   redirectTo: string;
   defaultLocation: string;
   fields: HeroSearchField[];
+  whereLabel?: string;
+  wherePlaceholder?: string;
+  whereCompactPlaceholder?: string;
   onSearch?: (values: HeroSearchValues) => void;
 };
 
@@ -240,6 +255,9 @@ export function ListingScrollSearchProvider({
   redirectTo,
   defaultLocation,
   fields,
+  whereLabel = 'Where',
+  wherePlaceholder = 'Search destinations',
+  whereCompactPlaceholder = 'Anywhere',
   onSearch,
 }: ProviderProps) {
   const heroAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -255,6 +273,9 @@ export function ListingScrollSearchProvider({
     redirectTo,
     defaultLocation,
     fields,
+    whereLabel,
+    wherePlaceholder,
+    whereCompactPlaceholder,
     onSearch,
   };
 
@@ -266,6 +287,9 @@ export function ListingScrollSearchProvider({
           redirectTo={redirectTo}
           defaultLocation={defaultLocation}
           fields={fields}
+          whereLabel={whereLabel}
+          wherePlaceholder={wherePlaceholder}
+          whereCompactPlaceholder={whereCompactPlaceholder}
           onSearch={onSearch}
         />
       ) : null}
@@ -285,6 +309,9 @@ export function useListingScrollSearch(): ListingScrollSearchContextValue {
       redirectTo: '/properties',
       defaultLocation: '',
       fields: ['where', 'when', 'who'],
+      whereLabel: 'Where',
+      wherePlaceholder: 'Search destinations',
+      whereCompactPlaceholder: 'Anywhere',
     };
   }
   return ctx;

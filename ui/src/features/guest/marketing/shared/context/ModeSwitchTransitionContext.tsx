@@ -2,8 +2,6 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { motion } from 'framer-motion';
-
 import {
   getAppModeFromPath,
   isHostAuthPath,
@@ -12,13 +10,22 @@ import {
 } from '@/features/guest/auth/config/mode-switch';
 
 import { useTheme } from '@/components/theme/ThemeProvider';
-import { resolveBrandTransitionGradientStops } from '@/lib/theme/brandColor';
+import {
+  resolveBrandTransitionGradientStops,
+  resolveBrandWordmarkTextColors,
+} from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
 
-const TRANSITION_MS = 600;
+// Curtain close/open duration must match the `.mode-transition-curtain` transition in index.css.
+const WIPE_MS = 500;
+// Dwell while fully covered — long enough for the wordmark to settle before the reveal.
+const HOLD_MS = 350;
+// Host auth screens redirect immediately after navigation, so skip the dwell/reopen there.
 const AUTH_CLEANUP_MS = 200;
 
 type GradientStops = { from: string; to: string };
+type WordmarkColors = { primary: string; accent: string };
+type OverlayPhase = 'idle' | 'closing' | 'closed' | 'opening';
 
 type MarketingBrandColorContextValue = {
   brandColor: string | null;
@@ -41,16 +48,22 @@ export function useMarketingBrandColor(): MarketingBrandColorContextValue {
   return ctx;
 }
 
-export function useModeSwitchTransition(): ModeSwitchTransitionContextValue | null {
-  return useContext(ModeSwitchTransitionContext);
+export function useModeSwitchTransition(): ModeSwitchTransitionContextValue {
+  const ctx = useContext(ModeSwitchTransitionContext);
+  if (!ctx) {
+    throw new Error('useModeSwitchTransition must be used within ModeSwitchTransitionProvider');
+  }
+  return ctx;
 }
 
 function ModeTransitionOverlay({
-  active,
+  phase,
   stops,
+  textColors,
 }: {
-  active: boolean;
+  phase: OverlayPhase;
   stops: GradientStops | null;
+  textColors: WordmarkColors | null;
 }) {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
@@ -58,45 +71,42 @@ function ModeTransitionOverlay({
     () => stops ?? resolveBrandTransitionGradientStops(null, isDark),
     [stops, isDark]
   );
+  const wordmarkColors = useMemo(
+    () => textColors ?? resolveBrandWordmarkTextColors(null, isDark),
+    [textColors, isDark]
+  );
 
   return (
     <div
       id="mode-transition-overlay"
       className={cn(
         'pointer-events-none fixed inset-0 z-[100]',
-        active && 'active pointer-events-auto'
+        phase !== 'idle' && cn('pointer-events-auto', `is-${phase}`)
       )}
     >
-      <svg
-        className="absolute inset-0 h-full w-full"
-        preserveAspectRatio="none"
-        viewBox="0 0 100 100"
+      <div
+        className="mode-transition-curtain absolute inset-0"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${gradientStops.from}, ${gradientStops.to})`,
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 flex items-center justify-center gap-[0.15em] text-2xl font-extrabold tracking-tight sm:text-3xl"
         aria-hidden
       >
-        <defs>
-          <linearGradient id="transition-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={gradientStops.from} />
-            <stop offset="100%" stopColor={gradientStops.to} />
-          </linearGradient>
-        </defs>
-        <path
-          className="mode-transition-path"
-          fill="url(#transition-gradient)"
-          d="M 0 100 V 100 Q 50 100 100 100 V 100 H 0"
-        />
-      </svg>
-
-      <div
-        className={cn(
-          'absolute inset-0 flex items-center justify-center transition-opacity duration-300',
-          active ? 'opacity-100' : 'opacity-0'
-        )}
-      >
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-          className="h-12 w-12 rounded-full border-4 border-white/20 border-t-white"
-        />
+        <span
+          className="mode-transition-word mode-transition-word--kame"
+          style={{ color: wordmarkColors.primary }}
+        >
+          Kame
+        </span>
+        <span
+          className="mode-transition-word mode-transition-word--homes"
+          style={{ color: wordmarkColors.accent }}
+        >
+          Homes
+        </span>
       </div>
     </div>
   );
@@ -107,8 +117,9 @@ export function ModeSwitchTransitionProvider({ children }: { children: ReactNode
   const { pathname } = useLocation();
   const { resolvedTheme } = useTheme();
   const [brandColor, setBrandColor] = useState<string | null>(null);
-  const [overlayActive, setOverlayActive] = useState(false);
+  const [overlayPhase, setOverlayPhase] = useState<OverlayPhase>('idle');
   const [overlayStops, setOverlayStops] = useState<GradientStops | null>(null);
+  const [overlayTextColors, setOverlayTextColors] = useState<WordmarkColors | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const switchMode = useCallback(
@@ -116,20 +127,32 @@ export function ModeSwitchTransitionProvider({ children }: { children: ReactNode
       const currentMode = getAppModeFromPath(pathname);
       if (target === currentMode || isTransitioning) return;
 
-      setOverlayStops(resolveBrandTransitionGradientStops(brandColor, resolvedTheme === 'dark'));
-      setIsTransitioning(true);
-      setOverlayActive(true);
+      const isDark = resolvedTheme === 'dark';
+      const wasAuthPath = isHostAuthPath(pathname);
 
-      await new Promise((resolve) => setTimeout(resolve, TRANSITION_MS));
+      setOverlayStops(resolveBrandTransitionGradientStops(brandColor, isDark));
+      setOverlayTextColors(resolveBrandWordmarkTextColors(brandColor, isDark));
+      setIsTransitioning(true);
+      setOverlayPhase('closing');
+
+      await new Promise((resolve) => setTimeout(resolve, WIPE_MS));
+      setOverlayPhase('closed');
 
       navigate(resolveModeSwitchPath(target, pathname));
 
-      const cleanupDelay = isHostAuthPath(pathname) ? AUTH_CLEANUP_MS : TRANSITION_MS;
-      setTimeout(() => {
-        setOverlayActive(false);
-        setOverlayStops(null);
-        setIsTransitioning(false);
-      }, cleanupDelay);
+      // Host auth screens redirect on their own right after navigation — skip the dwell/reopen beat.
+      await new Promise((resolve) => setTimeout(resolve, wasAuthPath ? 0 : HOLD_MS));
+      setOverlayPhase('opening');
+
+      setTimeout(
+        () => {
+          setOverlayPhase('idle');
+          setOverlayStops(null);
+          setOverlayTextColors(null);
+          setIsTransitioning(false);
+        },
+        wasAuthPath ? AUTH_CLEANUP_MS : WIPE_MS
+      );
     },
     [brandColor, isTransitioning, navigate, pathname, resolvedTheme]
   );
@@ -145,7 +168,11 @@ export function ModeSwitchTransitionProvider({ children }: { children: ReactNode
     <MarketingBrandColorContext.Provider value={brandColorValue}>
       <ModeSwitchTransitionContext.Provider value={transitionValue}>
         {children}
-        <ModeTransitionOverlay active={overlayActive} stops={overlayStops} />
+        <ModeTransitionOverlay
+          phase={overlayPhase}
+          stops={overlayStops}
+          textColors={overlayTextColors}
+        />
       </ModeSwitchTransitionContext.Provider>
     </MarketingBrandColorContext.Provider>
   );

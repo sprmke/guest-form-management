@@ -2,6 +2,7 @@ export { MarketingNav } from './MarketingNav';
 export { MarketingFooter } from './MarketingFooter';
 export { AbstractBackground } from './AbstractBackground';
 export { ModeSwitcher } from './ModeSwitcher';
+export { HostAccountMenu } from './HostAccountMenu';
 export {
   ModeSwitchTransitionProvider,
   useMarketingBrandColor,

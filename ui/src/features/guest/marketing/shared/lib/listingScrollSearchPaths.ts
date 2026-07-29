@@ -7,6 +7,7 @@ const LISTING_SEARCH_PATHS: Record<string, ListingScrollSearchConfig> = {
   '/properties': { redirectTo: '/properties' },
   '/developments': { redirectTo: '/developments' },
   '/parkings': { redirectTo: '/parkings' },
+  '/services': { redirectTo: '/services' },
 };
 
 /**

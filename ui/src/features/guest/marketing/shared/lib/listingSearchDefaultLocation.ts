@@ -14,6 +14,7 @@ export function getListingSearchDefaultLocation(pathname: string): string {
   if (pathname === '/developments') return 'Developments';
   if (pathname === '/properties') return '';
   if (pathname === '/parkings') return 'Parkings';
+  if (pathname === '/services') return 'Services';
 
   const developmentsInMatch = pathname.match(/^\/developments\/in\/([^/]+)$/);
   if (developmentsInMatch) {
