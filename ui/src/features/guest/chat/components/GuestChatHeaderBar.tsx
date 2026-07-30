@@ -73,7 +73,14 @@ export function GuestChatHeaderBar({
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
             {onStartVoiceSession ? (
-              <DropdownMenuItem onSelect={onStartVoiceSession}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  // Defer opening the voice Dialog — Radix menu dismiss + focus restore
+                  // otherwise fires Dialog onOpenChange(false) in the same tick and
+                  // the overlay closes immediately.
+                  window.setTimeout(() => onStartVoiceSession(), 0);
+                }}
+              >
                 <Mic className="size-4" aria-hidden />
                 Talk to receptionist
               </DropdownMenuItem>

@@ -536,7 +536,20 @@ export function useVoiceSession(propertySlug: string) {
 
   useEffect(() => {
     return () => {
-      end('guest_ended');
+      // Only end a real server session on unmount. Calling end() with no sessionId
+      // still flips phase → 'ended', which auto-closes the overlay after Strict Mode
+      // remount races (and burns UX when opening from a dropdown).
+      if (sessionIdRef.current) {
+        end('guest_ended');
+      } else {
+        stopMic();
+        try {
+          wsRef.current?.close();
+        } catch {
+          // already closed
+        }
+        wsRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on unmount only
   }, []);

@@ -71,10 +71,12 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
   const session = useVoiceSession(propertySlug);
   const startedRef = useRef(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openedAtRef = useRef(Date.now());
 
   useEffect(() => {
     if (startedRef.current) return;
     startedRef.current = true;
+    openedAtRef.current = Date.now();
     session.start();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- start exactly once on mount
   }, []);
@@ -96,14 +98,31 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
     onClose();
   };
 
+  const handleOpenChange = (next: boolean) => {
+    if (next) return;
+    // Ignore dismiss events in the first 400ms (dropdown→dialog focus race).
+    if (Date.now() - openedAtRef.current < 400) return;
+    handleClose();
+  };
+
   const captionLines = [...session.captions.slice(-3), session.liveCaption].filter(
     (c): c is NonNullable<typeof c> => !!c?.text.trim()
   );
 
   return (
-    <Dialog open onOpenChange={(next) => !next && handleClose()}>
+    <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onPointerDownOutside={(event) => {
+          if (Date.now() - openedAtRef.current < 400) {
+            event.preventDefault();
+          }
+        }}
+        onInteractOutside={(event) => {
+          if (Date.now() - openedAtRef.current < 400) {
+            event.preventDefault();
+          }
+        }}
         className="flex h-[min(92dvh,720px)] max-h-[min(94dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),26rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-sm"
       >
         <DialogTitle className="sr-only">Voice receptionist</DialogTitle>
