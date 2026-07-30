@@ -9,6 +9,14 @@ import { insertMessageIfNew, updateConversationAfterMessage } from './socialInbo
 
 const MANILA_TZ = 'Asia/Manila';
 
+/**
+ * Rough Gemini Live native-audio blended rate (input $0.005/min + output $0.018/min,
+ * published per-minute equivalents as of this writing) applied to wall-clock duration.
+ * Actual billing is token-based and re-bills prior turns each round-trip, so real cost is
+ * higher for longer conversations — this is a visibility estimate, not an invoice figure.
+ */
+const ESTIMATED_COST_PER_MINUTE_USD = 0.023;
+
 export type VoiceReceptionistGlobalSettingsDto = {
   enabled: boolean;
   updatedBy: string | null;
@@ -130,7 +138,9 @@ export type VoiceReceptionistSettingsPatch = {
 };
 
 function isPositiveInt(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0;
+  return (
+    typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value > 0
+  );
 }
 
 export function validateVoiceReceptionistPatch(body: Record<string, unknown>): {
@@ -247,9 +257,7 @@ export async function enforceVoiceReceptionistCaps(
     );
   }
 
-  const staleBeforeIso = new Date(
-    Date.now() - settings.maxSessionSeconds * 1000
-  ).toISOString();
+  const staleBeforeIso = new Date(Date.now() - settings.maxSessionSeconds * 1000).toISOString();
   const { count: concurrentCount, error: concurrentError } = await sb
     .from('voice_receptionist_sessions')
     .select('id', { count: 'exact', head: true })
@@ -314,7 +322,9 @@ export async function loadVoiceReceptionistSessionForGuest(
 }
 
 /** Global kill switch AND property opt-in — the same gate `voice-receptionist-start` enforces. */
-export async function isVoiceReceptionistAvailableForProperty(propertyId: string): Promise<boolean> {
+export async function isVoiceReceptionistAvailableForProperty(
+  propertyId: string
+): Promise<boolean> {
   const global = await getGlobalVoiceReceptionistSettings();
   if (!global.enabled) return false;
   const settings = await getVoiceReceptionistSettings(propertyId);
@@ -364,7 +374,9 @@ export async function endVoiceReceptionistSession(
   if (session.endedAt) {
     const durationSeconds = Math.max(
       0,
-      Math.round((new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000)
+      Math.round(
+        (new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000
+      )
     );
     return { endedAt: session.endedAt, durationSeconds };
   }
@@ -374,11 +386,18 @@ export async function endVoiceReceptionistSession(
     0,
     Math.round((new Date(endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000)
   );
+  const estimatedCostUsd =
+    Math.round((durationSeconds / 60) * ESTIMATED_COST_PER_MINUTE_USD * 10000) / 10000;
 
   const sb = db();
   const { error } = await sb
     .from('voice_receptionist_sessions')
-    .update({ ended_at: endedAt, duration_seconds: durationSeconds, end_reason: endReason })
+    .update({
+      ended_at: endedAt,
+      duration_seconds: durationSeconds,
+      end_reason: endReason,
+      estimated_cost_usd: estimatedCostUsd,
+    })
     .eq('id', session.id)
     .is('ended_at', null);
   if (error) {
@@ -387,6 +406,91 @@ export async function endVoiceReceptionistSession(
   }
 
   return { endedAt, durationSeconds };
+}
+
+export type VoiceReceptionistUsageSummary = {
+  sessionsToday: number;
+  sessionsLast7Days: number;
+  sessionsLast30Days: number;
+  totalDurationSeconds: number;
+  avgDurationSeconds: number;
+  estimatedCostUsdLast30Days: number;
+  endReasonCounts: Record<string, number>;
+  recentSessions: Array<{
+    startedAt: string;
+    endedAt: string | null;
+    durationSeconds: number | null;
+    endReason: string | null;
+    estimatedCostUsd: number | null;
+  }>;
+};
+
+/**
+ * Lightweight admin usage/cost read for a property's voice receptionist — enough to spot
+ * volume and rough spend at a glance, not a full analytics product (last 30 days window).
+ */
+export async function getVoiceReceptionistUsageSummary(
+  propertyId: string
+): Promise<VoiceReceptionistUsageSummary> {
+  const sb = db();
+  const since30dIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await sb
+    .from('voice_receptionist_sessions')
+    .select('started_at, ended_at, duration_seconds, end_reason, estimated_cost_usd')
+    .eq('property_id', propertyId)
+    .gte('started_at', since30dIso)
+    .order('started_at', { ascending: false });
+  if (error) {
+    console.error('[voiceReceptionistService] load usage summary:', error.message);
+    throw new Error('Failed to load voice receptionist usage');
+  }
+
+  const rows = data ?? [];
+  const todayStartIso = manilaStartOfTodayIso();
+  const since7dIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  let sessionsToday = 0;
+  let sessionsLast7Days = 0;
+  let totalDurationSeconds = 0;
+  let durationCount = 0;
+  let estimatedCostUsdLast30Days = 0;
+  const endReasonCounts: Record<string, number> = {};
+
+  for (const row of rows) {
+    const startedAt = row.started_at as string;
+    if (startedAt >= todayStartIso) sessionsToday += 1;
+    if (startedAt >= since7dIso) sessionsLast7Days += 1;
+
+    const duration = row.duration_seconds as number | null;
+    if (typeof duration === 'number') {
+      totalDurationSeconds += duration;
+      durationCount += 1;
+    }
+
+    const cost = row.estimated_cost_usd as number | null;
+    if (typeof cost === 'number') estimatedCostUsdLast30Days += cost;
+
+    const reason = (row.end_reason as string | null) ?? 'open';
+    endReasonCounts[reason] = (endReasonCounts[reason] ?? 0) + 1;
+  }
+
+  return {
+    sessionsToday,
+    sessionsLast7Days,
+    sessionsLast30Days: rows.length,
+    totalDurationSeconds,
+    avgDurationSeconds: durationCount > 0 ? Math.round(totalDurationSeconds / durationCount) : 0,
+    estimatedCostUsdLast30Days: Math.round(estimatedCostUsdLast30Days * 10000) / 10000,
+    endReasonCounts,
+    recentSessions: rows.slice(0, 10).map((row) => ({
+      startedAt: row.started_at as string,
+      endedAt: (row.ended_at as string | null) ?? null,
+      durationSeconds: (row.duration_seconds as number | null) ?? null,
+      endReason: (row.end_reason as string | null) ?? null,
+      estimatedCostUsd: (row.estimated_cost_usd as number | null) ?? null,
+    })),
+  };
 }
 
 export type VoiceReceptionistTranscriptTurn = {
@@ -404,7 +508,8 @@ export function sanitizeVoiceTranscriptTurns(input: unknown): VoiceReceptionistT
     const role = row.role === 'assistant' ? 'assistant' : row.role === 'guest' ? 'guest' : null;
     const text = typeof row.text === 'string' ? row.text.trim() : '';
     if (!role || !text) continue;
-    const at = typeof row.at === 'string' && !Number.isNaN(new Date(row.at).getTime()) ? row.at : undefined;
+    const at =
+      typeof row.at === 'string' && !Number.isNaN(new Date(row.at).getTime()) ? row.at : undefined;
     turns.push({ role, text, at });
   }
   return turns;

@@ -90,6 +90,40 @@ export function useVoiceReceptionistSettings() {
   });
 }
 
+export type VoiceReceptionistUsageSummaryDto = {
+  sessionsToday: number;
+  sessionsLast7Days: number;
+  sessionsLast30Days: number;
+  totalDurationSeconds: number;
+  avgDurationSeconds: number;
+  estimatedCostUsdLast30Days: number;
+  endReasonCounts: Record<string, number>;
+  recentSessions: Array<{
+    startedAt: string;
+    endedAt: string | null;
+    durationSeconds: number | null;
+    endReason: string | null;
+    estimatedCostUsd: number | null;
+  }>;
+};
+
+const VOICE_RECEPTIONIST_USAGE_PATH = '/voice-receptionist-usage';
+
+export function useVoiceReceptionistUsage() {
+  const propertyId = usePropertyIdParam();
+  return useQuery({
+    queryKey: ['voice-receptionist-usage', propertyId],
+    queryFn: () =>
+      adminEdgeFetchJson<{ data: VoiceReceptionistUsageSummaryDto }>(
+        VOICE_RECEPTIONIST_USAGE_PATH,
+        undefined,
+        propertyId,
+        'Failed to load voice receptionist usage'
+      ).then((json) => json.data),
+    enabled: Boolean(propertyId),
+  });
+}
+
 export function useUpdateVoiceReceptionistSettings() {
   const qc = useQueryClient();
   const propertyId = usePropertyIdParam();

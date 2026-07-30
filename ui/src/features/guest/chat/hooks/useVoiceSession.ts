@@ -17,14 +17,7 @@ import {
 } from '@/features/guest/chat/lib/voiceReceptionistApi';
 
 export type VoiceSessionPhase =
-  | 'idle'
-  | 'connecting'
-  | 'listening'
-  | 'thinking'
-  | 'speaking'
-  | 'ending'
-  | 'ended'
-  | 'error';
+  'idle' | 'connecting' | 'listening' | 'thinking' | 'speaking' | 'ending' | 'ended' | 'error';
 
 export type VoiceSessionCaption = { role: VoiceReceptionistRole; text: string };
 
@@ -42,6 +35,23 @@ const PLAYBACK_SAMPLE_RATE = 24000;
 const AMPLITUDE_GAIN = 3.2;
 const AMPLITUDE_SMOOTHING = 0.72;
 const CAPTION_HISTORY_LIMIT = 20;
+/** No guest or assistant speech activity for this long ends the call (separate from the max-length cap). */
+const IDLE_TIMEOUT_MS = 45_000;
+const MIC_ACTIVITY_RMS_THRESHOLD = 0.02;
+
+function friendlyMicErrorMessage(e: unknown): string {
+  const name = e instanceof DOMException ? e.name : '';
+  if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'SecurityError') {
+    return 'Microphone access is blocked. Allow microphone access in your browser settings and try again.';
+  }
+  if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+    return 'No microphone was found on this device.';
+  }
+  if (name === 'NotReadableError' || name === 'TrackStartError') {
+    return 'Your microphone is in use by another app. Close it and try again.';
+  }
+  return 'Could not access your microphone.';
+}
 
 function readAnalyserRms(analyser: AnalyserNode, buffer: Uint8Array<ArrayBuffer>): number {
   analyser.getByteTimeDomainData(buffer);
@@ -87,6 +97,7 @@ export function useVoiceSession(propertySlug: string) {
   const lastRemainingRef = useRef(-1);
   const smoothedAmpRef = useRef(0);
   const lastSetAmpRef = useRef(0);
+  const lastActivityMsRef = useRef(Date.now());
 
   const currentInputBufferRef = useRef('');
   const currentOutputBufferRef = useRef('');
@@ -100,8 +111,15 @@ export function useVoiceSession(propertySlug: string) {
     setPhase((prev) => (prev === 'ending' || prev === 'ended' || prev === 'error' ? prev : next));
   }, []);
 
+  const markActivity = useCallback(() => {
+    lastActivityMsRef.current = Date.now();
+  }, []);
+
   const appendTranscriptTurn = useCallback((role: VoiceReceptionistRole, text: string) => {
-    transcriptRef.current = [...transcriptRef.current, { role, text, at: new Date().toISOString() }];
+    transcriptRef.current = [
+      ...transcriptRef.current,
+      { role, text, at: new Date().toISOString() },
+    ];
     setCaptions((prev) => [...prev, { role, text }].slice(-CAPTION_HISTORY_LIMIT));
   }, []);
 
@@ -172,9 +190,11 @@ export function useVoiceSession(propertySlug: string) {
       sessionIdRef.current = null;
 
       if (sessionId) {
-        void endVoiceReceptionistSession(sessionId, { endReason: reason, transcript }).catch((e) => {
-          console.warn('[useVoiceSession] end call failed:', (e as Error).message);
-        });
+        void endVoiceReceptionistSession(sessionId, { endReason: reason, transcript }).catch(
+          (e) => {
+            console.warn('[useVoiceSession] end call failed:', (e as Error).message);
+          }
+        );
       }
 
       setPhase(reason === 'error' ? 'error' : 'ended');
@@ -197,6 +217,14 @@ export function useVoiceSession(propertySlug: string) {
           end('timeout');
           return;
         }
+      }
+
+      if (
+        phaseRef.current !== 'connecting' &&
+        Date.now() - lastActivityMsRef.current > IDLE_TIMEOUT_MS
+      ) {
+        end('timeout', 'Ended the call due to inactivity.');
+        return;
       }
 
       let target = 0;
@@ -224,44 +252,66 @@ export function useVoiceSession(propertySlug: string) {
     rafIdRef.current = requestAnimationFrame(tick);
   }, [end]);
 
-  const playPcm16Base64 = useCallback(async (b64: string) => {
-    const samples = base64ToInt16(b64);
-    const ctx = playCtxRef.current ?? new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
-    playCtxRef.current = ctx;
-    if (!playAnalyserRef.current) {
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.connect(ctx.destination);
-      playAnalyserRef.current = analyser;
+  const playPcm16Base64 = useCallback(
+    async (b64: string) => {
+      const samples = base64ToInt16(b64);
+      const ctx = playCtxRef.current ?? new AudioContext({ sampleRate: PLAYBACK_SAMPLE_RATE });
+      playCtxRef.current = ctx;
+      if (!playAnalyserRef.current) {
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.connect(ctx.destination);
+        playAnalyserRef.current = analyser;
+      }
+      if (ctx.state === 'suspended') await ctx.resume();
+
+      const float = new Float32Array(samples.length);
+      for (let i = 0; i < samples.length; i++) float[i] = samples[i]! / 0x8000;
+
+      const buffer = ctx.createBuffer(1, float.length, PLAYBACK_SAMPLE_RATE);
+      buffer.copyToChannel(float, 0);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(playAnalyserRef.current);
+
+      const startAt = Math.max(ctx.currentTime, nextPlayTimeRef.current);
+      nextPlayTimeRef.current = startAt + buffer.duration;
+      pendingPlaybackRef.current += 1;
+      setPhaseIfActive('speaking');
+
+      source.onended = () => {
+        pendingPlaybackRef.current = Math.max(0, pendingPlaybackRef.current - 1);
+        if (pendingPlaybackRef.current === 0) setPhaseIfActive('listening');
+      };
+      source.start(startAt);
+    },
+    [setPhaseIfActive]
+  );
+
+  /**
+   * Requests mic permission up front — before minting a session/token — so a permission
+   * denial never consumes a guest daily-cap slot or leaves an orphaned session row.
+   */
+  const acquireMicStream = useCallback(async (): Promise<MediaStream> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
+      });
+      micStreamRef.current = stream;
+      stream.getTracks().forEach((track) => {
+        track.addEventListener('ended', () => {
+          if (!endedRef.current) end('error', 'Microphone disconnected.');
+        });
+      });
+      return stream;
+    } catch (e) {
+      throw new Error(friendlyMicErrorMessage(e));
     }
-    if (ctx.state === 'suspended') await ctx.resume();
+  }, [end]);
 
-    const float = new Float32Array(samples.length);
-    for (let i = 0; i < samples.length; i++) float[i] = samples[i]! / 0x8000;
-
-    const buffer = ctx.createBuffer(1, float.length, PLAYBACK_SAMPLE_RATE);
-    buffer.copyToChannel(float, 0);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(playAnalyserRef.current);
-
-    const startAt = Math.max(ctx.currentTime, nextPlayTimeRef.current);
-    nextPlayTimeRef.current = startAt + buffer.duration;
-    pendingPlaybackRef.current += 1;
-    setPhaseIfActive('speaking');
-
-    source.onended = () => {
-      pendingPlaybackRef.current = Math.max(0, pendingPlaybackRef.current - 1);
-      if (pendingPlaybackRef.current === 0) setPhaseIfActive('listening');
-    };
-    source.start(startAt);
-  }, [setPhaseIfActive]);
-
-  const startMic = useCallback(async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
-    });
-    micStreamRef.current = stream;
+  const attachMicWorklet = useCallback(async () => {
+    const stream = micStreamRef.current;
+    if (!stream) throw new Error('Microphone not ready.');
 
     const ctx = new AudioContext({ sampleRate: MIC_SAMPLE_RATE });
     micCtxRef.current = ctx;
@@ -274,7 +324,9 @@ export function useVoiceSession(propertySlug: string) {
 
     worklet.port.onmessage = (event: MessageEvent<Float32Array>) => {
       const chunk = event.data;
-      micRmsRef.current = computeRms(chunk);
+      const rms = computeRms(chunk);
+      micRmsRef.current = rms;
+      if (rms > MIC_ACTIVITY_RMS_THRESHOLD) markActivity();
       if (mutedRef.current) return;
       if (wsRef.current?.readyState !== WebSocket.OPEN) return;
       const pcm = floatTo16BitPCM(chunk);
@@ -288,7 +340,7 @@ export function useVoiceSession(propertySlug: string) {
 
     // Not connected to destination — we only need it for capture, not local monitoring.
     source.connect(worklet);
-  }, []);
+  }, [markActivity]);
 
   const handleToolCall = useCallback(
     async (ws: WebSocket, toolCall: ToolCallMessage) => {
@@ -342,7 +394,8 @@ export function useVoiceSession(propertySlug: string) {
 
       if (msg.setupComplete) {
         try {
-          await startMic();
+          await attachMicWorklet();
+          markActivity();
           setPhaseIfActive('listening');
         } catch (e) {
           end('error', (e as Error).message || 'Microphone access failed.');
@@ -351,6 +404,7 @@ export function useVoiceSession(propertySlug: string) {
       }
 
       if (msg.toolCall) {
+        markActivity();
         void handleToolCall(ws, msg.toolCall as ToolCallMessage);
         return;
       }
@@ -359,11 +413,13 @@ export function useVoiceSession(propertySlug: string) {
       if (!serverContent) return;
 
       if (serverContent.inputTranscription?.text) {
+        markActivity();
         if (currentOutputBufferRef.current) flushOutputBuffer();
         currentInputBufferRef.current += serverContent.inputTranscription.text;
         setLiveCaption({ role: 'guest', text: currentInputBufferRef.current });
       }
       if (serverContent.outputTranscription?.text) {
+        markActivity();
         if (currentInputBufferRef.current) flushInputBuffer();
         currentOutputBufferRef.current += serverContent.outputTranscription.text;
         setLiveCaption({ role: 'assistant', text: currentOutputBufferRef.current });
@@ -371,7 +427,10 @@ export function useVoiceSession(propertySlug: string) {
 
       const parts = serverContent.modelTurn?.parts ?? [];
       for (const part of parts) {
-        if (part.inlineData?.data) void playPcm16Base64(part.inlineData.data);
+        if (part.inlineData?.data) {
+          markActivity();
+          void playPcm16Base64(part.inlineData.data);
+        }
       }
 
       if (serverContent.turnComplete) {
@@ -380,11 +439,24 @@ export function useVoiceSession(propertySlug: string) {
         setLiveCaption(null);
       }
     },
-    [end, flushInputBuffer, flushOutputBuffer, handleToolCall, playPcm16Base64, setPhaseIfActive, startMic]
+    [
+      attachMicWorklet,
+      end,
+      flushInputBuffer,
+      flushOutputBuffer,
+      handleToolCall,
+      markActivity,
+      playPcm16Base64,
+      setPhaseIfActive,
+    ]
   );
 
   const start = useCallback(() => {
-    if (phaseRef.current !== 'idle' && phaseRef.current !== 'ended' && phaseRef.current !== 'error') {
+    if (
+      phaseRef.current !== 'idle' &&
+      phaseRef.current !== 'ended' &&
+      phaseRef.current !== 'error'
+    ) {
       return;
     }
 
@@ -400,10 +472,19 @@ export function useVoiceSession(propertySlug: string) {
 
     void (async () => {
       try {
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          throw new Error('You appear to be offline. Check your connection and try again.');
+        }
+
+        // Ask for the mic before minting a session/token, so a permission denial never
+        // consumes a guest daily-cap slot or leaves an orphaned session row server-side.
+        await acquireMicStream();
+
         const minted = await startVoiceReceptionistSession(propertySlug);
         sessionIdRef.current = minted.sessionId;
         maxSessionSecondsRef.current = minted.maxSessionSeconds;
         startedAtMsRef.current = Date.now();
+        lastActivityMsRef.current = Date.now();
         setRemainingSeconds(minted.maxSessionSeconds);
 
         const ws = new WebSocket(geminiLiveWebSocketUrl(minted.ephemeralToken));
@@ -431,18 +512,20 @@ export function useVoiceSession(propertySlug: string) {
         );
 
         ws.onmessage = (event) => void handleSocketMessage(ws, event);
-        ws.onerror = () => end('error', 'Voice connection lost.');
+        ws.onerror = () => end('error', 'Voice connection lost. Please try again.');
         ws.onclose = () => {
-          if (!endedRef.current) end('error', 'Voice connection closed unexpectedly.');
+          if (!endedRef.current)
+            end('error', 'Voice connection closed unexpectedly. Please try again.');
         };
 
         startAmplitudeLoop();
       } catch (e) {
+        stopMic();
         setErrorMessage((e as Error).message || 'Could not start the voice receptionist.');
         setPhase('error');
       }
     })();
-  }, [end, handleSocketMessage, propertySlug, startAmplitudeLoop]);
+  }, [acquireMicStream, end, handleSocketMessage, propertySlug, startAmplitudeLoop, stopMic]);
 
   const toggleMute = useCallback(() => {
     setMuted((prev) => {
@@ -456,6 +539,15 @@ export function useVoiceSession(propertySlug: string) {
       end('guest_ended');
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on unmount only
+  }, []);
+
+  // Hard browser close/refresh doesn't unmount React — best-effort end call so the session
+  // row closes promptly instead of relying solely on the server's stale-session cap aging.
+  useEffect(() => {
+    const handlePageHide = () => end('guest_ended');
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stable listener, end() is a ref-backed callback
   }, []);
 
   return {

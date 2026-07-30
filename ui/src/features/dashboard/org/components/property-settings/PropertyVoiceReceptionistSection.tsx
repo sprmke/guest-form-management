@@ -8,6 +8,7 @@ import {
   buildVoiceReceptionistPatch,
   useUpdateVoiceReceptionistSettings,
   useVoiceReceptionistSettings,
+  useVoiceReceptionistUsage,
   voiceReceptionistFormIsDirty,
   voiceReceptionistToFormValues,
   type VoiceReceptionistFormValues,
@@ -28,6 +29,51 @@ function VoiceReceptionistSectionSkeleton() {
       <div className="bg-muted h-10 animate-pulse rounded-lg" />
       <div className="bg-muted h-10 animate-pulse rounded-lg" />
       <div className="bg-muted h-24 animate-pulse rounded-lg" />
+    </div>
+  );
+}
+
+function formatDurationShort(seconds: number): string {
+  if (seconds <= 0) return '0s';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function UsageStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-border/40 bg-muted/15 rounded-lg border px-3 py-2.5">
+      <p className="text-muted-foreground text-xs font-medium uppercase tracking-wider">{label}</p>
+      <p className="text-foreground mt-0.5 text-lg font-bold tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function VoiceReceptionistUsagePanel() {
+  const { data, isLoading, isError } = useVoiceReceptionistUsage();
+
+  if (isError) return null;
+  if (isLoading || !data) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4" aria-hidden>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-muted h-16 animate-pulse rounded-lg" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
+        Usage — last 30 days
+      </p>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+        <UsageStat label="Today" value={String(data.sessionsToday)} />
+        <UsageStat label="Last 7 days" value={String(data.sessionsLast7Days)} />
+        <UsageStat label="Avg. length" value={formatDurationShort(data.avgDurationSeconds)} />
+        <UsageStat label="Est. cost" value={`$${data.estimatedCostUsdLast30Days.toFixed(2)}`} />
+      </div>
     </div>
   );
 }
@@ -186,6 +232,8 @@ export function PropertyVoiceReceptionistSection() {
               {update.isPending ? 'Saving...' : 'Save'}
             </Button>
           </div>
+
+          <VoiceReceptionistUsagePanel />
         </div>
       )}
     </AdminSection>

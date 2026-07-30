@@ -363,6 +363,19 @@ Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other
 
 Save path: `PATCH voice-receptionist-settings?property_id=` (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts` (manual draft-state, mirrors `useAppSettings.ts`). UI: `PropertyVoiceReceptionistSection.tsx`.
 
+**Usage panel** — read-only "Usage — last 30 days" stat grid (sessions today, last 7 days, avg.
+length, estimated cost) below the Save button. `GET voice-receptionist-usage?property_id=`
+(`settings:view`), hook `useVoiceReceptionistUsage`. Estimated cost is a rough per-minute
+blended-rate estimate persisted on `voice_receptionist_sessions.estimated_cost_usd` when a
+session ends — visibility only, not a billing figure (Gemini Live bills by token, not duration).
+
+**Guest-side hardening (Task 5):** sessions also end with `end_reason='timeout'` after 45s of
+no guest/assistant speech activity (idle timeout, distinct from the max-session-length cap);
+mic permission is requested before minting a session so a denial never consumes a daily-cap
+slot; hard connection drops / mic disconnects call the end endpoint immediately (no zombie
+sessions); mic-permission and cap-limit errors show plain-language copy in the overlay and stay
+open until the guest dismisses them (no forced auto-close).
+
 ---
 
 ## Danger Zone
@@ -398,6 +411,7 @@ Save path: `PATCH voice-receptionist-settings?property_id=` (`settings:edit`). H
 | Media upload/delete                          | `POST` / `DELETE upload-property-media?property_id=`   |
 | Payment QR / signature                       | `POST upload-app-settings-asset?property_id=`          |
 | Voice receptionist settings                  | `GET`/`PATCH voice-receptionist-settings?property_id=` |
+| Voice receptionist usage/cost read           | `GET voice-receptionist-usage?property_id=`            |
 | Archive                                      | `PATCH update-property` `{ status: "INACTIVE" }`       |
 | Restore                                      | `PATCH update-property` `{ status: "ACTIVE" }`         |
 | Delete                                       | `DELETE delete-property` `{ propertyId }`              |

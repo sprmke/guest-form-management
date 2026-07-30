@@ -80,12 +80,16 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    if (session.phase !== 'ended' && session.phase !== 'error') return;
-    closeTimeoutRef.current = setTimeout(onClose, session.phase === 'error' ? 1800 : 700);
+    // 'error' (mic denied, caps hit, connection lost, …) stays open until the guest
+    // dismisses it manually — auto-closing a message they haven't had time to read yet
+    // is worse than requiring one extra tap.
+    if (session.phase === 'error') return;
+    if (session.phase !== 'ended') return;
+    closeTimeoutRef.current = setTimeout(onClose, session.errorMessage ? 2200 : 700);
     return () => {
       if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     };
-  }, [session.phase, onClose]);
+  }, [session.phase, session.errorMessage, onClose]);
 
   const handleClose = () => {
     session.end('guest_ended');
@@ -108,24 +112,36 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
           <span className="text-muted-foreground w-11 text-xs font-medium tabular-nums">
             {formatCountdown(session.remainingSeconds)}
           </span>
-          <p aria-live="polite" className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+          <p
+            aria-live="polite"
+            className="text-muted-foreground text-xs font-medium uppercase tracking-wider"
+          >
             {statusLabel(session.phase)}
           </p>
           <button
             type="button"
             aria-label="End call"
             onClick={handleClose}
-            className={cn(controlButtonClass, 'text-muted-foreground hover:bg-muted hover:text-foreground w-11')}
+            className={cn(
+              controlButtonClass,
+              'text-muted-foreground hover:bg-muted hover:text-foreground w-11'
+            )}
           >
             <PhoneOff className="size-5" aria-hidden />
           </button>
         </div>
 
         <div className="bg-muted/20 flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-4 py-6">
-          <ReceptionistAvatar state={toAvatarState(session.phase)} amplitude={session.amplitude} size={172} />
+          <ReceptionistAvatar
+            state={toAvatarState(session.phase)}
+            amplitude={session.amplitude}
+            size={172}
+          />
 
           {session.errorMessage ? (
-            <p className="text-destructive max-w-xs text-center text-sm">{session.errorMessage}</p>
+            <p role="alert" className="text-destructive max-w-xs text-center text-sm">
+              {session.errorMessage}
+            </p>
           ) : null}
 
           {captionLines.length > 0 ? (
@@ -153,7 +169,12 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
             aria-label={session.muted ? 'Unmute microphone' : 'Mute microphone'}
             aria-pressed={session.muted}
             onClick={session.toggleMute}
-            disabled={session.phase === 'connecting' || session.phase === 'ending' || session.phase === 'ended'}
+            disabled={
+              session.phase === 'connecting' ||
+              session.phase === 'ending' ||
+              session.phase === 'ended' ||
+              session.phase === 'error'
+            }
             className={cn(
               controlButtonClass,
               'size-12 border',
@@ -162,13 +183,20 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
                 : 'bg-background text-foreground border-border hover:bg-muted'
             )}
           >
-            {session.muted ? <MicOff className="size-5" aria-hidden /> : <Mic className="size-5" aria-hidden />}
+            {session.muted ? (
+              <MicOff className="size-5" aria-hidden />
+            ) : (
+              <Mic className="size-5" aria-hidden />
+            )}
           </button>
           <button
             type="button"
             aria-label="End call"
             onClick={handleClose}
-            className={cn(controlButtonClass, 'bg-destructive text-destructive-foreground size-12 hover:opacity-90')}
+            className={cn(
+              controlButtonClass,
+              'bg-destructive text-destructive-foreground size-12 hover:opacity-90'
+            )}
           >
             <PhoneOff className="size-5" aria-hidden />
           </button>
