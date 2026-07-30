@@ -35,6 +35,21 @@ Inspired by Airbnb/Agoda search-first patterns, but avoids common pain points:
 
 ---
 
+## Host-facing knowledge
+
+This is the main guest homepage — search, featured stays, and destination tiles that send people into the property catalog. Hosts rarely land here unless they switch back to "explore" mode.
+
+**Common host questions**
+
+- Q: Will my listing appear on the home page automatically?
+  A: Not yet — featured cards still use sample data until the public catalog is connected to live published properties.
+- Q: How do guests get from here to my property?
+  A: They search or tap a destination, browse the homes catalog, open your listing, then reserve or contact you from there.
+- Q: Where does "Become a host?" take someone?
+  A: It switches to host mode and the host marketing page, then sign-in — not straight into your dashboard.
+
+---
+
 ## Sections
 
 | Section        | Component             | Behavior                               |

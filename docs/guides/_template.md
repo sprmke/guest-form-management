@@ -18,6 +18,21 @@ _(Who uses this page and what it accomplishes.)_
 
 ---
 
+## Host-facing knowledge
+
+_(One short paragraph: what this page/feature does, in plain language.)_
+
+**Common host questions**
+
+- Q: _question a host might ask_
+  A: _plain-English answer, no jargon, no internal file paths_
+- Q: …
+  A: …
+
+This section is written for an AI assistant to quote directly to hosts — no code, no DB column names, no internal endpoint names.
+
+---
+
 ## [Section name]
 
 ### Fields
