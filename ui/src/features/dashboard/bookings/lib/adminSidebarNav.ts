@@ -161,6 +161,11 @@ export function buildPropertyNavSections(
           Icon: Megaphone,
         },
         {
+          label: 'Inbox',
+          href: propertySectionPath(orgSlug, propertySlug, 'inbox'),
+          Icon: Inbox,
+        },
+        {
           label: 'Notifications',
           href: propertySectionPath(orgSlug, propertySlug, 'notifications'),
           Icon: Bell,
@@ -211,6 +216,11 @@ export function buildParkingNavSections(orgSlug: string, parkingSlug: string): S
           label: 'Team',
           href: parkingSectionPath(orgSlug, parkingSlug, 'team'),
           Icon: Users,
+        },
+        {
+          label: 'Inbox',
+          href: parkingSectionPath(orgSlug, parkingSlug, 'inbox'),
+          Icon: Inbox,
         },
         {
           label: 'Notifications',
