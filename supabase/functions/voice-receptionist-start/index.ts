@@ -100,16 +100,17 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
       'Call getPropertyFact for anything not already covered by Known facts before guessing.';
     const systemInstruction = `${basePrompt}${personaOverride}\n\n${SAFETY_POLICY}\n\nKnown facts:\n${grounding.factsText}`;
 
-    const session = await createVoiceReceptionistSession({
-      propertyId,
-      guestUserId: user.id,
-      conversationId: conversation.id,
-    });
-
+    // Mint before inserting the session row so a Gemini failure does not burn a daily-cap slot.
     const minted = await mintGeminiLiveEphemeralToken({
       voiceName: settings.voiceId,
       systemInstruction,
       expireMinutes: Math.max(Math.ceil(settings.maxSessionSeconds / 60) + 2, 5),
+    });
+
+    const session = await createVoiceReceptionistSession({
+      propertyId,
+      guestUserId: user.id,
+      conversationId: conversation.id,
     });
 
     return jsonSuccess(req, {
@@ -124,7 +125,7 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
       return jsonError(req, e.message, 429);
     }
     const message = (e as Error).message;
-    if (message.includes('GEMINI_API_KEY')) {
+    if (message.includes('GEMINI_API_KEY') || message.includes('GEMINI_API_KEYS')) {
       return jsonError(req, 'Voice receptionist is not configured.', 503);
     }
     throw e;
