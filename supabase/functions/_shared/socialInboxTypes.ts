@@ -4,6 +4,13 @@ export type ReplyStatus = 'pending' | 'replied' | 'none';
 export type MessageDirection = 'inbound' | 'outbound';
 export type ConnectionStatus = 'connected' | 'disconnected' | 'error' | 'pending';
 
+export type MetaInboxScopeSource = 'org' | 'property' | 'parking';
+
+export type InboxScopeFilter = {
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
 export type SocialChannelConnectionRow = {
   id: string;
   organization_id: string;
@@ -19,9 +26,12 @@ export type SocialChannelConnectionRow = {
   webhook_subscribed_at: string | null;
   last_sync_at: string | null;
   error_message: string | null;
+  property_id?: string | null;
+  parking_id?: string | null;
   meta_backfill_phase?: 'messenger' | 'instagram' | null;
   meta_backfill_next_url?: string | null;
   meta_backfill_done?: boolean;
+  updated_at?: string;
 };
 
 export type SocialConversationRow = {
@@ -43,6 +53,7 @@ export type SocialConversationRow = {
   linked_post_id: string | null;
   linked_post_url: string | null;
   property_id?: string | null;
+  parking_id?: string | null;
   guest_user_id?: string | null;
   inquiry_check_in?: string | null;
   inquiry_check_out?: string | null;
@@ -90,4 +101,10 @@ export type InboxThreadFilter = {
   search?: string;
   cursor?: string;
   limit?: number;
+  /** When set, web threads filtered to this property; Meta uses effective connection ids. */
+  propertyId?: string | null;
+  /** When set, web threads filtered to this parking; Meta uses effective connection ids. */
+  parkingId?: string | null;
+  /** Meta connection ids visible in this scope (org default and/or override). */
+  metaConnectionIds?: string[] | null;
 };

@@ -81,6 +81,55 @@ export async function upsertChannelConnection(
   return data as SocialChannelConnectionRow;
 }
 
+function applyInboxScopeFilters(
+  // deno-lint-ignore no-explicit-any
+  q: any,
+  filter: InboxThreadFilter
+  // deno-lint-ignore no-explicit-any
+): any {
+  const propertyId = filter.propertyId ?? null;
+  const parkingId = filter.parkingId ?? null;
+  const metaIds = filter.metaConnectionIds ?? null;
+
+  if (!propertyId && !parkingId) {
+    return q;
+  }
+
+  const platform = filter.platform ?? 'all';
+
+  if (platform === 'web') {
+    if (propertyId) return q.eq('property_id', propertyId);
+    if (parkingId) return q.eq('parking_id', parkingId);
+    return q;
+  }
+
+  if (
+    platform === 'facebook' ||
+    platform === 'instagram' ||
+    platform === 'tiktok' ||
+    platform === 'airbnb'
+  ) {
+    if (metaIds?.length) return q.in('connection_id', metaIds);
+    // No Meta connection for this scope — force empty
+    return q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+
+  // platform === 'all': web scoped OR meta on effective connection ids
+  const orParts: string[] = [];
+  if (propertyId) {
+    orParts.push(`and(platform.eq.web,property_id.eq.${propertyId})`);
+  } else if (parkingId) {
+    orParts.push(`and(platform.eq.web,parking_id.eq.${parkingId})`);
+  }
+  if (metaIds?.length) {
+    orParts.push(`connection_id.in.(${metaIds.join(',')})`);
+  }
+  if (!orParts.length) {
+    return q.eq('id', '00000000-0000-0000-0000-000000000000');
+  }
+  return q.or(orParts.join(','));
+}
+
 export async function listConversations(
   orgId: string,
   filter: InboxThreadFilter
@@ -114,6 +163,8 @@ export async function listConversations(
   if (filter.cursor) {
     q = q.lt('last_message_at', filter.cursor);
   }
+
+  q = applyInboxScopeFilters(q, filter);
 
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -418,17 +469,8 @@ export const INBOX_THREAD_PAGE_SIZE = 40;
 export async function getFacebookConnectionForOrg(
   orgId: string
 ): Promise<SocialChannelConnectionRow | null> {
-  const sb = socialInboxDb();
-  const { data, error } = await sb
-    .from('social_channel_connections')
-    .select('*')
-    .eq('organization_id', orgId)
-    .eq('platform', 'facebook')
-    .eq('status', 'connected')
-    .limit(1);
-  if (error) throw new Error(error.message);
-  const row = data?.[0];
-  return (row as SocialChannelConnectionRow | undefined) ?? null;
+  const { getOrgDefaultFacebookConnection } = await import('./metaInboxScope.ts');
+  return getOrgDefaultFacebookConnection(orgId);
 }
 
 export function metaBackfillHasMore(connection: SocialChannelConnectionRow | null): boolean {
@@ -497,7 +539,9 @@ export async function setMetaBackfillState(
     })
     .eq('organization_id', orgId)
     .eq('platform', 'facebook')
-    .eq('status', 'connected');
+    .eq('status', 'connected')
+    .is('property_id', null)
+    .is('parking_id', null);
 }
 
 export async function markMetaInitialSyncComplete(orgId: string): Promise<void> {
@@ -509,6 +553,8 @@ export async function markMetaInitialSyncComplete(orgId: string): Promise<void> 
     .eq('organization_id', orgId)
     .eq('platform', 'facebook')
     .eq('status', 'connected')
+    .is('property_id', null)
+    .is('parking_id', null)
     .is('last_sync_at', null);
   const { data: igRows } = await sb
     .from('social_channel_connections')
@@ -516,6 +562,8 @@ export async function markMetaInitialSyncComplete(orgId: string): Promise<void> 
     .eq('organization_id', orgId)
     .eq('platform', 'instagram')
     .eq('status', 'connected')
+    .is('property_id', null)
+    .is('parking_id', null)
     .limit(1);
   if (igRows?.[0]) {
     await sb
@@ -524,6 +572,8 @@ export async function markMetaInitialSyncComplete(orgId: string): Promise<void> 
       .eq('organization_id', orgId)
       .eq('platform', 'instagram')
       .eq('status', 'connected')
+      .is('property_id', null)
+      .is('parking_id', null)
       .is('last_sync_at', null);
   }
 }
@@ -633,6 +683,22 @@ export async function searchInboxConversations(
   } else if (filter.status === 'replied') {
     rows = rows.filter((r) => r.reply_status === 'replied');
   }
+
+  const propertyId = filter.propertyId ?? null;
+  const parkingId = filter.parkingId ?? null;
+  const metaIds = filter.metaConnectionIds ? new Set(filter.metaConnectionIds) : null;
+  if (propertyId || parkingId) {
+    rows = rows.filter((r) => {
+      if (r.platform === 'web') {
+        if (propertyId) return r.property_id === propertyId;
+        if (parkingId) return r.parking_id === parkingId;
+        return false;
+      }
+      if (!metaIds) return false;
+      return metaIds.has(r.connection_id);
+    });
+  }
+
   if (filter.cursor) {
     const cursorMs = new Date(filter.cursor).getTime();
     rows = rows.filter((r) => new Date(r.last_message_at).getTime() < cursorMs);
