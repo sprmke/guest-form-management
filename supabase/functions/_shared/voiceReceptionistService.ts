@@ -325,10 +325,19 @@ export async function loadVoiceReceptionistSessionForGuest(
 export async function isVoiceReceptionistAvailableForProperty(
   propertyId: string
 ): Promise<boolean> {
-  const global = await getGlobalVoiceReceptionistSettings();
-  if (!global.enabled) return false;
-  const settings = await getVoiceReceptionistSettings(propertyId);
-  return settings.enabled;
+  try {
+    const global = await getGlobalVoiceReceptionistSettings();
+    if (!global.enabled) return false;
+    const settings = await getVoiceReceptionistSettings(propertyId);
+    return settings.enabled;
+  } catch (error) {
+    // Never break guest chat start/resume if voice settings are missing or unreadable.
+    console.error(
+      '[voiceReceptionistService] availability check failed:',
+      (error as Error).message
+    );
+    return false;
+  }
 }
 
 export type VoiceReceptionistEndReason = 'guest_ended' | 'timeout' | 'cap_reached' | 'error';
