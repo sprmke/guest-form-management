@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { type AdminUser, verifyAdminJwt } from './auth.ts';
 import { type AuthenticatedUser, verifyAuthenticatedUser } from './orgAuth.ts';
+import { verifySuperAdminJwt } from './superAdminAuth.ts';
 import {
   handleEdgeError,
   handleOptions,
@@ -19,6 +20,23 @@ export function serveAdmin(
     try {
       const admin = await verifyAdminJwt(req);
       return await handler(req, admin);
+    } catch (error) {
+      return handleEdgeError(req, error, logPrefix);
+    }
+  });
+}
+
+/** Authenticated user whose email is on SUPER_ADMIN_EMAILS — platform-wide settings only. */
+export function serveSuperAdmin(
+  logPrefix: string,
+  handler: (req: Request, user: AuthenticatedUser) => Promise<Response>
+): void {
+  serve(async (req) => {
+    const options = handleOptions(req);
+    if (options) return options;
+    try {
+      const user = await verifySuperAdminJwt(req);
+      return await handler(req, user);
     } catch (error) {
       return handleEdgeError(req, error, logPrefix);
     }

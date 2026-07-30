@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -10,6 +10,7 @@ import {
   GuestChatSearchPanelRow,
 } from '@/features/guest/chat/components/GuestChatHeaderBar';
 import { GuestChatThread } from '@/features/guest/chat/components/GuestChatThread';
+import { VoiceSessionOverlay } from '@/features/guest/chat/components/voice/VoiceSessionOverlay';
 import { useGuestChatMessages, useGuestChatStart } from '@/features/guest/chat/hooks/useGuestChat';
 import {
   guestPropertyPath,
@@ -94,6 +95,7 @@ function PropertyChatContent({
     checkOutDate,
     enabled: true,
   });
+  const [voiceSessionOpen, setVoiceSessionOpen] = useState(false);
 
   const conversationId = startQuery.data?.conversationId ?? null;
   const {
@@ -193,11 +195,23 @@ function PropertyChatContent({
                 replyStatus={replyStatus}
                 threadSearch={threadSearch}
                 searchEnabled={!!conversationId && !isLoading && messages.length > 0}
+                onStartVoiceSession={
+                  startQuery.data?.voiceReceptionistEnabled
+                    ? () => setVoiceSessionOpen(true)
+                    : undefined
+                }
               />
             )}
           </div>
           {!startQuery.isLoading ? <GuestChatSearchPanelRow threadSearch={threadSearch} /> : null}
         </div>
+
+        {voiceSessionOpen ? (
+          <VoiceSessionOverlay
+            propertySlug={propertySlug}
+            onClose={() => setVoiceSessionOpen(false)}
+          />
+        ) : null}
 
         {startQuery.isLoading || !conversationId ? (
           <div className="flex flex-1 items-center justify-center p-4">

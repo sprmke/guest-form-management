@@ -207,6 +207,14 @@ module.exports = {
           from: { transform: 'rotate(0deg)' },
           to: { transform: 'rotate(360deg)' },
         },
+        'turtle-blink': {
+          '0%, 92%, 100%': { transform: 'scaleY(1)' },
+          '96%': { transform: 'scaleY(0.1)' },
+        },
+        'think-dot': {
+          '0%, 100%': { opacity: '0.35', transform: 'translateY(0)' },
+          '50%': { opacity: '1', transform: 'translateY(-3px)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -229,6 +237,8 @@ module.exports = {
         bounce: 'bounce 1s infinite',
         float: 'float 3s ease-in-out infinite',
         'spin-slow': 'spin-slow 3s linear infinite',
+        'turtle-blink': 'turtle-blink 5s ease-in-out infinite',
+        'think-dot': 'think-dot 1.2s ease-in-out infinite',
       },
       boxShadow: {
         'soft-xs': '0 1px 2px 0 rgb(0 0 0 / 0.03)',

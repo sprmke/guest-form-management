@@ -15,7 +15,7 @@ const compat = new FlatCompat({
 });
 
 export default [
-  { ignores: ['dist', 'node_modules', 'tailwind.config.js', 'postcss.config.js'] },
+  { ignores: ['dist', 'node_modules', 'public', 'tailwind.config.js', 'postcss.config.js'] },
   ...compat.extends(
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',

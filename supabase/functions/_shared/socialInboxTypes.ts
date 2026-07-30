@@ -68,6 +68,8 @@ export type SocialMessageRow = {
   deleted_at?: string | null;
   reply_to_message_id?: string | null;
   reply_preview_text?: string | null;
+  /** `voice` for turns written from a Gemini Live voice receptionist session; default `text`. */
+  source_mode?: 'text' | 'voice';
 };
 
 export type SocialReplyTemplateRow = {

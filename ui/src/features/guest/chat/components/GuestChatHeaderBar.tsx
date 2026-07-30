@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-import { MoreVertical, Search } from 'lucide-react';
+import { Mic, MoreVertical, Search } from 'lucide-react';
 
 import { ChatThreadSearchPanel } from '@/components/chat/ChatThreadSearch';
 import { GuestChatAwaitingReplyBadge } from '@/components/chat/GuestChatAwaitingReplyBadge';
@@ -22,6 +22,8 @@ type HeaderProps = {
   replyStatus?: string | null;
   threadSearch: ChatThreadSearchController;
   searchEnabled?: boolean;
+  /** Shown as a "Talk to receptionist" option in the header menu when set. */
+  onStartVoiceSession?: () => void;
   /** e.g. inline dialog close — rendered after the options menu. */
   trailing?: ReactNode;
   className?: string;
@@ -39,10 +41,12 @@ export function GuestChatHeaderBar({
   replyStatus,
   threadSearch,
   searchEnabled = true,
+  onStartVoiceSession,
   trailing,
   className,
 }: HeaderProps) {
   const awaitingReply = isAwaitingHostReply(replyStatus);
+  const showMenu = searchEnabled || !!onStartVoiceSession;
 
   return (
     <div className={cn('flex min-w-0 flex-nowrap items-center gap-2 sm:gap-2.5', className)}>
@@ -55,7 +59,7 @@ export function GuestChatHeaderBar({
         ) : null}
         {awaitingReply ? <GuestChatAwaitingReplyBadge className="mt-0.5" /> : null}
       </div>
-      {searchEnabled ? (
+      {showMenu ? (
         <DropdownMenu modal>
           <DropdownMenuTrigger asChild>
             <button type="button" className={headerIconButtonClass} aria-label="Chat options">
@@ -68,14 +72,22 @@ export function GuestChatHeaderBar({
             className="z-[110] min-w-[9rem]"
             onCloseAutoFocus={(event) => event.preventDefault()}
           >
-            <DropdownMenuItem
-              onSelect={() => {
-                threadSearch.openSearch();
-              }}
-            >
-              <Search className="size-4" aria-hidden />
-              Search
-            </DropdownMenuItem>
+            {onStartVoiceSession ? (
+              <DropdownMenuItem onSelect={onStartVoiceSession}>
+                <Mic className="size-4" aria-hidden />
+                Talk to receptionist
+              </DropdownMenuItem>
+            ) : null}
+            {searchEnabled ? (
+              <DropdownMenuItem
+                onSelect={() => {
+                  threadSearch.openSearch();
+                }}
+              >
+                <Search className="size-4" aria-hidden />
+                Search
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}

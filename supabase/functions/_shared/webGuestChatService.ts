@@ -32,6 +32,10 @@ import {
 } from './guestChatAttachments.ts';
 
 import { buildWebMessageExternalId, buildWebThreadId } from './webGuestChatIds.ts';
+import { isVoiceReceptionistAvailableForProperty } from './voiceReceptionistService.ts';
+
+/** YYYY-MM-DD inquiry dates from the guest chat / contact-host flow. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 async function linkGuestWebConversationUser(
   sb: ReturnType<typeof createServiceClient>,
@@ -88,6 +92,7 @@ export type WebChatStartResult = {
   inquiryCheckIn: string;
   inquiryCheckOut: string;
   replyStatus: 'pending' | 'replied' | 'none';
+  voiceReceptionistEnabled: boolean;
 };
 
 export type WebChatResumeResult = {
@@ -106,6 +111,7 @@ export type WebChatResumeResult = {
     ownerName: string;
     ownerAvatarUrl: string | null;
   } | null;
+  voiceReceptionistEnabled: boolean;
 };
 
 export async function resumeGuestWebChat(
@@ -120,6 +126,7 @@ export async function resumeGuestWebChat(
     replyStatus: null,
     property: null,
     host: null,
+    voiceReceptionistEnabled: false,
   };
 
   const slug = propertySlug.trim();
@@ -162,6 +169,7 @@ export async function resumeGuestWebChat(
       ownerName: property.host.ownerName,
       ownerAvatarUrl: property.host.ownerAvatarUrl,
     },
+    voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
   };
 }
 
@@ -228,6 +236,7 @@ export async function startGuestWebChat(
     inquiryCheckIn: dates.checkIn,
     inquiryCheckOut: dates.checkOut,
     replyStatus: (conversation.reply_status as WebChatStartResult['replyStatus']) ?? 'none',
+    voiceReceptionistEnabled: await isVoiceReceptionistAvailableForProperty(property.id),
   };
 }
 

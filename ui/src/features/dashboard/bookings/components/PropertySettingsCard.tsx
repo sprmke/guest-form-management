@@ -12,6 +12,7 @@ import {
   ListChecks,
   Mail,
   MapPin,
+  Mic,
   Save,
   Share2,
   Shield,
@@ -95,6 +96,7 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
   { id: 'email-automations', label: 'Email automations', icon: Mail },
   { id: 'integrations', label: 'Integrations', icon: Globe },
+  { id: 'voice-receptionist', label: 'Voice Receptionist', icon: Mic },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
 ];
 
