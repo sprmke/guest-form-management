@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Loader2,
@@ -27,6 +28,7 @@ import {
   type InboxAttachmentPreview,
 } from '@/features/dashboard/inbox/lib/inboxMessageAttachments';
 import { templatesForConversationPlatform } from '@/features/dashboard/inbox/lib/quickReplyGroups';
+import { propertyDashboardPath } from '@/features/dashboard/org/lib/tenantPaths';
 import {
   type InboxConversation,
   type InboxMessage,
@@ -76,6 +78,7 @@ type Props = {
   isLoading: boolean;
   canReply: boolean;
   templates: InboxTemplate[];
+  orgSlug?: string | null;
   onBack?: () => void;
   onSend: (
     text: string,
@@ -99,6 +102,7 @@ export function InboxConversationView({
   isLoading,
   canReply,
   templates,
+  orgSlug,
   onBack,
   onSend,
   onEdit,
@@ -369,14 +373,23 @@ export function InboxConversationView({
           </div>
         </div>
         {isWeb && conversation.property_slug ? (
-          <a
-            href={`/properties/${encodeURIComponent(conversation.property_slug)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
-          >
-            View property
-          </a>
+          orgSlug ? (
+            <Link
+              to={propertyDashboardPath(orgSlug, conversation.property_slug)}
+              className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
+            >
+              View property
+            </Link>
+          ) : (
+            <a
+              href={`/properties/${encodeURIComponent(conversation.property_slug)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary flex min-h-[44px] shrink-0 items-center self-center px-1 text-xs font-medium underline-offset-2 hover:underline"
+            >
+              View property
+            </a>
+          )
         ) : null}
         {conversation.linked_post_url && (
           <a

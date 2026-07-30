@@ -36,6 +36,7 @@ function webhookWarning(conn: InboxConnection | undefined): string | null {
 type Props = {
   connections: InboxConnection[];
   comingSoon: ComingSoonPlatform[];
+  usingOrgMeta?: boolean;
   statusLoading?: boolean;
   statusError?: boolean;
   canManage: boolean;
@@ -49,7 +50,6 @@ function metaConnection(
   connections: InboxConnection[],
   platform: 'facebook' | 'instagram'
 ): InboxConnection | undefined {
-  console.log('connections::', connections);
   return connections.find((c) => c.platform === platform);
 }
 
@@ -131,6 +131,7 @@ function MetaPlatformRow({
 export function InboxChannelsTab({
   connections,
   comingSoon,
+  usingOrgMeta = false,
   statusLoading = false,
   statusError = false,
   canManage,
@@ -145,12 +146,6 @@ export function InboxChannelsTab({
   const igConn = metaConnection(connections, 'instagram');
   const metaState = resolveMetaUiState(fbConn, igConn);
   const metaConnected = metaState !== 'disconnected';
-
-  console.log({
-    igConn,
-    metaState,
-    metaConnected,
-  });
 
   const handleConnect = () => {
     if (statusLoading) return;
@@ -178,7 +173,14 @@ export function InboxChannelsTab({
             <div className="flex min-w-0 flex-1 items-start gap-3">
               <MetaLogo size="sm" className="shrink-0 pt-0.5" />
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium">Meta</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-medium">Meta</p>
+                  {usingOrgMeta ? (
+                    <span className="bg-muted text-muted-foreground rounded px-1.5 py-0.5 text-[11px] font-medium">
+                      Using org Meta
+                    </span>
+                  ) : null}
+                </div>
                 <p className="text-muted-foreground mt-0.5 text-xs">
                   {metaState === 'disconnected'
                     ? 'Connect Facebook Messenger and Instagram DMs'

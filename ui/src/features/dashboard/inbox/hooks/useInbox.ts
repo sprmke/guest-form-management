@@ -28,6 +28,7 @@ import {
   startMetaInboxOAuth,
   suggestInboxAiReply,
   runMetaInboxBackfillChunk,
+  type InboxApiScope,
   type InboxThreadsPageParam,
 } from '@/features/dashboard/inbox/lib/inboxApi';
 import { isInboxMockMode } from '@/features/dashboard/inbox/lib/inboxMockMode';
@@ -141,14 +142,27 @@ if (mockMode) {
   resetInboxMockStore();
 }
 
+function inboxScopeKey(scope?: InboxApiScope | null): [string | null, string | null] {
+  return [scope?.propertyId ?? null, scope?.parkingId ?? null];
+}
+
+function inboxMessagesQueryKey(conversationId: string, scope?: InboxApiScope | null) {
+  return [INBOX_MESSAGES_KEY, conversationId, ...inboxScopeKey(scope), mockMode] as const;
+}
+
 export function useInboxMockActive(): boolean {
   return mockMode;
 }
 
-export function useInboxConnections(orgSlug: string | null, orgId: string | null) {
+export function useInboxConnections(
+  orgSlug: string | null,
+  orgId: string | null,
+  scope?: InboxApiScope | null
+) {
   return useQuery({
-    queryKey: [INBOX_CONNECTIONS_KEY, orgSlug, orgId, mockMode],
-    queryFn: () => (mockMode ? mockFetchConnections() : fetchInboxConnections(orgSlug, orgId)),
+    queryKey: [INBOX_CONNECTIONS_KEY, orgSlug, orgId, ...inboxScopeKey(scope), mockMode],
+    queryFn: () =>
+      mockMode ? mockFetchConnections() : fetchInboxConnections(orgSlug, orgId, scope),
     enabled: mockMode || !!(orgSlug || orgId),
     refetchInterval: (query) => {
       if (mockMode) return false;
@@ -202,7 +216,11 @@ export function useMetaInboxSync(
   return { active: metaSyncInProgress };
 }
 
-export function useInboxMutations(orgSlug: string | null, orgId: string | null) {
+export function useInboxMutations(
+  orgSlug: string | null,
+  orgId: string | null,
+  scope?: InboxApiScope | null
+) {
   const qc = useQueryClient();
 
   const invalidate = () => {
@@ -213,7 +231,7 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
 
   const connectMeta = useMutation({
     mutationFn: (returnPath: string) =>
-      mockMode ? mockConnectMeta() : startMetaInboxOAuth(orgSlug, orgId, returnPath),
+      mockMode ? mockConnectMeta() : startMetaInboxOAuth(orgSlug, orgId, returnPath, scope),
     onSuccess: (url) => {
       if (!mockMode) window.location.href = url;
       else invalidate();
@@ -221,7 +239,8 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
   });
 
   const disconnectMeta = useMutation({
-    mutationFn: () => (mockMode ? mockDisconnectMeta() : disconnectMetaInbox(orgSlug, orgId)),
+    mutationFn: () =>
+      mockMode ? mockDisconnectMeta() : disconnectMetaInbox(orgSlug, orgId, 'meta', scope),
     onMutate: async () => {
       if (orgId) {
         metaSyncAbortByOrg.get(orgId)?.abort();
@@ -247,15 +266,17 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
         : sendInboxReply(orgSlug, orgId, opts.conversationId, opts.text, {
             privateReply: opts.privateReply,
             replyToMessageId: opts.replyToMessageId,
+            scope,
           }),
     onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      const msgKey = inboxMessagesQueryKey(vars.conversationId, scope);
+      await qc.cancelQueries({ queryKey: msgKey });
       const prev = qc.getQueryData<{
         pages: Array<{ messages: unknown[]; conversation: unknown }>;
-      }>([INBOX_MESSAGES_KEY, vars.conversationId]);
+      }>(msgKey);
       if (prev?.pages?.length && !mockMode) {
         const lastPage = prev.pages[prev.pages.length - 1];
-        qc.setQueryData([INBOX_MESSAGES_KEY, vars.conversationId], {
+        qc.setQueryData(msgKey, {
           ...prev,
           pages: [
             ...prev.pages.slice(0, -1),
@@ -282,11 +303,11 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
     },
     onError: (_err, vars, ctx) => {
       if (ctx?.prev && !mockMode) {
-        qc.setQueryData([INBOX_MESSAGES_KEY, vars.conversationId], ctx.prev);
+        qc.setQueryData(inboxMessagesQueryKey(vars.conversationId, scope), ctx.prev);
       }
     },
     onSuccess: (_, vars) => {
-      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      void qc.invalidateQueries({ queryKey: inboxMessagesQueryKey(vars.conversationId, scope) });
       scheduleThreadsInvalidate(qc);
     },
   });
@@ -302,9 +323,9 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
     mutationFn: (opts: { conversationId: string; messageId: string; text: string }) =>
       mockMode
         ? Promise.reject(new Error('Edit not available in preview mode'))
-        : editInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId, opts.text),
+        : editInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId, opts.text, scope),
     onSuccess: (_, vars) => {
-      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      void qc.invalidateQueries({ queryKey: inboxMessagesQueryKey(vars.conversationId, scope) });
       scheduleThreadsInvalidate(qc);
     },
   });
@@ -313,9 +334,9 @@ export function useInboxMutations(orgSlug: string | null, orgId: string | null) 
     mutationFn: (opts: { conversationId: string; messageId: string }) =>
       mockMode
         ? Promise.reject(new Error('Unsend not available in preview mode'))
-        : unsendInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId),
+        : unsendInboxMessage(orgSlug, orgId, opts.conversationId, opts.messageId, scope),
     onSuccess: (_, vars) => {
-      void qc.invalidateQueries({ queryKey: [INBOX_MESSAGES_KEY, vars.conversationId] });
+      void qc.invalidateQueries({ queryKey: inboxMessagesQueryKey(vars.conversationId, scope) });
       scheduleThreadsInvalidate(qc);
     },
   });
@@ -356,12 +377,13 @@ export function useInboxThreads(
     status: ThreadStatusFilter;
     platform: ThreadPlatformFilter;
     search: string;
-  }
+  },
+  scope?: InboxApiScope | null
 ) {
   const qc = useQueryClient();
 
   return useInfiniteQuery({
-    queryKey: [INBOX_THREADS_KEY, orgSlug, orgId, filters, mockMode],
+    queryKey: [INBOX_THREADS_KEY, orgSlug, orgId, ...inboxScopeKey(scope), filters, mockMode],
     queryFn: async ({ pageParam }): Promise<InboxThreadsPage> => {
       if (mockMode) {
         return mockFetchThreads(filters);
@@ -378,10 +400,15 @@ export function useInboxThreads(
         void qc.invalidateQueries({ queryKey: [INBOX_CONNECTIONS_KEY] });
       }
 
-      const list = await fetchInboxThreads(orgSlug, orgId, {
-        ...filters,
-        cursor: isSyncPage ? pageParam.cursor : typeof pageParam === 'string' ? pageParam : null,
-      });
+      const list = await fetchInboxThreads(
+        orgSlug,
+        orgId,
+        {
+          ...filters,
+          cursor: isSyncPage ? pageParam.cursor : typeof pageParam === 'string' ? pageParam : null,
+        },
+        scope
+      );
 
       return {
         ...list,
@@ -428,15 +455,17 @@ export function useInboxThreads(
 export function useInboxMessages(
   orgSlug: string | null,
   orgId: string | null,
-  conversationId: string | null
+  conversationId: string | null,
+  scope?: InboxApiScope | null
 ) {
   const qc = useQueryClient();
+  const msgKey = conversationId ? inboxMessagesQueryKey(conversationId, scope) : null;
   const query = useInfiniteQuery({
-    queryKey: [INBOX_MESSAGES_KEY, conversationId, mockMode],
+    queryKey: msgKey ?? [INBOX_MESSAGES_KEY, null, ...inboxScopeKey(scope), mockMode],
     queryFn: ({ pageParam }) =>
       mockMode
         ? mockFetchMessages(conversationId!)
-        : fetchInboxMessages(orgSlug, orgId, conversationId!, pageParam),
+        : fetchInboxMessages(orgSlug, orgId, conversationId!, pageParam, scope),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) =>
       last.hasMore && last.messages.length > 0 ? last.messages[0]?.sent_at : undefined,
@@ -444,31 +473,22 @@ export function useInboxMessages(
   });
 
   const refreshMessages = useCallback(() => {
-    if (!conversationId) return;
-    void qc.refetchQueries({ queryKey: [INBOX_MESSAGES_KEY, conversationId, mockMode] });
-  }, [conversationId, qc]);
+    if (!conversationId || !msgKey) return;
+    void qc.refetchQueries({ queryKey: msgKey });
+  }, [conversationId, msgKey, qc]);
 
   const applyGuestReadToCache = useCallback(
     (readAt: string) => {
-      if (!conversationId) return;
-      markDirectionMessagesReadInCache(
-        qc,
-        [INBOX_MESSAGES_KEY, conversationId, mockMode],
-        'outbound',
-        readAt
-      );
+      if (!conversationId || !msgKey) return;
+      markDirectionMessagesReadInCache(qc, msgKey, 'outbound', readAt);
     },
-    [conversationId, qc]
+    [conversationId, msgKey, qc]
   );
 
   const applyGuestDeliveredToCache = useCallback(() => {
-    if (!conversationId) return;
-    markDirectionMessagesDeliveredInCache(
-      qc,
-      [INBOX_MESSAGES_KEY, conversationId, mockMode],
-      'outbound'
-    );
-  }, [conversationId, qc]);
+    if (!conversationId || !msgKey) return;
+    markDirectionMessagesDeliveredInCache(qc, msgKey, 'outbound');
+  }, [conversationId, msgKey, qc]);
 
   const { notifyPeerRead, notifyPeerDelivered } = useChatReadReceiptSync(
     conversationId,
@@ -489,12 +509,12 @@ export function useInboxMessages(
       return;
     }
     if (!orgId) return;
-    void markInboxConversationRead(orgSlug, orgId, conversationId).then(async () => {
+    void markInboxConversationRead(orgSlug, orgId, conversationId, scope).then(async () => {
       await notifyPeerRead();
       scheduleThreadsInvalidate(qc);
       refreshMessages();
     });
-  }, [conversationId, orgId, orgSlug, qc, notifyPeerRead, refreshMessages]);
+  }, [conversationId, orgId, orgSlug, scope, qc, notifyPeerRead, refreshMessages]);
 
   return query;
 }
@@ -686,13 +706,17 @@ export function useInboxTemplates(orgSlug: string | null, orgId: string | null) 
   return { ...query, save, remove };
 }
 
-export function useInboxAutomationSettings(orgSlug: string | null, orgId: string | null) {
+export function useInboxAutomationSettings(
+  orgSlug: string | null,
+  orgId: string | null,
+  enabled = true
+) {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: [INBOX_SETTINGS_KEY, orgSlug, orgId, mockMode],
     queryFn: () =>
       mockMode ? mockFetchAutomation() : fetchInboxAutomationSettings(orgSlug, orgId),
-    enabled: mockMode || !!(orgSlug || orgId),
+    enabled: enabled && (mockMode || !!(orgSlug || orgId)),
   });
 
   const patch = useMutation({

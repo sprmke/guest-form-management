@@ -20,6 +20,8 @@ type Props = {
   open: InboxManageModal;
   onOpenChange: (open: InboxManageModal) => void;
   canManage: boolean;
+  showOrgManageTabs?: boolean;
+  usingOrgMeta?: boolean;
   connections: InboxConnection[];
   comingSoon: ComingSoonPlatform[];
   connectionsLoading?: boolean;
@@ -41,9 +43,11 @@ type Props = {
 
 export function InboxManageToolbar({
   canManage,
+  showOrgManageTabs = true,
   onOpen,
 }: {
   canManage: boolean;
+  showOrgManageTabs?: boolean;
   onOpen: (modal: InboxManageModal) => void;
 }) {
   if (!canManage) return null;
@@ -60,26 +64,30 @@ export function InboxManageToolbar({
         <Plug className="size-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">Channels</span>
       </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-        onClick={() => onOpen('quick-replies')}
-      >
-        <Zap className="size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">Quick replies</span>
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-        onClick={() => onOpen('automation')}
-      >
-        <Sparkles className="size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">Automation</span>
-      </Button>
+      {showOrgManageTabs ? (
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
+            onClick={() => onOpen('quick-replies')}
+          >
+            <Zap className="size-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Quick replies</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
+            onClick={() => onOpen('automation')}
+          >
+            <Sparkles className="size-4 shrink-0" aria-hidden />
+            <span className="hidden sm:inline">Automation</span>
+          </Button>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -88,6 +96,8 @@ export function InboxManageModals({
   open,
   onOpenChange,
   canManage,
+  showOrgManageTabs = true,
+  usingOrgMeta = false,
   connections,
   comingSoon,
   connectionsLoading = false,
@@ -121,6 +131,7 @@ export function InboxManageModals({
           <InboxChannelsTab
             connections={connections}
             comingSoon={comingSoon}
+            usingOrgMeta={usingOrgMeta}
             statusLoading={connectionsLoading}
             statusError={connectionsError}
             canManage={canManage}
@@ -132,42 +143,46 @@ export function InboxManageModals({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={open === 'quick-replies'}
-        onOpenChange={(next) => onOpenChange(next ? 'quick-replies' : null)}
-      >
-        <DialogContent className="flex max-h-[min(92dvh,760px)] min-h-[min(80dvh,560px)] max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)]">
-          <DialogHeader className="shrink-0">
-            <DialogTitle>Quick replies</DialogTitle>
-          </DialogHeader>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <InboxQuickRepliesTab
-              templates={templates}
-              isLoading={templatesLoading}
-              saving={templatesSaving}
-              onSave={onSaveTemplate}
-              onDelete={onDeleteTemplate}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      {showOrgManageTabs ? (
+        <>
+          <Dialog
+            open={open === 'quick-replies'}
+            onOpenChange={(next) => onOpenChange(next ? 'quick-replies' : null)}
+          >
+            <DialogContent className="flex max-h-[min(92dvh,760px)] min-h-[min(80dvh,560px)] max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)]">
+              <DialogHeader className="shrink-0">
+                <DialogTitle>Quick replies</DialogTitle>
+              </DialogHeader>
+              <div className="flex min-h-0 flex-1 flex-col">
+                <InboxQuickRepliesTab
+                  templates={templates}
+                  isLoading={templatesLoading}
+                  saving={templatesSaving}
+                  onSave={onSaveTemplate}
+                  onDelete={onDeleteTemplate}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
 
-      <Dialog
-        open={open === 'automation'}
-        onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
-      >
-        <DialogContent className="max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
-          <DialogHeader>
-            <DialogTitle>Automation</DialogTitle>
-          </DialogHeader>
-          <InboxAutomationTab
-            settings={automationSettings}
-            isLoading={automationLoading}
-            saving={automationSaving}
-            onSave={onSaveAutomation}
-          />
-        </DialogContent>
-      </Dialog>
+          <Dialog
+            open={open === 'automation'}
+            onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
+          >
+            <DialogContent className="max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
+              <DialogHeader>
+                <DialogTitle>Automation</DialogTitle>
+              </DialogHeader>
+              <InboxAutomationTab
+                settings={automationSettings}
+                isLoading={automationLoading}
+                saving={automationSaving}
+                onSave={onSaveAutomation}
+              />
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : null}
     </>
   );
 }

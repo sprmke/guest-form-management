@@ -47,13 +47,35 @@ function orgUrl(path: string, orgSlug: string | null, orgId: string | null): str
   return scopedOrgFunctionsUrl(path, orgSlug, orgId);
 }
 
+/** Optional property/parking scope for inbox edge calls. */
+export type InboxApiScope = {
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
+function withInboxScope(url: string, scope?: InboxApiScope | null): string {
+  if (!scope?.propertyId && !scope?.parkingId) return url;
+  const u = new URL(url);
+  if (scope.propertyId) u.searchParams.set('property_id', scope.propertyId);
+  if (scope.parkingId) u.searchParams.set('parking_id', scope.parkingId);
+  return u.toString();
+}
+
+function inboxScopeBody(scope?: InboxApiScope | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (scope?.propertyId) out.propertyId = scope.propertyId;
+  if (scope?.parkingId) out.parkingId = scope.parkingId;
+  return out;
+}
+
 export const INBOX_THREAD_PAGE_SIZE = 40;
 
 export type InboxThreadsPageParam = string | { mode: 'sync'; cursor: string | null } | null;
 
 export async function fetchInboxConnections(
   orgSlug: string | null,
-  orgId: string | null
+  orgId: string | null,
+  scope?: InboxApiScope | null
 ): Promise<{
   connections: InboxConnection[];
   comingSoon: ComingSoonPlatform[];
@@ -61,9 +83,11 @@ export async function fetchInboxConnections(
   metaSyncInProgress: boolean;
   metaSyncError: string | null;
   metaHasMore: boolean;
+  metaSource?: 'org' | 'property' | 'parking';
+  usingOrgMeta?: boolean;
 }> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/meta-inbox-status', orgSlug, orgId), {
+  const res = await fetch(withInboxScope(orgUrl('/meta-inbox-status', orgSlug, orgId), scope), {
     headers: { Authorization: `Bearer ${jwt}` },
   });
   const json = (await res.json()) as EdgeJson;
@@ -75,23 +99,32 @@ export async function fetchInboxConnections(
     metaSyncInProgress: !!payload.metaSyncInProgress,
     metaSyncError: typeof payload.metaSyncError === 'string' ? payload.metaSyncError : null,
     metaHasMore: !!payload.metaHasMore,
+    metaSource:
+      payload.metaSource === 'property' || payload.metaSource === 'parking'
+        ? payload.metaSource
+        : 'org',
+    usingOrgMeta: payload.usingOrgMeta === true,
   };
 }
 
 export async function startMetaInboxOAuth(
   orgSlug: string | null,
   orgId: string | null,
-  returnPath: string
+  returnPath: string,
+  scope?: InboxApiScope | null
 ): Promise<string> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/meta-inbox-oauth-start', orgSlug, orgId), {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${jwt}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ returnPath }),
-  });
+  const res = await fetch(
+    withInboxScope(orgUrl('/meta-inbox-oauth-start', orgSlug, orgId), scope),
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ returnPath, ...inboxScopeBody(scope) }),
+    }
+  );
   const json = (await res.json()) as EdgeJson;
   const payload = unwrapEdgePayload(json);
   if (typeof payload.url !== 'string') {
@@ -103,16 +136,17 @@ export async function startMetaInboxOAuth(
 export async function disconnectMetaInbox(
   orgSlug: string | null,
   orgId: string | null,
-  platform = 'meta'
+  platform = 'meta',
+  scope?: InboxApiScope | null
 ): Promise<void> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/meta-inbox-disconnect', orgSlug, orgId), {
+  const res = await fetch(withInboxScope(orgUrl('/meta-inbox-disconnect', orgSlug, orgId), scope), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ platform }),
+    body: JSON.stringify({ platform, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   unwrapEdgePayload(json);
@@ -210,7 +244,8 @@ export async function fetchInboxThreads(
     platform: ThreadPlatformFilter;
     search?: string;
     cursor?: string | null;
-  }
+  },
+  scope?: InboxApiScope | null
 ): Promise<{
   conversations: InboxConversation[];
   nextCursor: string | null;
@@ -225,7 +260,7 @@ export async function fetchInboxThreads(
   if (filters.cursor) params.set('cursor', filters.cursor);
   params.set('limit', String(INBOX_THREAD_PAGE_SIZE));
   const qs = params.toString();
-  const base = orgUrl('/social-inbox-threads', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-threads', orgSlug, orgId), scope);
   const res = await fetch(qs ? `${base}&${qs}` : base, {
     headers: { Authorization: `Bearer ${jwt}` },
   });
@@ -242,10 +277,11 @@ export async function fetchInboxMessages(
   orgSlug: string | null,
   orgId: string | null,
   conversationId: string,
-  before?: string
+  before?: string,
+  scope?: InboxApiScope | null
 ): Promise<{ conversation: InboxConversation; messages: InboxMessage[]; hasMore: boolean }> {
   const jwt = await getJwt();
-  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-messages', orgSlug, orgId), scope);
   const params = new URLSearchParams({ conversation_id: conversationId });
   if (before) params.set('before', before);
   const res = await fetch(`${base}&${params.toString()}`, {
@@ -263,10 +299,11 @@ export async function fetchInboxMessages(
 export async function markInboxConversationRead(
   orgSlug: string | null,
   orgId: string | null,
-  conversationId: string
+  conversationId: string,
+  scope?: InboxApiScope | null
 ): Promise<void> {
   const jwt = await getJwt();
-  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-messages', orgSlug, orgId), scope);
   await fetch(`${base}&conversation_id=${encodeURIComponent(conversationId)}`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${jwt}` },
@@ -278,10 +315,11 @@ export async function sendInboxReply(
   orgId: string | null,
   conversationId: string,
   text: string,
-  opts?: { privateReply?: boolean; replyToMessageId?: string }
+  opts?: { privateReply?: boolean; replyToMessageId?: string; scope?: InboxApiScope | null }
 ): Promise<void> {
   const jwt = await getJwt();
-  const res = await fetch(orgUrl('/social-inbox-send', orgSlug, orgId), {
+  const scope = opts?.scope;
+  const res = await fetch(withInboxScope(orgUrl('/social-inbox-send', orgSlug, orgId), scope), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${jwt}`,
@@ -292,6 +330,7 @@ export async function sendInboxReply(
       text,
       privateReply: opts?.privateReply ?? false,
       replyToMessageId: opts?.replyToMessageId,
+      ...inboxScopeBody(scope),
     }),
   });
   const json = (await res.json()) as EdgeJson;
@@ -303,10 +342,11 @@ export async function editInboxMessage(
   orgId: string | null,
   conversationId: string,
   messageId: string,
-  text: string
+  text: string,
+  scope?: InboxApiScope | null
 ): Promise<InboxMessage> {
   const jwt = await getJwt();
-  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-messages', orgSlug, orgId), scope);
   const params = new URLSearchParams({ conversation_id: conversationId });
   const res = await fetch(`${base}&${params.toString()}`, {
     method: 'PATCH',
@@ -314,7 +354,7 @@ export async function editInboxMessage(
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ messageId, text }),
+    body: JSON.stringify({ messageId, text, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   const payload = unwrapEdgePayload(json);
@@ -325,10 +365,11 @@ export async function unsendInboxMessage(
   orgSlug: string | null,
   orgId: string | null,
   conversationId: string,
-  messageId: string
+  messageId: string,
+  scope?: InboxApiScope | null
 ): Promise<void> {
   const jwt = await getJwt();
-  const base = orgUrl('/social-inbox-messages', orgSlug, orgId);
+  const base = withInboxScope(orgUrl('/social-inbox-messages', orgSlug, orgId), scope);
   const params = new URLSearchParams({ conversation_id: conversationId });
   const res = await fetch(`${base}&${params.toString()}`, {
     method: 'POST',
@@ -336,7 +377,7 @@ export async function unsendInboxMessage(
       Authorization: `Bearer ${jwt}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ action: 'unsend', messageId }),
+    body: JSON.stringify({ action: 'unsend', messageId, ...inboxScopeBody(scope) }),
   });
   const json = (await res.json()) as EdgeJson;
   unwrapEdgePayload(json);
