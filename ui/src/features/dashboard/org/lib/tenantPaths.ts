@@ -1,4 +1,5 @@
 import type { PropertySection } from '@/features/dashboard/team/lib/propertyPermissions';
+import type { ParkingSection } from '@/features/dashboard/team/lib/parkingPermissions';
 
 const LAST_ORG_SLUG_KEY = 'kame-last-org-slug';
 const LAST_PROPERTY_SLUG_KEY = 'kame-last-property-slug';
@@ -7,8 +8,7 @@ const LAST_TENANT_KIND_KEY = 'kame-last-tenant-kind';
 
 export type TenantKind = 'property' | 'parking';
 
-export type ParkingSection =
-  'dashboard' | 'bookings' | 'finance' | 'pricing' | 'notifications' | 'team' | 'settings';
+export type { ParkingSection };
 
 export function getLastOrgSlug(): string | null {
   if (typeof window === 'undefined') return null;
@@ -67,6 +67,14 @@ export function orgTeamPath(orgSlug: string) {
 
 export function orgInboxPath(orgSlug: string) {
   return `/org/${orgSlug}/inbox`;
+}
+
+export function propertyInboxPath(orgSlug: string, propertySlug: string) {
+  return propertySectionPath(orgSlug, propertySlug, 'inbox');
+}
+
+export function parkingInboxPath(orgSlug: string, parkingSlug: string) {
+  return parkingSectionPath(orgSlug, parkingSlug, 'inbox');
 }
 
 export function orgParkingsPath(orgSlug: string) {

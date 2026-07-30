@@ -24,7 +24,8 @@ export type PropertySection =
   | 'notifications'
   | 'templates'
   | 'team'
-  | 'settings';
+  | 'settings'
+  | 'inbox';
 
 export function hasPropertyPermission(
   permissions: readonly string[] | undefined,
@@ -45,6 +46,7 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Templates: 'templates:view',
   Team: 'team:view',
   Settings: 'settings:view',
+  Inbox: 'inbox:view',
 };
 
 /** Minimum view permission per property route section. */
@@ -59,4 +61,5 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   templates: 'templates:view',
   team: 'team:view',
   settings: 'settings:view',
+  inbox: 'inbox:view',
 } as const satisfies Record<PropertySection, TeamPermissionId>;

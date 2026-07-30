@@ -9,7 +9,14 @@ export type ParkingAccessPayload = {
 };
 
 export type ParkingSection =
-  'dashboard' | 'bookings' | 'finance' | 'pricing' | 'notifications' | 'team' | 'settings';
+  | 'dashboard'
+  | 'bookings'
+  | 'finance'
+  | 'pricing'
+  | 'notifications'
+  | 'team'
+  | 'settings'
+  | 'inbox';
 
 export type ParkingPermissionId =
   | 'bookings:view'
@@ -24,7 +31,10 @@ export type ParkingPermissionId =
   | 'settings:edit'
   | 'team:view'
   | 'team:invite'
-  | 'team:manage';
+  | 'team:manage'
+  | 'inbox:view'
+  | 'inbox:reply'
+  | 'inbox:manage';
 
 export function hasParkingPermission(
   permissions: readonly string[] | undefined,
@@ -43,6 +53,7 @@ export const PARKING_NAV_VIEW_PERMISSION: Record<string, ParkingPermissionId> = 
   Notifications: 'notifications:view',
   Team: 'team:view',
   Settings: 'settings:view',
+  Inbox: 'inbox:view',
 };
 
 /** Minimum view permission per parking route section. */
@@ -54,4 +65,5 @@ export const PARKING_SECTION_VIEW_PERMISSION = {
   notifications: 'notifications:view',
   team: 'team:view',
   settings: 'settings:view',
+  inbox: 'inbox:view',
 } as const satisfies Record<ParkingSection, ParkingPermissionId>;

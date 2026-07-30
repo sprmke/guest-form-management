@@ -1,4 +1,4 @@
-import { Bell, BookOpen, DollarSign, Settings, Tags, Users } from 'lucide-react';
+import { Bell, BookOpen, DollarSign, Inbox, Settings, Tags, Users } from 'lucide-react';
 
 import type { TeamPermission } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -117,12 +117,40 @@ export const PARKING_TEAM_PERMISSIONS: TeamPermission[] = [
     category: 'Team',
     icon: Users,
   },
+  {
+    id: 'inbox:view',
+    name: 'View Inbox',
+    description: 'View guest inbox threads',
+    category: 'Inbox',
+    icon: Inbox,
+  },
+  {
+    id: 'inbox:reply',
+    name: 'Reply Inbox',
+    description: 'Send replies and AI suggest',
+    category: 'Inbox',
+    icon: Inbox,
+  },
+  {
+    id: 'inbox:manage',
+    name: 'Manage Inbox',
+    description: 'Connect or disconnect Meta channels',
+    category: 'Inbox',
+    icon: Inbox,
+  },
 ];
 
 export const PARKING_ROLE_PERMISSIONS: Record<ParkingBuiltinRole, string[]> = {
   MANAGER: PARKING_TEAM_PERMISSIONS.map((permission) => permission.id),
-  STAFF: ['bookings:view', 'bookings:edit', 'notifications:view', 'pricing:view'],
-  VIEWER: ['bookings:view', 'notifications:view', 'pricing:view', 'team:view'],
+  STAFF: [
+    'bookings:view',
+    'bookings:edit',
+    'notifications:view',
+    'pricing:view',
+    'inbox:view',
+    'inbox:reply',
+  ],
+  VIEWER: ['bookings:view', 'notifications:view', 'pricing:view', 'team:view', 'inbox:view'],
 };
 
 export const PARKING_PERMISSION_CATEGORIES = [

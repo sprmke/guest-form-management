@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 
 import { adminPropertyRoutes } from '@/features/dashboard/bookings/routes/propertyRoutes';
+import { propertyInboxRoute } from '@/features/dashboard/inbox/routes';
 import { financePropertyRoute } from '@/features/dashboard/finance/routes';
 import { maintenancePropertyRoute } from '@/features/dashboard/maintenance/routes';
 import { marketingPropertyRoute } from '@/features/dashboard/marketing/routes';
@@ -39,13 +40,14 @@ export const dashboardRoutes: ReactNode[] = [
         {maintenancePropertyRoute(propertyRoute)}
         {marketingPropertyRoute(propertyRoute)}
         {propertyTeamRoute(propertyRoute)}
+        {propertyInboxRoute(propertyRoute)}
       </>
     )}
   </Fragment>,
   <Fragment key="parking-shell">
     {parkingShellRoute(
       <>
-        {parkingAdminRoutes()}
+        {parkingAdminRoutes(parkingRoute)}
         {parkingTeamRoute(parkingRoute)}
       </>
     )}

@@ -55,6 +55,7 @@ const PARKING_SECTION_ORDER: readonly ParkingSection[] = [
   'bookings',
   'finance',
   'pricing',
+  'inbox',
   'notifications',
   'team',
   'settings',

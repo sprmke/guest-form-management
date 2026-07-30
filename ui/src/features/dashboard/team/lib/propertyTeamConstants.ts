@@ -1,4 +1,14 @@
-import { Bell, BookOpen, DollarSign, FileText, Settings, Tags, Users, Wrench } from 'lucide-react';
+import {
+  Bell,
+  BookOpen,
+  DollarSign,
+  FileText,
+  Inbox,
+  Settings,
+  Tags,
+  Users,
+  Wrench,
+} from 'lucide-react';
 
 import type { PropertyRole, TeamPermission } from '@/features/dashboard/team/types/propertyTeam';
 
@@ -155,6 +165,27 @@ export const TEAM_PERMISSIONS: TeamPermission[] = [
     category: 'Team',
     icon: Users,
   },
+  {
+    id: 'inbox:view',
+    name: 'View Inbox',
+    description: 'View guest inbox threads',
+    category: 'Inbox',
+    icon: Inbox,
+  },
+  {
+    id: 'inbox:reply',
+    name: 'Reply Inbox',
+    description: 'Send replies and AI suggest',
+    category: 'Inbox',
+    icon: Inbox,
+  },
+  {
+    id: 'inbox:manage',
+    name: 'Manage Inbox',
+    description: 'Connect or disconnect Meta channels',
+    category: 'Inbox',
+    icon: Inbox,
+  },
 ];
 
 /** Default permission presets per property role (custom overrides allowed on invite/edit). */
@@ -169,6 +200,8 @@ export const ROLE_PERMISSIONS: Record<PropertyRole, string[]> = {
     'notifications:view',
     'templates:view',
     'pricing:view',
+    'inbox:view',
+    'inbox:reply',
   ],
   VIEWER: [
     'bookings:view',
@@ -177,6 +210,7 @@ export const ROLE_PERMISSIONS: Record<PropertyRole, string[]> = {
     'templates:view',
     'pricing:view',
     'team:view',
+    'inbox:view',
   ],
 };
 

@@ -57,6 +57,7 @@ const PROPERTY_SECTION_ORDER: readonly PropertySection[] = [
   'pricing',
   'maintenance',
   'marketing',
+  'inbox',
   'notifications',
   'templates',
   'team',
