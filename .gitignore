@@ -66,7 +66,11 @@ supabase_backup*.dump
 # Local development
 **/.local
 
-# Tests
-.playwright-mcp
+# Tests / local agent tooling (keep .fallowrc.json tracked)
+.playwright-mcp/
+.worktrees/
+.superpowers/
+.impeccable/
+.fallow/
 
 cli-develop
