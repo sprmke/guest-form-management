@@ -1,13 +1,27 @@
 # Property templates
 
-**Route:** `/org/:orgSlug/property/:propertySlug/templates`  
-**Status:** Documented — **admin UI, DB persistence, and workflow email sends shipped**
+Route: `/org/:orgSlug/property/:propertySlug/templates`
+
+> **Status:** Documented — admin UI, DB persistence, and workflow email sends shipped
 
 ## Purpose
 
 Each template card shows a **title**, **subtitle** (built-in description from the server registry; custom templates use a generic fallback), Edit/Preview tabs, WYSIWYG editor, placeholders, and reset-to-default.
 
 Operators edit per-property copy here. **Preview and live sends use the same renderer** (`renderPropertyTemplateSendEmail` + `fragments/configurable-template-send.html`). Dynamic blocks (tables, payment breakdown, CTAs) are **`{{placeholders}}` in the template body** — visible in Preview when sample/send HTML is injected.
+
+## Host-facing knowledge
+
+Templates is where you customize the text guests and your team receive — stay guide sections (house rules, check-in and check-out, parking) and automated emails (booking confirmations, document requests, ready-for-check-in). Preview shows the same layout guests will see or that goes out in email.
+
+**Common host questions**
+
+- Q: Which templates do guests actually see?
+  A: The four standard templates (house rules, check-in instructions, check-out instructions, parking reminders) appear on the guest stay guide during their booking window. Email templates are used for automated messages throughout the booking process.
+- Q: If I mess up an email template, can I undo it?
+  A: Yes — use **Reset to default** on any built-in template to restore the original wording, including dynamic sections like payment tables and signatures.
+- Q: Do custom templates get sent automatically?
+  A: Not yet — custom templates are saved for future use. Only the built-in standard and email templates are wired to guest-facing pages and automated sends today.
 
 ## Integration status
 

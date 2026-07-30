@@ -27,6 +27,21 @@ Saved defaults apply when a booking row has **no stored pricing columns yet** â€
 
 ---
 
+## Host-facing knowledge
+
+Pricing lets you set default weekday and weekend nightly rates, adjust prices on specific dates using the calendar, and configure default fees (down payment, security deposit, pet fee, parking, extra guest fee) that appear when you review new bookings. Changes apply to future bookings that don't already have stored pricing.
+
+**Common host questions**
+
+- Q: Will changing my base rate update existing bookings?
+  A: No â€” bookings that already have pricing saved keep their amounts. New bookings and ones without stored pricing pick up your latest defaults.
+- Q: How do I charge more for a holiday weekend?
+  A: Click or drag those dates on the calendar to set a custom nightly rate, or add a holiday premium rule that applies a percentage bump across a date range.
+- Q: Who can edit pricing?
+  A: Managers can view and edit by default. Staff and Viewer roles can see pricing but not change it unless you've given them edit permission.
+
+---
+
 ## Sections
 
 ### Summary cards

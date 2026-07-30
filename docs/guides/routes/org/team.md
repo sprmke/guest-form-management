@@ -31,6 +31,21 @@ Org **Settings** (profile, danger zone) remains **owner-only** on the server for
 
 ---
 
+## Host-facing knowledge
+
+Organization **Team** is where the owner invites co-admins who can help run every property in the org. You see who has access, resend or cancel pending invites, and review what owners versus admins can do. Invites must use a Gmail address because sign-in is Google-only. The owner always appears at the top and cannot be removed from this list.
+
+**Common host questions**
+
+- Q: What’s the difference between Owner and Admin?
+  A: Both can work across all properties and manage the team. Only the owner can change organization settings (including delete org) and add new properties. Admins handle day-to-day operations on existing listings.
+- Q: Why does the invite require a Gmail address?
+  A: Hosts sign in with Google. The invite email must match the Google account the person will use to accept.
+- Q: Can an admin invite someone else?
+  A: Yes — org admins with team manage access can invite other admins, resend invites, and remove members (except the owner).
+
+---
+
 ## Roles
 
 | Role      | Storage                                  | Access                                                                               |

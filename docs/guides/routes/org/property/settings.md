@@ -4,8 +4,6 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 > **Status:** Documented
 
-This document tracks **what each section does**, **how data is saved**, and **implementation status**. Use it as the living spec for property settings E2E behavior.
-
 ## Progress overview
 
 | Section            | E2E save | Validation | Docs | Notes                                                         |
@@ -24,6 +22,27 @@ This document tracks **what each section does**, **how data is saved**, and **im
 | Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional |
 | Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row, not app_settings |
 | Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                           |
+
+---
+
+## Overview
+
+Living operator spec for property settings: what each section does, how data is saved, and setup completeness. **Save Changes** persists only dirty sections that pass validation — incomplete required areas still show a red dot for setup tracking.
+
+---
+
+## Host-facing knowledge
+
+Property Settings is where you complete your listing and day-to-day setup — basic info, photos, amenities, location, payment details, building forms, email automations, and integrations. You can save section by section; incomplete required areas show a red dot until they're done.
+
+**Common host questions**
+
+- Q: Do I have to fill out every section before anything saves?
+  A: No — **Save Changes** only saves sections you've edited that pass validation. You can finish photos today and payment details later; incomplete required areas still show a warning dot.
+- Q: What's the difference between Archive and Delete?
+  A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property and is blocked if any bookings exist — use Archive for units with past stays.
+- Q: Where do guests see my cancellation policy and house rules?
+  A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
 
 ---
 
@@ -375,6 +394,11 @@ mic permission is requested before minting a session so a denial never consumes 
 slot; hard connection drops / mic disconnects call the end endpoint immediately (no zombie
 sessions); mic-permission and cap-limit errors show plain-language copy in the overlay and stay
 open until the guest dismisses them (no forced auto-close).
+
+**Guest UX polish (Phase 6 — planned):** faster speech detection / AI turns, clearer
+listening→thinking→speaking UI, and a TalkingHead+VRM avatar replacing the procedural turtle.
+Admin settings fields above are unchanged. Plan:
+`docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
 
 ---
 

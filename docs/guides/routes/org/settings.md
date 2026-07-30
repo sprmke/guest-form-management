@@ -27,6 +27,21 @@ Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_s
 
 ---
 
+## Host-facing knowledge
+
+Organization settings control your brand identity and public presence: logo, name, tagline, description, brand color, and social links that appear on your host page and guest-facing surfaces. Guest contact details for templates are managed on the **Team** page, not here. Email automations, payment defaults, and booking-specific options live on each **property’s** settings instead.
+
+**Common host questions**
+
+- Q: Where do I set the email address guests see on booking messages?
+  A: Per-property settings and team contact info — not on this org profile page. Update the property’s operator settings or the owner’s contact row on **Org team**.
+- Q: What happens if I delete the organization?
+  A: Deletion is permanent and only allowed when there is no booking history (and no blocking finance or maintenance records). You must type the organization slug to confirm. Your Google sign-in account stays; only this org and its properties are removed.
+- Q: Does changing brand color affect every property?
+  A: Org brand color tints organization-level admin pages and can serve as a fallback. Each property can still set its own color for guest pages and property admin.
+
+---
+
 ## Sections
 
 ### Basic information

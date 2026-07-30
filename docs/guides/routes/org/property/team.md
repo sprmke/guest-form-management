@@ -29,6 +29,21 @@ Org owner and org admins appear in the member list **virtually** (`fromOrg: true
 
 ---
 
+## Host-facing knowledge
+
+Team is where you invite people to help run this property and control what they can see or do — managers with broad access, staff focused on bookings and maintenance, or view-only members. You can also create custom roles with specific permissions.
+
+**Common host questions**
+
+- Q: What's the difference between Manager and Staff?
+  A: Managers can access finance, settings, team management, and notifications editing. Staff can handle bookings and maintenance day-to-day but can't invite team members or change property settings.
+- Q: How do invites work?
+  A: Enter their Gmail address (they sign in with Google), choose a role, and they'll get an email link valid for seven days to accept and join this property.
+- Q: Can organization owners see my property team list?
+  A: Yes — organization owners and admins appear in the member list automatically with full access, even though they're not stored as separate property members.
+
+---
+
 ## RBAC contract (finalized)
 
 ### Access kinds

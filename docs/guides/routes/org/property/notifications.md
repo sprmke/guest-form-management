@@ -68,6 +68,21 @@ Page header subtitle: **Configure Telegram notifications for this property.**
 
 ---
 
+## Host-facing knowledge
+
+Notifications is the one place to set up Telegram alerts for this property — marketing schedules, staff summaries, booking workflow updates, finance and maintenance reminders, and new guest chat messages. Each module has its own on/off switch, Telegram connection, and message templates.
+
+**Common host questions**
+
+- Q: Do I have to save again after connecting Telegram?
+  A: No — once you enter your bot token and chat ID and tap **Connect** successfully, credentials save automatically. Template and schedule changes save when you confirm in each modal.
+- Q: Can I turn off just one type of alert?
+  A: Yes — each module (Marketing, Staff, Operations, Finance, Maintenance, Chat) has its own **Enable notifications** toggle so you can opt in only to what you need.
+- Q: I used to have separate Staff or Operations pages — where did they go?
+  A: They all moved here. Old links to Staff, Operations, Finance, or Maintenance settings redirect to the matching section on this Notifications page.
+
+---
+
 ## Save paths
 
 Each module uses its existing edge function (property-scoped via `property_id`):

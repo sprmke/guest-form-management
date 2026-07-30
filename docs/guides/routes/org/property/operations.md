@@ -4,6 +4,27 @@
 
 Route (redirect): `/org/:orgSlug/property/:propertySlug/operations` → `…/notifications?module=operations`
 
+> **Status:** Documented — redirect → Notifications
+
+## Overview
+
+Legacy route only. Opening Operations redirects to the unified **Notifications** page with the Operations Telegram module selected. There is no standalone Operations settings UI anymore.
+
+---
+
+## Host-facing knowledge
+
+Operations Telegram settings have moved to the Notifications page. Opening the old Operations link takes you straight to the Operations section there, where you configure workflow alert templates and connect Telegram.
+
+**Common host questions**
+
+- Q: Where did Operations settings go?
+  A: They're now under **Notifications** → **Operations**. The old Operations menu link redirects you there automatically.
+- Q: What alerts does Operations cover?
+  A: Booking workflow notifications — things like new bookings, status changes, and other admin alerts your team wants in Telegram.
+- Q: Is this different from Staff or Marketing notifications?
+  A: Yes — Operations is specifically for workflow alerts. Staff and Marketing have their own modules on the same Notifications page with separate templates and schedules.
+
 ## Implementation map
 
 | Concern     | Path                                                                          |
