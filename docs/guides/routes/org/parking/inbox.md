@@ -1,0 +1,62 @@
+# Parking Guest Inbox
+
+Route: `/org/:orgSlug/parking/:parkingSlug/inbox`
+
+> **Status:** Documented
+
+## Progress overview
+
+| Section  | E2E | Validation | Docs | Notes                                                           |
+| -------- | --- | ---------- | ---- | --------------------------------------------------------------- |
+| Messages | Yes | Yes        | Yes  | Meta = effective connection; Web empty until parking guest chat |
+| Channels | Yes | Yes        | Yes  | Inherit org Meta or connect parking override                    |
+
+## Overview
+
+Parking operators open Guest Inbox for this slot. **Meta** uses the effective Page (parking override or org default with **Using org Meta**). **Web** is scoped by `parking_id` — guest parking web chat is not shipped yet, so the Web tab stays empty until that surface exists.
+
+Quick replies and Automation remain **org-only**.
+
+---
+
+## Host-facing knowledge
+
+Parking **Guest Inbox** lets you answer Facebook (and Instagram when connected) messages for this slot. By default you inherit the organization’s connected Facebook Page; you can connect a different Page here if this parking listing should have its own Messenger inbox. **Website chat for parking guests is not available yet**, so the Web tab will stay empty for now. Saved quick replies and AI automation are managed at the **organization** inbox, not per parking slot.
+
+**Common host questions**
+
+- Q: Will I see the same Facebook messages as the org inbox?
+  A: If you use the org’s Page (shown as “Using org Meta”), yes — it’s the same Page inbox. Connecting a different Page here gives this slot its own thread list.
+- Q: Why is the Web tab empty?
+  A: On-site chat for parking listings is not shipped yet. Messenger is the live channel today when Meta is connected.
+- Q: Where do I edit canned replies or turn on auto-reply?
+  A: Open the **organization** Guest Inbox → **Quick replies** or **Automation**. Those settings apply org-wide.
+
+---
+
+## Permissions
+
+| Permission     | UI                                      |
+| -------------- | --------------------------------------- |
+| `inbox:view`   | Open inbox, read threads                |
+| `inbox:reply`  | Send replies, AI suggest                |
+| `inbox:manage` | Connect / disconnect Meta Page override |
+
+## Behavior
+
+- Connect Meta writes override rows with `parking_id`; does not wipe org default.
+- Disconnect removes only the parking override.
+- Query/body: `parking_id`; auth via `verifyParkingTeamAccess` + `inbox:*`.
+
+## Implementation map
+
+| Area  | Path                                                             |
+| ----- | ---------------------------------------------------------------- |
+| Page  | `ui/src/features/dashboard/inbox/pages/ParkingInboxPage.tsx`     |
+| Shell | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`            |
+| Scope | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts` |
+
+## Related
+
+- [Org Inbox](../inbox.md)
+- [Property Inbox](../property/inbox.md)
