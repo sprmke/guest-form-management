@@ -790,6 +790,7 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-in,
     .animate-fade-in-up,
+    .animate-float,
     .guest-enter,
     .guest-enter-forward,
     .guest-enter-back,
@@ -1583,13 +1584,54 @@ input.ui-native-datetime[type='datetime-local']::-webkit-calendar-picker-indicat
   border-color: hsl(var(--primary) / 0.5);
 }
 
-/* Explore ↔ Host mode switch overlay (MarketingNav CTA + admin account menu) */
-.mode-transition-path {
-  transition: d 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+/* Explore ↔ Host mode switch overlay (MarketingNav CTA + admin account menu). Durations here
+   must match WIPE_MS/HOLD_MS in ModeSwitchTransitionContext.tsx. */
+.mode-transition-curtain {
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  transition: transform 500ms cubic-bezier(0.76, 0, 0.24, 1);
 }
 
-#mode-transition-overlay.active .mode-transition-path {
-  d: path('M 0 100 V 0 Q 50 0 100 0 V 100 H 0');
+#mode-transition-overlay.is-closing .mode-transition-curtain,
+#mode-transition-overlay.is-closed .mode-transition-curtain {
+  transform: scaleY(1);
+}
+
+#mode-transition-overlay.is-opening .mode-transition-curtain {
+  transform: scaleY(0);
+}
+
+.mode-transition-word {
+  opacity: 0;
+  transition:
+    transform 280ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 240ms ease;
+}
+
+.mode-transition-word--kame {
+  transform: translateX(-14px);
+}
+
+.mode-transition-word--homes {
+  transform: translateX(14px);
+}
+
+#mode-transition-overlay.is-closed .mode-transition-word,
+#mode-transition-overlay.is-opening .mode-transition-word {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+#mode-transition-overlay.is-opening .mode-transition-word {
+  transition: opacity 240ms ease;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-transition-curtain,
+  .mode-transition-word {
+    transition-duration: 1ms !important;
+  }
 }
 
 /* Google Maps Embed API iframes do not support native dark mode — approximate when JS API is unavailable. */

@@ -104,6 +104,31 @@ export function resolveBrandTransitionGradientStops(
   return brandTransitionGradientStops(null, isDark);
 }
 
+/**
+ * Mode-switch overlay wordmark colors — "Kame" stays white (the gradient stops are always
+ * pinned to 38–50% lightness, so white reads at AA contrast for any org brand hue). "Homes"
+ * uses the same secondary hue-shift (`shiftHue(h, -49)`) as `--sidebar-primary`/`--mesh-a`
+ * elsewhere in the brand theme, lightened into a pastel tint for a complementary two-tone
+ * lockup instead of a flat single color.
+ */
+export function resolveBrandWordmarkTextColors(
+  brandColor: string | null | undefined,
+  isDark: boolean
+): { primary: string; accent: string } {
+  const hex = resolveOrgBrandHex(brandColor);
+  const rgb = parseHexColor(hex) ?? parseHexColor(DEFAULT_ORG_BRAND_COLOR)!;
+  const { h, s } = rgbToHsl(rgb);
+
+  const accentHue = shiftHue(h, -49);
+  const accentS = clamp(s * 0.6, 40, 70);
+  const accentL = isDark ? 86 : 90;
+
+  return {
+    primary: 'hsl(0 0% 100%)',
+    accent: `hsl(${Math.round(accentHue)} ${Math.round(accentS)}% ${accentL}%)`,
+  };
+}
+
 export function resolveOrgBrandHex(brandColor: string | null | undefined): string {
   const trimmed = brandColor?.trim();
   if (trimmed && parseHexColor(trimmed)) return trimmed;
