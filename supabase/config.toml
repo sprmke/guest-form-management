@@ -538,6 +538,9 @@ verify_jwt = false
 [functions.guest-web-chat-messages]
 verify_jwt = false
 
+[functions.voice-receptionist-spike-token]
+verify_jwt = false
+
 [functions.guest-profile]
 verify_jwt = false
 
