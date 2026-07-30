@@ -4,13 +4,13 @@
 
 import { decryptMetaInboxToken } from '../_shared/metaInboxCrypto.ts';
 import {
-  connectOrgMetaInboxPage,
+  connectMetaInboxPage,
   resolveMetaPageFromUserToken,
   type MetaPagePickerOption,
 } from '../_shared/metaInboxConnect.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
@@ -18,8 +18,8 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
-  const body = await readJsonBody(req);
+  const body = (await readJsonBody(req)) as Record<string, unknown>;
+  const ctx = await resolveInboxAccess(req, 'manage', body);
   const pickerState = String(body.pickerState ?? '').trim();
   const pageId = String(body.pageId ?? '').trim();
   if (!pickerState || !pageId) {
@@ -29,7 +29,9 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from('meta_inbox_oauth_state')
-    .select('organization_id, user_id, expires_at, pending_pages, encrypted_user_token')
+    .select(
+      'organization_id, user_id, expires_at, pending_pages, encrypted_user_token, property_id, parking_id'
+    )
     .eq('state', pickerState)
     .maybeSingle();
 
@@ -39,14 +41,18 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
 
   const exp = new Date(data.expires_at as string).getTime();
   const pending = (data.pending_pages ?? []) as MetaPagePickerOption[];
+  const statePropertyId = (data.property_id as string | null) ?? null;
+  const stateParkingId = (data.parking_id as string | null) ?? null;
   if (
-    data.organization_id !== ctx.org.id ||
+    data.organization_id !== ctx.orgId ||
     data.user_id !== user.id ||
     Number.isNaN(exp) ||
     Date.now() > exp ||
     !pending.length ||
     !data.encrypted_user_token ||
-    !pending.some((p) => p.id === pageId)
+    !pending.some((p) => p.id === pageId) ||
+    statePropertyId !== ctx.propertyId ||
+    stateParkingId !== ctx.parkingId
   ) {
     return jsonError(req, 'Picker session expired', 404);
   }
@@ -58,7 +64,10 @@ serveAuthenticated('meta-inbox-oauth-complete', async (req, user) => {
       return jsonError(req, 'Page not available', 400);
     }
 
-    await connectOrgMetaInboxPage(ctx.org.id, page);
+    await connectMetaInboxPage(ctx.orgId, page, {
+      propertyId: ctx.propertyId,
+      parkingId: ctx.parkingId,
+    });
     await sb.from('meta_inbox_oauth_state').delete().eq('state', pickerState);
 
     return jsonSuccess(req, { connected: true, pageName: page.name });

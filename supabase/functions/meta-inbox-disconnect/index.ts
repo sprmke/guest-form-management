@@ -1,18 +1,22 @@
 /**
- * Disconnect Meta inbox channels for an org.
+ * Disconnect Meta inbox channels for org default or property/parking override.
  */
 
-import { clearOrgMetaInbox } from '../_shared/metaInboxLifecycle.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
+import {
+  clearOrgMetaInbox,
+  clearParkingMetaInbox,
+  clearPropertyMetaInbox,
+} from '../_shared/metaInboxLifecycle.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 serveAuthenticated('meta-inbox-disconnect', async (req) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
-  const body = await readJsonBody(req);
+  const body = (await readJsonBody(req)) as Record<string, unknown>;
+  const ctx = await resolveInboxAccess(req, 'manage', body);
   const platform = typeof body.platform === 'string' ? body.platform : 'meta';
 
   if (platform !== 'meta' && platform !== 'facebook' && platform !== 'instagram') {
@@ -23,7 +27,22 @@ serveAuthenticated('meta-inbox-disconnect', async (req) => {
     return jsonError(req, 'Disconnect Meta as a whole from Channels', 400);
   }
 
-  const { conversationsCleared, connectionsRemoved } = await clearOrgMetaInbox(ctx.org.id);
+  let conversationsCleared = 0;
+  let connectionsRemoved = 0;
+
+  if (ctx.kind === 'property' && ctx.propertyId) {
+    ({ conversationsCleared, connectionsRemoved } = await clearPropertyMetaInbox(
+      ctx.orgId,
+      ctx.propertyId
+    ));
+  } else if (ctx.kind === 'parking' && ctx.parkingId) {
+    ({ conversationsCleared, connectionsRemoved } = await clearParkingMetaInbox(
+      ctx.orgId,
+      ctx.parkingId
+    ));
+  } else {
+    ({ conversationsCleared, connectionsRemoved } = await clearOrgMetaInbox(ctx.orgId));
+  }
 
   return jsonSuccess(req, {
     disconnected: connectionsRemoved,

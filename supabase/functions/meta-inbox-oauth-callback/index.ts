@@ -12,7 +12,7 @@ import {
   parseMetaOAuthAllowedReturnOrigins,
 } from '../_shared/metaInboxConfig.ts';
 import {
-  connectOrgMetaInboxPage,
+  connectMetaInboxPage,
   encryptMetaUserToken,
   metaPagesForPicker,
 } from '../_shared/metaInboxConnect.ts';
@@ -41,7 +41,7 @@ serve(async (req) => {
     if (!state) return null;
     const { data } = await sb
       .from('meta_inbox_oauth_state')
-      .select('organization_id, return_origin, return_path, expires_at')
+      .select('organization_id, return_origin, return_path, expires_at, property_id, parking_id')
       .eq('state', state)
       .maybeSingle();
     if (!data) return null;
@@ -52,6 +52,8 @@ serve(async (req) => {
       organization_id: string;
       return_origin: string;
       return_path: string;
+      property_id: string | null;
+      parking_id: string | null;
     };
   }
 
@@ -84,7 +86,10 @@ serve(async (req) => {
     }
 
     if (pages.length === 1) {
-      await connectOrgMetaInboxPage(st.organization_id, pages[0]!);
+      await connectMetaInboxPage(st.organization_id, pages[0]!, {
+        propertyId: st.property_id,
+        parkingId: st.parking_id,
+      });
       await sb.from('meta_inbox_oauth_state').delete().eq('state', state);
       return Response.redirect(
         buildMetaOAuthSuccessRedirect(st.return_origin, st.return_path),
