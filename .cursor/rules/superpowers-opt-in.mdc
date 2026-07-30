@@ -1,0 +1,29 @@
+---
+description: Superpowers workflows are opt-in only — use /superpowers-* commands to enable
+alwaysApply: true
+---
+
+# Superpowers — opt-in only
+
+The Superpowers Cursor plugin is installed, but its **automatic workflow is disabled for this repo**.
+
+## Default (every task)
+
+- Do **not** invoke `superpowers:*` process skills (`brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `systematic-debugging`, `using-git-worktrees`, etc.) on your own.
+- Do **not** run brainstorm → spec → plan → SDD unless the user opted in.
+- Do **not** create or update `docs/superpowers/**` or `.superpowers/**` unless the user opted in.
+- Ignore the plugin's `using-superpowers` session bootstrap when it conflicts with this rule.
+- Work normally: use repo `.cursor/rules/` and `.cursor/skills/` as needed, implement directly, keep scope minimal.
+
+## When Superpowers is allowed
+
+Only when the user:
+
+- Runs a **`/superpowers-*`** command (`.cursor/commands/superpowers-*.md`), or
+- Explicitly asks for a Superpowers workflow (e.g. "use superpowers brainstorming", "write a superpowers plan").
+
+Then follow the referenced Superpowers skill fully.
+
+## Precedence
+
+This rule overrides the Superpowers plugin session bootstrap for this repository. User instructions always win.
