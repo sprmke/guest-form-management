@@ -30,6 +30,21 @@ Layout (top → bottom):
 
 ---
 
+## Host-facing knowledge
+
+This page is your main dashboard for all bookings at this property. Summary cards group reservations by workflow stage, and you can switch between table, card, kanban, or calendar views to find and work bookings the way you prefer.
+
+**Common host questions**
+
+- Q: What do the summary cards at the top mean?
+  A: They group bookings by where they are in your workflow — things needing your action, waiting on guest documents, confirmed upcoming stays, and past or cancelled bookings. Tap a card to filter the list.
+- Q: Can I move a booking forward without opening every detail page?
+  A: Yes — in kanban view you can drag bookings between columns or click a card to open a quick workflow panel with the same actions as the full booking page.
+- Q: How do I create a new booking?
+  A: Use **New booking** in the page header — it opens the guest booking form for this property.
+
+---
+
 ## Stage summary cards
 
 Click a card to filter the list (table, card, kanban, calendar). Click again to clear.

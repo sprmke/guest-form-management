@@ -26,6 +26,21 @@ Org-level inventory of all properties. Cards surface profile data from `properti
 
 ---
 
+## Host-facing knowledge
+
+This page is the catalog of every rental you operate under the organization. Summary cards at the top show how many properties you have and how they’re performing this month; each property card shows photos, location, capacity, and booking stats. Use it to jump into a property dashboard, open settings, or copy the guest booking link.
+
+**Common host questions**
+
+- Q: Why does revenue on a card differ from what I expect for all-time earnings?
+  A: Revenue and occupancy on this page use the **current calendar month** (Philippines time), not lifetime totals. Active booking counts are pipeline bookings still in progress.
+- Q: Why can’t I see the **Add property** button?
+  A: Only the organization owner (and platform admin) can create new properties. Org admins can view and edit existing ones but not add listings.
+- Q: How do I send a guest to book a specific unit?
+  A: Open the property’s actions menu and choose **Copy guest link** or **Guest calendar** — both point guests to that property’s public booking entry.
+
+---
+
 ## Stats period (important)
 
 All revenue and occupancy figures on this page use the **current calendar month in `Asia/Manila`**, matching the dashboard default trend window (`dashboardService.ts#defaultManilaMonthRange`).

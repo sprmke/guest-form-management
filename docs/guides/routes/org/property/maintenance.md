@@ -40,6 +40,21 @@ Legacy **`?tab=settings`** redirects to **`/notifications?module=maintenance`**.
 
 ---
 
+## Host-facing knowledge
+
+This page helps you track upkeep for your property — cleaning schedules, appliance checks, and other recurring reminders. You can add tasks, mark them complete, filter and search the list, switch between table, card, or calendar views, and export a report for a date range.
+
+**Common host questions**
+
+- Q: How do I get Telegram reminders for maintenance tasks?
+  A: Go to **Notifications** and open the Maintenance section to connect your Telegram bot and turn on reminders. This page tracks the tasks; Notifications controls when alerts are sent.
+- Q: Can I filter to see only what's still pending?
+  A: Yes — use the status filter for pending or completed reminders, and sort by date to prioritize what's due soonest.
+- Q: What does the calendar view show?
+  A: It lays out your maintenance reminders on a monthly calendar so you can spot busy weeks at a glance.
+
+---
+
 ## Implementation map
 
 | Concern                | Path                                                                               |

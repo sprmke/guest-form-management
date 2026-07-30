@@ -4,7 +4,28 @@
 
 Route: `/org/:orgSlug/property/:propertySlug/marketing`
 
+> **Status:** Documented — Content Studio + Telegram (see Notifications)
+
 Legacy redirect: `/marketing` → `…/property/:propertySlug/marketing` (Content Studio)
+
+## Overview
+
+Property-scoped **Marketing Content Studio**: build availability calendars, social graphics, and short promo videos, then download or publish to connected Facebook Pages and Instagram. Telegram marketing alerts live on **Notifications**, not this page.
+
+---
+
+## Host-facing knowledge
+
+Marketing Content Studio is where you create promotional content for this property — availability calendars, social graphics, and short videos — then download or publish to connected Facebook and Instagram accounts. Marketing Telegram alerts are configured separately under Notifications.
+
+**Common host questions**
+
+- Q: Do I need to connect Facebook before I can publish?
+  A: Yes — connect your Facebook Page and Instagram through Guest Inbox first. Without that, you can still design and download assets but not publish from here.
+- Q: Will my edits save automatically?
+  A: Design and video editors autosave as you work. Blank calendars need you to save manually the first time; designer presets remember your changes per template.
+- Q: Where do I set up marketing Telegram alerts?
+  A: Those live on the **Notifications** page under the Marketing module, not on this Content Studio page.
 
 ## Marketing Content Studio
 

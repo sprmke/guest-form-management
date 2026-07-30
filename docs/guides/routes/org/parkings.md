@@ -10,6 +10,21 @@ Lists all parking slots for the organization. **UI mirrors** `/org/:orgSlug/prop
 
 ---
 
+## Host-facing knowledge
+
+This is your parking inventory hub — every slot your organization offers, with search, filters, and summary stats similar to the properties page. Each card shows location, type, cover photo, and high-level reservation metrics. From here you can open a slot’s dashboard, copy its public booking link, or add a new parking space.
+
+**Common host questions**
+
+- Q: Is this the same as parking tied to a stay booking on a property?
+  A: No. These are standalone parking listings (tower slots, motorcycle bays, etc.). Guest stays that only need parking at a rental unit are still managed under property bookings.
+- Q: How do I add a new parking slot?
+  A: Tap **Add parking** (or use the **+** menu in the sidebar switcher), then complete setup on the new slot’s settings page.
+- Q: What do the revenue and occupancy numbers mean?
+  A: They reflect reservation activity for each slot. Full reservation booking flows are still rolling out — treat dashboard-style metrics as previews until reservation data is connected end to end.
+
+---
+
 ## Page sections
 
 | Section       | Property equivalent                                             | Parking notes                                                                                                                |

@@ -29,6 +29,21 @@ Parking-scoped team management mirrors the property team page:
 
 ---
 
+## Host-facing knowledge
+
+Parking **Team** controls who can access this slot’s dashboard — bookings (when live), pricing, finance, inbox, and settings. Invite managers, staff, or viewers by Gmail address, or create custom roles with a tailored permission set. The organization owner and org admins appear as managers automatically and aren’t edited from this page.
+
+**Common host questions**
+
+- Q: What’s the difference between Manager, Staff, and Viewer?
+  A: Managers have full access including team invites. Staff can handle operational work (e.g. edit bookings and view pricing). Viewers can look but not change sensitive settings.
+- Q: Can a parking team member access my properties too?
+  A: Only if they’re also invited at the org or property level. Parking invites grant access to **this slot only**.
+- Q: Why must invites use Gmail?
+  A: Host sign-in is Google-based. The invitee must accept with the same Gmail address you invited.
+
+---
+
 ## Standard roles
 
 | Role    | `role_id` | Notes                                                                    |

@@ -4,6 +4,27 @@ Route: `/org/:orgSlug/parking/:parkingSlug/settings`
 
 > **Status:** Documented
 
+## Overview
+
+Configure one parking slot: name and location, cover photo, dimensions and check-in times, amenities, payment methods (including GCash QR), integrations status, and delete. Saves update the public listing guests see at `/parkings/:slug` and the admin sidebar for this slot.
+
+---
+
+## Host-facing knowledge
+
+Parking **Settings** is where you set up a single slot before guests book it — photos, tower/level/slot labels, map location, size and clearance, amenities, brand color, and how guests pay. Telegram and other integrations link out to **Notifications** for credentials. Most sections save independently; deleting a slot is permanent and lives in the danger zone at the bottom.
+
+**Common host questions**
+
+- Q: What do guests actually see from here?
+  A: Everything in basic info, photos, location, amenities, and payment flows to your public parking page. Keep cover photo, description, and GCash details accurate before sharing the link.
+- Q: Why did my URL change after I edited the slot name?
+  A: The public link slug can regenerate when tower, level, or slot labels change how the display name is built. The app redirects you to the new admin URL automatically.
+- Q: Where do I connect Telegram for this parking slot?
+  A: On **Notifications** for this slot — settings here only show integration status and shortcuts, not the bot token fields.
+
+---
+
 ## Sections
 
 | Section         | Storage                                                                                                                                                                         |
