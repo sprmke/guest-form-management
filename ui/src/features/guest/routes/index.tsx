@@ -1,7 +1,4 @@
-import { Route } from 'react-router-dom';
-
 import { guestAuthRoutes } from '@/features/guest/auth/routes';
-import { VoiceReceptionistSpikePage } from '@/features/guest/chat/pages/VoiceReceptionistSpikePage';
 import { marketingRoutes } from '@/features/guest/marketing/routes';
 import { legacyGuestRedirects, propertyGuestRoutes } from '@/features/guest/property/routes';
 
@@ -11,6 +8,4 @@ export const guestRoutes = [
   ...guestAuthRoutes,
   ...propertyGuestRoutes,
   ...legacyGuestRedirects,
-  /** Throwaway Gemini Live spike — remove after voice receptionist ships. */
-  <Route key="dev-voice-spike" path="/dev/voice-spike" element={<VoiceReceptionistSpikePage />} />,
 ];

@@ -547,6 +547,9 @@ verify_jwt = false
 [functions.voice-receptionist-tool]
 verify_jwt = false
 
+[functions.voice-receptionist-end]
+verify_jwt = false
+
 [functions.voice-receptionist-settings]
 verify_jwt = false
 

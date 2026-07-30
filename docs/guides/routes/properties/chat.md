@@ -43,16 +43,26 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 
 **Realtime:** Supabase channel on **`social_messages`** (guest RLS).
 
+**Voice receptionist:** when enabled (global + property), the header ⋮ menu shows **Talk to
+receptionist**, opening a full-screen `VoiceSessionOverlay` (Gemini Live, mic in / audio out,
+procedural turtle avatar, live captions, session countdown). On end, timeout, or error the
+transcript is batch-written into this same thread as `social_messages` rows with
+`source_mode='voice'` — voice turns show inline with text history in both the guest thread and
+host Guest Inbox. Plan: `docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md`.
+
 ## API
 
-| Function                  | Method | Auth      | Notes                                                                                                                                                         |
-| ------------------------- | ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `guest-web-chat-resume`   | GET    | Guest JWT | `?property_slug=` — existing thread if messages exist                                                                                                         |
-| `guest-web-chat-start`    | POST   | Guest JWT | `{ propertySlug, checkInDate, checkOutDate }` — first inquiry                                                                                                 |
-| `guest-web-chat-messages` | GET    | Guest JWT | `?conversation_id=`; `before` cursor; returns `replyStatus` on first page load                                                                                |
-| `guest-web-chat-messages` | POST   | Guest JWT | `{ conversationId, text?, attachments?, replyToMessageId? }`, `{ action: 'mark_read', conversationId }`, or `{ action: 'unsend', conversationId, messageId }` |
-| `guest-web-chat-messages` | PATCH  | Guest JWT | `{ conversationId, messageId, text }` — edit own inbound until host read or reply                                                                             |
-| `upload-guest-chat-asset` | POST   | Guest JWT | Multipart file → **`guest-chat-attachments`** bucket; returns `{ kind, url, label? }` for send payload                                                        |
+| Function                   | Method | Auth      | Notes                                                                                                                                                         |
+| -------------------------- | ------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `guest-web-chat-resume`    | GET    | Guest JWT | `?property_slug=` — existing thread if messages exist; also returns `voiceReceptionistEnabled`                                                                |
+| `guest-web-chat-start`     | POST   | Guest JWT | `{ propertySlug, checkInDate, checkOutDate }` — first inquiry; also returns `voiceReceptionistEnabled`                                                        |
+| `guest-web-chat-messages`  | GET    | Guest JWT | `?conversation_id=`; `before` cursor; returns `replyStatus` on first page load                                                                                |
+| `guest-web-chat-messages`  | POST   | Guest JWT | `{ conversationId, text?, attachments?, replyToMessageId? }`, `{ action: 'mark_read', conversationId }`, or `{ action: 'unsend', conversationId, messageId }` |
+| `guest-web-chat-messages`  | PATCH  | Guest JWT | `{ conversationId, messageId, text }` — edit own inbound until host read or reply                                                                             |
+| `upload-guest-chat-asset`  | POST   | Guest JWT | Multipart file → **`guest-chat-attachments`** bucket; returns `{ kind, url, label? }` for send payload                                                        |
+| `voice-receptionist-start` | POST   | Guest JWT | `{ propertySlug }` → `{ ephemeralToken, sessionId, model, voiceId, maxSessionSeconds }` (Gemini Live)                                                         |
+| `voice-receptionist-tool`  | POST   | Guest JWT | `{ sessionId, topic }` — property-fact tool call from the live model                                                                                          |
+| `voice-receptionist-end`   | POST   | Guest JWT | `{ sessionId, endReason, transcript }` — ends the session row + batch-writes transcript to `social_messages` (`source_mode='voice'`)                          |
 
 Host replies use **`social-inbox-send`** (web branch). When the guest is offline, host web replies trigger **`guestChatEmail.ts`** → Resend **`guest-chat-reply.html`** (deduped via **`social_messages.guest_reply_email_sent_at`**).
 
@@ -93,21 +103,24 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 
 ## Implementation map
 
-| Area            | Path                                                                                                                                                  |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                          |
-| Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                               |
-| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                 |
-| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`     |
-| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                     |
-| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                             |
-| CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                          |
-| Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                               |
-| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/`                          |
-| Lifecycle       | `supabase/functions/_shared/chatMessageLifecycle.ts`, `guestChatAttachments.ts`, `guestChatEmail.ts` — read, edit, reply, attachments, offline notify |
-| Auto-reply      | `supabase/functions/_shared/webInboxAutoReply.ts` — when inbox Automation → Send automatically → Chat is on                                           |
-| Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                    |
-| Host inbox      | `ui/src/features/dashboard/inbox/**` — **Web** tab                                                                                                    |
+| Area            | Path                                                                                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                            |
+| Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                                 |
+| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                   |
+| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`       |
+| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                       |
+| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                               |
+| Voice UI        | `ui/src/features/guest/chat/components/voice/ReceptionistAvatar.tsx`, `VoiceSessionOverlay.tsx`                                                         |
+| Voice hooks/API | `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `lib/voiceReceptionistApi.ts`, `lib/voiceAudioCodec.ts`, `public/worklets/voice-pcm-recorder.js` |
+| Voice edge      | `supabase/functions/voice-receptionist-start/`, `voice-receptionist-tool/`, `voice-receptionist-end/`, `_shared/voiceReceptionistService.ts`            |
+| CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                            |
+| Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                                 |
+| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/`                            |
+| Lifecycle       | `supabase/functions/_shared/chatMessageLifecycle.ts`, `guestChatAttachments.ts`, `guestChatEmail.ts` — read, edit, reply, attachments, offline notify   |
+| Auto-reply      | `supabase/functions/_shared/webInboxAutoReply.ts` — when inbox Automation → Send automatically → Chat is on                                             |
+| Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                      |
+| Host inbox      | `ui/src/features/dashboard/inbox/**` — **Web** tab                                                                                                      |
 
 ## Related
 

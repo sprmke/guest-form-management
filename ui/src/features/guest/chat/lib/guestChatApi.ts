@@ -74,6 +74,7 @@ export type GuestChatStartResult = {
   inquiryCheckIn: string;
   inquiryCheckOut: string;
   replyStatus: ChatReplyStatus;
+  voiceReceptionistEnabled: boolean;
 };
 
 export type GuestChatResumeResult = {
@@ -92,6 +93,7 @@ export type GuestChatResumeResult = {
     ownerName: string;
     ownerAvatarUrl: string | null;
   } | null;
+  voiceReceptionistEnabled: boolean;
 };
 
 async function guestEdgePatch(path: string, body: Record<string, unknown>) {

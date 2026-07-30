@@ -5,6 +5,7 @@
 
 import { createServiceClient } from './orgAuth.ts';
 import { GEMINI_LIVE_VOICES, type GeminiLiveVoice } from './geminiLiveEphemeral.ts';
+import { insertMessageIfNew, updateConversationAfterMessage } from './socialInboxService.ts';
 
 const MANILA_TZ = 'Asia/Manila';
 
@@ -310,4 +311,166 @@ export async function loadVoiceReceptionistSessionForGuest(
     propertyId: data.property_id as string,
     endedAt: (data.ended_at as string | null) ?? null,
   };
+}
+
+/** Global kill switch AND property opt-in — the same gate `voice-receptionist-start` enforces. */
+export async function isVoiceReceptionistAvailableForProperty(propertyId: string): Promise<boolean> {
+  const global = await getGlobalVoiceReceptionistSettings();
+  if (!global.enabled) return false;
+  const settings = await getVoiceReceptionistSettings(propertyId);
+  return settings.enabled;
+}
+
+export type VoiceReceptionistEndReason = 'guest_ended' | 'timeout' | 'cap_reached' | 'error';
+
+export type VoiceReceptionistSessionForEnd = {
+  id: string;
+  propertyId: string;
+  conversationId: string | null;
+  startedAt: string;
+  endedAt: string | null;
+};
+
+export async function loadVoiceReceptionistSessionForEnd(
+  sessionId: string,
+  guestUserId: string
+): Promise<VoiceReceptionistSessionForEnd | null> {
+  const sb = db();
+  const { data, error } = await sb
+    .from('voice_receptionist_sessions')
+    .select('id, property_id, conversation_id, started_at, ended_at')
+    .eq('id', sessionId)
+    .eq('guest_user_id', guestUserId)
+    .maybeSingle();
+  if (error) {
+    console.error('[voiceReceptionistService] load session for end:', error.message);
+    throw new Error('Failed to load voice session');
+  }
+  if (!data) return null;
+  return {
+    id: data.id as string,
+    propertyId: data.property_id as string,
+    conversationId: (data.conversation_id as string | null) ?? null,
+    startedAt: data.started_at as string,
+    endedAt: (data.ended_at as string | null) ?? null,
+  };
+}
+
+/** Sets ended_at/duration/end_reason once — safe to call again for an already-ended session. */
+export async function endVoiceReceptionistSession(
+  session: VoiceReceptionistSessionForEnd,
+  endReason: VoiceReceptionistEndReason
+): Promise<{ endedAt: string; durationSeconds: number }> {
+  if (session.endedAt) {
+    const durationSeconds = Math.max(
+      0,
+      Math.round((new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000)
+    );
+    return { endedAt: session.endedAt, durationSeconds };
+  }
+
+  const endedAt = new Date().toISOString();
+  const durationSeconds = Math.max(
+    0,
+    Math.round((new Date(endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000)
+  );
+
+  const sb = db();
+  const { error } = await sb
+    .from('voice_receptionist_sessions')
+    .update({ ended_at: endedAt, duration_seconds: durationSeconds, end_reason: endReason })
+    .eq('id', session.id)
+    .is('ended_at', null);
+  if (error) {
+    console.error('[voiceReceptionistService] end session:', error.message);
+    throw new Error('Failed to end voice session');
+  }
+
+  return { endedAt, durationSeconds };
+}
+
+export type VoiceReceptionistTranscriptTurn = {
+  role: 'guest' | 'assistant';
+  text: string;
+  at?: string;
+};
+
+export function sanitizeVoiceTranscriptTurns(input: unknown): VoiceReceptionistTranscriptTurn[] {
+  if (!Array.isArray(input)) return [];
+  const turns: VoiceReceptionistTranscriptTurn[] = [];
+  for (const raw of input) {
+    if (!raw || typeof raw !== 'object') continue;
+    const row = raw as Record<string, unknown>;
+    const role = row.role === 'assistant' ? 'assistant' : row.role === 'guest' ? 'guest' : null;
+    const text = typeof row.text === 'string' ? row.text.trim() : '';
+    if (!role || !text) continue;
+    const at = typeof row.at === 'string' && !Number.isNaN(new Date(row.at).getTime()) ? row.at : undefined;
+    turns.push({ role, text, at });
+  }
+  return turns;
+}
+
+/**
+ * Batch-writes committed voice turns into the property's existing social_messages thread
+ * with source_mode='voice' so the admin Inbox shows a unified history. Idempotent per
+ * sessionId (external_message_id is deterministic) — safe to retry on network failure.
+ */
+export async function writeVoiceTranscriptToConversation(
+  sessionId: string,
+  conversationId: string,
+  guestUserId: string,
+  sessionStartedAt: string,
+  turns: VoiceReceptionistTranscriptTurn[]
+): Promise<void> {
+  if (!turns.length) return;
+
+  const sb = db();
+  const { data: conv, error } = await sb
+    .from('social_conversations')
+    .select('organization_id')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (error || !conv) {
+    console.error('[voiceReceptionistService] load conversation for transcript:', error?.message);
+    return;
+  }
+  const organizationId = conv.organization_id as string;
+
+  let lastTs = new Date(sessionStartedAt).getTime();
+  let lastGuestText: string | null = null;
+  let lastAssistantText: string | null = null;
+
+  for (let i = 0; i < turns.length; i++) {
+    const turn = turns[i]!;
+    const candidateTs = turn.at ? new Date(turn.at).getTime() : lastTs + 1000;
+    const ts = Math.max(candidateTs, lastTs + 1);
+    lastTs = ts;
+    const sentAt = new Date(ts).toISOString();
+
+    await insertMessageIfNew({
+      organization_id: organizationId,
+      conversation_id: conversationId,
+      direction: turn.role === 'guest' ? 'inbound' : 'outbound',
+      external_message_id: `voice:${sessionId}:${i}`,
+      body_text: turn.text,
+      attachments: [],
+      sent_at: sentAt,
+      delivery_status: 'sent',
+      sent_by_user_id: turn.role === 'guest' ? guestUserId : null,
+      is_ai_generated: turn.role === 'assistant',
+      source_mode: 'voice',
+    });
+
+    if (turn.role === 'guest') lastGuestText = turn.text;
+    else lastAssistantText = turn.text;
+  }
+
+  const lastTurn = turns[turns.length - 1]!;
+  await updateConversationAfterMessage(conversationId, {
+    subject_preview: lastTurn.text.slice(0, 500),
+    last_message_at: new Date(lastTs).toISOString(),
+    reply_status: lastTurn.role === 'assistant' ? 'replied' : 'pending',
+    unread_delta: lastGuestText ? 1 : 0,
+    guest_unread_delta: lastAssistantText ? 1 : 0,
+  });
 }
