@@ -541,6 +541,18 @@ verify_jwt = false
 [functions.voice-receptionist-spike-token]
 verify_jwt = false
 
+[functions.voice-receptionist-start]
+verify_jwt = false
+
+[functions.voice-receptionist-tool]
+verify_jwt = false
+
+[functions.voice-receptionist-settings]
+verify_jwt = false
+
+[functions.voice-receptionist-global-settings]
+verify_jwt = false
+
 [functions.guest-profile]
 verify_jwt = false
 
