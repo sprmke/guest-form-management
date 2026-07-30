@@ -23,17 +23,32 @@ import {
   parseGuestWebChatAttachments,
 } from '../_shared/guestChatAttachments.ts';
 import type { SocialChannelConnectionRow } from '../_shared/socialInboxTypes.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
+import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
+import type { SocialConversationRow } from '../_shared/socialInboxTypes.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+
+function conversationAllowedInScope(
+  conv: SocialConversationRow,
+  ctx: { propertyId: string | null; parkingId: string | null; metaIds: Set<string> }
+): boolean {
+  if (!ctx.propertyId && !ctx.parkingId) return true;
+  if (conv.platform === 'web') {
+    if (ctx.propertyId) return conv.property_id === ctx.propertyId;
+    if (ctx.parkingId) return conv.parking_id === ctx.parkingId;
+    return false;
+  }
+  return ctx.metaIds.has(conv.connection_id);
+}
 
 serveAuthenticated('social-inbox-send', async (req, user) => {
   if (req.method !== 'POST') {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:reply');
   const body = await readJsonBody(req);
+  const ctx = await resolveInboxAccess(req, 'reply', body as Record<string, unknown>);
   const conversationId = String(body.conversationId ?? '').trim();
   const text = String(body.text ?? '').trim();
   const privateReply = body.privateReply === true;
@@ -44,8 +59,19 @@ serveAuthenticated('social-inbox-send', async (req, user) => {
     return jsonError(req, 'conversationId required', 400);
   }
 
-  const conv = await getConversationById(ctx.org.id, conversationId);
+  const conv = await getConversationById(ctx.orgId, conversationId);
   if (!conv) {
+    return jsonError(req, 'Conversation not found', 404);
+  }
+
+  const metaIds = new Set(await resolveMetaConnectionIdsForScope(ctx.orgId, ctx.scope));
+  if (
+    !conversationAllowedInScope(conv, {
+      propertyId: ctx.propertyId,
+      parkingId: ctx.parkingId,
+      metaIds,
+    })
+  ) {
     return jsonError(req, 'Conversation not found', 404);
   }
 

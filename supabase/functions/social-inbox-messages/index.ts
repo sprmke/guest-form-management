@@ -8,15 +8,30 @@ import {
   editMessageBody,
   softDeleteMessage,
 } from '../_shared/chatMessageLifecycle.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
+import { resolveMetaConnectionIdsForScope } from '../_shared/metaInboxScope.ts';
 import {
   enrichConversationMessageAttachments,
   getConversationById,
   listMessages,
   markConversationRead,
 } from '../_shared/socialInboxService.ts';
+import type { SocialConversationRow } from '../_shared/socialInboxTypes.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+
+function conversationAllowedInScope(
+  conv: SocialConversationRow,
+  ctx: { propertyId: string | null; parkingId: string | null; metaIds: Set<string> }
+): boolean {
+  if (!ctx.propertyId && !ctx.parkingId) return true;
+  if (conv.platform === 'web') {
+    if (ctx.propertyId) return conv.property_id === ctx.propertyId;
+    if (ctx.parkingId) return conv.parking_id === ctx.parkingId;
+    return false;
+  }
+  return ctx.metaIds.has(conv.connection_id);
+}
 
 serveAuthenticated('social-inbox-messages', async (req) => {
   const url = new URL(req.url);
@@ -25,31 +40,46 @@ serveAuthenticated('social-inbox-messages', async (req) => {
     return jsonError(req, 'conversation_id required', 400);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:view');
-  const conv = await getConversationById(ctx.org.id, conversationId);
+  let body: Record<string, unknown> = {};
+  if (req.method === 'POST' || req.method === 'PATCH') {
+    body = (await readJsonBody(req).catch(() => ({}))) as Record<string, unknown>;
+  }
+
+  const action = String(body.action ?? '').trim();
+  const needsReply = req.method === 'PATCH' || (req.method === 'POST' && action === 'unsend');
+  const ctx = await resolveInboxAccess(req, needsReply ? 'reply' : 'view', body);
+
+  const conv = await getConversationById(ctx.orgId, conversationId);
   if (!conv) {
+    return jsonError(req, 'Conversation not found', 404);
+  }
+
+  const metaIds = new Set(await resolveMetaConnectionIdsForScope(ctx.orgId, ctx.scope));
+  if (
+    !conversationAllowedInScope(conv, {
+      propertyId: ctx.propertyId,
+      parkingId: ctx.parkingId,
+      metaIds,
+    })
+  ) {
     return jsonError(req, 'Conversation not found', 404);
   }
 
   if (req.method === 'GET') {
     const before = url.searchParams.get('before') ?? undefined;
-    const { messages, hasMore } = await listMessages(ctx.org.id, conversationId, { before });
+    const { messages, hasMore } = await listMessages(ctx.orgId, conversationId, { before });
     const enriched = await enrichConversationMessageAttachments(conv, messages);
     return jsonSuccess(req, { conversation: conv, messages: enriched, hasMore });
   }
 
   if (req.method === 'POST') {
-    const body = await readJsonBody(req).catch(() => ({}) as Record<string, unknown>);
-    const action = String(body.action ?? '').trim();
-
     if (action === 'unsend') {
-      const replyCtx = await resolveOrgAccessContext(req, 'org:inbox:reply');
       const messageId = String(body.messageId ?? body.message_id ?? '').trim();
       if (!messageId) {
         return jsonError(req, 'messageId required', 400);
       }
       try {
-        await assertHostCanUnsendMessage(replyCtx.org.id, conversationId, messageId);
+        await assertHostCanUnsendMessage(ctx.orgId, conversationId, messageId);
         await softDeleteMessage(messageId, { conversationId });
         return jsonSuccess(req, { unsent: true });
       } catch (e) {
@@ -68,20 +98,18 @@ serveAuthenticated('social-inbox-messages', async (req) => {
       }
     }
 
-    await markConversationRead(ctx.org.id, conversationId);
+    await markConversationRead(ctx.orgId, conversationId);
     return jsonSuccess(req, { read: true });
   }
 
   if (req.method === 'PATCH') {
-    const replyCtx = await resolveOrgAccessContext(req, 'org:inbox:reply');
-    const body = await readJsonBody(req);
     const messageId = String(body.messageId ?? body.message_id ?? '').trim();
     const text = String(body.text ?? '').trim();
     if (!messageId || !text) {
       return jsonError(req, 'messageId and text required', 400);
     }
     try {
-      await assertHostCanEditMessage(replyCtx.org.id, conversationId, messageId);
+      await assertHostCanEditMessage(ctx.orgId, conversationId, messageId);
       const message = await editMessageBody(messageId, text, {
         refreshPreview: true,
         conversationId,

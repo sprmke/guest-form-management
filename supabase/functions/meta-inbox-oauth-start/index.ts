@@ -1,12 +1,12 @@
 /**
- * Start Meta OAuth for org social inbox (Facebook Login for Business).
+ * Start Meta OAuth for org / property / parking social inbox.
  */
 
 import { buildMetaOAuthUrl } from '../_shared/metaInboxGraph.ts';
 import { isMetaReturnOriginAllowed, sanitizeMetaReturnPath } from '../_shared/metaInboxConfig.ts';
+import { resolveInboxAccess } from '../_shared/inboxAccess.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
-import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
 function randomState(): string {
@@ -19,15 +19,17 @@ serveAuthenticated('meta-inbox-oauth-start', async (req, user) => {
     return jsonError(req, 'Method not allowed', 405);
   }
 
-  const ctx = await resolveOrgAccessContext(req, 'org:inbox:manage');
-  let returnPath = '/inbox';
+  let body: Record<string, unknown> = {};
   try {
-    const body = await readJsonBody(req);
-    if (body && typeof body.returnPath === 'string') {
-      returnPath = sanitizeMetaReturnPath(body.returnPath);
-    }
+    body = (await readJsonBody(req)) as Record<string, unknown>;
   } catch {
-    /* default */
+    body = {};
+  }
+
+  const ctx = await resolveInboxAccess(req, 'manage', body);
+  let returnPath = '/inbox';
+  if (typeof body.returnPath === 'string') {
+    returnPath = sanitizeMetaReturnPath(body.returnPath);
   }
 
   const originHeader = req.headers.get('Origin') ?? req.headers.get('Referer') ?? '';
@@ -49,11 +51,13 @@ serveAuthenticated('meta-inbox-oauth-start', async (req, user) => {
   const sb = createServiceClient();
   const { error } = await sb.from('meta_inbox_oauth_state').insert({
     state,
-    organization_id: ctx.org.id,
+    organization_id: ctx.orgId,
     user_id: user.id,
     expires_at: expiresAt,
     return_origin: returnOrigin,
     return_path: returnPath,
+    property_id: ctx.propertyId,
+    parking_id: ctx.parkingId,
   });
   if (error) {
     console.error('[meta-inbox-oauth-start]', error);
