@@ -22,6 +22,12 @@
         "command": ".cursor/hooks/guard-shell.sh",
         "timeout": 5
       }
+    ],
+    "preToolUse": [
+      {
+        "command": "[ ! -f \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
+        "timeout": 5
+      }
     ]
   }
 }

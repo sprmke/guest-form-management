@@ -13,27 +13,41 @@ globs:
   - ui/src/features/guest/chat/**
   - ui/src/features/dashboard/inbox/**
   - docs/guides/routes/org/inbox.md
+  - docs/guides/routes/org/property/inbox.md
+  - docs/guides/routes/org/parking/inbox.md
 ---
 
 # Social Guest Inbox — agent reference
 
-Org-scoped unified inbox at `/org/:orgSlug/inbox`. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** until partner APIs are available — never fake connectivity.
+Guest Inbox at **org**, **property**, and **parking** scopes. Phase 1 ships **Meta** (Facebook Messenger + Instagram DMs + comments) and **Web** (on-site guest chat from property pages). TikTok and Airbnb are **Coming soon** — never fake connectivity.
+
+## Routes
+
+| Scope    | Path                                         |
+| -------- | -------------------------------------------- |
+| Org      | `/org/:orgSlug/inbox`                        |
+| Property | `/org/:orgSlug/property/:propertySlug/inbox` |
+| Parking  | `/org/:orgSlug/parking/:parkingSlug/inbox`   |
 
 ## Permissions
 
-| Permission         | Capability                                  |
-| ------------------ | ------------------------------------------- |
-| `org:inbox:view`   | Read threads and messages                   |
-| `org:inbox:reply`  | Send replies                                |
-| `org:inbox:manage` | Connect channels, quick replies, automation |
+| Org                | Property / parking | Capability                                         |
+| ------------------ | ------------------ | -------------------------------------------------- |
+| `org:inbox:view`   | `inbox:view`       | Read threads and messages                          |
+| `org:inbox:reply`  | `inbox:reply`      | Send replies                                       |
+| `org:inbox:manage` | `inbox:manage`     | Connect channels (org: + quick replies/automation) |
 
-Keep in sync: `supabase/functions/_shared/orgTeamPermissions.ts` and `ui/src/features/dashboard/team/lib/orgTeamConstants.ts`.
+Keep in sync: `_shared/orgTeamPermissions.ts`, `propertyTeamPermissions.ts`, `parkingTeamPermissions.ts` and UI team constants.
 
 ## Data scope
 
-- Every row keyed by `organization_id`. Edge functions use `resolveOrgAccessContext(req, permission)`.
-- Webhook handler is public but **must** verify `X-Hub-Signature-256` and dedupe via `social_webhook_events`.
-- Tokens encrypted with `META_INBOX_TOKEN_ENCRYPTION_KEY` (AES-256-GCM, same pattern as Gmail OAuth crypto).
+- Every row keyed by `organization_id`. Use `resolveInboxAccess(req, capability)` — org JWT + `org:inbox:*`, or `property_id`/`parking_id` + `inbox:*`.
+- Org Meta default: `social_channel_connections` with `property_id`/`parking_id` null. Overrides set one of those FKs.
+- Effective Meta = override if connected, else org default (`metaInboxScope.ts`). Inherited Meta threads = full Page inbox (1A).
+- Webhook handler is public but **must** verify `X-Hub-Signature-256` and dedupe via `social_webhook_events`. Resolve by `meta_page_id` to the owning connection row.
+- Tokens encrypted with `META_INBOX_TOKEN_ENCRYPTION_KEY`.
+- Org reconnect/disconnect must **not** delete property/parking override rows (`metaInboxLifecycle.ts`).
+- Marketing publish uses **org-default** Meta only.
 
 ## Meta messaging rules
 
