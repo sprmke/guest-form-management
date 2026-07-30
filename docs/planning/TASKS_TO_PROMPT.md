@@ -1,4 +1,4 @@
-Expand Inbox module to both org and property levels
+✅ Expand Inbox module to both org and property levels
 
 Right now, we only have Inbox module at org level.
 
@@ -15,6 +15,8 @@ At property level:
 
 - Web chat - scoped and only display the chat and conversations under specific property.
 - Facebook/Instagram - we can connect different meta account per property.
+
+Plan: `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md` (includes parking)
 
 ===
 
@@ -51,3 +53,24 @@ Also, on first card, we should have a help button and when we click it, we will 
 Then, for each module, when we will also have a help button for chat id, and with same flow, we will provide detailed guide on how to get tg chat id.
 
 Lastly, let's provide card description for each section, for what each module is for.
+
+===
+
+Add main header in dashboard
+
+Implement header in our dashboard and move the user, notification, light dark mode toggle, etc
+Then, the toggle between explore and host mode should be on sidebar
+Also, we still keep the get verified on sidebar
+
+===
+
+Update pricing menu/page to be "Calendar"
+
+We will have different tabs or switch view inside our calendar page.
+
+1. Default View - similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
+2. Pricing View - this is the current pricing page to configure pricing per booking. We should also have to support to block booking date
+
+===
+
+Improve dashboard UI at org & property level
