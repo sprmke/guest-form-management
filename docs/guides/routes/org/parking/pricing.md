@@ -26,6 +26,21 @@ Parking **Pricing** mirrors the property pricing calendar but only stores **week
 
 ---
 
+## Host-facing knowledge
+
+Parking **Pricing** sets how much guests pay per night for this slot. You define a weekday rate and a higher Fri–Sun weekend rate, then optionally override specific future dates on the calendar. There are no stay-style fees (deposits, pet fees, etc.) — just nightly parking rates. Changes can apply to all future dates or only the month you’re viewing.
+
+**Common host questions**
+
+- Q: How do weekend rates work?
+  A: Friday through Sunday nights use the weekend nightly rate automatically. Monday–Thursday use the weekday rate unless you set a custom price on the calendar for those dates.
+- Q: Can I charge a special rate for holidays?
+  A: Yes. Click or drag those dates on the calendar and set a custom nightly amount. Custom dates show with a pen icon in the legend.
+- Q: Will booked nights block the calendar?
+  A: Not yet. “Booked” blocking on the pricing calendar depends on parking reservation inventory — that integration is still coming. You can still set rates for any future date today.
+
+---
+
 ## Sections
 
 ### Summary cards

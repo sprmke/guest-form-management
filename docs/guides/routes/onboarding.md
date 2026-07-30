@@ -22,6 +22,21 @@ If the user already has any organization (owned or assigned), the page redirects
 
 ---
 
+## Host-facing knowledge
+
+First-time hosts complete this wizard right after signing in with Google — organization details, what you host (property and/or parking), and identity verification uploads.
+
+**Common host questions**
+
+- Q: How long does verification take after I finish onboarding?
+  A: Review usually takes a few hours up to about three business days before listings can go fully live.
+- Q: Can I host both a rental unit and a parking slot?
+  A: Yes — select both Property and Parking in the hosting step and complete the matching verification sections.
+- Q: I already belong to another host's team — why did onboarding skip?
+  A: If you already have access to an organization, you're sent to that dashboard instead of creating a second one you own.
+
+---
+
 ## Steps
 
 1. **Organization** — organization name, contact **Name**, **Contact number**

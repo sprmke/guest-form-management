@@ -30,6 +30,21 @@ Layout, stage cards, filters, views (`?view=table|card|calendar|kanban`), and pa
 
 ---
 
+## Host-facing knowledge
+
+This page shows every stay booking across all properties in your organization in one place. Each row tells you which property the guest booked, so you can spot workload across units without switching dashboards. Opening a booking takes you to that property’s detail view for the full workflow.
+
+**Common host questions**
+
+- Q: Why do I see a property name on every booking here but not on a single-property list?
+  A: Org Bookings combines stays from every property you manage. The property label helps you know which unit each guest belongs to before you open the record.
+- Q: How do I start a new booking from this page?
+  A: Use **New booking** — you’ll pick a property first, then continue on that property’s guest form or calendar flow.
+- Q: Can I see only one property’s bookings on this screen?
+  A: Yes. Use the filters (including property) the same way you would on a property bookings list to narrow the view.
+
+---
+
 ## API
 
 `GET /functions/v1/list-bookings?org_slug=…` (or `org_id=…`)

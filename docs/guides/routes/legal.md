@@ -19,6 +19,21 @@ Footer links from **`MarketingFooter`**. No forms or API calls. Content is hard-
 
 ---
 
+## Host-facing knowledge
+
+These are the public Terms of Use and Privacy Policy linked from the site footer. Guests and hosts see the same pages; there is nothing to configure in the dashboard.
+
+**Common host questions**
+
+- Q: Can I edit the terms or privacy text from my dashboard?
+  A: Not today — the copy is fixed in the app and will need a product update before launch review.
+- Q: Do guests have to accept these before booking?
+  A: Not on a separate checkbox step; the pages are available for reference from the footer.
+- Q: Are my verification documents covered by the privacy policy?
+  A: The policy describes how the platform handles data generally; verification uploads are stored privately and never shown on public listings.
+
+---
+
 ## Implementation map
 
 | Concern | Path                                                    |

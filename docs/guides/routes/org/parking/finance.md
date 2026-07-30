@@ -10,6 +10,21 @@ Same finance dashboard as property **`FinancePage`**: month/date filter, summary
 
 ---
 
+## Host-facing knowledge
+
+Parking **Finance** tracks money in and out for this slot only — rent collected, maintenance, supplies, and other operating lines. It works like property finance: add income or expenses, view them in a table or calendar, export reports, and set Telegram reminders for due dates. There is **no stays ledger** here because parking finance is separate from guest stay bookings.
+
+**Common host questions**
+
+- Q: Can I see guest stay payments on this page?
+  A: No. This ledger is for the parking slot’s own operating transactions. Guest stay payments stay under each **property’s** finance module.
+- Q: How do I get reminded before a bill is due?
+  A: Configure **Finance** notifications (Telegram) under this slot’s **Notifications** page, then add due dates when you create or edit expense lines.
+- Q: Who can add or delete transactions?
+  A: Team members with finance edit access for this parking slot. View-only roles can see summaries but not change lines.
+
+---
+
 ## Permissions
 
 Requires parking team **`finance:view`** (read) and **`finance:edit`** (create/update/delete transactions). Enforced server-side in `resolveFinanceAssetAccess` → `verifyParkingTeamAccess`.

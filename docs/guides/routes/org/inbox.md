@@ -1,5 +1,9 @@
 # Guest Inbox (`/org/:orgSlug/inbox`)
 
+Route: `/org/:orgSlug/inbox`
+
+> **Status:** Documented
+
 ## Progress overview
 
 | Section       | E2E     | Validation | Docs | Notes                                                                                                 |
@@ -9,15 +13,32 @@
 | Quick replies | Yes     | Yes        | Yes  | 10 default booking templates seeded; no media attachments                                             |
 | Automation    | Partial | Yes        | Yes  | Suggest-on-open; auto-send opt-in with per-platform toggles (Facebook, Instagram, Chat)               |
 
-**Status:** Documented (roadmap below is authoritative for next work)
-
 ## Overview
 
 Org operators view and reply to guest messages from Facebook Messenger, on-site **Web** chat, and (planned) Instagram DMs in one inbox. Page header: **Guest Inbox** with subtitle _View and reply to guest messages from connected channels._ TikTok and Airbnb appear as **Coming soon** until partner APIs are available.
 
-**Route:** `/org/:orgSlug/inbox`
+**Route:** `/org/:orgSlug/inbox` (also property `/…/property/…/inbox` and parking `/…/parking/…/inbox` — see sibling guides)
 
 **Deep link:** `?conversationId=<uuid>` selects that thread (and opens the conversation pane on mobile). Optional `?platform=web|facebook|instagram` sets the platform tab filter. Telegram Chat notifications use `conversationId` + `platform=web`.
+
+**Scope:** Org Messages shows all property web chats + all Meta threads (org default and overrides). Web **View property** links to the admin property dashboard. Org Meta is the default for every property/parking; those scopes can connect an override Page.
+
+---
+
+## Host-facing knowledge
+
+Guest Inbox is where you read and reply to guest messages from Facebook Messenger, your website chat, and (when connected) Instagram — all in one thread list for the whole organization. Connect your Facebook Page under **Channels**, then use **Messages** to reply; you can save canned answers under **Quick replies** and optionally let AI draft or send replies under **Automation**. TikTok and Airbnb are not live yet.
+
+**Common host questions**
+
+- Q: Do I need to connect Facebook separately for each property?
+  A: No. The organization’s connected Page is the default for every property. A property or parking slot can connect its own Page instead if you need a different inbox for that listing only.
+- Q: Why can’t I find an old Messenger conversation when I search?
+  A: Search only covers conversations already loaded into the inbox. Scroll the thread list to load more history from Facebook, or wait until background sync catches up.
+- Q: Can guests message me on Instagram today?
+  A: Instagram DMs are planned but not fully reliable yet. Facebook Messenger and website chat are the supported channels today.
+
+---
 
 ## Permissions
 
@@ -215,5 +236,5 @@ Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/g
 
 - [ ] **Operator E2E** — `docs/operations/inbox-e2e-runbook.md` (Meta OAuth, webhook tunnel, Connect → reply)
 - [ ] Meta App Review (Advanced Access) — `docs/operations/meta-app-review.md`
-- [ ] Property-level channel overrides
+- [x] Property/parking-level channel overrides (inherit org Meta + optional override) — `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md`
 - [ ] See **Roadmap** above for v2 scope (Instagram fix, full sync, media, comments, booking link, AI, broadcast, notifications)

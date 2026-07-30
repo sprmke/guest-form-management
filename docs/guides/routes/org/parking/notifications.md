@@ -24,6 +24,21 @@ Deep links: `?module=finance` scrolls to the Finance section.
 
 ---
 
+## Host-facing knowledge
+
+Parking **Notifications** configures Telegram alerts for this slot. The **Parking** section covers reservation-style alerts (new request, check-in reminder, payment received) once those flows are fully live. The **Finance** section sends due-date reminders for expense lines you track on parking finance. Each section needs a Telegram bot token and chat ID, plus a test send to confirm delivery.
+
+**Common host questions**
+
+- Q: Do I need two different Telegram setups?
+  A: You can use one bot and chat for both sections, or separate channels if you want ops alerts and finance reminders in different group chats.
+- Q: Why aren’t I getting parking reservation alerts yet?
+  A: Reservation Telegram templates are wired for this slot, but some reservation events depend on the parking booking flow shipping. Finance due-date reminders work today when finance Telegram is enabled and transactions have due dates.
+- Q: How do I jump straight to finance reminders?
+  A: Open notifications with the finance module selected in the URL, or scroll to the **Finance** card on this page.
+
+---
+
 ## Parking section
 
 `TelegramParkingSettingsCard` → `GET/PATCH telegram-parking-settings?parking_id=`
