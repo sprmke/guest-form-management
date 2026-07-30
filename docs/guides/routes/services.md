@@ -8,6 +8,23 @@ Route: `/services`
 
 Public preview for future guest services. Uses `MarketingLayoutShell` and the same listing search and scroll morph as `/properties` and `/developments`.
 
+---
+
+## Host-facing knowledge
+
+This page previews add-on services (cleaning, maintenance, supplies, and similar) that may be offered to guests later. Nothing on it is bookable yet.
+
+**Common host questions**
+
+- Q: Can guests order services from this page today?
+  A: No — it's a coming-soon preview only; the service chips are not clickable.
+- Q: Will these services connect to my dashboard later?
+  A: That's the plan, but there's no live integration yet — hosts manage operations through existing Finance and Maintenance modules instead.
+- Q: Why is Services in the main navigation if it's empty?
+  A: It sets expectations for guests and reserves space in the layout until the catalog ships.
+
+---
+
 ## Behavior
 
 - Search bar shows **What** and **When** only (no **Who** segment). Submits back to `/services` with the shared listing query parameters.

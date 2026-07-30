@@ -1,5 +1,9 @@
 # Guest web chat (`/properties/:propertySlug/messages`)
 
+Route: `/properties/:propertySlug/messages`
+
+> **Status:** Documented
+
 ## Progress overview
 
 | Section      | E2E     | Validation | Docs | Notes                                       |
@@ -8,13 +12,28 @@
 | Chat thread  | Partial | Yes        | Yes  | Phase 1 bubble UX shipped; see § UX roadmap |
 | Host inbox   | Partial | Yes        | Yes  | **Web** tab on Guest Inbox                  |
 
-**Status:** Documented
-
 **Flow spec:** `docs/temp/guest-contact-host-flow.md` (Phase 0 approved Jul 2026).
 
 ## Overview
 
 Pre-booking messaging between an authenticated guest and the property host. Threads use **`social_conversations`** / **`social_messages`** with **`platform = web`** and appear in the org **Guest Inbox** (**Web** tab).
+
+---
+
+## Host-facing knowledge
+
+Guests message you from a property listing before they book — first through a chat popup, then optionally on a full messages page. You reply from Guest Inbox like other channels.
+
+**Common host questions**
+
+- Q: Do guests need to pick dates before messaging me?
+  A: The first time they contact you about a listing, yes — return visits can open the thread without picking dates again.
+- Q: Is messaging the same as confirming a booking?
+  A: No — chatting does not hold dates or create a reservation; guests still use Reserve for that.
+- Q: Where do I see and answer these messages?
+  A: In Guest Inbox under the Web tab, alongside your other guest conversations.
+
+---
 
 ## Entry (property detail) — primary
 
@@ -45,10 +64,15 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 
 **Voice receptionist:** when enabled (global + property), the header ⋮ menu shows **Talk to
 receptionist**, opening a full-screen `VoiceSessionOverlay` (Gemini Live, mic in / audio out,
-procedural turtle avatar, live captions, session countdown). On end, timeout, or error the
+procedural turtle avatar today, live captions, session countdown). On end, timeout, or error the
 transcript is batch-written into this same thread as `social_messages` rows with
 `source_mode='voice'` — voice turns show inline with text history in both the guest thread and
-host Guest Inbox. Plan: `docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md`.
+host Guest Inbox.
+
+**Planned polish (Phase 6 — not shipped yet):** faster speech detection + AI turn latency, explicit
+listening/thinking/speaking UX (brass ring / waveform), then replace the turtle with a free
+browser **TalkingHead + VRM** humanoid lip-sync avatar. See plan § Phase 6 in
+`docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md`.
 
 ## API
 

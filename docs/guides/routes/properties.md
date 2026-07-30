@@ -40,6 +40,32 @@ Browse and view rental listings. Ported from PMA `features/marketing/properties/
 
 ---
 
+## Host-facing knowledge
+
+This is where guests browse homes, open a listing, save favorites, contact the host, and start a booking. Each live listing can also link to a public host profile page that shows everything that host currently offers.
+
+**Common host questions**
+
+- Q: Where do guests see my organization name and other listings?
+  A: On each property page, your name links to your public host page — guests see your logo, description, social links, and all active homes and parking you list.
+- Q: What's the difference between the booking form and a custom form link on my listing?
+  A: The main booking flow uses the standard reservation form after guests pick dates. Separate form links are for custom questionnaires or previews — they don't replace the official booking form yet.
+- Q: Why doesn't my inactive property show on my public host page?
+  A: Only active listings appear there; archived or draft units stay out of public view until you publish them again.
+
+---
+
+## Public host profile (`/hosts/:orgSlug`)
+
+**`HostPublicPage`** — guest-facing org brochure (distinct from the signed-in dashboard at **`/org/:orgSlug`**).
+
+- Loads org branding, tagline, description, and social links via **`get-public-host`**
+- Grids of **ACTIVE** properties and **ACTIVE** parkings when the org has either
+- Org name on **`ListingHostCard`** (property + parking detail) links here
+- **Verified** badge when enhanced verification is approved (see [onboarding.md](./onboarding.md))
+
+---
+
 ## List (`/properties`)
 
 | UI          | Component / data                                                                                                 |

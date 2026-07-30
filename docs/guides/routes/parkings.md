@@ -16,6 +16,7 @@ Routes:
 | Location browse | —        | —          | Documented | `/parkings/in/:location`                                                |
 | Detail page     | —        | —          | Documented | `get-public-parking` + pricing; shared **`BookingCard`** (parking mode) |
 | Reserve slot    | —        | —          | Documented | **`useParkingReserve`** → `/parkings/:slug/form` with dates             |
+| Parking form    | —        | —          | Documented | Mock `ParkingFormPage` (`dev-parking-form`)                             |
 
 ---
 
@@ -26,6 +27,21 @@ Browse parking slots across developments. Mirrors **`/properties`** list + locat
 **Unknown location slug:** redirects to **`/parkings`**.
 
 Main nav: **Parkings** → `/parkings` (replaces legacy **About** link).
+
+---
+
+## Host-facing knowledge
+
+Guests browse standalone parking slots by city or building, open a slot detail page, and can reserve through the same date-picker pattern as home listings. Host cards link to the public host profile when the slot is live.
+
+**Common host questions**
+
+- Q: Is parking booking fully self-serve for guests today?
+  A: Guests can browse and start a reserve flow from a slot page, but end-to-end parking payment is still evolving — many flows still tie back to a property stay.
+- Q: Where does my parking slot show up besides the public Parkings browse pages?
+  A: On your development's parking list, your public host page, and cross-links from related property listings when configured.
+- Q: What happens when a guest taps Reserve on a parking slot?
+  A: They open a parking registration form for that slot (dates carried from the picker when present). It is a marketing questionnaire today — not the same as the stay booking form or the paid-parking vehicle form after a guest books a stay.
 
 ---
 
@@ -67,6 +83,18 @@ Route is registered at the marketing shell level (no dynamic slug conflict).
 
 ---
 
+## Parking form (`/parkings/:parkingSlug/form`)
+
+**`ParkingFormPage`** — marketing mock form (not the operational stay booking form). Loads live parking detail via **`get-public-parking`**, then renders **`FormPageWrapper`** with the fixed mock form id **`dev-parking-form`**. Back link returns to the parking detail page. Submit is mock-only (Phase 1 UI).
+
+Distinct from:
+
+- Operational stay booking: `/properties/:slug/form` — see [form.md](./form.md)
+- Paid parking vehicle details for an existing stay: `/properties/:slug/parking/:bookingId` — see [bookings/parking.md](./bookings/parking.md)
+- Development-scoped questionnaires: `/developments/:slug/forms/:formId` — see [developments.md](./developments.md)
+
+---
+
 ## Implementation map
 
 | Concern        | Path                                                                                                                       |
@@ -79,6 +107,7 @@ Route is registered at the marketing shell level (no dynamic slug conflict).
 | Place meta     | `ui/src/features/guest/marketing/shared/components/ListingPlaceMeta.tsx`                                                   |
 | Public host    | `ui/src/features/guest/marketing/properties/hooks/usePublicHost.ts` + `HostPublicPage` (`parkings` from `get-public-host`) |
 | Public hook    | `ui/src/features/guest/marketing/parkings/hooks/usePublicParkingDetail.ts`                                                 |
+| Parking form   | `ui/src/features/guest/marketing/pages/ParkingFormPage.tsx`                                                                |
 | Edge           | `supabase/functions/get-public-parking/index.ts`                                                                           |
 | Location page  | `ui/src/features/guest/marketing/pages/ParkingsLocationPage.tsx`                                                           |
 | Grouping       | `ui/src/features/guest/marketing/parkings/lib/groupParkingsByLocation.ts`                                                  |

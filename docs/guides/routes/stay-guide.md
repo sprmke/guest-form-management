@@ -1,11 +1,29 @@
 # Guest stay guide (token-gated brochure)
 
-**Route:** `/properties/:propertySlug/stay-guide?token=<opaque>`  
-**Status:** Documented — **shipped**
+Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
+
+> **Status:** Documented
 
 ## Purpose
 
 Mobile-first **brochure-style** page for booked guests: house rules, check-in/out instructions, and parking reminders from **Property Templates** (standard keys), interleaved with property photos. Linked from the **ready-for-checkin** email (`{{stay_guide_cta_section}}`).
+
+---
+
+## Host-facing knowledge
+
+After you approve a guest for check-in, they receive a private link to a mobile-friendly stay guide with your rules, check-in steps, parking notes, and contact details — all pulled from your property templates.
+
+**Common host questions**
+
+- Q: When does the guest get the stay guide link?
+  A: When the booking reaches ready-for-check-in — it's included in that email and also available from the booking in your dashboard.
+- Q: Can anyone open the link if they guess the URL?
+  A: No — each link uses a unique token tied to that booking and only works during the stay window.
+- Q: How do I change what appears in the guide?
+  A: Edit the standard templates in your property settings; the guide updates from that content (hosts can preview it before sending).
+
+---
 
 ## Access
 
