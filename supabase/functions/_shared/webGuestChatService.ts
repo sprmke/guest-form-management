@@ -34,6 +34,9 @@ import {
 import { buildWebMessageExternalId, buildWebThreadId } from './webGuestChatIds.ts';
 import { isVoiceReceptionistAvailableForProperty } from './voiceReceptionistService.ts';
 
+/** YYYY-MM-DD inquiry dates from the guest chat / contact-host flow. */
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
 async function linkGuestWebConversationUser(
   sb: ReturnType<typeof createServiceClient>,
   userId: string
