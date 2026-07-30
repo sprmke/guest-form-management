@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 
 import { ClipboardCheck, Landmark, Users, Building2 } from 'lucide-react';
 
+import { VoiceReceptionistKillSwitchCard } from '@/features/dashboard/super-admin/components/VoiceReceptionistKillSwitchCard';
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
 const sections = [
@@ -26,6 +27,9 @@ export function SuperAdminOverviewPage() {
             <span className="font-medium">{title}</span>
           </Link>
         ))}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <VoiceReceptionistKillSwitchCard />
       </div>
     </div>
   );

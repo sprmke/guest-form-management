@@ -13,6 +13,7 @@ import { useUploadAppSettingsAsset } from '@/features/dashboard/bookings/hooks/u
 import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/components/property-settings/PropertyEmailAutomationsSection';
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
 import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
@@ -147,6 +148,8 @@ export function PropertyOperationalSettingsSections({
           }}
         />
       </AdminSection>
+
+      <PropertyVoiceReceptionistSection />
     </>
   );
 }
