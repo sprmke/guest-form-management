@@ -24,6 +24,9 @@ export const PARKING_TEAM_PERMISSION_IDS = [
   'team:view',
   'team:invite',
   'team:manage',
+  'inbox:view',
+  'inbox:reply',
+  'inbox:manage',
 ] as const;
 
 export type ParkingTeamPermissionId = (typeof PARKING_TEAM_PERMISSION_IDS)[number];
@@ -42,8 +45,15 @@ export const BUILTIN_PARKING_ROLE_PERMISSIONS: Record<
   ParkingTeamPermissionId[]
 > = {
   MANAGER: [...PARKING_TEAM_PERMISSION_IDS],
-  STAFF: ['bookings:view', 'bookings:edit', 'notifications:view', 'pricing:view'],
-  VIEWER: ['bookings:view', 'notifications:view', 'pricing:view', 'team:view'],
+  STAFF: [
+    'bookings:view',
+    'bookings:edit',
+    'notifications:view',
+    'pricing:view',
+    'inbox:view',
+    'inbox:reply',
+  ],
+  VIEWER: ['bookings:view', 'notifications:view', 'pricing:view', 'team:view', 'inbox:view'],
 };
 
 export const ROLE_PERMISSIONS = BUILTIN_PARKING_ROLE_PERMISSIONS;

@@ -33,6 +33,9 @@ export const TEAM_PERMISSION_IDS = [
   'team:view',
   'team:invite',
   'team:manage',
+  'inbox:view',
+  'inbox:reply',
+  'inbox:manage',
 ] as const;
 
 export type TeamPermissionId = (typeof TEAM_PERMISSION_IDS)[number];
@@ -59,6 +62,8 @@ export const BUILTIN_ROLE_PERMISSIONS: Record<BuiltinPropertyRole, TeamPermissio
     'notifications:view',
     'templates:view',
     'pricing:view',
+    'inbox:view',
+    'inbox:reply',
   ],
   VIEWER: [
     'bookings:view',
@@ -67,6 +72,7 @@ export const BUILTIN_ROLE_PERMISSIONS: Record<BuiltinPropertyRole, TeamPermissio
     'templates:view',
     'pricing:view',
     'team:view',
+    'inbox:view',
   ],
 };
 

@@ -3,7 +3,11 @@
  */
 
 import { encryptMetaInboxToken } from './metaInboxCrypto.ts';
-import { prepareOrgMetaInboxConnect } from './metaInboxLifecycle.ts';
+import {
+  prepareOrgMetaInboxConnect,
+  prepareParkingMetaInboxConnect,
+  preparePropertyMetaInboxConnect,
+} from './metaInboxLifecycle.ts';
 import {
   fetchMetaUserPages,
   persistMetaPageConnection,
@@ -19,6 +23,11 @@ export type MetaPagePickerOption = {
   hasInstagram: boolean;
 };
 
+export type MetaInboxConnectScope = {
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
 export function metaPagesForPicker(pages: MetaPageAccount[]): MetaPagePickerOption[] {
   return pages.map((page) => ({
     id: page.id,
@@ -28,11 +37,7 @@ export function metaPagesForPicker(pages: MetaPageAccount[]): MetaPagePickerOpti
   }));
 }
 
-/** Persist Page + IG connection only — backfill runs via `meta-inbox-backfill`. */
-export async function connectOrgMetaInboxPage(orgId: string, page: MetaPageAccount): Promise<void> {
-  await ensureSocialInboxSettings(orgId);
-  await prepareOrgMetaInboxConnect(orgId);
-  await persistMetaPageConnection(orgId, page);
+async function resetBackfillForFacebookRow(facebookConnectionId: string): Promise<void> {
   const sb = socialInboxDb();
   const now = new Date().toISOString();
   await sb
@@ -44,10 +49,45 @@ export async function connectOrgMetaInboxPage(orgId: string, page: MetaPageAccou
       last_sync_at: null,
       updated_at: now,
     })
-    .eq('organization_id', orgId)
-    .eq('platform', 'facebook')
-    .eq('status', 'connected');
-  await seedDefaultInboxQuickRepliesIfEmpty(orgId);
+    .eq('id', facebookConnectionId);
+}
+
+/** Persist Page + IG connection only — backfill runs via `meta-inbox-backfill`. */
+export async function connectMetaInboxPage(
+  orgId: string,
+  page: MetaPageAccount,
+  scope: MetaInboxConnectScope = {}
+): Promise<void> {
+  const propertyId = scope.propertyId ?? null;
+  const parkingId = scope.parkingId ?? null;
+  if (propertyId && parkingId) {
+    throw new Error('Cannot set both property and parking Meta scope');
+  }
+
+  await ensureSocialInboxSettings(orgId);
+
+  if (propertyId) {
+    await preparePropertyMetaInboxConnect(orgId, propertyId);
+  } else if (parkingId) {
+    await prepareParkingMetaInboxConnect(orgId, parkingId);
+  } else {
+    await prepareOrgMetaInboxConnect(orgId);
+  }
+
+  const { facebook } = await persistMetaPageConnection(orgId, page, {
+    propertyId,
+    parkingId,
+  });
+  await resetBackfillForFacebookRow(facebook.id);
+
+  if (!propertyId && !parkingId) {
+    await seedDefaultInboxQuickRepliesIfEmpty(orgId);
+  }
+}
+
+/** @deprecated Prefer connectMetaInboxPage — org-default only. */
+export async function connectOrgMetaInboxPage(orgId: string, page: MetaPageAccount): Promise<void> {
+  await connectMetaInboxPage(orgId, page);
 }
 
 export async function encryptMetaUserToken(userToken: string): Promise<string> {

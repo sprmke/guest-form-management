@@ -162,11 +162,57 @@ export async function fetchMetaMessengerParticipantProfile(
   }
 }
 
+export type PersistMetaPageScope = {
+  propertyId?: string | null;
+  parkingId?: string | null;
+};
+
+async function assertMetaPageAvailable(
+  pageId: string,
+  opts: { orgId: string; propertyId?: string | null; parkingId?: string | null }
+): Promise<void> {
+  const sb = (await import('./socialInboxService.ts')).socialInboxDb();
+  const { data, error } = await sb
+    .from('social_channel_connections')
+    .select('id, organization_id, property_id, parking_id')
+    .eq('meta_page_id', pageId)
+    .eq('platform', 'facebook')
+    .eq('status', 'connected')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return;
+
+  const sameOrg = data.organization_id === opts.orgId;
+  const sameProperty =
+    opts.propertyId != null && data.property_id === opts.propertyId && !data.parking_id;
+  const sameParking =
+    opts.parkingId != null && data.parking_id === opts.parkingId && !data.property_id;
+  const sameOrgDefault =
+    !opts.propertyId && !opts.parkingId && !data.property_id && !data.parking_id && sameOrg;
+
+  if (sameOrgDefault || sameProperty || sameParking) return;
+  throw new Error('This Facebook Page is already connected to another inbox');
+}
+
 export async function persistMetaPageConnection(
   orgId: string,
-  page: MetaPageAccount
+  page: MetaPageAccount,
+  scope: PersistMetaPageScope = {}
 ): Promise<{ facebook: SocialChannelConnectionRow; instagram: SocialChannelConnectionRow | null }> {
+  const propertyId = scope.propertyId ?? null;
+  const parkingId = scope.parkingId ?? null;
+  if (propertyId && parkingId) {
+    throw new Error('Cannot set both property and parking scope on a Meta connection');
+  }
+
+  await assertMetaPageAvailable(page.id, { orgId, propertyId, parkingId });
+
   const encrypted = await encryptMetaInboxToken(page.access_token);
+  const scopeFields = {
+    property_id: propertyId,
+    parking_id: parkingId,
+  };
+
   const facebook = await upsertChannelConnection({
     organization_id: orgId,
     platform: 'facebook',
@@ -179,6 +225,7 @@ export async function persistMetaPageConnection(
     webhook_subscribed_at: null,
     last_sync_at: null,
     error_message: null,
+    ...scopeFields,
   });
 
   let instagram: SocialChannelConnectionRow | null = null;
@@ -198,6 +245,7 @@ export async function persistMetaPageConnection(
       webhook_subscribed_at: null,
       last_sync_at: null,
       error_message: null,
+      ...scopeFields,
     });
   }
 
@@ -208,16 +256,12 @@ export async function persistMetaPageConnection(
     await sb
       .from('social_channel_connections')
       .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
-      .eq('organization_id', orgId)
-      .eq('platform', 'facebook')
-      .eq('external_account_id', page.id);
+      .eq('id', facebook.id);
     if (instagram) {
       await sb
         .from('social_channel_connections')
         .update({ webhook_subscribed_at: now, error_message: null, updated_at: now })
-        .eq('organization_id', orgId)
-        .eq('platform', 'instagram')
-        .eq('external_account_id', igId!);
+        .eq('id', instagram.id);
     }
   } catch (e) {
     const msg = (e as Error).message ?? 'Webhook subscribe failed';
@@ -226,16 +270,12 @@ export async function persistMetaPageConnection(
     await sb
       .from('social_channel_connections')
       .update({ error_message: errText, updated_at: new Date().toISOString() })
-      .eq('organization_id', orgId)
-      .eq('platform', 'facebook')
-      .eq('external_account_id', page.id);
+      .eq('id', facebook.id);
     if (instagram) {
       await sb
         .from('social_channel_connections')
         .update({ error_message: errText, updated_at: new Date().toISOString() })
-        .eq('organization_id', orgId)
-        .eq('platform', 'instagram')
-        .eq('external_account_id', igId!);
+        .eq('id', instagram.id);
     }
   }
 
