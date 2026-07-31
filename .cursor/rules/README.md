@@ -4,17 +4,18 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Always-on rules (core — loaded every session)
 
-| File                            | Purpose                                        |
-| ------------------------------- | ---------------------------------------------- |
-| `project-context.mdc`           | Stack, doc index, where to edit                |
-| `documentation-maintenance.mdc` | Sync docs with code                            |
-| `booking-workflow.mdc`          | Status machine, transitions, emails, calendar  |
-| `admin-auth.mdc`                | Allow list, JWT, route guards, dev controls    |
-| `mobile-responsive.mdc`         | Breakpoints, touch targets, admin shell        |
-| `ui-minimal-copy.mdc`           | No extra UI prose                              |
-| `competitive-ux-research.mdc`   | Airbnb + PMS UX research before features       |
-| `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`) |
-| `git-commits.mdc`               | No Cursor author/co-author in commits          |
+| File                            | Purpose                                               |
+| ------------------------------- | ----------------------------------------------------- |
+| `project-context.mdc`           | Stack, doc index, where to edit                       |
+| `documentation-maintenance.mdc` | Sync docs with code                                   |
+| `booking-workflow.mdc`          | Status machine, transitions, emails, calendar         |
+| `admin-auth.mdc`                | Allow list, JWT, route guards, dev controls           |
+| `mobile-responsive.mdc`         | Breakpoints, touch targets, admin shell               |
+| `ui-minimal-copy.mdc`           | No extra UI prose                                     |
+| `competitive-ux-research.mdc`   | Airbnb + PMS UX research before features              |
+| `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)        |
+| `git-commits.mdc`               | No Cursor author/co-author in commits                 |
+| `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
 
 ## Conditional rules (by file glob — loaded when relevant)
 
@@ -90,14 +91,14 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Hooks (`.cursor/hooks.json`)
 
-| Hook                   | Script                                                |
-| ---------------------- | ----------------------------------------------------- |
-| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh` |
-| `beforeShellExecution` | `guard-shell.sh`                                      |
+| Hook                   | Script                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| `afterFileEdit`        | `format-edited-file.sh`, `check-stack-terminology.sh`                           |
+| `beforeShellExecution` | `guard-shell.sh` (denies prod Supabase deploy unless **`kamewave`** in command) |
 
 ## Token budget
 
-- **Always-on** = 8 rules (booking + auth + competitive UX + superpowers opt-in are domain-critical).
+- **Always-on** = 9 rules (booking + auth + competitive UX + superpowers opt-in + prod-deploy guard are domain-critical).
 - **Everything else** = globs or skills on demand.
 - Per-route detail → `docs/guides/routes/`, not rules.
 - **Skipped from PMA:** `thinking-framework` (too heavy), Drizzle, tRPC, Next.js, React Email monorepo, AWS S3, Zustand.
