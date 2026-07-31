@@ -14,6 +14,7 @@ import {
 } from '../_shared/orgVerification.ts';
 import { jsonError, jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
+import { formatPublicUrl } from '../_shared/utils.ts';
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
@@ -44,26 +45,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
 
   await verifyOrgOwner(req, orgId);
 
-  const ext =
-    mime === 'application/pdf'
-      ? '.pdf'
-      : mime === 'image/png'
-        ? '.png'
-        : mime === 'image/webp'
-          ? '.webp'
-          : '.jpg';
-  const storagePath = `org/${orgId}/${assetType}/${crypto.randomUUID()}${ext}`;
-
   const supabase = createServiceClient();
-  const { error: uploadError } = await supabase.storage
-    .from(ORG_VERIFICATION_BUCKET)
-    .upload(storagePath, file, { upsert: false, contentType: mime });
-
-  if (uploadError) {
-    console.error('[upload-org-verification-asset]', uploadError.message);
-    return jsonError(req, 'Upload failed', 500);
-  }
-
   const { data: orgRow, error: orgError } = await supabase
     .from('organizations')
     .select('settings')
@@ -78,11 +60,34 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
     orgRow.settings && typeof orgRow.settings === 'object' && !Array.isArray(orgRow.settings)
       ? (orgRow.settings as Record<string, unknown>)
       : {};
-  const verification = applyAssetPath(
-    readOrgVerificationFromSettings(currentSettings),
-    assetType,
-    storagePath
-  );
+  const existingVerification = readOrgVerificationFromSettings(currentSettings);
+  if (
+    existingVerification.baseStatus === 'rejected' &&
+    existingVerification.baseRejectionKind === 'rejected'
+  ) {
+    return jsonError(req, 'This verification was declined. Please start a new application.');
+  }
+
+  const ext =
+    mime === 'application/pdf'
+      ? '.pdf'
+      : mime === 'image/png'
+        ? '.png'
+        : mime === 'image/webp'
+          ? '.webp'
+          : '.jpg';
+  const storagePath = `org/${orgId}/${assetType}/${crypto.randomUUID()}${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from(ORG_VERIFICATION_BUCKET)
+    .upload(storagePath, file, { upsert: false, contentType: mime });
+
+  if (uploadError) {
+    console.error('[upload-org-verification-asset]', uploadError.message);
+    return jsonError(req, 'Upload failed', 500);
+  }
+
+  const verification = applyAssetPath(existingVerification, assetType, storagePath);
 
   const { error: updateError } = await supabase
     .from('organizations')
@@ -109,7 +114,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
 
   return jsonSuccess(req, {
     path: storagePath,
-    previewUrl: signed?.signedUrl ?? null,
+    previewUrl: signed?.signedUrl ? formatPublicUrl(signed.signedUrl) : null,
     assetType,
     verification: {
       baseStatus: verification.baseStatus,

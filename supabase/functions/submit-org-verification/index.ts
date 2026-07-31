@@ -144,10 +144,16 @@ serveAuthenticated('submit-org-verification', async (req) => {
     if (verification.baseStatus === 'approved') {
       return jsonError(req, 'Base verification is already approved');
     }
+    if (verification.baseStatus === 'rejected' && verification.baseRejectionKind === 'rejected') {
+      return jsonError(req, 'This verification was declined. Please start a new application.');
+    }
     verification = {
       ...verification,
       baseStatus: 'pending',
       baseSubmittedAt: new Date().toISOString(),
+      baseRejectionReason: null,
+      baseRejectionKind: null,
+      baseChangesRequestedDocs: [],
     };
   } else {
     if (!canSubmitEnhancedVerification(verification)) {
@@ -163,6 +169,8 @@ serveAuthenticated('submit-org-verification', async (req) => {
       ...verification,
       enhancedStatus: 'pending',
       enhancedSubmittedAt: new Date().toISOString(),
+      enhancedRejectionReason: null,
+      enhancedRejectionKind: null,
     };
   }
 

@@ -24,6 +24,7 @@ import {
   validateOrgContactSettingsFields,
   validateOrgDescription,
 } from '../_shared/orgSettingsValidation.ts';
+import { readOrgVerificationFromSettings } from '../_shared/orgVerification.ts';
 import {
   DUPLICATE_TOWER_UNIT_MESSAGE,
   findPropertyTowerUnitConflict,
@@ -114,14 +115,24 @@ serveAuthenticated('create-organization', async (req, user) => {
 
   const { data: ownedOrgs, error: ownedError } = await supabase
     .from('organizations')
-    .select('id')
-    .eq('owner_id', user.id)
-    .limit(1);
+    .select('id, settings')
+    .eq('owner_id', user.id);
   if (ownedError) {
     console.error('[create-organization] owned org check:', ownedError.message);
     return jsonError(req, 'Failed to validate organization ownership', 500);
   }
-  if (ownedOrgs && ownedOrgs.length > 0) {
+  const blockingOwned = (ownedOrgs ?? []).filter((row) => {
+    const verification = readOrgVerificationFromSettings(
+      row.settings && typeof row.settings === 'object' && !Array.isArray(row.settings)
+        ? (row.settings as Record<string, unknown>)
+        : {}
+    );
+    // Hard-rejected orgs do not block starting a new application.
+    return !(
+      verification.baseStatus === 'rejected' && verification.baseRejectionKind === 'rejected'
+    );
+  });
+  if (blockingOwned.length > 0) {
     return jsonError(req, 'You already own an organization', 409);
   }
 
