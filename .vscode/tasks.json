@@ -91,6 +91,17 @@
       }
     },
     {
+      "label": "Supabase: Migration up (local, include-all)",
+      "type": "shell",
+      "command": "bun run db:migrate",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      }
+    },
+    {
       "label": "Supabase: Sync prod data → local",
       "type": "shell",
       "command": "bun run sync:prod-data",
