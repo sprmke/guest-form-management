@@ -44,6 +44,9 @@ This is where you read and reply to guest messages for this property — website
 - Connect Meta here writes `social_channel_connections` with `property_id` set; does **not** wipe the org default.
 - Disconnect override only removes the property override + its Meta threads; UI falls back to org Meta.
 - Query/body: `property_id` on inbox edge functions; auth via `verifyPropertyAccess` + `inbox:*`.
+- **Message body rendering (Phase 6.1b):** plain `body_text` is parsed client-side into rich blocks
+  (Google Maps → map thumbnail card, `-`/`1.` lists, https linkify) via shared `ChatRichBody` /
+  `ChatMessageBubble` — same as guest web chat. No DB schema change.
 
 ## Implementation map
 

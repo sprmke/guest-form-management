@@ -6,42 +6,42 @@ Route: `/org/:orgSlug/bookings`
 
 ## Progress overview
 
-| Section                       | E2E save  | Validation | Docs | Notes                                                               |
-| ----------------------------- | --------- | ---------- | ---- | ------------------------------------------------------------------- |
-| Summary stage cards           | —         | —          | Done | Same as property bookings                                           |
-| Filter bar                    | —         | —          | Done | Same toolbar + view toggle                                          |
-| Table / card / calendar views | —         | —          | Done | **Property** column / label on every row                            |
-| Kanban view                   | via modal | —          | Done | Property name on cards; workflow modal opens property-scoped detail |
+| Section                       | E2E save | Validation | Docs | Notes                                            |
+| ----------------------------- | -------- | ---------- | ---- | ------------------------------------------------ |
+| Summary stage cards           | —        | —          | Done | Property + parking rows share stage buckets      |
+| Filter bar                    | —        | —          | Done | Includes **Booking type** (property / parking)   |
+| Table / card / calendar views | —        | —          | Done | **Resource** column: property or parking + badge |
+| Kanban view                   | —        | —          | N/A  | Hidden at org level (property list keeps kanban) |
 
 ---
 
 ## Overview
 
-Same paginated booking list as [property bookings](./property/bookings.md), scoped to **all properties in the organization**.
+Paginated list of **property stays** and **parking-slot reservations** across the organization.
 
 Differences from property list:
 
-1. Each row/card/calendar day item shows **which property** the booking belongs to (`property_name` from `list-bookings`).
-2. Calendar view lists **all org bookings** on a selected day (multiple properties on the same night).
-3. Row/card/calendar links navigate to `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` using each row’s `property_slug`.
-4. **New booking** links to `/org/:orgSlug/properties` (pick a property first).
+1. Each row shows **Resource** — property name or parking slot name with a **Property** / **Parking** badge.
+2. **More filters → Booking type** narrows to property stays or parking only.
+3. Property rows open `/org/:orgSlug/property/:propertySlug/bookings/:bookingId`.
+4. Parking rows open `/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId`.
+5. No header actions (date picker, new booking, parking shortcuts) — create stays and parking reservations from each property or parking slot’s bookings page.
+6. Views: table, card, calendar only (no kanban).
 
-Layout, stage cards, filters, views (`?view=table|card|calendar|kanban`), and pagination behave the same as the property page.
+Stay-side `need_parking` on property bookings is unchanged — that is nested stay workflow, not standalone parking reservations.
 
 ---
 
 ## Host-facing knowledge
 
-This page shows every stay booking across all properties in your organization in one place. Each row tells you which property the guest booked, so you can spot workload across units without switching dashboards. Opening a booking takes you to that property’s detail view for the full workflow.
+This page combines every property stay and every parking-slot reservation in your organization. The type badge tells you whether a row is a stay or a parking-only booking before you open it.
 
 **Common host questions**
 
-- Q: Why do I see a property name on every booking here but not on a single-property list?
-  A: Org Bookings combines stays from every property you manage. The property label helps you know which unit each guest belongs to before you open the record.
-- Q: How do I start a new booking from this page?
-  A: Use **New booking** — you’ll pick a property first, then continue on that property’s guest form or calendar flow.
-- Q: Can I see only one property’s bookings on this screen?
-  A: Yes. Use the filters (including property) the same way you would on a property bookings list to narrow the view.
+- Q: Why is there no kanban here?
+  A: Parking reservations use a simple status path (review → active → completed). Kanban remains on each property’s bookings page for the full stay workflow.
+- Q: How do I add a parking reservation?
+  A: Open the parking slot’s bookings page and use **New booking**.
 
 ---
 
@@ -50,11 +50,14 @@ This page shows every stay booking across all properties in your organization in
 `GET /functions/v1/list-bookings?org_slug=…` (or `org_id=…`)
 
 - Permission: `org:bookings:view`
-- Loads bookings for all properties in the org (`guest_submissions.property_id IN (…)`).
-- Response rows include `property_id`, `property_name`, `property_slug`.
-- Optional `?property_id=` narrows to one property within the org.
+- Returns rows where `property_id IN (org properties)` **OR** `parking_id IN (org parkings)`.
+- Response includes `booking_kind`, `property_*` and/or `parking_*` meta.
+- Optional `?booking_kind=property|parking`, `?property_id=` (property stays only within org).
 
-Property-scoped calls unchanged: `?property_id=…` without org params.
+Parking-scoped list: `?parking_id=…` with parking team `bookings:view`.
+
+Admin create: `POST create-parking-booking?parking_id=…`  
+Status changes: `POST transition-parking-booking?parking_id=…` with `{ bookingId, toStatus }`.
 
 ---
 
@@ -64,15 +67,13 @@ Property-scoped calls unchanged: `?property_id=…` without org params.
 | ------------- | ------------------------------------------------------------------------------- |
 | Page          | `ui/src/features/dashboard/org/pages/OrgBookingsPage.tsx`                       |
 | Shared list   | `ui/src/features/dashboard/bookings/pages/BookingsListPage.tsx` (`scope="org"`) |
+| Resource chip | `ui/src/features/dashboard/bookings/components/BookingResourceLabel.tsx`        |
 | Hook          | `ui/src/features/dashboard/bookings/hooks/useBookings.ts`                       |
 | Edge function | `supabase/functions/list-bookings/index.ts`                                     |
-| Nav           | `adminSidebarNav.ts#buildOrgNavSections` — **Bookings** after Dashboard         |
 
 ---
 
 ## Permissions
 
 - Route guard: `RequireOrgPermission` section `bookings` → `org:bookings:view`
-- Granted to org **Owner** (all permissions) and **Admin** by default
-
-Property-only org members are redirected to their property dashboard (same as other org routes).
+- Parking rows on org list require org-level access; parking-slot mutations use parking team RBAC on detail/create endpoints.
