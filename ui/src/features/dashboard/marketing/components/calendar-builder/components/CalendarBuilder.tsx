@@ -45,6 +45,10 @@ import {
   normalizeCalendarCanvasFrame,
   type CalendarCanvasFormat,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
+import {
+  CALENDAR_DESIGNER_PRESET_IDS,
+  CALENDAR_PRESET_CATEGORIES,
+} from '@/features/dashboard/marketing/lib/calendarPresets';
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
 import {
   propertyGalleryMediaItems,
@@ -70,11 +74,16 @@ import {
   TodayPanel,
   BookedPanel,
   AvailablePanel,
+  BlockedPanel,
   LegendPanel,
   WatermarkPanel,
 } from './panels';
 import { useCalendarTemplates } from '../hooks/use-calendar-templates';
-import { useCalendarBuilderStore } from '../stores/calendar-builder-store';
+import {
+  MOCK_BLOCKED_DAYS,
+  MOCK_PREVIEW_BOOKINGS,
+  useCalendarBuilderStore,
+} from '../stores/calendar-builder-store';
 import { normalizeCalendarStyles, type CalendarStyles, type PreviewBooking } from '../types';
 
 interface CalendarBuilderProps {
@@ -87,108 +96,6 @@ interface CalendarBuilderProps {
   onPublish?: () => void;
   isExporting?: boolean;
 }
-
-// 10 production-ready designer templates grouped by visual language.
-// Each description cites the font pairing so the picker communicates the design system.
-const PRESET_CATEGORIES = [
-  {
-    label: 'Editorial',
-    presets: [
-      {
-        value: 'editorial-serif',
-        label: 'Editorial Serif',
-        description: 'Playfair · text booked label',
-        color: '#111827',
-      },
-      {
-        value: 'modern-classic',
-        label: 'Modern Classic',
-        description: 'Cormorant · Jost',
-        color: '#9a3412',
-        secondary: '#c2410c',
-      },
-    ],
-  },
-  {
-    label: 'Minimal',
-    presets: [
-      {
-        value: 'swiss-minimal',
-        label: 'Swiss Minimal',
-        description: 'Inter Tight · pattern booked',
-        color: '#000000',
-      },
-      {
-        value: 'mono-ink',
-        label: 'Mono Ink',
-        description: 'Space Grotesk · high contrast',
-        color: '#171717',
-      },
-    ],
-  },
-  {
-    label: 'Warm & Organic',
-    presets: [
-      {
-        value: 'terracotta',
-        label: 'Terracotta',
-        description: 'Fraunces · gradient booked',
-        color: '#c2410c',
-        secondary: '#9a3412',
-      },
-    ],
-  },
-  {
-    label: 'Photo Backgrounds',
-    presets: [
-      {
-        value: 'tropical-paradise',
-        label: 'Tropical Paradise',
-        description: 'Beach photo · icon booked',
-        color: '#00897b',
-        secondary: '#4db6ac',
-      },
-      {
-        value: 'cozy-cabin',
-        label: 'Cozy Cabin',
-        description: 'Wood texture · icon booked',
-        color: '#8d6e63',
-        secondary: '#6d4c41',
-      },
-    ],
-  },
-  {
-    label: 'Dark & Luxe',
-    presets: [
-      {
-        value: 'onyx-luxe',
-        label: 'Onyx Luxe',
-        description: 'Outfit · gold fill booked',
-        color: '#0a0a0a',
-        secondary: '#d4af37',
-      },
-      {
-        value: 'midnight-velvet',
-        label: 'Midnight Velvet',
-        description: 'Manrope · navy gradient',
-        color: '#1e1b4b',
-        secondary: '#6366f1',
-      },
-    ],
-  },
-  {
-    label: 'Contemporary',
-    presets: [
-      {
-        value: 'risograph-pop',
-        label: 'Risograph Pop',
-        description: 'Space Grotesk · border grid',
-        color: '#f43f5e',
-        secondary: '#2563eb',
-      },
-    ],
-  },
-];
 
 const ZOOM_LEVELS = [25, 50, 75, 100, 125, 150, 200];
 const MIN_ZOOM = 25;
@@ -218,6 +125,8 @@ export function CalendarBuilder({
     return gallery.filter((item) => item.type === 'image');
   }, [publicProperty?.media, publicProperty?.images]);
 
+  const propertyPhotoUrl = calendarPropertyImages[0]?.url;
+
   const calendarRef = useRef<HTMLDivElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
@@ -233,13 +142,7 @@ export function CalendarBuilder({
   const catalog = useMarketingCatalog('calendar');
   useCalendarTemplateDedupe(true);
 
-  const calendarPresetIds = useMemo(
-    () => [
-      'default',
-      ...PRESET_CATEGORIES.flatMap((category) => category.presets.map((preset) => preset.value)),
-    ],
-    []
-  );
+  const calendarPresetIds = useMemo(() => ['default', ...CALENDAR_DESIGNER_PRESET_IDS], []);
 
   const styles = useCalendarBuilderStore((state) => state.styles);
   const setStyles = useCalendarBuilderStore((state) => state.setStyles);
@@ -287,7 +190,7 @@ export function CalendarBuilder({
     }
     if (!activeSourcePresetId || isCalendarBlankPreset(activeSourcePresetId))
       return 'Blank calendar';
-    for (const category of PRESET_CATEGORIES) {
+    for (const category of CALENDAR_PRESET_CATEGORIES) {
       const preset = category.presets.find((item) => item.value === activeSourcePresetId);
       if (preset) return preset.label;
     }
@@ -440,7 +343,7 @@ export function CalendarBuilder({
       setActiveCustomTemplateId(null);
 
       if (isCalendarBlankPreset(presetId)) {
-        applyPreset(presetId, brandColor);
+        applyPreset(presetId, brandColor, propertyPhotoUrl);
         setActiveAutosaveTemplateId(null);
         setSelectedTemplateKey(`preset:${presetId}`);
         setShowAdvancedSettings(options?.openAdvanced ?? false);
@@ -459,7 +362,7 @@ export function CalendarBuilder({
         );
         setActiveAutosaveTemplateId(autosave!.id);
       } else {
-        applyPreset(presetId, brandColor);
+        applyPreset(presetId, brandColor, propertyPhotoUrl);
         setActiveAutosaveTemplateId(null);
       }
 
@@ -468,7 +371,16 @@ export function CalendarBuilder({
       setIsDirty(false);
       window.setTimeout(() => markBaseline(), 0);
     },
-    [apiTemplates, applyPreset, brandColor, canvasFrame.format, markBaseline, setIsDirty, setStyles]
+    [
+      apiTemplates,
+      applyPreset,
+      brandColor,
+      canvasFrame.format,
+      markBaseline,
+      propertyPhotoUrl,
+      setIsDirty,
+      setStyles,
+    ]
   );
 
   const loadCustomTemplateState = useCallback(
@@ -538,22 +450,33 @@ export function CalendarBuilder({
     setStyles,
   ]);
 
+  const previewBookingsForDisplay = useMemo(
+    () => (bookings?.length ? bookings : MOCK_PREVIEW_BOOKINGS),
+    [bookings]
+  );
+  const previewBlockedDaysForDisplay = useMemo(
+    () => (blockedDays?.length ? blockedDays : MOCK_BLOCKED_DAYS),
+    [blockedDays]
+  );
+
   const thumbnailOptions = useMemo(
     () => ({
       contentType: 'calendar' as const,
       presetIds: calendarPresetIds,
       canvasFormat: canvasFrame.format,
       brandColor,
+      propertyPhotoUrl,
       previewMonth,
-      previewBookings: bookings ?? [],
+      previewBookings: previewBookingsForDisplay,
       savedCalendarTemplates: savedCalendarTemplatesForThumbs,
     }),
     [
       calendarPresetIds,
       canvasFrame.format,
       brandColor,
+      propertyPhotoUrl,
       previewMonth,
-      bookings,
+      previewBookingsForDisplay,
       savedCalendarTemplatesForThumbs,
     ]
   );
@@ -576,8 +499,11 @@ export function CalendarBuilder({
     if (lastAppliedBrandRef.current === normalized) return;
     lastAppliedBrandRef.current = normalized;
     const current = useCalendarBuilderStore.getState().styles;
-    setStyles(applyBrandAccentToCalendarStyles(current, brandColor));
-  }, [brandColor, setStyles]);
+    const preservePresetPalette = Boolean(
+      activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)
+    );
+    setStyles(applyBrandAccentToCalendarStyles(current, brandColor, { preservePresetPalette }));
+  }, [activeSourcePresetId, brandColor, setStyles]);
 
   const applyFitZoom = useCallback(() => {
     const node = previewContainerRef.current;
@@ -666,7 +592,7 @@ export function CalendarBuilder({
       return;
     }
     if (activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)) {
-      applyPreset(activeSourcePresetId, brandColor);
+      applyPreset(activeSourcePresetId, brandColor, propertyPhotoUrl);
     } else {
       resetStyles(brandColor);
     }
@@ -774,7 +700,7 @@ export function CalendarBuilder({
                       <ChevronLeftIcon className="size-4" aria-hidden />
                       Templates
                     </Button>
-                    <span className="text-sm font-medium">Advanced settings</span>
+                    <span className="text-sm font-medium">Settings</span>
                   </div>
                 ) : (
                   <p className="text-sm font-medium">Templates</p>
@@ -796,6 +722,7 @@ export function CalendarBuilder({
                   <TodayPanel />
                   <BookedPanel />
                   <AvailablePanel />
+                  <BlockedPanel />
                   <LegendPanel />
                   <WatermarkPanel />
                 </div>
@@ -806,7 +733,7 @@ export function CalendarBuilder({
                     onFormatChange={handleCanvasFormatChange}
                   />
                   <CalendarTemplateSidebar
-                    categories={PRESET_CATEGORIES}
+                    categories={CALENDAR_PRESET_CATEGORIES}
                     customTemplates={customTemplates}
                     selectedKey={selectedTemplateKey}
                     canvasFormat={canvasFrame.format}
@@ -953,8 +880,8 @@ export function CalendarBuilder({
                       <CalendarPreview
                         styles={styles}
                         propertyName={propertyName}
-                        bookings={bookings}
-                        blockedDays={blockedDays}
+                        bookings={previewBookingsForDisplay}
+                        blockedDays={previewBlockedDaysForDisplay}
                         displayMonth={previewMonth}
                         layoutMaxWidth={calendarSize}
                       />
@@ -1086,8 +1013,8 @@ export function CalendarBuilder({
                     <CalendarPreview
                       styles={styles}
                       propertyName={propertyName}
-                      bookings={bookings}
-                      blockedDays={blockedDays}
+                      bookings={previewBookingsForDisplay}
+                      blockedDays={previewBlockedDaysForDisplay}
                       displayMonth={previewMonth}
                       layoutMaxWidth={calendarSize}
                     />

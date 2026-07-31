@@ -9,7 +9,11 @@ import {
   calendarOccupancySpanPosition,
 } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 
-import { useCalendarBuilderStore, MOCK_PREVIEW_BOOKINGS } from '../stores/calendar-builder-store';
+import {
+  useCalendarBuilderStore,
+  MOCK_BLOCKED_DAYS,
+  MOCK_PREVIEW_BOOKINGS,
+} from '../stores/calendar-builder-store';
 import {
   type CalendarStyles,
   type PreviewBooking,
@@ -119,6 +123,12 @@ function getBackgroundStyle(config: BackgroundConfig): React.CSSProperties {
           backgroundImage: `linear-gradient(${patternColor} 1px, transparent 1px), linear-gradient(to right, ${patternColor} 1px, transparent 1px)`,
           backgroundSize: `${size}px ${size}px`,
         };
+      case 'lines':
+        return {
+          backgroundColor: config.color,
+          backgroundImage: `linear-gradient(${patternColor} 1px, transparent 1px)`,
+          backgroundSize: `${size}px ${size}px`,
+        };
       case 'diagonal':
         return {
           backgroundColor: config.color,
@@ -178,8 +188,8 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
     {
       styles,
       propertyName = 'Beach Villa',
-      bookings = MOCK_PREVIEW_BOOKINGS,
-      blockedDays = [],
+      bookings: bookingsProp = MOCK_PREVIEW_BOOKINGS,
+      blockedDays: blockedDaysProp = [],
       displayMonth,
       layoutMaxWidth,
     },
@@ -187,6 +197,8 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
   ) {
     const storePreviewMonth = useCalendarBuilderStore((state) => state.previewMonth);
     const effectiveMonth = displayMonth ?? storePreviewMonth;
+    const bookings = bookingsProp.length > 0 ? bookingsProp : MOCK_PREVIEW_BOOKINGS;
+    const blockedDays = blockedDaysProp.length > 0 ? blockedDaysProp : MOCK_BLOCKED_DAYS;
 
     // Calendar calculations
     const calendarData = useMemo(() => {
@@ -302,6 +314,7 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
                 style={{
                   ...getFontStyle(styles.header.propertyName.font),
                   color: styles.header.propertyName.color,
+                  textAlign: styles.header.title.alignment,
                   marginBottom: 4,
                 }}
               >
@@ -310,7 +323,18 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
             )}
 
             {/* Title and Navigation Row */}
-            <div className="flex items-center justify-between">
+            <div
+              className="flex items-center"
+              style={{
+                justifyContent: styles.header.navigation.show
+                  ? 'space-between'
+                  : styles.header.title.alignment === 'center'
+                    ? 'center'
+                    : styles.header.title.alignment === 'right'
+                      ? 'flex-end'
+                      : 'flex-start',
+              }}
+            >
               {/* Month/Year */}
               {styles.header.monthYear.show && (
                 <h2
@@ -365,6 +389,7 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
                 style={{
                   ...getFontStyle(styles.header.subtitle.font),
                   color: styles.header.subtitle.color,
+                  textAlign: styles.header.title.alignment,
                   marginTop: 8,
                   margin: 0,
                 }}
@@ -421,7 +446,7 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
                 }}
               >
                 {week.cells.map((dayData, index) => {
-                  const { day, isBooked, isToday } = dayData;
+                  const { day, isBooked, isBlocked, isToday } = dayData;
 
                   // Empty cell
                   if (day === null) {
@@ -580,6 +605,52 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
                         />
                       );
                     }
+                  } else if (isBlocked) {
+                    cellBackground = styles.blocked.background;
+                    cellBorder = styles.blocked.border;
+                    dayNumberColor = styles.blocked.dayNumberColor;
+
+                    if (styles.blocked.text.show) {
+                      textContent = (
+                        <span
+                          style={{
+                            ...getFontStyle(styles.blocked.text.font),
+                            color: styles.blocked.text.color,
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                          }}
+                        >
+                          {styles.blocked.text.content}
+                        </span>
+                      );
+                    }
+
+                    if (styles.blocked.pattern.show && styles.blocked.pattern.type !== 'none') {
+                      const blockedPatternSize = 8;
+                      patternOverlay = (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            opacity: styles.blocked.pattern.opacity,
+                            pointerEvents: 'none',
+                            borderRadius: styles.cell.borderRadius,
+                            ...(styles.blocked.pattern.type === 'stripes' && {
+                              backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent ${blockedPatternSize}px, ${styles.blocked.pattern.color} ${blockedPatternSize}px, ${styles.blocked.pattern.color} ${blockedPatternSize * 2}px)`,
+                            }),
+                            ...(styles.blocked.pattern.type === 'diagonal' && {
+                              backgroundImage: `repeating-linear-gradient(45deg, ${styles.blocked.pattern.color}, ${styles.blocked.pattern.color} 1px, transparent 1px, transparent ${blockedPatternSize}px)`,
+                            }),
+                            ...(styles.blocked.pattern.type === 'cross' && {
+                              backgroundImage: `linear-gradient(${styles.blocked.pattern.color} 1px, transparent 1px), linear-gradient(to right, ${styles.blocked.pattern.color} 1px, transparent 1px)`,
+                              backgroundSize: `${blockedPatternSize}px ${blockedPatternSize}px`,
+                            }),
+                          }}
+                        />
+                      );
+                    }
                   } else {
                     // Available state
                     cellBackground = styles.available.background;
@@ -696,6 +767,19 @@ export const CalendarPreview = forwardRef<HTMLDivElement, CalendarPreviewProps>(
                             ...(styles.today.indicator.type === 'underline' && {
                               width: 16,
                               height: 2,
+                              backgroundColor: styles.today.indicator.color,
+                            }),
+                            ...(styles.today.indicator.type === 'ring' && {
+                              width: styles.today.indicator.size * 2.5,
+                              height: styles.today.indicator.size * 2.5,
+                              borderRadius: '50%',
+                              border: `2px solid ${styles.today.indicator.color}`,
+                              backgroundColor: 'transparent',
+                            }),
+                            ...(styles.today.indicator.type === 'badge' && {
+                              width: Math.max(styles.today.indicator.size * 3, 18),
+                              height: styles.today.indicator.size * 1.4,
+                              borderRadius: 999,
                               backgroundColor: styles.today.indicator.color,
                             }),
                           }}
