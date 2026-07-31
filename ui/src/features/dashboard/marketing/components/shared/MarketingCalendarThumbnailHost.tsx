@@ -29,6 +29,7 @@ type CapturePresetRequest = {
   propertyName: string;
   format: CalendarCanvasFormat;
   brandColor?: string;
+  propertyPhotoUrl?: string;
   resolve: (dataUrl: string | null) => void;
 };
 
@@ -37,7 +38,8 @@ let capturePresetFn:
       presetId: string,
       propertyName: string,
       format: CalendarCanvasFormat,
-      brandColor?: string
+      brandColor?: string,
+      propertyPhotoUrl?: string
     ) => Promise<string | null>)
   | null = null;
 let captureStylesFn:
@@ -49,7 +51,8 @@ export function registerCalendarPresetThumbnailCapture(
     presetId: string,
     propertyName: string,
     format: CalendarCanvasFormat,
-    brandColor?: string
+    brandColor?: string,
+    propertyPhotoUrl?: string
   ) => Promise<string | null>
 ) {
   capturePresetFn = fn;
@@ -80,10 +83,11 @@ export async function captureCalendarPresetThumbnail(
   presetId: string,
   propertyName: string,
   format: CalendarCanvasFormat,
-  brandColor?: string
+  brandColor?: string,
+  propertyPhotoUrl?: string
 ): Promise<string | null> {
   if (!capturePresetFn) return null;
-  return capturePresetFn(presetId, propertyName, format, brandColor);
+  return capturePresetFn(presetId, propertyName, format, brandColor, propertyPhotoUrl);
 }
 
 export async function captureCalendarStylesThumbnail(
@@ -248,7 +252,8 @@ export function MarketingCalendarThumbnailHost({
       presetId: string,
       name: string,
       format: CalendarCanvasFormat,
-      brandColor?: string
+      brandColor?: string,
+      propertyPhotoUrl?: string
     ) =>
       new Promise<string | null>((resolve) => {
         enqueue(() => {
@@ -257,6 +262,7 @@ export function MarketingCalendarThumbnailHost({
             propertyName: name,
             format,
             brandColor,
+            propertyPhotoUrl,
             resolve: (dataUrl) => {
               resolve(dataUrl);
               setPresetRequest(null);
@@ -354,7 +360,8 @@ export function MarketingCalendarThumbnailHost({
       ? resolveCalendarPresetStylesForFormat(
           presetRequest.presetId,
           presetRequest.format,
-          presetRequest.brandColor
+          presetRequest.brandColor,
+          presetRequest.propertyPhotoUrl
         )
       : (stylesRequest?.styles ?? null);
 

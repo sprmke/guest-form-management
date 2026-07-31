@@ -71,6 +71,7 @@ type CalendarOptions = {
   presetIds: string[];
   canvasFormat: CalendarCanvasFormat;
   brandColor?: string;
+  propertyPhotoUrl?: string;
   previewMonth: Date;
   previewBookings?: PreviewBooking[];
   savedCalendarTemplates?: Array<{
@@ -208,6 +209,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
   const videoFormat = options.contentType === 'video' ? options.format : undefined;
   const calendarFormat = options.contentType === 'calendar' ? options.canvasFormat : undefined;
   const brandColor = options.contentType !== 'design' ? options.brandColor : undefined;
+  const propertyPhotoUrl =
+    options.contentType === 'calendar' ? options.propertyPhotoUrl : undefined;
   const videoBinding = options.contentType === 'video' ? options.binding : undefined;
   const previewBookings = options.contentType === 'calendar' ? (options.previewBookings ?? []) : [];
   const previewMonth = options.contentType === 'calendar' ? options.previewMonth : null;
@@ -227,10 +230,15 @@ export function useMarketingTemplateThumbnails(options: Options) {
     return calendarPreviewThumbKey(previewMonth, previewBookings);
   }, [contentType, previewMonth, previewBookings]);
 
+  const calendarPhotoKey = useMemo(() => {
+    if (contentType !== 'calendar') return '';
+    return propertyPhotoUrl ?? 'stock';
+  }, [contentType, propertyPhotoUrl]);
+
   const presetKey = useMemo(() => {
     const ids = presetIds.join(',');
     if (contentType === 'calendar') {
-      return `${calendarFormat}:${calendarBrandKey}:${calendarPreviewKey}:${ids}`;
+      return `${calendarFormat}:${calendarBrandKey}:${calendarPhotoKey}:${calendarPreviewKey}:${ids}`;
     }
     if (contentType === 'video') return `${videoFormat}:${brandColor ?? ''}:${ids}`;
     return ids;
@@ -239,6 +247,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
     presetIds,
     calendarFormat,
     calendarBrandKey,
+    calendarPhotoKey,
     calendarPreviewKey,
     videoFormat,
     brandColor,
@@ -275,7 +284,13 @@ export function useMarketingTemplateThumbnails(options: Options) {
         if (contentType === 'video') {
           return videoPresetThumbnailKey(id, videoFormat!, brandColor);
         }
-        return calendarPresetThumbnailKey(id, calendarFormat!, brandColor, calendarPreviewKey);
+        return calendarPresetThumbnailKey(
+          id,
+          calendarFormat!,
+          brandColor,
+          calendarPreviewKey,
+          propertyPhotoUrl
+        );
       });
 
       const persistKeys = cacheKeys.map((key) => presetPersistKey(contentType, key));
@@ -407,7 +422,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
               id,
               calendarFormat!,
               brandColor,
-              calendarPreviewKey
+              calendarPreviewKey,
+              propertyPhotoUrl
             );
             dataUrl = await ensurePresetThumbnail(
               cacheKey,
@@ -417,7 +433,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
                   id,
                   DEFAULT_MARKETING_THUMB_BINDING.propertyName,
                   calendarFormat!,
-                  brandColor
+                  brandColor,
+                  propertyPhotoUrl
                 )
             );
           }

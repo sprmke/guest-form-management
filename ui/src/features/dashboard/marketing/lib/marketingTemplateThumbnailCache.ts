@@ -115,11 +115,13 @@ export function calendarPresetThumbnailKey(
   presetId: string,
   format: string = 'square',
   brandColor?: string,
-  previewDataKey?: string
+  previewDataKey?: string,
+  propertyPhotoUrl?: string
 ): string {
   const brand = resolveOrgBrandHex(brandColor).toLowerCase();
   const preview = previewDataKey ?? 'default';
-  return `calendar:preset:${format}:${brand}:${preview}:${presetId}`;
+  const photo = propertyPhotoUrl ?? 'stock';
+  return `calendar:preset:v8:${format}:${brand}:${preview}:${photo}:${presetId}`;
 }
 
 export function calendarSavedStylesThumbnailKey(
