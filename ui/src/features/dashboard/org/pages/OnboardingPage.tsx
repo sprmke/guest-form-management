@@ -537,10 +537,12 @@ export function OnboardingPage() {
       </RequireAdmin>
     );
   }
-  if (existingOrgs.length > 0) {
+  // Hard-rejected-only owners may start a new application here.
+  const landing = resolveOrgLandingPath(existingOrgs);
+  if (existingOrgs.length > 0 && landing !== '/verification-rejected') {
     return (
       <RequireAdmin>
-        <Navigate to={resolveOrgLandingPath(existingOrgs)} replace />
+        <Navigate to={landing} replace />
       </RequireAdmin>
     );
   }

@@ -14,6 +14,7 @@ import { OrgParkingsPage } from '@/features/dashboard/org/pages/OrgParkingsPage'
 import { OrgPropertiesPage } from '@/features/dashboard/org/pages/OrgPropertiesPage';
 import { OrgSelectorPage } from '@/features/dashboard/org/pages/OrgSelectorPage';
 import { OrgSettingsPage } from '@/features/dashboard/org/pages/OrgSettingsPage';
+import { HostVerificationRejectedRoutePage } from '@/features/dashboard/org/pages/HostVerificationRejectedRoutePage';
 import type { OrgRouteFn } from '@/features/dashboard/org/routes/guards';
 import { OrgTeamPage } from '@/features/dashboard/team/pages/OrgTeamPage';
 
@@ -21,6 +22,7 @@ export const orgOnboardingRoutes: ReactNode = (
   <>
     <Route path="/onboarding" element={<OnboardingPage />} />
     <Route path="/org" element={<OrgSelectorPage />} />
+    <Route path="/verification-rejected" element={<HostVerificationRejectedRoutePage />} />
   </>
 );
 

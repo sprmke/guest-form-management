@@ -13,7 +13,11 @@ import {
   setLastParkingContext,
   setLastTenantContext,
 } from '@/features/dashboard/org/lib/tenantPaths';
-import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
+import {
+  HOST_VERIFICATION_REJECTED_PATH,
+  resolveOrgLandingPath,
+} from '@/features/dashboard/org/lib/orgLanding';
+import { isHostVerificationHardRejected } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
 const LEGACY_SECTIONS = [
   'dashboard',
@@ -82,18 +86,30 @@ export async function resolvePostSignInPath(redirectPath: string): Promise<strin
   }
 
   const { organizations } = await callEdgeFunction<{
-    organizations: Array<{ slug: string; accessKind?: string; hostModes?: string[] }>;
+    organizations: Array<{
+      slug: string;
+      accessKind?: string;
+      hostModes?: string[];
+      settings?: Record<string, unknown>;
+    }>;
   }>('list-organizations');
 
   if (organizations.length === 0) {
     return '/onboarding';
   }
 
-  if (redirectPath === '/org') {
+  if (redirectPath === '/org' || redirectPath === HOST_VERIFICATION_REJECTED_PATH) {
     return resolveOrgLandingPath(organizations);
   }
 
-  const org = organizations.find((o) => o.slug === getLastOrgSlug()) ?? organizations[0]!;
+  const accessible = organizations.filter(
+    (o) => !o.settings || !isHostVerificationHardRejected(o.settings)
+  );
+  if (accessible.length === 0) {
+    return HOST_VERIFICATION_REJECTED_PATH;
+  }
+
+  const org = accessible.find((o) => o.slug === getLastOrgSlug()) ?? accessible[0]!;
 
   const [{ properties }, parkings] = await Promise.all([
     callEdgeFunction<{ properties: Array<{ slug: string }> }>(
