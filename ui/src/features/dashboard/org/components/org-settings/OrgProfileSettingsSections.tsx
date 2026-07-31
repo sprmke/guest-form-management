@@ -253,6 +253,9 @@ export function OrgSocialsSection({
 
   return (
     <AdminSection id="branding" title="Socials" icon={Share2}>
+      <p className="text-muted-foreground -mt-2 text-xs">
+        Properties inherit these when not customized.
+      </p>
       <OrgSettingsFieldGrid>
         <OrgSettingsFieldSpan>
           <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">

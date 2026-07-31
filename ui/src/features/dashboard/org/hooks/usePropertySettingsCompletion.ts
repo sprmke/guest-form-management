@@ -7,6 +7,10 @@ import {
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useGmailMailIntegrationStatus } from '@/features/dashboard/bookings/hooks/useGmailMailIntegration';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import {
+  orgSettingsToFormValues,
+  useOrgSettings,
+} from '@/features/dashboard/org/hooks/useOrgSettings';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import { computePropertySettingsCompletion } from '@/features/dashboard/org/lib/propertySettingsCompletion';
@@ -37,7 +41,13 @@ export function usePropertySettingsCompletionForDraft({
   towerUnitConflict = false,
 }: CompletionInput) {
   const { data: appSettings } = useAppSettings();
+  const { data: orgSettings } = useOrgSettings();
   const { data: gmailStatus } = useGmailMailIntegrationStatus();
+
+  const orgSocialLinks = useMemo(
+    () => (orgSettings ? orgSettingsToFormValues(orgSettings) : null),
+    [orgSettings]
+  );
 
   const towerConflict = useMemo(() => {
     const effectiveResidence = profile.residenceName.trim() || DEFAULT_RESIDENCE_NAME;
@@ -57,6 +67,7 @@ export function usePropertySettingsCompletionForDraft({
         profile,
         operational,
         appSettings: appSettings ?? null,
+        orgSocialLinks,
         gmailConnected: gmailStatus?.connected ?? false,
         gmailNeedsReconnect: gmailStatus?.needsReconnect ?? false,
         nameConflict: nameUnavailable,
@@ -66,6 +77,7 @@ export function usePropertySettingsCompletionForDraft({
       profile,
       operational,
       appSettings,
+      orgSocialLinks,
       gmailStatus?.connected,
       gmailStatus?.needsReconnect,
       nameUnavailable,
