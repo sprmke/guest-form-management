@@ -20,7 +20,7 @@ Plan: `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md` (
 
 ===
 
-Support both property and parking bookings in /bookings module at org level.
+✅ Support both property and parking bookings in /bookings module at org level.
 
 We need to update /bookings module at org level to display info and available actions for both properties & parking.
 Right now, only properties are working and visible there.

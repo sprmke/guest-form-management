@@ -22,7 +22,7 @@ I want this to look very interactive, animated, looks professional and looks goo
 
 ===
 
-Refine Property Templates page
+✅ Refine Property Templates page
 
 We should have a tab for standard, email and other templates.
 Then, we should support for host to add new template for each tab/category.
@@ -72,7 +72,7 @@ We should also refine and update our sort options based on our data and make sur
 
 ===
 
-Marketing 1: Improve Marketing Calendar Templates
+✅ Marketing 1: Improve Marketing Calendar Templates
 
 Right now, our marketing calendar templates look simple and okay.
 They do not look beautiful, stunning, eye catching, and doesn't have that wow factor.
@@ -227,6 +227,10 @@ Display announcements per development from super admin
 ===
 
 Monitoring for suspicious or unusual activities from super admin
+
+===
+
+Guest Review after booking
 
 ===
 

@@ -1,6 +1,8 @@
 # AI Voice Receptionist — Implementation Plan
 
-**Status:** v1 shipped (Phases 1–5). **Active follow-up:** [Post-v1 feedback → Phase 6](#post-v1-feedback--phase-6-latency-ux--avatar) (2026-07-31). Implement feedback **one item at a time** in the order listed there.
+**Status:** v1 shipped (Phases 1–5). **Phase 6 complete** (6.1–6.4, 2026-07-31).
+
+**6.1–6.4 shipped.** Avatar is an original photorealistic concierge portrait with a 2D face-plate image fallback.
 
 ## Context
 
@@ -12,7 +14,7 @@ This plan was produced by research + brainstorming. It covers architecture, data
 
 1. **Voice/AI provider: Google Gemini Live API** (native speech-to-speech), not OpenAI Realtime or ElevenLabs. Same vendor already used for text AI (`_shared/socialInboxAiService.ts`); research found it roughly 15–50x cheaper per minute than OpenAI Realtime and far cheaper than ElevenLabs, with an official ephemeral-token browser pattern (google-gemini/gemini-live-api-examples) that fits our serverless Deno edge functions (no persistent proxy server needed). **Verify exact current pricing/model names at ai.google.dev/pricing before launch** — third-party SEO pricing pages disagreed with each other during research and should not be trusted for budget decisions.
 2. **Fish Audio TTS was considered and deferred, not adopted for v1.** It's a legitimate, ~11x-cheaper-than-ElevenLabs option for custom/cloned voices, but it's TTS-only — using it would mean abandoning Gemini Live's native audio-to-audio model for a cascaded STT→LLM→TTS pipeline requiring our own orchestration server (e.g. Pipecat), which contradicts the serverless v1 goal. Documented as a Phase-2+ option if the business wants a fully custom/branded turtle voice later (see Non-goals).
-3. **Avatar: simple procedural CSS/SVG turtle for v1** (shipped). **Superseded for Phase 6.4:** replace with a free, browser-rendered humanoid talking avatar — **TalkingHead (MIT) + VRM + audio-driven lip sync** — not a paid SaaS (HeyGen/D-ID/Simli) and not a GPU server pipeline (Linly/SadTalker). Rive / Mascotbot remain deferred (licensing / not free). See [Avatar technology research](#avatar-technology-research-2026-07-31).
+3. **Avatar: premium human concierge portrait.** The procedural turtle shipped in v1. A TalkingHead + Ready Player Me GLB was implemented for Phase 6.4, then rejected in visual QA because the anime styling and amplitude-driven mouth produced an uncanny, unappealing assistant. The shipped replacement is an original photorealistic portrait with restrained breathing/speaking motion; the brass state ring carries activity feedback without fake lip deformation.
 4. **Rollout gating: two-tier — a super-admin global kill switch (org/property toggles all become inert if this is off) plus a per-property opt-in.** This is a new real-time/cost-bearing surface, so it ships defaulted OFF everywhere, pilot-enabled per property, and can be cut instantly org-wide without a deploy.
 5. **The feature extends the existing guest web chat, it is not a separate product.** Voice sessions attach to the guest's existing `social_conversations` thread for that property (same one used by `PropertyChatPage.tsx`), and the transcript is written into `social_messages` alongside normal text messages so admins see one unified history in the existing Inbox UI.
 6. Requires existing **guest authentication** (`RequireGuestSession` / `GuestAuthContext`) — same as the rest of the chat feature — both because a session/identity is needed for rate-limiting and because mic access + a billed AI session shouldn't be anonymous.
@@ -74,7 +76,7 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 ## Explicit non-goals (for this plan / v1)
 
 - No telephony/PSTN integration (browser-only, matches the Siri/Alexa-in-app framing, not a phone line).
-- No **paid** photoreal talking-head SaaS (HeyGen, D-ID, Simli, etc.) and no **self-hosted GPU** talking-head servers (Linly-Talker, SadTalker) — conflicts with free + serverless constraints. **Phase 6.4 uses free browser VRM (TalkingHead), not those.**
+- No **paid** photoreal talking-head SaaS (HeyGen, D-ID, Simli, etc.) and no **self-hosted GPU** talking-head servers (Linly-Talker, SadTalker) — conflicts with free + serverless constraints.
 - No Rive marketplace / Mascotbot commercial avatar SDK in Phase 6 (licensing / cost) — still deferred unless product later budgets for it.
 - No Fish Audio / custom voice cloning — future option if a fully custom/branded voice is wanted later, requires a cascaded STT→LLM→TTS architecture (bigger change, own plan).
 - No generic platform feature-flag system — the global kill switch is a single-purpose boolean for this feature only.
@@ -82,20 +84,21 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 
 ---
 
-## Post-v1 feedback → Phase 6 (latency, UX & avatar)
+## Post-v1 feedback → Phase 6 (latency, rich messages, UX & avatar)
 
-**Source:** live testing of the shipped overlay (2026-07-31). Guests perceive long silence after speaking, slow AI replies, weak “something is happening” feedback, and dislike the procedural turtle.
+**Source:** live testing of the shipped overlay + guest chat thread (2026-07-31). Guests perceive long silence after speaking, slow AI replies, weak “something is happening” feedback, dislike the procedural turtle, and see **raw Google Maps URLs / unformatted lists** in the chat transcript (broken-looking AI replies).
 
-**Execution rule:** address **one feedback item per change set**, in order **6.1 → 6.2 → 6.3 → 6.4**. Do not start the avatar swap until latency + state UX are in place (avatar lip-sync depends on clear audio/state signals).
+**Execution rule:** address **one feedback item per change set**, in order **6.1 → 6.1b → 6.2 → 6.3 → 6.4**. Do not start the avatar swap until latency + state UX are in place (avatar lip-sync depends on clear audio/state signals). Rich message rendering (6.1b) ships **before** AI latency work so map/list replies are readable while we tune speed.
 
 ### Symptom → likely cause (current code)
 
-| #   | Guest feedback                                        | Likely cause in v1                                                                                                                                                                                                                                                                                                                                    |
-| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Long delay / words not detected in realtime           | Gemini server VAD waits for silence before `turnComplete`; UI stays on **LISTENING** with no partial captions; tool round-trips (`getPropertyFact`) start only after the model finishes the user turn — feels like “it didn’t hear me.” Mic worklet already posts ~128-frame chunks at 16 kHz (~8 ms) — **chunk size is not the primary bottleneck**. |
-| 2   | AI reply feels very slow                              | Same turn boundary + **tool call RTT** (browser → `voice-receptionist-tool` → Gemini) before native audio; large locked system/grounding prompt; possible model/voice config. True model generation time cannot go to zero — we can cut **avoidable** latency and **mask** the rest.                                                                  |
-| 3   | No sense of thinking / progress during delays         | Overlay states are coarse (`connecting` / `listening` / `speaking` / …); little motion beyond a static turtle + status label; captions often empty until a full turn lands.                                                                                                                                                                           |
-| 4   | Turtle looks ugly; want human talking/thinking avatar | Procedural SVG was a v1 ship choice; free browser tech now chosen (below).                                                                                                                                                                                                                                                                            |
+| #   | Guest feedback                                                      | Likely cause in v1                                                                                                                                                                                                                                                                                                                                    |
+| --- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Long delay / words not detected in realtime                         | Gemini server VAD waits for silence before `turnComplete`; UI stays on **LISTENING** with no partial captions; tool round-trips (`getPropertyFact`) start only after the model finishes the user turn — feels like “it didn’t hear me.” Mic worklet already posts ~128-frame chunks at 16 kHz (~8 ms) — **chunk size is not the primary bottleneck**. |
+| 1b  | AI / voice transcript replies look broken (raw Maps URLs, no lists) | `ChatMessageBubble` renders `body_text` as plain `whitespace-pre-wrap` — no linkify, no map card, no markdown. Voice + text AI both land as plain `social_messages` rows.                                                                                                                                                                             |
+| 2   | AI reply feels very slow                                            | Same turn boundary + **tool call RTT** (browser → `voice-receptionist-tool` → Gemini) before native audio; large locked system/grounding prompt; possible model/voice config. True model generation time cannot go to zero — we can cut **avoidable** latency and **mask** the rest.                                                                  |
+| 3   | No sense of thinking / progress during delays                       | Overlay states are coarse (`connecting` / `listening` / `speaking` / …); little motion beyond a static turtle + status label; captions often empty until a full turn lands.                                                                                                                                                                           |
+| 4   | Turtle looks ugly; want human talking/thinking avatar               | Procedural SVG was a v1 ship choice; free browser tech now chosen (below).                                                                                                                                                                                                                                                                            |
 
 ### 6.1 — Faster / more responsive speech detection (do first)
 
@@ -111,7 +114,100 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 
 **Primary files:** `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `VoiceSessionOverlay.tsx`, `supabase/functions/_shared/geminiLiveEphemeral.ts` (setup / transcription / VAD fields).
 
-### 6.2 — Faster AI responses (do second)
+### 6.1b — Rich chat message rendering (maps, lists, link cards)
+
+**Inserted ahead of 6.2** (feedback 2026-07-31): after voice/text AI replies land in the guest thread, long raw Google Maps URLs wrap awkwardly and are hard to tap; bullet/amenity lists stay flat plain text.
+
+**Job:** Guest (and host in Inbox) can scan and act on AI/host replies — open a map, skim a list — without reading a broken URL string.  
+**Role:** Guest (operational chat) + operator (Guest Inbox).  
+**Surface:** Shared bubble renderer — not voice-overlay-only.  
+**Commit point:** Opening an external map/link (new tab); no payment.
+
+#### Competitive UX brief
+
+| Benchmark               | Pattern                                                                                             | Notes for Kame                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **WhatsApp / iMessage** | Link unfurl: thumbnail + title + domain; Maps links become a map preview card, tap opens Maps       | Adopt card shape; we control rendering client-side (no Meta crawler)                                                                             |
+| **Airbnb Messages**     | Channel often blocks or plain-texts external links; guidebook/recommendations are first-class cards | Our **web** chat can exceed Airbnb channel limits — rich cards are a direct-booking advantage                                                    |
+| **Guesty Inbox**        | Hyperlinks in email; Airbnb channel still strips clickable links                                    | Rich UI applies to **platform=web** bubbles in our SPA; Meta-synced plain text still benefits from client-side parse when displayed in our Inbox |
+
+**Adopt:** WhatsApp-style **map card** + clickable short label; light markdown lists.  
+**Adapt:** No server-side Open Graph scrape for arbitrary URLs in v1 (SSRF, latency, CORS). Allowlist detectors + free static map tile.  
+**Skip:** Full HTML email rendering, arbitrary iframe embeds, paid Google Static Maps billing unless product enables it later.
+
+#### Architecture (client parse — no schema change in 6.1b)
+
+Keep storing plain `social_messages.body_text`. At render time, a shared **`ChatRichBody`** parses text into blocks and renders inside `ChatMessageBubble` (guest thread + host Inbox use the same path).
+
+```
+body_text (plain)
+  → parseChatRichBlocks(text)
+  → [ text | mapLink | link | list | … ]
+  → ChatRichBody → ChatMapLinkCard | <ul> | linkify …
+```
+
+**Optional later (not 6.1b):** `attachments` / `body_blocks` JSON from the AI tool when it intentionally emits a location — still render via the same components.
+
+#### Detectors / components (v1 scope)
+
+| Scenario                            | Detect                                                                                                       | UI                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Google Maps                         | `google.com/maps`, `maps.google.`, `maps.app.goo.gl`, `goo.gl/maps`, query=`lat,lng` / `@lat,lng` / `query=` | **`ChatMapLinkCard`**: static map thumbnail + “Open in Maps” (opens original URL, `target=_blank`, `rel=noopener`) |
+| Generic https URL                   | Single URL or URL in sentence                                                                                | Inline linkify (truncate display host/path); optional compact link chip — **no** OG scrape                         |
+| Bullet / numbered list              | Lines starting with `- `, `* `, `• `, or `1. ` / `2. `                                                       | Proper `<ul>` / `<ol>` with spacing; rest of message stays paragraphs                                              |
+| Wi‑Fi / code-like lines _(stretch)_ | Optional: `SSID:` / `Password:` patterns                                                                     | Monospace key–value row — only if it appears often in grounding; else defer                                        |
+| Phone numbers _(stretch)_           | E.164 / PH local                                                                                             | `tel:` link — defer if noisy                                                                                       |
+
+#### Map thumbnail — free approach (chosen)
+
+| Option                                                                                                                                                    | Cost                | Verdict                                          |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ------------------------------------------------ |
+| **Google Maps embed** via existing `resolvePropertyMapEmbedSrc` (Embed API if `VITE_GOOGLE_MAPS_API_KEY`, else legacy `maps.google.com?...&output=embed`) | Free / existing key | **Adopt** — real Google map in `ChatMapLinkCard` |
+| OSM embed fallback                                                                                                                                        | Free                | Used when Google embed unavailable               |
+| OSM staticmap.openstreetmap.de `<img>`                                                                                                                    | Free                | Unreliable (blank tiles) — **not used**          |
+| CSS pin-only card                                                                                                                                         | Free                | Last-resort if no coords/embed                   |
+| Google Maps Static API                                                                                                                                    | Static Maps billing | Defer                                            |
+| Server OG scrape                                                                                                                                          | SSRF risk           | Skip                                             |
+
+Parse lat/lng from the URL when present; iframe is `pointer-events-none` with a full-card link so chat scroll stays usable.
+
+#### Prompt nudge (small, same change set if cheap)
+
+In voice/text AI system instructions: prefer short map links and markdown lists (`- item`) when listing amenities — **UI must still work if the model dumps a raw URL** (detector is the source of truth).
+
+#### Design constraints
+
+- Mobile 375px: card full width of bubble; tap target ≥ 44px on CTA.
+- Outbound (guest) vs inbound (AI/host) bubble colors: map card uses neutral surface so imagery stays readable on primary-colored outbound bubbles too.
+- `minimal-ui-copy`: CTA = “Open in Maps” / host label only — no essay.
+- Security: only `https:` links; no `javascript:`; never `dangerouslySetInnerHTML` for full HTML.
+- Accessibility: card is a link (or button+link); alt text on thumbnail; lists use real list semantics.
+
+#### Primary files
+
+- `ui/src/components/chat/ChatMessageBubble.tsx` — swap plain `<p>` for `ChatRichBody` when not searching/highlighting (keep highlight path plain or rich-aware).
+- New: `ui/src/components/chat/ChatRichBody.tsx`, `parseChatRichBlocks.ts`, `ChatMapLinkCard.tsx`.
+- Call sites already using the bubble: `GuestChatThread.tsx`, `InboxConversationView.tsx` (verify both pick up the change).
+- Voice live captions in the overlay use the same **`ChatRichBody`** (map cards during the call).
+  Persisted voice turns in the thread get rich rendering automatically.
+
+#### Non-goals for 6.1b
+
+- Structured DB column for message blocks.
+- Arbitrary website OG previews.
+- Changing Meta/Facebook delivery format.
+- Replacing voice overlay captions with cards during the live call.
+
+#### Verification
+
+1. Paste / AI-send a Google Maps URL with lat,lng → thumbnail card + tap opens Maps.
+2. Amenity list with `- ` lines → bullets, not one wrapped paragraph.
+3. Mixed message (prose + URL + list) → all three block types.
+4. Guest + host Inbox both show the card.
+5. Highlight/search path still works (no crash).
+6. `type-check` / `lint` / `build`.
+
+### 6.2 — Faster AI responses (after 6.1b)
 
 **Goal:** Cut avoidable post-turn latency; first audio packet sooner for typical property FAQs.
 
@@ -127,7 +223,7 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 
 **Verification:** FAQ that fits grounding → AI audio starts without a tool RTT; tool-required question still works but shows 6.3 feedback during the wait.
 
-### 6.3 — Thinking / processing UX (do third)
+### 6.3 — Thinking / processing UX (after 6.2)
 
 **Subject:** Guest voice call overlay — audience is booking guests; single job is “make wait time feel intentional, not broken.”
 
@@ -165,21 +261,21 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 
 #### Avatar technology research (2026-07-31)
 
-| Technology                                                                     | Cost / license                   | Runtime               | Talking / thinking                                                                  | Verdict                                  |
-| ------------------------------------------------------------------------------ | -------------------------------- | --------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------- |
-| **[TalkingHead](https://github.com/met4citizen/TalkingHead)** (Three.js + VRM) | **MIT — free**                   | Browser only          | Audio-driven lips (`speakAudio` / HeadAudio), blinks, head motion; idle/think poses | **Adopt**                                |
-| Free **VRM** humans (e.g. VRoid Hub / CC0 packs)                               | Free models (check each license) | Asset for TalkingHead | Human look without filming talent                                                   | **Use as default asset**                 |
-| Mascotbot / Rive marketplace                                                   | Commercial / paid assets         | Browser               | Good 2D lip sync                                                                    | Skip for now (not free)                  |
-| Linly-Talker-Stream / SadTalker / MuseTalk                                     | Open source                      | **GPU server**        | Photoreal                                                                           | Skip — breaks serverless + ops cost      |
-| HeyGen / D-ID / Simli / similar                                                | Paid SaaS                        | Cloud video/stream    | Photoreal                                                                           | Skip — not free; API + latency + privacy |
+| Technology                                                                     | Cost / license           | Runtime            | Talking / thinking                                              | Verdict                                  |
+| ------------------------------------------------------------------------------ | ------------------------ | ------------------ | --------------------------------------------------------------- | ---------------------------------------- |
+| **[TalkingHead](https://github.com/met4citizen/TalkingHead)** (Three.js + VRM) | **MIT — free**           | Browser only       | Audio-driven lips, blinks, head motion                          | Rejected after visual QA — uncanny model |
+| Original concierge portrait                                                    | Original project asset   | Browser image      | Restrained scale/light response; booth ring carries voice state | **Adopted**                              |
+| Mascotbot / Rive marketplace                                                   | Commercial / paid assets | Browser            | Good 2D lip sync                                                | Skip for now (not free)                  |
+| Linly-Talker-Stream / SadTalker / MuseTalk                                     | Open source              | **GPU server**     | Photoreal                                                       | Skip — breaks serverless + ops cost      |
+| HeyGen / D-ID / Simli / similar                                                | Paid SaaS                | Cloud video/stream | Photoreal                                                       | Skip — not free; API + latency + privacy |
 
-**Chosen stack:** `TalkingHead` + one vetted free VRM (host under `ui/public/avatars/` or CDN with license file) + feed **same AI playback PCM** (or decoded audio) into lip sync. Thinking state = TalkingHead idle/think animation + Phase 6.3 ring (do not fake lip sync on silence).
+**Chosen stack:** original concierge portrait under `ui/public/avatars/` + restrained amplitude-driven scale/light response. Thinking and speaking remain explicit through the Phase 6.3 brass ring and waveform. Do not warp the mouth: low-quality pseudo-lip-sync was less trustworthy than a calm portrait.
 
 **Fallback:** if WebGL / load fails on a device, fall back to a refined 2D face plate (still not the turtle) driven by the same state props — never block the call.
 
 **Out of scope for 6.4:** custom branded 3D sculpt, paid Ready Player Me enterprise, video deepfake pipelines.
 
-**Primary files:** replace/rework `ReceptionistAvatar.tsx` (or `ReceptionistTalkingHead.tsx`), lazy-load Three/TalkingHead so text chat bundle stays lean; wire from `useVoiceSession` playback + UI state.
+**Primary files:** `ReceptionistAvatar.tsx`, `ReceptionistFacePlate.tsx`, `VoiceSessionOverlay.tsx`; state/amplitude from `useVoiceSession`.
 
 **Verification:** on mid-tier phone (375–390 px), avatar loads &lt; ~3 s, lips track AI speech, thinking pose during 6.3, End call cleans up WebGL context (no leak on reopen).
 
@@ -192,10 +288,13 @@ The browser connects **directly** to the Gemini Live API over WebSocket; our edg
 
 ### Phase 6 task order (for implementers)
 
-- [ ] **6.1** Speech detection / partial captions / VAD tune / local speaking UI
-- [ ] **6.2** Grounding prefetch + tool/prompt latency
-- [ ] **6.3** Booth UX — brass ring phases, waveform, thinking copy, reduced motion
-- [ ] **6.4** TalkingHead + free VRM; remove turtle as default; WebGL fallback
+- [x] **6.1** Speech detection / partial captions / VAD tune / local speaking UI
+- [x] **6.1b** Rich chat message rendering — map cards, lists, linkify (shared `ChatRichBody`)
+- [x] **6.2** Grounding prefetch + tool/prompt latency
+- [x] **6.3** Booth UX — brass ring phases, waveform, thinking copy, reduced motion
+- [x] **6.4** Human concierge portrait; restrained state motion; 2D face-plate fallback
+
+**6.4 notes (2026-07-31):** Ready Player Me’s CDN is offline (shutdown Jan 2026). The available TalkingHead example was CC BY-NC and failed visual QA. It and the Three.js dependency were removed. The shipped original portrait avoids third-party model licensing and the 865 kB TalkingHead runtime; `ReceptionistFacePlate` remains the image-load fallback.
 
 ---
 
