@@ -8,6 +8,10 @@ export const ORG_VERIFICATION_BUCKET = 'org-verification-assets';
 export const ORG_VERIFICATION_STATUSES = ['none', 'pending', 'approved', 'rejected'] as const;
 export type OrgVerificationStatus = (typeof ORG_VERIFICATION_STATUSES)[number];
 
+/** How a `rejected` status was decided — changes = request resubmit with notes; rejected = deny with reason. */
+export const ORG_VERIFICATION_REJECTION_KINDS = ['changes', 'rejected'] as const;
+export type OrgVerificationRejectionKind = (typeof ORG_VERIFICATION_REJECTION_KINDS)[number];
+
 export const ORG_SOCIAL_PROOF_PLATFORMS = ['facebook', 'instagram', 'airbnb'] as const;
 export type OrgSocialProofPlatform = (typeof ORG_SOCIAL_PROOF_PLATFORMS)[number];
 
@@ -85,6 +89,35 @@ export type OrgVerificationAssets = {
   pmoEmailPaths: string[];
 };
 
+/** Docs Super Admin can flag for re-upload on “Request changes”. */
+export const ORG_VERIFICATION_CHANGE_DOC_IDS = [
+  'validId',
+  'socialProof',
+  'propertyOwnership',
+  'parkingProof',
+] as const;
+export type OrgVerificationChangeDocId = (typeof ORG_VERIFICATION_CHANGE_DOC_IDS)[number];
+
+function asChangeDocId(value: unknown): OrgVerificationChangeDocId | null {
+  if (
+    typeof value === 'string' &&
+    (ORG_VERIFICATION_CHANGE_DOC_IDS as readonly string[]).includes(value)
+  ) {
+    return value as OrgVerificationChangeDocId;
+  }
+  return null;
+}
+
+export function asChangesRequestedDocs(value: unknown): OrgVerificationChangeDocId[] {
+  if (!Array.isArray(value)) return [];
+  const out: OrgVerificationChangeDocId[] = [];
+  for (const item of value) {
+    const id = asChangeDocId(item);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
 export type OrgVerificationState = {
   baseStatus: OrgVerificationStatus;
   enhancedStatus: OrgVerificationStatus;
@@ -96,6 +129,12 @@ export type OrgVerificationState = {
   parkingContractEndDate: string | null;
   baseSubmittedAt: string | null;
   enhancedSubmittedAt: string | null;
+  baseRejectionReason: string | null;
+  enhancedRejectionReason: string | null;
+  baseRejectionKind: OrgVerificationRejectionKind | null;
+  enhancedRejectionKind: OrgVerificationRejectionKind | null;
+  /** When kind=changes, which Tier 1 docs the host must re-upload. Empty = all (legacy). */
+  baseChangesRequestedDocs: OrgVerificationChangeDocId[];
   assets: OrgVerificationAssets;
 };
 
@@ -121,8 +160,20 @@ export function emptyOrgVerificationState(): OrgVerificationState {
     parkingContractEndDate: null,
     baseSubmittedAt: null,
     enhancedSubmittedAt: null,
+    baseRejectionReason: null,
+    enhancedRejectionReason: null,
+    baseRejectionKind: null,
+    enhancedRejectionKind: null,
+    baseChangesRequestedDocs: [],
     assets: { ...EMPTY_ASSETS, pmoEmailPaths: [] },
   };
+}
+
+function asRejectionKind(value: unknown): OrgVerificationRejectionKind | null {
+  if (value === 'changes' || value === 'rejected') return value;
+  // Legacy value from early approvals UI
+  if (value === 'compliance') return 'changes';
+  return null;
 }
 
 function asStatus(value: unknown): OrgVerificationStatus {
@@ -191,6 +242,20 @@ export function readOrgVerificationFromSettings(
     parkingContractEndDate: asPath(v.parkingContractEndDate),
     baseSubmittedAt: asPath(v.baseSubmittedAt),
     enhancedSubmittedAt: asPath(v.enhancedSubmittedAt),
+    baseRejectionReason: asPath(v.baseRejectionReason),
+    enhancedRejectionReason: asPath(v.enhancedRejectionReason),
+    baseRejectionKind:
+      asStatus(v.baseStatus) === 'rejected'
+        ? (asRejectionKind(v.baseRejectionKind) ?? 'rejected')
+        : null,
+    enhancedRejectionKind:
+      asStatus(v.enhancedStatus) === 'rejected'
+        ? (asRejectionKind(v.enhancedRejectionKind) ?? 'rejected')
+        : null,
+    baseChangesRequestedDocs:
+      asStatus(v.baseStatus) === 'rejected' && asRejectionKind(v.baseRejectionKind) === 'changes'
+        ? asChangesRequestedDocs(v.baseChangesRequestedDocs)
+        : [],
     assets: {
       validIdPath: asPath(assetsRaw.validIdPath),
       socialProofPath: asPath(assetsRaw.socialProofPath),
@@ -217,6 +282,11 @@ export function orgVerificationToSettingsValue(
     parkingContractEndDate: state.parkingContractEndDate,
     baseSubmittedAt: state.baseSubmittedAt,
     enhancedSubmittedAt: state.enhancedSubmittedAt,
+    baseRejectionReason: state.baseRejectionReason,
+    enhancedRejectionReason: state.enhancedRejectionReason,
+    baseRejectionKind: state.baseRejectionKind,
+    enhancedRejectionKind: state.enhancedRejectionKind,
+    baseChangesRequestedDocs: state.baseChangesRequestedDocs,
     assets: {
       validIdPath: state.assets.validIdPath,
       socialProofPath: state.assets.socialProofPath,

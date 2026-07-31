@@ -44,7 +44,10 @@ import { SectionNavIssueDot } from '@/features/dashboard/org/components/property
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { SidebarTenantScope } from '@/features/dashboard/org/components/TenantSwitchers';
-import { GetVerifiedSidebarCta } from '@/features/dashboard/org/components/verification/GetVerifiedModal';
+import {
+  GetVerifiedSidebarCta,
+  HostVerificationChangesGate,
+} from '@/features/dashboard/org/components/verification/GetVerifiedModal';
 import { useOrganizations, useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkings } from '@/features/dashboard/org/hooks/useParkings';
 import {
@@ -267,6 +270,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
   return (
     <GmailReconnectProvider>
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
+      {!isSuperAdminPath(location.pathname) ? <HostVerificationChangesGate /> : null}
       <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
         {/* Mobile drawer — slide + backdrop fade (panel stays mounted for exit animation) */}
         <div className="lg:hidden" aria-hidden={!mobileMenuOpen}>

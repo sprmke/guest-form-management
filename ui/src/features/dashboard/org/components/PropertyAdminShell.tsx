@@ -2,15 +2,18 @@ import { AdminLayoutOutlet } from '@/features/dashboard/bookings/components/Admi
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { PropertySettingsIssuesSync } from '@/features/dashboard/org/components/PropertySettingsIssuesSync';
 import { RequireOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { RequireOrgNotHardRejected } from '@/features/dashboard/org/components/RequireOrgNotHardRejected';
 
 /** Property-scoped admin shell: auth + org/property context + persistent AdminLayout. */
 export function PropertyAdminShell() {
   return (
     <RequireAdmin>
-      <RequireOrgContext>
-        <PropertySettingsIssuesSync />
-        <AdminLayoutOutlet />
-      </RequireOrgContext>
+      <RequireOrgNotHardRejected>
+        <RequireOrgContext>
+          <PropertySettingsIssuesSync />
+          <AdminLayoutOutlet />
+        </RequireOrgContext>
+      </RequireOrgNotHardRejected>
     </RequireAdmin>
   );
 }

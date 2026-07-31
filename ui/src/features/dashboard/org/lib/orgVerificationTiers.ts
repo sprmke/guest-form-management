@@ -2,10 +2,14 @@ import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
   ORG_VERIFICATION_STATUSES,
+  validateVerificationContractEndDate,
+  verificationRightsNeedsContractEnd,
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
   type OrgVerificationStatus,
 } from '@/features/dashboard/org/lib/orgVerification';
+
+export type OrgVerificationRejectionKind = 'changes' | 'rejected';
 
 export type OrgVerificationAssets = {
   validIdPath: string | null;
@@ -27,9 +31,40 @@ export type OrgVerificationDetail = {
   parkingContractEndDate: string | null;
   baseSubmittedAt: string | null;
   enhancedSubmittedAt: string | null;
+  baseRejectionReason: string | null;
+  enhancedRejectionReason: string | null;
+  baseRejectionKind: OrgVerificationRejectionKind | null;
+  enhancedRejectionKind: OrgVerificationRejectionKind | null;
+  /** When kind=changes, which docs must be re-uploaded. Empty = show all (legacy). */
+  baseChangesRequestedDocs: OrgVerificationChangeDocId[];
   assets: OrgVerificationAssets;
   verifiedBadge: boolean;
 };
+
+export type OrgVerificationChangeDocId =
+  'validId' | 'socialProof' | 'propertyOwnership' | 'parkingProof';
+
+const CHANGE_DOC_IDS: readonly OrgVerificationChangeDocId[] = [
+  'validId',
+  'socialProof',
+  'propertyOwnership',
+  'parkingProof',
+];
+
+function asChangesRequestedDocs(value: unknown): OrgVerificationChangeDocId[] {
+  if (!Array.isArray(value)) return [];
+  const out: OrgVerificationChangeDocId[] = [];
+  for (const item of value) {
+    if (
+      typeof item === 'string' &&
+      (CHANGE_DOC_IDS as readonly string[]).includes(item) &&
+      !out.includes(item as OrgVerificationChangeDocId)
+    ) {
+      out.push(item as OrgVerificationChangeDocId);
+    }
+  }
+  return out;
+}
 
 export type VerificationChecklistItem = {
   id: string;
@@ -75,6 +110,12 @@ function asPath(value: unknown): string | null {
   return trimmed || null;
 }
 
+function asRejectionKind(value: unknown): OrgVerificationRejectionKind | null {
+  if (value === 'changes' || value === 'rejected') return value;
+  if (value === 'compliance') return 'changes';
+  return null;
+}
+
 function asRights(value: unknown): OrgVerificationRights | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
@@ -109,6 +150,11 @@ export function readOrgVerificationDetail(
       parkingContractEndDate: null,
       baseSubmittedAt: null,
       enhancedSubmittedAt: null,
+      baseRejectionReason: null,
+      enhancedRejectionReason: null,
+      baseRejectionKind: null,
+      enhancedRejectionKind: null,
+      baseChangesRequestedDocs: [],
       assets: { ...EMPTY_ASSETS, pmoEmailPaths: [] },
       verifiedBadge: false,
     };
@@ -126,10 +172,11 @@ export function readOrgVerificationDetail(
         .map((p) => p.trim())
     : [];
 
+  const baseStatus = asStatus(v.baseStatus);
   const enhancedStatus = asStatus(v.enhancedStatus);
 
   return {
-    baseStatus: asStatus(v.baseStatus),
+    baseStatus,
     enhancedStatus,
     socialPlatform: asPlatform(v.socialPlatform),
     propertyRelationship: asRights(v.propertyRelationship),
@@ -138,6 +185,18 @@ export function readOrgVerificationDetail(
     parkingContractEndDate: asPath(v.parkingContractEndDate),
     baseSubmittedAt: asPath(v.baseSubmittedAt),
     enhancedSubmittedAt: asPath(v.enhancedSubmittedAt),
+    baseRejectionReason: asPath(v.baseRejectionReason),
+    enhancedRejectionReason: asPath(v.enhancedRejectionReason),
+    baseRejectionKind:
+      baseStatus === 'rejected' ? (asRejectionKind(v.baseRejectionKind) ?? 'rejected') : null,
+    enhancedRejectionKind:
+      enhancedStatus === 'rejected'
+        ? (asRejectionKind(v.enhancedRejectionKind) ?? 'rejected')
+        : null,
+    baseChangesRequestedDocs:
+      baseStatus === 'rejected' && asRejectionKind(v.baseRejectionKind) === 'changes'
+        ? asChangesRequestedDocs(v.baseChangesRequestedDocs)
+        : [],
     assets: {
       validIdPath: asPath(assetsRaw.validIdPath),
       socialProofPath: asPath(assetsRaw.socialProofPath),
@@ -297,22 +356,51 @@ export function verificationSidebarLabel(detail: OrgVerificationDetail): string 
   if (detail.enhancedStatus === 'pending') return 'Badge in review';
   if (detail.enhancedStatus === 'rejected') return 'Resubmit badge';
   if (detail.baseStatus === 'pending') return 'Verification in review';
-  if (detail.baseStatus === 'rejected') return 'Verification issue';
+  if (detail.baseStatus === 'rejected') {
+    return detail.baseRejectionKind === 'changes' ? 'Changes requested' : 'Verification declined';
+  }
   if (detail.enhancedStatus === 'none') return 'Get Verified badge';
   return 'Get Verified';
 }
 
-export function verificationStatusLabel(status: OrgVerificationStatus): string {
+export function verificationStatusLabel(
+  status: OrgVerificationStatus,
+  kind?: OrgVerificationRejectionKind | null
+): string {
   switch (status) {
     case 'approved':
       return 'Approved';
     case 'pending':
       return 'In review';
     case 'rejected':
-      return 'Needs update';
+      return kind === 'changes' ? 'Changes requested' : 'Declined';
     default:
       return 'Not started';
   }
+}
+
+/** Hard reject from Super Admin — blocks dashboard access; host must start a new application. */
+export function isHostVerificationHardRejectedFromDetail(detail: OrgVerificationDetail): boolean {
+  return detail.baseStatus === 'rejected' && detail.baseRejectionKind === 'rejected';
+}
+
+export function isHostVerificationHardRejected(
+  settings: Record<string, unknown> | null | undefined
+): boolean {
+  return isHostVerificationHardRejectedFromDetail(readOrgVerificationDetail(settings));
+}
+
+/** Soft reject — host keeps dashboard access but must resubmit via forced Get Verified modal. */
+export function isHostVerificationChangesRequestedFromDetail(
+  detail: OrgVerificationDetail
+): boolean {
+  return detail.baseStatus === 'rejected' && detail.baseRejectionKind === 'changes';
+}
+
+export function isHostVerificationChangesRequested(
+  settings: Record<string, unknown> | null | undefined
+): boolean {
+  return isHostVerificationChangesRequestedFromDetail(readOrgVerificationDetail(settings));
 }
 
 export function canSubmitVerifiedTier(
@@ -327,4 +415,77 @@ export function canSubmitVerifiedTier(
     return false;
   }
   return slots.selfie && slots.ownership && slots.pmo;
+}
+
+/** Client-side gate for Tier 1 resubmit after rejection (mirrors server `canSubmitBaseVerification`). */
+export function canSubmitHostTier(
+  detail: OrgVerificationDetail,
+  hostModes: string[],
+  slots: {
+    validId: boolean;
+    socialProof: boolean;
+    propertyOwnership: boolean;
+    parkingProof: boolean;
+    socialPlatform: OrgSocialProofPlatform | '';
+    propertyRights: OrgVerificationRights | '';
+    propertyContractEndDate: string;
+    parkingRights: OrgVerificationRights | '';
+    parkingContractEndDate: string;
+  },
+  options?: { changesRequestedDocs?: OrgVerificationChangeDocId[] | null }
+): boolean {
+  if (detail.baseStatus === 'approved' || detail.baseStatus === 'pending') {
+    return false;
+  }
+  // Hard reject: host must start a new application — no in-app resubmit.
+  if (isHostVerificationHardRejectedFromDetail(detail)) {
+    return false;
+  }
+
+  const modes = hostModes.length > 0 ? hostModes : ['property'];
+  const needsProperty = modes.includes('property');
+  const needsParking = modes.includes('parking');
+  const docs = options?.changesRequestedDocs?.filter(Boolean) ?? [];
+
+  // Soft reject with a specific doc list — only those uploads are required.
+  if (docs.length > 0) {
+    if (docs.includes('validId') && !slots.validId) return false;
+    if (docs.includes('socialProof')) {
+      if (!slots.socialProof || !slots.socialPlatform) return false;
+    }
+    if (docs.includes('propertyOwnership') && !slots.propertyOwnership) return false;
+    if (docs.includes('parkingProof') && !slots.parkingProof) return false;
+    return true;
+  }
+
+  if (!slots.validId) return false;
+
+  if (needsProperty) {
+    if (
+      !slots.socialProof ||
+      !slots.propertyOwnership ||
+      !slots.socialPlatform ||
+      !slots.propertyRights
+    ) {
+      return false;
+    }
+    if (
+      verificationRightsNeedsContractEnd(slots.propertyRights) &&
+      validateVerificationContractEndDate(slots.propertyContractEndDate) !== null
+    ) {
+      return false;
+    }
+  }
+
+  if (needsParking) {
+    if (!slots.parkingProof || !slots.parkingRights) return false;
+    if (
+      verificationRightsNeedsContractEnd(slots.parkingRights) &&
+      validateVerificationContractEndDate(slots.parkingContractEndDate) !== null
+    ) {
+      return false;
+    }
+  }
+
+  return true;
 }
