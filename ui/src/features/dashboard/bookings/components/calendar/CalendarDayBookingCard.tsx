@@ -1,6 +1,6 @@
 import { ArrowUpRight, Car, Dog, PartyPopper } from 'lucide-react';
 
-import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
+import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { hostNetToneClass } from '@/features/dashboard/bookings/lib/bookingFinance';
@@ -27,6 +27,9 @@ type CalendarDayBookingCardSource = {
   check_out_date: string;
   number_of_nights: number | null;
   property_name?: string | null;
+  parking_name?: string | null;
+  parking_id?: string | null;
+  booking_kind?: 'property' | 'parking' | null;
 };
 
 type CalendarDayBookingCardAmount =
@@ -64,7 +67,7 @@ export function CalendarDayBookingCard({ row, amount, showProperty = false, onOp
           <div className="min-w-0 flex-1">
             <p className="text-foreground truncate text-[13px] font-bold">{name}</p>
             {showProperty ? (
-              <BookingPropertyLabel name={row.property_name} className="mt-0.5 font-medium" />
+              <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
             ) : null}
           </div>
           <ArrowUpRight

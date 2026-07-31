@@ -23,9 +23,11 @@ import {
 import type { BookingRow, BookingsQuery } from '@/features/dashboard/bookings/lib/types';
 import {
   appendOrgId,
+  appendParkingId,
   appendPropertyId,
   useOrgScopeKey,
   useOrgSlugParam,
+  useParkingIdParam,
   usePropertyIdParam,
 } from '@/features/dashboard/org/lib/adminApiScope';
 
@@ -45,6 +47,7 @@ const GENERIC_BOOKINGS_ERROR = 'We could not load bookings. Please try again in 
 type FetchScope = {
   scope: BookingsListScope;
   propertyId: string | null;
+  parkingId: string | null;
   orgSlug: string | null;
   orgId: string | null;
 };
@@ -64,6 +67,7 @@ async function fetchBookingsFromEdgeFunction(
   if (query.to) params.set('to', query.to);
   if (query.hasPets !== null) params.set('has_pets', String(query.hasPets));
   if (query.needParking !== null) params.set('need_parking', String(query.needParking));
+  if (query.bookingKind) params.set('booking_kind', query.bookingKind);
   params.set('sort', query.sort);
   params.set('page', String(query.page));
   params.set('limit', String(query.limit));
@@ -73,6 +77,8 @@ async function fetchBookingsFromEdgeFunction(
 
   if (fetchScope.scope === 'org') {
     appendOrgId(params, fetchScope.orgSlug, fetchScope.orgId);
+  } else if (fetchScope.scope === 'parking') {
+    appendParkingId(params, fetchScope.parkingId);
   } else {
     appendPropertyId(params, fetchScope.propertyId);
   }
@@ -93,15 +99,18 @@ async function fetchBookingsFromEdgeFunction(
 
 export function useBookings(query: BookingsQuery, options?: { scope?: BookingsListScope }) {
   const propertyId = usePropertyIdParam();
+  const parkingId = useParkingIdParam();
   const { orgSlug, orgId } = useOrgScopeKey();
   const routeOrgSlug = useOrgSlugParam();
 
   const scope: BookingsListScope =
-    options?.scope ?? (propertyId ? 'property' : routeOrgSlug || orgId ? 'org' : 'property');
+    options?.scope ??
+    (parkingId ? 'parking' : propertyId ? 'property' : routeOrgSlug || orgId ? 'org' : 'property');
 
   const fetchScope: FetchScope = {
     scope,
     propertyId,
+    parkingId,
     orgSlug: routeOrgSlug ?? orgSlug,
     orgId,
   };
@@ -113,20 +122,20 @@ export function useBookings(query: BookingsQuery, options?: { scope?: BookingsLi
       fetchScope.orgSlug,
       fetchScope.orgId,
       propertyId,
+      parkingId,
       query,
     ] as const,
     queryFn: async () => {
       try {
         return await fetchBookingsFromEdgeFunction(query, fetchScope);
       } catch (err) {
-        if (scope === 'org') {
-          console.error('[useBookings] Org-scoped edge function failed:', err);
+        if (scope === 'org' || scope === 'parking') {
+          console.error('[useBookings] Edge function failed:', err);
           throw err instanceof Error ? err : new Error(GENERIC_BOOKINGS_ERROR);
         }
 
         console.error('[useBookings] Edge function failed, falling back to PostgREST:', err);
 
-        // PostgREST fallback — fetch matches, sort in JS (mirrors list-bookings).
         let request = supabase.from('guest_submissions').select('*');
 
         if (propertyId) {
@@ -197,6 +206,11 @@ export function useBookings(query: BookingsQuery, options?: { scope?: BookingsLi
     },
     placeholderData: keepPreviousData,
     staleTime: 15_000,
-    enabled: scope === 'property' ? true : Boolean(fetchScope.orgSlug || fetchScope.orgId),
+    enabled:
+      scope === 'property'
+        ? true
+        : scope === 'parking'
+          ? Boolean(parkingId)
+          : Boolean(fetchScope.orgSlug || fetchScope.orgId),
   });
 }

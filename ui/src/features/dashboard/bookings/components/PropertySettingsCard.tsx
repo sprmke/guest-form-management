@@ -51,6 +51,10 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useDeleteProperty } from '@/features/dashboard/org/hooks/useDeleteProperty';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
+import {
+  orgSettingsToFormValues,
+  useOrgSettings,
+} from '@/features/dashboard/org/hooks/useOrgSettings';
 import { usePropertySettingsCompletionForDraft } from '@/features/dashboard/org/hooks/usePropertySettingsCompletion';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
 import { useUpdateProperty } from '@/features/dashboard/org/hooks/useUpdateProperty';
@@ -74,7 +78,12 @@ import {
   buildProfilePatchForSections,
   planPropertySettingsSave,
 } from '@/features/dashboard/org/lib/propertySettingsSave';
-import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
+import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
+import {
+  orgPropertiesPath,
+  orgSettingsPath,
+  propertySectionPath,
+} from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -112,7 +121,7 @@ function mergeProfileDraftAfterSave(
 
 export function PropertySettingsCard() {
   const navigate = useNavigate();
-  const { property, orgSlug, propertySlug } = useOrgContext();
+  const { property, org, orgSlug, propertySlug } = useOrgContext();
   const {
     data: appSettings,
     isLoading: appSettingsLoading,
@@ -125,6 +134,20 @@ export function PropertySettingsCard() {
   const updateAppSettings = useUpdateAppSettings();
   const orgBrandColor = useOrgBrandColor();
   const inheritedBrandColor = appSettings?.inheritedBrandColor ?? orgBrandColor;
+  const { data: orgSettings } = useOrgSettings();
+  const orgSocialLinks = useMemo(
+    () =>
+      orgSettings
+        ? orgSettingsToFormValues(orgSettings)
+        : {
+            facebookPageUrl: '',
+            airbnbUrl: '',
+            instagramUrl: '',
+            tiktokUrl: '',
+          },
+    [orgSettings]
+  );
+  const orgSettingsHref = `${orgSettingsPath(orgSlug)}#section-branding`;
 
   const [profileBaseline, setProfileBaseline] = useState(() =>
     propertyProfileDraftFromProperty(property)
@@ -398,6 +421,7 @@ export function PropertySettingsCard() {
       const operationalPatch = buildAppSettingsPatchForSections(
         {
           ...operationalDraft,
+          ...normalizePropertySocialLinksForSave(operationalDraft, orgSocialLinks),
           gafTowerAndUnitNumber: gafTowerUnitFromProfile(profileDraft),
           brandColor: propertyBrandColorStoredValue(
             operationalDraft.brandColor,
@@ -579,6 +603,9 @@ export function PropertySettingsCard() {
           <PropertySocialsBrandingSection
             data={appSettings}
             draft={operationalDraft}
+            orgSocialLinks={orgSocialLinks}
+            orgName={org.name}
+            orgSettingsHref={orgSettingsHref}
             disabled={busy}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}

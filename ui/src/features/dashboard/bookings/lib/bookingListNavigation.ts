@@ -1,8 +1,11 @@
-import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
+import {
+  bookingDetailPath,
+  parkingBookingDetailPath,
+} from '@/features/dashboard/org/lib/tenantPaths';
 
 import type { BookingRow } from './types';
 
-export type BookingsListScope = 'property' | 'org';
+export type BookingsListScope = 'property' | 'org' | 'parking';
 
 export function resolveBookingListHref(
   row: BookingRow,
@@ -12,6 +15,10 @@ export function resolveBookingListHref(
     scope: BookingsListScope;
   }
 ): string {
+  const isParking = row.booking_kind === 'parking' || Boolean(row.parking_id);
+  if (isParking && options.orgSlug && row.parking_slug) {
+    return parkingBookingDetailPath(options.orgSlug, row.parking_slug, row.id);
+  }
   const slug =
     options.scope === 'org' ? row.property_slug : (options.propertySlug ?? row.property_slug);
   if (options.orgSlug && slug) {
@@ -27,3 +34,5 @@ export function resolveBookingPropertySlug(
 ): string | null {
   return propertySlugFromContext ?? booking.property_slug ?? null;
 }
+
+export { bookingDetailPath, parkingBookingDetailPath };
