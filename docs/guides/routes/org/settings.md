@@ -70,6 +70,8 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 
 Guest calendar links copied from the admin UI use **`window.location.origin`** + `?property=slug` — not org settings.
 
+Properties inherit org social URLs when their `app_settings` columns are empty — see **property settings** § Socials.
+
 **App origin** (email links, default GCash QR base URL) is **not** per-org — set deployment env **`PUBLIC_GUEST_APP_ORIGIN`**. Legacy `org_settings.public_guest_app_origin` is used only when the env var is unset.
 
 ### Danger zone — delete organization

@@ -23,6 +23,8 @@ Have **production URL(s)** ready for Redirect URIs (**Google A/B**, **`GMAIL_OAU
 
 Do not **`supabase db push`** until **§1** backup + **§2** preview feel right.
 
+> **AI agents:** Production deploy commands are blocked by default (`.cursor/rules/no-prod-deploy.mdc`). A human must say unlock word **`kamewave`** in chat before an agent runs `deploy:supabase`, `db push`, or `functions deploy`.
+
 ---
 
 ## 1. Back up production **before** `db push`

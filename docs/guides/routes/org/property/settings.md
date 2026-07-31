@@ -60,7 +60,7 @@ Incomplete sections still show a **red dot** on the in-page section nav and on t
 | Property details (capacity, check-in/out)                      | Yes                                                          |
 | Amenities                                                      | Yes — at least **5** selected                                |
 | Location (address + map pin)                                   | Yes                                                          |
-| Socials (Facebook page)                                        | Yes                                                          |
+| Socials (Facebook page)                                        | Yes — org Facebook counts when property inherits             |
 | Brand color (Basic information)                                | No — defaults to `#24a88e`; property inherits org when unset |
 | Payment (provider, account, QR upload)                         | Yes                                                          |
 | Building forms (GAF fields + signature)                        | Yes                                                          |
@@ -70,7 +70,9 @@ Incomplete sections still show a **red dot** on the in-page section nav and on t
 
 Field-level errors appear **as you edit** a field (on change). After **Save Changes**, all remaining issues are shown at once. Section banners (orange) appear only for **Photos & Videos**, **Amenities**, and **Integrations** — not for sections with individual inputs.
 
-Logic: `ui/src/features/dashboard/org/lib/propertySettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/propertySettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/propertySettingsSave.ts`
+Logic: `ui/src/features/dashboard/org/lib/propertySettingsCompletion.ts`, `ui/src/features/dashboard/org/lib/propertySettingsFieldError.ts`, `ui/src/features/dashboard/org/lib/propertySettingsSave.ts`, `ui/src/features/dashboard/org/lib/propertySocialLinks.ts`
+
+Social inherit UI: `ui/src/features/dashboard/org/components/settings/SocialLinkInheritField.tsx`, `PropertySocialsBrandingSection.tsx`
 
 ---
 
@@ -271,20 +273,20 @@ Implementation: `ui/src/features/dashboard/org/lib/propertyCancellationPolicy.ts
 
 ## Socials
 
-Per-property operational settings in `app_settings` (org settings provide fallbacks when a property column is empty).
+Per-property operational settings in `app_settings`. Empty link columns inherit organization values from `org_settings` (same runtime merge as brand color).
 
 | Field            | Column                       | Notes                                                                                                                        |
 | ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Facebook page    | `facebook_reviews_url`       | Required; SD form review CTA; falls back to `org_settings.facebook_reviews_url` → env                                        |
-| Airbnb           | `airbnb_url`                 | Optional; falls back to org                                                                                                  |
-| Instagram        | `instagram_url`              | Optional; falls back to org                                                                                                  |
-| TikTok           | `tiktok_url`                 | Optional; falls back to org                                                                                                  |
+| Facebook page    | `facebook_reviews_url`       | Required (effective value); toggle **Organization** to inherit; custom override stored in column                             |
+| Airbnb           | `airbnb_url`                 | Optional; inherit or per-listing override                                                                                    |
+| Instagram        | `instagram_url`              | Optional; inherit or override                                                                                                |
+| TikTok           | `tiktok_url`                 | Optional; inherit or override                                                                                                |
 | External reviews | `external_reviews` (JSONB)   | Up to **5**; source `facebook` \| `airbnb`; screenshot + optional proof URL; moderation `pending` until super-admin approval |
 | Superhost URL    | `superhost_verification_url` | Optional Airbnb profile URL                                                                                                  |
 | Superhost proof  | `superhost_proof_image_url`  | Upload via `upload-app-settings-asset` (`superhost_proof`); sets `superhost_status = pending`                                |
 | Superhost status | `superhost_status`           | `none` \| `pending` \| `approved` \| `rejected`; public page uses `isSuperhost` when `approved`                              |
 
-**UI:** Social link URLs remain inline. **External reviews** and **Superhost** use integration-style cards (status + **Manage** modal), matching Telegram/Google on **Integrations**.
+**UI:** Each social link row has an **Organization / Custom** toggle. Inherited rows are read-only and show the org URL with a link to org settings. **Use organization for all** / **Customize links** bulk actions apply to the four link fields only. **External reviews** and **Superhost** remain property-local.
 
 **Uploads:** Review screenshots use `upload-app-settings-asset` with `assetType=external_review_image` + `reviewId` (URL returned; persisted on Save via `externalReviews` PATCH).
 
@@ -395,9 +397,8 @@ slot; hard connection drops / mic disconnects call the end endpoint immediately 
 sessions); mic-permission and cap-limit errors show plain-language copy in the overlay and stay
 open until the guest dismisses them (no forced auto-close).
 
-**Guest UX polish (Phase 6 — planned):** faster speech detection / AI turns, clearer
-listening→thinking→speaking UI, and a TalkingHead+VRM avatar replacing the procedural turtle.
-Admin settings fields above are unchanged. Plan:
+**Guest UX polish (Phase 6):** **6.1–6.4 shipped** (speech VAD; rich bubbles; leaner prompts;
+booth UI; premium human concierge portrait). Admin settings fields above are unchanged. Plan:
 `docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
 
 ---
