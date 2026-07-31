@@ -8,13 +8,7 @@
 /** Official ephemeral-token docs model (native audio). Verify at launch. */
 export const GEMINI_LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
-export const GEMINI_LIVE_VOICES = [
-  'Puck',
-  'Charon',
-  'Kore',
-  'Fenrir',
-  'Aoede',
-] as const;
+export const GEMINI_LIVE_VOICES = ['Puck', 'Charon', 'Kore', 'Fenrir', 'Aoede'] as const;
 
 export type GeminiLiveVoice = (typeof GEMINI_LIVE_VOICES)[number];
 
@@ -87,13 +81,14 @@ export async function mintGeminiLiveEphemeralToken(
       functionDeclarations: [
         {
           name: 'getPropertyFact',
-          description: 'Fetch a guest-safe property fact by topic.',
+          description:
+            'ONLY when Known facts do not already answer the guest. Prefer Known facts for amenities, check-in/out, parking, pets, rates, wifi, location/map, house rules, capacity, payment, and cancellation. Use mainly for a fresh availability check or a missing detail.',
           parameters: {
             type: 'object',
             properties: {
               topic: {
                 type: 'string',
-                description: 'Fact topic, e.g. amenities, check-in, parking, wifi',
+                description: 'Fact topic, e.g. amenities, check-in, parking, wifi, availability',
               },
             },
             required: ['topic'],
@@ -102,6 +97,19 @@ export async function mintGeminiLiveEphemeralToken(
       ],
     },
   ];
+
+  // Wait a beat after the guest pauses so mid-sentence breaths don't cut them off
+  // (480ms + HIGH end sensitivity produced "Um how much is the" scraps). Locked into
+  // the ephemeral token so the browser cannot loosen it.
+  const realtimeInputConfig = {
+    automaticActivityDetection: {
+      disabled: false,
+      startOfSpeechSensitivity: 'START_SENSITIVITY_HIGH',
+      endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+      prefixPaddingMs: 40,
+      silenceDurationMs: 900,
+    },
+  };
 
   // REST body shape after SDK conversion (see google-genai _tokens_converters).
   const body: Record<string, unknown> = {
@@ -112,7 +120,8 @@ export async function mintGeminiLiveEphemeralToken(
       model: model.startsWith('models/') ? model : `models/${model}`,
       generationConfig: {
         responseModalities: ['AUDIO'],
-        temperature: 0.7,
+        // Slightly lower than 0.7 — snappier, less meandering spoken replies (Phase 6.2).
+        temperature: 0.55,
         speechConfig: {
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName },
@@ -121,6 +130,8 @@ export async function mintGeminiLiveEphemeralToken(
       },
       systemInstruction: { parts: [{ text: systemText }] },
       tools,
+      realtimeInputConfig,
+      // Prefer English via system instruction — native-audio STT does not accept languageCodes here.
       inputAudioTranscription: {},
       outputAudioTranscription: {},
     },

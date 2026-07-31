@@ -37,6 +37,38 @@ export function readParkingSlugFromUrl(url: URL): string | null {
   return slug || null;
 }
 
+/** All parking slot ids belonging to an organization (org bookings list scope). */
+export async function listParkingIdsForOrganization(orgId: string): Promise<string[]> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase.from('parkings').select('id').eq('organization_id', orgId);
+  if (error) {
+    throw new Error(`list org parkings failed: ${error.message}`);
+  }
+  return (data ?? []).map((row) => String(row.id));
+}
+
+/** Ensures a booking row belongs to the resolved parking slot (admin mutations). */
+export async function verifyBookingBelongsToParking(
+  bookingId: string,
+  parkingId: string
+): Promise<void> {
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('guest_submissions')
+    .select('parking_id')
+    .eq('id', bookingId)
+    .maybeSingle();
+  if (error || !data) {
+    throw new Error('Booking not found');
+  }
+  if (data.parking_id && data.parking_id !== parkingId) {
+    throw new Error('Booking does not belong to this parking slot');
+  }
+  if (!data.parking_id) {
+    throw new Error('Booking is not a parking reservation');
+  }
+}
+
 async function loadParkingRow(scope: {
   parkingId?: string;
   parkingSlug?: string;

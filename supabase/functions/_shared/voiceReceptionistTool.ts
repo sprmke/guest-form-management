@@ -84,17 +84,17 @@ export async function answerGuestSafeVoiceTopic(
     }
     case 'parking':
       return property.pricing.parkingRateGuest != null
-        ? `Guest parking is available for ₱${property.pricing.parkingRateGuest} — ask the host team to arrange it.`
+        ? `Guest parking is available for ${property.pricing.parkingRateGuest} pesos — ask the host team to arrange it.`
         : 'Parking is not listed for this property — ask the host team to confirm.';
     case 'pets':
       return property.pricing.petFee != null
-        ? `Pets are welcome with a ₱${property.pricing.petFee} pet fee.`
+        ? `Pets are welcome with a ${property.pricing.petFee} pesos pet fee.`
         : 'Pet policy is not listed for this property — ask the host team to confirm.';
     case 'pricing':
       return (
-        `Weekday rate is ₱${property.pricing.weekdayNightlyRate} per night, weekend rate is ₱${property.pricing.weekendNightlyRate} per night.` +
+        `Weekday rate is ${property.pricing.weekdayNightlyRate} pesos per night, weekend rate is ${property.pricing.weekendNightlyRate} pesos per night.` +
         (property.pricing.securityDeposit != null
-          ? ` Security deposit is ₱${property.pricing.securityDeposit}.`
+          ? ` Security deposit is ${property.pricing.securityDeposit} pesos.`
           : '')
       );
     case 'availability':
