@@ -2,19 +2,20 @@
 
 Route: `/admin/approvals`
 
-> **Status:** Documented — scaffold / empty queue
+> **Status:** Documented
 
 ## Progress overview
 
-| Section         | E2E save                 | Validation | Docs | Notes                     |
-| --------------- | ------------------------ | ---------- | ---- | ------------------------- |
-| Approvals queue | N/A (no data source yet) | —          | Done | Empty-state scaffold only |
+| Section         | E2E save | Validation | Docs | Notes                              |
+| --------------- | -------- | ---------- | ---- | ---------------------------------- |
+| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification only    |
+| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject |
 
 ---
 
 ## Overview
 
-Placeholder page for a future platform-level approvals queue (e.g. org verification review, host applications). Today it renders only a header, a disabled search input, a view-mode toggle, and a permanent empty state — there is no backing API, query, or data model yet.
+Platform super-admins review **Tier 1 host verification** submissions from `/onboarding` (and host resubmits after a request for changes or rejection). Rows come from orgs where `organizations.settings.verification.baseStatus` is not `none`. Default filter is **In review** (`pending`).
 
 **Access:** `RequireSuperAdmin` (`SUPER_ADMIN_EMAILS`).
 
@@ -22,50 +23,77 @@ Placeholder page for a future platform-level approvals queue (e.g. org verificat
 
 ## Host-facing knowledge
 
-This page is reserved for a future queue the platform team will use to review pending approvals. It isn't in use yet and has no effect on hosts today.
+The platform team uses this page to approve host identity documents, **request changes** (host can fix and resubmit), or **reject** (hard decline).
+
+**Reject** closes dashboard access for that organization, emails the owner a formal notice, and asks them to start a **new application** with proper documents. **Request changes** keeps shell access but **forces a non-dismissible resubmit modal** on next login until the host uploads the requested documents.
 
 **Common host questions**
 
-- Q: Does this page affect my organization's verification status?
-  A: Not yet — organization verification review currently happens outside this page. This screen is a placeholder for a future approvals workflow.
-- Q: Is there something waiting on the platform team's approval here?
-  A: No — this queue is always empty right now because nothing feeds into it yet.
+- Q: Who reviews my onboarding documents?
+  A: The Kame Homes platform team. You’ll see “In review” until they approve, request changes, or decline.
+- Q: What if changes are requested?
+  A: When you sign in you’ll see a **Changes requested** popup you can’t close. Fix or replace the docs listed, then tap **Resubmit**.
+- Q: What if my verification was declined?
+  A: You’ll see a **Verification declined** screen when you sign in. Start a **new application** with clear, complete documents. You’ll also receive an email with the decision.
+- Q: Does approval unlock my dashboard?
+  A: You can use the dashboard after onboarding while verification is pending or approved. Changes requested blocks the UI behind a required resubmit modal. A hard reject blocks access for that organization.
 
 ---
 
 ## Behavior / edge cases
 
-- Search input is present but `disabled` — it does not filter anything because there is nothing to filter.
-- The view-mode toggle (table/grid) has no effect since `SuperAdminApprovalsTable` always renders the same empty state regardless of mode.
-- No pagination, sorting, or row actions exist.
+- Search filters by organization name, owner name, and owner email.
+- Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review.
+- Row click opens a review dialog (no separate detail route).
+- Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Documents** with inline image/PDF previews.
+- Each document has **Full view** (nested lightbox dialog) and **Open in new tab**. Images show inline thumbnails; PDFs show a first-page thumbnail (via pdf.js).
+- Dialog loads signed preview URLs for stored verification assets (1-hour expiry) on the Supabase project origin.
+- Pending actions (order): **Request changes**, **Reject**, **Approve**.
+- **Request changes** switches the same modal into a focused step (orange header): required **multi-select** reasons (document-quality checklist), optional documents to fix, optional additional notes, preview **Host will see**, then confirm — **Back** returns to review. Host keeps shell access; on next login a **non-dismissible Changes requested** modal (no X/Close) forces **Resubmit** before using the dashboard. Only the docs selected under “Please re-upload” are shown for upload (stored as `baseChangesRequestedDocs`); other submitted docs are kept.
+- **Reject** switches the same modal into a focused step (destructive header): required reason from a **5-option hard-decline dropdown** (fraud, identity mismatch, ownership, fraud history, duplicate/suspicious account), optional additional notes, **Host will see** preview — **Back** returns to review. Sets `baseRejectionKind: 'rejected'`, **emails the owner**, and **blocks** org/property/parking dashboard access. On next login the host sees `/verification-rejected` and may **Start a new application** (`/onboarding`). In-app resubmit is not allowed for hard reject.
+- Notes/reason are stored in `baseRejectionReason` with `baseRejectionKind` (`changes` \| `rejected`).
+- **Approve** / decide actions only when status is pending; otherwise show badge + Close (and any prior notes/reason).
+- Host resubmit after **changes** (`submit-org-verification` `tier: 'base'`) sets status back to pending and clears the rejection reason/kind; the org reappears in the In review queue. Hard-rejected orgs cannot resubmit; owners may create a new organization.
 
 ---
 
 ## API reference
 
-None — no edge function or query wired up yet.
+| Function                      | Method | Auth            | Notes                                                                                   |
+| ----------------------------- | ------ | --------------- | --------------------------------------------------------------------------------------- |
+| `list-org-verifications`      | GET    | super admin JWT | Orgs with `baseStatus ≠ none`; owner profile; newest submit first                       |
+| `get-org-verification-assets` | GET    | super admin JWT | `?orgId=` — verification state + signed asset URLs                                      |
+| `approve-org-verification`    | POST   | super admin JWT | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs                  |
+| `reject-org-verification`     | POST   | super admin JWT | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }` |
+
+Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `baseSubmittedAt`, `baseRejectionReason`, `baseRejectionKind` = `changes` \| `rejected`, `baseChangesRequestedDocs`, assets paths). No dedicated approvals table.
 
 ---
 
 ## Implementation map
 
-| Concern             | Path                                                                                                  |
-| ------------------- | ----------------------------------------------------------------------------------------------------- |
-| Page                | `ui/src/features/dashboard/super-admin/pages/SuperAdminApprovalsPage.tsx`                             |
-| Table / empty state | `ui/src/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable.tsx` |
-| View toggle         | `ui/src/features/dashboard/super-admin/components/shared/SuperAdminListViewToggle.tsx`                |
+| Concern          | Path                                                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page             | `ui/src/features/dashboard/super-admin/pages/SuperAdminApprovalsPage.tsx`                                                                              |
+| Table            | `ui/.../super-admin-approvals/SuperAdminApprovalsTable.tsx`                                                                                            |
+| Review dialog    | `ui/.../super-admin-approvals/SuperAdminApprovalReviewDialog.tsx` (review / request-changes / reject panels)                                           |
+| Hooks / filters  | `ui/.../hooks/useApprovals.ts`, `lib/superAdminApprovalsFilters.ts`, `lib/requestChangesMessage.ts`, `lib/rejectReasonOptions.ts`, `types/approval.ts` |
+| Host resubmit UI | `GetVerifiedModal.tsx` + `HostVerificationChangesGate` in `AdminLayout`                                                                                |
+| Edge             | `list-org-verifications`, `get-org-verification-assets`, `approve-org-verification`, `reject-org-verification`                                         |
+| Shared shape     | `supabase/functions/_shared/orgVerification.ts` (+ UI mirrors)                                                                                         |
 
 ---
 
 ## Related docs
 
 - [Route index](../README.md)
-- [`docs/PROJECT.md`](../../PROJECT.md)
+- [Onboarding](../onboarding.md) — base verification submit + Get Verified
+- [`docs/PROJECT.md`](../../PROJECT.md) — API inventory
+- Plan: `docs/planning/planned_modules/2026-07-31-host-approvals.md`
 
 ---
 
 ## Pending / follow-ups
 
-- [ ] Define the data source for the approvals queue (what gets queued, from where).
-- [ ] Wire up list/detail/approve/reject edge functions once the data model exists.
-- [ ] Enable the search input once real rows exist.
+- [ ] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
+- [ ] Optional email/Telegram notify on approve/reject.

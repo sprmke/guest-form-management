@@ -10,6 +10,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | ---------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `/sign-in`                                                 | [sign-in.md](./sign-in.md)                                           | Documented — legacy redirect → `/for-hosts/login`                  |
 | `/onboarding`                                              | [onboarding.md](./onboarding.md)                                     | Documented — host type + optional property/parking                 |
+| `/verification-rejected`                                   | [onboarding.md](./onboarding.md)                                     | Documented — hard-reject login screen                              |
 | `/accept-invite`                                           | [accept-invite.md](./accept-invite.md)                               | Documented — org / property / parking team invites                 |
 | `/org`                                                     | [org/selector.md](./org/selector.md)                                 | Documented — auto-redirect (no picker)                             |
 | `/org/:orgSlug/dashboard`                                  | [org/dashboard.md](./org/dashboard.md)                               | Documented                                                         |
@@ -46,17 +47,17 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 
 Platform-level control panel, distinct from org/property admin and the legacy `ADMIN_ALLOWED_EMAILS` gate — see [`admin/overview.md`](./admin/overview.md) for the auth model.
 
-| Route                                  | Guide                                                                | Status                              |
-| -------------------------------------- | -------------------------------------------------------------------- | ----------------------------------- |
-| `/admin`                               | [admin/overview.md](./admin/overview.md)                             | Documented                          |
-| `/admin/developments`                  | [admin/developments.md](./admin/developments.md)                     | Documented                          |
-| `/admin/developments/:developmentSlug` | [admin/development-detail.md](./admin/development-detail.md)         | Documented                          |
-| `/admin/approvals`                     | [admin/approvals.md](./admin/approvals.md)                           | Documented — scaffold / empty queue |
-| `/admin/hosts`                         | [admin/hosts.md](./admin/hosts.md)                                   | Documented                          |
-| `/admin/properties`                    | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                          |
-| `/admin/hosts/:hostId/orgs`            | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                          |
-| `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                          |
-| `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold       |
+| Route                                  | Guide                                                                | Status                                      |
+| -------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------- |
+| `/admin`                               | [admin/overview.md](./admin/overview.md)                             | Documented                                  |
+| `/admin/developments`                  | [admin/developments.md](./admin/developments.md)                     | Documented                                  |
+| `/admin/developments/:developmentSlug` | [admin/development-detail.md](./admin/development-detail.md)         | Documented                                  |
+| `/admin/approvals`                     | [admin/approvals.md](./admin/approvals.md)                           | Documented — Tier 1 host verification queue |
+| `/admin/hosts`                         | [admin/hosts.md](./admin/hosts.md)                                   | Documented                                  |
+| `/admin/properties`                    | [admin/platform-properties.md](./admin/platform-properties.md)       | Documented                                  |
+| `/admin/hosts/:hostId/orgs`            | [admin/host-detail/orgs.md](./admin/host-detail/orgs.md)             | Documented                                  |
+| `/admin/hosts/:hostId/orgs/properties` | [admin/host-detail/properties.md](./admin/host-detail/properties.md) | Documented                                  |
+| `/admin/orgs/:orgSlug/properties`      | [admin/org-properties.md](./admin/org-properties.md)                 | Documented — minimal scaffold               |
 
 ## Public (guest)
 
