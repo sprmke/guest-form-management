@@ -2,6 +2,11 @@ import type {
   AppSettingsDto,
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
+import {
+  effectiveSocialLink,
+  propertySocialLinkInherits,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
 import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
 import {
@@ -90,6 +95,7 @@ export type PropertySettingsCompletionInput = {
   profile: PropertyProfileDraft;
   operational: AppSettingsFormValues | null;
   appSettings: AppSettingsDto | null;
+  orgSocialLinks: OrgSocialLinks | null;
   gmailConnected: boolean;
   gmailNeedsReconnect: boolean;
   nameConflict?: boolean;
@@ -189,25 +195,44 @@ export function computePropertySettingsCompletion(
 
   // ── Socials ──
   if (operational) {
-    const facebookErr = validateRequiredAdminUrl(
+    const orgSocials = input.orgSocialLinks ?? {
+      facebookPageUrl: '',
+      airbnbUrl: '',
+      instagramUrl: '',
+      tiktokUrl: '',
+    };
+
+    const effectiveFacebook = effectiveSocialLink(
       operational.facebookPageUrl,
+      orgSocials.facebookPageUrl
+    );
+    const facebookErr = validateRequiredAdminUrl(
+      effectiveFacebook,
       'Facebook page URL',
-      'Enter Facebook page URL'
+      propertySocialLinkInherits(operational.facebookPageUrl)
+        ? 'Add Facebook on organization settings'
+        : 'Enter Facebook page URL'
     );
     if (facebookErr) {
       addFieldError('property-facebook-page-url', facebookErr, 'branding');
     }
 
-    const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
-    if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
-
-    const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
-    if (instagramErr) {
-      addFieldError('property-instagram-url', instagramErr, 'branding');
+    if (!propertySocialLinkInherits(operational.airbnbUrl)) {
+      const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
+      if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
     }
 
-    const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
-    if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    if (!propertySocialLinkInherits(operational.instagramUrl)) {
+      const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
+      if (instagramErr) {
+        addFieldError('property-instagram-url', instagramErr, 'branding');
+      }
+    }
+
+    if (!propertySocialLinkInherits(operational.tiktokUrl)) {
+      const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
+      if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    }
 
     const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);
     if (externalReviewsErr) {
