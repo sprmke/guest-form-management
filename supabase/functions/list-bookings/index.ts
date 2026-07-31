@@ -1,11 +1,14 @@
 /**
  * list-bookings — Admin paginated booking list.
- * Property scope: ?property_id=… (default — first accessible property)
- * Org scope: ?org_slug=… or ?org_id=… (all org properties; optional ?property_id= filter)
+ * Property scope: ?property_id=… (property stays only)
+ * Parking scope: ?parking_id=… (parking reservations only)
+ * Org scope: ?org_slug=… or ?org_id=… (property stays + parking reservations)
  */
 
 import { DatabaseService } from '../_shared/databaseService.ts';
 import { jsonResponse } from '../_shared/httpResponse.ts';
+import { verifyParkingTeamAccess } from '../_shared/orgAuth.ts';
+import { listParkingIdsForOrganization } from '../_shared/parkingScope.ts';
 import {
   listPropertyIdsForOrganization,
   readOrgIdFromUrl,
@@ -20,17 +23,30 @@ serveAuthenticated('list-bookings', async (req) => {
   const url = new URL(req.url);
   const p = url.searchParams;
   const explicitPropertyId = readPropertyIdFromUrl(url);
+  const explicitParkingId = p.get('parking_id')?.trim() || null;
   const orgSlug = readOrgSlugFromUrl(url);
   const orgIdParam = readOrgIdFromUrl(url);
+  const bookingKindRaw = p.get('booking_kind')?.trim() ?? '';
+  const bookingKind =
+    bookingKindRaw === 'property' || bookingKindRaw === 'parking' ? bookingKindRaw : null;
 
   let propertyId: string | undefined;
-  let propertyIds: string[] | undefined;
+  let parkingId: string | undefined;
+  let orgPropertyIds: string[] | undefined;
+  let orgParkingIds: string[] | undefined;
   let includePropertyMeta = false;
+  let includeParkingMeta = false;
 
-  if (orgSlug || orgIdParam) {
+  if (explicitParkingId) {
+    await verifyParkingTeamAccess(req, explicitParkingId, 'bookings:view');
+    parkingId = explicitParkingId;
+    includeParkingMeta = true;
+  } else if (orgSlug || orgIdParam) {
     const ctx = await resolveOrgAccessContext(req, 'org:bookings:view');
-    propertyIds = await listPropertyIdsForOrganization(ctx.org.id);
+    orgPropertyIds = await listPropertyIdsForOrganization(ctx.org.id);
+    orgParkingIds = await listParkingIdsForOrganization(ctx.org.id);
     includePropertyMeta = true;
+    includeParkingMeta = true;
 
     if (explicitPropertyId) {
       const { property } = await resolveScopedPropertyAccess(
@@ -38,12 +54,14 @@ serveAuthenticated('list-bookings', async (req) => {
         'bookings:view',
         explicitPropertyId
       );
-      if (!propertyIds.includes(property.id)) {
+      if (!orgPropertyIds.includes(property.id)) {
         return jsonResponse(req, { success: false, error: 'Property not in organization' }, 403);
       }
       propertyId = property.id;
-      propertyIds = undefined;
+      orgPropertyIds = undefined;
+      orgParkingIds = undefined;
       includePropertyMeta = true;
+      includeParkingMeta = false;
     }
   } else if (explicitPropertyId) {
     const { property } = await resolveScopedPropertyAccess(
@@ -80,8 +98,12 @@ serveAuthenticated('list-bookings', async (req) => {
 
   const { rows, total } = await DatabaseService.listBookings({
     propertyId,
-    propertyIds,
+    parkingId,
+    orgPropertyIds,
+    orgParkingIds,
     includePropertyMeta,
+    includeParkingMeta,
+    bookingKind,
     q,
     status: statusRaw,
     from,
