@@ -19,16 +19,27 @@ type Props = {
   value: BookingView;
   onChange: (next: BookingView) => void;
   hideTableView?: boolean;
+  hideKanbanView?: boolean;
   className?: string;
 };
 
-export function BookingViewToggle({ value, onChange, hideTableView = false, className }: Props) {
+export function BookingViewToggle({
+  value,
+  onChange,
+  hideTableView = false,
+  hideKanbanView = false,
+  className,
+}: Props) {
+  const hideValues: BookingView[] = [];
+  if (hideTableView) hideValues.push('table');
+  if (hideKanbanView) hideValues.push('kanban');
+
   return (
     <AdminViewToggle
       value={value}
       onChange={onChange}
       options={BOOKING_VIEW_OPTIONS}
-      hideValues={hideTableView ? ['table'] : []}
+      hideValues={hideValues}
       className={className}
       ariaLabel="Choose booking view"
     />

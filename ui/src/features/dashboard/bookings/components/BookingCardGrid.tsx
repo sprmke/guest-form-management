@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
-import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
+import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import {
@@ -143,7 +143,7 @@ function BookingCard({
               </p>
               <p className="text-data-secondary mt-0.5 truncate">{row.guest_email}</p>
               {showProperty ? (
-                <BookingPropertyLabel name={row.property_name} className="mt-0.5 font-medium" />
+                <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
               ) : null}
             </div>
           </div>

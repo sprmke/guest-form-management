@@ -10,6 +10,7 @@ import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
 } from '@/features/dashboard/bookings/components/calendar/OccupancyCalendarView';
+import { bookingResourceName } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -101,13 +102,14 @@ export function BookingCalendarView({
         const guestName = bookingListDisplayName(row);
         const priceLabel = bookingPillPriceLabel(row);
         const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
-        const propertySuffix = showProperty && row.property_name ? ` · ${row.property_name}` : '';
+        const resourceSuffix =
+          showProperty && bookingResourceName(row) ? ` · ${bookingResourceName(row)}` : '';
 
         return (
           <CalendarOccupancyPill
             status={row.status}
             label={label}
-            title={`${guestName}${propertySuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+            title={`${guestName}${resourceSuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
             labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
           />
         );
@@ -117,7 +119,8 @@ export function BookingCalendarView({
         const guestName = bookingListDisplayName(row);
         const priceLabel = bookingPillPriceLabel(row);
         const label = pillLabelMode === 'price' ? priceLabel : bookingPillLabel(row);
-        const propertySuffix = showProperty && row.property_name ? ` · ${row.property_name}` : '';
+        const resourceSuffix =
+          showProperty && bookingResourceName(row) ? ` · ${bookingResourceName(row)}` : '';
 
         return (
           <div
@@ -149,7 +152,7 @@ export function BookingCalendarView({
               label={label}
               showLabel={segment.showLabel}
               spanPosition={calendarOccupancySpanPosition(segment)}
-              title={`${guestName}${propertySuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
+              title={`${guestName}${resourceSuffix} · ${priceLabel}/night · ${statusLabel(row.status)}`}
               labelClassName={pillLabelMode === 'price' ? 'tabular-nums' : undefined}
             />
           </div>
