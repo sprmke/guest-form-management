@@ -34,13 +34,12 @@ import {
 } from '@/features/dashboard/bookings/lib/bookingStages';
 import {
   DEFAULT_BOOKINGS_QUERY,
+  type BookingKind,
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { orgPropertiesPath } from '@/features/dashboard/org/lib/tenantPaths';
-
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
@@ -71,6 +70,8 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
   const sort: BookingsSort = VALID_SORTS.includes(sortParam as BookingsSort)
     ? (sortParam as BookingsSort)
     : DEFAULT_BOOKINGS_QUERY.sort;
+  const parseKind = (v: string | null): BookingKind | null =>
+    v === 'property' || v === 'parking' ? v : null;
   return {
     q: sp.get('q') ?? '',
     status: statuses,
@@ -78,6 +79,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: parseTri(sp.get('hasPets')),
     needParking: parseTri(sp.get('needParking')),
+    bookingKind: parseKind(sp.get('bookingKind')),
     showCompletedBookings:
       sp.get('showCompletedBookings') === 'true' ||
       sp.get('showPreviousBookings') === 'true' ||
@@ -88,9 +90,14 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
   };
 }
 
-function parseViewFromParams(sp: URLSearchParams, isMobileLayout: boolean): BookingView {
+function parseViewFromParams(
+  sp: URLSearchParams,
+  isMobileLayout: boolean,
+  hideKanban: boolean
+): BookingView {
   const v = sp.get('view') as BookingView | null;
   if (v && VIEWS.includes(v)) {
+    if (hideKanban && v === 'kanban') return isMobileLayout ? 'card' : 'table';
     if (isMobileLayout && v === 'table') return 'card';
     return v;
   }
@@ -109,6 +116,7 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
   set('to', q.to);
   set('hasPets', q.hasPets === null ? null : String(q.hasPets));
   set('needParking', q.needParking === null ? null : String(q.needParking));
+  set('bookingKind', q.bookingKind);
   set('showCompletedBookings', q.showCompletedBookings ? 'true' : null);
   set('sort', q.sort === DEFAULT_BOOKINGS_QUERY.sort ? null : q.sort);
   set('page', q.page === 1 ? null : String(q.page));
@@ -127,12 +135,13 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const orgSlug = useOrgSlugParam();
   const propertySlug = orgContext?.propertySlug ?? null;
   const showProperty = scope === 'org';
+  const hideKanban = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
   const view = useMemo(
-    () => parseViewFromParams(searchParams, isMobileLayout),
-    [searchParams, isMobileLayout]
+    () => parseViewFromParams(searchParams, isMobileLayout, hideKanban),
+    [searchParams, isMobileLayout, hideKanban]
   );
 
   const stage = useMemo(() => parseBookingStage(searchParams.get('stage')), [searchParams]);
@@ -167,13 +176,27 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
       to: query.to,
       hasPets: query.hasPets,
       needParking: query.needParking,
+      bookingKind: query.bookingKind,
       showCompletedBookings: true,
       sort: query.sort,
       page: 1,
       limit: BOARD_BOOKINGS_LIMIT,
     }),
-    [query.from, query.to, query.hasPets, query.needParking, query.sort]
+    [query.from, query.to, query.hasPets, query.needParking, query.bookingKind, query.sort]
   );
+
+  // Org: drop legacy kanban URL when present.
+  useEffect(() => {
+    if (!hideKanban || view !== 'kanban') return;
+    setSearchParams(
+      (prev) => {
+        const sp = new URLSearchParams(prev);
+        sp.delete('view');
+        return sp;
+      },
+      { replace: true }
+    );
+  }, [hideKanban, view, setSearchParams]);
 
   // Table is desktop-only; switch away live when the viewport narrows.
   useEffect(() => {
@@ -319,33 +342,28 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     [patch]
   );
 
-  const bookingActions = (
-    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-      <BookingDateRangeFilter
-        {...dateNav}
-        isActive={Boolean(query.from || query.to)}
-        onClear={handleClearDate}
-        fullWidth={isMobileLayout}
-      />
-      <Link
-        to={
-          scope === 'org' && orgSlug
-            ? orgPropertiesPath(orgSlug)
-            : propertySlug
-              ? guestFormPath(propertySlug)
-              : '#'
-        }
-        className={cn(
-          'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
-          'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-          'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-        )}
-      >
-        <CalendarPlus className="size-4" aria-hidden />
-        <span className="hidden sm:inline">New booking</span>
-      </Link>
-    </div>
-  );
+  const bookingActions =
+    scope === 'org' ? undefined : (
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+        <BookingDateRangeFilter
+          {...dateNav}
+          isActive={Boolean(query.from || query.to)}
+          onClear={handleClearDate}
+          fullWidth={isMobileLayout}
+        />
+        <Link
+          to={propertySlug ? guestFormPath(propertySlug) : '#'}
+          className={cn(
+            'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
+            'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
+            'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
+          )}
+        >
+          <CalendarPlus className="size-4" aria-hidden />
+          <span className="hidden sm:inline">New booking</span>
+        </Link>
+      </div>
+    );
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -355,7 +373,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         title="Bookings"
         subtitle={
           showProperty
-            ? 'Manage and track bookings across all properties.'
+            ? 'Property stays and parking reservations across your organization.'
             : 'Manage and track all bookings for this property.'
         }
         actions={bookingActions}
@@ -371,9 +389,10 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         view={view}
         onViewChange={setView}
         hideTableView={isMobileLayout}
+        hideKanbanView={hideKanban}
+        showBookingKindFilter={scope === 'org'}
         showPerPage={view !== 'calendar' && view !== 'kanban'}
       />
-
       {/* Active view */}
       {showTableView && (
         <BookingTable
@@ -397,7 +416,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           resolveBookingHref={resolveBookingHref}
         />
       )}
-      {view === 'kanban' && (
+      {view === 'kanban' && !hideKanban ? (
         <BookingKanban
           rows={rows}
           isLoading={isLoading}
@@ -405,7 +424,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           isRefreshing={isFetching}
           showProperty={showProperty}
         />
-      )}
+      ) : null}
       {view === 'calendar' && (
         <BookingCalendarView
           rows={rows}

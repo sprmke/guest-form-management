@@ -10,15 +10,25 @@ export type SdSettlementLineItem = { label: string; amount: number };
  * Admin UI speaks snake_case to stay aligned with the raw DB columns.
  * Fields added in Phase 0 migrations may be `null` on legacy rows.
  */
+export type BookingKind = 'property' | 'parking';
+
 export type BookingRow = {
   id: string;
   created_at: string;
   updated_at: string | null;
 
+  /** property | parking — set by list-bookings. */
+  booking_kind?: BookingKind | null;
+
   /** Populated on org-scoped list-bookings responses. */
   property_id?: string | null;
   property_name?: string | null;
   property_slug?: string | null;
+
+  /** Populated on parking-scoped / org parking rows. */
+  parking_id?: string | null;
+  parking_name?: string | null;
+  parking_slug?: string | null;
 
   // ── Guest identity ────────────────────────────────────────────────────────
   guest_facebook_name: string;
@@ -162,6 +172,8 @@ export type BookingsQuery = {
   to: string | null;
   hasPets: boolean | null;
   needParking: boolean | null;
+  /** Org list: filter property stays vs parking reservations. */
+  bookingKind: BookingKind | null;
   /**
    * When true, list includes COMPLETED rows. Default false hides completed
    * (cancelled stays hidden unless the status filter includes them). Active
@@ -180,6 +192,7 @@ export const DEFAULT_BOOKINGS_QUERY: BookingsQuery = {
   to: null,
   hasPets: null,
   needParking: null,
+  bookingKind: null,
   showCompletedBookings: false,
   sort: 'status_priority:asc',
   page: 1,
