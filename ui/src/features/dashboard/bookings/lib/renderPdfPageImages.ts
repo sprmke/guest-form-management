@@ -3,16 +3,19 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 /** Render PDF bytes to PNG data URLs (no browser PDF viewer chrome). */
 export async function renderPdfBytesToPageImages(
   bytes: Uint8Array,
-  scale = 1.75
+  scale = 1.75,
+  maxPages?: number
 ): Promise<string[]> {
   const pdfjs = await import('pdfjs-dist');
   pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
   const pdf = await pdfjs.getDocument({ data: bytes.slice() }).promise;
   const images: string[] = [];
+  const pageLimit =
+    typeof maxPages === 'number' && maxPages > 0 ? Math.min(pdf.numPages, maxPages) : pdf.numPages;
 
   try {
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum += 1) {
+    for (let pageNum = 1; pageNum <= pageLimit; pageNum += 1) {
       const page = await pdf.getPage(pageNum);
       const viewport = page.getViewport({ scale });
       const canvas = document.createElement('canvas');
