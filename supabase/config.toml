@@ -176,6 +176,12 @@ static_files = [
 [functions.list-bookings]
 verify_jwt = false
 
+[functions.create-parking-booking]
+verify_jwt = false
+
+[functions.transition-parking-booking]
+verify_jwt = false
+
 [functions.transition-booking]
 verify_jwt = false
 static_files = [
