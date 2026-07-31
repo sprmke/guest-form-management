@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -13,10 +13,11 @@ import { BookingCalendarView } from '@/features/dashboard/bookings/components/Bo
 import { BookingCardGrid } from '@/features/dashboard/bookings/components/BookingCardGrid';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import { BookingFilters } from '@/features/dashboard/bookings/components/BookingFilters';
-import { BookingKanban } from '@/features/dashboard/bookings/components/BookingKanban';
 import { BookingsSummaryCards } from '@/features/dashboard/bookings/components/BookingsSummaryCards';
 import { BookingTable } from '@/features/dashboard/bookings/components/BookingTable';
 import type { BookingView } from '@/features/dashboard/bookings/components/BookingViewToggle';
+import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
+import { resolveBookingListHref } from '@/features/dashboard/bookings/lib/bookingListNavigation';
 import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
@@ -33,6 +34,7 @@ import {
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
+import { CreateParkingBookingModal } from '@/features/dashboard/parking/components/CreateParkingBookingModal';
 
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
@@ -40,7 +42,7 @@ import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination'
 import { cn } from '@/lib/utils';
 
 const BOARD_BOOKINGS_LIMIT = 100;
-const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar', 'kanban'];
+const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar'];
 
 const PARKING_STAGE_LABELS = {
   action_required: 'Needs action',
@@ -74,6 +76,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
     to: sp.get('to'),
     hasPets: null,
     needParking: null,
+    bookingKind: null,
     showCompletedBookings:
       sp.get('showCompletedBookings') === 'true' || sp.get('showPreviousBookings') === 'true',
     sort,
@@ -84,6 +87,7 @@ function parseQueryFromParams(sp: URLSearchParams): BookingsQuery {
 
 function parseViewFromParams(sp: URLSearchParams, isMobileLayout: boolean): BookingView {
   const v = sp.get('view') as BookingView | null;
+  if (v === 'kanban') return isMobileLayout ? 'card' : 'table';
   if (v && VIEWS.includes(v)) {
     if (isMobileLayout && v === 'table') return 'card';
     return v;
@@ -109,7 +113,8 @@ function writeQueryToParams(q: BookingsQuery, cur: URLSearchParams): URLSearchPa
 }
 
 export function ParkingBookingsPage() {
-  const { parking } = useParkingContext();
+  const { parking, orgSlug } = useParkingContext();
+  const [createOpen, setCreateOpen] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
@@ -127,11 +132,45 @@ export function ParkingBookingsPage() {
 
   const listQuery = useMemo((): BookingsQuery => {
     const base: BookingsQuery = { ...query, status: effectiveStatus };
-    if (view === 'calendar' || view === 'kanban') {
+    if (view === 'calendar') {
       return { ...base, showCompletedBookings: true, limit: BOARD_BOOKINGS_LIMIT, page: 1 };
     }
     return base;
   }, [query, view, effectiveStatus]);
+
+  const summaryQuery = useMemo(
+    (): BookingsQuery => ({
+      q: '',
+      status: [],
+      from: query.from,
+      to: query.to,
+      hasPets: null,
+      needParking: null,
+      bookingKind: null,
+      showCompletedBookings: true,
+      sort: query.sort,
+      page: 1,
+      limit: BOARD_BOOKINGS_LIMIT,
+    }),
+    [query.from, query.to, query.sort]
+  );
+
+  const { data, isLoading, isFetching, error } = useBookings(listQuery, { scope: 'parking' });
+  const { data: summaryData } = useBookings(summaryQuery, { scope: 'parking' });
+
+  const resolveBookingHref = useCallback(
+    (row: Parameters<typeof resolveBookingListHref>[0]) =>
+      resolveBookingListHref(row, { orgSlug, scope: 'parking' }),
+    [orgSlug]
+  );
+
+  const stageCounts = useMemo(
+    () => countBookingsByStage(summaryData?.rows ?? []),
+    [summaryData?.rows]
+  );
+  const rows = data?.rows ?? [];
+  const total = data?.total ?? 0;
+  const errorMessage = error ? (error as Error).message : null;
 
   useEffect(() => {
     if (!isMobileLayout || view !== 'table') return;
@@ -153,13 +192,6 @@ export function ParkingBookingsPage() {
     initialRange:
       initialFromDate && initialToDate ? { from: initialFromDate, to: initialToDate } : null,
   });
-
-  const stageCounts = useMemo(() => countBookingsByStage([]), []);
-  const rows: never[] = [];
-  const total = 0;
-  const isLoading = false;
-  const isFetching = false;
-  const error = null;
 
   const patch = useCallback(
     (p: Partial<BookingsQuery>) =>
@@ -195,7 +227,7 @@ export function ParkingBookingsPage() {
           const sp = new URLSearchParams(prev);
           if (next === 'table') sp.delete('view');
           else sp.set('view', next);
-          if (next === 'calendar' || next === 'kanban') {
+          if (next === 'calendar') {
             sp.set('showCompletedBookings', 'true');
             sp.set('limit', String(BOARD_BOOKINGS_LIMIT));
           }
@@ -231,7 +263,7 @@ export function ParkingBookingsPage() {
 
   const pageCount = Math.max(1, Math.ceil(total / listQuery.limit));
   const pageItems = buildPageItems(listQuery.page, pageCount);
-  const showPagination = view !== 'calendar' && view !== 'kanban' && pageCount > 1;
+  const showPagination = view !== 'calendar' && pageCount > 1;
   const showTableView = view === 'table' && !isMobileLayout;
 
   const handleStaySortChange = useCallback(
@@ -249,9 +281,10 @@ export function ParkingBookingsPage() {
         onClear={handleClearDate}
         fullWidth={isBelowMd}
       />
-      <Link
-        to={publicParkingFormHref}
+      <button
+        type="button"
         aria-label="New booking"
+        onClick={() => setCreateOpen(true)}
         className={cn(
           'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
           'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
@@ -260,6 +293,17 @@ export function ParkingBookingsPage() {
       >
         <CalendarPlus className="size-4 shrink-0" aria-hidden />
         <span className="hidden sm:inline">New booking</span>
+      </button>
+      <Link
+        to={publicParkingFormHref}
+        target="_blank"
+        rel="noreferrer"
+        className={cn(
+          'inline-flex min-h-[44px] items-center rounded-xl border px-3 py-2 sm:px-3.5',
+          'border-border bg-card hover:bg-muted/60 text-[13px] font-semibold'
+        )}
+      >
+        Public form
       </Link>
     </div>
   );
@@ -290,7 +334,8 @@ export function ParkingBookingsPage() {
         view={view}
         onViewChange={setView}
         hideTableView={isMobileLayout}
-        showPerPage={view !== 'calendar' && view !== 'kanban'}
+        hideKanbanView
+        showPerPage={view !== 'calendar'}
         hideGuestStayFilters
         searchPlaceholder="Search guest, email, phone, plate…"
       />
@@ -299,34 +344,39 @@ export function ParkingBookingsPage() {
         <BookingTable
           rows={rows}
           isLoading={isLoading}
-          error={error}
+          error={errorMessage}
           isRefreshing={isFetching}
           sort={query.sort}
           onStaySortChange={handleStaySortChange}
-          emptyExtraHint="Parking reservations will appear here once the booking flow is connected."
+          resolveBookingHref={resolveBookingHref}
         />
       )}
       {view === 'card' && (
         <BookingCardGrid
           rows={rows}
           isLoading={isLoading}
-          error={error}
+          error={errorMessage}
           isRefreshing={isFetching}
+          resolveBookingHref={resolveBookingHref}
         />
-      )}
-      {view === 'kanban' && (
-        <BookingKanban rows={rows} isLoading={isLoading} error={error} isRefreshing={isFetching} />
       )}
       {view === 'calendar' && (
         <BookingCalendarView
           rows={rows}
           isLoading={isLoading}
-          error={error}
+          error={errorMessage}
           isRefreshing={isFetching}
           initialMonth={dateNav.dateRange.from}
           onMonthChange={handleCalendarMonthChange}
+          resolveBookingHref={resolveBookingHref}
         />
       )}
+
+      <CreateParkingBookingModal
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        fixedParkingId={parking.id}
+      />
 
       {showPagination && (
         <AdminListPagination
