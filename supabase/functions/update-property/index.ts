@@ -70,20 +70,6 @@ serveAuthenticated('update-property', async (req) => {
     if (!parsed.ok) {
       return jsonError(req, parsed.error);
     }
-    try {
-      const conflict = await findPropertyTowerUnitConflict(
-        createServiceClient(),
-        parsed.tower,
-        parsed.unitNumber,
-        property.id
-      );
-      if (conflict) {
-        return jsonError(req, DUPLICATE_TOWER_UNIT_MESSAGE, 409);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Validation failed';
-      return jsonError(req, msg, 500);
-    }
     patch.tower = parsed.tower;
     patch.unit_number = parsed.unitNumber;
     patch.tower_and_unit = parsed.towerAndUnit;
@@ -150,6 +136,35 @@ serveAuthenticated('update-property', async (req) => {
   }
 
   const supabase = createServiceClient();
+
+  const resultingStatus = String(
+    (patch.status as string | undefined) ?? property.status ?? 'ACTIVE'
+  ).toUpperCase();
+  const resultingTower = (patch.tower as string | undefined) ?? property.tower;
+  const resultingUnit = (patch.unit_number as string | undefined) ?? property.unit_number;
+
+  if (
+    resultingStatus === 'ACTIVE' &&
+    typeof resultingTower === 'string' &&
+    resultingTower &&
+    typeof resultingUnit === 'string' &&
+    resultingUnit
+  ) {
+    try {
+      const conflict = await findPropertyTowerUnitConflict(
+        supabase,
+        resultingTower,
+        resultingUnit,
+        property.id
+      );
+      if (conflict) {
+        return jsonError(req, DUPLICATE_TOWER_UNIT_MESSAGE, 409);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Validation failed';
+      return jsonError(req, msg, 500);
+    }
+  }
 
   if (typeof patch.name === 'string') {
     patch.slug = await allocatePropertySlug(supabase, patch.name as string, undefined, property.id);

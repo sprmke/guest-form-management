@@ -73,41 +73,41 @@ Booking transfer; join-listing wizard; `?ref=`; parking slot handoff; contract e
 
 **Files:** new migration `20260802140000_properties_tower_unit_active_unique.sql`; `_shared/propertyTowerUnit.ts`; `check-tower-unit`; `create-property`; `create-organization`; `update-property`.
 
-- [ ] Drop global unique; add ACTIVE-only partial unique index
-- [ ] ACTIVE-only conflict lookup; `listPropertyTowerUnitPeers`
-- [ ] `check-tower-unit`: `hasActiveListing` + conflict orgName; do not set `available: false` for ACTIVE peers
-- [ ] Creates always `status: 'INACTIVE'`; remove peer 409 on create
-- [ ] `update-property` → ACTIVE: 409 if ACTIVE peer
-- [ ] Verify: two INACTIVE same unit OK; only one can go ACTIVE via host update
+- [x] Drop global unique; add ACTIVE-only partial unique index
+- [x] ACTIVE-only conflict lookup; `listPropertyTowerUnitPeers`
+- [x] `check-tower-unit`: `hasActiveListing` + conflict orgName; do not set `available: false` for ACTIVE peers
+- [x] Creates always `status: 'INACTIVE'`; remove peer 409 on create
+- [x] `update-property` → ACTIVE: 409 if ACTIVE peer
+- [x] Verify: two INACTIVE same unit OK; only one can go ACTIVE via host update
 
 ### Task 2 — Approvals API (unitConflicts + approve-swap)
 
 **Files:** `list-org-verifications`; `approve-org-verification`; optional assets endpoint.
 
-- [ ] Attach `unitConflicts[]` / `hasActiveUnitConflict`
-- [ ] Base approve: archive peer ACTIVE first, then set this property ACTIVE; return archived peers
-- [ ] Enhanced tier: no property status change
-- [ ] Reject: no property activate
-- [ ] Verify: approve challenger swaps; reject leaves incumbent ACTIVE
+- [x] Attach `unitConflicts[]` / `hasActiveUnitConflict`
+- [x] Base approve: archive peer ACTIVE first, then set this property ACTIVE; return archived peers
+- [x] Enhanced tier: no property status change
+- [x] Reject: no property activate
+- [x] Verify: approve challenger swaps; reject leaves incumbent ACTIVE
 
 ### Task 3 — UI
 
 **Files:** `useTowerUnitConflict`, `TowerUnitConflictAlert`, `OnboardingPage`, `AddEntityDialog`, `PropertySettingsCard`, Approvals page/table/dialog/types/hooks.
 
-- [ ] Warning not hard stop on onboarding / add property
-- [ ] Surface 409 on settings republish
-- [ ] Approvals badge, peers, confirm before swap
-- [ ] Manual E2E at 375px; no owner email in warning
+- [x] Warning not hard stop on onboarding / add property
+- [x] Surface 409 on settings republish
+- [x] Approvals badge, peers, confirm before swap
+- [x] Manual E2E at 375px; no owner email in warning
 
 ### Task 4 — Docs
 
 **Files:** `PROJECT.md`; onboarding + approvals + property settings guides; keep `planned_modules` as pointer only.
 
-- [ ] Document ACTIVE-only unique, create INACTIVE, approve-swap, Team vs link-forward
-- [ ] No second full checklist in planned_modules
+- [x] Document ACTIVE-only unique, create INACTIVE, approve-swap, Team vs link-forward
+- [x] No second full checklist in planned_modules
 
 ### Done when
 
-- [ ] One ACTIVE per tower+unit enforced
-- [ ] Succession warning + Approvals swap work
-- [ ] Docs match behavior
+- [x] One ACTIVE per tower+unit enforced
+- [x] Succession warning + Approvals swap work
+- [x] Docs match behavior

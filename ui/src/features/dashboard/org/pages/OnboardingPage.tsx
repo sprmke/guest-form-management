@@ -28,6 +28,7 @@ import {
 } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
+import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import {
@@ -66,7 +67,6 @@ import {
   sanitizeUnitNumberInput,
   type PropertyTower,
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
-import { duplicateTowerUnitMessage } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
 import {
   orgDashboardPath,
   parkingSectionPath,
@@ -271,16 +271,12 @@ export function OnboardingPage() {
       isValidUnitNumber(unitNumber) &&
       propertyNameTrimmed.length >= 2);
   const unitInvalid = unitTouched && !isValidUnitNumber(unitNumber);
-  const { hasDuplicate: towerUnitDuplicate, isChecking: towerUnitChecking } = useTowerUnitConflict(
-    tower,
-    unitNumber
-  );
-  const unitDuplicate = unitTouched && towerUnitDuplicate;
-  const unitFieldError = unitInvalid
-    ? 'Enter a 4-digit unit number'
-    : unitDuplicate
-      ? duplicateTowerUnitMessage(tower, unitNumber)
-      : null;
+  const {
+    conflict: towerUnitConflict,
+    hasActiveListing: towerUnitListed,
+    isChecking: towerUnitChecking,
+  } = useTowerUnitConflict(tower, unitNumber);
+  const unitFieldError = unitInvalid ? 'Enter a 4-digit unit number' : null;
   const towerMissing = unitTouched && !isPropertyTowerForResidence(tower, DEFAULT_RESIDENCE_NAME);
   const propertyNameMissing = showPropertyBlock && unitTouched && propertyNameTrimmed.length < 2;
 
@@ -299,7 +295,6 @@ export function OnboardingPage() {
   const canAdvanceStep2 =
     hostModeReady &&
     propertyReady &&
-    !towerUnitDuplicate &&
     !propertyNameUnavailable &&
     parkingSlotReady &&
     !parkingSlotDuplicate &&
@@ -781,6 +776,13 @@ export function OnboardingPage() {
                               ) : null}
                             </div>
                           </div>
+                          {towerUnitListed && towerUnitConflict ? (
+                            <TowerUnitConflictAlert
+                              tower={tower}
+                              unitNumber={unitNumber}
+                              conflict={towerUnitConflict}
+                            />
+                          ) : null}
                           <div className="space-y-1.5">
                             <Label htmlFor="property-name">
                               Property name

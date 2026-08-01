@@ -145,11 +145,11 @@ export function AddEntityDialog({
   const [propertyDisplayName, setPropertyDisplayName] = useState('');
   const [developmentName, setDevelopmentName] = useState(DEFAULT_DEVELOPMENT_NAME);
   const propertyTowerOptions = getPropertyTowersForDevelopment(developmentName);
-  const { conflict, hasDuplicate: propertyDuplicate } = useTowerUnitConflict(tower, unitNumber);
+  const { conflict, hasActiveListing: propertyListed } = useTowerUnitConflict(tower, unitNumber);
   const unitInvalid = unitTouched && unitNumber.length > 0 && !isValidUnitNumber(unitNumber);
   const towerUnitReady =
     isPropertyTowerForResidence(tower, developmentName) && isValidUnitNumber(unitNumber);
-  const propertyCanSubmit = towerUnitReady && !propertyDuplicate;
+  const propertyCanSubmit = towerUnitReady;
 
   const [parkingTower, setParkingTower] = useState(DEFAULT_PARKING_TOWER);
   const [level, setLevel] = useState(DEFAULT_PARKING_LEVEL);
@@ -271,7 +271,7 @@ export function AddEntityDialog({
   };
 
   const propertyFieldErrorClass =
-    towerUnitReady && propertyDuplicate ? 'border-destructive' : undefined;
+    towerUnitReady && propertyListed ? 'border-amber-500/40' : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -302,7 +302,7 @@ export function AddEntityDialog({
                     <SelectTrigger
                       id="add-entity-property-tower"
                       className={cn('h-10', propertyFieldErrorClass)}
-                      aria-invalid={towerUnitReady && propertyDuplicate ? true : undefined}
+                      aria-invalid={undefined}
                     >
                       <SelectValue placeholder="Select tower" />
                     </SelectTrigger>
@@ -326,7 +326,7 @@ export function AddEntityDialog({
                     onBlur={() => setUnitTouched(true)}
                     placeholder={FORM_PLACEHOLDERS.unitNumber}
                     maxLength={4}
-                    aria-invalid={unitInvalid || (towerUnitReady && propertyDuplicate) || undefined}
+                    aria-invalid={unitInvalid || undefined}
                     className={cn('h-10 tabular-nums', propertyFieldErrorClass)}
                   />
                   {unitInvalid ? (
@@ -337,7 +337,7 @@ export function AddEntityDialog({
                 </div>
               </div>
 
-              {towerUnitReady && propertyDuplicate ? (
+              {towerUnitReady && propertyListed ? (
                 <TowerUnitConflictAlert tower={tower} unitNumber={unitNumber} conflict={conflict} />
               ) : null}
 

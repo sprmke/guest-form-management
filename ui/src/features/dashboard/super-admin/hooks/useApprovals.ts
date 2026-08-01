@@ -16,8 +16,12 @@ export function useApprovals() {
   return useQuery({
     queryKey: APPROVALS_QUERY_KEY,
     queryFn: () =>
-      callEdgeFunction<{ approvals: OrgApprovalSummary[] }>('list-org-verifications').then(
-        (data) => data.approvals
+      callEdgeFunction<{ approvals: OrgApprovalSummary[] }>('list-org-verifications').then((data) =>
+        data.approvals.map((row) => ({
+          ...row,
+          unitConflicts: Array.isArray(row.unitConflicts) ? row.unitConflicts : [],
+          hasActiveUnitConflict: row.hasActiveUnitConflict === true,
+        }))
       ),
   });
 }

@@ -9,6 +9,7 @@ import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
 } from '@/features/dashboard/org/lib/orgVerification';
+import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import { VerificationDocThumbnail } from '@/features/dashboard/super-admin/components/super-admin-approvals/VerificationDocThumbnail';
 import {
   useApproveOrgVerification,
@@ -27,8 +28,21 @@ import {
   HOST_REJECTION_REASON_OPTIONS,
   type HostRejectionReasonId,
 } from '@/features/dashboard/super-admin/lib/rejectReasonOptions';
-import type { OrgApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
+import type {
+  OrgApprovalSummary,
+  OrgApprovalUnitConflict,
+} from '@/features/dashboard/super-admin/types/approval';
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -62,7 +76,7 @@ function browserAssetUrl(url: string | null | undefined): string | null {
   if (!url?.trim()) return null;
   let normalized = normalizeStoragePublicUrl(url.trim()) ?? url.trim();
 
-  // Keep storage object URLs on the project origin (ngrok/tunnel rewrites break <img>/<iframe>).
+  // Keep storage object URLs on the project origin (ngrok/tunnel rewrites break media embeds).
   const projectBase = (import.meta.env.VITE_SUPABASE_PROJECT_URL as string | undefined)?.replace(
     /\/+$/,
     ''
@@ -114,6 +128,51 @@ function formatSubmittedDate(value: string | null): string {
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+function unitConflictsOf(approval: OrgApprovalSummary): OrgApprovalUnitConflict[] {
+  return Array.isArray(approval.unitConflicts) ? approval.unitConflicts : [];
+}
+
+function successionConfirmMessage(conflicts: OrgApprovalUnitConflict[]): string {
+  const orgNames = [...new Set(conflicts.map((c) => c.orgName.trim()).filter(Boolean))];
+  const orgLabel = orgNames[0] || 'the current host';
+  if (orgNames.length <= 1) {
+    return `Archive ${orgLabel}'s active listing and activate this one. Future bookings stay on the old property.`;
+  }
+  return `Archive active listings from ${orgNames.join(', ')} and activate this one. Future bookings stay on the old property.`;
+}
+
+function UnitConflictList({ conflicts }: { conflicts: OrgApprovalUnitConflict[] }) {
+  if (conflicts.length === 0) return null;
+
+  return (
+    <section className="space-y-3">
+      <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
+        Active listing
+      </p>
+      <ul className="border-border divide-border divide-y overflow-hidden rounded-xl border">
+        {conflicts.map((conflict) => {
+          const orgLabel = conflict.orgName.trim() || 'Unknown org';
+          const unitLabel = formatTowerAndUnit(conflict.tower, conflict.unitNumber);
+          return (
+            <li
+              key={conflict.propertyId}
+              className="flex min-h-[44px] flex-col gap-0.5 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-foreground truncate text-sm font-medium">{orgLabel}</p>
+                <p className="text-muted-foreground truncate text-xs tabular-nums">{unitLabel}</p>
+              </div>
+              <span className="text-muted-foreground shrink-0 text-xs font-medium uppercase tracking-wide">
+                {conflict.status || 'ACTIVE'}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 type PreviewAsset = {
@@ -288,6 +347,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   const [changeNote, setChangeNote] = useState('');
   const [selectedDocs, setSelectedDocs] = useState<Set<ChangeDocId>>(() => new Set());
   const [fullView, setFullView] = useState<PreviewAsset | null>(null);
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
 
   const hostModes = detail?.organization.hostModes ?? approval?.hostModes ?? [];
   const changeDocOptions = useMemo(
@@ -315,10 +375,13 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setSelectedChangeReasons(new Set());
     setChangeNote('');
     setSelectedDocs(new Set());
+    setApproveConfirmOpen(false);
   }, [open, orgId]);
 
   if (!approval) return null;
 
+  const unitConflicts = unitConflictsOf(approval);
+  const hasActiveUnitConflict = approval.hasActiveUnitConflict === true || unitConflicts.length > 0;
   const needsProperty = hostModes.includes('property');
   const needsParking = hostModes.includes('parking');
   const status = detail?.verification.baseStatus ?? approval.baseStatus;
@@ -336,6 +399,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setChangeNote('');
     setSelectedDocs(new Set());
     setFullView(null);
+    setApproveConfirmOpen(false);
     onOpenChange(false);
   };
 
@@ -370,10 +434,19 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     try {
       await approveMutation.mutateAsync({ orgId: approval.organizationId, tier: 'base' });
       toast.success(`${approval.organizationName} approved`);
+      setApproveConfirmOpen(false);
       close();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Approval failed');
     }
+  };
+
+  const requestApprove = () => {
+    if (hasActiveUnitConflict) {
+      setApproveConfirmOpen(true);
+      return;
+    }
+    void handleApprove();
   };
 
   const handleReject = async () => {
@@ -714,6 +787,8 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   </dl>
                 </section>
 
+                <UnitConflictList conflicts={unitConflicts} />
+
                 <section className="space-y-3">
                   <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
                     Documents
@@ -842,7 +917,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 <Button
                   type="button"
                   disabled={busy || isLoading}
-                  onClick={() => void handleApprove()}
+                  onClick={() => void requestApprove()}
                 >
                   {approveMutation.isPending ? (
                     <>
@@ -858,6 +933,36 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
+        <AlertDialogContent
+          className={cn(
+            'max-h-[min(90dvh,32rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto'
+          )}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve succession?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {successionConfirmMessage(unitConflicts)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="min-h-[44px]" disabled={busy}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-[44px]"
+              disabled={busy}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleApprove();
+              }}
+            >
+              {approveMutation.isPending ? 'Approving…' : 'Approve'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {fullView ? <FullViewDialog asset={fullView} onClose={() => setFullView(null)} /> : null}
     </>

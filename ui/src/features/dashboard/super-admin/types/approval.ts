@@ -5,6 +5,16 @@ import type {
 } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationRejectionKind } from '@/features/dashboard/org/lib/orgVerificationTiers';
 
+/** ACTIVE peer listing at the same tower+unit (other org) — from list-org-verifications. */
+export type OrgApprovalUnitConflict = {
+  propertyId: string;
+  organizationId: string;
+  orgName: string;
+  status: string;
+  tower: string;
+  unitNumber: string;
+};
+
 export type OrgApprovalSummary = {
   organizationId: string;
   organizationName: string;
@@ -17,6 +27,8 @@ export type OrgApprovalSummary = {
   baseRejectionReason: string | null;
   baseRejectionKind: OrgVerificationRejectionKind | null;
   createdAt: string;
+  unitConflicts: OrgApprovalUnitConflict[];
+  hasActiveUnitConflict: boolean;
 };
 
 export type OrgVerificationAssetUrls = {

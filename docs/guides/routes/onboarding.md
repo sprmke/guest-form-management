@@ -47,9 +47,9 @@ Contact name pre-fills from the Google account display name when available.
 
 ### Unit uniqueness (sublease handoff) — planned
 
-**Today:** tower + unit is unique across **all** properties (ACTIVE and INACTIVE), so a new host cannot claim a unit another org already registered.
+**Tower+unit:** new properties are created **`INACTIVE`**. If another org already has an **`ACTIVE`** listing for the same tower+unit, onboarding shows a non-blocking **succession warning** (org name only) — Continue is allowed. Super-admin **Approve** on `/admin/approvals` activates this listing and archives the peer ACTIVE listing. Helpers who only need dashboard access should use **Team invite** instead of creating a second org; marketing-only helpers can forward the managing host’s guest booking link.
 
-**Target ([#120](https://github.com/sprmke/kame-homes/issues/120)):** same residence / tower / unit (and the same display name across different orgs) is allowed for successive hosts — e.g. after a sublease ends — but **only one property may be `ACTIVE`** for that tower+unit at a time. Archived (`INACTIVE`) rows keep history; public listings and booking only use the active host.
+**Property name** uniqueness is **per organization** (not a cross-host lock).
 
 Pair with lease/contract end + reverification so the previous listing is archived before (or when) the next host goes live.
 

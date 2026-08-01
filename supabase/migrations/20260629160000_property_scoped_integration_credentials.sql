@@ -2,6 +2,11 @@
 -- Drops singleton id=1 CHECK so each property can have its own settings row.
 -- Telegram bot token + chat id stored encrypted (GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY).
 -- Google Calendar / Sheets IDs per property on app_settings (service account stays env).
+--
+-- Fresh-reset note: several target tables are created AFTER this version
+-- (app_settings 20260701, telegram_admin 20260702, finance 20260710, maintenance 20260818).
+-- Only mutate tables that already exist; catch-up is
+-- 20260818120100_ensure_property_scoped_integration_credentials.sql.
 
 -- ─── Allow multiple settings rows (drop id = 1 CHECK) ───────────────────────
 
@@ -17,6 +22,9 @@ BEGIN
     'telegram_finance_settings',
     'telegram_maintenance_settings'
   ]) LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      CONTINUE;
+    END IF;
     EXECUTE format(
       'ALTER TABLE public.%I DROP CONSTRAINT IF EXISTS %I',
       t,
@@ -25,89 +33,67 @@ BEGIN
   END LOOP;
 END $$;
 
--- Sequences for auto-increment ids on new property rows
-CREATE SEQUENCE IF NOT EXISTS app_settings_id_seq;
-CREATE SEQUENCE IF NOT EXISTS telegram_marketing_settings_id_seq;
-CREATE SEQUENCE IF NOT EXISTS telegram_staff_settings_id_seq;
-CREATE SEQUENCE IF NOT EXISTS telegram_admin_settings_id_seq;
-CREATE SEQUENCE IF NOT EXISTS telegram_finance_settings_id_seq;
-CREATE SEQUENCE IF NOT EXISTS telegram_maintenance_settings_id_seq;
+-- Sequences + defaults + Google IDs / Telegram encrypted columns (existing tables only)
 
-SELECT setval(
-  'app_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.app_settings), 0), 1)
-);
-SELECT setval(
-  'telegram_marketing_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.telegram_marketing_settings), 0), 1)
-);
-SELECT setval(
-  'telegram_staff_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.telegram_staff_settings), 0), 1)
-);
-SELECT setval(
-  'telegram_admin_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.telegram_admin_settings), 0), 1)
-);
-SELECT setval(
-  'telegram_finance_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.telegram_finance_settings), 0), 1)
-);
-SELECT setval(
-  'telegram_maintenance_settings_id_seq',
-  GREATEST(COALESCE((SELECT MAX(id) FROM public.telegram_maintenance_settings), 0), 1)
-);
+DO $$
+DECLARE
+  t text;
+  seq text;
+BEGIN
+  FOREACH t IN ARRAY ARRAY[
+    'app_settings',
+    'telegram_marketing_settings',
+    'telegram_staff_settings',
+    'telegram_admin_settings',
+    'telegram_finance_settings',
+    'telegram_maintenance_settings'
+  ] LOOP
+    IF to_regclass('public.' || t) IS NULL THEN
+      CONTINUE;
+    END IF;
 
-ALTER TABLE public.app_settings
-  ALTER COLUMN id SET DEFAULT nextval('app_settings_id_seq');
-ALTER TABLE public.telegram_marketing_settings
-  ALTER COLUMN id SET DEFAULT nextval('telegram_marketing_settings_id_seq');
-ALTER TABLE public.telegram_staff_settings
-  ALTER COLUMN id SET DEFAULT nextval('telegram_staff_settings_id_seq');
-ALTER TABLE public.telegram_admin_settings
-  ALTER COLUMN id SET DEFAULT nextval('telegram_admin_settings_id_seq');
-ALTER TABLE public.telegram_finance_settings
-  ALTER COLUMN id SET DEFAULT nextval('telegram_finance_settings_id_seq');
-ALTER TABLE public.telegram_maintenance_settings
-  ALTER COLUMN id SET DEFAULT nextval('telegram_maintenance_settings_id_seq');
+    seq := t || '_id_seq';
+    EXECUTE format('CREATE SEQUENCE IF NOT EXISTS public.%I', seq);
+    EXECUTE format(
+      'SELECT setval(%L, GREATEST(COALESCE((SELECT MAX(id) FROM public.%I), 0), 1))',
+      seq,
+      t
+    );
+    EXECUTE format(
+      'ALTER TABLE public.%I ALTER COLUMN id SET DEFAULT nextval(%L)',
+      t,
+      'public.' || seq
+    );
 
--- ─── Per-property Google integration IDs ─────────────────────────────────────
-
-ALTER TABLE public.app_settings
-  ADD COLUMN IF NOT EXISTS google_calendar_id TEXT,
-  ADD COLUMN IF NOT EXISTS google_spreadsheet_id TEXT;
-
-COMMENT ON COLUMN public.app_settings.google_calendar_id IS
-  'Property Google Calendar ID. Falls back to GOOGLE_CALENDAR_ID env when NULL.';
-COMMENT ON COLUMN public.app_settings.google_spreadsheet_id IS
-  'Property Google Spreadsheet ID. Falls back to GOOGLE_SPREADSHEET_ID env when NULL.';
-
--- ─── Encrypted Telegram credentials per channel ─────────────────────────────
-
-ALTER TABLE public.telegram_marketing_settings
-  ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
-  ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT;
-
-ALTER TABLE public.telegram_staff_settings
-  ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
-  ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT;
-
-ALTER TABLE public.telegram_admin_settings
-  ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
-  ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT;
-
-ALTER TABLE public.telegram_finance_settings
-  ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
-  ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT;
-
-ALTER TABLE public.telegram_maintenance_settings
-  ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
-  ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT;
+    IF t = 'app_settings' THEN
+      ALTER TABLE public.app_settings
+        ADD COLUMN IF NOT EXISTS google_calendar_id TEXT,
+        ADD COLUMN IF NOT EXISTS google_spreadsheet_id TEXT;
+    ELSE
+      EXECUTE format(
+        'ALTER TABLE public.%I
+           ADD COLUMN IF NOT EXISTS bot_token_encrypted TEXT,
+           ADD COLUMN IF NOT EXISTS chat_id_encrypted TEXT',
+        t
+      );
+    END IF;
+  END LOOP;
+END $$;
 
 COMMENT ON COLUMN public.telegram_marketing_settings.bot_token_encrypted IS
   'AES-256-GCM encrypted Telegram bot token (property-scoped). Env TELEGRAM_BOT_TOKEN fallback.';
 COMMENT ON COLUMN public.telegram_marketing_settings.chat_id_encrypted IS
   'AES-256-GCM encrypted Telegram chat id (property-scoped). Env TELEGRAM_CHAT_ID fallback.';
+
+DO $$
+BEGIN
+  IF to_regclass('public.app_settings') IS NOT NULL THEN
+    COMMENT ON COLUMN public.app_settings.google_calendar_id IS
+      'Property Google Calendar ID. Falls back to GOOGLE_CALENDAR_ID env when NULL.';
+    COMMENT ON COLUMN public.app_settings.google_spreadsheet_id IS
+      'Property Google Spreadsheet ID. Falls back to GOOGLE_SPREADSHEET_ID env when NULL.';
+  END IF;
+END $$;
 
 -- ─── Multi-property cron dispatch (5-min tick; handlers filter by Manila schedule) ─
 

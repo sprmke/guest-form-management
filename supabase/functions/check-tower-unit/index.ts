@@ -1,10 +1,12 @@
 /**
- * check-tower-unit — GET whether a tower + unit pair is available globally.
+ * check-tower-unit — GET tower + unit availability for succession UX.
  * Auth: verifyAuthenticatedUser.
+ *
+ * available: true when format is valid (create is never blocked by peers).
+ * hasActiveListing: true when another ACTIVE property already uses this pair.
  */
 
 import {
-  DUPLICATE_TOWER_UNIT_MESSAGE,
   isPropertyTower,
   isValidUnitNumber,
   lookupPropertyTowerUnitConflict,
@@ -22,7 +24,13 @@ serveAuthenticated('check-tower-unit', async (req) => {
   const excludePropertyId = url.searchParams.get('excludePropertyId')?.trim() || undefined;
 
   if (!isPropertyTower(tower) || !isValidUnitNumber(unitNumber)) {
-    return jsonSuccess(req, { available: false, reason: 'invalid' });
+    return jsonSuccess(req, {
+      available: false,
+      reason: 'invalid',
+      hasActiveListing: false,
+      message: null,
+      conflict: null,
+    });
   }
 
   const supabase = createServiceClient();
@@ -34,8 +42,11 @@ serveAuthenticated('check-tower-unit', async (req) => {
   );
 
   return jsonSuccess(req, {
-    available: !conflict,
-    message: conflict ? DUPLICATE_TOWER_UNIT_MESSAGE : null,
+    available: true,
+    hasActiveListing: Boolean(conflict),
+    message: conflict
+      ? `This unit is already listed under ${conflict.orgName ?? 'another organization'}`
+      : null,
     conflict: conflict
       ? {
           propertyId: conflict.id,

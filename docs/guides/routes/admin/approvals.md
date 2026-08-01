@@ -6,10 +6,10 @@ Route: `/admin/approvals`
 
 ## Progress overview
 
-| Section         | E2E save | Validation | Docs | Notes                              |
-| --------------- | -------- | ---------- | ---- | ---------------------------------- |
-| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification only    |
-| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject |
+| Section         | E2E save | Validation | Docs | Notes                                                        |
+| --------------- | -------- | ---------- | ---- | ------------------------------------------------------------ |
+| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification; Succession badge when unit taken |
+| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject; succession confirm       |
 
 ---
 
@@ -45,10 +45,12 @@ The platform team uses this page to approve host identity documents, **request c
 - Search filters by organization name, owner name, and owner email.
 - Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review.
 - Row click opens a review dialog (no separate detail route).
-- Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Documents** with inline image/PDF previews.
+- Rows with `hasActiveUnitConflict` show a **Succession** badge (another org already has an ACTIVE listing for the same tower+unit).
+- Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Active listing** peers when present (org name, tower+unit, status), then **Documents** with inline image/PDF previews.
 - Each document has **Full view** (nested lightbox dialog) and **Open in new tab**. Images show inline thumbnails; PDFs show a first-page thumbnail (via pdf.js).
 - Dialog loads signed preview URLs for stored verification assets (1-hour expiry) on the Supabase project origin.
 - Pending actions (order): **Request changes**, **Reject**, **Approve**.
+- **Approve** with an ACTIVE peer: confirm dialog first — archives the peer listing(s) and activates this org’s property; future bookings stay on the old property. Without a peer, Approve runs immediately.
 - **Request changes** switches the same modal into a focused step (orange header): required **multi-select** reasons (document-quality checklist), optional documents to fix, optional additional notes, preview **Host will see**, then confirm — **Back** returns to review. Host keeps shell access; on next login a **non-dismissible Changes requested** modal (no X/Close) forces **Resubmit** before using the dashboard. Only the docs selected under “Please re-upload” are shown for upload (stored as `baseChangesRequestedDocs`); other submitted docs are kept.
 - **Reject** switches the same modal into a focused step (destructive header): required reason from a **5-option hard-decline dropdown** (fraud, identity mismatch, ownership, fraud history, duplicate/suspicious account), optional additional notes, **Host will see** preview — **Back** returns to review. Sets `baseRejectionKind: 'rejected'`, **emails the owner**, and **blocks** org/property/parking dashboard access. On next login the host sees `/verification-rejected` and may **Start a new application** (`/onboarding`). In-app resubmit is not allowed for hard reject.
 - Notes/reason are stored in `baseRejectionReason` with `baseRejectionKind` (`changes` \| `rejected`).
@@ -59,12 +61,12 @@ The platform team uses this page to approve host identity documents, **request c
 
 ## API reference
 
-| Function                      | Method | Auth            | Notes                                                                                   |
-| ----------------------------- | ------ | --------------- | --------------------------------------------------------------------------------------- |
-| `list-org-verifications`      | GET    | super admin JWT | Orgs with `baseStatus ≠ none`; owner profile; newest submit first                       |
-| `get-org-verification-assets` | GET    | super admin JWT | `?orgId=` — verification state + signed asset URLs                                      |
-| `approve-org-verification`    | POST   | super admin JWT | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs                  |
-| `reject-org-verification`     | POST   | super admin JWT | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }` |
+| Function                      | Method | Auth            | Notes                                                                                                                            |
+| ----------------------------- | ------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `list-org-verifications`      | GET    | super admin JWT | Orgs with `baseStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`                   |
+| `get-org-verification-assets` | GET    | super admin JWT | `?orgId=` — verification state + signed asset URLs                                                                               |
+| `approve-org-verification`    | POST   | super admin JWT | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs; archives ACTIVE peers then activates this org’s property |
+| `reject-org-verification`     | POST   | super admin JWT | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }`                                          |
 
 Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `baseSubmittedAt`, `baseRejectionReason`, `baseRejectionKind` = `changes` \| `rejected`, `baseChangesRequestedDocs`, assets paths). No dedicated approvals table.
 
