@@ -13,7 +13,7 @@ import {
   startOfToday,
   getDay,
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, PenLine, Sparkles } from 'lucide-react';
+import { Ban, ChevronLeft, ChevronRight, PenLine, Sparkles } from 'lucide-react';
 
 import type { PricingHolidayRule } from '@/features/dashboard/pricing/lib/phHolidayRules';
 
@@ -27,6 +27,7 @@ export type PricingDayState = {
   rule?: PricingHolidayRule;
   isCustom: boolean;
   isBooked: boolean;
+  isBlocked: boolean;
 };
 
 type Props = {
@@ -101,6 +102,9 @@ export function PricingCalendarGrid({
           <PenLine className="size-3 text-amber-600 dark:text-amber-400" aria-hidden />
         </LegendIcon>
         <LegendStrikethrough label="Booked" />
+        <LegendIcon label="Blocked">
+          <Ban className="text-muted-foreground size-3" aria-hidden />
+        </LegendIcon>
         <LegendSwatch className="ring-primary ring-1" label="Selected" />
       </div>
 
@@ -123,11 +127,12 @@ export function PricingCalendarGrid({
               <div key={`pad-${index}`} className="aspect-square" aria-hidden />
             ))}
             {daysInMonth.map((day) => {
-              const { price, rule, isCustom, isBooked } = getPriceForDate(day);
+              const { price, rule, isCustom, isBooked, isBlocked } = getPriceForDate(day);
               const isSelected = selectedDates.some((d) => isSameDay(d, day));
               const isPast = isBefore(day, startOfToday());
               const hasHoliday = rule != null;
-              const isUnavailable = isPast || isBooked;
+              const isLocked = isPast || isBooked;
+              const showMarkers = !isBooked && !isBlocked;
 
               return (
                 <Tooltip key={day.toISOString()}>
@@ -136,12 +141,17 @@ export function PricingCalendarGrid({
                       type="button"
                       className={cn(
                         'border-border bg-card relative flex aspect-square min-w-0 flex-col rounded-lg border p-1.5 text-left transition-colors sm:p-2',
-                        isUnavailable && 'cursor-not-allowed opacity-45',
-                        !isUnavailable && 'hover:border-primary/50 cursor-pointer hover:shadow-sm',
+                        isLocked && 'cursor-not-allowed opacity-45',
+                        !isLocked &&
+                          isBlocked &&
+                          'bg-muted border-muted-foreground/20 hover:border-primary/50 cursor-pointer hover:shadow-sm',
+                        !isLocked &&
+                          !isBlocked &&
+                          'hover:border-primary/50 cursor-pointer hover:shadow-sm',
                         isSelected &&
-                          !isUnavailable &&
+                          !isLocked &&
                           'border-primary bg-primary/10 ring-primary/30 opacity-100 ring-2',
-                        isToday(day) && !isSelected && !isUnavailable && 'ring-primary/60 ring-1'
+                        isToday(day) && !isSelected && !isLocked && 'ring-primary/60 ring-1'
                       )}
                       onMouseDown={() => {
                         if (!isBooked) onDateMouseDown(day);
@@ -152,10 +162,10 @@ export function PricingCalendarGrid({
                       onClick={() => {
                         if (!isBooked) onDateClick(day);
                       }}
-                      disabled={isUnavailable}
+                      disabled={isLocked}
                       aria-pressed={isSelected}
                       aria-disabled={isBooked}
-                      aria-label={`${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isBooked ? ', booked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`}
+                      aria-label={`${format(day, 'MMMM d')}, ${formatMoneyCompact(price)} per night${isBooked ? ', booked' : ''}${isBlocked ? ', blocked' : ''}${hasHoliday ? ', holiday' : ''}${isCustom ? ', custom rate' : ''}`}
                     >
                       <>
                         <span
@@ -163,8 +173,9 @@ export function PricingCalendarGrid({
                             'text-sm font-semibold leading-none',
                             isBooked &&
                               'text-muted-foreground decoration-muted-foreground/80 line-through',
-                            !isBooked && isToday(day) && !isUnavailable && 'text-primary',
-                            !isBooked && (!isToday(day) || isUnavailable) && 'text-foreground'
+                            !isBooked && isBlocked && 'text-muted-foreground',
+                            !isBooked && !isBlocked && isToday(day) && 'text-primary',
+                            !isBooked && !isBlocked && !isToday(day) && 'text-foreground'
                           )}
                         >
                           {format(day, 'd')}
@@ -174,7 +185,7 @@ export function PricingCalendarGrid({
                           <span
                             className={cn(
                               'w-full truncate text-center text-[11px] font-semibold tabular-nums leading-none sm:text-xs',
-                              isUnavailable ? 'text-muted-foreground' : 'text-foreground'
+                              isLocked || isBlocked ? 'text-muted-foreground' : 'text-foreground'
                             )}
                           >
                             {formatMoneyCompact(price)}
@@ -182,15 +193,21 @@ export function PricingCalendarGrid({
                         </div>
                       </>
 
-                      {isCustom && !isBooked ? (
+                      {isCustom && showMarkers ? (
                         <PenLine
                           className="absolute right-1 top-1 size-3 text-amber-600 dark:text-amber-400"
                           aria-hidden
                         />
                       ) : null}
-                      {hasHoliday && !isBooked ? (
+                      {hasHoliday && showMarkers ? (
                         <Sparkles
                           className="text-primary absolute right-1 top-1 size-3"
+                          aria-hidden
+                        />
+                      ) : null}
+                      {isBlocked && !isBooked ? (
+                        <Ban
+                          className="text-muted-foreground absolute right-1 top-1 size-3"
                           aria-hidden
                         />
                       ) : null}
@@ -201,6 +218,7 @@ export function PricingCalendarGrid({
                       day={day}
                       price={price}
                       isBooked={isBooked}
+                      isBlocked={isBlocked}
                       isPast={isPast}
                       rule={hasHoliday ? rule : undefined}
                       isCustom={isCustom}
@@ -220,6 +238,7 @@ function PricingDayTooltip({
   day,
   price,
   isBooked,
+  isBlocked,
   isPast,
   rule,
   isCustom,
@@ -227,12 +246,14 @@ function PricingDayTooltip({
   day: Date;
   price: number;
   isBooked: boolean;
+  isBlocked: boolean;
   isPast: boolean;
   rule?: PricingHolidayRule;
   isCustom: boolean;
 }) {
   const tags: string[] = [];
   if (isBooked) tags.push('Booked');
+  else if (isBlocked) tags.push('Blocked');
   else if (isPast) tags.push('Past');
   if (rule) tags.push(rule.name);
   if (isCustom) tags.push('Custom rate');
