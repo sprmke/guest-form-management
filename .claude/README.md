@@ -12,14 +12,14 @@ Agent context for **Claude Code** in this repo. Mirrors `.cursor/rules/README.md
 
 ## Skills (`.claude/skills/*/SKILL.md` — invoke `/name` or Claude decides)
 
-Mirrored from `.cursor/skills/` (see `.claude/skills/README.md` for the sync command) plus one Claude Code–only addition:
+Symlinked from `.agent/skills/` (canonical source — see `.claude/skills/README.md`) plus one Claude Code–only addition:
 
 | Skill               | Use for                                                                                                                                                                                      |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `verify`            | **Claude Code only.** Recorded recipe for the bundled `/verify` skill — type-check/lint/build, curl edge functions locally, drive the UI with Playwright MCP. No Cursor equivalent.          |
 | `mobile-responsive` | Breakpoints, touch targets, admin shell, tables — mirrors an **always-on** Cursor rule (`mobile-responsive.mdc`) that has no automatic Claude Code equivalent, so invoke it for any UI task. |
 
-All other skills (booking-workflow, admin-dashboard, forms, multi-tenancy, gmail-listener, supabase-stack, tanstack-query, accessibility, github-issues, …) are 1:1 mirrors of `.cursor/skills/*` — see that directory's `SKILL.md` files for what each covers.
+All other skills (booking-workflow, admin-dashboard, forms, multi-tenancy, gmail-listener, supabase-stack, tanstack-query, accessibility, github-issues, …) are the same `SKILL.md` on both tools via the `.agent/skills/` symlink — see `.agent/skills/<name>/SKILL.md` for what each covers.
 
 **No dedicated skill yet** for: Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI-suggested replies, the guest portal (authenticated guest profile/trips, separate from the anonymous booking form), pricing calendars, super-admin platform ops (`/admin/*` — developments, hosts, cross-org property listing), org verification (base/enhanced tiers). These are real, shipped parts of the app, not hypothetical — read `docs/PROJECT.md` directly for them until a skill exists.
 
@@ -72,4 +72,8 @@ To allow Supabase MCP to write (default is `--read-only`), edit the `args` in `.
 
 ## Updating
 
-When you change something on the Cursor side (`.cursor/rules/`, `.cursor/skills/`, `.cursor/agents/`, `.cursor/commands/`, `.cursor/hooks/`), mirror it here in the same change — see `.claude/skills/README.md` for the exact translation notes per category. `.mcp.json` needs no mirroring; `.cursor/mcp.json` is a symlink to it.
+- **Skills:** edit `.agent/skills/<name>/SKILL.md` directly — `.cursor/skills/<name>` and `.claude/skills/<name>` are symlinks to it, so both sides update automatically. Never edit the symlinked paths.
+- **Commands, agents, hooks:** each side has its own real file (different frontmatter/shape). Edit the Cursor-side file (`.cursor/commands/`, `.cursor/agents/`, `.cursor/hooks/` + `.cursor/hooks.json`), then apply the equivalent conceptual change to the Claude-side file (`.claude/commands/`, `.claude/agents/`, `.claude/hooks/` + `.claude/settings.json`) — see `.claude/skills/README.md` for the exact translation notes per category.
+- Run `bun run check:ai-tooling-sync` (also enforced in pre-commit) before committing; known intentional gaps live in `scripts/dev/ai-tooling-sync-exceptions.txt`.
+- Commit both sides in the same change.
+- `.mcp.json` needs no mirroring — `.cursor/mcp.json` is a symlink to it. This is separate from the global MCP config, which is intentionally asymmetric (Cursor's `~/.cursor/mcp.json` vs Claude Code's plugin mechanism) — see `.claude/skills/README.md`.
