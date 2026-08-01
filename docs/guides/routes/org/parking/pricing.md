@@ -1,3 +1,10 @@
+---
+title: 'Parking Pricing — operator guide'
+status: active
+tags: [guides, routes, org, parking]
+updated: 2026-08-02
+---
+
 # Parking Pricing — operator guide
 
 Route: `/org/:orgSlug/parking/:parkingSlug/pricing`

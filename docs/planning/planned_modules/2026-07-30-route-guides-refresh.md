@@ -1,3 +1,10 @@
+---
+title: 'Refine & Complete Route Guides (docs/guides/routes/)'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Refine & Complete Route Guides (`docs/guides/routes/`)
 
 > **Status:** Done (2026-07-30) — Phases 0–3 complete and verification checklist passed.

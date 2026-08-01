@@ -1,3 +1,10 @@
+---
+title: 'Marketing 3: Improve Marketing Video Templates & Customizability — Implementation Plan'
+status: active
+tags: [planning, planned-modules, marketing, templates]
+updated: 2026-08-02
+---
+
 # Marketing 3: Improve Marketing Video Templates & Customizability — Implementation Plan
 
 **Status:** Implemented (+ follow-ups: accent scrims, then **per-template composition layouts** + pill/CTA chrome — Quiet Coast–style pause-visible identity). Sibling to `docs/planning/planned_modules/2026-07-31-marketing-calendar-templates.md` (Marketing 1, implemented) and `docs/planning/planned_modules/2026-07-31-marketing-design-templates.md` (Marketing 2, implemented — "Quiet Coast" system).

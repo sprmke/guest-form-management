@@ -1,3 +1,10 @@
+---
+title: 'Property Dashboard — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property Dashboard — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug`

@@ -1,3 +1,10 @@
+---
+title: 'Calendar (booking picker) — operator guide'
+status: active
+tags: [guides, routes, calendar]
+updated: 2026-08-02
+---
+
 # Calendar (booking picker) — operator guide
 
 Route: `/properties/:propertySlug/calendar`

@@ -1,3 +1,10 @@
+---
+title: 'Guest Wishlist — operator guide'
+status: active
+tags: [guides, routes, account]
+updated: 2026-08-02
+---
+
 # Guest Wishlist — operator guide
 
 Route: `/account/wishlist`

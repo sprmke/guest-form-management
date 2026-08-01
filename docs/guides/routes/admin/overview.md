@@ -1,3 +1,10 @@
+---
+title: 'Super Admin Overview — operator guide'
+status: active
+tags: [guides, routes, admin]
+updated: 2026-08-02
+---
+
 # Super Admin Overview — operator guide
 
 Route: `/admin`

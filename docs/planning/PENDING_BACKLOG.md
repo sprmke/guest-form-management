@@ -1,3 +1,10 @@
+---
+title: 'Moved'
+status: active
+tags: [planning]
+updated: 2026-08-02
+---
+
 # Moved
 
 This backlog moved to **[GitHub Issues](https://github.com/sprmke/kame-homes/issues)**.

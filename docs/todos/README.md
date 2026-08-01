@@ -1,3 +1,10 @@
+---
+title: 'Product backlog'
+status: active
+tags: [todos]
+updated: 2026-08-02
+---
+
 # Product backlog
 
 **Source of truth:** [GitHub Issues](https://github.com/sprmke/kame-homes/issues) on `sprmke/kame-homes`  

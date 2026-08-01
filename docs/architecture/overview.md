@@ -1,3 +1,10 @@
+---
+title: 'Architecture overview'
+status: active
+tags: [architecture]
+updated: 2026-08-02
+---
+
 # Architecture overview
 
 Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split — see that index for the full topic list.
@@ -63,12 +70,12 @@ flowchart LR
 | `supabase/functions/`            | Deno edge functions + `_shared` modules                        |
 | `supabase/config.toml`           | Local Supabase + function JWT settings                         |
 | `scripts/`                       | Dev, deploy, data sync, integrations — see `scripts/README.md` |
-| `docs/`                          | Doc index (`docs/README.md`), guides, operations runbooks      |
+| `docs/`                          | Doc index ([[README]]), guides, operations runbooks            |
 | `dev.sh`                         | Local stack (Docker + Supabase + UI) or `--ui-only`            |
 | `.cursor/rules/architecture.mdc` | Feature folders, shared utils, import conventions              |
 | `.fallow/baseline.json`          | Fallow dead-code regression baseline (optional CI gate)        |
 
-**Dev tooling** (root): `bun run lint`, `lint:fix`, `type-check`, `check:filenames`, `format`, `format:check`. **Husky** runs lint-staged on commit and **commitlint** on commit messages. ESLint + Prettier configs live at repo root (Prettier) and `ui/eslint.config.js`. **VS Code:** `.vscode/tasks.json` (dev, Supabase, quality, deploy), `.vscode/launch.json` (Chrome debug), `.vscode/settings.json` (Bun UI + Deno edge functions). See **`.cursor/rules/architecture.mdc`** for folder conventions; **`docs/reference/project-structure.md`** for `features/guest/` vs `features/dashboard/`. Backlog: **[`docs/todos/README.md`](../todos/README.md)** (GitHub Issues; shipped archive in `docs/todos/shipped/`).
+**Dev tooling** (root): `bun run lint`, `lint:fix`, `type-check`, `check:filenames`, `format`, `format:check`. **Husky** runs lint-staged on commit and **commitlint** on commit messages. ESLint + Prettier configs live at repo root (Prettier) and `ui/eslint.config.js`. **VS Code:** `.vscode/tasks.json` (dev, Supabase, quality, deploy), `.vscode/launch.json` (Chrome debug), `.vscode/settings.json` (Bun UI + Deno edge functions). See **`.cursor/rules/architecture.mdc`** for folder conventions; **[[project-structure|UI project structure]]** for `features/guest/` vs `features/dashboard/`. Backlog: **[`docs/todos/README.md`](../todos/README.md)** (GitHub Issues; shipped archive in `docs/todos/shipped/`).
 
 **UI entry**: `ui/src/main.tsx` → `App.tsx` → `routes/index.tsx` → merges `features/guest/routes`, `features/sd-form/routes`, `features/pay-parking/routes`, and `features/dashboard/routes`.
 
@@ -82,14 +89,14 @@ flowchart LR
 
 ## 15. Key files quick reference
 
-| Concern                                  | Location                                                                                                                                                                                                                                                                                |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Submit pipeline                          | `supabase/functions/submit-form/index.ts`                                                                                                                                                                                                                                               |
-| DB + overlap + FormData processing       | `supabase/functions/_shared/databaseService.ts`                                                                                                                                                                                                                                         |
-| Field-level diff for updates             | `supabase/functions/_shared/utils.ts` (`compareFormData`)                                                                                                                                                                                                                               |
-| Form UI                                  | `ui/src/features/guest/form/components/GuestForm.tsx`                                                                                                                                                                                                                                   |
-| Validation schema                        | `ui/src/features/guest/form/schemas/guestFormSchema.ts`                                                                                                                                                                                                                                 |
-| Telegram marketing (Edge + Marketing UI) | `docs/reference/telegram-marketing-reminders.md`, `supabase/functions/_shared/telegramMarketing.ts`, `supabase/functions/_shared/telegramMarketingCronSync.ts`, `supabase/migrations/20260615105000_telegram_marketing_cron_slots.sql`, `supabase/snippets/telegram-marketing-cron.sql` |
-| AI payment receipt validation            | `docs/reference/ai-payment-receipt-validation.md`, `supabase/functions/_shared/receiptValidationService.ts`, `supabase/migrations/20260717120000_receipt_ai_validation_columns.sql`, `supabase/migrations/20260718120000_parking_receipt_ai_validation.sql`                             |
-| Calendar page                            | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                                                                                                                                                                                                                                 |
-| Date helpers / overlap helpers           | `ui/src/utils/format/dates.ts`                                                                                                                                                                                                                                                          |
+| Concern                                  | Location                                                                                                                                                                                                                                                                |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Submit pipeline                          | `supabase/functions/submit-form/index.ts`                                                                                                                                                                                                                               |
+| DB + overlap + FormData processing       | `supabase/functions/_shared/databaseService.ts`                                                                                                                                                                                                                         |
+| Field-level diff for updates             | `supabase/functions/_shared/utils.ts` (`compareFormData`)                                                                                                                                                                                                               |
+| Form UI                                  | `ui/src/features/guest/form/components/GuestForm.tsx`                                                                                                                                                                                                                   |
+| Validation schema                        | `ui/src/features/guest/form/schemas/guestFormSchema.ts`                                                                                                                                                                                                                 |
+| Telegram marketing (Edge + Marketing UI) | [[telegram-marketing-reminders]], `supabase/functions/_shared/telegramMarketing.ts`, `supabase/functions/_shared/telegramMarketingCronSync.ts`, `supabase/migrations/20260615105000_telegram_marketing_cron_slots.sql`, `supabase/snippets/telegram-marketing-cron.sql` |
+| AI payment receipt validation            | [[ai-payment-receipt-validation]], `supabase/functions/_shared/receiptValidationService.ts`, `supabase/migrations/20260717120000_receipt_ai_validation_columns.sql`, `supabase/migrations/20260718120000_parking_receipt_ai_validation.sql`                             |
+| Calendar page                            | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                                                                                                                                                                                                                 |
+| Date helpers / overlap helpers           | `ui/src/utils/format/dates.ts`                                                                                                                                                                                                                                          |

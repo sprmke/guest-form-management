@@ -1,3 +1,10 @@
+---
+title: 'Wire up SuperAdmin Approvals (host verification review)'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Wire up SuperAdmin Approvals (host verification review)
 
 > **Shipped delta (2026-07-31):** Soft **Request changes** vs hard **Reject**; forced owner-only resubmit modal; `baseChangesRequestedDocs`; hard-reject email + `/verification-rejected`; `create-organization` allows a new app after hard reject. The “out of scope” notes below are historical plan constraints, not current product truth.

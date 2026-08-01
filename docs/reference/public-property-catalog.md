@@ -1,3 +1,10 @@
+---
+title: 'Public property catalog — reference'
+status: active
+tags: [reference, properties]
+updated: 2026-08-02
+---
+
 # Public property catalog — reference
 
 Guest marketing property detail (`/properties/:propertySlug`) can load **live** data from the admin dashboard when the slug matches an **ACTIVE** row in `properties`. All other slugs continue to use **mock data** (Phase 1 catalog).
@@ -123,6 +130,6 @@ Use this when planning admin fields or deciding what to keep as marketing-only m
 
 ## Related
 
-- Route guide: `docs/guides/routes/properties.md`
-- Admin settings: `docs/guides/routes/org/property/settings.md`
-- Pricing: `docs/guides/routes/org/property/pricing.md`
+- Route guide: [[guides/routes/properties|Properties (guest marketing) — operator guide]]
+- Admin settings: [[guides/routes/org/property/settings|Property Settings — operator guide]]
+- Pricing: [[guides/routes/org/property/pricing|Pricing — legacy route]]

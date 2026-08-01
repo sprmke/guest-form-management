@@ -1,3 +1,10 @@
+---
+title: 'Custom Pages Module (v1: Stay Guide redesign) — Implementation Plan'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Custom Pages Module (v1: Stay Guide redesign) — Implementation Plan
 
 ## Context

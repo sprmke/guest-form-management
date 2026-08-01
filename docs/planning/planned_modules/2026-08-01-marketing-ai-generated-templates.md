@@ -1,3 +1,10 @@
+---
+title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
+status: active
+tags: [planning, planned-modules, marketing, templates]
+updated: 2026-08-02
+---
+
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
 
 **Status:** Planned (not started). Follows Marketing 1 (`2026-07-31-marketing-calendar-templates.md`), Marketing 2 (`2026-07-31-marketing-design-templates.md`), Marketing 3 (`2026-08-01-marketing-video-templates.md`), all implemented. Precedes Marketing 5 (`docs/planning/CLAUDE_TO_PLAN.md:109-113` — performance + social publish, not yet planned).

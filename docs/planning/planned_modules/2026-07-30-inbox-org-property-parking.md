@@ -1,3 +1,10 @@
+---
+title: 'Expand Inbox to org, property, and parking — Implementation Plan'
+status: active
+tags: [planning, planned-modules, inbox, parking]
+updated: 2026-08-02
+---
+
 # Expand Inbox to org, property, and parking — Implementation Plan
 
 ## Goal

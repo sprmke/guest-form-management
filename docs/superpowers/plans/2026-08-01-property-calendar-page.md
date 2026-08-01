@@ -1,3 +1,10 @@
+---
+title: 'Property Calendar Page Implementation Plan'
+status: active
+tags: [superpowers, calendar, properties]
+updated: 2026-08-02
+---
+
 # Property Calendar Page Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -53,7 +60,7 @@
 - Date blocks: nights as `[start_date, end_date)` (same occupancy convention as bookings). Never delete `guest_submissions` to “block.”
 - Blocked nights must disable guest booking via `get-booked-dates` and `checkOverlappingBookings`.
 - UI: existing admin tokens/components; no new font families; no purple/cream AI-default aesthetics; `ui-minimal-copy.mdc`.
-- Docs: update route guide + `docs/guides/routes/README.md` + `docs/PROJECT.md` in the same change as behavior.
+- Docs: update route guide + [[guides/routes/README|Route-based operator guides]] + [[PROJECT|Guest Form Management — Project Documentation]] in the same change as behavior.
 - No production Supabase deploy (`kamewave` unlock required) — local migrations only.
 - Do not edit shipped migrations; add a new migration file.
 - Commits: conventional messages; no Cursor/AI attribution.
@@ -77,8 +84,8 @@
 | `supabase/functions/_shared/propertyPricing.ts`                                   | Include `blockedDateKeys` in DTO; PATCH block ops                                |
 | `supabase/functions/get-booked-dates/index.ts`                                    | Union booking + blocked ranges                                                   |
 | `supabase/functions/_shared/databaseService.ts`                                   | Overlap check includes blocks                                                    |
-| `docs/guides/routes/org/property/calendar.md`                                     | Renamed/expanded guide                                                           |
-| `docs/guides/routes/org/property/pricing.md`                                      | Redirect stub or delete + README update                                          |
+| [[guides/routes/org/property/calendar]]                                           | Renamed/expanded guide                                                           |
+| [[guides/routes/org/property/pricing]]                                            | Redirect stub or delete + README update                                          |
 
 ---
 
@@ -376,12 +383,12 @@ EOF
 
 **Files:**
 
-- Create: `docs/guides/routes/org/property/calendar.md` (from pricing guide + Occupancy + blocks)
-- Modify or replace: `docs/guides/routes/org/property/pricing.md` — short stub pointing to calendar guide + redirect note
-- Modify: `docs/guides/routes/README.md`
-- Modify: `docs/PROJECT.md` — route table, `property_blocked_dates`, API fields
-- Modify: `docs/planning/TASKS_TO_PROMPT.md` — mark Calendar task done
-- Modify: `docs/planning/planned_modules/README.md` — optional cross-link to superpowers plan
+- Create: [[guides/routes/org/property/calendar|Calendar — operator guide]] (from pricing guide + Occupancy + blocks)
+- Modify or replace: [[guides/routes/org/property/pricing|Pricing — legacy route]] — short stub pointing to calendar guide + redirect note
+- Modify: [[guides/routes/README|Route-based operator guides]]
+- Modify: [[PROJECT|Guest Form Management — Project Documentation]] — route table, `property_blocked_dates`, API fields
+- Modify: [[TASKS_TO_PROMPT|Tasks To Prompt]] — mark Calendar task done
+- Modify: [[planning/planned_modules/README|Planned modules]] — optional cross-link to superpowers plan
 
 - [ ] **Step 1: Write calendar route guide** (behavior, save paths, permissions, host Q&A, implementation map)
 

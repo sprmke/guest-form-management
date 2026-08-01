@@ -11,6 +11,7 @@ scripts/
   data/          Prod → local Postgres sync
   deploy/        Linked Supabase project deploy
   preview/       Email template preview from DB
+  docs/          One-off docs/ vault migrations
 ```
 
 ## Marketing (`scripts/marketing/`)
@@ -53,6 +54,12 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | Script                       | npm script                  | Purpose                                  |
 | ---------------------------- | --------------------------- | ---------------------------------------- |
 | `preview-emails-from-db.mjs` | `bun run preview:emails:db` | Render email HTML previews from local DB |
+
+## Docs (`scripts/docs/`)
+
+| Script                    | npm script                   | Purpose                                                                                                                                                |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `convert-to-obsidian.mjs` | (manual, one-shot; ran once) | Adds Obsidian frontmatter to every `docs/**/*.md` and rewrites safe `docs/...md` code-span refs into `[[wikilinks]]`. `--dry-run` / `--verbose` flags. |
 
 See also **`dev.sh`** (full stack) and **`docs/operations/`** runbooks.
 

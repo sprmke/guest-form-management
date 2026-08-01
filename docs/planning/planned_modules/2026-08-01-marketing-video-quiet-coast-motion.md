@@ -1,3 +1,10 @@
+---
+title: 'Marketing Video — Quiet Coast Motion (from scratch)'
+status: active
+tags: [planning, planned-modules, marketing]
+updated: 2026-08-02
+---
+
 # Marketing Video — Quiet Coast Motion (from scratch)
 
 **Status:** Done  

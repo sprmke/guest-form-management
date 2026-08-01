@@ -1,3 +1,10 @@
+---
+title: 'Telegram marketing reminders'
+status: active
+tags: [reference, marketing]
+updated: 2026-08-02
+---
+
 # Telegram marketing reminders
 
 Marketing messages to a **Telegram** group (or channel) for **Kame Homes** guest-form ops: scheduled **daily** runs at configurable **Asia/Manila** times (default three slots), plus **new booking** and **cancellation** triggers. Copy lives in Postgres (`telegram_marketing_settings`); admins edit templates under **Admin → Marketing** (`/marketing`).

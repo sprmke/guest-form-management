@@ -1,3 +1,10 @@
+---
+title: 'Marketing 1: Improve Marketing Calendar Templates — Implementation Plan'
+status: active
+tags: [planning, planned-modules, calendar, marketing]
+updated: 2026-08-02
+---
+
 # Marketing 1: Improve Marketing Calendar Templates — Implementation Plan
 
 **Status:** Implemented — full preset library redesign shipped (14 templates, 7 categories in `lib/calendarPresets.ts`); pastel-color + geometry revision shipped as a follow-up pass after user feedback that the first pass still read as "same layout, different colors"; a third pass bumped base font sizes across every preset for readability, fully recolored `desk-type` off its disliked palette, and added a new **Paper & Ink** category (`ring-bloom` elegant thin-ring circle cells, `petal-note` fully borderless/no-cell-fill design differentiated by ink color only).

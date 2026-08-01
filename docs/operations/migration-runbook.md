@@ -1,8 +1,15 @@
+---
+title: 'Migration Runbook — New Booking Flow'
+status: active
+tags: [operations, migrations]
+updated: 2026-08-02
+---
+
 # Migration Runbook — New Booking Flow
 
 > **Production cutover (ordered backups → migrations → functions → secrets → Google → UI → cron):** see **[`docs/operations/production-deployment.md`](./production-deployment.md)** for a single checklist with exact commands.
 >
-> Step-by-step apply + rollback instructions for the redesign in `docs/planning/NEW_FLOW_PLAN.md`.
+> Step-by-step apply + rollback instructions for the redesign in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]].
 > Every step is **additive and reversible** on Phase 0. Later phases (1–6) introduce behavior change and must be deployed in order.
 >
 > **⚠ Production safety.** The migration files in `supabase/migrations/` **do not run automatically**. They only execute when you:
@@ -41,7 +48,7 @@ Phase 0 is the **`20260501000000`–`20260501000010`** batch: **backup snapshot*
 
 ### 1.2 Out of scope for Phase 0 (different files)
 
-- **`status` widen + legacy backfill** → **`20260502000000_widen_status_enum.sql`** (Phase 2 in `docs/planning/NEW_FLOW_PLAN.md` §5).
+- **`status` widen + legacy backfill** → **`20260502000000_widen_status_enum.sql`** (Phase 2 in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §5).
 - **Test-booking column removal** → **`20260608120000_drop_is_test_booking.sql`** (ships **after** `20260501000004` on a full migrate; safe `DROP COLUMN IF EXISTS`).
 - **All other `202605*` / `202606*` migrations** (SD refund columns, `PENDING_DOCUMENTS`, vouchers, Gmail OAuth table, etc.) → **§1.3**.
 
@@ -123,7 +130,7 @@ SELECT * FROM gmail_listener_state;
 
 ## 3.5 Develop against **local** Supabase (env + optional prod data)
 
-Use this when you want the UI and edge functions to hit **Docker Postgres on port 54322**, not the hosted project. `docs/operations/migration-runbook.md` §7.4 historically assumed `.env.development` pointed at prod — switch the vars below when testing migrations and copied prod rows locally.
+Use this when you want the UI and edge functions to hit **Docker Postgres on port 54322**, not the hosted project. [[migration-runbook|Migration Runbook — New Booking Flow]] §7.4 historically assumed `.env.development` pointed at prod — switch the vars below when testing migrations and copied prod rows locally.
 
 ### 3.5.1 Start the stack and read keys
 
@@ -222,7 +229,7 @@ This project doesn't have a dedicated staging Supabase project today. If you spi
 
 ## 5. Applying to production
 
-Follow **`docs/operations/production-deployment.md`** for the full production checklist (backups, CLI, secrets, Google, hosting, `pg_cron`). The steps below are the **database push** slice.
+Follow **[[production-deployment|Production deployment — checkout checklist]]** for the full production checklist (backups, CLI, secrets, Google, hosting, `pg_cron`). The steps below are the **database push** slice.
 
 **Do not skip any step.**
 
@@ -368,11 +375,11 @@ No DB or storage rollback is needed.
 
 | Phase | Scope                                            | Runbook / detail                                                                                                              |
 | ----- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| **2** | `status` widen + backfill                        | **`20260502000000_widen_status_enum.sql`** — see **`docs/planning/NEW_FLOW_PLAN.md` §5** and **§1.3** above.                  |
+| **2** | `status` widen + backfill                        | **`20260502000000_widen_status_enum.sql`** — see **[[NEW_FLOW_PLAN]] §5** and **§1.3** above.                                 |
 | **3** | Admin edge functions + transition UI             | Shipped — verify **`supabase/config.toml`** + **[`docs/architecture/edge-functions.md`](../architecture/edge-functions.md)**. |
-| **4** | `gmail-listener`, `sd-refund-cron`               | Shipped — **`docs/operations/scheduled-jobs-and-testing.md`**.                                                                |
+| **4** | `gmail-listener`, `sd-refund-cron`               | Shipped — **[[scheduled-jobs-and-testing]]**.                                                                                 |
 | **5** | `submit-form` cleanup + no test-booking pipeline | Shipped — includes **`20260608120000_drop_is_test_booking.sql`**.                                                             |
-| **6** | Calendar + Sheet backfill script                 | **Not shipped** as a dedicated migration yet — still planned in **`docs/planning/NEW_FLOW_PLAN.md` §5**.                      |
+| **6** | Calendar + Sheet backfill script                 | **Not shipped** as a dedicated migration yet — still planned in **[[NEW_FLOW_PLAN]] §5**.                                     |
 
 Incremental schema after Phase 0 is enumerated in **§1.3** (filenames + purposes). **Production** Dashboard secrets, Google OAuth, Vercel `VITE_*`, and **`pg_cron`**: **§11**.
 
@@ -398,7 +405,7 @@ Use this **after** migrations (**§5**) and Edge Function deploys. Canonical env
 4. **Supabase Dashboard → Authentication** — Google provider + URL configuration — **§11.2**.
 5. **Google Cloud** — OAuth clients (**§11.3**) and service account (**§11.4**).
 6. **UI host (e.g. Vercel)** — production **`VITE_*`** vars — **§11.6**.
-7. **Database → Extensions / SQL** — enable **`pg_cron`** + **`pg_net`**, store Vault secrets, schedule **`gmail-listener`** and **`sd-refund-cron`** — **§11.8** (detail: **`docs/operations/scheduled-jobs-and-testing.md`**).
+7. **Database → Extensions / SQL** — enable **`pg_cron`** + **`pg_net`**, store Vault secrets, schedule **`gmail-listener`** and **`sd-refund-cron`** — **§11.8** (detail: **[[scheduled-jobs-and-testing|Scheduled jobs (cron) and how to test them]]**).
 
 ### 11.2 Supabase Dashboard — Authentication (Google sign-in for `/sign-in`)
 
@@ -436,7 +443,7 @@ Copy names from **`supabase/.env.example`**. Typical production set:
 | Group                              | Variables                                                                                                                       | Notes                                                                                                                                                                                  |
 | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Admin / workflow**               | **`ADMIN_ALLOWED_EMAILS`**                                                                                                      | Comma-separated; **authoritative** allow list for **`verifyAdminJwt`**. Must align operationally with **`VITE_ADMIN_ALLOWED_EMAILS`**.                                                 |
-|                                    | **`PARKING_OWNER_EMAILS`**                                                                                                      | BCC list for parking broadcast — **`docs/planning/NEW_FLOW_PLAN.md` §6.1 Q4.1** seed; rotate via env only.                                                                             |
+|                                    | **`PARKING_OWNER_EMAILS`**                                                                                                      | BCC list for parking broadcast — **[[NEW_FLOW_PLAN]] §6.1 Q4.1** seed; rotate via env only.                                                                                            |
 | **Email (Resend)**                 | **`RESEND_API_KEY`**, **`EMAIL_TO`**, **`EMAIL_REPLY_TO`**                                                                      | Production vs dev routing — see **`.env.example`**. **`EMAIL_REPLY_TO`** is also the **To:** address for **New Booking Request** (`submit-form` → `sendNewBookingRequestNotify`).      |
 |                                    | **`EMAIL_LOGO_URL`**, **`PUBLIC_GUEST_APP_ORIGIN`**, **`FACEBOOK_REVIEWS_URL`**                                                 | Optional guest links / branding ([`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)).                                                                  |
 | **Google APIs**                    | **`GOOGLE_SERVICE_ACCOUNT`**, **`GOOGLE_CALENDAR_ID`**, **`GOOGLE_SPREADSHEET_ID`**                                             | **§11.4**.                                                                                                                                                                             |
@@ -478,9 +485,9 @@ Hosted schedules are **not** defined in **`config.toml`** (local CLI limitation)
 
 1. Enable **`pg_cron`** and **`pg_net`** (SQL Editor or Dashboard → **Database → Extensions**).
 2. Store **`project_url`** (e.g. `https://<ref>.supabase.co`) and the **`anon`** JWT (**Dashboard → Project Settings → API**) in **Vault** — same pattern as Supabase’s scheduling guide.
-3. Schedule **`net.http_post`** to **`/functions/v1/gmail-listener`** and **`/functions/v1/sd-refund-cron`** with **`Authorization: Bearer <anon_key>`** and body **`{}`** (both functions use **`verify_jwt = false`**; **`anon`** matches \*\*`docs/operations/scheduled-jobs-and-testing.md` §2–§4).
+3. Schedule **`net.http_post`** to **`/functions/v1/gmail-listener`** and **`/functions/v1/sd-refund-cron`** with **`Authorization: Bearer <anon_key>`** and body **`{}`** (both functions use **`verify_jwt = false`**; **`anon`** matches \*\*[[scheduled-jobs-and-testing|Scheduled jobs (cron) and how to test them]] §2–§4).
 
-Full SQL patterns, security notes, and local curl testing: **`docs/operations/scheduled-jobs-and-testing.md`**.
+Full SQL patterns, security notes, and local curl testing: **[[scheduled-jobs-and-testing|Scheduled jobs (cron) and how to test them]]**.
 
 ### 11.9 Post-deploy smoke checklist
 
@@ -491,4 +498,4 @@ Full SQL patterns, security notes, and local curl testing: **`docs/operations/sc
 - [ ] **Run Gmail poll now** / **Run SD refund cron now** from booking detail (scoped JWT) succeeds.
 - [ ] After **`pg_cron`** is live, confirm **`gmail-listener`** / **`sd-refund-cron`** invocations in **Edge Logs** on schedule.
 
-**Templates:** [`supabase/.env.example`](../../supabase/.env.example) · [`ui/.env.example`](../../ui/.env.example) · **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** · **`docs/operations/scheduled-jobs-and-testing.md`**
+**Templates:** [`supabase/.env.example`](../../supabase/.env.example) · [`ui/.env.example`](../../ui/.env.example) · **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** · **[[scheduled-jobs-and-testing|Scheduled jobs (cron) and how to test them]]**

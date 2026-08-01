@@ -1,3 +1,10 @@
+---
+title: 'Pricing — legacy route'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Pricing — legacy route
 
 Route: `/org/:orgSlug/property/:propertySlug/pricing`

@@ -1,3 +1,10 @@
+---
+title: '[4.7] Remove dev=true from Google Calendar event links'
+status: active
+tags: [todos, shipped, calendar]
+updated: 2026-08-02
+---
+
 # [4.7] Remove `dev=true` from Google Calendar event links
 
 |             |                                                       |

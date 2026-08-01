@@ -1,3 +1,10 @@
+---
+title: 'Organization Properties — operator guide'
+status: active
+tags: [guides, routes, org, properties]
+updated: 2026-08-02
+---
+
 # Organization Properties — operator guide
 
 Route: `/org/:orgSlug/properties`

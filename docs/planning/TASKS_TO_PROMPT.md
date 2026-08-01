@@ -1,3 +1,10 @@
+---
+title: 'Tasks To Prompt'
+status: active
+tags: [planning]
+updated: 2026-08-02
+---
+
 ✅ Expand Inbox module to both org and property levels
 
 Right now, we only have Inbox module at org level.

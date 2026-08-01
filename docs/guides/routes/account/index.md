@@ -1,3 +1,10 @@
+---
+title: 'Guest Account (index) — operator guide'
+status: active
+tags: [guides, routes, account]
+updated: 2026-08-02
+---
+
 # Guest Account (index) — operator guide
 
 Route: `/account`

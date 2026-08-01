@@ -1,3 +1,10 @@
+---
+title: 'Pay Parking — operator guide'
+status: active
+tags: [guides, routes, parking]
+updated: 2026-08-02
+---
+
 # Pay Parking — operator guide
 
 Route: `/properties/:propertySlug/parking/:bookingId` (legacy `/bookings/:bookingId/parking` redirects here)

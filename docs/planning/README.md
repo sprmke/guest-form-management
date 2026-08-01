@@ -1,3 +1,10 @@
+---
+title: 'Planning docs'
+status: active
+tags: [planning]
+updated: 2026-08-02
+---
+
 # Planning docs
 
 | Doc                                    | Purpose                                                |

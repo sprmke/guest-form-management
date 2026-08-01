@@ -1,3 +1,10 @@
+---
+title: 'Booking Success — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Booking Success — operator guide
 
 Route: `/properties/:propertySlug/success?bookingId=` (legacy `/success?property=<slug>&bookingId=` redirects here)

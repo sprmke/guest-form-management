@@ -1,3 +1,10 @@
+---
+title: 'Smart Public Filter Sidebar & Sort — Implementation Plan'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Smart Public Filter Sidebar & Sort — Implementation Plan
 
 ## Context

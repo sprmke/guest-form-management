@@ -1,3 +1,10 @@
+---
+title: 'Marketing Video — Quiet Coast Motion (from-scratch redesign)'
+status: archived
+tags: [superpowers, archive, marketing]
+updated: 2026-08-02
+---
+
 # Marketing Video — Quiet Coast Motion (from-scratch redesign)
 
 **Status:** Implemented (core) — verify in UI; hard-refresh / Reset if old autosave loads  

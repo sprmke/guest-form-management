@@ -1,3 +1,10 @@
+---
+title: 'Maintenance — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Maintenance — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/maintenance`

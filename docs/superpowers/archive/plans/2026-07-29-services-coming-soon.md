@@ -1,3 +1,10 @@
+---
+title: 'Services Coming Soon Implementation Plan'
+status: archived
+tags: [superpowers, archive]
+updated: 2026-08-02
+---
+
 # Services Coming Soon Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -25,10 +32,10 @@
 - Modify `ui/src/features/guest/marketing/routes/index.tsx` — public route registration.
 - Modify `ui/src/features/guest/marketing/shared/lib/listingSearchDefaultLocation.ts` — Services search default.
 - Modify `ui/src/features/guest/marketing/shared/lib/listingScrollSearchPaths.ts` — hero-to-nav morph configuration.
-- Create `docs/guides/routes/services.md` — route behavior and implementation map.
-- Modify `docs/guides/routes/README.md` — public route index.
-- Modify `docs/PROJECT.md` — current route inventory.
-- Modify `docs/reference/project-structure.md` — marketing module route list.
+- Create [[services|Services (guest marketing) — operator guide]] — route behavior and implementation map.
+- Modify [[guides/routes/README|Route-based operator guides]] — public route index.
+- Modify [[PROJECT|Guest Form Management — Project Documentation]] — current route inventory.
+- Modify [[project-structure|UI project structure]] — marketing module route list.
 
 ### Task 1: Route and listing-search integration
 
@@ -190,10 +197,10 @@ Expected: both commands exit 0 with no new errors.
 
 **Files:**
 
-- Create: `docs/guides/routes/services.md`
-- Modify: `docs/guides/routes/README.md`
-- Modify: `docs/PROJECT.md`
-- Modify: `docs/reference/project-structure.md`
+- Create: [[services|Services (guest marketing) — operator guide]]
+- Modify: [[guides/routes/README|Route-based operator guides]]
+- Modify: [[PROJECT|Guest Form Management — Project Documentation]]
+- Modify: [[project-structure|UI project structure]]
 
 **Interfaces:**
 
@@ -239,11 +246,11 @@ Public preview for future guest services. Uses `MarketingLayoutShell` and the sa
 
 - [ ] **Step 2: Update route indexes**
 
-Add `/services` with guide `services.md` and status `Documented — UI-only coming soon` to the public marketing table in `docs/guides/routes/README.md`.
+Add `/services` with guide `services.md` and status `Documented — UI-only coming soon` to the public marketing table in [[guides/routes/README|Route-based operator guides]].
 
-Add `/services`, `ServicesPage`, public access, and a UI-only description to the Routes table in `docs/PROJECT.md`.
+Add `/services`, `ServicesPage`, public access, and a UI-only description to the Routes table in [[PROJECT|Guest Form Management — Project Documentation]].
 
-Extend the marketing module route list in `docs/reference/project-structure.md` to include `/services`.
+Extend the marketing module route list in [[project-structure|UI project structure]] to include `/services`.
 
 - [ ] **Step 3: Check documentation references**
 

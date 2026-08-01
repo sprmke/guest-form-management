@@ -1,3 +1,10 @@
+---
+title: 'UI project structure'
+status: active
+tags: [reference]
+updated: 2026-08-02
+---
+
 # UI project structure
 
 **Canonical rule:** `.cursor/rules/architecture.mdc`  

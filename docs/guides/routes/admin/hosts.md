@@ -1,3 +1,10 @@
+---
+title: 'Super Admin Hosts — operator guide'
+status: active
+tags: [guides, routes, admin]
+updated: 2026-08-02
+---
+
 # Super Admin Hosts — operator guide
 
 Route: `/admin/hosts`

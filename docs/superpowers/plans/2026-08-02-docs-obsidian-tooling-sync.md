@@ -1,3 +1,10 @@
+---
+title: 'Docs cleanup, Obsidian optimization, and Cursor/Claude Code tooling sync'
+status: active
+tags: [superpowers]
+updated: 2026-08-02
+---
+
 # Docs cleanup, Obsidian optimization, and Cursor/Claude Code tooling sync
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

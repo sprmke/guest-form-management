@@ -1,3 +1,10 @@
+---
+title: 'Guest web chat (/properties/:propertySlug/messages)'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Guest web chat (`/properties/:propertySlug/messages`)
 
 Route: `/properties/:propertySlug/messages`
@@ -71,7 +78,7 @@ and host Guest Inbox.
 booth UI (brass ring + mic waveform); batch Flash polish on hang-up (`thinkingBudget: 0`); booth
 stays open with **Saving conversation…** until the thread refetch settles; spoken money uses
 **pesos**; circular turtle avatar (full-body 9:16 HeyGen clip; talk loop **only** while `phase === 'speaking'`, idle still otherwise). Mouth motion is a baked loop — not live phoneme sync.
-See `docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
+See [[2026-07-30-ai-voice-receptionist|AI Voice Receptionist — Implementation Plan]] § Phase 6.
 
 ## API
 

@@ -1,3 +1,10 @@
+---
+title: 'Property Guest Inbox'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property Guest Inbox
 
 Route: `/org/:orgSlug/property/:propertySlug/inbox`
@@ -50,12 +57,12 @@ This is where you read and reply to guest messages for this property — website
 
 ## Implementation map
 
-| Area  | Path                                                                     |
-| ----- | ------------------------------------------------------------------------ |
-| Page  | `ui/src/features/dashboard/inbox/pages/PropertyInboxPage.tsx`            |
-| Shell | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`                    |
-| Scope | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts`         |
-| Plan  | `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md` |
+| Area  | Path                                                             |
+| ----- | ---------------------------------------------------------------- |
+| Page  | `ui/src/features/dashboard/inbox/pages/PropertyInboxPage.tsx`    |
+| Shell | `ui/src/features/dashboard/inbox/pages/InboxPage.tsx`            |
+| Scope | `supabase/functions/_shared/metaInboxScope.ts`, `inboxAccess.ts` |
+| Plan  | [[2026-07-30-inbox-org-property-parking]]                        |
 
 ## Related
 

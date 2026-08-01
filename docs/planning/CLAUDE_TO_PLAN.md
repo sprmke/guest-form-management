@@ -1,3 +1,10 @@
+---
+title: 'Claude To Plan'
+status: active
+tags: [planning]
+updated: 2026-08-02
+---
+
 ===
 
 ✅ Improve for-hosts landing page

@@ -1,11 +1,18 @@
+---
+title: 'Production deployment — checkout checklist'
+status: active
+tags: [operations, deployment]
+updated: 2026-08-02
+---
+
 # Production deployment — checkout checklist
 
 Ship **migrations**, **Edge Functions**, **Secrets**, **Google integrations**, **UI env**, then **scheduled jobs** in a safe order.
 
-| Use this doc for…                                          | Jump to **`docs/operations/migration-runbook.md`** for…                                                |
+| Use this doc for…                                          | Jump to **[[migration-runbook]]** for…                                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Ordered cutover + copy-paste commands + compact env tables | Step-by-step **§11** narratives, GCP screenshots-level detail, **`pg_cron`** SQL bodies, Phase history |
-| Cron HTTP examples                                         | **`docs/operations/scheduled-jobs-and-testing.md`** §2–§4                                              |
+| Cron HTTP examples                                         | **[[scheduled-jobs-and-testing]]** §2–§4                                                               |
 
 **Templates (names + placeholders only):** [`ui/.env.example`](../../ui/.env.example) · [`supabase/.env.example`](../../supabase/.env.example).
 
@@ -63,7 +70,7 @@ supabase link --project-ref <prod-ref>
 supabase db diff --linked --schema public
 ```
 
-Migration filenames shipped in order: **`migration-runbook.md` §1.3**. Legacy **`booked` / `canceled`** semantics: **`docs/planning/NEW_FLOW_PLAN.md`** Q1.1 (also embedded in widening / early migrations).
+Migration filenames shipped in order: **`migration-runbook.md` §1.3**. Legacy **`booked` / `canceled`** semantics: **[[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]]** Q1.1 (also embedded in widening / early migrations).
 
 ---
 
@@ -105,7 +112,7 @@ Full query set / edge cases: **`migration-runbook.md` §3** · **§5** step 6.
 supabase functions deploy
 ```
 
-**`supabase/config.toml`** **`static_files`** must bundle email HTML / inline assets for workflow senders (orchestrator **`ENOENT`** if missing — see **`docs/PROJECT.md`** deploy notes).
+**`supabase/config.toml`** **`static_files`** must bundle email HTML / inline assets for workflow senders (orchestrator **`ENOENT`** if missing — see **[[PROJECT|Guest Form Management — Project Documentation]]** deploy notes).
 
 ---
 

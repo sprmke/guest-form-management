@@ -1,7 +1,14 @@
+---
+title: 'New Flow'
+status: active
+tags: [planning]
+updated: 2026-08-02
+---
+
 - Let's improve our booking process flow
 
   **After the guest submits the form**
-  - Automatically: generate the PDF (unchanged post-redesign; admin/update flows still respect a **Generate PDF** toggle in **admin-only** dev controls — see `docs/planning/NEW_FLOW_PLAN.md` §6.1 **Q3.1** / **Q3.2**).
+  - Automatically: generate the PDF (unchanged post-redesign; admin/update flows still respect a **Generate PDF** toggle in **admin-only** dev controls — see [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §6.1 **Q3.1** / **Q3.2**).
   - Do **not** run automatically: email Azure, create or update the Google Calendar event, save assets to Supabase storage, add or update the Google Sheet row.
   - The unit owner reviews the guest form and moves the booking through the steps below.
 
@@ -30,9 +37,9 @@
   - **PENDING PARKING REQUEST** — Parking is enabled; waiting on parking details.
     - Google Calendar: **yellow** `PENDING PARKING REQUEST - 2pax 2nights - Guest Name`
     - On this step, we will just check the replies from parking owners and choose which is available and has lowest parking rate
-    - Reply to the selected parking owner and pay them (**manual** — no auto “winning owner” email in v1; see §6.1 **Q4.2** / **Q4.3** in `docs/planning/NEW_FLOW_PLAN.md`).
-    - **Parking endorsement (v1):** manual screenshot + **manual upload** in admin (no auto-screenshot of email — see `docs/planning/NEW_FLOW_PLAN.md` §6.1 **Q4.4**). Image is sent to the guest at **Ready for check-in** when provided.
-    - Two parking amount fields (DB: `parking_rate_guest`, `parking_rate_paid`); **labels:** **Guest Parking Rate** (charged to guest) and **Owner Parking Rate** (paid out to the selected parking owner) — `docs/planning/NEW_FLOW_PLAN.md` §6.1 **Q4.5**.
+    - Reply to the selected parking owner and pay them (**manual** — no auto “winning owner” email in v1; see §6.1 **Q4.2** / **Q4.3** in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]]).
+    - **Parking endorsement (v1):** manual screenshot + **manual upload** in admin (no auto-screenshot of email — see [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §6.1 **Q4.4**). Image is sent to the guest at **Ready for check-in** when provided.
+    - Two parking amount fields (DB: `parking_rate_guest`, `parking_rate_paid`); **labels:** **Guest Parking Rate** (charged to guest) and **Owner Parking Rate** (paid out to the selected parking owner) — [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §6.1 **Q4.5**.
     - After clicking (Proceed to 'PENDING PET REQUEST' (if enabled) or Proceed to 'READY FOR CHECK-IN'), sync database, calendar, and Google Sheet with parking fields
 
   - **PENDING PET REQUEST** — Guest has pets; pet-form request email sent; waiting on approval.

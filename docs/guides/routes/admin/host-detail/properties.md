@@ -1,3 +1,10 @@
+---
+title: 'Host Detail — Properties — operator guide'
+status: active
+tags: [guides, routes, admin, properties]
+updated: 2026-08-02
+---
+
 # Host Detail — Properties — operator guide
 
 Route: `/admin/hosts/:hostId/orgs/properties`

@@ -1,3 +1,10 @@
+---
+title: 'AI Dashboard Assistant — Implementation Plan'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # AI Dashboard Assistant — Implementation Plan
 
 ## Context

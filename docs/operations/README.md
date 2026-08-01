@@ -1,3 +1,10 @@
+---
+title: 'Operations docs'
+status: active
+tags: [operations]
+updated: 2026-08-02
+---
+
 # Operations docs
 
 Runbooks for migrations, deployment, cron jobs, and Meta inbox testing.

@@ -1,3 +1,10 @@
+---
+title: 'Docs cleanup, Obsidian optimization, and Cursor/Claude tooling sync'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Docs cleanup, Obsidian optimization, and Cursor/Claude tooling sync
 
 ## Goal

@@ -1,3 +1,10 @@
+---
+title: 'Property Team — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property Team — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/team`

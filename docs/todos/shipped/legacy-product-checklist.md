@@ -1,3 +1,10 @@
+---
+title: 'Legacy Product Checklist'
+status: active
+tags: [todos, shipped]
+updated: 2026-08-02
+---
+
 Todos
 
 > **Pending work (GitHub issue prep):** Grouped, refined backlog in [`docs/planning/PENDING_BACKLOG.md`](./planning/PENDING_BACKLOG.md). Shipped items remain below for history.
@@ -40,7 +47,7 @@ Todos
 - ✅ We have this weird issue where if I select Jan 20 as check-in date, the Jan14, 15 and 17 which are already booked enabled which is very incorrect!
 - ✅ Instead of doing all the data cleanup when we cancel a booking, is it possible keep all the data information from database, assets, google calendars and sheets, etc. Basically, keep all our data when canceling a booking, just open the booked dates from our booking calendar so that it will be selectable again to book, then update the google calendar to display "Canceled" (if you can make it red color for calendar event much better), also add a new column in google sheets for status "Booked" | "Canceled"
 - ✅ Create separate email for pet information
-- ✅ Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in `docs/planning/NEW_FLOW_PLAN.md` §6.2 **Q7.4** (placement/copy partial lock in §6.1).
+- ✅ Add a new field for 'Has paid surprise setup/decorations' checkbox and create a new reminder for this (email or calendar?). Add a label note on this field — refine scope in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §6.2 **Q7.4** (placement/copy partial lock in §6.1).
 - ✅ Create separate email for parking information
   - add a admin fields & button to trigger email sending of parking information
   - we should have dropdown of email so we can easily send the parking information to parking owner & azure
@@ -78,10 +85,10 @@ Todos
   - ✅ Public guest form: `?source=airbnb` switches all "Facebook" labels/text to "Airbnb". Source saved to DB (`booking_source` column), Google Calendar description, and Google Sheets (new AL/BA column).
   - ✅ Booking Detail page: `booking_source` shown in Other Information card with color-coded badge (blue=Facebook, orange=Airbnb). Airbnb bookings default Down Payment = 0, Security Deposit = 0 in the Review Pricing form.
 - ✅ **Surprise decor** — `guest_requests_surprise_decor` + `surprise_decor_staff_acknowledged` (migration **`20260610120000_surprise_decor.sql`**). Public form: checkbox + Airbnb/Facebook info (above special requests). Other Information card + Review pricing staff confirmation below total balance; **Proceed to Pending Documents** disabled until confirmed when decor is requested. Admin edit form + workflow-sensitive revert parity.
-- ✅ **Guest account + host public profile** — explore nav avatar → **`/account/*`** (profile, stays, wishlist, messages); edge **`guest-profile`**, **`guest-trips`**, **`guest-messages`**, **`upload-guest-profile-asset`**; **`guest_profiles`** + **`guest_submissions.guest_user_id`** migration; **`/hosts/:orgSlug`** uses team owner OAuth profile + org team display name. Guide: **`docs/guides/routes/account/profile.md`**.
+- ✅ **Guest account + host public profile** — explore nav avatar → **`/account/*`** (profile, stays, wishlist, messages); edge **`guest-profile`**, **`guest-trips`**, **`guest-messages`**, **`upload-guest-profile-asset`**; **`guest_profiles`** + **`guest_submissions.guest_user_id`** migration; **`/hosts/:orgSlug`** uses team owner OAuth profile + org team display name. Guide: **[[profile|Guest account — operator guide]]**.
 - Rethink and plan how to mange parking request
 - ✅ Add total profits and expenses on booking detail pricing section
-- ✅ **Property Pricing page (`/pricing`) E2E** — migration `20260910130000_property_pricing.sql` (`app_settings` rate/fee columns + `property_pricing_date_overrides`); edge function **`property-pricing`**; UI save/load; **`ReviewPricingForm`** + booking edit use saved defaults + date overrides (Fri–Sun weekend rule). Guide: **`docs/guides/routes/org/property/pricing.md`**.
+- ✅ **Property Pricing page (`/pricing`) E2E** — migration `20260910130000_property_pricing.sql` (`app_settings` rate/fee columns + `property_pricing_date_overrides`); edge function **`property-pricing`**; UI save/load; **`ReviewPricingForm`** + booking edit use saved defaults + date overrides (Fri–Sun weekend rule). Guide: **[[guides/routes/org/property/pricing|Pricing — legacy route]]**.
 - ✅ **Finance dashboard (`/finance`)** — Overview KPIs, Stays ledger (period basis check-in / check-out / completed), **Transactions** CRUD (`finance_line_items`), PDF export (client-side; `finance-export` CSV edge function retained for scripts). Shared formulas in `bookingFinance.ts` (UI + edge). Admin nav **Finance** replaces Reports placeholder.
 - ✅ **Maintenance dashboard (`/maintenance`)** — Overview KPIs, **Reminders** CRUD (`maintenance_items`), Telegram settings for **Kame Home - Maintenance** group, PDF export. No income/expense/stays.
 - Only mark sub booking status to incomplete, when specific edited fields needs approval for specific document
@@ -149,7 +156,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 - Add password or faceid when accessing settings page? → see **Platform & guest experience roadmap → Settings security**
 - ✅ Update GAF details to be configurable via settings — **Admin → Settings → GAF Details** with live PDF preview; guest submit + `submit-form` use resolved values
 - Improve light theme colors
-  Multi-tenancy — phase tracker (see `docs/PROJECT.md` multi-tenancy section):
+  Multi-tenancy — phase tracker (see [[PROJECT|Guest Form Management — Project Documentation]] multi-tenancy section):
 
 - ✅ **Phase 1a — DB + org/property CRUD.** Migration `20260629180000_multi_tenancy_foundation.sql`; `organizations` / `properties`; `property_id` on bookings + settings tables; RLS owner-only; edge functions `create/list/update-organization`, `create/list/update-property`; `orgAuth.ts` + `verifyAdminJwt` org-owner path.
 - ✅ **Phase 1b — Routing + UI shell.** Nested admin routes `/org/:orgSlug/property/:propertySlug/...`; org switchers; onboarding; legacy flat-route redirects; `RequireOrgContext` / `PropertyAdminShell`.
@@ -211,7 +218,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 
 Multi-users/multi-tenant todos:
 
-- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb UI coming soon. **Full roadmap:** `docs/guides/routes/org/inbox.md` § Roadmap.
+- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb UI coming soon. **Full roadmap:** [[guides/routes/org/inbox|Guest Inbox (/org/]] § Roadmap.
 - [x] Guest Inbox — DM thread ID canonicalization + legacy migration on sync/webhook
 - [x] Guest Inbox — thread list + message history pagination (infinite scroll / load earlier)
 - [x] Guest Inbox — Meta backfill Graph pagination + `meta_backfill_*` state columns
@@ -222,12 +229,12 @@ Multi-users/multi-tenant todos:
 - [x] Guest Inbox — attachment preview (inline) + friendly Meta send errors
 - [x] Guest Inbox — automation platform toggles limited to Facebook + Instagram
 - [x] Guest Inbox — Realtime RLS scoped to org owner / org ADMIN (`20260912120000_inbox_rls_permissions.sql`)
-- [ ] **Operator E2E** — follow `docs/operations/inbox-e2e-runbook.md` (Channels **Setup URLs**, Connect, Sync, webhook, reply) — manual Meta app + tunnel setup
+- [ ] **Operator E2E** — follow [[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]] (Channels **Setup URLs**, Connect, Sync, webhook, reply) — manual Meta app + tunnel setup
 - [x] Guest Inbox — Facebook Page picker when OAuth returns multiple Pages
 - [x] Guest Inbox — Channels setup panel (webhook/OAuth URLs, sync backfill, OAuth error messages)
 - [ ] Guest Inbox — Meta App Review submission (production Advanced Access)
 
-**Guest Inbox v2 — see `docs/guides/routes/org/inbox.md` § Roadmap for detail**
+**Guest Inbox v2 — see [[guides/routes/org/inbox|Guest Inbox (/org/]] § Roadmap for detail**
 
 - [ ] Guest Inbox — **Instagram DMs** — blocked on Meta App Review / Advanced Access (skip until verified)
 - [ ] Guest Inbox — **background full sync** — persist all conversations to DB (cron/chunked backfill); refresh = DB only
@@ -249,11 +256,11 @@ Multi-users/multi-tenant todos:
 - [ ] Guest Inbox — property-level channel overrides
 - [ ] Guest Inbox — Airbnb Homes API partnership
 
-**Marketing Content Studio — see `docs/guides/routes/org/property/marketing.md`**
+**Marketing Content Studio — see [[marketing|Marketing — operator guide]]**
 
 - [x] Backend — `marketing_templates` + `marketing_publications` (migration `20260917120000_marketing_studio.sql`)
 - [x] Edge — `marketing-templates` CRUD + `publish-to-meta` (FB photo, IG post/story/reel video) + `generate-marketing-caption`
-- [x] Meta OAuth — all inbox + publishing scopes on connect; setup guide in **`docs/operations/meta-app-review.md`**
+- [x] Meta OAuth — all inbox + publishing scopes on connect; setup guide in **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**
 - [x] Content Studio UI — Calendar builder, Polotno design editor, **Remotion scene-based video editor** (multi-scene, transitions, 9:16/1:1/16:9), publish dialog + history on `/org/.../property/.../marketing`
 - [x] Video editor — **saved templates** sidebar (dedicated Saved section, load `designJson.project`, **Update** on saved row)
 - [x] Video editor — **drag text slots** on preview (fixed slots per scene layout; `%` positions in `textLayout`)
@@ -304,8 +311,8 @@ Multi-users/multi-tenant todos:
 
 ### Guest ↔ host communication
 
-- [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **`docs/guides/routes/properties/chat.md`**.
-- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Contact host; **`/messages`** for return visits only. Guide: **`docs/guides/routes/properties/chat.md`**.
+- [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **[[chat|Guest web chat (/properties/]]**.
+- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Contact host; **`/messages`** for return visits only. Guide: **[[chat|Guest web chat (/properties/]]**.
 - [x] **Guest Messages hub (Phase 2).** Cross-property thread list + inline chat on `/account/messages` for signed-in guests.
 - [ ] **Booking bridge in thread (Phase 3).** Host booking link / reserve CTA inside pre-booking chat.
 
@@ -322,7 +329,7 @@ Multi-users/multi-tenant todos:
 
 ## Project improvements (tooling & DX)
 
-**Status: shipped** (Jul 2026). Full audit + rename log: **`docs/reference/archive/naming-audit.md`**. Verify: `bun run check:filenames`.
+**Status: shipped** (Jul 2026). Full audit + rename log: **[[naming-audit|UI filename audit]]**. Verify: `bun run check:filenames`.
 
 Backlog for codebase quality, agent tooling, and local dev speed.
 
@@ -340,7 +347,7 @@ Backlog for codebase quality, agent tooling, and local dev speed.
   - [x] Agent: `test-runner`
   - [x] Ensure `.claude/skills/` mirrors `.cursor/skills/` (see `.claude/skills/README.md` sync command)
   - [x] **Skipped:** `thinking-framework`, Drizzle, tRPC, Next.js, React Email monorepo, AWS S3, Zustand
-- [x] **Agent onboarding** — `docs/PROJECT.md` §2 points agents at `.cursor/rules/README.md`
+- [x] **Agent onboarding** — [[PROJECT|Guest Form Management — Project Documentation]] §2 points agents at `.cursor/rules/README.md`
 
 **Explicitly skip for GFM:** Next App Router, Drizzle, tRPC, React 19 RSC, Bun monorepo turbo patterns from PMA.
 
@@ -361,12 +368,12 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 
 - [x] Renamed **`bookingEditLayout.tsx`** → `BookingEditLayout.tsx`, **`telegramTemplateDialogContext.tsx`** → `TelegramTemplateDialogContext.tsx`
 - [x] Renamed **`utils/booking-display.ts`** → `bookingDisplay.ts` (21 importers)
-- [x] **Filename audit** — `docs/reference/archive/naming-audit.md` + `scripts/dev/check-ui-filename-conventions.sh` (`bun run check:filenames`, CI)
+- [x] **Filename audit** — [[naming-audit|UI filename audit]] + `scripts/dev/check-ui-filename-conventions.sh` (`bun run check:filenames`, CI)
 - [x] Align **`.claude/skills/`** mirror — synced from `.cursor/skills/`
 - [x] ESLint **`unicorn/filename-case`** (warn) for `features/**/components`, `hooks`, `lib`
 - [x] Document intentional exceptions in `naming-conventions.mdc`
 
-**Do not** mass-rename without updating imports and logging in **`docs/reference/archive/naming-audit.md`**.
+**Do not** mass-rename without updating imports and logging in **[[naming-audit|UI filename audit]]**.
 
 ### C. Bun package manager + local dev without Docker (optional)
 
@@ -377,13 +384,13 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 - [x] **`bun install`** at root — **`bun.lock`** at repo root (remove **`package-lock.json`** / duplicate **`ui/bun.lock`** when committing)
 - [x] Update **`docs/operations/`** runbooks: `npm run` → `bun run` where applicable
 - [x] **CI** — `.github/workflows/ci.yml` (Bun: type-check, lint, build)
-- [x] **Docker / RAM** — documented in `docs/PROJECT.md` §2 (ui-only, stop stack, Docker resources)
+- [x] **Docker / RAM** — documented in [[PROJECT|Guest Form Management — Project Documentation]] §2 (ui-only, stop stack, Docker resources)
 
 **Acceptance:** `bun run type-check`, `bun run lint`, `bun run build`, and `./dev.sh` (full) still work; `./dev.sh --ui-only` works with remote env.
 
 ### D. Docs & scripts organization
 
-- [x] **`docs/README.md`** — master doc index
+- [x] **[[README|Documentation index]]** — master doc index
 - [x] **`docs/operations/`** — migration, deployment, cron, inbox E2E, Meta App Review runbooks
 - [x] **`docs/planning/`** — `NEW_FLOW_PLAN.md`, `NEW_FLOW.md` (renamed from `NEW FLOW.md`)
 - [x] **`scripts/README.md`** — script index by category
@@ -391,18 +398,18 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 - [x] **Root `README.md`** — quick start + links
 - [x] **Removed stale root backups** — `supabase_backup_*.sql` / `*.dump` (May 2025; use `~/Backups/` per runbooks)
 - [x] **Cleaned `supabase/snippets/`** — removed one-off booking SQL; renamed local cron helpers
-- [x] Finish **`npm run` → `bun run`** wording in `docs/operations/migration-runbook.md` (partial)
+- [x] Finish **`npm run` → `bun run`** wording in [[migration-runbook|Migration Runbook — New Booking Flow]] (partial)
 
 ### E. Feature folder architecture (guest vs dashboard)
 
-**Goal:** [bulletproof-react](https://github.com/alan2207/bulletproof-react) + PMA-style context split. Map: **`docs/reference/project-structure.md`**.
+**Goal:** [bulletproof-react](https://github.com/alan2207/bulletproof-react) + PMA-style context split. Map: **[[project-structure|UI project structure]]**.
 
 - [x] **`features/guest/`** — `calendar/`, `form/`, `sd-form/`, `pay-parking/` + `guest/routes`
-- [x] **`features/guest/marketing/`** — PMA public UI port Phase 1 (pages + routes + mock data; see **`docs/guides/routes/properties.md`**)
+- [x] **`features/guest/marketing/`** — PMA public UI port Phase 1 (pages + routes + mock data; see **[[guides/routes/properties|Properties (guest marketing) — operator guide]]**)
 - [x] **`features/dashboard/`** — `bookings/`, `org/`, `property/`, `finance/`, `maintenance/`, `inbox/`, `pricing/`, `team/` + `dashboard/routes`
 - [x] **Shared `components/`** — `branding/`, `navigation/` (moved loose root components)
 - [x] **Import migration** — all `ui/src` + docs + rules + supabase mirror comments updated
-- [x] **`.cursor/rules/architecture.mdc`** + **`docs/reference/project-structure.md`**
+- [x] **`.cursor/rules/architecture.mdc`** + **[[project-structure|UI project structure]]**
 - [x] **Shared `lib/` + `utils/`** — categorized subfolders; domain files moved to features
 - [ ] **Split `dashboard/bookings/`** — extract `auth/`, `notifications/`, `templates/`, `settings/` from bookings hub (incremental)
 
@@ -422,8 +429,8 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 **Phase 2 — backlog:**
 
 - [ ] Public catalog API (properties, developments, media from DB)
-- [x] Public property **detail** API — `get-public-property` + `usePublicPropertyDetail` (mock fallback; see **`docs/reference/public-property-catalog.md`**)
-- [x] Guest **stay guide** — token-gated `/properties/:slug/stay-guide` from standard property templates + RFCI email CTA; link auto-issued on **READY_FOR_CHECKIN** transition, admin copy on booking detail; date-change window refresh (`get-guest-stay-guide`, `issue-guest-stay-guide-token`, migration `20260916120000_guest_stay_guide_token.sql`). Guide: **`docs/guides/routes/stay-guide.md`**.
+- [x] Public property **detail** API — `get-public-property` + `usePublicPropertyDetail` (mock fallback; see **[[public-property-catalog|Public property catalog — reference]]**)
+- [x] Guest **stay guide** — token-gated `/properties/:slug/stay-guide` from standard property templates + RFCI email CTA; link auto-issued on **READY_FOR_CHECKIN** transition, admin copy on booking detail; date-change window refresh (`get-guest-stay-guide`, `issue-guest-stay-guide-token`, migration `20260916120000_guest_stay_guide_token.sql`). Guide: **[[stay-guide|Guest stay guide (token-gated brochure)]]**.
 - [ ] Wire `BookingCard` Reserve → operational `/form`
 - [ ] Property marketing calendar → `get-booked-dates`
 - [ ] `PublicFormRenderer` → real submission endpoint
@@ -566,4 +573,4 @@ Needs to finalize:
 - [x] Guest “Awaiting reply” when `reply_status=pending`
 - [x] Quick replies on Web tab (Chat group in management + composer on web threads)
 
-See **`docs/guides/routes/properties/chat.md`** § UX roadmap and **`docs/guides/routes/org/inbox.md`** § Chat UX roadmap.
+See **[[chat|Guest web chat (/properties/]]** § UX roadmap and **[[guides/routes/org/inbox|Guest Inbox (/org/]]** § Chat UX roadmap.

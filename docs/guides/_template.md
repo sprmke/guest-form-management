@@ -1,3 +1,10 @@
+---
+title: '[Page title] — operator guide'
+status: active
+tags: [guides, templates]
+updated: 2026-08-02
+---
+
 # [Page title] — operator guide
 
 Route: `/path/to/page`

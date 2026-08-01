@@ -1,3 +1,10 @@
+---
+title: 'Documentation index'
+status: active
+tags: [docs]
+updated: 2026-08-02
+---
+
 # Documentation index
 
 Navigation for **guest-form-management**.

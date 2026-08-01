@@ -1,3 +1,10 @@
+---
+title: 'Services Coming Soon — Design'
+status: archived
+tags: [superpowers, archive]
+updated: 2026-08-02
+---
+
 # Services Coming Soon — Design
 
 ## Goal

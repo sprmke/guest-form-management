@@ -1,3 +1,10 @@
+---
+title: 'Meta app setup — Guest Inbox + Marketing Content Studio'
+status: active
+tags: [operations]
+updated: 2026-08-02
+---
+
 # Meta app setup — Guest Inbox + Marketing Content Studio
 
 Complete guide for configuring your Meta app so **Connect with Meta** in Kame succeeds with **all** OAuth scopes (inbox messaging + content publishing).

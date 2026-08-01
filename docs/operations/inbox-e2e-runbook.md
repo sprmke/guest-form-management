@@ -1,3 +1,10 @@
+---
+title: 'Guest Inbox — E2E runbook (local + staging)'
+status: active
+tags: [operations, inbox]
+updated: 2026-08-02
+---
+
 # Guest Inbox — E2E runbook (local + staging)
 
 Use this checklist to verify the inbox against **live Meta APIs** before Meta App Review or production rollout.
@@ -22,7 +29,7 @@ UI-only work can use mock mode (`VITE_INBOX_MOCK_DATA=true` or `?mock=true`). E2
 2. Add redirect URI (OAuth callback — public edge function):
    - Local: `http://127.0.0.1:54321/functions/v1/meta-inbox-oauth-callback`
    - Staging/prod: `https://<project-ref>.supabase.co/functions/v1/meta-inbox-oauth-callback`
-3. Request permissions (see **`docs/operations/meta-app-review.md`**):
+3. Request permissions (see **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**):
    - `pages_messaging`, `pages_manage_metadata`, `pages_read_engagement`, `pages_show_list`
    - `instagram_manage_messages`, `instagram_manage_comments`, `business_management`
 4. Development mode: add test users and a Facebook Page you admin; link Instagram Business to the Page.
@@ -102,7 +109,7 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 
 ## After local E2E passes
 
-1. Record screencast per **`docs/operations/meta-app-review.md`**.
+1. Record screencast per **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**.
 2. Submit Meta App Review for Advanced Access.
 3. Deploy edge secrets to production Supabase project.
 4. Point production webhook to hosted **`meta-inbox-webhook`**.
@@ -114,6 +121,6 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 
 ## Related
 
-- Route guide: **`docs/guides/routes/org/inbox.md`**
+- Route guide: **[[guides/routes/org/inbox|Guest Inbox (/org/]]**
 - Permissions: **`org:inbox:*`** in **`orgTeamPermissions.ts`**
 - Rule: **`.cursor/rules/social-inbox.mdc`**

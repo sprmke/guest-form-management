@@ -1,3 +1,10 @@
+---
+title: 'Route-based operator guides'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Route-based operator guides
 
 Per-page documentation mirrors the app routes. Each guide tracks **behavior**, **save paths**, **validation**, and **implementation status**.

@@ -1,6 +1,13 @@
+---
+title: 'Kame Home — Booking Flow Guide for Admin'
+status: active
+tags: [reference, booking-workflow]
+updated: 2026-08-02
+---
+
 # Kame Home — Booking Flow Guide for Admin
 
-A friendly walkthrough of how a booking moves from "guest just submitted the form" all the way to "completed, refund sent." This is the **non-technical** companion to the full plan in `docs/planning/NEW_FLOW_PLAN.md`.
+A friendly walkthrough of how a booking moves from "guest just submitted the form" all the way to "completed, refund sent." This is the **non-technical** companion to the full plan in [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]].
 
 > **Who this is for:** the Airbnb admin / unit owner managing day-to-day bookings.
 > **What you'll learn:** every booking status, what you need to do at each one, what happens **automatically** (so you don't have to babysit), what each email is, and what each Google Calendar color means.
@@ -346,7 +353,7 @@ You'll mostly forget these exist. They just work. But it helps to know what they
 
 ### 5.3 The Telegram marketing reminders (bonus background job)
 
-You'll also see Telegram messages appear in your marketing group **3 times a day** (10:00, 15:00, 21:00 Manila time) reminding people about available dates. This is separate from the booking workflow — it's just a marketing helper. See `docs/reference/telegram-marketing-reminders.md` for full details.
+You'll also see Telegram messages appear in your marketing group **3 times a day** (10:00, 15:00, 21:00 Manila time) reminding people about available dates. This is separate from the booking workflow — it's just a marketing helper. See [[telegram-marketing-reminders|Telegram marketing reminders]] for full details.
 
 ---
 

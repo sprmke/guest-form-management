@@ -1,3 +1,10 @@
+---
+title: 'Services (guest marketing) — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Services (guest marketing) — operator guide
 
 Route: `/services`

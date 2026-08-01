@@ -1,10 +1,17 @@
+---
+title: 'Scheduled jobs (cron) and how to test them'
+status: active
+tags: [operations]
+updated: 2026-08-02
+---
+
 # Scheduled jobs (cron) and how to test them
 
 This document explains **how automation is scheduled** for the new booking flow (Phase 4), what each job does at a low level, and **how to test** everything safely on **local Supabase** and on **Supabase Cloud**.
 
 Related canonical references:
 
-- `docs/planning/NEW_FLOW_PLAN.md` — product intent, Phase 4 notes, Q6.6 manual triggers
+- [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] — product intent, Phase 4 notes, Q6.6 manual triggers
 - `.cursor/rules/booking-workflow.mdc` — status machine and side-effect matrix
 - `supabase/config.toml` — `verify_jwt` and why `schedule` is not committed for local CLI
 - Implementations: `supabase/functions/gmail-listener/index.ts`, `supabase/functions/gmail-backfill-approvals/index.ts`, `supabase/functions/sd-refund-cron/index.ts`, `supabase/functions/telegram-marketing-cron/index.ts`
@@ -20,7 +27,7 @@ There are **three** Edge Functions meant to run on a **recurring schedule** in p
 | --------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Gmail approval listener** | `gmail-listener`          | Poll Gmail for Azure replies whose PDF attachment normalizes to **`approvedgaf.pdf`** (spaces, underscores, and hyphens in the filename are ignored), match them to a booking in **`PENDING_DOCUMENTS` / `PENDING_GAF`** (or pet statuses for pet), upload the PDF to Storage, then call **`WorkflowOrchestrator.transition()`** (same path as admin transitions). **After each poll**, reconciles **`PENDING_DOCUMENTS`** rows with **`gaf_manual_incomplete` / `pet_manual_incomplete`** but an existing **`approved_*_pdf_url`** (admin marked sub-step incomplete; original Gmail message is already in **`processed_emails`**).                                                                                                                             |
 | **SD refund cron**          | `sd-refund-cron`          | **Global** (`POST` with empty/`{}` body): every **`READY_FOR_CHECKIN`** row whose Manila check-out is within the **lead** window (**`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, default **120** min before check-out): sends the guest **Check-out & SD Refund** email if not already sent (**independent** of balance settlement). **Status** → **`READY_FOR_CHECKOUT`** only when **settlement** is complete (orchestrator). **Scoped** (`POST` JSON `{ "bookingId" }` + **admin JWT**): same rules for **one** id. **Stale check-outs:** automated guest email is **not** sent when check-out is older than **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`** (default **30**; **`0`** = never suppress); transition + calendar + sheet still run when settlement is met. |
-| **Telegram marketing**      | `telegram-marketing-cron` | **Global** `POST` **`{}`**: sends **default** or **urgency** Telegram copy from **`telegram_marketing_settings`** using the same single-property availability model as marketing (see **`docs/reference/telegram-marketing-reminders.md`**). **Schedule:** Manila **10:00 / 15:00 / 21:00** → UTC cron **`0 2,7,13 * * *`**. Optional header **`X-Telegram-Cron-Secret`** when Edge secret **`TELEGRAM_CRON_SECRET`** is set.                                                                                                                                                                                                                                                                                                                                    |
+| **Telegram marketing**      | `telegram-marketing-cron` | **Global** `POST` **`{}`**: sends **default** or **urgency** Telegram copy from **`telegram_marketing_settings`** using the same single-property availability model as marketing (see **[[telegram-marketing-reminders]]**). **Schedule:** Manila **10:00 / 15:00 / 21:00** → UTC cron **`0 2,7,13 * * *`**. Optional header **`X-Telegram-Cron-Secret`** when Edge secret **`TELEGRAM_CRON_SECRET`** is set.                                                                                                                                                                                                                                                                                                                                                    |
 
 The Gmail and SD jobs defer to **`WorkflowOrchestrator`**; Telegram does **not** touch booking state.
 
@@ -87,7 +94,7 @@ select net.http_post(
 );
 ```
 
-Repeat with `/functions/v1/gmail-listener` for the second job (either two `cron.schedule` names or one job that calls both sequentially—your choice). Add a third job for **`/functions/v1/telegram-marketing-cron`** on **`0 2,7,13 * * *`** (Manila 10:00 / 15:00 / 21:00); see **`supabase/snippets/telegram-marketing-cron.sql`** and **`docs/reference/telegram-marketing-reminders.md`**.
+Repeat with `/functions/v1/gmail-listener` for the second job (either two `cron.schedule` names or one job that calls both sequentially—your choice). Add a third job for **`/functions/v1/telegram-marketing-cron`** on **`0 2,7,13 * * *`** (Manila 10:00 / 15:00 / 21:00); see **`supabase/snippets/telegram-marketing-cron.sql`** and **[[telegram-marketing-reminders|Telegram marketing reminders]]**.
 
 **Important:** The HTTP call is a **normal** request to the **public** Functions URL. Security is layered as:
 
@@ -176,7 +183,7 @@ If tokens are missing or `refresh_token` is revoked, the listener returns JSON w
 | `TELEGRAM_CHAT_ID`     | Destination chat (group supergroup id is usually negative).                                                                                           |
 | `TELEGRAM_CRON_SECRET` | _(Optional)_ When set, **`telegram-marketing-cron`** rejects requests unless header **`X-Telegram-Cron-Secret`** matches (use with Vault + `pg_net`). |
 
-Full product behavior and deployment steps: **`docs/reference/telegram-marketing-reminders.md`**.
+Full product behavior and deployment steps: **[[telegram-marketing-reminders|Telegram marketing reminders]]**.
 
 ---
 
@@ -196,7 +203,7 @@ http://127.0.0.1:54321/functions/v1
 
 (Use the same host your `ui/.env.development` `VITE_SUPABASE_URL` points at; it must end with `/functions/v1` for this project’s admin hooks.)
 
-**There is no local pg_cron** hitting these URLs unless you add one yourself—use **curl** or the **admin Workflow panel** buttons (“Run Gmail poll now”, “Run SD refund cron now”). For **`telegram-marketing-cron`**, use curl against **`/functions/v1/telegram-marketing-cron`** (see **`docs/reference/telegram-marketing-reminders.md`** §5).
+**There is no local pg_cron** hitting these URLs unless you add one yourself—use **curl** or the **admin Workflow panel** buttons (“Run Gmail poll now”, “Run SD refund cron now”). For **`telegram-marketing-cron`**, use curl against **`/functions/v1/telegram-marketing-cron`** (see **[[telegram-marketing-reminders|Telegram marketing reminders]]** §5).
 
 ---
 

@@ -1,3 +1,10 @@
+---
+title: 'Refine Footer & Create Public Pages — Implementation Plan'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Refine Footer & Create Public Pages — Implementation Plan
 
 ## Context

@@ -1,3 +1,10 @@
+---
+title: 'Super Admin Org Properties — operator guide'
+status: active
+tags: [guides, routes, admin, properties]
+updated: 2026-08-02
+---
+
 # Super Admin Org Properties — operator guide
 
 Route: `/admin/orgs/:orgSlug/properties`

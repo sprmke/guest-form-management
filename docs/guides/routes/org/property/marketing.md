@@ -1,3 +1,10 @@
+---
+title: 'Marketing — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Marketing — operator guide
 
 > **Telegram marketing** settings live on **[Notifications](./notifications.md)** (`…/notifications?module=marketing`). This guide covers **Marketing Content Studio** (design templates + Meta publishing).
@@ -116,7 +123,7 @@ Or use **`platform`** + **`postType`** (`post` | `story`) instead of **`publishT
 - Every attempt logged on **`marketing_publications`** (`pending` \| `published` \| `failed`).
 - Future IG schedule: stored as **`pending`** (no native schedule API in v1).
 
-**Meta OAuth:** all inbox + publishing scopes are requested on connect. Configure Meta app **use cases** first — see **`docs/operations/meta-app-review.md`** (scope → use case table). If OAuth fails with **Invalid Scopes**, add the missing use cases there before reconnecting. Optional: `META_OAUTH_EXCLUDE_PUBLISHING_SCOPES=1` for inbox-only connect.
+**Meta OAuth:** all inbox + publishing scopes are requested on connect. Configure Meta app **use cases** first — see **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]** (scope → use case table). If OAuth fails with **Invalid Scopes**, add the missing use cases there before reconnecting. Optional: `META_OAUTH_EXCLUDE_PUBLISHING_SCOPES=1` for inbox-only connect.
 
 ### Permissions
 

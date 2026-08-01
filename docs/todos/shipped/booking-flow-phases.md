@@ -1,6 +1,13 @@
-New booking flow — phase tracker (see `docs/planning/NEW_FLOW_PLAN.md` §5):
+---
+title: 'Booking Flow Phases'
+status: active
+tags: [todos, shipped, booking-workflow]
+updated: 2026-08-02
+---
 
-- ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `processed_emails`, `gmail_listener_state`, 4 new storage buckets; **`20260501000010`** adds request PDF URL columns. No Edge/UI behavior change from SQL alone. **Apply order:** **`docs/operations/migration-runbook.md` §1** (`20260428120000_*` runs before the May 1 batch). Runbook: `docs/operations/migration-runbook.md`. (The `is_test_booking` column was added in `20260501000004` and **removed** in `20260608120000_drop_is_test_booking.sql`.)
+New booking flow — phase tracker (see [[NEW_FLOW_PLAN|New Booking Flow — Implementation Plan]] §5):
+
+- ✅ **Phase 0 — Backup + additive schema.** Backup snapshot table (`guest_submissions_backup_20260501`), nullable workflow columns, approved-PDF URL columns, `processed_emails`, `gmail_listener_state`, 4 new storage buckets; **`20260501000010`** adds request PDF URL columns. No Edge/UI behavior change from SQL alone. **Apply order:** **[[migration-runbook|Migration Runbook — New Booking Flow]] §1** (`20260428120000_*` runs before the May 1 batch). Runbook: [[migration-runbook|Migration Runbook — New Booking Flow]]. (The `is_test_booking` column was added in `20260501000004` and **removed** in `20260608120000_drop_is_test_booking.sql`.)
 - ✅ **Phase 1 — Admin auth + read-only `/bookings`.** Supabase Google OAuth sign-in at `/sign-in`, `RequireAdmin` route guard, `/bookings` list (search, status chips, has-pets/parking tri-state, 31/50/100 pagination). Reads `guest_submissions` directly via `@supabase/supabase-js` under the existing public RLS policy. Runbook §7 covers the one-time Google OAuth setup.
 - ✅ **Phase 2 — Status enum widening + legacy row backfill + `get-booked-dates` treats non-`CANCELLED` as blocking.** Migration `20260502000000_widen_status_enum.sql` backfills `booked/canceled` rows to new enum, adds CHECK constraint + `DEFAULT 'PENDING_REVIEW'`. Created `_shared/statusMachine.ts` (server) + `ui/src/features/dashboard/bookings/lib/workflow.ts` (client mirror) with full transition graph, calendar meta, and sub-form requirements. Updated `get-booked-dates` and `databaseService.checkOverlappingBookings` to filter on `CANCELLED` only.
   - ✅ **Q5.1 deferred item shipped in Phase 3:** `/bookings` uses workflow priority sort; **completed** stays hidden by default (cancelled too); **Show completed bookings** sends `show_completed_bookings=true`. Active past check-ins (checkout, SD refund, etc.) stay visible without the toggle.
@@ -35,7 +42,7 @@ New booking flow — phase tracker (see `docs/planning/NEW_FLOW_PLAN.md` §5):
   - Public edge functions **`get-sd-form`** / **`submit-sd-form`**; admin **`send-sd-refund-form-email`** resend; UI **`/sd-form`** stepper (`ui/src/features/guest/sd-form/**`) and admin **`WorkflowPanel`** resend + dev checkbox.
   - After guest submit (or admin skip without `sd_refund_method`), booking moves to **`PENDING_SD_REFUND`** for settlement (`SdRefundForm` shows read-only guest refund block when present).
   - `supabase/config.toml` — schedule config is commented out (local CLI doesn't support `schedule` key); uncomment the `[functions.gmail-listener]` and `[functions.sd-refund-cron]` blocks only when deploying to Supabase Cloud.
-  - Gmail OAuth: legacy `npm run gmail-auth` → `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`, **or** in-app **Connect Gmail** on **`/settings`** (stores encrypted refresh token in `gmail_mail_integration`; requires `GMAIL_API_WEB_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — see `docs/PROJECT.md` §8 / §11).
+  - Gmail OAuth: legacy `npm run gmail-auth` → `GMAIL_OAUTH_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_JSON`, **or** in-app **Connect Gmail** on **`/settings`** (stores encrypted refresh token in `gmail_mail_integration`; requires `GMAIL_API_WEB_CLIENT_JSON` + `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY` — see [[PROJECT|Guest Form Management — Project Documentation]] §8 / §11).
 - ✅ **Phase 5 — `submit-form` cleanup + removal of test-booking pipeline.**
   - ✅ `submit-form` no longer sends workflow emails; no `?testing=true`, no `is_test_booking`, no `cleanup-test-data`, no `[TEST]`/`TEST_` prefixes. Guest `/form` keeps optional **dev API toggles** when `!production` or `?dev=true` (save DB, storage, calendar, sheet) — no separate Test Submit.
   - ✅ Parent status `PENDING_DOCUMENTS` added for parallel document work. `WorkflowPanel` shows sub-status progress (`PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST`) with "Mark as Complete" actions.

@@ -1,3 +1,10 @@
+---
+title: 'Sign-in (legacy redirect)'
+status: active
+tags: [guides, routes, auth]
+updated: 2026-08-02
+---
+
 # Sign-in (legacy redirect)
 
 Route: `/sign-in` → **`/for-hosts/login`**

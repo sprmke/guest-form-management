@@ -1,3 +1,10 @@
+---
+title: 'Organization Settings — operator guide'
+status: active
+tags: [guides, routes, org, settings]
+updated: 2026-08-02
+---
+
 # Organization Settings — operator guide
 
 Route: `/org/:orgSlug/settings`
@@ -23,7 +30,7 @@ Organization settings uses `AdminSectionNavLayout` with **two save paths**:
 
 Logo upload is immediate via `upload-org-settings-asset` (`team_logo` → `org_settings.email_logo_url` + `organizations.logo_url`).
 
-**Email routing, SD cron tuning, parking defaults, and automation toggles** are **per property** in **`app_settings`** — see **`docs/guides/routes/org/property/settings.md`** § Email automations.
+**Email routing, SD cron tuning, parking defaults, and automation toggles** are **per property** in **`app_settings`** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]** § Email automations.
 
 ---
 
@@ -152,7 +159,7 @@ Save runs **`planOrgSettingsSave`** (client) before PATCH. Only **dirty** sectio
 | Main social platform        | Required when any social URL is set                      | `org-settings` PATCH                              |
 | Instagram / TikTok / Airbnb | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
 
-Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **`docs/guides/routes/org/property/settings.md`**.
+Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]**.
 
 Danger zone: slug confirmation + `delete-organization`; blocked when booking history exists (see § Danger zone).
 

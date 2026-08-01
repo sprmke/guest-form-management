@@ -1,3 +1,10 @@
+---
+title: 'Form validation and environment variables'
+status: active
+tags: [architecture]
+updated: 2026-08-02
+---
+
 # Form validation and environment variables
 
 Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
@@ -19,7 +26,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 ## 11. Environment variables
 
-**Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), service-account Calendar/Sheets sharing, UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **`docs/operations/migration-runbook.md` §11**.
+**Production:** Hosted secrets (Supabase Dashboard), dual Google OAuth clients (GoTrue vs Gmail API), service-account Calendar/Sheets sharing, UI host **`VITE_*`**, and **`pg_cron`** setup are stepped in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**.
 
 ### UI (`ui/.env` / Vite)
 
@@ -86,7 +93,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - `GMAIL_OAUTH_CLIENT_JSON` — Legacy: full OAuth client JSON for `gmail-listener`; set by `npm run gmail-auth` from `scripts/integrations/gmail-credentials.json`
 - `GMAIL_OAUTH_TOKEN_JSON` — Legacy: token JSON containing `refresh_token`; set by `npm run gmail-auth` after browser sign-in
 - **`TELEGRAM_BOT_TOKEN`**, **`TELEGRAM_CHAT_ID`** _(optional)_ — Telegram Bot API: group or channel id for marketing sends (`telegram-marketing-cron`, `submit-form` new row, `cancel-booking`). When either is unset, sends are skipped (logged).
-- **`TELEGRAM_CRON_SECRET`** _(optional)_ — When set, `telegram-marketing-cron` requires request header **`X-Telegram-Cron-Secret`** with the same value (use in `pg_net` from Vault; see **`docs/reference/telegram-marketing-reminders.md`**).
+- **`TELEGRAM_CRON_SECRET`** _(optional)_ — When set, `telegram-marketing-cron` requires request header **`X-Telegram-Cron-Secret`** with the same value (use in `pg_net` from Vault; see **[[telegram-marketing-reminders|Telegram marketing reminders]]**).
 - **`TELEGRAM_STAFF_BOT_TOKEN`** _(optional)_ — Bot token for the staff/cleaner Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset (same bot, different group).
 - **`TELEGRAM_STAFF_CHAT_ID`** — Numeric Telegram chat id for the staff/cleaner group (often negative for supergroups). Required for staff notifications.
 - **`TELEGRAM_STAFF_CRON_SECRET`** _(optional)_ — When set, `telegram-staff-cron` requires header `X-Telegram-Cron-Secret` with the same value.
@@ -99,15 +106,15 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - **`TELEGRAM_ADMIN_BOT_TOKEN`** _(optional)_ — Bot token for the admin operations Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset.
 - **`TELEGRAM_ADMIN_CHAT_ID`** — Numeric Telegram chat id for the admin ops group (often negative for supergroups). Required for operations alerts.
 - **`TELEGRAM_ADMIN_CRON_SECRET`** _(optional)_ — When set, `telegram-admin-cron` requires header `X-Telegram-Cron-Secret` with the same value.
-- **`GEMINI_API_KEYS`** _(optional)_ — Comma-separated Google AI Studio API keys for Gemini Flash vision document validation. Keys must come from **different Google Cloud projects** (same-project keys share quota). The service round-robins across keys and skips exhausted ones (429). When unset, falls back to single `GEMINI_API_KEY`. See **`docs/reference/ai-payment-receipt-validation.md`**.
+- **`GEMINI_API_KEYS`** _(optional)_ — Comma-separated Google AI Studio API keys for Gemini Flash vision document validation. Keys must come from **different Google Cloud projects** (same-project keys share quota). The service round-robins across keys and skips exhausted ones (429). When unset, falls back to single `GEMINI_API_KEY`. See **[[ai-payment-receipt-validation|AI document validation (payment receipts + valid ID)]]**.
 - **`GEMINI_API_KEY`** _(optional, legacy)_ — Single Gemini key fallback. Used only when `GEMINI_API_KEYS` is not set.
 - **`GROQ_API_KEY`** _(optional)_ — Groq free-tier API key (Llama 4 Scout vision model). Acts as **fallback** when all Gemini keys are rate-limited or unavailable. Sign up free at `https://console.groq.com`. When unset and all Gemini keys fail, validation returns `aiModelError`.
 - **`JAMENDO_CLIENT_ID`** _(optional, Marketing Studio video)_ — Free Jamendo API client id ([dev portal](https://devportal.jamendo.com/)). Powers **Trending** / **Search** music in the video editor (`marketing-music`). When unset, browse tabs return empty and **Upload** / **Link** still work. Jamendo tracks are cached to **`property-media`** on select for stable Remotion export URLs. Operators are responsible for license fit on published Meta posts.
 - **`META_APP_ID`**, **`META_APP_SECRET`** _(Guest Inbox)_ — Meta developer app credentials for Facebook Page + Instagram messaging OAuth and webhook signature verification.
 - **`META_INBOX_TOKEN_ENCRYPTION_KEY`** _(Guest Inbox)_ — 32-byte AES key (64 hex or base64); encrypts Page access tokens in **`social_channel_connections`**.
 - **`META_WEBHOOK_VERIFY_TOKEN`** _(Guest Inbox)_ — Shared secret for Meta webhook GET verification (`meta-inbox-webhook`).
-- **`META_OAUTH_ALLOWED_RETURN_ORIGINS`** _(optional, Guest Inbox)_ — Comma-separated SPA origins for Meta OAuth return (defaults include local Vite). Local/staging E2E checklist: **`docs/operations/inbox-e2e-runbook.md`**.
-- **`META_OAUTH_EXCLUDE_PUBLISHING_SCOPES`** _(optional)_ — Set to `1` to omit `pages_manage_posts`, `instagram_content_publish`, and `instagram_basic` from OAuth (inbox-only connect). Default: **all scopes included**. Setup guide: **`docs/operations/meta-app-review.md`**.
+- **`META_OAUTH_ALLOWED_RETURN_ORIGINS`** _(optional, Guest Inbox)_ — Comma-separated SPA origins for Meta OAuth return (defaults include local Vite). Local/staging E2E checklist: **[[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]**.
+- **`META_OAUTH_EXCLUDE_PUBLISHING_SCOPES`** _(optional)_ — Set to `1` to omit `pages_manage_posts`, `instagram_content_publish`, and `instagram_basic` from OAuth (inbox-only connect). Default: **all scopes included**. Setup guide: **[[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]**.
 - **`META_OAUTH_EXTRA_SCOPES`** _(optional)_ — Comma-separated additional OAuth scopes appended to the default set.
 - Optional: `ENVIRONMENT` / `DENO_ENV` for `isDevelopment()` in shared utils
 

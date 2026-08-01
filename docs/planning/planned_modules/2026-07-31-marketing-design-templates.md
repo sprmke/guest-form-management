@@ -1,3 +1,10 @@
+---
+title: 'Marketing 2: Improve Marketing Design Templates & Customizability — Implementation Plan'
+status: active
+tags: [planning, planned-modules, marketing, templates]
+updated: 2026-08-02
+---
+
 # Marketing 2: Improve Marketing Design Templates & Customizability — Implementation Plan
 
 **Status:** Implemented 2026-07-31, then **fully redesigned 2026-08-01** (see [Redesign — 2026-08-01](#redesign--2026-08-01-editorial-quiet-coast-system) below). Sibling to `docs/planning/planned_modules/2026-07-31-marketing-calendar-templates.md` (Marketing 1, implemented).

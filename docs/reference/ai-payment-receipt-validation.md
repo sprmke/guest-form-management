@@ -1,3 +1,10 @@
+---
+title: 'AI document validation (payment receipts + valid ID)'
+status: active
+tags: [reference, payments]
+updated: 2026-08-02
+---
+
 # AI document validation (payment receipts + valid ID)
 
 Server-side **Gemini Flash vision** checks whether uploaded payment images look like real payment proof (digital receipts, PHP cash photos) and whether guest **valid ID** uploads look like government-issued photo ID. Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.

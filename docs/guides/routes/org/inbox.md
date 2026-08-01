@@ -1,3 +1,10 @@
+---
+title: 'Guest Inbox (/org/:orgSlug/inbox)'
+status: active
+tags: [guides, routes, org, inbox]
+updated: 2026-08-02
+---
+
 # Guest Inbox (`/org/:orgSlug/inbox`)
 
 Route: `/org/:orgSlug/inbox`
@@ -104,7 +111,7 @@ Guest Inbox is where you read and reply to guest messages from Facebook Messenge
 | Webhook      | `supabase/functions/meta-inbox-webhook/index.ts`                                                                                                                                                                                     |
 | Shared       | `supabase/functions/_shared/socialInboxService.ts`, `metaInboxGraph.ts`, `metaInboxBackfill.ts`, `metaInboxAutoReply.ts`, `metaInboxWebhookHandler.ts`, `inboxAiGuestContext.ts`, `inboxAiSafetyGuard.ts`, `socialInboxAiService.ts` |
 | Migrations   | `20260910120000_social_inbox.sql`, `20260914120000_social_inbox_meta_backfill_state.sql`, `20260914130000_social_inbox_meta_backfill_done.sql`                                                                                       |
-| E2E runbook  | `docs/operations/inbox-e2e-runbook.md`                                                                                                                                                                                               |
+| E2E runbook  | [[inbox-e2e-runbook]]                                                                                                                                                                                                                |
 
 ## Backend notes
 
@@ -212,7 +219,7 @@ Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../t
 
 ## Chat UX roadmap (guest web + inbox)
 
-Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/guides/routes/properties/chat.md`** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
+Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat|Guest web chat (/properties/]]** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
 
 | Phase | Inbox impact                                                                                                                                               |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -228,13 +235,13 @@ Shared bubble components: `ui/src/components/chat/*`. Full phase list: **`docs/g
 ## Related docs
 
 - `.cursor/rules/social-inbox.mdc`
-- `docs/operations/meta-app-review.md`
-- `docs/operations/inbox-e2e-runbook.md`
+- [[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]
+- [[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]
 - [`docs/todos/README.md`](../../../todos/README.md) — Guest Inbox backlog on GitHub ([#108](https://github.com/sprmke/kame-homes/issues/108))
 
 ## Pending / follow-ups (legacy checklist)
 
-- [ ] **Operator E2E** — `docs/operations/inbox-e2e-runbook.md` (Meta OAuth, webhook tunnel, Connect → reply)
-- [ ] Meta App Review (Advanced Access) — `docs/operations/meta-app-review.md`
-- [x] Property/parking-level channel overrides (inherit org Meta + optional override) — `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md`
+- [ ] **Operator E2E** — [[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]] (Meta OAuth, webhook tunnel, Connect → reply)
+- [ ] Meta App Review (Advanced Access) — [[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]
+- [x] Property/parking-level channel overrides (inherit org Meta + optional override) — [[2026-07-30-inbox-org-property-parking|Expand Inbox to org, property, and parking — Implementation Plan]]
 - [ ] See **Roadmap** above for v2 scope (Instagram fix, full sync, media, comments, booking link, AI, broadcast, notifications)

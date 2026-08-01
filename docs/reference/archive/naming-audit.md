@@ -1,3 +1,10 @@
+---
+title: 'UI filename audit'
+status: archived
+tags: [reference, archive, naming-conventions]
+updated: 2026-08-02
+---
+
 # UI filename audit
 
 **Last audit:** 2026-07-09  

@@ -1,3 +1,10 @@
+---
+title: 'Superpowers plans & specs'
+status: active
+tags: [superpowers]
+updated: 2026-08-02
+---
+
 # Superpowers plans & specs
 
 Opt-in Superpowers workflow artifacts (brainstorm → spec → plan → execute). See `.cursor/rules/superpowers-opt-in.mdc` — do not invoke these unless the user runs a `/superpowers-*` command or explicitly opts in.

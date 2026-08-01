@@ -1,3 +1,10 @@
+---
+title: 'Roadmap / gaps'
+status: active
+tags: [architecture, roadmap]
+updated: 2026-08-02
+---
+
 # Roadmap / gaps
 
 Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split. See also [`docs/planning/NEW_FLOW_PLAN.md`](../planning/NEW_FLOW_PLAN.md) and GitHub Issues for the live backlog.

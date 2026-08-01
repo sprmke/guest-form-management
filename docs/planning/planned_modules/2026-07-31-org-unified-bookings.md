@@ -1,3 +1,10 @@
+---
+title: 'Org bookings: property + parking (unified)'
+status: active
+tags: [planning, planned-modules, booking-workflow]
+updated: 2026-08-02
+---
+
 # Org bookings: property + parking (unified)
 
 > **Status:** Shipped (2026-07-31)

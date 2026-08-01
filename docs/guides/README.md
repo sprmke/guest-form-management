@@ -1,3 +1,10 @@
+---
+title: 'Guides'
+status: active
+tags: [guides]
+updated: 2026-08-02
+---
+
 # Guides
 
 Operator and agent documentation for **what each page/section does** — behavior, save paths, validation, and implementation pointers.
@@ -32,8 +39,8 @@ Any material change to a page, section, or feature → update the matching route
 | Document                                 | Scope                                     |
 | ---------------------------------------- | ----------------------------------------- |
 | **`docs/guides/routes/*.md`**            | Per-route behavior (this folder)          |
-| **`docs/PROJECT.md`**                    | System architecture, API tables, env vars |
+| **[[PROJECT]]**                          | System architecture, API tables, env vars |
 | **`.cursor/rules/booking-workflow.mdc`** | Canonical booking state machine           |
-| **`docs/planning/NEW_FLOW_PLAN.md`**     | Redesign plan and phased decisions        |
+| **[[NEW_FLOW_PLAN]]**                    | Redesign plan and phased decisions        |
 
 Start with the [route index](./routes/README.md). For a full worked example, see [Property Settings](./routes/org/property/settings.md).

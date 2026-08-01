@@ -1,3 +1,10 @@
+---
+title: 'Redesign /for-hosts landing page + host-mode header nav'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Redesign `/for-hosts` landing page + host-mode header nav
 
 ## Context

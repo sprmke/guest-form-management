@@ -1,3 +1,10 @@
+---
+title: 'Planned modules'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Planned modules
 
 Finished implementation plans from **Plan mode** (see `.cursor/rules/plan-mode.mdc`). One file per module or feature — actionable checklists, not chat transcripts.

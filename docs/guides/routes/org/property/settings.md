@@ -1,3 +1,10 @@
+---
+title: 'Property Settings — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property Settings — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/settings`
@@ -404,7 +411,7 @@ open until the guest dismisses them (no forced auto-close).
 
 **Guest UX polish (Phase 6):** **6.1–6.4 shipped** (speech VAD; rich bubbles; leaner prompts;
 booth UI; premium human concierge portrait). Admin settings fields above are unchanged. Plan:
-`docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
+[[2026-07-30-ai-voice-receptionist|AI Voice Receptionist — Implementation Plan]] § Phase 6.
 
 ---
 

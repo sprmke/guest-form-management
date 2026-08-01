@@ -1,3 +1,10 @@
+---
+title: 'Guest stay guide (token-gated brochure)'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Guest stay guide (token-gated brochure)
 
 Route: `/properties/:propertySlug/stay-guide?token=<opaque>`
@@ -58,7 +65,7 @@ Template HTML is filled with the same booking placeholders as workflow emails (`
 
 ## Admin preview (Templates)
 
-**Preview stay guide** on **Templates → Standard templates** opens **`?preview=1&property_id=`** (no guest token). See **`docs/guides/routes/org/property/templates.md`**.
+**Preview stay guide** on **Templates → Standard templates** opens **`?preview=1&property_id=`** (no guest token). See **[[templates|Property templates]]**.
 
 ## Email
 

@@ -1,3 +1,10 @@
+---
+title: 'Parking bookings — operator guide'
+status: active
+tags: [guides, routes, org, parking]
+updated: 2026-08-02
+---
+
 # Parking bookings — operator guide
 
 Route: `/org/:orgSlug/parking/:parkingSlug/bookings`  

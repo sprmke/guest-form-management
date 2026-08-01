@@ -1,3 +1,10 @@
+---
+title: 'Guest Stays — operator guide'
+status: active
+tags: [guides, routes, account]
+updated: 2026-08-02
+---
+
 # Guest Stays — operator guide
 
 Route: `/account/stays` (legacy `/account/trips` redirects here)

@@ -1,3 +1,10 @@
+---
+title: 'For hosts — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # For hosts — operator guide
 
 Route: `/for-hosts`

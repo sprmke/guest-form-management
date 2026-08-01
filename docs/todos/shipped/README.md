@@ -1,3 +1,10 @@
+---
+title: 'Shipped history'
+status: active
+tags: [todos, shipped]
+updated: 2026-08-02
+---
+
 # Shipped history
 
 Completed work archived from GitHub Issues and legacy backlogs.

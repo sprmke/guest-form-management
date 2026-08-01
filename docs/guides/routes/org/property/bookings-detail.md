@@ -1,3 +1,10 @@
+---
+title: 'Booking Detail — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Booking Detail — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` (legacy flat: `/bookings/:bookingId` via `LegacyAdminRedirect`)

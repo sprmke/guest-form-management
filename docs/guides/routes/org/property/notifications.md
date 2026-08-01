@@ -1,3 +1,10 @@
+---
+title: 'Notifications — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Notifications — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/notifications`

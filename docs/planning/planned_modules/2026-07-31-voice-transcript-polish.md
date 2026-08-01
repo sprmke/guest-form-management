@@ -1,3 +1,10 @@
+---
+title: 'Voice transcript grammar polish (LLM)'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # Voice transcript grammar polish (LLM)
 
 **Status:** Revised 2026-07-31 — **batch-at-end only** (no per-turn Flash)

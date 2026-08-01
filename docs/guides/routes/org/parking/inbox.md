@@ -1,3 +1,10 @@
+---
+title: 'Parking Guest Inbox'
+status: active
+tags: [guides, routes, org, parking]
+updated: 2026-08-02
+---
+
 # Parking Guest Inbox
 
 Route: `/org/:orgSlug/parking/:parkingSlug/inbox`

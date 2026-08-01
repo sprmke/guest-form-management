@@ -1,3 +1,10 @@
+---
+title: 'Guest Form Management — Project Documentation'
+status: active
+tags: [docs]
+updated: 2026-08-02
+---
+
 # Guest Form Management — Project Documentation
 
 This document is the entry point for the **guest-form-management** architecture docs. Full detail now lives under [`docs/architecture/`](architecture/overview.md), split by topic so each file stays focused and easy to update.

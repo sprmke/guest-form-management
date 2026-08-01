@@ -1,3 +1,10 @@
+---
+title: 'Calendar — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Calendar — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/calendar`

@@ -1,3 +1,10 @@
+---
+title: 'AI Voice Receptionist — Implementation Plan'
+status: active
+tags: [planning, planned-modules]
+updated: 2026-08-02
+---
+
 # AI Voice Receptionist — Implementation Plan
 
 **Status:** v1 shipped (Phases 1–5). **Phase 6 complete** (6.1–6.4, 2026-07-31).
