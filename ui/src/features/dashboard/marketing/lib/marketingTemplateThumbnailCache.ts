@@ -86,8 +86,9 @@ export function designThumbnailKey(templateId: string, binding: DesignBinding): 
 }
 
 /** Preset thumbnails use a stable default binding so they load instantly and persist across visits. */
-export function designPresetThumbnailKey(templateId: string): string {
-  return `design:preset:v3:${templateId}`;
+export function designPresetThumbnailKey(templateId: string, brandColor?: string): string {
+  const brand = resolveOrgBrandHex(brandColor).toLowerCase();
+  return `design:preset:v11:${brand}:${templateId}`;
 }
 
 export function videoThumbnailKey(
@@ -104,7 +105,7 @@ export function videoPresetThumbnailKey(
   brandColor?: string
 ): string {
   const brand = resolveOrgBrandHex(brandColor).toLowerCase();
-  return `video:preset:v4:${templateId}:${format}:${brand}`;
+  return `video:preset:v11:${templateId}:${format}:${brand}`;
 }
 
 export function calendarThumbnailKey(presetId: string, propertyName: string): string {
@@ -121,15 +122,16 @@ export function calendarPresetThumbnailKey(
   const brand = resolveOrgBrandHex(brandColor).toLowerCase();
   const preview = previewDataKey ?? 'default';
   const photo = propertyPhotoUrl ?? 'stock';
-  return `calendar:preset:v8:${format}:${brand}:${preview}:${photo}:${presetId}`;
+  return `calendar:preset:v9:${format}:${brand}:${preview}:${photo}:${presetId}`;
 }
 
 export function calendarSavedStylesThumbnailKey(
   savedId: string,
   updatedAt: string,
-  previewDataKey: string
+  previewDataKey: string,
+  format: string = 'square'
 ): string {
-  return `calendar:saved:${savedId}:${updatedAt}:${previewDataKey}`;
+  return `calendar:saved:v2:${savedId}:${updatedAt}:${format}:${previewDataKey}`;
 }
 
 export function savedDesignThumbnailKey(recordId: string, updatedAt: string): string {

@@ -1,10 +1,11 @@
 import { createStore } from 'openpolotno/model/store';
 
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import { captureDesignPresetThumbnail } from '@/features/dashboard/marketing/lib/designPresetThumbnailCapture';
 import { blobToDataUrl } from '@/features/dashboard/marketing/lib/exportVideoMedia';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
+import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
+import { syncPolotnoTextBounds } from '@/features/dashboard/marketing/lib/polotno/syncPolotnoTextBounds';
 
 const THUMB_PIXEL_RATIO = 0.2;
 
@@ -23,11 +24,39 @@ function createThumbnailStore() {
   return createStore({ key: '', showCredit: false });
 }
 
+async function waitForThumbnailPaint(): Promise<void> {
+  await Promise.race([
+    document.fonts.ready,
+    new Promise<void>((resolve) => window.setTimeout(resolve, 400)),
+  ]);
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
+  await new Promise<void>((resolve) => window.setTimeout(resolve, 120));
+}
+
+/** Headless preset capture — avoids mounting a second Polotno `<Workspace />`. */
 export async function renderDesignPresetThumbnail(
   templateId: string,
-  binding: DesignBinding
+  binding: DesignBinding,
+  brandColor?: string
 ): Promise<string | null> {
-  return captureDesignPresetThumbnail(templateId, binding);
+  const doc = buildPolotnoCampaignDocument(templateId, binding, { brandColor });
+  if (!doc) return null;
+
+  const store = createThumbnailStore();
+  try {
+    store.loadJSON(doc);
+    store.history.clear();
+    await store.waitLoading();
+    await syncPolotnoTextBounds(store);
+    await waitForThumbnailPaint();
+    return await storeToThumbnailDataUrl(store);
+  } catch {
+    return null;
+  } finally {
+    (store as { destroy?: () => void }).destroy?.();
+  }
 }
 
 export async function renderDesignPolotnoJsonThumbnail(
