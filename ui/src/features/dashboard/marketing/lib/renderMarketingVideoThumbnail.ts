@@ -24,7 +24,7 @@ import { runVideoThumbnailCapture } from '@/features/dashboard/marketing/lib/vid
 const THUMB_SCALE = 0.16;
 
 function categoryForTemplate(template: VideoCampaignTemplateDef | undefined) {
-  return template?.category ?? 'promo';
+  return template?.category ?? 'soft-stay';
 }
 
 async function preloadProjectImages(project: VideoProject): Promise<void> {
@@ -98,6 +98,16 @@ export async function renderVideoProjectThumbnail(
       ]);
       await preloadProjectImages(project);
 
+      // Stills don't need audio — skip Jamendo CDN URLs (CORS) entirely.
+      const stillProps = {
+        project: {
+          ...project,
+          music: project.music ? { ...project.music, url: null } : project.music,
+        },
+        brandColor,
+        previewMuted: true,
+      };
+
       const result = await renderStillOnWeb({
         composition: {
           id: project.templateId,
@@ -106,9 +116,9 @@ export async function renderVideoProjectThumbnail(
           height: dims.height,
           fps: project.fps,
           durationInFrames,
-          defaultProps: { project, brandColor },
+          defaultProps: stillProps,
         },
-        inputProps: { project, brandColor },
+        inputProps: stillProps,
         frame,
         scale: THUMB_SCALE,
       });
