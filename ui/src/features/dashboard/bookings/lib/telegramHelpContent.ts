@@ -31,19 +31,10 @@ export const TELEGRAM_BOT_TOKEN_HELP: TelegramHelpSection[] = [
       },
       {
         title: 'Copy the token',
-        body: 'BotFather sends a message containing your bot token. It looks like 123456789:AAH… Copy the full string — you will paste it here.',
+        body: 'BotFather sends a message containing your bot token. It looks like 123456789:AAH… Copy the full string and paste it into the "Bot Token" field.',
       },
     ],
     note: 'Keep the token private. Anyone with it can control your bot. You can revoke and regenerate it anytime from BotFather with /revoke.',
-  },
-  {
-    heading: 'Optional: set a profile photo',
-    steps: [
-      {
-        title: 'Send /setuserpic to BotFather',
-        body: 'Select your bot, then upload a square image so your team recognizes it in Telegram.',
-      },
-    ],
   },
 ];
 
@@ -64,23 +55,10 @@ export const TELEGRAM_CHAT_ID_HELP: TelegramHelpSection[] = [
         body: 'Post any message in the group (e.g. "test") so Telegram registers activity.',
       },
       {
-        title: 'Get the chat ID',
-        body: 'Open api.telegram.org/bot<YOUR_TOKEN>/getUpdates in a browser (replace <YOUR_TOKEN> with your bot token). Find "chat":{"id":-100…} in the JSON — that number (including the minus sign) is your Chat ID.',
+        title: 'Scan for your chat ID',
+        body: 'On the Telegram connection form, tap Scan for chats. Pick your group — the Chat ID field fills automatically.',
       },
     ],
-    note: 'Supergroups and channels usually start with -100. Paste the full value including the leading minus.',
-  },
-  {
-    heading: 'Private chat (DM to yourself)',
-    steps: [
-      {
-        title: 'Message your bot',
-        body: 'Open a direct chat with your bot and send /start or any message.',
-      },
-      {
-        title: 'Read getUpdates',
-        body: 'Same as above: open getUpdates in your browser and copy "chat":{"id":123456789} — personal chats use a positive number without -100.',
-      },
-    ],
+    note: 'Supergroups and channels usually start with -100. You can still paste a chat ID manually if needed.',
   },
 ];

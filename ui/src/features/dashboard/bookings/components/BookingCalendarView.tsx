@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
@@ -35,6 +35,8 @@ type Props = {
   datePreset?: DatePreset;
   /** Mini calendar day pills: guest first name or booking rate. */
   pillLabelMode?: BookingCalendarPillLabelMode;
+  /** Optional control beside month nav (e.g. Name/Price toggle). */
+  navigationAccessory?: ReactNode;
   showProperty?: boolean;
   resolveBookingHref?: (row: BookingRow) => string;
 };
@@ -61,6 +63,7 @@ export function BookingCalendarView({
   rangeTo,
   datePreset,
   pillLabelMode = 'name',
+  navigationAccessory,
   showProperty = false,
   resolveBookingHref,
 }: Props) {
@@ -180,6 +183,7 @@ export function BookingCalendarView({
       visibleRange={visibleRange}
       datePreset={datePreset}
       hideNavigation={mini && Boolean(visibleRange)}
+      navigationAccessory={navigationAccessory}
     />
   );
 }

@@ -51,6 +51,8 @@ type Props<T extends OccupancyRow> = {
   visibleRange?: CalendarVisibleRange;
   datePreset?: DatePreset;
   hideNavigation?: boolean;
+  /** Optional control beside month nav (e.g. Name/Price toggle). */
+  navigationAccessory?: ReactNode;
 };
 
 export function OccupancyCalendarView<T extends OccupancyRow>({
@@ -77,6 +79,7 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
   visibleRange,
   datePreset,
   hideNavigation = false,
+  navigationAccessory,
 }: Props<T>) {
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const singular = entityLabelSingular ?? entityLabel.replace(/s$/, '');
@@ -153,6 +156,7 @@ export function OccupancyCalendarView<T extends OccupancyRow>({
         embedded={embedded}
         onDayClick={onDayClick}
         onItemClick={onItemClick}
+        navigationAccessory={navigationAccessory}
       />
     );
 
