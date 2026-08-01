@@ -32,7 +32,7 @@ The end goal is that we should support both properties & parking modules in book
 
 ===
 
-Socials at org and property level
+🚧 Socials at org and property level
 
 We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
 Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
@@ -68,7 +68,7 @@ Update pricing menu/page to be "Calendar"
 
 We will have different tabs or switch view inside our calendar page.
 
-1. Default View - similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
+1. Default View - think of better name. similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
 2. Pricing View - this is the current pricing page to configure pricing per booking. We should also have to support to block booking date
 
 ===
