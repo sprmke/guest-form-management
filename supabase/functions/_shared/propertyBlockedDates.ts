@@ -15,16 +15,36 @@ export type BlockedRangeRow = {
   created_by: string | null;
 };
 
+const STRICT_DATE_KEY_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/**
+ * True only for exact `YYYY-MM-DD` strings that are also calendar-valid
+ * (rejects `2026-02-30`, non-zero-padded values, and any trailing garbage).
+ */
+export function isValidCalendarDateKey(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  const match = STRICT_DATE_KEY_RE.exec(value.trim());
+  if (!match) return false;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (month < 1 || month > 12) return false;
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
 function parseDateOnly(value: string | null | undefined): Date | null {
   if (!value) return null;
-  const match = String(value)
-    .trim()
-    .match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const trimmed = String(value).trim();
+  if (!isValidCalendarDateKey(trimmed)) return null;
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return null;
   const year = Number(match[1]);
   const month = Number(match[2]);
   const day = Number(match[3]);
-  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
   return new Date(year, month - 1, day);
 }
 
@@ -135,99 +155,31 @@ export async function insertBlockedRange(
  * Frees the given night keys. Any stored range that intersects a requested
  * night is deleted and re-split into the remaining (still-blocked) sub-ranges,
  * so partially unblocking a range keeps the rest blocked.
+ *
+ * The delete + re-insert of remnant ranges runs inside a single Postgres
+ * function call (`unblock_property_blocked_dates`, see migration
+ * `20261001150000_unblock_property_dates_function.sql`) so a failure midway
+ * cannot delete a range without persisting its still-blocked remnants —
+ * unlike two separate delete/insert round-trips from this edge function.
  */
 export async function deleteBlockedRangesCovering(
   propertyId: string,
   dateKeys: string[]
 ): Promise<number> {
-  const unblockSet = new Set(dateKeys);
-  if (unblockSet.size === 0) return 0;
+  const validKeys = [...new Set(dateKeys)].filter(isValidCalendarDateKey);
+  if (validKeys.length === 0) return 0;
 
-  const ranges = await loadBlockedRanges(propertyId);
   const supabase = createServiceClient();
+  const { data, error } = await supabase.rpc('unblock_property_blocked_dates', {
+    p_property_id: propertyId,
+    p_date_keys: validKeys,
+  });
 
-  let affected = 0;
-  const idsToDelete: string[] = [];
-  const rowsToInsert: Array<{
-    property_id: string;
-    start_date: string;
-    end_date: string;
-    note: string | null;
-    created_by: string | null;
-  }> = [];
-
-  for (const range of ranges) {
-    const start = parseDateOnly(range.start_date);
-    const end = parseDateOnly(range.end_date);
-    if (!start || !end || end <= start) continue;
-
-    const nights: Date[] = [];
-    let cursor = new Date(start);
-    const lastNight = addDays(end, -1);
-    let intersects = false;
-    while (cursor <= lastNight) {
-      nights.push(new Date(cursor));
-      if (unblockSet.has(formatDateKey(cursor))) intersects = true;
-      cursor = addDays(cursor, 1);
-    }
-    if (!intersects) continue;
-
-    idsToDelete.push(range.id);
-    affected += 1;
-
-    // Re-split remaining nights (not being unblocked) into contiguous sub-ranges.
-    let segmentStart: Date | null = null;
-    let prev: Date | null = null;
-    for (const night of nights) {
-      const keep = !unblockSet.has(formatDateKey(night));
-      if (keep) {
-        if (!segmentStart) segmentStart = night;
-        prev = night;
-      } else if (segmentStart && prev) {
-        rowsToInsert.push({
-          property_id: propertyId,
-          start_date: formatDateKey(segmentStart),
-          end_date: formatDateKey(addDays(prev, 1)),
-          note: range.note,
-          created_by: range.created_by,
-        });
-        segmentStart = null;
-        prev = null;
-      }
-    }
-    if (segmentStart && prev) {
-      rowsToInsert.push({
-        property_id: propertyId,
-        start_date: formatDateKey(segmentStart),
-        end_date: formatDateKey(addDays(prev, 1)),
-        note: range.note,
-        created_by: range.created_by,
-      });
-    }
+  if (error) {
+    throw new Error(`Failed to unblock dates: ${error.message}`);
   }
 
-  if (idsToDelete.length > 0) {
-    const { error: deleteError } = await supabase
-      .from('property_blocked_dates')
-      .delete()
-      .in('id', idsToDelete);
-
-    if (deleteError) {
-      throw new Error(`Failed to unblock dates: ${deleteError.message}`);
-    }
-  }
-
-  if (rowsToInsert.length > 0) {
-    const { error: insertError } = await supabase
-      .from('property_blocked_dates')
-      .insert(rowsToInsert);
-
-    if (insertError) {
-      throw new Error(`Failed to re-save remaining blocked dates: ${insertError.message}`);
-    }
-  }
-
-  return affected;
+  return typeof data === 'number' ? data : 0;
 }
 
 /** True when any night in `[checkIn, checkOut)` is covered by an owner block. */

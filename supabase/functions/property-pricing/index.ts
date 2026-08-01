@@ -4,6 +4,7 @@
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { isValidCalendarDateKey } from '../_shared/propertyBlockedDates.ts';
 import {
   loadPropertyPricing,
   savePropertyPricing,
@@ -81,6 +82,13 @@ serveAuthenticated('property-pricing', async (req) => {
       ) {
         return jsonError(req, 'blockRange requires startDate and endDate', 400);
       }
+      if (!isValidCalendarDateKey(range.startDate) || !isValidCalendarDateKey(range.endDate)) {
+        return jsonError(
+          req,
+          'blockRange startDate and endDate must be valid YYYY-MM-DD dates',
+          400
+        );
+      }
       patch.blockRange = {
         startDate: range.startDate,
         endDate: range.endDate,
@@ -94,6 +102,9 @@ serveAuthenticated('property-pricing', async (req) => {
         body.unblockDateKeys.some((k) => typeof k !== 'string')
       ) {
         return jsonError(req, 'unblockDateKeys must be an array of date strings', 400);
+      }
+      if (body.unblockDateKeys.some((k) => !isValidCalendarDateKey(k))) {
+        return jsonError(req, 'unblockDateKeys must contain only valid YYYY-MM-DD dates', 400);
       }
       patch.unblockDateKeys = body.unblockDateKeys as string[];
     }
