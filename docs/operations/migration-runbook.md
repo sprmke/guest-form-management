@@ -366,13 +366,13 @@ No DB or storage rollback is needed.
 
 ## 8. Phase 2–6 status (this repo)
 
-| Phase | Scope                                            | Runbook / detail                                                                                             |
-| ----- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-| **2** | `status` widen + backfill                        | **`20260502000000_widen_status_enum.sql`** — see **`docs/planning/NEW_FLOW_PLAN.md` §5** and **§1.3** above. |
-| **3** | Admin edge functions + transition UI             | Shipped — verify **`supabase/config.toml`** + **`docs/PROJECT.md` §8**.                                      |
-| **4** | `gmail-listener`, `sd-refund-cron`               | Shipped — **`docs/operations/scheduled-jobs-and-testing.md`**.                                               |
-| **5** | `submit-form` cleanup + no test-booking pipeline | Shipped — includes **`20260608120000_drop_is_test_booking.sql`**.                                            |
-| **6** | Calendar + Sheet backfill script                 | **Not shipped** as a dedicated migration yet — still planned in **`docs/planning/NEW_FLOW_PLAN.md` §5**.     |
+| Phase | Scope                                            | Runbook / detail                                                                                                              |
+| ----- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
+| **2** | `status` widen + backfill                        | **`20260502000000_widen_status_enum.sql`** — see **`docs/planning/NEW_FLOW_PLAN.md` §5** and **§1.3** above.                  |
+| **3** | Admin edge functions + transition UI             | Shipped — verify **`supabase/config.toml`** + **[`docs/architecture/edge-functions.md`](../architecture/edge-functions.md)**. |
+| **4** | `gmail-listener`, `sd-refund-cron`               | Shipped — **`docs/operations/scheduled-jobs-and-testing.md`**.                                                                |
+| **5** | `submit-form` cleanup + no test-booking pipeline | Shipped — includes **`20260608120000_drop_is_test_booking.sql`**.                                                             |
+| **6** | Calendar + Sheet backfill script                 | **Not shipped** as a dedicated migration yet — still planned in **`docs/planning/NEW_FLOW_PLAN.md` §5**.                      |
 
 Incremental schema after Phase 0 is enumerated in **§1.3** (filenames + purposes). **Production** Dashboard secrets, Google OAuth, Vercel `VITE_*`, and **`pg_cron`**: **§11**.
 
@@ -388,7 +388,7 @@ Incremental schema after Phase 0 is enumerated in **§1.3** (filenames + purpose
 
 ## 11. Production configuration & secrets (Supabase, Google, hosting)
 
-Use this **after** migrations (**§5**) and Edge Function deploys. Canonical env templates: **[`supabase/.env.example`](../../supabase/.env.example)** (Edge secrets — mirror into Dashboard) and **[`ui/.env.example`](../../ui/.env.example)** (Vite / SPA). Full narrative also lives in **`docs/PROJECT.md` §11–§12**.
+Use this **after** migrations (**§5**) and Edge Function deploys. Canonical env templates: **[`supabase/.env.example`](../../supabase/.env.example)** (Edge secrets — mirror into Dashboard) and **[`ui/.env.example`](../../ui/.env.example)** (Vite / SPA). Full narrative also lives in **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** and **[`docs/architecture/deployment.md`](../architecture/deployment.md)**.
 
 ### 11.1 Recommended order
 
@@ -433,19 +433,19 @@ For **Client B**, add **Authorized JavaScript origins** matching your production
 
 Copy names from **`supabase/.env.example`**. Typical production set:
 
-| Group                              | Variables                                                                                                                       | Notes                                                                                                                                                                             |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Admin / workflow**               | **`ADMIN_ALLOWED_EMAILS`**                                                                                                      | Comma-separated; **authoritative** allow list for **`verifyAdminJwt`**. Must align operationally with **`VITE_ADMIN_ALLOWED_EMAILS`**.                                            |
-|                                    | **`PARKING_OWNER_EMAILS`**                                                                                                      | BCC list for parking broadcast — **`docs/planning/NEW_FLOW_PLAN.md` §6.1 Q4.1** seed; rotate via env only.                                                                        |
-| **Email (Resend)**                 | **`RESEND_API_KEY`**, **`EMAIL_TO`**, **`EMAIL_REPLY_TO`**                                                                      | Production vs dev routing — see **`.env.example`**. **`EMAIL_REPLY_TO`** is also the **To:** address for **New Booking Request** (`submit-form` → `sendNewBookingRequestNotify`). |
-|                                    | **`EMAIL_LOGO_URL`**, **`PUBLIC_GUEST_APP_ORIGIN`**, **`FACEBOOK_REVIEWS_URL`**                                                 | Optional guest links / branding (`docs/PROJECT.md` §11).                                                                                                                          |
-| **Google APIs**                    | **`GOOGLE_SERVICE_ACCOUNT`**, **`GOOGLE_CALENDAR_ID`**, **`GOOGLE_SPREADSHEET_ID`**                                             | **§11.4**.                                                                                                                                                                        |
+| Group                              | Variables                                                                                                                       | Notes                                                                                                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin / workflow**               | **`ADMIN_ALLOWED_EMAILS`**                                                                                                      | Comma-separated; **authoritative** allow list for **`verifyAdminJwt`**. Must align operationally with **`VITE_ADMIN_ALLOWED_EMAILS`**.                                                 |
+|                                    | **`PARKING_OWNER_EMAILS`**                                                                                                      | BCC list for parking broadcast — **`docs/planning/NEW_FLOW_PLAN.md` §6.1 Q4.1** seed; rotate via env only.                                                                             |
+| **Email (Resend)**                 | **`RESEND_API_KEY`**, **`EMAIL_TO`**, **`EMAIL_REPLY_TO`**                                                                      | Production vs dev routing — see **`.env.example`**. **`EMAIL_REPLY_TO`** is also the **To:** address for **New Booking Request** (`submit-form` → `sendNewBookingRequestNotify`).      |
+|                                    | **`EMAIL_LOGO_URL`**, **`PUBLIC_GUEST_APP_ORIGIN`**, **`FACEBOOK_REVIEWS_URL`**                                                 | Optional guest links / branding ([`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)).                                                                  |
+| **Google APIs**                    | **`GOOGLE_SERVICE_ACCOUNT`**, **`GOOGLE_CALENDAR_ID`**, **`GOOGLE_SPREADSHEET_ID`**                                             | **§11.4**.                                                                                                                                                                             |
 | **Gmail listener / Connect Gmail** | **`EMAIL_TO`** (Documents Approver in Settings) — allowed **From** on GAF/Pet approval replies when set; blank = permissive     |
-|                                    | **Option 1:** **`GMAIL_API_WEB_CLIENT_JSON`**, **`GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`**, **`GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`** | In-app Connect Gmail + encrypted refresh token in DB.                                                                                                                             |
-|                                    | **Option 2:** **`GMAIL_OAUTH_CLIENT_JSON`**, **`GMAIL_OAUTH_TOKEN_JSON`**                                                       | Legacy **`bun run gmail-auth`** refresh token in secrets.                                                                                                                         |
-|                                    | **`SUPABASE_PUBLIC_URL`** _(optional)_                                                                                          | Public API origin if Edge-internal `SUPABASE_URL` breaks Gmail redirect URI construction — see **`docs/PROJECT.md` §11**.                                                         |
-| **SD refund cron**                 | **`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`**                                             | Defaults **120** / **21** — **`.cursor/rules/admin-auth.mdc` §7**.                                                                                                                |
-| **Dev-only softness**              | **`ENVIRONMENT`**, **`DENO_ENV`**                                                                                               | Usually **omit** in prod so **`isDevelopment()`** stays false; **`DENO_DEPLOYMENT_ID`** is set automatically on hosted Edge.                                                      |
+|                                    | **Option 1:** **`GMAIL_API_WEB_CLIENT_JSON`**, **`GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`**, **`GMAIL_OAUTH_ALLOWED_RETURN_ORIGINS`** | In-app Connect Gmail + encrypted refresh token in DB.                                                                                                                                  |
+|                                    | **Option 2:** **`GMAIL_OAUTH_CLIENT_JSON`**, **`GMAIL_OAUTH_TOKEN_JSON`**                                                       | Legacy **`bun run gmail-auth`** refresh token in secrets.                                                                                                                              |
+|                                    | **`SUPABASE_PUBLIC_URL`** _(optional)_                                                                                          | Public API origin if Edge-internal `SUPABASE_URL` breaks Gmail redirect URI construction — see **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)**. |
+| **SD refund cron**                 | **`SD_REFUND_CRON_EMAIL_LEAD_MINUTES`**, **`SD_REFUND_CRON_MAX_CHECKOUT_AGE_DAYS`**                                             | Defaults **120** / **21** — **`.cursor/rules/admin-auth.mdc` §7**.                                                                                                                     |
+| **Dev-only softness**              | **`ENVIRONMENT`**, **`DENO_ENV`**                                                                                               | Usually **omit** in prod so **`isDevelopment()`** stays false; **`DENO_DEPLOYMENT_ID`** is set automatically on hosted Edge.                                                           |
 
 ### 11.6 UI production env (e.g. Vercel)
 
@@ -491,4 +491,4 @@ Full SQL patterns, security notes, and local curl testing: **`docs/operations/sc
 - [ ] **Run Gmail poll now** / **Run SD refund cron now** from booking detail (scoped JWT) succeeds.
 - [ ] After **`pg_cron`** is live, confirm **`gmail-listener`** / **`sd-refund-cron`** invocations in **Edge Logs** on schedule.
 
-**Templates:** [`supabase/.env.example`](../../supabase/.env.example) · [`ui/.env.example`](../../ui/.env.example) · **`docs/PROJECT.md` §11** · **`docs/operations/scheduled-jobs-and-testing.md`**
+**Templates:** [`supabase/.env.example`](../../supabase/.env.example) · [`ui/.env.example`](../../ui/.env.example) · **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)** · **`docs/operations/scheduled-jobs-and-testing.md`**

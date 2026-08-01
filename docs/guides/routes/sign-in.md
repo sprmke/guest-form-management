@@ -64,4 +64,4 @@ No server round-trip beyond the SPA route — **`LegacySignInRedirect`** renders
 - [Guest & host auth](./auth.md)
 - [For hosts landing](./for-hosts.md)
 - [Route index](./README.md)
-- [`docs/PROJECT.md`](../../PROJECT.md) §4
+- [`docs/architecture/routing.md`](../../architecture/routing.md)

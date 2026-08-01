@@ -2,7 +2,7 @@
 
 Server-side **Gemini Flash vision** checks whether uploaded payment images look like real payment proof (digital receipts, PHP cash photos) and whether guest **valid ID** uploads look like government-issued photo ID. Results are stored on `guest_submissions`, surfaced in admin UI, and included in ops notifications where applicable.
 
-Canonical env var and API mentions also appear in **`docs/PROJECT.md`** §8 and §11.
+Canonical env var and API mentions also appear in **[`docs/architecture/edge-functions.md`](../architecture/edge-functions.md)** and **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)**.
 
 ---
 

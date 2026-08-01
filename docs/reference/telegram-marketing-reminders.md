@@ -2,7 +2,7 @@
 
 Marketing messages to a **Telegram** group (or channel) for **Kame Homes** guest-form ops: scheduled **daily** runs at configurable **Asia/Manila** times (default three slots), plus **new booking** and **cancellation** triggers. Copy lives in Postgres (`telegram_marketing_settings`); admins edit templates under **Admin → Marketing** (`/marketing`).
 
-Canonical API and env names also appear in **`docs/PROJECT.md`** §8 and §11.
+Canonical API and env names also appear in **[`docs/architecture/edge-functions.md`](../architecture/edge-functions.md)** and **[`docs/architecture/validation-and-env.md`](../architecture/validation-and-env.md)**.
 
 ---
 

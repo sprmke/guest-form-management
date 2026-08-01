@@ -181,4 +181,4 @@ Danger zone: slug confirmation + `delete-organization`; blocked when booking his
 ## Related docs
 
 - [Route index](../README.md)
-- [`docs/PROJECT.md`](../../PROJECT.md) §11 — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`
+- [`docs/architecture/validation-and-env.md`](../../../architecture/validation-and-env.md) — `PUBLIC_GUEST_APP_ORIGIN`, `FACEBOOK_REVIEWS_URL`

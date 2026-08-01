@@ -14,7 +14,7 @@ Route: `/admin/orgs/:orgSlug/properties`
 
 ## Overview
 
-Minimal super-admin view of a single organization's property names, reached by org slug rather than host ID. It reuses the **org-scoped** hooks (`useOrganizations`, `useProperties`) instead of a dedicated super-admin edge function — the super-admin session is authorized because the caller's email is in `SUPER_ADMIN_EMAILS`, which `list-organizations` treats as "can see all orgs" (see `docs/PROJECT.md` §8 `list-organizations`).
+Minimal super-admin view of a single organization's property names, reached by org slug rather than host ID. It reuses the **org-scoped** hooks (`useOrganizations`, `useProperties`) instead of a dedicated super-admin edge function — the super-admin session is authorized because the caller's email is in `SUPER_ADMIN_EMAILS`, which `list-organizations` treats as "can see all orgs" (see [`docs/architecture/edge-functions.md`](../../../architecture/edge-functions.md) `list-organizations`).
 
 This is not linked from any super-admin nav card today; it exists as a direct-URL utility (e.g. reached by typing the org slug), and is a much thinner view than [`/admin/hosts/:hostId/orgs/properties`](./host-detail/properties.md) — no stats, filters, cards, or actions.
 

@@ -42,7 +42,7 @@ bun run dev:api    # functions serve only
 
 - UI: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, optional `VITE_SUPABASE_PROJECT_URL`
 - Edge: `supabase/.env.local` — see `supabase/.env.example`
-- Document new secrets in `docs/PROJECT.md` §11
+- Document new secrets in `docs/architecture/validation-and-env.md`
 
 ## Storage
 
@@ -51,5 +51,5 @@ Upload from edge (`uploadService.ts`, `upload-booking-asset`). UI uses signed/pu
 ## When adding a table
 
 1. Migration SQL + indexes + FK to org/property where applicable
-2. Update `docs/PROJECT.md` data model
+2. Update `docs/architecture/data-model.md`
 3. Edge access via service role client; enforce `verifyPropertyAccess` / scoping

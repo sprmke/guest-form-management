@@ -59,7 +59,7 @@ ui/src/features/guest/
 ## Docs to update
 
 - `docs/guides/routes/README.md` + route-specific guide
-- `docs/PROJECT.md` §4 routes table
+- `docs/architecture/routing.md` routes table
 - `docs/reference/project-structure.md` guest modules
 - `.cursor/rules/public-ui.mdc` if conventions change
 
