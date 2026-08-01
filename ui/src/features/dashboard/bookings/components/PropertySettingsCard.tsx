@@ -33,6 +33,14 @@ import {
   type AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import {
+  buildVoiceReceptionistPatch,
+  useUpdateVoiceReceptionistSettings,
+  useVoiceReceptionistSettings,
+  voiceReceptionistFormIsDirty,
+  voiceReceptionistToFormValues,
+  type VoiceReceptionistFormValues,
+} from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
+import {
   applyBuildingFormsTeamDefaults,
   pickBuildingFormsTeamContact,
 } from '@/features/dashboard/bookings/lib/buildingFormsTeamDefaults';
@@ -79,11 +87,7 @@ import {
   planPropertySettingsSave,
 } from '@/features/dashboard/org/lib/propertySettingsSave';
 import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/lib/propertySocialLinks';
-import {
-  orgPropertiesPath,
-  orgSettingsPath,
-  propertySectionPath,
-} from '@/features/dashboard/org/lib/tenantPaths';
+import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -121,7 +125,7 @@ function mergeProfileDraftAfterSave(
 
 export function PropertySettingsCard() {
   const navigate = useNavigate();
-  const { property, org, orgSlug, propertySlug } = useOrgContext();
+  const { property, orgSlug, propertySlug } = useOrgContext();
   const {
     data: appSettings,
     isLoading: appSettingsLoading,
@@ -132,6 +136,13 @@ export function PropertySettingsCard() {
   const updateProperty = useUpdateProperty(orgSlug);
   const deleteProperty = useDeleteProperty(orgSlug);
   const updateAppSettings = useUpdateAppSettings();
+  const {
+    data: voiceSettings,
+    isLoading: voiceSettingsLoading,
+    isError: voiceSettingsError,
+    error: voiceSettingsLoadError,
+  } = useVoiceReceptionistSettings();
+  const updateVoiceSettings = useUpdateVoiceReceptionistSettings();
   const orgBrandColor = useOrgBrandColor();
   const inheritedBrandColor = appSettings?.inheritedBrandColor ?? orgBrandColor;
   const { data: orgSettings } = useOrgSettings();
@@ -144,10 +155,10 @@ export function PropertySettingsCard() {
             airbnbUrl: '',
             instagramUrl: '',
             tiktokUrl: '',
+            mainSocialPlatform: '',
           },
     [orgSettings]
   );
-  const orgSettingsHref = `${orgSettingsPath(orgSlug)}#section-branding`;
 
   const [profileBaseline, setProfileBaseline] = useState(() =>
     propertyProfileDraftFromProperty(property)
@@ -157,6 +168,8 @@ export function PropertySettingsCard() {
   const [operationalBaseline, setOperationalBaseline] = useState<AppSettingsFormValues | null>(
     null
   );
+  const [voiceDraft, setVoiceDraft] = useState<VoiceReceptionistFormValues | null>(null);
+  const [voiceBaseline, setVoiceBaseline] = useState<VoiceReceptionistFormValues | null>(null);
   const [newCustomAmenityInputs, setNewCustomAmenityInputs] = useState<Record<string, string>>({});
   const [newCustomHouseRuleInputs, setNewCustomHouseRuleInputs] = useState<Record<string, string>>(
     {}
@@ -174,6 +187,7 @@ export function PropertySettingsCard() {
 
   const profileDirtyRef = useRef(false);
   const operationalDirtyRef = useRef(false);
+  const voiceDirtyRef = useRef(false);
   const skipProfileSyncRef = useRef(false);
   const [mediaGalleryBusy, setMediaGalleryBusy] = useState(false);
 
@@ -199,6 +213,14 @@ export function PropertySettingsCard() {
     setOperationalDraft(values);
     setOperationalBaseline(values);
   }, [appSettings, propertyTeam?.members]);
+
+  useEffect(() => {
+    if (!voiceSettings) return;
+    if (voiceDirtyRef.current) return;
+    const values = voiceReceptionistToFormValues(voiceSettings);
+    setVoiceDraft(values);
+    setVoiceBaseline(values);
+  }, [voiceSettings]);
 
   const gafTowerUnit = useMemo(
     () => gafTowerUnitFromProfile(profileDraft),
@@ -265,11 +287,15 @@ export function PropertySettingsCard() {
       ? operationalSettingsDraftIsDirty(operationalDraft, operationalBaseline, inheritedBrandColor)
       : false;
   operationalDirtyRef.current = operationalDirty;
-  const isDirty = profileDirty || operationalDirty;
+  const voiceDirty =
+    voiceDraft && voiceBaseline ? voiceReceptionistFormIsDirty(voiceDraft, voiceBaseline) : false;
+  voiceDirtyRef.current = voiceDirty;
+  const isDirty = profileDirty || operationalDirty || voiceDirty;
 
   const busy =
     appSettingsLoading ||
     updateAppSettings.isPending ||
+    updateVoiceSettings.isPending ||
     deleteProperty.isPending ||
     (updateProperty.isPending && !mediaGalleryBusy);
 
@@ -347,6 +373,13 @@ export function PropertySettingsCard() {
     );
   };
 
+  const setVoiceField = <K extends keyof VoiceReceptionistFormValues>(
+    key: K,
+    value: VoiceReceptionistFormValues[K]
+  ) => {
+    setVoiceDraft((current) => (current ? { ...current, [key]: value } : current));
+  };
+
   const handleSave = async (options?: { skipPaymentConfirm?: boolean }) => {
     if (!operationalDraft || !operationalBaseline || !appSettings) return;
 
@@ -364,11 +397,11 @@ export function PropertySettingsCard() {
       inheritedBrandColor,
     });
 
-    if (!plan.hasSavableWork) {
+    if (!plan.hasSavableWork && !voiceDirty) {
       setShowValidationErrors(true);
       if (plan.firstBlockedMessage) {
         toast.error(plan.firstBlockedMessage);
-      } else if (!profileDirty && !operationalDirty) {
+      } else if (!profileDirty && !operationalDirty && !voiceDirty) {
         toast.message('No changes to save');
       }
       if (plan.firstBlockedSectionId) {
@@ -443,6 +476,16 @@ export function PropertySettingsCard() {
             ? applySavedOperationalSections(current, values, savedOperationalSections)
             : values
         );
+        savedSomething = true;
+      }
+
+      if (voiceDirty && voiceDraft) {
+        const saved = await updateVoiceSettings.mutateAsync(
+          buildVoiceReceptionistPatch(voiceDraft)
+        );
+        const values = voiceReceptionistToFormValues(saved);
+        setVoiceDraft(values);
+        setVoiceBaseline(values);
         savedSomething = true;
       }
 
@@ -604,8 +647,6 @@ export function PropertySettingsCard() {
             data={appSettings}
             draft={operationalDraft}
             orgSocialLinks={orgSocialLinks}
-            orgName={org.name}
-            orgSettingsHref={orgSettingsHref}
             disabled={busy}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
@@ -624,6 +665,14 @@ export function PropertySettingsCard() {
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             sectionMessages={settingsCompletion.sectionMessages}
+            voiceReceptionist={{
+              draft: voiceDraft,
+              availableVoices: voiceSettings?.availableVoices ?? [],
+              isLoading: voiceSettingsLoading,
+              isError: voiceSettingsError,
+              errorMessage: (voiceSettingsLoadError as Error)?.message ?? null,
+              onChange: setVoiceField,
+            }}
           />
 
           <PropertyDangerZoneSection

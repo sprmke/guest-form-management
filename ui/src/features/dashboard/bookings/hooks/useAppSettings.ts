@@ -88,6 +88,9 @@ export type AppSettingsDto = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  mainSocialPlatformStored?: string;
+  inheritedMainSocialPlatform?: string;
+  resolvedMainSocialPlatform?: string;
   defaultParkingRateGuest: number;
   gcashName: string;
   gcashNumber: string;
@@ -156,6 +159,7 @@ export type AppSettingsFormValues = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  mainSocialPlatform: string;
   externalReviews: PropertyExternalReview[];
   superhostVerificationUrl: string;
 };
@@ -201,6 +205,7 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     airbnbUrl: data.airbnbUrl,
     instagramUrl: data.instagramUrl,
     tiktokUrl: data.tiktokUrl,
+    mainSocialPlatform: data.mainSocialPlatformStored ?? '',
     externalReviews: normalizeExternalReviewsDraft(data.externalReviews),
     superhostVerificationUrl: data.superhostVerificationUrl,
   };
@@ -292,6 +297,7 @@ export function operationalFormIsDirty(
     draft.airbnbUrl.trim() !== baseline.airbnbUrl.trim() ||
     draft.instagramUrl.trim() !== baseline.instagramUrl.trim() ||
     draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
+    draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim() ||
     !externalReviewsEqual(draft.externalReviews, baseline.externalReviews) ||
     draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim()
   );
