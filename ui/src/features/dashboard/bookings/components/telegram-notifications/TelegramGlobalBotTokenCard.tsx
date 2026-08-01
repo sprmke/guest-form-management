@@ -3,14 +3,13 @@ import * as React from 'react';
 import { Activity, Bot, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import { telegramBotTokenPlaceholder } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
+import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import {
   useTelegramGlobalBotToken,
   useUpdateTelegramGlobalBotToken,
   useVerifyTelegramGlobalBotToken,
 } from '@/features/dashboard/bookings/hooks/useTelegramGlobalBotToken';
-import { TELEGRAM_BOT_TOKEN_HELP } from '@/features/dashboard/bookings/lib/telegramHelpContent';
 import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 
 import { Button } from '@/components/ui/button';
@@ -79,16 +78,13 @@ export function TelegramGlobalBotTokenCard() {
 
   return (
     <Card id="section-global-bot" className="scroll-mt-2">
-      <CardHeader className="space-y-1.5">
+      <CardHeader className="space-y-0">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Bot className="size-5 shrink-0" aria-hidden />
             Shared bot token
           </CardTitle>
-          <TelegramHelpDialog
-            title="How to get a Telegram bot token"
-            sections={TELEGRAM_BOT_TOKEN_HELP}
-          />
+          <TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />
         </div>
         <CardDescription>
           One bot token for all notification modules. New modules pre-fill this value — you can
@@ -101,9 +97,12 @@ export function TelegramGlobalBotTokenCard() {
         ) : (
           <div className="flex flex-col gap-3 sm:max-w-xl">
             <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="global-bot-token" className={SETTINGS_FIELD_LABEL_COMPACT}>
-                Bot token
-              </Label>
+              <div className="flex items-center gap-0.5">
+                <Label htmlFor="global-bot-token" className={SETTINGS_FIELD_LABEL_COMPACT}>
+                  Bot token
+                </Label>
+                <TelegramHelpDialog defaultTab="bot-token" variant="icon" />
+              </div>
               <div className="relative">
                 <Input
                   id="global-bot-token"
@@ -123,7 +122,7 @@ export function TelegramGlobalBotTokenCard() {
                   disabled={busy}
                   aria-label={visible ? 'Hide bot token' : 'Show bot token'}
                   onClick={() => setVisible((v) => !v)}
-                  className="text-muted-foreground hover:text-foreground absolute right-0 top-0 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-r-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
+                  className="text-muted-foreground hover:text-foreground absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-r-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
                 >
                   {visible ? (
                     <EyeOff className="size-4 shrink-0" aria-hidden />

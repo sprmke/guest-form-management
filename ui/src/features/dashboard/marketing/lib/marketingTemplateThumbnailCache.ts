@@ -102,10 +102,14 @@ export function videoThumbnailKey(
 export function videoPresetThumbnailKey(
   templateId: string,
   format: string,
-  brandColor?: string
+  brandColor?: string,
+  /** When set (property media fingerprint), thumbs match the live editor binding. */
+  bindingKey?: string
 ): string {
   const brand = resolveOrgBrandHex(brandColor).toLowerCase();
-  return `video:preset:v11:${templateId}:${format}:${brand}`;
+  const media = bindingKey ?? 'stock';
+  // v12: property-aware Remotion first-clip stills (was stock-only v11).
+  return `video:preset:v12:${templateId}:${format}:${brand}:${media}`;
 }
 
 export function calendarThumbnailKey(presetId: string, propertyName: string): string {

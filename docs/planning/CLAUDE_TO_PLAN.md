@@ -96,7 +96,7 @@ Same with marketing design templates goal.
 
 ===
 
-Marketing 4: Use AI to generate marketing calendar, design and video templates
+✅ Marketing 4: Use AI to generate marketing calendar, design and video templates
 
 Now that we made some improvements on marketing calendar, canvas and video editors, I want to really extend by having AI feature that will generate design and video templates from scratch that looks very beautiful, elegant, instagrammable and has wow factor to hosts.
 
@@ -112,10 +112,11 @@ Marketing 5: Refine & finalize Marketing module
 
 - Make sure each module is optimized. Right now, something is not right and kinda laggy when we visit it
 - Make sure publish to social platform is supported
+- Revisit and review each template, refine it more to be more social and case updated
 
 ===
 
-Refine footer & create public pages
+✅ Refine footer & create public pages
 
 Let's refine all our footer links and we should create public pages for each of them.
 
@@ -216,6 +217,8 @@ Not just simply a website or page that's adjusted to be responsive to different 
 We need to consider the best UI/UX for each page, section and components that we have in our app
 The end goal is when we resize to mobile view, it should look and feel like a native mobile app where we have main navigation on the bottom, mobile element animation and transitions, etc
 
+Apply to all pages including both public and dashboard pages
+
 ===
 
 Review implementation on the following modules
@@ -262,3 +265,29 @@ Prod readiness checklist
 - Analytics
 - SDLC Testing
 - Availability & Recovery
+
+===
+
+Optimize how AI integrated in our app
+
+Make a research and find the best optimal way to connect our application with AI for faster info retrieval, action execution, etc.
+
+Maybe we can use RAG/light RAG or something like graphify? Or if there's better library or technology that we can use.
+
+Also, I'm wondering if having docs/guides for each page of the app is the best optimal way to document and use this for AI to have context of our entire application?
+
+The goal is to find and implement the best way to document each flow, logic, process of each feature, pages, sections that's happening on our entire application that's fastest, optimal, and best lowest token consumption. It should be production ready
+
+Let's update our implementation that's using or relying with AI like the AI-auto reply, AI receptionist, and other future related features that will use AI.
+
+===
+
+Analyze entire app pages & features and brainstorm how AI can help us for each feature
+
+Analyze the entire codebase and features that we have, and see how AI can help hosts on each feature/sections.
+
+Example:
+
+- Use AI to analyze and suggest marketing strategies
+- Use AI to help managing finance, analyze big expenses, how to fix and suggest financial strats, etc
+-

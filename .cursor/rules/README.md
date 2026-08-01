@@ -16,6 +16,7 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 | `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)        |
 | `git-commits.mdc`               | No Cursor author/co-author in commits                 |
 | `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
+| `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP     |
 
 ## Conditional rules (by file glob — loaded when relevant)
 

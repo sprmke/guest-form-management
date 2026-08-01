@@ -1,14 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
 import { Loader2 } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
-import {
-  BookingCalendarPillLabelToggle,
-  type BookingCalendarPillLabelMode,
-} from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
 import {
   PropertyCalendarViewToggle,
   type PropertyCalendarViewId,
@@ -26,7 +22,6 @@ function parseRequestedView(sp: URLSearchParams): PropertyCalendarViewId | null 
 export function PropertyCalendarPage() {
   const { data: access, isLoading } = usePropertyPermissions();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [pillLabelMode, setPillLabelMode] = useState<BookingCalendarPillLabelMode>('name');
 
   const permissions = access?.permissions;
   const showOccupancy = hasPropertyPermission(permissions, 'bookings:view');
@@ -81,29 +76,21 @@ export function PropertyCalendarPage() {
         id="calendar-heading"
         variant="compact"
         title="Calendar"
+        subtitle="View stays and manage rates for this property."
         actions={
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
-            {showOccupancy && showPricing ? (
-              <PropertyCalendarViewToggle
-                value={view}
-                onChange={setView}
-                showOccupancy={showOccupancy}
-                showPricing={showPricing}
-              />
-            ) : null}
-            {view === 'occupancy' ? (
-              <BookingCalendarPillLabelToggle value={pillLabelMode} onChange={setPillLabelMode} />
-            ) : null}
-          </div>
+          showOccupancy && showPricing ? (
+            <PropertyCalendarViewToggle
+              value={view}
+              onChange={setView}
+              showOccupancy={showOccupancy}
+              showPricing={showPricing}
+            />
+          ) : null
         }
         actionsClassName="w-full sm:w-auto"
       />
 
-      {view === 'occupancy' ? (
-        <PropertyOccupancyCalendarPanel pillLabelMode={pillLabelMode} />
-      ) : (
-        <PropertyPricingPage embedded />
-      )}
+      {view === 'occupancy' ? <PropertyOccupancyCalendarPanel /> : <PropertyPricingPage embedded />}
     </div>
   );
 }

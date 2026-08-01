@@ -10,6 +10,7 @@ import {
   propertySecretsEncryptionConfigured,
 } from './propertySecretCrypto.ts';
 import { trimOrEmpty } from './stringUtils.ts';
+import { fetchTelegramJson } from './telegramApi.ts';
 
 export type TelegramGlobalBotAdminStatus = {
   tokenConfigured: boolean;
@@ -32,12 +33,17 @@ export async function verifyTelegramBotTokenOnly(
   }
 
   const meUrl = `https://api.telegram.org/bot${token}/getMe`;
-  const meRes = await fetch(meUrl);
-  const meJson = (await meRes.json().catch(() => ({}))) as {
+  const fetched = await fetchTelegramJson<{
     ok?: boolean;
     result?: { username?: string };
     description?: string;
-  };
+  }>(meUrl);
+
+  if (!fetched.ok) {
+    return { ok: false, error: fetched.error };
+  }
+
+  const { response: meRes, json: meJson } = fetched;
 
   return {
     ok: !!meJson?.ok,

@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { ChevronLeft, Download, Loader2, Send, ZoomIn, ZoomOut } from 'lucide-react';
+import {
+  ChevronLeft,
+  Download,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Send,
+  ZoomIn,
+  ZoomOut,
+} from 'lucide-react';
 import { toast } from 'sonner';
 
 import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/hooks/usePublicPropertyDetail';
@@ -21,7 +30,10 @@ import {
   type VideoCompositionProps,
 } from '@/features/dashboard/marketing/components/video-editor/VideoCompositions';
 import { VideoEditorSettings } from '@/features/dashboard/marketing/components/video-editor/VideoEditorSettings';
-import { VideoPreviewWorkspace } from '@/features/dashboard/marketing/components/video-editor/VideoPreviewWorkspace';
+import {
+  VideoPreviewWorkspace,
+  type VideoPreviewWorkspaceHandle,
+} from '@/features/dashboard/marketing/components/video-editor/VideoPreviewWorkspace';
 import { VideoTimeline } from '@/features/dashboard/marketing/components/video-editor/VideoTimeline';
 import { useEnsureDefaultVideoMusic } from '@/features/dashboard/marketing/hooks/useEnsureDefaultVideoMusic';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
@@ -49,7 +61,7 @@ import {
   openSlotDatesForMonth,
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
 import { marketingContentFingerprint } from '@/features/dashboard/marketing/lib/marketingContentFingerprint';
-import { DEFAULT_MARKETING_THUMB_BINDING } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
+import { resolveMarketingThumbBinding } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
 import {
   waitForMarketingIdle,
   yieldToMainThread,
@@ -57,6 +69,7 @@ import {
 import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
 import {
   getCachedMarketingThumbnail,
+  marketingBindingCacheKey,
   publishMarketingPresetThumbnail,
   videoPresetThumbnailKey,
 } from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
@@ -87,7 +100,7 @@ import type {
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   addPhotoScene,
-  sceneStartFrame,
+  sceneSettledPreviewFrame,
   videoProjectDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 import { getSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
@@ -145,7 +158,17 @@ export function VideoEditor({ onPublish }: Props) {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [elementFocusRequest, setElementFocusRequest] = useState(0);
   const playerRef = useRef<PlayerRef>(null);
+  const previewWorkspaceRef = useRef<VideoPreviewWorkspaceHandle>(null);
   const { expandSidebar } = useMarketingSidebarLayout('video');
+
+  const handleFitToView = useCallback(() => {
+    setRelativeZoom(100);
+    previewWorkspaceRef.current?.fitToView();
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    previewWorkspaceRef.current?.toggleFullscreen();
+  }, []);
 
   useVideoProjectHistoryShortcuts({ undo, redo, enabled: Boolean(project) });
 
@@ -219,6 +242,10 @@ export function VideoEditor({ onPublish }: Props) {
       const next = buildDefaultVideoProject(template.id, template.category, binding, format);
       replaceProject(next);
       setSelectedSceneId(next.scenes[0]?.id ?? null);
+      // New template → always preview the full storyboard, not a leftover clip mode.
+      setPreviewMode('all');
+      playerRef.current?.pause();
+      playerRef.current?.seekTo(0);
       if (openEditor) setShowEditorSettings(true);
       window.setTimeout(() => setAutoSaveSuspended(false), 0);
     },
@@ -308,7 +335,7 @@ export function VideoEditor({ onPublish }: Props) {
 
   useEffect(() => {
     if (!showEditorSettings || !project || !playerRef.current) return;
-    const frame = sceneStartFrame(project, selectedSceneIndex);
+    const frame = sceneSettledPreviewFrame(project, selectedSceneIndex);
     playerRef.current.seekTo(frame);
   }, [showEditorSettings, project, selectedSceneIndex, selectedScene?.id]);
 
@@ -472,13 +499,19 @@ export function VideoEditor({ onPublish }: Props) {
       for (const templateId of formatPresetIds) {
         if (cancelled) break;
 
-        const cacheKey = videoPresetThumbnailKey(templateId, format, brandColor);
+        const thumbBinding = resolveMarketingThumbBinding(binding);
+        const cacheKey = videoPresetThumbnailKey(
+          templateId,
+          format,
+          brandColor,
+          marketingBindingCacheKey(thumbBinding)
+        );
         if (getCachedMarketingThumbnail(cacheKey)) continue;
 
         const dataUrl = await renderVideoPresetThumbnail(
           templateId,
           format,
-          DEFAULT_MARKETING_THUMB_BINDING,
+          thumbBinding,
           brandColor
         );
         if (cancelled || !dataUrl) continue;
@@ -492,7 +525,7 @@ export function VideoEditor({ onPublish }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [project, format, formatPresetIds, brandColor]);
+  }, [project, format, formatPresetIds, brandColor, binding]);
 
   const handleExportVideo = useCallback(async () => {
     if (!project) throw new Error('No project');
@@ -584,7 +617,7 @@ export function VideoEditor({ onPublish }: Props) {
         setPreviewMode(options.mode);
       }
 
-      const frame = sceneStartFrame(project, index);
+      const frame = sceneSettledPreviewFrame(project, index);
       playerRef.current?.seekTo(frame);
 
       if (options?.play) {
@@ -769,7 +802,7 @@ export function VideoEditor({ onPublish }: Props) {
             onCategoryChange={setCategory}
             presetTemplates={presetTemplates}
             selectedId={selectedId}
-            onSelectPreset={(templateId) => applyTemplate(templateId, true)}
+            onSelectPreset={(templateId) => applyTemplate(templateId, false)}
             onCustomizePreset={(templateId) => applyTemplate(templateId, true)}
             designJsonForSave={designJson}
             aspectPreset={format}
@@ -821,7 +854,7 @@ export function VideoEditor({ onPublish }: Props) {
                             <ZoomOut className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Zoom out</TooltipContent>
+                        <TooltipContent>Zoom Out</TooltipContent>
                       </Tooltip>
                       <span className="min-w-[48px] text-center text-xs font-medium tabular-nums">
                         {relativeZoom}%
@@ -840,13 +873,45 @@ export function VideoEditor({ onPublish }: Props) {
                             <ZoomIn className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Zoom in</TooltipContent>
+                        <TooltipContent>Zoom In</TooltipContent>
+                      </Tooltip>
+                      <div className="bg-border mx-1 hidden h-4 w-px sm:block" />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                            onClick={handleFitToView}
+                            aria-label="Fit to view"
+                          >
+                            <Minimize2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Fit to View</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-9 min-h-[44px] w-9 min-w-[44px]"
+                            onClick={handleToggleFullscreen}
+                            aria-label="Fullscreen"
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Fullscreen</TooltipContent>
                       </Tooltip>
                     </div>
                   </TooltipProvider>
                 }
               />
               <VideoPreviewWorkspace
+                ref={previewWorkspaceRef}
                 playerRef={playerRef}
                 project={project}
                 format={format}
@@ -871,6 +936,7 @@ export function VideoEditor({ onPublish }: Props) {
               onProjectChange={setProject}
               onAddScene={handleAddScene}
               isPlaying={previewPlaying}
+              brandColor={brandColor}
             />
           </>
         ) : (

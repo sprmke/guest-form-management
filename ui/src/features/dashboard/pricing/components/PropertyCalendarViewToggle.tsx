@@ -1,16 +1,6 @@
-import { CalendarDays, Tag } from 'lucide-react';
-
-import {
-  AdminViewToggle,
-  type AdminViewToggleOption,
-} from '@/components/navigation/AdminViewToggle';
+import { SegmentedControl } from '@/components/ui/sliding-tabs';
 
 export type PropertyCalendarViewId = 'occupancy' | 'pricing';
-
-const PROPERTY_CALENDAR_VIEW_OPTIONS: AdminViewToggleOption<PropertyCalendarViewId>[] = [
-  { value: 'occupancy', label: 'Occupancy', Icon: CalendarDays },
-  { value: 'pricing', label: 'Pricing', Icon: Tag },
-];
 
 type Props = {
   value: PropertyCalendarViewId;
@@ -32,13 +22,18 @@ export function PropertyCalendarViewToggle({
   if (!showPricing) hideValues.push('pricing');
 
   return (
-    <AdminViewToggle
+    <SegmentedControl
       value={value}
       onChange={onChange}
-      options={PROPERTY_CALENDAR_VIEW_OPTIONS}
-      hideValues={hideValues}
       className={className}
-      ariaLabel="Choose calendar view"
+      hideValues={hideValues}
+      listClassName="border-border/60 w-full"
+      triggerClassName="h-9 min-h-[44px] px-2.5 text-[11px] sm:h-7 sm:min-h-0"
+      aria-label="Choose calendar view"
+      options={[
+        { value: 'occupancy', label: 'View Occupancy' },
+        { value: 'pricing', label: 'Manage Pricing' },
+      ]}
     />
   );
 }

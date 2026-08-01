@@ -54,6 +54,8 @@ type Props<T> = {
   getCheckOut?: (item: T) => string | null | undefined;
   renderOccupancySegment?: (segment: OccupancySegment<T>) => ReactNode;
   maxSpanLanes?: number;
+  /** Optional control beside the month nav (e.g. Name/Price toggle). */
+  navigationAccessory?: ReactNode;
 };
 
 export function CalendarMonthGrid<T>({
@@ -77,6 +79,7 @@ export function CalendarMonthGrid<T>({
   getCheckOut,
   renderOccupancySegment,
   maxSpanLanes,
+  navigationAccessory,
 }: Props<T>) {
   const [currentMonth, setCurrentMonth] = useState<Date>(() => initialMonth ?? new Date());
 
@@ -269,49 +272,52 @@ export function CalendarMonthGrid<T>({
           <h2 className="text-foreground text-[14px] font-bold">
             {format(currentMonth, 'MMMM yyyy')}
           </h2>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => navigateMonth('prev')}
-              aria-label="Previous month"
-              className={cn(
-                'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg',
-                'bg-card text-sidebar-muted border-sidebar-border border',
-                'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
-                'transition-all duration-100'
-              )}
-            >
-              <ChevronLeft className="size-3.5" aria-hidden />
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const today = new Date();
-                setCurrentMonth(today);
-                onMonthChange?.(today);
-                onSelectedDayChange(null);
-              }}
-              className={cn(
-                'inline-flex min-h-[36px] items-center justify-center rounded-lg px-2.5 text-[12px] font-semibold',
-                'bg-card text-sidebar-muted border-sidebar-border border',
-                'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
-              )}
-            >
-              Today
-            </button>
-            <button
-              type="button"
-              onClick={() => navigateMonth('next')}
-              aria-label="Next month"
-              className={cn(
-                'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg',
-                'bg-card text-sidebar-muted border-sidebar-border border',
-                'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
-                'transition-all duration-100'
-              )}
-            >
-              <ChevronRight className="size-3.5" aria-hidden />
-            </button>
+          <div className="flex flex-wrap items-center justify-end gap-4">
+            {navigationAccessory}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => navigateMonth('prev')}
+                aria-label="Previous month"
+                className={cn(
+                  'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg',
+                  'bg-card text-sidebar-muted border-sidebar-border border',
+                  'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+                  'transition-all duration-100'
+                )}
+              >
+                <ChevronLeft className="size-3.5" aria-hidden />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const today = new Date();
+                  setCurrentMonth(today);
+                  onMonthChange?.(today);
+                  onSelectedDayChange(null);
+                }}
+                className={cn(
+                  'inline-flex min-h-[36px] items-center justify-center rounded-lg px-2.5 text-[12px] font-semibold',
+                  'bg-card text-sidebar-muted border-sidebar-border border',
+                  'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
+                )}
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => navigateMonth('next')}
+                aria-label="Next month"
+                className={cn(
+                  'inline-flex min-h-[36px] min-w-[36px] items-center justify-center rounded-lg',
+                  'bg-card text-sidebar-muted border-sidebar-border border',
+                  'hover:border-sidebar-primary/40 hover:text-sidebar-accent-foreground hover:bg-sidebar-accent/50',
+                  'transition-all duration-100'
+                )}
+              >
+                <ChevronRight className="size-3.5" aria-hidden />
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

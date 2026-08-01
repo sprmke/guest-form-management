@@ -26,6 +26,9 @@
       "headers": {
         "Authorization": "Bearer ${GITHUB_TOKEN}"
       }
+    },
+    "markitdown": {
+      "command": "${HOME}/.local/bin/markitdown-mcp"
     }
   }
 }
