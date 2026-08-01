@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import { useActiveSceneIndex } from '@/features/dashboard/marketing/components/video-editor/useActiveSceneIndex';
 import type { VideoPreviewMode } from '@/features/dashboard/marketing/components/video-editor/useVideoPlayerTransport';
@@ -30,6 +39,15 @@ import { cn } from '@/lib/utils';
 
 import type { PlayerRef } from '@remotion/player';
 
+/** Hide scrollbars while keeping overflow scroll for pan. */
+const SCROLLBAR_HIDDEN_CLASS =
+  '[scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden';
+
+export type VideoPreviewWorkspaceHandle = {
+  fitToView: () => void;
+  toggleFullscreen: () => void;
+};
+
 type Props = {
   playerRef: React.RefObject<PlayerRef | null>;
   project: VideoProject;
@@ -57,306 +75,332 @@ type PanSession = {
   scrollTop: number;
 };
 
-export function VideoPreviewWorkspace({
-  playerRef,
-  project,
-  format,
-  durationInFrames,
-  inputProps,
-  selectedSceneIndex,
-  previewMode,
-  onPreviewModeChange,
-  onPlayingChange,
-  onProjectChange,
-  compositionKey,
-  selectedElementId = null,
-  onHighlightElement,
-  onCanvasSelectElement,
-  relativeZoom = 100,
-}: Props) {
-  const shellRef = useRef<HTMLDivElement>(null);
-  const previewAreaRef = useRef<HTMLDivElement>(null);
-  const panSessionRef = useRef<PanSession | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [previewPlaying, setPreviewPlaying] = useState(false);
-  const [previewMuted, setPreviewMuted] = useState(false);
-  const [isPanning, setIsPanning] = useState(false);
-  /** Fit size at 100% zoom — zoom is applied with CSS transform, not by resizing. */
-  const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
-  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Props>(
+  function VideoPreviewWorkspace(
+    {
+      playerRef,
+      project,
+      format,
+      durationInFrames,
+      inputProps,
+      selectedSceneIndex,
+      previewMode,
+      onPreviewModeChange,
+      onPlayingChange,
+      onProjectChange,
+      compositionKey,
+      selectedElementId = null,
+      onHighlightElement,
+      onCanvasSelectElement,
+      relativeZoom = 100,
+    },
+    ref
+  ) {
+    const shellRef = useRef<HTMLDivElement>(null);
+    const previewAreaRef = useRef<HTMLDivElement>(null);
+    const panSessionRef = useRef<PanSession | null>(null);
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [previewPlaying, setPreviewPlaying] = useState(false);
+    const [previewMuted, setPreviewMuted] = useState(false);
+    const [isPanning, setIsPanning] = useState(false);
+    /** Fit size at 100% zoom — zoom is applied with CSS transform, not by resizing. */
+    const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+    const [fitNonce, setFitNonce] = useState(0);
 
-  const dimensions = VIDEO_FORMAT_DIMENSIONS[format];
-  const previewMaxWidth = format === 'landscape' ? 640 : format === 'instagram-post' ? 400 : 360;
-  const compositionScale = scaleForVideoFormat(dimensions.width, dimensions.height);
-  const zoomFactor = Math.max(0.5, Math.min(2, relativeZoom / 100));
+    const dimensions = VIDEO_FORMAT_DIMENSIONS[format];
+    const previewMaxWidth = format === 'landscape' ? 640 : format === 'instagram-post' ? 400 : 360;
+    const compositionScale = scaleForVideoFormat(dimensions.width, dimensions.height);
+    const zoomFactor = Math.max(0.5, Math.min(2, relativeZoom / 100));
 
-  const templateTypography = useMemo(
-    () =>
-      inputProps.typography ??
-      resolveVideoTypographyContext(project.templateId, inputProps.brandColor),
-    [inputProps.typography, inputProps.brandColor, project.templateId]
-  );
-
-  const measurePreviewFrame = useCallback(() => {
-    const node = previewAreaRef.current;
-    if (!node) return;
-
-    const rect = node.getBoundingClientRect();
-    setViewportSize((prev) =>
-      prev.width === rect.width && prev.height === rect.height
-        ? prev
-        : { width: rect.width, height: rect.height }
+    const templateTypography = useMemo(
+      () =>
+        inputProps.typography ??
+        resolveVideoTypographyContext(project.templateId, inputProps.brandColor),
+      [inputProps.typography, inputProps.brandColor, project.templateId]
     );
 
-    const maxWidth = isFullscreen ? rect.width : previewMaxWidth;
-    // Always measure the fit size at 100% — zoom must not change layout aspect.
-    const next = fitVideoPreviewFrameSize(rect.width, rect.height, format, maxWidth, 100);
-    setFitSize((prev) =>
-      prev?.width === next.width && prev?.height === next.height ? prev : next
+    const measurePreviewFrame = useCallback(() => {
+      const node = previewAreaRef.current;
+      if (!node) return;
+
+      const rect = node.getBoundingClientRect();
+      setViewportSize((prev) =>
+        prev.width === rect.width && prev.height === rect.height
+          ? prev
+          : { width: rect.width, height: rect.height }
+      );
+
+      const maxWidth = isFullscreen ? rect.width : previewMaxWidth;
+      // Always measure the fit size at 100% — zoom must not change layout aspect.
+      const next = fitVideoPreviewFrameSize(rect.width, rect.height, format, maxWidth, 100);
+      setFitSize((prev) =>
+        prev?.width === next.width && prev?.height === next.height ? prev : next
+      );
+    }, [format, isFullscreen, previewMaxWidth]);
+
+    useLayoutEffect(() => {
+      measurePreviewFrame();
+      const node = previewAreaRef.current;
+      if (!node) return;
+
+      const observer = new ResizeObserver(() => measurePreviewFrame());
+      observer.observe(node);
+      return () => observer.disconnect();
+    }, [measurePreviewFrame]);
+
+    const editingSceneIndex = useActiveSceneIndex(
+      playerRef,
+      project,
+      previewMode,
+      selectedSceneIndex,
+      previewPlaying
     );
-  }, [format, isFullscreen, previewMaxWidth]);
+    const editingScene = project.scenes[editingSceneIndex];
 
-  useLayoutEffect(() => {
-    measurePreviewFrame();
-    const node = previewAreaRef.current;
-    if (!node) return;
+    useEffect(() => {
+      onPlayingChange?.(previewPlaying);
+    }, [previewPlaying, onPlayingChange]);
 
-    const observer = new ResizeObserver(() => measurePreviewFrame());
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [measurePreviewFrame]);
+    const toggleFullscreen = useCallback(async () => {
+      const node = shellRef.current;
+      if (!node) return;
 
-  const editingSceneIndex = useActiveSceneIndex(
-    playerRef,
-    project,
-    previewMode,
-    selectedSceneIndex,
-    previewPlaying
-  );
-  const editingScene = project.scenes[editingSceneIndex];
-
-  useEffect(() => {
-    onPlayingChange?.(previewPlaying);
-  }, [previewPlaying, onPlayingChange]);
-
-  const toggleFullscreen = useCallback(async () => {
-    const node = shellRef.current;
-    if (!node) return;
-
-    if (!document.fullscreenElement) {
-      try {
-        await node.requestFullscreen();
-        setIsFullscreen(true);
-      } catch {
-        setIsFullscreen(false);
+      if (!document.fullscreenElement) {
+        try {
+          await node.requestFullscreen();
+          setIsFullscreen(true);
+        } catch {
+          setIsFullscreen(false);
+        }
+        return;
       }
-      return;
-    }
 
-    await document.exitFullscreen();
-    setIsFullscreen(false);
-  }, []);
+      await document.exitFullscreen();
+      setIsFullscreen(false);
+    }, []);
 
-  useEffect(() => {
-    const onFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
-      requestAnimationFrame(() => measurePreviewFrame());
-    };
-    document.addEventListener('fullscreenchange', onFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
-  }, [measurePreviewFrame]);
+    const fitToView = useCallback(() => {
+      setFitNonce((n) => n + 1);
+    }, []);
 
-  const frameWidth = fitSize?.width ?? previewMaxWidth;
-  const frameHeight =
-    fitSize?.height ?? Math.round(previewMaxWidth * (dimensions.height / dimensions.width));
-  const displayWidth = frameWidth * zoomFactor;
-  const displayHeight = frameHeight * zoomFactor;
+    useImperativeHandle(
+      ref,
+      () => ({
+        fitToView,
+        toggleFullscreen: () => {
+          void toggleFullscreen();
+        },
+      }),
+      [fitToView, toggleFullscreen]
+    );
 
-  // Stage is at least the viewport, and grows with zoom so the white workspace is pannable.
-  const stagePad = 48;
-  const stageWidth = Math.max(
-    viewportSize.width,
-    displayWidth + stagePad * 2,
-    viewportSize.width * Math.max(1, zoomFactor)
-  );
-  const stageHeight = Math.max(
-    viewportSize.height,
-    displayHeight + stagePad * 2,
-    viewportSize.height * Math.max(1, zoomFactor)
-  );
-
-  // Keep the video centered in the stage when zoom / viewport changes.
-  useLayoutEffect(() => {
-    const node = previewAreaRef.current;
-    if (!node || viewportSize.width <= 0) return;
-    node.scrollLeft = Math.max(0, (stageWidth - viewportSize.width) / 2);
-    node.scrollTop = Math.max(0, (stageHeight - viewportSize.height) / 2);
-  }, [stageWidth, stageHeight, viewportSize.width, viewportSize.height, relativeZoom]);
-
-  const endPan = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const session = panSessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
-    panSessionRef.current = null;
-    setIsPanning(false);
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // Already released.
-    }
-  }, []);
-
-  const handlePanPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    const target = event.target as Element | null;
-    // Layer drag / resize stays on the video canvas — don't steal those gestures.
-    if (target?.closest?.('[data-video-layer]')) return;
-
-    const node = previewAreaRef.current;
-    if (!node) return;
-
-    panSessionRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      scrollLeft: node.scrollLeft,
-      scrollTop: node.scrollTop,
-    };
-    setIsPanning(true);
-    node.setPointerCapture(event.pointerId);
-    event.preventDefault();
-  }, []);
-
-  const handlePanPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    const session = panSessionRef.current;
-    if (!session || session.pointerId !== event.pointerId) return;
-    const node = previewAreaRef.current;
-    if (!node) return;
-
-    node.scrollLeft = session.scrollLeft - (event.clientX - session.startX);
-    node.scrollTop = session.scrollTop - (event.clientY - session.startY);
-  }, []);
-
-  const sceneSegments = useMemo(() => {
-    return project.scenes.map((scene, index) => {
-      const start = sceneStartFrame(project, index);
-      const end =
-        index + 1 < project.scenes.length ? sceneStartFrame(project, index + 1) : durationInFrames;
-      const span = Math.max(1, end - start);
-      return {
-        id: scene.id,
-        startPct: (start / durationInFrames) * 100,
-        widthPct: (span / durationInFrames) * 100,
-        index,
+    useEffect(() => {
+      const onFullscreenChange = () => {
+        setIsFullscreen(Boolean(document.fullscreenElement));
+        requestAnimationFrame(() => measurePreviewFrame());
       };
-    });
-  }, [project, durationInFrames]);
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+      return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+    }, [measurePreviewFrame]);
 
-  return (
-    <div
-      ref={shellRef}
-      className={cn(
-        'bg-muted/40 flex min-h-0 flex-1 flex-col overflow-hidden',
-        !isFullscreen && VIDEO_PREVIEW_SHELL_MIN_HEIGHT_CLASS,
-        isFullscreen && 'bg-muted h-dvh w-dvw'
-      )}
-    >
-      {/* Scrollable white/muted workspace — pan here, not inside the video canvas. */}
+    const frameWidth = fitSize?.width ?? previewMaxWidth;
+    const frameHeight =
+      fitSize?.height ?? Math.round(previewMaxWidth * (dimensions.height / dimensions.width));
+    const displayWidth = frameWidth * zoomFactor;
+    const displayHeight = frameHeight * zoomFactor;
+
+    // Stage is at least the viewport, and grows with zoom so the white workspace is pannable.
+    const stagePad = 48;
+    const stageWidth = Math.max(
+      viewportSize.width,
+      displayWidth + stagePad * 2,
+      viewportSize.width * Math.max(1, zoomFactor)
+    );
+    const stageHeight = Math.max(
+      viewportSize.height,
+      displayHeight + stagePad * 2,
+      viewportSize.height * Math.max(1, zoomFactor)
+    );
+
+    // Keep the video centered in the stage when zoom / viewport changes (or Fit is pressed).
+    useLayoutEffect(() => {
+      const node = previewAreaRef.current;
+      if (!node || viewportSize.width <= 0) return;
+      node.scrollLeft = Math.max(0, (stageWidth - viewportSize.width) / 2);
+      node.scrollTop = Math.max(0, (stageHeight - viewportSize.height) / 2);
+    }, [stageWidth, stageHeight, viewportSize.width, viewportSize.height, relativeZoom, fitNonce]);
+
+    const endPan = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+      const session = panSessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
+      panSessionRef.current = null;
+      setIsPanning(false);
+      try {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      } catch {
+        // Already released.
+      }
+    }, []);
+
+    const handlePanPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      const target = event.target as Element | null;
+      // Layer drag / resize stays on the video canvas — don't steal those gestures.
+      if (target?.closest?.('[data-video-layer]')) return;
+
+      const node = previewAreaRef.current;
+      if (!node) return;
+
+      panSessionRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: node.scrollLeft,
+        scrollTop: node.scrollTop,
+      };
+      setIsPanning(true);
+      node.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }, []);
+
+    const handlePanPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+      const session = panSessionRef.current;
+      if (!session || session.pointerId !== event.pointerId) return;
+      const node = previewAreaRef.current;
+      if (!node) return;
+
+      node.scrollLeft = session.scrollLeft - (event.clientX - session.startX);
+      node.scrollTop = session.scrollTop - (event.clientY - session.startY);
+    }, []);
+
+    const sceneSegments = useMemo(() => {
+      return project.scenes.map((scene, index) => {
+        const start = sceneStartFrame(project, index);
+        const end =
+          index + 1 < project.scenes.length
+            ? sceneStartFrame(project, index + 1)
+            : durationInFrames;
+        const span = Math.max(1, end - start);
+        return {
+          id: scene.id,
+          startPct: (start / durationInFrames) * 100,
+          widthPct: (span / durationInFrames) * 100,
+          index,
+        };
+      });
+    }, [project, durationInFrames]);
+
+    return (
       <div
-        ref={previewAreaRef}
+        ref={shellRef}
         className={cn(
-          'relative min-h-0 flex-1 overflow-auto overscroll-contain',
-          isPanning ? 'cursor-grabbing' : 'cursor-grab'
+          'bg-muted/40 flex min-h-0 flex-1 flex-col overflow-hidden',
+          !isFullscreen && VIDEO_PREVIEW_SHELL_MIN_HEIGHT_CLASS,
+          isFullscreen && 'bg-muted h-dvh w-dvw'
         )}
-        onPointerDown={handlePanPointerDown}
-        onPointerMove={handlePanPointerMove}
-        onPointerUp={endPan}
-        onPointerCancel={endPan}
       >
+        {/* Scrollable workspace — pan via drag; scrollbars hidden. */}
         <div
-          className="relative flex items-center justify-center"
-          style={{ width: stageWidth, height: stageHeight, minWidth: '100%', minHeight: '100%' }}
+          ref={previewAreaRef}
+          className={cn(
+            'relative min-h-0 flex-1 overflow-auto overscroll-contain',
+            SCROLLBAR_HIDDEN_CLASS,
+            isPanning ? 'cursor-grabbing' : 'cursor-grab'
+          )}
+          onPointerDown={handlePanPointerDown}
+          onPointerMove={handlePanPointerMove}
+          onPointerUp={endPan}
+          onPointerCancel={endPan}
         >
           <div
-            className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
-            style={{
-              width: displayWidth,
-              height: displayHeight,
-            }}
+            className="relative flex items-center justify-center"
+            style={{ width: stageWidth, height: stageHeight, minWidth: '100%', minHeight: '100%' }}
           >
             <div
-              className="absolute left-0 top-0 overflow-hidden"
+              className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
               style={{
-                width: frameWidth,
-                height: frameHeight,
-                transform: `scale(${zoomFactor})`,
-                transformOrigin: 'top left',
+                width: displayWidth,
+                height: displayHeight,
               }}
             >
-              <div className="relative size-full overflow-hidden bg-slate-950">
-                <div className="pointer-events-none absolute inset-0 size-full">
-                  <VideoRemotionPlayer
-                    playerRef={playerRef}
-                    compositionKey={compositionKey}
-                    durationInFrames={durationInFrames}
-                    fps={project.fps}
-                    width={dimensions.width}
-                    height={dimensions.height}
-                    inputProps={inputProps}
-                    previewMuted={previewMuted}
-                  />
+              <div
+                className="absolute left-0 top-0 overflow-hidden"
+                style={{
+                  width: frameWidth,
+                  height: frameHeight,
+                  transform: `scale(${zoomFactor})`,
+                  transformOrigin: 'top left',
+                }}
+              >
+                <div className="relative size-full overflow-hidden bg-slate-950">
+                  <div className="pointer-events-none absolute inset-0 size-full">
+                    <VideoRemotionPlayer
+                      playerRef={playerRef}
+                      compositionKey={compositionKey}
+                      durationInFrames={durationInFrames}
+                      fps={project.fps}
+                      width={dimensions.width}
+                      height={dimensions.height}
+                      inputProps={inputProps}
+                      previewMuted={previewMuted}
+                    />
+                  </div>
+                  {editingScene ? (
+                    <VideoTextPositionOverlay
+                      scene={editingScene}
+                      templateTypography={templateTypography}
+                      compositionScale={compositionScale}
+                      previewWidthPx={frameWidth}
+                      compositionWidth={dimensions.width}
+                      selectedElementId={selectedElementId}
+                      onSelectElement={onHighlightElement}
+                      onActivateElement={(layerId) =>
+                        onCanvasSelectElement?.(layerId, editingScene.id)
+                      }
+                      onLayerPositionChange={(layerId, position) => {
+                        onProjectChange(
+                          updateScene(
+                            project,
+                            editingScene.id,
+                            updateSceneLayerPosition(editingScene, layerId, position)
+                          )
+                        );
+                      }}
+                      onLayerWidthChange={(layerId, widthPct) => {
+                        onProjectChange(
+                          updateScene(
+                            project,
+                            editingScene.id,
+                            updateSceneLayer(editingScene, layerId, { widthPct })
+                          )
+                        );
+                      }}
+                    />
+                  ) : null}
                 </div>
-                {editingScene ? (
-                  <VideoTextPositionOverlay
-                    scene={editingScene}
-                    templateTypography={templateTypography}
-                    compositionScale={compositionScale}
-                    previewWidthPx={frameWidth}
-                    compositionWidth={dimensions.width}
-                    selectedElementId={selectedElementId}
-                    onSelectElement={onHighlightElement}
-                    onActivateElement={(layerId) =>
-                      onCanvasSelectElement?.(layerId, editingScene.id)
-                    }
-                    onLayerPositionChange={(layerId, position) => {
-                      onProjectChange(
-                        updateScene(
-                          project,
-                          editingScene.id,
-                          updateSceneLayerPosition(editingScene, layerId, position)
-                        )
-                      );
-                    }}
-                    onLayerWidthChange={(layerId, widthPct) => {
-                      onProjectChange(
-                        updateScene(
-                          project,
-                          editingScene.id,
-                          updateSceneLayer(editingScene, layerId, { widthPct })
-                        )
-                      );
-                    }}
-                  />
-                ) : null}
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <VideoPlaybackControls
-        playerRef={playerRef}
-        project={project}
-        selectedSceneIndex={selectedSceneIndex}
-        previewMode={previewMode}
-        onPreviewModeChange={onPreviewModeChange}
-        compositionKey={compositionKey}
-        isFullscreen={isFullscreen}
-        onToggleFullscreen={() => void toggleFullscreen()}
-        onPlayingChange={setPreviewPlaying}
-        onMutedChange={setPreviewMuted}
-        sceneSegments={sceneSegments}
-        editingSceneIndex={editingSceneIndex}
-      />
-    </div>
-  );
-}
+        <VideoPlaybackControls
+          playerRef={playerRef}
+          project={project}
+          selectedSceneIndex={selectedSceneIndex}
+          previewMode={previewMode}
+          onPreviewModeChange={onPreviewModeChange}
+          compositionKey={compositionKey}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={() => void toggleFullscreen()}
+          onPlayingChange={setPreviewPlaying}
+          onMutedChange={setPreviewMuted}
+          sceneSegments={sceneSegments}
+          editingSceneIndex={editingSceneIndex}
+        />
+      </div>
+    );
+  }
+);
+
+VideoPreviewWorkspace.displayName = 'VideoPreviewWorkspace';

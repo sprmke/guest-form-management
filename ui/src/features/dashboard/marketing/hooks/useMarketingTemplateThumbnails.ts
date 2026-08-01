@@ -316,7 +316,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
       const cacheKeys = presetIds.map((id) => {
         if (contentType === 'design') return designPresetThumbnailKey(id, brandColor);
         if (contentType === 'video') {
-          return videoPresetThumbnailKey(id, videoFormat!, brandColor);
+          return videoPresetThumbnailKey(id, videoFormat!, brandColor, videoBindingKey);
         }
         return calendarPresetThumbnailKey(
           id,
@@ -386,6 +386,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
     calendarFormat,
     brandColor,
     calendarPreviewKey,
+    videoBindingKey,
     presetIds,
   ]);
 
@@ -437,24 +438,19 @@ export function useMarketingTemplateThumbnails(options: Options) {
               }
             }
           } else if (contentType === 'video') {
-            cacheKey = videoPresetThumbnailKey(id, videoFormat!, brandColor);
+            const thumbBinding = resolveMarketingThumbBinding(videoBinding);
+            cacheKey = videoPresetThumbnailKey(id, videoFormat!, brandColor, videoBindingKey);
             dataUrl = await ensurePresetThumbnail(
               cacheKey,
               presetPersistKey('video', cacheKey),
-              () =>
-                renderVideoPresetThumbnail(
-                  id,
-                  videoFormat!,
-                  DEFAULT_MARKETING_THUMB_BINDING,
-                  brandColor
-                )
+              () => renderVideoPresetThumbnail(id, videoFormat!, thumbBinding, brandColor)
             );
             if (!dataUrl && !cancelled) {
               await new Promise<void>((resolve) => window.setTimeout(resolve, 400));
               dataUrl = await renderVideoPresetThumbnail(
                 id,
                 videoFormat!,
-                DEFAULT_MARKETING_THUMB_BINDING,
+                thumbBinding,
                 brandColor
               );
               if (dataUrl) {
@@ -520,6 +516,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
     calendarFormat,
     brandColor,
     calendarPreviewKey,
+    videoBindingKey,
+    videoBinding,
     presetIds,
   ]);
 

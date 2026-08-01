@@ -55,6 +55,22 @@ export function sceneStartFrame(project: VideoProject, sceneIndex: number): numb
   return Math.max(0, frame);
 }
 
+/**
+ * Frame to show when selecting a clip for edit/preview.
+ * Past the incoming transition so hosts see this clip’s media, not the previous clip fading out.
+ */
+export function sceneSettledPreviewFrame(project: VideoProject, sceneIndex: number): number {
+  const start = sceneStartFrame(project, sceneIndex);
+  const scene = project.scenes[sceneIndex];
+  if (!scene) return start;
+
+  const sceneFrames = sceneDurationInFrames(scene, project.fps);
+  const incoming = sceneIndex > 0 ? transitionDurationInFrames(scene.transition) : 0;
+  const offset = Math.min(incoming, Math.max(0, sceneFrames - 1));
+  const total = videoProjectDurationInFrames(project);
+  return Math.min(start + offset, Math.max(0, total - 1));
+}
+
 /** Exclusive end frame for a scene (first frame of the next scene, or project end). */
 export function sceneEndFrame(project: VideoProject, sceneIndex: number): number {
   const { scenes } = project;

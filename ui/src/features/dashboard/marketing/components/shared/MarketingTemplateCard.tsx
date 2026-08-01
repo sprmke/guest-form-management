@@ -153,7 +153,15 @@ export function MarketingTemplateCard({
 
   const actionBar =
     (menuItems && menuItems.length > 0) || onCustomize ? (
-      <div className="absolute right-0.5 top-0.5 z-20 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
+      <div
+        className={cn(
+          'absolute right-0.5 top-0.5 z-20 flex gap-0.5 transition-opacity',
+          // Settings stays visible so hosts can open advanced edit without hunting hover.
+          onCustomize
+            ? 'opacity-100'
+            : 'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100'
+        )}
+      >
         {onCustomize ? (
           <button
             type="button"
@@ -163,7 +171,7 @@ export function MarketingTemplateCard({
             }}
             aria-label={`Customize ${name}`}
             title="Settings"
-            className="bg-background/90 text-muted-foreground hover:text-foreground flex size-7 min-h-[28px] min-w-[28px] items-center justify-center rounded-md shadow-sm backdrop-blur-sm transition-colors"
+            className="bg-background/95 text-foreground flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md shadow-sm backdrop-blur-sm transition-colors hover:bg-white sm:min-h-[32px] sm:min-w-[32px]"
           >
             <Settings2 className="size-3.5" aria-hidden />
           </button>

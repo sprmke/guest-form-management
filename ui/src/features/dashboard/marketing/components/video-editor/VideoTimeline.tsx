@@ -15,12 +15,16 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 
 import { VideoClipThumbnail } from '@/features/dashboard/marketing/components/video-editor/VideoClipThumbnail';
+import { useVideoSceneThumbnails } from '@/features/dashboard/marketing/hooks/useVideoSceneThumbnails';
 import { VIDEO_FORMAT_DIMENSIONS } from '@/features/dashboard/marketing/lib/video/videoFormatDimensions';
-import type { VideoScene } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import type { VideoProject } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type {
+  VideoFormat,
+  VideoProject,
+  VideoScene,
+} from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   reorderScenes,
   removeScene,
@@ -28,7 +32,18 @@ import {
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+
+/** Timeline clip frame sized to the project format (9:16 / 1:1 / 16:9). */
+function timelineClipFrameSize(format: VideoFormat): { width: number; height: number } {
+  const dims = VIDEO_FORMAT_DIMENSIONS[format];
+  const aspect = dims.width / dims.height;
+  // Portrait needs more height so 9:16 reads clearly; landscape stays shorter.
+  const height = format === 'instagram-story' ? 140 : format === 'instagram-post' ? 112 : 88;
+  const width = Math.max(64, Math.round(height * aspect));
+  return { width, height };
+}
 
 type Props = {
   project: VideoProject;
@@ -37,6 +52,7 @@ type Props = {
   onProjectChange: (project: VideoProject) => void;
   onAddScene: () => void;
   isPlaying?: boolean;
+  brandColor?: string;
 };
 
 export function VideoTimeline({
@@ -46,9 +62,15 @@ export function VideoTimeline({
   onProjectChange,
   onAddScene,
   isPlaying = false,
+  brandColor,
 }: Props) {
   const totalFrames = videoProjectDurationInFrames(project);
   const formatLabel = VIDEO_FORMAT_DIMENSIONS[project.format].aspect;
+  const addFrame = timelineClipFrameSize(project.format);
+  const { getSceneThumbnailUrl, isSceneThumbnailLoading } = useVideoSceneThumbnails(
+    project,
+    brandColor
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -92,15 +114,18 @@ export function VideoTimeline({
             items={project.scenes.map((scene) => scene.id)}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="flex min-w-min items-stretch gap-2.5">
+            <div className="flex min-w-min items-end gap-1.5">
               {project.scenes.map((scene, index) => (
                 <SortableTimelineClip
                   key={scene.id}
                   scene={scene}
                   index={index}
+                  format={project.format}
                   selected={selectedSceneId === scene.id}
                   playing={isPlaying && selectedSceneId === scene.id}
                   canRemove={project.scenes.length > 1}
+                  compositionThumbUrl={getSceneThumbnailUrl(scene.id)}
+                  compositionThumbLoading={isSceneThumbnailLoading(scene.id)}
                   onSelect={() => onSelectScene(scene.id)}
                   onRemove={() => handleRemove(scene.id)}
                 />
@@ -109,7 +134,8 @@ export function VideoTimeline({
                 type="button"
                 variant="outline"
                 onClick={onAddScene}
-                className="border-border bg-background hover:bg-muted text-muted-foreground min-h-[147px] min-w-[130px] shrink-0 flex-col gap-1 self-stretch rounded-xl border-dashed px-3 py-2"
+                style={{ width: addFrame.width, height: addFrame.height }}
+                className="border-border bg-muted/30 hover:bg-muted text-muted-foreground shrink-0 flex-col gap-1 rounded-lg border-dashed px-2"
                 aria-label="Add clip"
               >
                 <Plus className="size-4" aria-hidden />
@@ -126,121 +152,132 @@ export function VideoTimeline({
 function SortableTimelineClip({
   scene,
   index,
+  format,
   selected,
   playing,
   canRemove,
+  compositionThumbUrl,
+  compositionThumbLoading,
   onSelect,
   onRemove,
 }: {
   scene: VideoScene;
   index: number;
+  format: VideoFormat;
   selected: boolean;
   playing: boolean;
   canRemove: boolean;
+  compositionThumbUrl?: string;
+  compositionThumbLoading: boolean;
   onSelect: () => void;
   onRemove: () => void;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: scene.id,
   });
 
-  const width = Math.max(108, Math.round(scene.durationSec * 44));
+  const frame = timelineClipFrameSize(format);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    width,
+    width: frame.width,
+    height: frame.height,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={cn('group/clip shrink-0', isDragging && 'z-10 opacity-90')}
+      className={cn('group/clip relative shrink-0', isDragging && 'z-10 opacity-95')}
     >
-      <button
-        type="button"
+      <div
+        {...attributes}
+        {...listeners}
+        role="button"
+        tabIndex={0}
         onClick={onSelect}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onSelect();
+          }
+        }}
         aria-pressed={selected}
         aria-label={`Select ${scene.label}`}
         className={cn(
-          'border-border bg-card flex w-full flex-col overflow-hidden rounded-xl border text-left shadow-sm transition-all duration-200',
-          'hover:border-primary/35 hover:shadow-md',
+          'relative size-full cursor-grab overflow-hidden rounded-lg border text-left active:cursor-grabbing',
+          'border-border/80 bg-neutral-950 shadow-sm transition-shadow duration-150',
+          'hover:border-primary/50 hover:shadow-md',
           'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-          selected && 'border-primary bg-primary/[0.03] ring-primary/20 shadow-md ring-1',
+          selected && 'border-primary ring-primary/30 shadow-md ring-2',
           playing && selected && 'border-primary',
           isDragging && 'shadow-lg'
         )}
       >
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br from-neutral-900/[0.06] to-neutral-900/[0.02]">
-          {scene.imageUrl ? (
+        <div className="absolute inset-0">
+          {compositionThumbUrl ? (
+            <img
+              src={compositionThumbUrl}
+              alt=""
+              className="size-full object-cover object-center"
+              draggable={false}
+            />
+          ) : scene.imageUrl ? (
             <VideoClipThumbnail
               url={scene.imageUrl}
               mediaType={scene.backgroundMediaType}
               className="size-full"
             />
+          ) : compositionThumbLoading ? (
+            <Skeleton className="size-full rounded-none" aria-hidden />
           ) : (
-            <div className="text-muted-foreground flex size-full items-center justify-center text-[10px] font-semibold uppercase tracking-wide">
+            <div className="flex size-full items-center justify-center bg-neutral-900 text-[10px] font-semibold uppercase tracking-wide text-white/50">
               {scene.kind}
             </div>
           )}
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm">
-            {index + 1}
-          </span>
-          <span className="absolute bottom-1.5 right-1.5 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/90 backdrop-blur-sm">
-            {scene.durationSec}s
-          </span>
-          {canRemove ? (
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation();
-                onRemove();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  onRemove();
-                }
-              }}
-              aria-label={`Remove ${scene.label}`}
-              className="bg-background/95 text-muted-foreground hover:text-destructive absolute right-1.5 top-1.5 flex min-h-[36px] min-w-[36px] items-center justify-center rounded-md opacity-100 shadow-sm transition-opacity sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/clip:opacity-100"
-            >
-              <Trash2 className="size-3.5" aria-hidden />
-            </span>
-          ) : null}
         </div>
 
-        <div className="flex min-h-[44px] items-center gap-1 px-2 py-1.5">
-          <span
-            ref={setActivatorNodeRef}
-            {...attributes}
-            {...listeners}
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-            aria-label={`Drag ${scene.label}`}
-            className="text-muted-foreground hover:text-foreground flex min-h-[36px] min-w-[28px] shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing"
-          >
-            <GripVertical className="size-4" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1 truncate">
-            <span className="block truncate text-xs font-semibold">{scene.label}</span>
-            <span className="text-muted-foreground block truncate text-[10px] capitalize">
-              {scene.kind}
-            </span>
-          </span>
-        </div>
-      </button>
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 h-10 bg-gradient-to-b from-black/55 to-transparent"
+          aria-hidden
+        />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent"
+          aria-hidden
+        />
+
+        <span className="absolute left-1.5 top-1.5 z-10 flex size-5 items-center justify-center rounded-full bg-black/65 text-[10px] font-bold tabular-nums text-white backdrop-blur-sm">
+          {index + 1}
+        </span>
+
+        <span className="absolute right-1.5 top-1.5 z-10 rounded-md bg-black/65 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/95 backdrop-blur-sm">
+          {scene.durationSec}s
+        </span>
+
+        <span className="absolute bottom-1.5 left-1.5 z-10 min-w-0 max-w-[calc(100%-2.75rem)] truncate text-xs font-semibold text-white drop-shadow-sm">
+          {scene.label}
+        </span>
+      </div>
+
+      {canRemove ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRemove();
+          }}
+          aria-label={`Remove ${scene.label}`}
+          className={cn(
+            'absolute bottom-1 right-1 z-20 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md',
+            'bg-black/55 text-white/90 backdrop-blur-sm transition-opacity',
+            'hover:bg-black/75 hover:text-white',
+            'opacity-100 sm:opacity-0 sm:focus-visible:opacity-100 sm:group-hover/clip:opacity-100'
+          )}
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 }

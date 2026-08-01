@@ -5,7 +5,7 @@ import {
   sceneEndFrame,
   sceneFrameRange,
   sceneIndexAtFrame,
-  sceneStartFrame,
+  sceneSettledPreviewFrame,
   videoProjectDurationInFrames,
 } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 
@@ -178,7 +178,8 @@ export function useVideoPlayerTransport({
     const player = playerRef.current;
     if (!player || !project) return;
     player.pause();
-    const frame = previewMode === 'clip' ? sceneStartFrame(project, selectedSceneIndex) : 0;
+    const frame =
+      previewMode === 'clip' ? sceneSettledPreviewFrame(project, selectedSceneIndex) : 0;
     player.seekTo(frame);
     setCurrentFrame(frame);
     setIsPlaying(false);
@@ -188,7 +189,7 @@ export function useVideoPlayerTransport({
     (sceneIndex: number) => {
       if (!project) return;
       const index = Math.max(0, Math.min(sceneIndex, project.scenes.length - 1));
-      seekToFrame(sceneStartFrame(project, index));
+      seekToFrame(sceneSettledPreviewFrame(project, index));
     },
     [project, seekToFrame]
   );
