@@ -64,12 +64,14 @@ Also, we still keep the get verified on sidebar
 
 ===
 
-Update pricing menu/page to be "Calendar"
+✅ Update pricing menu/page to be "Calendar"
 
 We will have different tabs or switch view inside our calendar page.
 
 1. Default View - think of better name. similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
 2. Pricing View - this is the current pricing page to configure pricing per booking. We should also have to support to block booking date
+
+Guide: `docs/guides/routes/org/property/calendar.md`
 
 ===
 
