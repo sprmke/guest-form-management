@@ -3,6 +3,11 @@
  */
 
 import { createServiceClient } from './orgAuth.ts';
+import {
+  deleteBlockedRangesCovering,
+  insertBlockedRange,
+  loadBlockedDateKeys,
+} from './propertyBlockedDates.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 
 const DEFAULT_WEEKDAY = 2799;
@@ -97,6 +102,7 @@ export type PropertyPricingDto = {
   guestAdditionalFee: number;
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
+  blockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
 };
 
@@ -158,7 +164,10 @@ function addDays(date: Date, days: number): Date {
 
 function rowToDefaults(
   row: AppSettingsPricingRow | null
-): Omit<PropertyPricingDto, 'dateOverrides' | 'bookedDateKeys' | 'holidayRules'> {
+): Omit<
+  PropertyPricingDto,
+  'dateOverrides' | 'bookedDateKeys' | 'blockedDateKeys' | 'holidayRules'
+> {
   return {
     weekdayNightlyRate: pickMoney(row?.weekday_nightly_rate, DEFAULT_WEEKDAY),
     weekendNightlyRate: pickMoney(row?.weekend_nightly_rate, DEFAULT_WEEKEND),
@@ -308,15 +317,17 @@ export async function loadPropertyPricing(
     throw new Error(`Failed to load property pricing: ${error.message}`);
   }
 
-  const [dateOverrides, bookedDateKeys] = await Promise.all([
+  const [dateOverrides, bookedDateKeys, blockedDateKeys] = await Promise.all([
     loadDateOverrides(propertyId),
     loadBookedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
+    loadBlockedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
   ]);
 
   return {
     ...rowToDefaults(row as AppSettingsPricingRow | null),
     dateOverrides,
     bookedDateKeys,
+    blockedDateKeys,
     holidayRules: parseHolidayRules((row as AppSettingsPricingRow | null)?.pricing_holiday_rules),
   };
 }
@@ -344,11 +355,14 @@ export type PropertyPricingPatch = {
   guestAdditionalFee?: number;
   dateOverrides?: Record<string, number>;
   holidayRules?: PricingHolidayRuleDto[];
+  blockRange?: { startDate: string; endDate: string; note?: string };
+  unblockDateKeys?: string[];
 };
 
 export async function savePropertyPricing(
   propertyId: string,
-  patch: PropertyPricingPatch
+  patch: PropertyPricingPatch,
+  options?: { userId?: string | null }
 ): Promise<PropertyPricingDto> {
   await ensurePropertySettings(propertyId);
   const supabase = createServiceClient();
@@ -417,6 +431,20 @@ export async function savePropertyPricing(
         throw new Error(`Failed to save pricing overrides: ${insertError.message}`);
       }
     }
+  }
+
+  if (patch.blockRange) {
+    await insertBlockedRange(
+      propertyId,
+      patch.blockRange.startDate,
+      patch.blockRange.endDate,
+      patch.blockRange.note,
+      options?.userId
+    );
+  }
+
+  if (patch.unblockDateKeys && patch.unblockDateKeys.length > 0) {
+    await deleteBlockedRangesCovering(propertyId, patch.unblockDateKeys);
   }
 
   return loadPropertyPricing(propertyId);

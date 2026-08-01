@@ -7,12 +7,15 @@ import { supabase } from '@/lib/supabase/client';
 export type PropertyPricingDto = PropertyPricingDefaults & {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
+  blockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
 };
 
 export type PropertyPricingPatch = Partial<PropertyPricingDefaults> & {
   dateOverrides?: Record<string, number>;
   holidayRules?: PricingHolidayRuleDto[];
+  blockRange?: { startDate: string; endDate: string; note?: string };
+  unblockDateKeys?: string[];
 };
 
 async function authHeaders(): Promise<HeadersInit> {
@@ -43,7 +46,7 @@ export async function fetchPropertyPricing(
   if (!res.ok) {
     throw new Error(json?.error ?? json?.message ?? 'Failed to load pricing');
   }
-  return json.data as PropertyPricingDto;
+  return { blockedDateKeys: [], ...json.data } as PropertyPricingDto;
 }
 
 export async function savePropertyPricing(
