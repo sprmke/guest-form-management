@@ -41,7 +41,12 @@ import {
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
-export function PropertyPricingPage() {
+type Props = {
+  /** Rendered inside PropertyCalendarPage's Pricing tab — omit the page title/header. */
+  embedded?: boolean;
+};
+
+export function PropertyPricingPage({ embedded = false }: Props = {}) {
   const { data: access } = usePropertyPermissions();
   const permissions = access?.permissions;
   const canEdit = hasPropertyPermission(permissions, 'pricing:edit');
@@ -328,12 +333,14 @@ export function PropertyPricingPage() {
   return (
     <>
       <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="pricing-heading"
-          title="Pricing"
-          subtitle="Manage booking rates and fees for this property."
-          variant="compact"
-        />
+        {!embedded && (
+          <AdminPageHeader
+            id="pricing-heading"
+            title="Pricing"
+            subtitle="Manage booking rates and fees for this property."
+            variant="compact"
+          />
+        )}
 
         <PricingStatsRow
           weekdayRate={weekdayRate}
