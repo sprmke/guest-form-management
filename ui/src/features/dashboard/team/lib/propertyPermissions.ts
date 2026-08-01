@@ -18,7 +18,7 @@ export type PropertySection =
   | 'dashboard'
   | 'bookings'
   | 'finance'
-  | 'pricing'
+  | 'calendar'
   | 'maintenance'
   | 'marketing'
   | 'notifications'
@@ -39,7 +39,7 @@ export const PROPERTY_NAV_VIEW_PERMISSION: Record<string, TeamPermissionId> = {
   Dashboard: 'bookings:view',
   Bookings: 'bookings:view',
   Finance: 'finance:view',
-  Pricing: 'pricing:view',
+  Calendar: 'pricing:view',
   Maintenance: 'maintenance:view',
   Marketing: 'notifications:view',
   Notifications: 'notifications:view',
@@ -54,7 +54,8 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   dashboard: 'bookings:view',
   bookings: 'bookings:view',
   finance: 'finance:view',
-  pricing: 'pricing:view',
+  // RequirePropertyPermission applies the calendar's pricing:view || bookings:view gate.
+  calendar: 'pricing:view',
   maintenance: 'maintenance:view',
   marketing: 'notifications:view',
   notifications: 'notifications:view',

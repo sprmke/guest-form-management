@@ -4,6 +4,7 @@ import {
   Bell,
   BookOpen,
   Building2,
+  CalendarDays,
   Car,
   ClipboardCheck,
   DollarSign,
@@ -146,9 +147,9 @@ export function buildPropertyNavSections(
           Icon: Wrench,
         },
         {
-          label: 'Pricing',
-          href: propertySectionPath(orgSlug, propertySlug, 'pricing'),
-          Icon: Tags,
+          label: 'Calendar',
+          href: propertySectionPath(orgSlug, propertySlug, 'calendar'),
+          Icon: CalendarDays,
         },
         {
           label: 'Team',
@@ -270,6 +271,12 @@ export function filterPropertyNavSections(
       ...section,
       items: section.items.filter((item) => {
         if (item.disabled || !item.href) return true;
+        if (item.label === 'Calendar') {
+          return (
+            hasPropertyPermission(granted, 'pricing:view') ||
+            hasPropertyPermission(granted, 'bookings:view')
+          );
+        }
         const required = PROPERTY_NAV_VIEW_PERMISSION[item.label];
         if (!required) return true;
         return hasPropertyPermission(granted, required);
