@@ -131,6 +131,29 @@ be selected for pricing mutations.
 4. The response refreshes rates, booked nights, blocked nights, overrides, and holiday
    rules in the pricing query cache.
 
+### Save pricing dialog
+
+| Option                | Effect                                                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| All future dates      | Saves the weekday and Fri–Sun rates as property defaults used for future pricing calculations.                             |
+| This month only       | Leaves property defaults unchanged and saves resolved rates as overrides for future, unbooked nights in the visible month. |
+| Override custom rates | Replaces existing custom date overrides instead of preserving them; unchecked custom rates remain authoritative.           |
+
+### Booking workflow integration
+
+The booking detail workflow loads these property defaults, date overrides, and holiday
+rules into `ReviewPricingForm`. For a booking without saved pricing, the form computes the
+stay rate from its occupied nights and fills applicable fee defaults. Values already saved
+on the booking take precedence, so later Calendar Pricing changes do not rewrite that
+booking's pricing snapshot. See the
+[booking detail operator guide](./bookings-detail.md#progress-panel) for the workflow UI and
+transition behavior.
+
+### Summary and calendar states
+
+The KPI chips show Base Rate, Weekend Premium, Custom Dates, and Fixed Fees. The calendar
+legend distinguishes Available, Holiday, Custom, Booked, Blocked, and Selected nights.
+
 ---
 
 ## Blocked dates
