@@ -49,6 +49,14 @@ type Props = {
   relativeZoom?: number;
 };
 
+type PanSession = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  scrollLeft: number;
+  scrollTop: number;
+};
+
 export function VideoPreviewWorkspace({
   playerRef,
   project,
@@ -68,11 +76,14 @@ export function VideoPreviewWorkspace({
 }: Props) {
   const shellRef = useRef<HTMLDivElement>(null);
   const previewAreaRef = useRef<HTMLDivElement>(null);
+  const panSessionRef = useRef<PanSession | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState(false);
   const [previewMuted, setPreviewMuted] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
   /** Fit size at 100% zoom — zoom is applied with CSS transform, not by resizing. */
   const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
 
   const dimensions = VIDEO_FORMAT_DIMENSIONS[format];
   const previewMaxWidth = format === 'landscape' ? 640 : format === 'instagram-post' ? 400 : 360;
@@ -91,6 +102,12 @@ export function VideoPreviewWorkspace({
     if (!node) return;
 
     const rect = node.getBoundingClientRect();
+    setViewportSize((prev) =>
+      prev.width === rect.width && prev.height === rect.height
+        ? prev
+        : { width: rect.width, height: rect.height }
+    );
+
     const maxWidth = isFullscreen ? rect.width : previewMaxWidth;
     // Always measure the fit size at 100% — zoom must not change layout aspect.
     const next = fitVideoPreviewFrameSize(rect.width, rect.height, format, maxWidth, 100);
@@ -152,6 +169,72 @@ export function VideoPreviewWorkspace({
   const frameWidth = fitSize?.width ?? previewMaxWidth;
   const frameHeight =
     fitSize?.height ?? Math.round(previewMaxWidth * (dimensions.height / dimensions.width));
+  const displayWidth = frameWidth * zoomFactor;
+  const displayHeight = frameHeight * zoomFactor;
+
+  // Stage is at least the viewport, and grows with zoom so the white workspace is pannable.
+  const stagePad = 48;
+  const stageWidth = Math.max(
+    viewportSize.width,
+    displayWidth + stagePad * 2,
+    viewportSize.width * Math.max(1, zoomFactor)
+  );
+  const stageHeight = Math.max(
+    viewportSize.height,
+    displayHeight + stagePad * 2,
+    viewportSize.height * Math.max(1, zoomFactor)
+  );
+
+  // Keep the video centered in the stage when zoom / viewport changes.
+  useLayoutEffect(() => {
+    const node = previewAreaRef.current;
+    if (!node || viewportSize.width <= 0) return;
+    node.scrollLeft = Math.max(0, (stageWidth - viewportSize.width) / 2);
+    node.scrollTop = Math.max(0, (stageHeight - viewportSize.height) / 2);
+  }, [stageWidth, stageHeight, viewportSize.width, viewportSize.height, relativeZoom]);
+
+  const endPan = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const session = panSessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    panSessionRef.current = null;
+    setIsPanning(false);
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Already released.
+    }
+  }, []);
+
+  const handlePanPointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const target = event.target as Element | null;
+    // Layer drag / resize stays on the video canvas — don't steal those gestures.
+    if (target?.closest?.('[data-video-layer]')) return;
+
+    const node = previewAreaRef.current;
+    if (!node) return;
+
+    panSessionRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+    };
+    setIsPanning(true);
+    node.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }, []);
+
+  const handlePanPointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    const session = panSessionRef.current;
+    if (!session || session.pointerId !== event.pointerId) return;
+    const node = previewAreaRef.current;
+    if (!node) return;
+
+    node.scrollLeft = session.scrollLeft - (event.clientX - session.startX);
+    node.scrollTop = session.scrollTop - (event.clientY - session.startY);
+  }, []);
 
   const sceneSegments = useMemo(() => {
     return project.scenes.map((scene, index) => {
@@ -177,70 +260,84 @@ export function VideoPreviewWorkspace({
         isFullscreen && 'bg-muted h-dvh w-dvw'
       )}
     >
-      {/* Viewport clips magnified zoom — no white letterbox card. */}
+      {/* Scrollable white/muted workspace — pan here, not inside the video canvas. */}
       <div
         ref={previewAreaRef}
-        className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-4"
+        className={cn(
+          'relative min-h-0 flex-1 overflow-auto overscroll-contain',
+          isPanning ? 'cursor-grabbing' : 'cursor-grab'
+        )}
+        onPointerDown={handlePanPointerDown}
+        onPointerMove={handlePanPointerMove}
+        onPointerUp={endPan}
+        onPointerCancel={endPan}
       >
         <div
-          className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
-          style={{
-            width: frameWidth * zoomFactor,
-            height: frameHeight * zoomFactor,
-          }}
+          className="relative flex items-center justify-center"
+          style={{ width: stageWidth, height: stageHeight, minWidth: '100%', minHeight: '100%' }}
         >
           <div
-            className="absolute left-0 top-0 overflow-hidden"
+            className="relative shrink-0 overflow-hidden rounded-xl shadow-md"
             style={{
-              width: frameWidth,
-              height: frameHeight,
-              transform: `scale(${zoomFactor})`,
-              transformOrigin: 'top left',
+              width: displayWidth,
+              height: displayHeight,
             }}
           >
-            <div className="relative size-full overflow-hidden bg-slate-950">
-              <div className="pointer-events-none absolute inset-0 size-full">
-                <VideoRemotionPlayer
-                  playerRef={playerRef}
-                  compositionKey={compositionKey}
-                  durationInFrames={durationInFrames}
-                  fps={project.fps}
-                  width={dimensions.width}
-                  height={dimensions.height}
-                  inputProps={inputProps}
-                  previewMuted={previewMuted}
-                />
+            <div
+              className="absolute left-0 top-0 overflow-hidden"
+              style={{
+                width: frameWidth,
+                height: frameHeight,
+                transform: `scale(${zoomFactor})`,
+                transformOrigin: 'top left',
+              }}
+            >
+              <div className="relative size-full overflow-hidden bg-slate-950">
+                <div className="pointer-events-none absolute inset-0 size-full">
+                  <VideoRemotionPlayer
+                    playerRef={playerRef}
+                    compositionKey={compositionKey}
+                    durationInFrames={durationInFrames}
+                    fps={project.fps}
+                    width={dimensions.width}
+                    height={dimensions.height}
+                    inputProps={inputProps}
+                    previewMuted={previewMuted}
+                  />
+                </div>
+                {editingScene ? (
+                  <VideoTextPositionOverlay
+                    scene={editingScene}
+                    templateTypography={templateTypography}
+                    compositionScale={compositionScale}
+                    previewWidthPx={frameWidth}
+                    compositionWidth={dimensions.width}
+                    selectedElementId={selectedElementId}
+                    onSelectElement={onHighlightElement}
+                    onActivateElement={(layerId) =>
+                      onCanvasSelectElement?.(layerId, editingScene.id)
+                    }
+                    onLayerPositionChange={(layerId, position) => {
+                      onProjectChange(
+                        updateScene(
+                          project,
+                          editingScene.id,
+                          updateSceneLayerPosition(editingScene, layerId, position)
+                        )
+                      );
+                    }}
+                    onLayerWidthChange={(layerId, widthPct) => {
+                      onProjectChange(
+                        updateScene(
+                          project,
+                          editingScene.id,
+                          updateSceneLayer(editingScene, layerId, { widthPct })
+                        )
+                      );
+                    }}
+                  />
+                ) : null}
               </div>
-              {editingScene ? (
-                <VideoTextPositionOverlay
-                  scene={editingScene}
-                  templateTypography={templateTypography}
-                  compositionScale={compositionScale}
-                  previewWidthPx={frameWidth}
-                  compositionWidth={dimensions.width}
-                  selectedElementId={selectedElementId}
-                  onSelectElement={onHighlightElement}
-                  onActivateElement={(layerId) => onCanvasSelectElement?.(layerId, editingScene.id)}
-                  onLayerPositionChange={(layerId, position) => {
-                    onProjectChange(
-                      updateScene(
-                        project,
-                        editingScene.id,
-                        updateSceneLayerPosition(editingScene, layerId, position)
-                      )
-                    );
-                  }}
-                  onLayerWidthChange={(layerId, widthPct) => {
-                    onProjectChange(
-                      updateScene(
-                        project,
-                        editingScene.id,
-                        updateSceneLayer(editingScene, layerId, { widthPct })
-                      )
-                    );
-                  }}
-                />
-              ) : null}
             </div>
           </div>
         </div>

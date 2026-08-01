@@ -156,6 +156,7 @@ function OverlayLayerTarget({
         }
         aria-label={`Move ${label}`}
         aria-pressed={isSelected}
+        data-video-layer=""
         onPointerDown={onPointerDown}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
