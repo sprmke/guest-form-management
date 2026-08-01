@@ -172,17 +172,26 @@ export function validateVoiceReceptionistPatch(body: Record<string, unknown>): {
     if (!isPositiveInt(body.maxSessionSeconds)) {
       return { patch, error: 'maxSessionSeconds must be a positive integer' };
     }
+    if (body.maxSessionSeconds < 60 || body.maxSessionSeconds > 3600) {
+      return { patch, error: 'maxSessionSeconds must be between 60 and 3600' };
+    }
     patch.maxSessionSeconds = body.maxSessionSeconds;
   }
   if (body.maxSessionsPerGuestPerDay !== undefined) {
     if (!isPositiveInt(body.maxSessionsPerGuestPerDay)) {
       return { patch, error: 'maxSessionsPerGuestPerDay must be a positive integer' };
     }
+    if (body.maxSessionsPerGuestPerDay > 999) {
+      return { patch, error: 'maxSessionsPerGuestPerDay must be between 1 and 999' };
+    }
     patch.maxSessionsPerGuestPerDay = body.maxSessionsPerGuestPerDay;
   }
   if (body.maxConcurrentSessions !== undefined) {
     if (!isPositiveInt(body.maxConcurrentSessions)) {
       return { patch, error: 'maxConcurrentSessions must be a positive integer' };
+    }
+    if (body.maxConcurrentSessions > 50) {
+      return { patch, error: 'maxConcurrentSessions must be between 1 and 50' };
     }
     patch.maxConcurrentSessions = body.maxConcurrentSessions;
   }

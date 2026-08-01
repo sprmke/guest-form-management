@@ -144,3 +144,30 @@ export function useUpdateVoiceReceptionistSettings() {
     },
   });
 }
+
+export type VoiceReceptionistVoicePreviewDto = {
+  voiceId: string;
+  text: string;
+  mimeType: string;
+  sampleRateHz: number;
+  audioBase64: string;
+};
+
+const VOICE_RECEPTIONIST_VOICE_PREVIEW_PATH = '/voice-receptionist-voice-preview';
+
+export function usePreviewVoiceReceptionistVoice() {
+  const propertyId = usePropertyIdParam();
+  return useMutation({
+    mutationFn: (voiceId: string) =>
+      adminEdgeFetchJson<{ data: VoiceReceptionistVoicePreviewDto }>(
+        VOICE_RECEPTIONIST_VOICE_PREVIEW_PATH,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ voiceId }),
+        },
+        propertyId,
+        'Could not preview voice'
+      ).then((json) => json.data),
+  });
+}

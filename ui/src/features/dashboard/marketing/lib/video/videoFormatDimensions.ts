@@ -40,11 +40,24 @@ export const VIDEO_FORMAT_OPTIONS = (Object.keys(VIDEO_FORMAT_DIMENSIONS) as Vid
 );
 
 /** Size the preview frame to fit its container while preserving format aspect ratio. */
+export const VIDEO_MIN_RELATIVE_ZOOM = 50;
+export const VIDEO_MAX_RELATIVE_ZOOM = 200;
+export const VIDEO_ZOOM_STEP = 10;
+
+export function stepVideoZoomIn(current: number, max = VIDEO_MAX_RELATIVE_ZOOM): number {
+  return Math.min(max, current + VIDEO_ZOOM_STEP);
+}
+
+export function stepVideoZoomOut(current: number, min = VIDEO_MIN_RELATIVE_ZOOM): number {
+  return Math.max(min, current - VIDEO_ZOOM_STEP);
+}
+
 export function fitVideoPreviewFrameSize(
   containerWidth: number,
   containerHeight: number,
   format: VideoFormat,
-  maxWidth: number
+  maxWidth: number,
+  _relativeZoomPercent = 100
 ): { width: number; height: number } {
   if (containerWidth <= 0 || containerHeight <= 0) {
     return { width: 0, height: 0 };
@@ -53,11 +66,17 @@ export function fitVideoPreviewFrameSize(
   const dims = VIDEO_FORMAT_DIMENSIONS[format];
   const aspect = dims.width / dims.height;
 
-  let width = Math.min(maxWidth, containerWidth);
+  // Fit inside the viewport at 100%. Zoom is applied with CSS transform by the
+  // preview workspace — never by stretching this box (that letterboxed white).
+  const pad = 8;
+  const availableWidth = Math.max(1, Math.min(maxWidth, containerWidth) - pad);
+  const availableHeight = Math.max(1, containerHeight - pad);
+
+  let width = availableWidth;
   let height = width / aspect;
 
-  if (height > containerHeight) {
-    height = containerHeight;
+  if (height > availableHeight) {
+    height = availableHeight;
     width = height * aspect;
   }
 

@@ -45,6 +45,11 @@ export function needsVideoMusicPlayback(music: VideoProjectMusic | undefined): b
   if (music.url) return false;
   if (music.trackId) return true;
 
+  // Jamendo cue with title/artist (or the default track) — resolve from browse/search.
+  if (music.source === 'jamendo' && (music.title || music.artist)) {
+    return true;
+  }
+
   if (music.title === DEFAULT_VIDEO_MUSIC.title && music.artist === DEFAULT_VIDEO_MUSIC.artist) {
     return true;
   }

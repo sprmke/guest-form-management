@@ -49,7 +49,8 @@ export function overlayPositionedLayerStyle(
 export function positionedLayerStyle(
   layer: VideoSceneLayer,
   scale: number,
-  enterOffset = 0
+  enterOffset = 0,
+  enterOffsetX = 0
 ): CSSProperties {
   const align = layer.position.align ?? 'center';
   const widthPct = layerUsesWidthPct(layer) ? resolveLayerWidthPct(layer) : undefined;
@@ -57,7 +58,7 @@ export function positionedLayerStyle(
     position: 'absolute',
     left: `${layer.position.x}%`,
     top: `${layer.position.y}%`,
-    transform: `translate(${horizontalTranslate(align)}, -50%) translateY(${enterOffset}px)`,
+    transform: `translate(${horizontalTranslate(align)}, -50%) translate(${enterOffsetX}px, ${enterOffset}px)`,
     maxWidth: widthPct ? `${widthPct}%` : `${Math.round(900 * scale)}px`,
     width:
       layer.kind === 'slots'
@@ -87,15 +88,22 @@ export function PositionedLayer({
   layer,
   scale,
   enterOffset = 0,
+  enterOffsetX = 0,
   children,
 }: {
   layer: VideoSceneLayer;
   scale: number;
   enterOffset?: number;
+  enterOffsetX?: number;
   children: ReactNode;
 }) {
   return (
-    <div style={{ ...positionedLayerStyle(layer, scale, enterOffset), pointerEvents: 'none' }}>
+    <div
+      style={{
+        ...positionedLayerStyle(layer, scale, enterOffset, enterOffsetX),
+        pointerEvents: 'none',
+      }}
+    >
       {children}
     </div>
   );

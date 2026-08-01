@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -14,12 +15,16 @@ import {
   useSavePropertyPricing,
 } from '@/features/dashboard/pricing/hooks/usePropertyPricing';
 import { findHolidayRuleForDate } from '@/features/dashboard/pricing/lib/phHolidayRules';
-import { dateKey } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
+import {
+  contiguousDateRanges,
+  dateKey,
+} from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import {
   propertyPricingDefaultsFromDto,
   resolveNightlyRateForDate,
   resolveHolidayRules,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
+import type { PropertyPricingDto } from '@/features/dashboard/pricing/lib/propertyPricingApi';
 import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,
   DEFAULT_WEEKEND_NIGHTLY_RATE,
@@ -41,7 +46,12 @@ import {
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 
-export function PropertyPricingPage() {
+type Props = {
+  /** Rendered inside PropertyCalendarPage's Pricing tab — omit the page title/header. */
+  embedded?: boolean;
+};
+
+export function PropertyPricingPage({ embedded = false }: Props = {}) {
   const { data: access } = usePropertyPermissions();
   const permissions = access?.permissions;
   const canEdit = hasPropertyPermission(permissions, 'pricing:edit');
@@ -60,6 +70,7 @@ export function PropertyPricingPage() {
   const [weekendRate, setWeekendRate] = useState(DEFAULT_WEEKEND_NIGHTLY_RATE);
   const holidayRuleDtos = pricingData?.holidayRules;
   const [bookedDateKeys, setBookedDateKeys] = useState<Set<string>>(() => new Set());
+  const [blockedDateKeys, setBlockedDateKeys] = useState<Set<string>>(() => new Set());
   const [customDatePrices, setCustomDatePrices] = useState<Map<string, number>>(() => new Map());
   const [fees, setFees] = useState<PropertyFeeConfig[]>(() =>
     INITIAL_PROPERTY_FEES.map((fee) => ({ ...fee }))
@@ -80,6 +91,7 @@ export function PropertyPricingPage() {
     if (!pricingData) return;
 
     setBookedDateKeys(new Set(pricingData.bookedDateKeys));
+    setBlockedDateKeys(new Set(pricingData.blockedDateKeys));
 
     if (hasChanges || hydratedRef.current) return;
 
@@ -96,9 +108,10 @@ export function PropertyPricingPage() {
     (date: Date) => {
       const key = dateKey(date);
       const isBooked = bookedDateKeys.has(key);
+      const isBlocked = blockedDateKeys.has(key);
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked };
+        return { price: customPrice, isCustom: true as const, isBooked, isBlocked };
       }
 
       const defaults = {
@@ -116,13 +129,18 @@ export function PropertyPricingPage() {
       });
 
       if (rule) {
-        return { price, rule, isCustom: false as const, isBooked };
+        return { price, rule, isCustom: false as const, isBooked, isBlocked };
       }
 
-      return { price, isCustom: false as const, isBooked };
+      return { price, isCustom: false as const, isBooked, isBlocked };
     },
-    [bookedDateKeys, customDatePrices, holidayRuleDtos, weekdayRate, weekendRate]
+    [bookedDateKeys, blockedDateKeys, customDatePrices, holidayRuleDtos, weekdayRate, weekendRate]
   );
+
+  const selectionMode = useMemo<'available' | 'blocked'>(() => {
+    const first = selectedDates[0];
+    return first && blockedDateKeys.has(dateKey(first)) ? 'blocked' : 'available';
+  }, [selectedDates, blockedDateKeys]);
 
   const openDateModal = useCallback(
     (dates: Date[]) => {
@@ -149,8 +167,15 @@ export function PropertyPricingPage() {
       return;
     }
 
+    const clickedIsBlocked = blockedDateKeys.has(dateKey(date));
+    const firstSelected = selectedDates[0];
+    const kindMismatch =
+      firstSelected != null && blockedDateKeys.has(dateKey(firstSelected)) !== clickedIsBlocked;
+
     let next: Date[];
-    if (selectedDates.some((d) => isSameDay(d, date))) {
+    if (kindMismatch) {
+      next = [date];
+    } else if (selectedDates.some((d) => isSameDay(d, date))) {
       next = selectedDates.filter((d) => !isSameDay(d, date));
     } else {
       next = [...selectedDates, date];
@@ -181,9 +206,20 @@ export function PropertyPricingPage() {
     const firstDate = selectedDates[0];
     if (!firstDate) return;
 
-    const start = firstDate < date ? firstDate : date;
-    const end = firstDate < date ? date : firstDate;
-    const range = eachDayOfInterval({ start, end }).filter((d) => !isBefore(d, startOfToday()));
+    const anchorIsBlocked = blockedDateKeys.has(dateKey(firstDate));
+    const forward = firstDate <= date;
+    const ordered = forward
+      ? eachDayOfInterval({ start: firstDate, end: date })
+      : eachDayOfInterval({ start: date, end: firstDate }).reverse();
+
+    const range: Date[] = [];
+    for (const d of ordered) {
+      if (isBefore(d, startOfToday())) continue;
+      const key = dateKey(d);
+      if (bookedDateKeys.has(key)) break;
+      if (blockedDateKeys.has(key) !== anchorIsBlocked) break;
+      range.push(d);
+    }
     setSelectedDates(range);
   };
 
@@ -234,6 +270,49 @@ export function PropertyPricingPage() {
       next.delete(format(date, 'yyyy-MM-dd'));
     });
     persistDateOverrides(next, clearSelection);
+  };
+
+  const blockSelected = async () => {
+    if (selectedDates.length === 0 || !canEdit) return;
+
+    // Revalidate against current state right before mutating — availability may
+    // have refreshed (new booking, or a date rolling into the past) since the
+    // modal opened with a stale selection.
+    const today = startOfToday();
+    const stillBlockable = selectedDates.every((date) => {
+      const key = dateKey(date);
+      return !isBefore(date, today) && !bookedDateKeys.has(key) && !blockedDateKeys.has(key);
+    });
+    if (!stillBlockable) {
+      toast.error('Dates unavailable');
+      clearSelection();
+      return;
+    }
+
+    const ranges = contiguousDateRanges(selectedDates);
+    try {
+      let lastData: PropertyPricingDto | undefined;
+      for (const range of ranges) {
+        lastData = await saveMutation.mutateAsync({ blockRange: range });
+      }
+      if (lastData) setBlockedDateKeys(new Set(lastData.blockedDateKeys));
+      clearSelection();
+    } catch {
+      // toast handled by mutation onError
+    }
+  };
+
+  const unblockSelected = () => {
+    if (selectedDates.length === 0 || !canEdit) return;
+    saveMutation.mutate(
+      { unblockDateKeys: selectedDates.map((date) => dateKey(date)) },
+      {
+        onSuccess: (data) => {
+          setBlockedDateKeys(new Set(data.blockedDateKeys));
+          clearSelection();
+        },
+      }
+    );
   };
 
   const updateFeeAmount = (feeId: PropertyFeeId, amount: number) => {
@@ -328,12 +407,14 @@ export function PropertyPricingPage() {
   return (
     <>
       <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="pricing-heading"
-          title="Pricing"
-          subtitle="Manage booking rates and fees for this property."
-          variant="compact"
-        />
+        {!embedded && (
+          <AdminPageHeader
+            id="pricing-heading"
+            title="Pricing"
+            subtitle="Manage booking rates and fees for this property."
+            variant="compact"
+          />
+        )}
 
         <PricingStatsRow
           weekdayRate={weekdayRate}
@@ -383,6 +464,7 @@ export function PropertyPricingPage() {
           setDateModalOpen(open);
           if (!open) clearSelection();
         }}
+        mode={selectionMode}
         selectedDates={selectedDates}
         suggestedPrice={suggestedPrice}
         newPrice={newPrice}
@@ -390,6 +472,8 @@ export function PropertyPricingPage() {
         onClearSelection={clearSelection}
         onResetToDefault={resetSelectedToDefault}
         onApply={applyCustomPrice}
+        onBlock={blockSelected}
+        onUnblock={unblockSelected}
         saving={saveMutation.isPending}
       />
 

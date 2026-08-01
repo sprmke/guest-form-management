@@ -8,6 +8,7 @@ import type {
   VideoTextStyle,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { mergeSceneTextsForKind } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import {
   defaultTextLayoutForSceneKind,
   textSlotsForSceneKind,
@@ -46,20 +47,36 @@ function slotToTextStyle(slot: string): VideoTextStyle {
 }
 
 function defaultHiddenSlotsForKind(kind: VideoSceneKind): string[] {
-  const catalog = ['background', ...textSlotsForSceneKind(kind), 'ctaLine', 'rulesLine'].filter(
-    (id, index, arr) => arr.indexOf(id) === index
-  );
+  const catalog = [
+    'background',
+    'headline',
+    'subheadline',
+    'promoLine',
+    'ctaLine',
+    'rulesLine',
+    'slotLabels',
+    ...textSlotsForSceneKind(kind),
+  ].filter((id, index, arr) => arr.indexOf(id) === index);
   const defaults = new Set(['background', ...textSlotsForSceneKind(kind)]);
   return catalog.filter((id) => !defaults.has(id));
 }
 
 /** Build layers from legacy texts / imageUrl / hiddenElements. */
 export function migrateLegacySceneToLayers(scene: VideoScene): VideoSceneLayer[] {
-  const hidden = new Set(scene.hiddenElements ?? defaultHiddenSlotsForKind(scene.kind));
+  // Prefer explicit host hides. When absent, infer from kind — but never hide a
+  // slot that still has storyboard/host text (Quiet Coast photo amenity beats).
+  const inferredHidden = defaultHiddenSlotsForKind(scene.kind);
+  const explicitHidden = scene.hiddenElements;
   const layers: VideoSceneLayer[] = [];
   const layout = scene.textLayout ?? defaultTextLayoutForSceneKind(scene.kind);
 
-  if (!hidden.has('background')) {
+  const isHidden = (slot: string, hasContent: boolean) => {
+    if (explicitHidden !== undefined) return explicitHidden.includes(slot);
+    if (hasContent) return false;
+    return inferredHidden.includes(slot);
+  };
+
+  if (!isHidden('background', true)) {
     layers.push({
       id: BACKGROUND_LAYER_ID,
       kind: 'background',
@@ -70,7 +87,8 @@ export function migrateLegacySceneToLayers(scene: VideoScene): VideoSceneLayer[]
   }
 
   const addTextLayer = (slot: string, text: string, kind: VideoSceneLayer['kind'] = 'text') => {
-    if (hidden.has(slot) || !text.trim()) return;
+    const trimmed = text.trim();
+    if (!trimmed || isHidden(slot, true)) return;
     const pos = layout[slot as keyof typeof layout];
     layers.push({
       id: `layer-${slot}`,
@@ -85,7 +103,7 @@ export function migrateLegacySceneToLayers(scene: VideoScene): VideoSceneLayer[]
     });
   };
 
-  if (scene.texts.slotLabels.length > 0 && !hidden.has('slotLabels')) {
+  if (scene.texts.slotLabels.some((label) => label.trim()) && !isHidden('slotLabels', true)) {
     const pos = layout.slotLabels;
     layers.push({
       id: 'layer-slotLabels',
@@ -117,13 +135,18 @@ export function getSceneLayers(scene: VideoScene): VideoSceneLayer[] {
 
 function legacyFieldsFromLayers(
   layers: VideoSceneLayer[],
-  kind: VideoSceneKind
+  kind: VideoSceneKind,
+  priorLayout?: VideoScene['textLayout'],
+  templateId?: string
 ): Pick<
   VideoScene,
   'imageUrl' | 'backgroundMediaType' | 'texts' | 'textLayout' | 'hiddenElements'
 > {
   const texts = emptyTexts();
-  const textLayout = { ...defaultTextLayoutForSceneKind(kind) };
+  const textLayout = {
+    ...defaultTextLayoutForSceneKind(kind, templateId),
+    ...priorLayout,
+  };
   const hidden: string[] = [];
 
   const bg = layers.find((layer) => layer.kind === 'background');
@@ -198,7 +221,7 @@ function legacyFieldsFromLayers(
 }
 
 export function persistSceneLayers(scene: VideoScene, layers: VideoSceneLayer[]): VideoScene {
-  const legacy = legacyFieldsFromLayers(layers, scene.kind);
+  const legacy = legacyFieldsFromLayers(layers, scene.kind, scene.textLayout);
   return {
     ...scene,
     layers,
@@ -211,13 +234,31 @@ export function normalizeSceneLayers(scene: VideoScene): VideoScene {
   return persistSceneLayers(scene, layers);
 }
 
+/**
+ * Build layers from whatever text the storyboard (or host) put on the scene.
+ * Quiet Coast recipes put amenity words / offer lines on `photo` and `cta`
+ * clips — kind alone must not drop those beats.
+ *
+ * When `templateSeed` is provided it is authoritative (storyboard beats only).
+ * Generic kind fillers are used only when seeding a blank scene with no seed.
+ */
 export function defaultLayersForKind(
   kind: VideoSceneKind,
   imageUrl: string | null,
-  templateSeed?: VideoSceneTextFields
+  templateSeed?: VideoSceneTextFields,
+  templateId?: string
 ): VideoSceneLayer[] {
-  const texts = mergeSceneTextsForKind(kind, emptyTexts(), templateSeed);
-  const layout = defaultTextLayoutForSceneKind(kind);
+  const texts = templateSeed
+    ? {
+        headline: templateSeed.headline ?? '',
+        subheadline: templateSeed.subheadline ?? '',
+        promoLine: templateSeed.promoLine ?? '',
+        ctaLine: templateSeed.ctaLine ?? '',
+        slotLabels: [...(templateSeed.slotLabels ?? [])],
+        rulesLine: templateSeed.rulesLine ?? '',
+      }
+    : mergeSceneTextsForKind(kind, emptyTexts());
+  const layout = defaultTextLayoutForSceneKind(kind, templateId);
   const layers: VideoSceneLayer[] = [
     {
       id: BACKGROUND_LAYER_ID,
@@ -229,14 +270,13 @@ export function defaultLayersForKind(
   ];
 
   const pushText = (
-    slot: keyof typeof layout,
+    slot: 'headline' | 'subheadline' | 'promoLine' | 'ctaLine' | 'rulesLine',
     text: string,
     textStyle: VideoTextStyle,
     layerKind: VideoSceneLayer['kind'] = 'text'
   ) => {
     if (!text.trim()) return;
-    const pos = layout[slot];
-    if (!pos) return;
+    const pos = layout[slot] ?? { x: 50, y: 50, align: 'center' as const };
     layers.push({
       id: createLayerId(),
       kind: layerKind,
@@ -246,29 +286,22 @@ export function defaultLayersForKind(
     });
   };
 
-  if (kind === 'photo') {
-    pushText('headline', texts.headline, 'headline');
-  } else if (kind === 'promo') {
-    pushText('headline', texts.headline, 'headline');
-    pushText('subheadline', texts.subheadline, 'subheadline');
-    pushText('promoLine', texts.promoLine, 'promo');
-  } else if (kind === 'slots') {
-    pushText('headline', texts.headline, 'headline');
-    pushText('subheadline', texts.subheadline, 'subheadline');
-    if (texts.slotLabels.length > 0 && layout.slotLabels) {
-      layers.push({
-        id: createLayerId(),
-        kind: 'slots',
-        lines: [...texts.slotLabels],
-        position: { ...layout.slotLabels },
-      });
-    }
-    pushText('ctaLine', texts.ctaLine, 'body', 'cta');
-    pushText('rulesLine', texts.rulesLine, 'footer');
-  } else if (kind === 'cta') {
-    pushText('ctaLine', texts.ctaLine, 'body', 'cta');
-    pushText('rulesLine', texts.rulesLine, 'footer');
+  pushText('headline', texts.headline, 'headline');
+  pushText('subheadline', texts.subheadline, 'subheadline');
+  pushText('promoLine', texts.promoLine, 'promo');
+
+  if (texts.slotLabels.length > 0) {
+    const pos = layout.slotLabels ?? { x: 50, y: 55, align: 'center' as const };
+    layers.push({
+      id: createLayerId(),
+      kind: 'slots',
+      lines: [...texts.slotLabels],
+      position: { ...pos },
+    });
   }
+
+  pushText('ctaLine', texts.ctaLine, 'body', 'cta');
+  pushText('rulesLine', texts.rulesLine, 'footer');
 
   return layers;
 }
@@ -305,15 +338,15 @@ export function layerLabel(layer: VideoSceneLayer, index: number): string {
 export function addSceneLayer(
   scene: VideoScene,
   kind: 'text' | 'cta' | 'image' | 'logo' | 'background',
-  options?: {
+  options: {
     imageUrl?: string | null;
     logoUrl?: string | null;
     templateSeed?: VideoSceneTextFields;
-    brandColor?: string;
+    typography: VideoTypographyContext;
   }
 ): VideoScene {
   const layers = [...getSceneLayers(scene)];
-  const brandColor = options?.brandColor ?? '#e8752a';
+  const typography = options.typography;
 
   if (kind === 'background') {
     if (layers.some((layer) => layer.kind === 'background')) {
@@ -322,15 +355,15 @@ export function addSceneLayer(
     layers.unshift({
       id: BACKGROUND_LAYER_ID,
       kind: 'background',
-      imageUrl: options?.imageUrl ?? scene.imageUrl,
+      imageUrl: options.imageUrl ?? scene.imageUrl,
       mediaType:
-        scene.backgroundMediaType ?? inferBackgroundMediaType(options?.imageUrl ?? scene.imageUrl),
+        scene.backgroundMediaType ?? inferBackgroundMediaType(options.imageUrl ?? scene.imageUrl),
       position: { x: 50, y: 50, align: 'center' },
     });
     return persistSceneLayers(scene, layers);
   }
 
-  const defaults = mergeSceneTextsForKind(scene.kind, emptyTexts(), options?.templateSeed);
+  const defaults = mergeSceneTextsForKind(scene.kind, emptyTexts(), options.templateSeed);
 
   if (kind === 'text') {
     layers.push({
@@ -338,7 +371,7 @@ export function addSceneLayer(
       kind: 'text',
       text: defaults.headline || 'YOUR TEXT',
       textStyle: 'headline',
-      typography: buildTypographyFromPreset('title', brandColor),
+      typography: buildTypographyFromPreset('title', typography),
       position: { x: 50, y: 42, align: 'center' },
     });
   } else if (kind === 'cta') {
@@ -346,14 +379,14 @@ export function addSceneLayer(
       id: createLayerId(),
       kind: 'cta',
       text: defaults.ctaLine || 'BOOK NOW',
-      typography: buildTypographyFromPreset('cta', brandColor),
+      typography: buildTypographyFromPreset('cta', typography),
       position: { x: 50, y: 72, align: 'center' },
     });
   } else if (kind === 'image') {
     layers.push({
       id: createLayerId(),
       kind: 'image',
-      imageUrl: options?.imageUrl ?? null,
+      imageUrl: options.imageUrl ?? null,
       widthPct: 42,
       position: { x: 50, y: 48, align: 'center' },
     });
@@ -361,7 +394,7 @@ export function addSceneLayer(
     layers.push({
       id: createLayerId(),
       kind: 'logo',
-      imageUrl: options?.logoUrl ?? null,
+      imageUrl: options.logoUrl ?? null,
       widthPct: 28,
       position: { x: 50, y: 12, align: 'center' },
     });
@@ -402,7 +435,8 @@ export function applySceneKindLayers(
   scene: VideoScene,
   kind: VideoSceneKind,
   imageUrl: string | null,
-  templateSeed?: VideoSceneTextFields
+  templateSeed?: VideoSceneTextFields,
+  templateId?: string
 ): VideoScene {
-  return persistSceneLayers(scene, defaultLayersForKind(kind, imageUrl, templateSeed));
+  return persistSceneLayers(scene, defaultLayersForKind(kind, imageUrl, templateSeed, templateId));
 }

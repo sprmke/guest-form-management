@@ -18,7 +18,7 @@ type Props = {
   label?: string;
   defaultValue?: string;
   confirmLabel?: string;
-  onConfirm: (value: string) => void;
+  onConfirm: (value: string) => void | Promise<void>;
 };
 
 export function MarketingNameDialog({
@@ -36,11 +36,15 @@ export function MarketingNameDialog({
     if (open) setValue(defaultValue);
   }, [open, defaultValue]);
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
     const trimmed = value.trim();
     if (!trimmed) return;
-    onConfirm(trimmed);
-    onOpenChange(false);
+    try {
+      await onConfirm(trimmed);
+      onOpenChange(false);
+    } catch {
+      // Parent surfaces errors; keep dialog open for retry.
+    }
   };
 
   return (

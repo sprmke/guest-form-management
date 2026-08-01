@@ -20,6 +20,7 @@ import type {
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { updateScene } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
 import { videoTemplateFieldsToSceneTexts } from '@/features/dashboard/marketing/lib/video/videoSceneKindChange';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 import { defaultVideoFields } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 
 import {
@@ -46,7 +47,7 @@ type Props = {
   selectedScene: VideoScene;
   selectedSceneIndex: number;
   propertyImages: PropertyMediaItem[];
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   logoUrl?: string | null;
   templateName: string;
   savedTemplateId?: string | null;
@@ -65,7 +66,7 @@ export function VideoEditorSettings({
   selectedScene,
   selectedSceneIndex,
   propertyImages,
-  brandColor,
+  templateTypography,
   logoUrl = null,
   templateName,
   savedTemplateId,
@@ -184,6 +185,7 @@ export function VideoEditorSettings({
           sceneIndex={selectedSceneIndex}
           onChange={handleSceneChange}
           templateTextSeed={templateTextSeed}
+          templateId={project.templateId}
         />
       </StyleSection>
 
@@ -196,7 +198,7 @@ export function VideoEditorSettings({
         <VideoSceneElementsPanel
           scene={selectedScene}
           propertyImages={propertyImages}
-          brandColor={brandColor}
+          templateTypography={templateTypography}
           logoUrl={logoUrl}
           templateTextSeed={templateTextSeed}
           selectedElementId={selectedElementId}

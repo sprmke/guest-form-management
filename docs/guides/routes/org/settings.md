@@ -9,7 +9,7 @@ Route: `/org/:orgSlug/settings`
 | Section           | E2E save | Validation   | Docs | Notes                                                                     |
 | ----------------- | -------- | ------------ | ---- | ------------------------------------------------------------------------- |
 | Basic information | Yes      | Yes          | Done | Logo, name, slug, brand color, tagline, description, contact info         |
-| Socials           | Yes      | Yes          | Done | Social URLs                                                               |
+| Socials           | Yes      | Yes          | Done | Social URLs; main platform auto-derived on save                           |
 | Danger zone       | Partial  | Slug confirm | Done | Delete when no bookings; finance/maintenance can block; see § Danger zone |
 
 ---
@@ -61,14 +61,17 @@ Guest/operator **contact name, phone, and email** for templates and public surfa
 
 ### Socials
 
-| Field         | Storage                             | Notes                                                                                                                      |
-| ------------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Airbnb        | `org_settings.airbnb_url`           | Optional; DB value wins over `AIRBNB_URL` env                                                                              |
-| Facebook page | `org_settings.facebook_reviews_url` | Required; SD form review CTA; saved DB value wins over `FACEBOOK_REVIEWS_URL` env; env used only when column is null/empty |
-| Instagram     | `org_settings.instagram_url`        | Optional; DB value wins over `INSTAGRAM_URL` env                                                                           |
-| TikTok        | `org_settings.tiktok_url`           | Optional; DB value wins over `TIKTOK_URL` env                                                                              |
+| Field         | Storage                             | Notes                                                                                                  |
+| ------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Airbnb        | `org_settings.airbnb_url`           | Optional; DB value wins over `AIRBNB_URL` env                                                          |
+| Facebook page | `org_settings.facebook_reviews_url` | Optional; saved DB value wins over `FACEBOOK_REVIEWS_URL` env; env used only when column is null/empty |
+| Instagram     | `org_settings.instagram_url`        | Optional; DB value wins over `INSTAGRAM_URL` env                                                       |
+| TikTok        | `org_settings.tiktok_url`           | Optional; DB value wins over `TIKTOK_URL` env                                                          |
+| Main platform | `org_settings.main_social_platform` | Auto-set on save from filled URLs (first valid platform); properties inherit when empty                |
 
-Guest calendar links copied from the admin UI use **`window.location.origin`** + `?property=slug` — not org settings.
+**Validation:** at least one social URL. Main platform is derived automatically on save (not editable at org level).
+
+Properties inherit org social URLs and main platform when their `app_settings` columns are empty — see **property settings** § Socials.
 
 **App origin** (email links, default GCash QR base URL) is **not** per-org — set deployment env **`PUBLIC_GUEST_APP_ORIGIN`**. Legacy `org_settings.public_guest_app_origin` is used only when the env var is unset.
 
@@ -140,13 +143,14 @@ Save runs **`planOrgSettingsSave`** (client) before PATCH. Only **dirty** sectio
 
 **Nav indicators:** Incomplete required fields show a red dot on the matching section in the settings submenu and on **Settings** in the main sidebar. While editing on this page, dots reflect the draft; elsewhere they reflect the last saved snapshot via `OrgSettingsIssuesSync`.
 
-| Area                  | Client                                                   | Server                                            |
-| --------------------- | -------------------------------------------------------- | ------------------------------------------------- |
-| Organization name     | Required; 2–120 chars; live uniqueness check             | `update-organization` + `check-organization-name` |
-| Tagline / description | Optional; max length when filled                         | `update-organization`                             |
-| Brand color           | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset | `update-organization`                             |
-| Facebook URL          | Required `http(s)` URL                                   | `org-settings` PATCH                              |
-| Instagram / TikTok    | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
+| Area                        | Client                                                   | Server                                            |
+| --------------------------- | -------------------------------------------------------- | ------------------------------------------------- |
+| Organization name           | Required; 2–120 chars; live uniqueness check             | `update-organization` + `check-organization-name` |
+| Tagline / description       | Optional; max length when filled                         | `update-organization`                             |
+| Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset | `update-organization`                             |
+| Facebook URL                | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
+| Main social platform        | Required when any social URL is set                      | `org-settings` PATCH                              |
+| Instagram / TikTok / Airbnb | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
 
 Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **`docs/guides/routes/org/property/settings.md`**.
 

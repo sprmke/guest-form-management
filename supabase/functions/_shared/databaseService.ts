@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts';
 import { applyGafDefaultsToFormData } from './appSettings.ts';
+import { hasBlockedNightsInRange } from './propertyBlockedDates.ts';
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
@@ -576,6 +577,68 @@ export class DatabaseService {
     return data;
   }
 
+  /** Insert a parking-only reservation row (no property stay workflow). */
+  static async createParkingBooking(input: {
+    parkingId: string;
+    primaryGuestName: string;
+    guestEmail: string;
+    guestPhoneNumber: string;
+    checkInDate: string;
+    checkOutDate: string;
+    numberOfNights: number;
+    carPlateNumber: string;
+    carBrandModel?: string | null;
+    carColor?: string | null;
+    parkingLabel: string;
+    residenceName?: string | null;
+  }) {
+    const now = new Date().toISOString();
+    const guestName = input.primaryGuestName.trim();
+    const locationLabel =
+      [input.residenceName, input.parkingLabel].filter(Boolean).join(' · ') || input.parkingLabel;
+
+    const row = {
+      parking_id: input.parkingId,
+      property_id: null,
+      status: 'PENDING_REVIEW',
+      status_updated_at: now,
+      guest_facebook_name: guestName,
+      primary_guest_name: guestName,
+      guest_email: input.guestEmail.trim(),
+      guest_phone_number: input.guestPhoneNumber.trim(),
+      guest_address: locationLabel,
+      check_in_date: input.checkInDate,
+      check_out_date: input.checkOutDate,
+      parking_check_in_date: input.checkInDate,
+      parking_check_out_date: input.checkOutDate,
+      number_of_nights: input.numberOfNights,
+      number_of_adults: 1,
+      number_of_children: 0,
+      need_parking: true,
+      car_plate_number: input.carPlateNumber.trim(),
+      car_brand_model: input.carBrandModel?.trim() || null,
+      car_color: input.carColor?.trim() || null,
+      has_pets: false,
+      find_us: 'Parking',
+      booking_source: 'Parking',
+      payment_receipt_url: 'parking-only',
+      valid_id_url: null,
+      unit_owner: input.parkingLabel,
+      tower_and_unit_number: locationLabel,
+      owner_onsite_contact_person: 'N/A',
+      owner_contact_number: 'N/A',
+    };
+
+    const { data, error } = await this.supabase
+      .from('guest_submissions')
+      .insert(row)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create parking booking: ${error.message}`);
+    return data;
+  }
+
   /**
    * Update `status` + `status_updated_at` for a booking.
    * Only the orchestrator should call this — no side effects here.
@@ -627,7 +690,14 @@ export class DatabaseService {
   static async listBookings(params: {
     propertyId?: string;
     propertyIds?: string[];
+    parkingId?: string;
+    parkingIds?: string[];
+    /** Org-wide union: property stays OR parking reservations. */
+    orgPropertyIds?: string[];
+    orgParkingIds?: string[];
     includePropertyMeta?: boolean;
+    includeParkingMeta?: boolean;
+    bookingKind?: 'property' | 'parking' | null;
     q?: string;
     status?: string[];
     from?: string | null; // YYYY-MM-DD
@@ -648,7 +718,13 @@ export class DatabaseService {
     const {
       propertyId,
       propertyIds,
+      parkingId,
+      parkingIds,
+      orgPropertyIds,
+      orgParkingIds,
       includePropertyMeta = false,
+      includeParkingMeta = false,
+      bookingKind = null,
       q = '',
       status = [],
       from = null,
@@ -665,13 +741,40 @@ export class DatabaseService {
 
     let request = this.supabase.from('guest_submissions').select('*', { count: 'exact' });
 
-    if (propertyId) {
+    if (parkingId) {
+      request = request.eq('parking_id', parkingId);
+    } else if (propertyId) {
       request = request.eq('property_id', propertyId);
     } else if (propertyIds) {
       if (propertyIds.length === 0) {
         return { rows: [], total: 0 };
       }
       request = request.in('property_id', propertyIds);
+    } else if (parkingIds) {
+      if (parkingIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      request = request.in('parking_id', parkingIds);
+    } else if (orgPropertyIds || orgParkingIds) {
+      const propIds = orgPropertyIds ?? [];
+      const parkIds = orgParkingIds ?? [];
+      if (propIds.length === 0 && parkIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      const orParts: string[] = [];
+      if (propIds.length > 0) {
+        orParts.push(`property_id.in.(${propIds.join(',')})`);
+      }
+      if (parkIds.length > 0) {
+        orParts.push(`parking_id.in.(${parkIds.join(',')})`);
+      }
+      request = request.or(orParts.join(','));
+    }
+
+    if (bookingKind === 'property') {
+      request = request.not('property_id', 'is', null);
+    } else if (bookingKind === 'parking') {
+      request = request.not('parking_id', 'is', null);
     }
 
     // --- Filters ---
@@ -750,8 +853,56 @@ export class DatabaseService {
     if (includePropertyMeta && paged.length > 0) {
       paged = await this.enrichBookingsWithPropertyMeta(paged);
     }
+    if (includeParkingMeta && paged.length > 0) {
+      paged = await this.enrichBookingsWithParkingMeta(paged);
+    }
+
+    paged = paged.map((row) => ({
+      ...row,
+      booking_kind: row.parking_id ? 'parking' : 'property',
+    }));
 
     return { rows: paged, total };
+  }
+
+  private static async enrichBookingsWithParkingMeta(rows: Record<string, unknown>[]) {
+    const ids = [
+      ...new Set(
+        rows
+          .map((row) => row.parking_id)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0)
+      ),
+    ];
+    if (ids.length === 0) return rows;
+
+    const { data: parkingRows, error } = await this.supabase
+      .from('parkings')
+      .select('id, name, slug')
+      .in('id', ids);
+    if (error) {
+      console.warn('[DatabaseService] enrichBookingsWithParkingMeta failed:', error.message);
+      return rows;
+    }
+
+    const byId = new Map(
+      (parkingRows ?? []).map((row) => [
+        String(row.id),
+        {
+          name: typeof row.name === 'string' ? row.name : 'Parking',
+          slug: typeof row.slug === 'string' ? row.slug : '',
+        },
+      ])
+    );
+
+    return rows.map((row) => {
+      const parkingId = typeof row.parking_id === 'string' ? row.parking_id : null;
+      const meta = parkingId ? byId.get(parkingId) : undefined;
+      return {
+        ...row,
+        parking_name: meta?.name ?? null,
+        parking_slug: meta?.slug ?? null,
+      };
+    });
   }
 
   private static async enrichBookingsWithPropertyMeta(rows: Record<string, unknown>[]) {
@@ -915,9 +1066,17 @@ export class DatabaseService {
         `✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`
       );
 
+      // Owner-managed date blocks (`property_blocked_dates`) are unavailable to guests
+      // the same way an existing booking is — checked alongside the overlap query so
+      // every caller (submit-form today, future update paths) gets both signals at once.
+      const blockedByOwner = propertyId
+        ? await hasBlockedNightsInRange(propertyId, newCheckIn, newCheckOut)
+        : false;
+
       return {
         hasOverlap: overlappingBookings.length > 0,
         overlappingBookings,
+        blockedByOwner,
       };
     } catch (error) {
       console.error('Error checking overlapping bookings:', error);

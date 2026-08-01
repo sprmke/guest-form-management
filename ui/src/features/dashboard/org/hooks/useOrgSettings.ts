@@ -3,6 +3,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ORGANIZATIONS_QUERY_KEY } from '@/features/dashboard/org/hooks/useOrganizations';
 import { scopedOrgFunctionsUrl, useOrgScopeKey } from '@/features/dashboard/org/lib/adminApiScope';
 
+import {
+  resolveMainSocialPlatform,
+  socialUrlMapFromLinks,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
+
 import { supabase } from '@/lib/supabase/client';
 
 export type OrgSettingsFieldSource = 'db' | 'default';
@@ -12,10 +17,16 @@ export type OrgSettingsDto = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  mainSocialPlatform: string;
   emailLogoUrl: string;
   updatedAt: string | null;
   fieldSources: Record<
-    'facebookPageUrl' | 'airbnbUrl' | 'instagramUrl' | 'tiktokUrl' | 'emailLogoUrl',
+    | 'facebookPageUrl'
+    | 'airbnbUrl'
+    | 'instagramUrl'
+    | 'tiktokUrl'
+    | 'mainSocialPlatform'
+    | 'emailLogoUrl',
     OrgSettingsFieldSource
   >;
 };
@@ -25,6 +36,7 @@ export type OrgOperatorSettingsFormValues = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  mainSocialPlatform: string;
 };
 
 export function orgSettingsToFormValues(data: OrgSettingsDto): OrgOperatorSettingsFormValues {
@@ -33,6 +45,7 @@ export function orgSettingsToFormValues(data: OrgSettingsDto): OrgOperatorSettin
     airbnbUrl: data.airbnbUrl,
     instagramUrl: data.instagramUrl,
     tiktokUrl: data.tiktokUrl,
+    mainSocialPlatform: data.mainSocialPlatform ?? '',
   };
 }
 
@@ -44,7 +57,8 @@ export function orgOperatorFormIsDirty(
     draft.facebookPageUrl.trim() !== baseline.facebookPageUrl.trim() ||
     draft.airbnbUrl.trim() !== baseline.airbnbUrl.trim() ||
     draft.instagramUrl.trim() !== baseline.instagramUrl.trim() ||
-    draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim()
+    draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
+    draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim()
   );
 }
 
@@ -88,6 +102,8 @@ export function useUpdateOrgSettings() {
   return useMutation({
     mutationFn: async (values: OrgOperatorSettingsFormValues) => {
       const jwt = await getAdminJwt();
+      const urls = socialUrlMapFromLinks(values);
+      const mainSocialPlatform = resolveMainSocialPlatform(values.mainSocialPlatform, urls) ?? '';
       const res = await fetch(orgSettingsUrl(orgSlug, orgId), {
         method: 'PATCH',
         headers: {
@@ -99,6 +115,7 @@ export function useUpdateOrgSettings() {
           airbnbUrl: values.airbnbUrl,
           instagramUrl: values.instagramUrl,
           tiktokUrl: values.tiktokUrl,
+          mainSocialPlatform,
         }),
       });
       const json = (await res.json()) as {

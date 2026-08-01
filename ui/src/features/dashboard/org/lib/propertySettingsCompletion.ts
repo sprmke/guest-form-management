@@ -2,6 +2,13 @@ import type {
   AppSettingsDto,
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
+import {
+  countFilledSocialUrls,
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMap,
+  propertySocialLinkInherits,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
 import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { MAX_PROPERTY_PAYMENT_METHODS } from '@/features/dashboard/org/lib/paymentMethods';
 import {
@@ -30,7 +37,6 @@ import {
   validateAdminEmailList,
   validateOptionalAdminEmail,
   validateOptionalAdminUrl,
-  validateRequiredAdminUrl,
 } from '@/lib/validation/adminSettings';
 import {
   validateEmailAddress,
@@ -90,6 +96,7 @@ export type PropertySettingsCompletionInput = {
   profile: PropertyProfileDraft;
   operational: AppSettingsFormValues | null;
   appSettings: AppSettingsDto | null;
+  orgSocialLinks: OrgSocialLinks | null;
   gmailConnected: boolean;
   gmailNeedsReconnect: boolean;
   nameConflict?: boolean;
@@ -189,25 +196,64 @@ export function computePropertySettingsCompletion(
 
   // ── Socials ──
   if (operational) {
-    const facebookErr = validateRequiredAdminUrl(
-      operational.facebookPageUrl,
-      'Facebook page URL',
-      'Enter Facebook page URL'
-    );
-    if (facebookErr) {
-      addFieldError('property-facebook-page-url', facebookErr, 'branding');
+    const orgSocials = input.orgSocialLinks ?? {
+      facebookPageUrl: '',
+      airbnbUrl: '',
+      instagramUrl: '',
+      tiktokUrl: '',
+      mainSocialPlatform: '',
+    };
+
+    if (!propertySocialLinkInherits(operational.facebookPageUrl)) {
+      const facebookErr = validateOptionalAdminUrl(
+        operational.facebookPageUrl,
+        'Facebook page URL'
+      );
+      if (facebookErr) addFieldError('property-facebook-page-url', facebookErr, 'branding');
     }
 
-    const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
-    if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
-
-    const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
-    if (instagramErr) {
-      addFieldError('property-instagram-url', instagramErr, 'branding');
+    if (!propertySocialLinkInherits(operational.airbnbUrl)) {
+      const airbnbErr = validateOptionalAdminUrl(operational.airbnbUrl, 'Airbnb URL');
+      if (airbnbErr) addFieldError('property-airbnb-url', airbnbErr, 'branding');
     }
 
-    const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
-    if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    if (!propertySocialLinkInherits(operational.instagramUrl)) {
+      const instagramErr = validateOptionalAdminUrl(operational.instagramUrl, 'Instagram URL');
+      if (instagramErr) {
+        addFieldError('property-instagram-url', instagramErr, 'branding');
+      }
+    }
+
+    if (!propertySocialLinkInherits(operational.tiktokUrl)) {
+      const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
+      if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    }
+
+    const urls = effectiveSocialUrlMap(operational, orgSocials);
+    const filled = countFilledSocialUrls(urls);
+    if (filled === 0) {
+      addFieldError('property-main-social-platform', 'Add at least one social link', 'branding');
+    } else {
+      const preferred = propertySocialLinkInherits(operational.mainSocialPlatform)
+        ? orgSocials.mainSocialPlatform
+        : operational.mainSocialPlatform;
+      if (!preferred.trim()) {
+        addFieldError('property-main-social-platform', 'Choose a guest review link', 'branding');
+      } else {
+        const main = effectiveMainSocialPlatform(
+          operational.mainSocialPlatform,
+          orgSocials.mainSocialPlatform,
+          urls
+        );
+        if (!main || main !== preferred.trim()) {
+          addFieldError(
+            'property-main-social-platform',
+            'Choose a platform that has a URL',
+            'branding'
+          );
+        }
+      }
+    }
 
     const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);
     if (externalReviewsErr) {

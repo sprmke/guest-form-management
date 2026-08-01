@@ -819,6 +819,11 @@ export function GuestForm() {
           id: 'booking-error',
           duration: 7000,
         });
+      } else if (errorMessage.includes('DATES_BLOCKED')) {
+        toast.error('Selected dates are unavailable', {
+          id: 'booking-error',
+          duration: 7000,
+        });
       } else if (errorMessage.includes('GUEST_FORM_LOCKED')) {
         toast.error('Booking already reviewed', {
           id: 'guest-form-locked',

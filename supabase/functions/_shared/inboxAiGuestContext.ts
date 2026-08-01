@@ -632,10 +632,15 @@ export async function buildAiGroundingFacts(
     inquiryCheckIn?: string | null;
     inquiryCheckOut?: string | null;
     platform?: string | null;
+    /** Cap quick-reply snippets (voice prompts should stay small). */
+    maxQuickReplies?: number;
   }
 ): Promise<AiGroundingBundle> {
   const org = await loadGuestSafeOrgContext(orgId);
-  const quickReplies = await loadGuestSafeQuickReplies(orgId, options?.platform ?? null);
+  const quickRepliesRaw = await loadGuestSafeQuickReplies(orgId, options?.platform ?? null);
+  const maxQr = options?.maxQuickReplies;
+  const quickReplies =
+    typeof maxQr === 'number' && maxQr >= 0 ? quickRepliesRaw.slice(0, maxQr) : quickRepliesRaw;
   const lines = [`Organization: ${org.organizationName}`];
 
   let property: PropertyGuestContextDto | null = null;

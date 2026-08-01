@@ -7,7 +7,7 @@ type Props = {
 
 export function MetaInboxSyncProgress({ loadedCount = 0, className }: Props) {
   const label =
-    loadedCount > 0 ? `Loading conversations… (${loadedCount} loaded)` : 'Loading conversations…';
+    loadedCount > 0 ? `Saving conversations… (${loadedCount} loaded)` : 'Saving conversations…';
 
   return (
     <div className={className} role="status" aria-live="polite">

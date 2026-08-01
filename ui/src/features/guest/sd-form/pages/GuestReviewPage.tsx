@@ -139,7 +139,8 @@ function GuestReviewContent({
 
       {phase === 'voucher' ? (
         <VoucherReveal
-          facebookReviewsUrl={data.facebook_reviews_url}
+          reviewSocialUrl={data.review_social_url || data.facebook_reviews_url}
+          reviewSocialLabel={data.review_social_label || 'Facebook'}
           existingVoucher={existingVoucher}
           isClaiming={isClaiming}
           onClaim={onClaim}

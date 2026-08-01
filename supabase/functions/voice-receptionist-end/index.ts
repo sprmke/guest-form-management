@@ -18,8 +18,14 @@ import {
   writeVoiceTranscriptToConversation,
   type VoiceReceptionistEndReason,
 } from '../_shared/voiceReceptionistService.ts';
+import { polishVoiceTranscriptTurns } from '../_shared/polishVoiceUtterance.ts';
 
-const END_REASONS: VoiceReceptionistEndReason[] = ['guest_ended', 'timeout', 'cap_reached', 'error'];
+const END_REASONS: VoiceReceptionistEndReason[] = [
+  'guest_ended',
+  'timeout',
+  'cap_reached',
+  'error',
+];
 
 serveAuthenticated('voice-receptionist-end', async (req, user) => {
   if (req.method !== 'POST') {
@@ -44,14 +50,15 @@ serveAuthenticated('voice-receptionist-end', async (req, user) => {
 
   const result = await endVoiceReceptionistSession(session, endReason);
 
-  if (session.conversationId) {
+  if (session.conversationId && turns.length) {
     try {
+      const polishedTurns = await polishVoiceTranscriptTurns(turns);
       await writeVoiceTranscriptToConversation(
         session.id,
         session.conversationId,
         user.id,
         session.startedAt,
-        turns
+        polishedTurns
       );
     } catch (e) {
       console.error('[voice-receptionist-end] transcript write failed:', (e as Error).message);

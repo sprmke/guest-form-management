@@ -22,12 +22,23 @@ import {
   VoiceReceptionistCapError,
 } from '../_shared/voiceReceptionistService.ts';
 
-// Mirrors socialInboxAiService.ts's safetyPolicy — same refusal boundary, spoken tone.
-const SAFETY_POLICY =
-  'Answer normal guest questions about this stay and property using Known facts and the getPropertyFact tool. ' +
-  'Normal topics include availability, rates, check-in/check-out, amenities, parking, pets, wifi, payment methods, cancellation policy, and directions. ' +
-  "Only decline when asked about other guests' bookings, owner revenue/expenses/profit, staff information, or internal operations — politely say you'll have the host team follow up. " +
-  'Never invent facts that are not in Known facts or returned by getPropertyFact.';
+// Compact spoken safety + tool policy (Phase 6.2 — keep the locked prompt small).
+const VOICE_SYSTEM_CORE =
+  'Friendly concise voice receptionist. Reply in clear English in 1–2 short sentences. ' +
+  'When speaking money amounts, always say "pesos" (e.g. "four hundred pesos") — never say "PHP", "P H P", or spell the currency code. ' +
+  'Answer ONLY from Known facts below — do not call getPropertyFact when those facts already cover the question ' +
+  '(amenities, check-in/out, parking, pets, rates, wifi, location/map, house rules, capacity, payment, cancellation, blocked dates). ' +
+  'Call getPropertyFact only if a needed detail is missing from Known facts or the guest needs a fresh availability check. ' +
+  'When sharing a location, put one full https Google Maps link on its own line. ' +
+  'When sharing the booking calendar or property page, put one full https link on its own line. ' +
+  'For lists, use short "- " bullet lines. ' +
+  "Refuse other guests' bookings, owner finance/profit, staff info, or internal ops — say the host team will follow up. " +
+  'Never invent facts.';
+
+/** Speakable grounding — replace PHP labels so the Live model does not say "P H P". */
+function factsTextForVoice(factsText: string): string {
+  return factsText.replace(/\(PHP\)/gi, '(pesos)').replace(/\bPHP\b/g, 'pesos');
+}
 
 serveAuthenticated('voice-receptionist-start', async (req, user) => {
   if (req.method !== 'POST') {
@@ -89,16 +100,18 @@ serveAuthenticated('voice-receptionist-start', async (req, user) => {
     const grounding = await buildAiGroundingFacts(orgId, propertyId, {
       participantName,
       platform: 'web',
+      inquiryCheckIn: conversation.inquiry_check_in ?? null,
+      inquiryCheckOut: conversation.inquiry_check_out ?? null,
+      // Voice prompt budget — property facts already cover FAQs; keep QR snippets short.
+      maxQuickReplies: 5,
     });
 
     const personaOverride = settings.personaPrompt?.trim()
-      ? `\n\nAdditional persona instructions from the host: ${settings.personaPrompt.trim()}`
+      ? `\nHost persona: ${settings.personaPrompt.trim()}`
       : '';
-    const basePrompt =
-      `You are a friendly, concise voice receptionist for ${String(propertyRow.name ?? 'the property')}. ` +
-      'This is a spoken conversation, so keep replies short (1-2 sentences) and natural. ' +
-      'Call getPropertyFact for anything not already covered by Known facts before guessing.';
-    const systemInstruction = `${basePrompt}${personaOverride}\n\n${SAFETY_POLICY}\n\nKnown facts:\n${grounding.factsText}`;
+    const systemInstruction =
+      `${VOICE_SYSTEM_CORE} Property: ${String(propertyRow.name ?? 'this property')}.` +
+      `${personaOverride}\n\nKnown facts:\n${factsTextForVoice(grounding.factsText)}`;
 
     // Mint before inserting the session row so a Gemini failure does not burn a daily-cap slot.
     const minted = await mintGeminiLiveEphemeralToken({

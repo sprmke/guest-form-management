@@ -10,6 +10,7 @@ import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/boo
 import { useTelegramCredentialAutoSave } from '@/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave';
 import { useTelegramCredentialFields } from '@/features/dashboard/bookings/hooks/useTelegramCredentialFields';
 import { useTelegramModuleConnection } from '@/features/dashboard/bookings/hooks/useTelegramModuleConnection';
+import { useTelegramNotificationsGlobalBot } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import type { TelegramEnvVerifyDto } from '@/features/dashboard/bookings/lib/telegramEnvVerify';
 import { assetScopeKey, useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 
@@ -49,13 +50,15 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
 }) {
   const { useSettings, useUpdate, useTestSend, verify } = config;
   const { data, isLoading, isError, error } = useSettings();
+  const globalBotToken = useTelegramNotificationsGlobalBot();
   const scope = useAdminAssetScope();
   const scopeKey = assetScopeKey(scope);
   const update = useUpdate();
   const testSend = useTestSend();
   const [draft, setDraft] = React.useState<TDto | null>(null);
   const { botToken, setBotToken, chatId, setChatId } = useTelegramCredentialFields(
-    data?.credentials
+    data?.credentials,
+    globalBotToken
   );
   const saveCredentials = useTelegramCredentialAutoSave(botToken, chatId, update);
 
@@ -114,6 +117,9 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
 
   const onEnabledChange = React.useCallback(
     (enabled: boolean) => {
+      if (enabled && !botToken.trim() && globalBotToken.trim()) {
+        setBotToken(globalBotToken.trim());
+      }
       setDraft((d) => (d ? { ...d, enabled } : d));
       update.mutate(
         { enabled },
@@ -122,7 +128,7 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
         }
       );
     },
-    [update]
+    [botToken, globalBotToken, setBotToken, update]
   );
 
   return {

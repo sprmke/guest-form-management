@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 
 type MarketingStudioHeaderActionsContextValue = {
   actions: ReactNode;
@@ -9,8 +17,13 @@ const MarketingStudioHeaderActionsContext =
   createContext<MarketingStudioHeaderActionsContextValue | null>(null);
 
 export function MarketingStudioHeaderActionsProvider({ children }: { children: ReactNode }) {
-  const [actions, setActions] = useState<ReactNode>(null);
-  const value = useMemo(() => ({ actions, setActions }), [actions]);
+  const [actions, setActionsState] = useState<ReactNode>(null);
+  // Stable setter — must not change when `actions` updates, or consumers that
+  // put the whole context object in an effect dep array will loop forever.
+  const setActions = useCallback((next: ReactNode) => {
+    setActionsState((prev) => (Object.is(prev, next) ? prev : next));
+  }, []);
+  const value = useMemo(() => ({ actions, setActions }), [actions, setActions]);
 
   return (
     <MarketingStudioHeaderActionsContext.Provider value={value}>
@@ -24,13 +37,23 @@ export function MarketingStudioHeaderActionsSlot() {
   return ctx?.actions ?? null;
 }
 
-/** Register builder toolbar actions in the persistent marketing studio header. */
+/**
+ * Register builder toolbar actions in the persistent marketing studio header.
+ * Callers must memoize `actions` — unstable trees cause Maximum update depth loops
+ * (setActions → provider re-render → new actions identity → setActions…).
+ */
 export function useMarketingStudioHeaderActions(actions: ReactNode) {
   const ctx = useContext(MarketingStudioHeaderActionsContext);
+  const setActions = ctx?.setActions;
 
   useEffect(() => {
-    if (!ctx) return;
-    ctx.setActions(actions);
-    return () => ctx.setActions(null);
-  }, [actions, ctx]);
+    if (!setActions) return;
+    setActions(actions);
+  }, [actions, setActions]);
+
+  // Clear only on unmount — not on every actions identity change.
+  useEffect(() => {
+    if (!setActions) return;
+    return () => setActions(null);
+  }, [setActions]);
 }

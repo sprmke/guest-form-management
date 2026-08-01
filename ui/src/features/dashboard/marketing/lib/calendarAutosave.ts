@@ -42,6 +42,13 @@ export function aspectPresetForCalendarFormat(format: CalendarCanvasFormat): str
   return calendarFormatToAspectPreset(format);
 }
 
+export function calendarTemplateMatchesAspectPreset(
+  aspectPreset: string | null | undefined,
+  format: CalendarCanvasFormat
+): boolean {
+  return (aspectPreset?.trim() || 'instagram-post') === aspectPresetForCalendarFormat(format);
+}
+
 export function findCalendarAutosaveTemplate(
   templates: MarketingTemplateRecord[],
   sourcePresetId: string,

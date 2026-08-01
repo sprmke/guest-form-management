@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { jsonResponse } from '../_shared/httpResponse.ts';
+import { loadBlockedRanges } from '../_shared/propertyBlockedDates.ts';
 import { resolvePublicPropertyId } from '../_shared/propertyScope.ts';
 import { servePublic } from '../_shared/serveEdge.ts';
 
@@ -71,9 +72,28 @@ servePublic('get-booked-dates', async (req) => {
         checkOutDate: normalizeDate(booking.check_out_date),
       })) ?? [];
 
+  // Owner-managed blocks are unavailable to guests the same way booked nights are.
+  const parseYMD = (dateStr: string): Date | null => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+    if (!match) return null;
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+  };
+
+  const blockedRanges = await loadBlockedRanges(propertyId);
+  const blockedDateRanges = blockedRanges
+    .filter((range) => {
+      const end = parseYMD(range.end_date);
+      return !!end && end >= todayStart;
+    })
+    .map((range) => ({
+      id: `blocked-${range.id}`,
+      checkInDate: normalizeDate(range.start_date),
+      checkOutDate: normalizeDate(range.end_date),
+    }));
+
   return jsonResponse(req, {
     success: true,
-    data: bookedDateRanges,
+    data: [...bookedDateRanges, ...blockedDateRanges],
     message: 'Future booked dates retrieved successfully.',
   });
 });

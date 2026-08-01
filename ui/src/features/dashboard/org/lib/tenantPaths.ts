@@ -127,3 +127,7 @@ export function propertyNotificationsPath(
 export function bookingDetailPath(orgSlug: string, propertySlug: string, bookingId: string) {
   return `${propertyDashboardPath(orgSlug, propertySlug)}/bookings/${bookingId}`;
 }
+
+export function parkingBookingDetailPath(orgSlug: string, parkingSlug: string, bookingId: string) {
+  return `${parkingDashboardPath(orgSlug, parkingSlug)}/bookings/${bookingId}`;
+}

@@ -1,10 +1,16 @@
 import { useParams } from 'react-router-dom';
 
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { useOptionalParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 
 /** Current property id from nested admin route context (null on org-only pages). */
 export function usePropertyIdParam(): string | null {
   return useOptionalOrgContext()?.property.id ?? null;
+}
+
+/** Current parking id from nested parking admin route (null elsewhere). */
+export function useParkingIdParam(): string | null {
+  return useOptionalParkingContext()?.parking.id ?? null;
 }
 
 /** Org slug from route or tenant context. */
@@ -28,6 +34,14 @@ export function appendPropertyId(
   propertyId: string | null
 ): URLSearchParams {
   if (propertyId) params.set('property_id', propertyId);
+  return params;
+}
+
+export function appendParkingId(
+  params: URLSearchParams,
+  parkingId: string | null
+): URLSearchParams {
+  if (parkingId) params.set('parking_id', parkingId);
   return params;
 }
 

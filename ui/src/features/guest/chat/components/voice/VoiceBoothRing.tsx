@@ -1,0 +1,53 @@
+import { cn } from '@/lib/utils';
+
+import type { ReceptionistAvatarState } from '@/features/guest/chat/components/voice/ReceptionistAvatar';
+
+type Props = {
+  state: ReceptionistAvatarState;
+  /** 0..1 — drives speaking glow strength. */
+  amplitude?: number;
+  className?: string;
+};
+
+const BRASS = '#C4A35A';
+const GREEN = '#3D9B6A';
+const AMBER = '#D4A017';
+
+/**
+ * Signature booth ring around the receptionist avatar (Phase 6.3).
+ * Listening = soft pulse; thinking = spin chase; speaking = amplitude stroke.
+ * Uses Tailwind motion utilities only (respects prefers-reduced-motion via motion-safe).
+ */
+export function VoiceBoothRing({ state, amplitude = 0, className }: Props) {
+  const amp = Math.max(0, Math.min(1, amplitude));
+  const listening = state === 'listening' || state === 'idle';
+  const thinking = state === 'thinking' || state === 'connecting';
+  const speaking = state === 'speaking';
+  const stroke = speaking ? BRASS : thinking ? AMBER : listening ? GREEN : BRASS;
+
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      className={cn('pointer-events-none absolute inset-0 h-full w-full', className)}
+      aria-hidden
+    >
+      <circle
+        cx="50"
+        cy="50"
+        r="47"
+        fill="none"
+        stroke={stroke}
+        strokeOpacity={speaking ? 0.35 + amp * 0.5 : thinking ? 0.75 : 0.5}
+        strokeWidth={speaking ? 1.25 + amp * 2.5 : 1.5}
+        strokeLinecap="round"
+        strokeDasharray={thinking ? '10 8' : undefined}
+        className={cn(
+          'origin-center transition-[stroke-width,stroke-opacity] duration-150',
+          listening && 'motion-safe:animate-pulse',
+          thinking && 'motion-safe:animate-spin'
+        )}
+        style={{ transformOrigin: '50px 50px' }}
+      />
+    </svg>
+  );
+}

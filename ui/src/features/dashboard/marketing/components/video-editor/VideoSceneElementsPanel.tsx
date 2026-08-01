@@ -31,6 +31,7 @@ import {
   sceneBackgroundLayer,
   updateSceneLayer,
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -89,7 +90,7 @@ function VideoLayerWidthControl({
 type Props = {
   scene: VideoScene;
   propertyImages: PropertyMediaItem[];
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   logoUrl?: string | null;
   templateTextSeed?: VideoSceneTextFields;
   selectedElementId: string | null;
@@ -101,7 +102,7 @@ type Props = {
 export function VideoSceneElementsPanel({
   scene,
   propertyImages,
-  brandColor,
+  templateTypography,
   logoUrl = null,
   templateTextSeed,
   selectedElementId,
@@ -145,7 +146,7 @@ export function VideoSceneElementsPanel({
       imageUrl: propertyImages[0]?.url ?? scene.imageUrl,
       logoUrl: logoUrl?.trim() ?? null,
       templateSeed: templateTextSeed,
-      brandColor,
+      typography: templateTypography,
     });
     onChange(next);
     const added = getSceneLayers(next);
@@ -194,7 +195,7 @@ export function VideoSceneElementsPanel({
               layer={layer}
               label={displayLabel(layers, layer)}
               scene={scene}
-              brandColor={brandColor}
+              templateTypography={templateTypography}
               propertyImages={propertyImages}
               selected={selectedElementId === layer.id}
               onSelect={() => onSelectElement(layer.id)}
@@ -250,7 +251,7 @@ function LayerRow({
   layer,
   label,
   scene,
-  brandColor,
+  templateTypography,
   propertyImages,
   selected,
   onSelect,
@@ -260,7 +261,7 @@ function LayerRow({
   layer: VideoSceneLayer;
   label: string;
   scene: VideoScene;
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   propertyImages: PropertyMediaItem[];
   selected: boolean;
   onSelect: () => void;
@@ -355,7 +356,7 @@ function LayerRow({
           ) : layer.kind === 'text' || layer.kind === 'cta' ? (
             <VideoTextStyleControls
               layer={layer}
-              brandColor={brandColor}
+              templateTypography={templateTypography}
               onChange={(patch) => onChange(updateSceneLayer(scene, layer.id, patch))}
             />
           ) : null}

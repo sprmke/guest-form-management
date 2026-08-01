@@ -454,16 +454,20 @@ export function normalizeCalendarStyles(styles: CalendarStyles): CalendarStyles 
 // ========================================
 export type CalendarPreset =
   | 'default'
-  | 'editorial-serif'
-  | 'modern-classic'
-  | 'swiss-minimal'
-  | 'mono-ink'
-  | 'terracotta'
-  | 'tropical-paradise'
-  | 'cozy-cabin'
-  | 'onyx-luxe'
-  | 'midnight-velvet'
-  | 'risograph-pop'
+  | 'social-availability'
+  | 'sunrise-select'
+  | 'desk-type'
+  | 'magazine-grid'
+  | 'bauhaus-geo'
+  | 'memphis-print'
+  | 'boho-soft'
+  | 'garden-glow'
+  | 'property-hero'
+  | 'cabin-retreat'
+  | 'velvet-guest'
+  | 'gold-foil'
+  | 'ring-bloom'
+  | 'petal-note'
   | 'custom';
 
 // ========================================
@@ -592,7 +596,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         show: true,
         font: {
           family: primaryFont,
-          size: 22,
+          size: 24,
           weight: 600,
           lineHeight: 1.2,
           letterSpacing: -0.3,
@@ -606,7 +610,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         text: '',
         font: {
           family: primaryFont,
-          size: 13,
+          size: 15,
           weight: 400,
           lineHeight: 1.5,
           letterSpacing: 0,
@@ -618,7 +622,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         show: true,
         font: {
           family: primaryFont,
-          size: 13,
+          size: 25,
           weight: 500,
           lineHeight: 1.5,
           letterSpacing: 0,
@@ -631,7 +635,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         format: 'MMMM YYYY',
         font: {
           family: primaryFont,
-          size: 20,
+          size: 40,
           weight: 600,
           lineHeight: 1.3,
           letterSpacing: -0.2,
@@ -663,8 +667,8 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
       },
       font: {
         family: primaryFont,
-        size: 11,
-        weight: 500,
+        size: 13,
+        weight: 600,
         lineHeight: 1.5,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
@@ -714,7 +718,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
       dayNumber: {
         font: {
           family: primaryFont,
-          size: 14,
+          size: 28,
           weight: 500,
           lineHeight: 1,
           letterSpacing: 0,
@@ -788,7 +792,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         content: 'BOOKED',
         font: {
           family: primaryFont,
-          size: 10,
+          size: 11,
           weight: 600,
           lineHeight: 1,
           letterSpacing: 0.5,
@@ -844,7 +848,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         show: false,
         font: {
           family: primaryFont,
-          size: 10,
+          size: 12,
           weight: 600,
           lineHeight: 1,
           letterSpacing: 0,
@@ -880,7 +884,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         content: 'N/A',
         font: {
           family: primaryFont,
-          size: 8,
+          size: 10,
           weight: 500,
           lineHeight: 1,
           letterSpacing: 0.5,
@@ -958,7 +962,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         gap: 20,
         labelFont: {
           family: primaryFont,
-          size: 12,
+          size: 14,
           weight: 500,
           lineHeight: 1,
           letterSpacing: 0,
@@ -973,7 +977,7 @@ export function createDefaultStyles(brandColor?: string): CalendarStyles {
         text: 'Legend',
         font: {
           family: primaryFont,
-          size: 13,
+          size: 15,
           weight: 600,
           lineHeight: 1.3,
           letterSpacing: 0,

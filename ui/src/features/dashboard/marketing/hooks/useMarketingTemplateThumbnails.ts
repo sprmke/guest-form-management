@@ -6,6 +6,7 @@ import type {
 } from '@/features/dashboard/marketing/components/calendar-builder/types';
 import { captureCalendarPresetThumbnail } from '@/features/dashboard/marketing/components/shared/MarketingCalendarThumbnailHost';
 import type { MarketingTemplateRecord } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import { calendarTemplateMatchesAspectPreset } from '@/features/dashboard/marketing/lib/calendarAutosave';
 import type { CalendarCanvasFormat } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import { calendarPreviewThumbKey } from '@/features/dashboard/marketing/lib/marketingBookedDates';
@@ -54,6 +55,7 @@ import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
 type DesignOptions = {
   contentType: 'design';
   presetIds: string[];
+  brandColor?: string;
   savedRecords?: MarketingTemplateRecord[];
 };
 
@@ -71,11 +73,13 @@ type CalendarOptions = {
   presetIds: string[];
   canvasFormat: CalendarCanvasFormat;
   brandColor?: string;
+  propertyPhotoUrl?: string;
   previewMonth: Date;
   previewBookings?: PreviewBooking[];
   savedCalendarTemplates?: Array<{
     id: string;
     sourcePresetId?: string | null;
+    aspectPreset?: string | null;
     styles: CalendarStyles;
     updatedAt: string;
     thumbnailDataUrl?: string;
@@ -102,6 +106,17 @@ function normalizeThumbnailRequestId(id: string): string {
   return id.replace(/^preset:/, '');
 }
 
+function shouldAliasSavedCalendarToPreset(
+  sourcePresetId: string | null | undefined,
+  aspectPreset: string | null | undefined,
+  format: CalendarCanvasFormat
+): boolean {
+  if (!sourcePresetId || sourcePresetId === 'custom' || sourcePresetId === 'default') {
+    return false;
+  }
+  return calendarTemplateMatchesAspectPreset(aspectPreset, format);
+}
+
 function isThumbnailRequested(id: string, requested: Set<string>): boolean {
   const bare = normalizeThumbnailRequestId(id);
   return requested.has(id) || requested.has(bare) || requested.has(`preset:${bare}`);
@@ -113,27 +128,28 @@ function mergePresetThumbnails(
   next: Record<string, string>,
   includePresetAlias: boolean
 ): Record<string, string> {
-  const merged = { ...prev };
   let changed = false;
-
-  for (const id of presetIds) {
-    if (id in merged) {
-      delete merged[id];
-      changed = true;
-    }
-    if (includePresetAlias) {
-      const alias = `preset:${id}`;
-      if (alias in merged) {
-        delete merged[alias];
-        changed = true;
-      }
-    }
-  }
+  const merged = { ...prev };
 
   for (const [id, url] of Object.entries(next)) {
     if (merged[id] !== url) {
       merged[id] = url;
       changed = true;
+    }
+  }
+
+  // Drop keys for the current preset set that were not re-hydrated.
+  for (const id of presetIds) {
+    if (!(id in next) && id in merged) {
+      delete merged[id];
+      changed = true;
+    }
+    if (includePresetAlias) {
+      const alias = `preset:${id}`;
+      if (!(alias in next) && alias in merged) {
+        delete merged[alias];
+        changed = true;
+      }
     }
   }
 
@@ -207,7 +223,9 @@ export function useMarketingTemplateThumbnails(options: Options) {
   const presetIds = options.presetIds;
   const videoFormat = options.contentType === 'video' ? options.format : undefined;
   const calendarFormat = options.contentType === 'calendar' ? options.canvasFormat : undefined;
-  const brandColor = options.contentType !== 'design' ? options.brandColor : undefined;
+  const brandColor = options.brandColor;
+  const propertyPhotoUrl =
+    options.contentType === 'calendar' ? options.propertyPhotoUrl : undefined;
   const videoBinding = options.contentType === 'video' ? options.binding : undefined;
   const previewBookings = options.contentType === 'calendar' ? (options.previewBookings ?? []) : [];
   const previewMonth = options.contentType === 'calendar' ? options.previewMonth : null;
@@ -227,18 +245,25 @@ export function useMarketingTemplateThumbnails(options: Options) {
     return calendarPreviewThumbKey(previewMonth, previewBookings);
   }, [contentType, previewMonth, previewBookings]);
 
+  const calendarPhotoKey = useMemo(() => {
+    if (contentType !== 'calendar') return '';
+    return propertyPhotoUrl ?? 'stock';
+  }, [contentType, propertyPhotoUrl]);
+
   const presetKey = useMemo(() => {
     const ids = presetIds.join(',');
     if (contentType === 'calendar') {
-      return `${calendarFormat}:${calendarBrandKey}:${calendarPreviewKey}:${ids}`;
+      return `${calendarFormat}:${calendarBrandKey}:${calendarPhotoKey}:${calendarPreviewKey}:${ids}`;
     }
     if (contentType === 'video') return `${videoFormat}:${brandColor ?? ''}:${ids}`;
+    if (contentType === 'design') return `${brandColor ?? ''}:${ids}`;
     return ids;
   }, [
     contentType,
     presetIds,
     calendarFormat,
     calendarBrandKey,
+    calendarPhotoKey,
     calendarPreviewKey,
     videoFormat,
     brandColor,
@@ -256,6 +281,24 @@ export function useMarketingTemplateThumbnails(options: Options) {
   }, [contentType, savedCalendarTemplates, savedRecords]);
 
   useEffect(() => {
+    if (contentType !== 'calendar' || !calendarFormat) return;
+
+    setThumbnails((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const id of presetIds) {
+        for (const key of [id, `preset:${id}`]) {
+          if (key in next) {
+            delete next[key];
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [contentType, calendarFormat, presetIds]);
+
+  useEffect(() => {
     if (contentType !== 'design' && contentType !== 'video') return;
     return subscribeMarketingThumbnailUpdates((templateId, dataUrl) => {
       setThumbnails((prev) =>
@@ -271,11 +314,17 @@ export function useMarketingTemplateThumbnails(options: Options) {
       if (presetIds.length === 0) return;
 
       const cacheKeys = presetIds.map((id) => {
-        if (contentType === 'design') return designPresetThumbnailKey(id);
+        if (contentType === 'design') return designPresetThumbnailKey(id, brandColor);
         if (contentType === 'video') {
           return videoPresetThumbnailKey(id, videoFormat!, brandColor);
         }
-        return calendarPresetThumbnailKey(id, calendarFormat!, brandColor, calendarPreviewKey);
+        return calendarPresetThumbnailKey(
+          id,
+          calendarFormat!,
+          brandColor,
+          calendarPreviewKey,
+          propertyPhotoUrl
+        );
       });
 
       const persistKeys = cacheKeys.map((key) => presetPersistKey(contentType, key));
@@ -310,12 +359,19 @@ export function useMarketingTemplateThumbnails(options: Options) {
         }
       }
 
-      setThumbnails((prev) =>
-        mergePresetThumbnails(prev, presetIds, next, contentType === 'calendar')
+      if (cancelled) return;
+
+      const merged = mergePresetThumbnails(
+        thumbnailsRef.current,
+        presetIds,
+        next,
+        contentType === 'calendar'
       );
-      if (!cancelled) {
-        setHydrateVersion((version) => version + 1);
-      }
+      if (merged === thumbnailsRef.current) return;
+
+      thumbnailsRef.current = merged;
+      setThumbnails(merged);
+      setHydrateVersion((version) => version + 1);
     };
 
     void hydratePresets();
@@ -362,15 +418,19 @@ export function useMarketingTemplateThumbnails(options: Options) {
 
         try {
           if (contentType === 'design') {
-            cacheKey = designPresetThumbnailKey(id);
+            cacheKey = designPresetThumbnailKey(id, brandColor);
             dataUrl = await ensurePresetThumbnail(
               cacheKey,
               presetPersistKey('design', cacheKey),
-              () => renderDesignPresetThumbnail(id, DEFAULT_MARKETING_THUMB_BINDING)
+              () => renderDesignPresetThumbnail(id, DEFAULT_MARKETING_THUMB_BINDING, brandColor)
             );
             if (!dataUrl && !cancelled) {
               await new Promise<void>((resolve) => window.setTimeout(resolve, 300));
-              dataUrl = await renderDesignPresetThumbnail(id, DEFAULT_MARKETING_THUMB_BINDING);
+              dataUrl = await renderDesignPresetThumbnail(
+                id,
+                DEFAULT_MARKETING_THUMB_BINDING,
+                brandColor
+              );
               if (dataUrl) {
                 setCachedMarketingThumbnail(cacheKey, dataUrl);
                 void setPersistedPresetThumbnail(presetPersistKey('design', cacheKey), dataUrl);
@@ -407,7 +467,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
               id,
               calendarFormat!,
               brandColor,
-              calendarPreviewKey
+              calendarPreviewKey,
+              propertyPhotoUrl
             );
             dataUrl = await ensurePresetThumbnail(
               cacheKey,
@@ -417,7 +478,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
                   id,
                   DEFAULT_MARKETING_THUMB_BINDING.propertyName,
                   calendarFormat!,
-                  brandColor
+                  brandColor,
+                  propertyPhotoUrl
                 )
             );
           }
@@ -463,9 +525,33 @@ export function useMarketingTemplateThumbnails(options: Options) {
 
   useEffect(() => {
     if (contentType !== 'calendar') return;
+    if (!calendarFormat) return;
     if (savedCalendarTemplates.length === 0) return;
 
     let cancelled = false;
+
+    const applySavedThumbnail = (
+      prev: Record<string, string>,
+      saved: (typeof savedCalendarTemplates)[number],
+      dataUrl: string
+    ): Record<string, string> => {
+      const thumbId = `saved:${saved.id}`;
+      const next = prev[thumbId] === dataUrl ? prev : { ...prev, [thumbId]: dataUrl };
+
+      if (saved.sourcePresetId === 'custom') {
+        const customThumbId = `custom:${saved.id}`;
+        return next[customThumbId] === dataUrl ? next : { ...next, [customThumbId]: dataUrl };
+      }
+
+      if (
+        shouldAliasSavedCalendarToPreset(saved.sourcePresetId, saved.aspectPreset, calendarFormat)
+      ) {
+        const presetThumbId = `preset:${saved.sourcePresetId}`;
+        return next[presetThumbId] === dataUrl ? next : { ...next, [presetThumbId]: dataUrl };
+      }
+
+      return next;
+    };
 
     const loadSaved = async () => {
       const { captureCalendarStylesThumbnail } =
@@ -473,60 +559,25 @@ export function useMarketingTemplateThumbnails(options: Options) {
 
       await runWithConcurrency(savedCalendarTemplates, PRESET_RENDER_CONCURRENCY, async (saved) => {
         if (cancelled) return;
+        if (!calendarTemplateMatchesAspectPreset(saved.aspectPreset, calendarFormat)) return;
 
         const thumbId = `saved:${saved.id}`;
         const cacheKey = calendarSavedStylesThumbnailKey(
           saved.id,
           saved.updatedAt,
-          calendarPreviewKey
+          calendarPreviewKey,
+          calendarFormat
         );
 
         if (saved.thumbnailDataUrl) {
           setCachedMarketingThumbnail(cacheKey, saved.thumbnailDataUrl);
-          setThumbnails((prev) => {
-            const next =
-              prev[thumbId] === saved.thumbnailDataUrl
-                ? prev
-                : { ...prev, [thumbId]: saved.thumbnailDataUrl! };
-            if (saved.sourcePresetId) {
-              const presetThumbId = `preset:${saved.sourcePresetId}`;
-              const customThumbId = saved.sourcePresetId === 'custom' ? `custom:${saved.id}` : null;
-              let nextWithPreset =
-                next[presetThumbId] === saved.thumbnailDataUrl
-                  ? next
-                  : { ...next, [presetThumbId]: saved.thumbnailDataUrl! };
-              if (customThumbId) {
-                nextWithPreset =
-                  nextWithPreset[customThumbId] === saved.thumbnailDataUrl
-                    ? nextWithPreset
-                    : { ...nextWithPreset, [customThumbId]: saved.thumbnailDataUrl! };
-              }
-              return nextWithPreset;
-            }
-            return next;
-          });
+          setThumbnails((prev) => applySavedThumbnail(prev, saved, saved.thumbnailDataUrl!));
           return;
         }
 
         const cached = getCachedMarketingThumbnail(cacheKey);
         if (cached) {
-          setThumbnails((prev) => {
-            const next = prev[thumbId] === cached ? prev : { ...prev, [thumbId]: cached };
-            if (saved.sourcePresetId) {
-              const presetThumbId = `preset:${saved.sourcePresetId}`;
-              const customThumbId = saved.sourcePresetId === 'custom' ? `custom:${saved.id}` : null;
-              let nextWithPreset =
-                next[presetThumbId] === cached ? next : { ...next, [presetThumbId]: cached };
-              if (customThumbId) {
-                nextWithPreset =
-                  nextWithPreset[customThumbId] === cached
-                    ? nextWithPreset
-                    : { ...nextWithPreset, [customThumbId]: cached };
-              }
-              return nextWithPreset;
-            }
-            return next;
-          });
+          setThumbnails((prev) => applySavedThumbnail(prev, saved, cached));
           return;
         }
 
@@ -538,23 +589,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
         if (cancelled) return;
         if (dataUrl) {
           setCachedMarketingThumbnail(cacheKey, dataUrl);
-          setThumbnails((prev) => {
-            const next = prev[thumbId] === dataUrl ? prev : { ...prev, [thumbId]: dataUrl };
-            if (saved.sourcePresetId) {
-              const presetThumbId = `preset:${saved.sourcePresetId}`;
-              const customThumbId = saved.sourcePresetId === 'custom' ? `custom:${saved.id}` : null;
-              let nextWithPreset =
-                next[presetThumbId] === dataUrl ? next : { ...next, [presetThumbId]: dataUrl };
-              if (customThumbId) {
-                nextWithPreset =
-                  nextWithPreset[customThumbId] === dataUrl
-                    ? nextWithPreset
-                    : { ...nextWithPreset, [customThumbId]: dataUrl };
-              }
-              return nextWithPreset;
-            }
-            return next;
-          });
+          setThumbnails((prev) => applySavedThumbnail(prev, saved, dataUrl));
         }
         setLoadingIds((prev) => {
           const copy = new Set(prev);
@@ -569,7 +604,7 @@ export function useMarketingTemplateThumbnails(options: Options) {
     return () => {
       cancelled = true;
     };
-  }, [contentType, savedKey, calendarPreviewKey]);
+  }, [contentType, savedKey, calendarPreviewKey, calendarFormat, savedCalendarTemplates]);
 
   useEffect(() => {
     if (contentType === 'calendar') return;
@@ -628,8 +663,8 @@ export function useMarketingTemplateThumbnails(options: Options) {
             record.designJson.project ?? record.designJson,
             typeof record.designJson.templateId === 'string'
               ? record.designJson.templateId
-              : 'promo-500-off',
-            template?.category ?? 'promo',
+              : 'quiet-morning',
+            template?.category ?? 'soft-stay',
             thumbBinding,
             (typeof record.aspectPreset === 'string'
               ? record.aspectPreset

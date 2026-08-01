@@ -13,6 +13,8 @@ import {
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
+import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramGlobalBotTokenCard';
+import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/components/TelegramParkingSettingsCard';
 
 const PARKING_NOTIFICATION_MODULES = ['parking', 'finance'] as const;
@@ -31,6 +33,12 @@ const MODULE_SECTIONS: AdminSectionNavItem[] = [
 const NOTIFICATION_SECTION_GROUPS: AdminSectionNavGroup[] = [
   { label: 'Telegram notifications', sections: MODULE_SECTIONS },
 ];
+
+const MODULE_DESCRIPTIONS: Record<ParkingNotificationModule, string> = {
+  parking:
+    'Reservation alerts for new requests, check-in reminders, and payment received on this slot.',
+  finance: 'Due-date reminders for parking expense lines you track in Finance.',
+};
 
 export function ParkingNotificationsPage() {
   const [searchParams] = useSearchParams();
@@ -51,28 +59,42 @@ export function ParkingNotificationsPage() {
   }, [deepLinkModule]);
 
   return (
-    <AdminSectionNavLayout
-      sectionGroups={NOTIFICATION_SECTION_GROUPS}
-      header={
-        <AdminPageHeader
-          id="parking-notifications-heading"
-          variant="compact"
-          title="Notifications"
-          subtitle="Configure Telegram notifications for this parking slot."
-        />
-      }
-    >
-      <div className="space-y-3 sm:space-y-4">
-        <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
+    <TelegramNotificationsGlobalBotProvider>
+      <AdminSectionNavLayout
+        sectionGroups={NOTIFICATION_SECTION_GROUPS}
+        header={
+          <AdminPageHeader
+            id="parking-notifications-heading"
+            variant="compact"
+            title="Notifications"
+            subtitle="Configure Telegram notifications for this parking slot."
+          />
+        }
+      >
+        <div className="space-y-3 sm:space-y-4">
+          <TelegramGlobalBotTokenCard />
 
-        <AdminSection id="parking" title="Parking" icon={Car}>
-          <TelegramParkingSettingsCard />
-        </AdminSection>
+          <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
 
-        <AdminSection id="finance" title="Finance" icon={DollarSign}>
-          <TelegramFinanceSettingsCard embedded />
-        </AdminSection>
-      </div>
-    </AdminSectionNavLayout>
+          <AdminSection
+            id="parking"
+            title="Parking"
+            icon={Car}
+            description={MODULE_DESCRIPTIONS.parking}
+          >
+            <TelegramParkingSettingsCard />
+          </AdminSection>
+
+          <AdminSection
+            id="finance"
+            title="Finance"
+            icon={DollarSign}
+            description={MODULE_DESCRIPTIONS.finance}
+          >
+            <TelegramFinanceSettingsCard embedded />
+          </AdminSection>
+        </div>
+      </AdminSectionNavLayout>
+    </TelegramNotificationsGlobalBotProvider>
   );
 }

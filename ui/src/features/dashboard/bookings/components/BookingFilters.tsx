@@ -14,7 +14,11 @@ import {
   statusLabel,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
-import type { BookingsQuery, BookingsSort } from '@/features/dashboard/bookings/lib/types';
+import type {
+  BookingsQuery,
+  BookingsSort,
+  BookingKind,
+} from '@/features/dashboard/bookings/lib/types';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroupDisplay } from '@/components/ui/radio-group';
@@ -32,6 +36,9 @@ type Props = {
   showPerPage?: boolean;
   /** Hide pets / parking toggles (parking slot admin). */
   hideGuestStayFilters?: boolean;
+  /** Org list: filter property vs parking rows. */
+  showBookingKindFilter?: boolean;
+  hideKanbanView?: boolean;
   searchPlaceholder?: string;
 };
 
@@ -114,6 +121,8 @@ export function BookingFilters({
   hideTableView = false,
   showPerPage = true,
   hideGuestStayFilters = false,
+  showBookingKindFilter = false,
+  hideKanbanView = false,
   searchPlaceholder = 'Search guests, email, phone, plate, pet…',
 }: Props) {
   const [draft, setDraft] = useState(query.q);
@@ -160,13 +169,16 @@ export function BookingFilters({
     onChange({ status: Array.from(next), page: 1 });
   };
 
-  const moreFiltersCount = hideGuestStayFilters
-    ? 0
-    : (query.hasPets !== null ? 1 : 0) + (query.needParking !== null ? 1 : 0);
+  const moreFiltersCount =
+    (showBookingKindFilter && query.bookingKind ? 1 : 0) +
+    (hideGuestStayFilters
+      ? 0
+      : (query.hasPets !== null ? 1 : 0) + (query.needParking !== null ? 1 : 0));
 
   const isDirty =
     Boolean(query.q) ||
     query.status.length > 0 ||
+    (showBookingKindFilter && query.bookingKind !== null) ||
     (!hideGuestStayFilters && query.hasPets !== null) ||
     (!hideGuestStayFilters && query.needParking !== null);
 
@@ -254,7 +266,7 @@ export function BookingFilters({
             ) : null}
           </div>
 
-          {hideGuestStayFilters ? null : (
+          {hideGuestStayFilters && !showBookingKindFilter ? null : (
             <div ref={moreFilterRef} className="relative min-w-0">
               <FilterBtn
                 label="More filters"
@@ -271,26 +283,36 @@ export function BookingFilters({
                     </span>
                   </div>
                   <div className="max-h-[min(60vh,320px)] overflow-y-auto">
-                    <TriOptions
-                      label="Has pets"
-                      value={query.hasPets}
-                      options={[
-                        { label: 'Any', value: null },
-                        { label: 'With pets', value: true },
-                        { label: 'No pets', value: false },
-                      ]}
-                      onChange={(v) => onChange({ hasPets: v, page: 1 })}
-                    />
-                    <TriOptions
-                      label="Needs parking"
-                      value={query.needParking}
-                      options={[
-                        { label: 'Any', value: null },
-                        { label: 'Needs parking', value: true },
-                        { label: 'No parking needed', value: false },
-                      ]}
-                      onChange={(v) => onChange({ needParking: v, page: 1 })}
-                    />
+                    {showBookingKindFilter ? (
+                      <KindOptions
+                        value={query.bookingKind}
+                        onChange={(v) => onChange({ bookingKind: v, page: 1 })}
+                      />
+                    ) : null}
+                    {!hideGuestStayFilters ? (
+                      <>
+                        <TriOptions
+                          label="Has pets"
+                          value={query.hasPets}
+                          options={[
+                            { label: 'Any', value: null },
+                            { label: 'With pets', value: true },
+                            { label: 'No pets', value: false },
+                          ]}
+                          onChange={(v) => onChange({ hasPets: v, page: 1 })}
+                        />
+                        <TriOptions
+                          label="Needs parking"
+                          value={query.needParking}
+                          options={[
+                            { label: 'Any', value: null },
+                            { label: 'Needs parking', value: true },
+                            { label: 'No parking needed', value: false },
+                          ]}
+                          onChange={(v) => onChange({ needParking: v, page: 1 })}
+                        />
+                      </>
+                    ) : null}
                   </div>
                 </DropdownPanel>
               ) : null}
@@ -322,10 +344,53 @@ export function BookingFilters({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <BookingViewToggle value={view} onChange={onViewChange} hideTableView={hideTableView} />
+          <BookingViewToggle
+            value={view}
+            onChange={onViewChange}
+            hideTableView={hideTableView}
+            hideKanbanView={hideKanbanView}
+          />
         </div>
       </div>
     </div>
+  );
+}
+
+function KindOptions({
+  value,
+  onChange,
+}: {
+  value: BookingKind | null;
+  onChange: (v: BookingKind | null) => void;
+}) {
+  const options: { label: string; value: BookingKind | null }[] = [
+    { label: 'All types', value: null },
+    { label: 'Property stays', value: 'property' },
+    { label: 'Parking', value: 'parking' },
+  ];
+  return (
+    <>
+      <div className="border-separator border-b px-3.5 py-2.5">
+        <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+          Booking type
+        </span>
+      </div>
+      <div className="py-1">
+        {options.map((opt) => (
+          <button
+            key={String(opt.value)}
+            type="button"
+            onClick={() => onChange(opt.value)}
+            className={cn(
+              'flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
+              opt.value === value ? 'bg-muted/60' : 'hover:bg-muted/40'
+            )}
+          >
+            <span className="text-[13px] font-medium">{opt.label}</span>
+          </button>
+        ))}
+      </div>
+    </>
   );
 }
 

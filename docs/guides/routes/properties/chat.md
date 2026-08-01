@@ -64,15 +64,16 @@ Use for deep links, **Open full chat**, and future guest Messages hub — not fi
 
 **Voice receptionist:** when enabled (global + property), the header ⋮ menu shows **Talk to
 receptionist**, opening a full-screen `VoiceSessionOverlay` (Gemini Live, mic in / audio out,
-procedural turtle avatar today, live captions, session countdown). On end, timeout, or error the
-transcript is batch-written into this same thread as `social_messages` rows with
-`source_mode='voice'` — voice turns show inline with text history in both the guest thread and
-host Guest Inbox.
+circular cute-turtle talk loop (muted HeyGen clip while AI speaks) with live captions and session countdown). On end,
+timeout, or error the transcript is batch-written into this same thread as `social_messages` rows
+with `source_mode='voice'` — voice turns show inline with text history in both the guest thread
+and host Guest Inbox.
 
-**Planned polish (Phase 6 — not shipped yet):** faster speech detection + AI turn latency, explicit
-listening/thinking/speaking UX (brass ring / waveform), then replace the turtle with a free
-browser **TalkingHead + VRM** humanoid lip-sync avatar. See plan § Phase 6 in
-`docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md`.
+**Phase 6 (shipped):** speech VAD; rich map/list/link bubbles; leaner voice prompts; night-lobby
+booth UI (brass ring + mic waveform); batch Flash polish on hang-up (`thinkingBudget: 0`); booth
+stays open with **Saving conversation…** until the thread refetch settles; spoken money uses
+**pesos**; circular turtle avatar (full-body 9:16 HeyGen clip; talk loop **only** while `phase === 'speaking'`, idle still otherwise). Mouth motion is a baked loop — not live phoneme sync.
+See `docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
 
 ## API
 
@@ -86,7 +87,7 @@ browser **TalkingHead + VRM** humanoid lip-sync avatar. See plan § Phase 6 in
 | `upload-guest-chat-asset`  | POST   | Guest JWT | Multipart file → **`guest-chat-attachments`** bucket; returns `{ kind, url, label? }` for send payload                                                        |
 | `voice-receptionist-start` | POST   | Guest JWT | `{ propertySlug }` → `{ ephemeralToken, sessionId, model, voiceId, maxSessionSeconds }` (Gemini Live)                                                         |
 | `voice-receptionist-tool`  | POST   | Guest JWT | `{ sessionId, topic }` — property-fact tool call from the live model                                                                                          |
-| `voice-receptionist-end`   | POST   | Guest JWT | `{ sessionId, endReason, transcript }` — ends the session row + batch-writes transcript to `social_messages` (`source_mode='voice'`)                          |
+| `voice-receptionist-end`   | POST   | Guest JWT | `{ sessionId, endReason, transcript }` — ends session; **one** batch Flash polish → `social_messages` (`source_mode='voice'`)                                 |
 
 Host replies use **`social-inbox-send`** (web branch). When the guest is offline, host web replies trigger **`guestChatEmail.ts`** → Resend **`guest-chat-reply.html`** (deduped via **`social_messages.guest_reply_email_sent_at`**).
 
@@ -135,8 +136,10 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 | Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`       |
 | Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                       |
 | Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                               |
-| Voice UI        | `ui/src/features/guest/chat/components/voice/ReceptionistAvatar.tsx`, `VoiceSessionOverlay.tsx`                                                         |
+| Voice UI        | `ReceptionistAvatar` circular muted turtle video + idle still; `ReceptionistFacePlate` fallback; `VoiceSessionOverlay`                                  |
 | Voice hooks/API | `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `lib/voiceReceptionistApi.ts`, `lib/voiceAudioCodec.ts`, `public/worklets/voice-pcm-recorder.js` |
+| Voice polish    | `_shared/polishVoiceUtterance.ts` (batch on end); `ChatUrlLinkCard` for https in bubbles                                                                |
+| Avatar asset    | `receptionist-turtle-talk.mp4` + `receptionist-turtle-idle.png` + `ATTRIBUTION.md`                                                                      |
 | Voice edge      | `supabase/functions/voice-receptionist-start/`, `voice-receptionist-tool/`, `voice-receptionist-end/`, `_shared/voiceReceptionistService.ts`            |
 | CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                            |
 | Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                                 |

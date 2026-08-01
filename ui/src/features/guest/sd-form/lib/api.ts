@@ -17,6 +17,9 @@ export type GuestReviewBootstrap = {
   check_in_date: string;
   check_out_date: string;
   facebook_reviews_url: string;
+  review_social_url?: string;
+  review_social_platform?: string;
+  review_social_label?: string;
   guest_review_submitted?: boolean;
   email_logo_url?: string;
   brand_color?: string;
@@ -47,6 +50,9 @@ export type SdFormBootstrap = {
   check_in_date: string;
   check_out_date: string;
   facebook_reviews_url: string;
+  review_social_url?: string;
+  review_social_platform?: string;
+  review_social_label?: string;
   guest_review_submitted?: boolean;
   email_logo_url?: string;
   brand_color?: string;

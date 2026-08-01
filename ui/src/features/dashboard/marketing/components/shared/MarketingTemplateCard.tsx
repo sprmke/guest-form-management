@@ -162,7 +162,7 @@ export function MarketingTemplateCard({
               onCustomize();
             }}
             aria-label={`Customize ${name}`}
-            title="Advanced settings"
+            title="Settings"
             className="bg-background/90 text-muted-foreground hover:text-foreground flex size-7 min-h-[28px] min-w-[28px] items-center justify-center rounded-md shadow-sm backdrop-blur-sm transition-colors"
           >
             <Settings2 className="size-3.5" aria-hidden />

@@ -91,7 +91,8 @@ export function mergeSceneTextsForKind(
 export function applySceneKindChange(
   scene: VideoScene,
   kind: VideoSceneKind,
-  templateSeed?: VideoSceneTextFields
+  templateSeed?: VideoSceneTextFields,
+  templateId?: string
 ): VideoScene {
   if (scene.kind === kind) return scene;
 
@@ -100,8 +101,8 @@ export function applySceneKindChange(
     ...scene,
     kind,
     texts: mergedTexts,
-    textLayout: defaultTextLayoutForSceneKind(kind),
+    textLayout: defaultTextLayoutForSceneKind(kind, templateId),
   };
 
-  return applySceneKindLayers(withKind, kind, scene.imageUrl, templateSeed);
+  return applySceneKindLayers(withKind, kind, scene.imageUrl, templateSeed, templateId);
 }

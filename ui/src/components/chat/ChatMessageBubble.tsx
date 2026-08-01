@@ -5,6 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { ChatDeliveryTicks } from '@/components/chat/ChatDeliveryTicks';
 import { ChatHighlightedText } from '@/components/chat/ChatHighlightedText';
 import { ChatReplyPreview } from '@/components/chat/ChatReplyPreview';
+import { ChatRichBody } from '@/components/chat/ChatRichBody';
 import type { OutboundDeliveryStatus } from '@/lib/chat/chatMessageFormat';
 import { formatChatBubbleTime } from '@/lib/chat/chatMessageFormat';
 import { cn } from '@/lib/utils';
@@ -46,6 +47,7 @@ export function ChatMessageBubble({
   actions,
 }: Props) {
   const timeLabel = formatChatBubbleTime(sentAt);
+  const trimmed = bodyText?.trim() || '—';
   const bubbleClass = cn(
     'max-w-[min(100%,28rem)] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed shadow-sm',
     unsent
@@ -55,6 +57,25 @@ export function ChatMessageBubble({
         : 'border-border/60 bg-card text-foreground border',
     deliveryStatus === 'failed' && outbound && !unsent && 'opacity-80'
   );
+
+  const body = (() => {
+    if (children) return children;
+    if (unsent) {
+      return <p className="whitespace-pre-wrap break-words text-[13px]">{trimmed}</p>;
+    }
+    // Search highlight stays plain so match offsets stay aligned with raw body_text.
+    if (highlightQuery.trim()) {
+      return (
+        <ChatHighlightedText
+          text={trimmed}
+          query={highlightQuery}
+          activeRange={activeHighlightRange}
+          outbound={outbound}
+        />
+      );
+    }
+    return <ChatRichBody text={trimmed} outbound={outbound} />;
+  })();
 
   return (
     <div className={cn('flex max-w-[min(100%,28rem)] flex-col gap-1', className)}>
@@ -68,19 +89,7 @@ export function ChatMessageBubble({
           {!unsent && replyPreviewText ? (
             <ChatReplyPreview preview={replyPreviewText} outbound={outbound} />
           ) : null}
-          {children ??
-            (unsent || !highlightQuery.trim() ? (
-              <p className={cn('whitespace-pre-wrap break-words', unsent && 'text-[13px]')}>
-                {bodyText?.trim() || '—'}
-              </p>
-            ) : (
-              <ChatHighlightedText
-                text={bodyText?.trim() || '—'}
-                query={highlightQuery}
-                activeRange={activeHighlightRange}
-                outbound={outbound}
-              />
-            ))}
+          {body}
           {!unsent && isAiGenerated ? (
             <span
               className={cn(

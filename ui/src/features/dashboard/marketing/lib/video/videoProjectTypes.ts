@@ -1,9 +1,20 @@
-import type { CampaignCategory } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import type { VideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
+import type { VideoOverlayMode } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 import type { VideoSceneTextLayout } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
 
 export type VideoFormat = 'instagram-story' | 'instagram-post' | 'landscape';
 
-export type VideoTransition = 'none' | 'fade' | 'slide-left' | 'slide-up' | 'wipe';
+export type VideoTransition =
+  | 'none'
+  | 'fade'
+  | 'slide-left'
+  | 'slide-up'
+  | 'wipe'
+  | 'dissolve'
+  | 'flip'
+  | 'clock-wipe'
+  | 'zoom-in-out'
+  | 'push-cut';
 
 export type VideoSceneKind = 'photo' | 'promo' | 'slots' | 'cta';
 
@@ -49,7 +60,7 @@ export type VideoSceneLayer = {
   mediaType?: 'image' | 'video';
   text?: string;
   lines?: string[];
-  /** @deprecated Quick preset seed — custom typography overrides when set. */
+  /** Role seed for the template font pairing — `typography` overrides it when set. */
   textStyle?: VideoTextStyle;
   typography?: VideoLayerTypography;
   position: VideoLayerPosition;
@@ -66,15 +77,29 @@ export type VideoScene = {
   label: string;
   durationSec: number;
   transition: VideoTransition;
+  /** Overrides the template's camera motion for this scene only. */
+  motion?: VideoMotionOverride;
+  /** Quiet Coast photo wash — recipe default, host-overridable. */
+  overlay?: VideoOverlayMode;
   imageUrl: string | null;
   /** Background clip media type (`imageUrl` holds the asset URL for both). */
   backgroundMediaType?: 'image' | 'video';
+  /**
+   * @deprecated Derived and write-only — kept so pre-layer saves still load.
+   * Read `layers` instead; `persistSceneLayers()` rewrites this on every save.
+   */
   texts: VideoSceneTextFields;
-  /** Layer stack (background first, overlays on top). */
+  /** Layer stack (background first, overlays on top) — the source of truth. */
   layers?: VideoSceneLayer[];
-  /** @deprecated Legacy — synced from layers for older saves. */
+  /**
+   * @deprecated Derived and write-only — kept so pre-layer saves still load.
+   * Read `layers` instead; `persistSceneLayers()` rewrites this on every save.
+   */
   textLayout?: VideoSceneTextLayout;
-  /** @deprecated Legacy — synced from layers. */
+  /**
+   * @deprecated Derived and write-only — kept so pre-layer saves still load.
+   * Read `layers` instead; `persistSceneLayers()` rewrites this on every save.
+   */
   hiddenElements?: string[];
 };
 
@@ -92,7 +117,8 @@ export type VideoProjectMusic = {
 export type VideoProject = {
   version: 1;
   templateId: string;
-  campaignCategory: CampaignCategory;
+  /** VideoCategory id (or legacy Design category string on old saves). */
+  campaignCategory: string;
   format: VideoFormat;
   fps: number;
   scenes: VideoScene[];
@@ -105,7 +131,7 @@ export const VIDEO_FPS = 30;
 
 export const VIDEO_SCENE_DURATION = {
   min: 1,
-  max: 8,
+  max: 12,
   default: 3,
 } as const;
 

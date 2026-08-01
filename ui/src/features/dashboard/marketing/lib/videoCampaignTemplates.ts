@@ -1,95 +1,46 @@
-import type { CampaignCategory } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import type { VideoTemplateFields } from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import {
+  resolveCampaignPalette,
+  type CampaignPalette,
+} from '@/features/dashboard/marketing/lib/designBrandColors';
+import type {
+  DesignBinding,
+  VideoTemplateFields,
+} from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import type { VideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import {
+  VIDEO_STORYBOARD_RECIPES,
+  getVideoStoryboardRecipe,
+} from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 
 export type VideoCampaignTemplateDef = {
   id: string;
   name: string;
-  category: CampaignCategory;
-  swatchPrimary: string;
-  swatchSecondary: string;
+  category: VideoCategory;
+  preservePresetPalette?: boolean;
+  presetAccent?: string;
 };
 
-const ORANGE = '#e8752a';
-const CREAM = '#fff8f0';
-const GREEN = '#16a34a';
-const RED = '#dc2626';
+/** Quiet Coast Motion library — ids match storyboard recipes. */
+export const VIDEO_CAMPAIGN_TEMPLATES: VideoCampaignTemplateDef[] = VIDEO_STORYBOARD_RECIPES.map(
+  (recipe) => ({
+    id: recipe.id,
+    name: recipe.name,
+    category: recipe.category,
+    preservePresetPalette: recipe.preservePresetPalette,
+    presetAccent: recipe.presetAccent,
+  })
+);
 
-export const VIDEO_CAMPAIGN_TEMPLATES: VideoCampaignTemplateDef[] = [
-  {
-    id: 'promo-500-off',
-    name: '₱500 off',
-    category: 'promo',
-    swatchPrimary: ORANGE,
-    swatchSecondary: CREAM,
-  },
-  {
-    id: 'promo-300-off',
-    name: '₱300 off',
-    category: 'promo',
-    swatchPrimary: '#fb923c',
-    swatchSecondary: CREAM,
-  },
-  {
-    id: 'promo-10-off',
-    name: '10% off',
-    category: 'promo',
-    swatchPrimary: '#ea580c',
-    swatchSecondary: '#fef3c7',
-  },
-  {
-    id: 'promo-free-breakfast',
-    name: 'Free breakfast',
-    category: 'promo',
-    swatchPrimary: GREEN,
-    swatchSecondary: CREAM,
-  },
-  {
-    id: 'promo-free-parking',
-    name: 'Free parking',
-    category: 'promo',
-    swatchPrimary: '#2563eb',
-    swatchSecondary: CREAM,
-  },
-  {
-    id: 'slots-1',
-    name: 'Last 1 slot',
-    category: 'slots',
-    swatchPrimary: '#2563eb',
-    swatchSecondary: '#ffffff',
-  },
-  {
-    id: 'slots-3',
-    name: 'Last 3 slots',
-    category: 'slots',
-    swatchPrimary: ORANGE,
-    swatchSecondary: '#ffffff',
-  },
-  {
-    id: 'slots-5',
-    name: 'Last 5 slots',
-    category: 'slots',
-    swatchPrimary: RED,
-    swatchSecondary: '#ffffff',
-  },
-  {
-    id: 'giveaway',
-    name: 'Giveaway',
-    category: 'giveaway',
-    swatchPrimary: RED,
-    swatchSecondary: ORANGE,
-  },
-  {
-    id: 'fully-booked',
-    name: 'Fully booked',
-    category: 'fully-booked',
-    swatchPrimary: '#64748b',
-    swatchSecondary: CREAM,
-  },
-];
-
-export function videoTemplatesForCategory(category?: CampaignCategory) {
+export function videoTemplatesForCategory(category?: VideoCategory | string) {
   return VIDEO_CAMPAIGN_TEMPLATES.filter((t) => !category || t.category === category);
+}
+
+export function videoTemplatePalette(templateId: string, brandColor?: string): CampaignPalette {
+  const template = getVideoCampaignTemplate(templateId) ?? getVideoStoryboardRecipe(templateId);
+  return resolveCampaignPalette(brandColor, {
+    preservePresetPalette: template?.preservePresetPalette,
+    presetAccent: template?.presetAccent,
+  });
 }
 
 export function defaultVideoFields(
@@ -97,106 +48,161 @@ export function defaultVideoFields(
   binding: DesignBinding
 ): VideoTemplateFields {
   const month = binding.monthShort.toUpperCase();
+  const property = binding.propertyName;
 
   switch (templateId) {
-    case 'promo-500-off':
+    case 'quiet-morning':
       return {
-        headline: 'RAINY DAY PROMO',
+        headline: 'SLOW MORNINGS',
+        subheadline: 'Wake to quiet light',
+        promoLine: 'Pool · Lounge · Soft beds',
+        ctaLine: 'Book a stay',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'golden-hour':
+      return {
+        headline: 'GOLDEN HOUR',
+        subheadline: 'Stay for the light',
+        promoLine: 'Evenings worth keeping',
+        ctaLine: 'See dates',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'poolside-calm':
+      return {
+        headline: 'POOLSIDE CALM',
+        subheadline: '',
+        promoLine: 'A still afternoon',
+        ctaLine: 'Reserve',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'amenity-tour':
+      return {
+        headline: 'INSIDE THE STAY',
+        subheadline: 'Open living',
+        promoLine: 'Private pool',
+        ctaLine: 'See available dates',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'weekday-cut':
+      return {
+        headline: 'WEEKDAY CUT',
         subheadline: 'UP TO',
         promoLine: '₱500 OFF',
-        ctaLine: 'FOR WEEKDAY BOOKINGS',
+        ctaLine: 'Mon–Thu stays',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'promo-300-off':
+    case 'percent-off':
       return {
-        headline: 'WEEKDAY PROMO',
-        subheadline: 'UP TO',
-        promoLine: '₱300 OFF',
-        ctaLine: 'MON–THU STAYS',
-        slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
-      };
-    case 'promo-10-off':
-      return {
-        headline: 'BER MONTHS PROMO',
+        headline: 'LIMITED OFFER',
         subheadline: 'UP TO',
         promoLine: '10% OFF',
-        ctaLine: 'LIMITED TIME',
+        ctaLine: 'Book direct',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'promo-free-breakfast':
+    case 'rainy-day-rate':
       return {
-        headline: 'STAY PROMO',
-        subheadline: '',
-        promoLine: 'FREE BREAKFAST',
-        ctaLine: 'SELECT DATES',
+        headline: 'RAINY DAY RATE',
+        subheadline: 'UP TO',
+        promoLine: '₱300 OFF',
+        ctaLine: 'For weekday bookings',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'promo-free-parking':
+    case 'one-left':
       return {
-        headline: 'PARKING PERK',
-        subheadline: '',
-        promoLine: 'FREE PARKING',
-        ctaLine: 'THIS MONTH',
-        slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
-      };
-    case 'slots-1':
-      return {
-        headline: 'LAST SLOT',
+        headline: 'ONE LEFT',
         subheadline: `FOR ${month}`,
         promoLine: '',
-        ctaLine: 'BOOK NOW',
+        ctaLine: 'Book now',
         slotLabels: binding.openSlots.slice(0, 1).map((s) => `${s.dateNum} · ${s.dayName}`),
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'slots-3':
+    case 'three-dates':
       return {
-        headline: 'LAST 3 SLOTS',
+        headline: 'OPEN DATES',
         subheadline: `FOR ${month}`,
         promoLine: '',
-        ctaLine: 'BOOK NOW',
+        ctaLine: 'Book now',
         slotLabels: binding.openSlots.slice(0, 3).map((s) => `${s.dateNum} · ${s.dayName}`),
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'slots-5':
+    case 'this-weekend':
       return {
-        headline: 'LAST 5 SLOTS',
-        subheadline: `FOR ${month}`,
-        promoLine: '',
-        ctaLine: 'BOOK NOW',
-        slotLabels: binding.openSlots.slice(0, 5).map((s) => `${s.dateNum} · ${s.dayName}`),
-        rulesLine: binding.propertyName.toUpperCase(),
+        headline: 'THIS WEEKEND',
+        subheadline: '',
+        promoLine: 'Last openings',
+        ctaLine: 'Hold your spot',
+        slotLabels: binding.openSlots.slice(0, 2).map((s) => `${s.dateNum} · ${s.dayName}`),
+        rulesLine: property,
       };
-    case 'giveaway':
+    case 'guest-love':
       return {
-        headline: `${month} GIVEAWAY`,
-        subheadline: 'FREE 2D1N STAYCATION',
-        promoLine: 'WITH POOL ACCESS',
-        ctaLine: 'Like · Tag · Share',
+        headline: 'GUESTS KEEP COMING BACK',
+        subheadline: '“Felt like home the moment we arrived.”',
+        promoLine: '— recent stay',
+        ctaLine: 'Plan yours',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
-    case 'fully-booked':
+    case 'stay-again':
+      return {
+        headline: 'MISS THIS PLACE?',
+        subheadline: 'Your next quiet escape',
+        promoLine: '',
+        ctaLine: 'Book again',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'sold-out-stamp':
       return {
         headline: 'FULLY BOOKED',
         subheadline: `FOR ${month}`,
-        promoLine: 'Watch for next month openings',
-        ctaLine: '',
+        promoLine: 'Watch for next openings',
+        ctaLine: 'Follow for dates',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
+      };
+    case 'join-waitlist':
+      return {
+        headline: 'JOIN THE WAITLIST',
+        subheadline: `${month} is full`,
+        promoLine: 'First in line for cancellations',
+        ctaLine: 'Send a message',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'ber-months':
+      return {
+        headline: 'BER MONTHS',
+        subheadline: 'Cooler nights',
+        promoLine: 'Seasonal stay rates',
+        ctaLine: 'Check availability',
+        slotLabels: [],
+        rulesLine: property,
+      };
+    case 'holiday-glow':
+      return {
+        headline: 'HOLIDAY GLOW',
+        subheadline: 'Gather somewhere soft',
+        promoLine: 'Festive weekend stays',
+        ctaLine: 'Reserve early',
+        slotLabels: [],
+        rulesLine: property,
       };
     default:
       return {
-        headline: binding.propertyName,
+        headline: property,
         subheadline: binding.nightlyRate,
         promoLine: binding.availabilityText,
         ctaLine: 'Book direct',
         slotLabels: [],
-        rulesLine: binding.propertyName.toUpperCase(),
+        rulesLine: property,
       };
   }
 }

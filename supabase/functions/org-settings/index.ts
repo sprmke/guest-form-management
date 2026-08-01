@@ -8,11 +8,7 @@ import {
   invalidateOrgSettingsCache,
   serializeOrgSettingsForAdmin,
 } from '../_shared/orgSettings.ts';
-import {
-  invalidateAppSettingsCache,
-  validateOptionalUrl,
-  validateRequiredUrl,
-} from '../_shared/appSettings.ts';
+import { invalidateAppSettingsCache, validateOptionalUrl } from '../_shared/appSettings.ts';
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
 import { resolveOrgAccessContext } from '../_shared/propertyScope.ts';
 import { serveAdmin } from '../_shared/serveEdge.ts';
@@ -44,14 +40,32 @@ serveAdmin('org-settings', async (req) => {
     }
     if (typeof body.facebookPageUrl === 'string') {
       const trimmed = body.facebookPageUrl.trim();
-      const err = validateRequiredUrl(trimmed, 'Facebook page URL', 'Enter Facebook page URL');
-      if (err) return jsonError(req, err);
-      patch.facebook_reviews_url = trimmed;
+      if (trimmed) {
+        const err = validateOptionalUrl(trimmed, 'Facebook page URL');
+        if (err) return jsonError(req, err);
+        patch.facebook_reviews_url = trimmed;
+      } else {
+        patch.facebook_reviews_url = null;
+      }
     } else if (typeof body.facebookReviewsUrl === 'string') {
       const trimmed = body.facebookReviewsUrl.trim();
-      const err = validateRequiredUrl(trimmed, 'Facebook page URL', 'Enter Facebook page URL');
-      if (err) return jsonError(req, err);
-      patch.facebook_reviews_url = trimmed;
+      if (trimmed) {
+        const err = validateOptionalUrl(trimmed, 'Facebook page URL');
+        if (err) return jsonError(req, err);
+        patch.facebook_reviews_url = trimmed;
+      } else {
+        patch.facebook_reviews_url = null;
+      }
+    }
+    if (typeof body.mainSocialPlatform === 'string') {
+      const trimmed = body.mainSocialPlatform.trim();
+      if (!trimmed) {
+        patch.main_social_platform = null;
+      } else if (['facebook', 'airbnb', 'instagram', 'tiktok'].includes(trimmed)) {
+        patch.main_social_platform = trimmed;
+      } else {
+        return jsonError(req, 'Invalid main social platform');
+      }
     }
     if (typeof body.instagramUrl === 'string') {
       const trimmed = body.instagramUrl.trim();

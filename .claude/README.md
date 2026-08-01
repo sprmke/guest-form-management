@@ -49,12 +49,12 @@ Same as Cursor's `.cursor/commands/`; Claude Code commands and skills both creat
 
 Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Code's stdin JSON shape (`tool_input.file_path` / `tool_input.command`) and output contract (`hookSpecificOutput.permissionDecision`). See `.claude/skills/README.md` for the exact translation notes if re-syncing after a Cursor-side hook change.
 
-| Hook                          | Event / matcher          | Purpose                                                                                  |
-| ----------------------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
-| `format-edited-file.sh`       | PostToolUse, Edit\|Write | Prettier-format the file that was just touched                                           |
-| `check-stack-terminology.sh`  | PostToolUse, Edit\|Write | Warns (non-blocking) on Next.js/tRPC/Drizzle terms — wrong stack for this repo           |
-| `guard-shell.sh`              | PreToolUse, Bash         | Deny `rm -rf /`/`~`; ask before `DROP TABLE`, `stop:supabase:clean`, force-push          |
-| `guard-shipped-migrations.sh` | PreToolUse, Edit         | Deny editing an existing file under `supabase/migrations/` — add a new migration instead |
+| Hook                          | Event / matcher          | Purpose                                                                                                                                                                                                                            |
+| ----------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `format-edited-file.sh`       | PostToolUse, Edit\|Write | Prettier-format the file that was just touched                                                                                                                                                                                     |
+| `check-stack-terminology.sh`  | PostToolUse, Edit\|Write | Warns (non-blocking) on Next.js/tRPC/Drizzle terms — wrong stack for this repo                                                                                                                                                     |
+| `guard-shell.sh`              | PreToolUse, Bash         | **Deny prod Supabase deploy** (`deploy:supabase`, `db push`, `functions deploy`, remote migrations) unless command contains unlock **`kamewave`**; deny `rm -rf /`/`~`; ask before `DROP TABLE`, `stop:supabase:clean`, force-push |
+| `guard-shipped-migrations.sh` | PreToolUse, Edit         | Deny editing an existing file under `supabase/migrations/` — add a new migration instead                                                                                                                                           |
 
 ## MCP servers (`.mcp.json`, shared with Cursor via `.cursor/mcp.json` symlink)
 

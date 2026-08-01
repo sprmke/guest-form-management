@@ -7,6 +7,11 @@ import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
 import { resolveOrganizationIdForProperty } from './propertyScope.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import { resolveFacebookPageUrl, resolveOptionalSocialUrl } from './orgSocialLinks.ts';
+import {
+  parseSocialPlatform,
+  resolveMainSocialUrl,
+  type SocialPlatform,
+} from './socialPlatform.ts';
 
 export type OrgSettingsRow = {
   id: number;
@@ -22,6 +27,7 @@ export type OrgSettingsRow = {
   airbnb_url: string | null;
   instagram_url: string | null;
   tiktok_url: string | null;
+  main_social_platform: string | null;
   email_logo_url: string | null;
   default_parking_rate_guest: number | null;
   automation_toggles: Record<string, unknown> | null;
@@ -36,6 +42,7 @@ export type OrgSettingsResolved = {
   airbnbUrl: string;
   instagramUrl: string;
   tiktokUrl: string;
+  mainSocialPlatform: SocialPlatform | '';
   emailLogoUrl: string;
 };
 
@@ -47,7 +54,12 @@ export type OrgSettingsDto = Omit<
 > & {
   updatedAt: string | null;
   fieldSources: Record<
-    'facebookPageUrl' | 'airbnbUrl' | 'instagramUrl' | 'tiktokUrl' | 'emailLogoUrl',
+    | 'facebookPageUrl'
+    | 'airbnbUrl'
+    | 'instagramUrl'
+    | 'tiktokUrl'
+    | 'mainSocialPlatform'
+    | 'emailLogoUrl',
     OrgSettingsFieldSource
   >;
 };
@@ -157,6 +169,7 @@ type OrgFieldPicks = {
   airbnb: ReturnType<typeof pickDbString>;
   instagram: ReturnType<typeof pickDbString>;
   tiktok: ReturnType<typeof pickDbString>;
+  mainSocialPlatform: { value: SocialPlatform | ''; source: OrgSettingsFieldSource };
   logo: ReturnType<typeof pickDbString>;
   parkingRate: ReturnType<typeof pickMoney>;
 };
@@ -172,6 +185,11 @@ export function pickOrgSettingsFieldsFromRow(row: OrgSettingsRow | null): OrgFie
   const airbnb = pickDbString(row?.airbnb_url);
   const instagram = pickDbString(row?.instagram_url);
   const tiktok = pickDbString(row?.tiktok_url);
+  const mainParsed = parseSocialPlatform(row?.main_social_platform);
+  const mainSocialPlatform = {
+    value: (mainParsed ?? '') as SocialPlatform | '',
+    source: (mainParsed ? 'db' : 'default') as OrgSettingsFieldSource,
+  };
   const logo = pickDbString(row?.email_logo_url);
   const parkingRate = pickMoney(row?.default_parking_rate_guest, 400);
 
@@ -186,6 +204,7 @@ export function pickOrgSettingsFieldsFromRow(row: OrgSettingsRow | null): OrgFie
     airbnb,
     instagram,
     tiktok,
+    mainSocialPlatform,
     logo,
     parkingRate,
   };
@@ -199,6 +218,12 @@ export async function resolveOrgSettings(organizationId: string): Promise<OrgSet
   const airbnb = resolveOptionalSocialUrl(picks.airbnb.value || null, 'AIRBNB_URL');
   const instagram = resolveOptionalSocialUrl(picks.instagram.value || null, 'INSTAGRAM_URL');
   const tiktok = resolveOptionalSocialUrl(picks.tiktok.value || null, 'TIKTOK_URL');
+  const mainResolved = resolveMainSocialUrl(picks.mainSocialPlatform.value, {
+    facebook: picks.facebook.value || facebookPage,
+    airbnb: picks.airbnb.value || airbnb,
+    instagram: picks.instagram.value || instagram,
+    tiktok: picks.tiktok.value || tiktok,
+  });
 
   return {
     publicGuestAppOrigin: resolvePublicGuestAppOrigin(picks.origin.value || null),
@@ -207,6 +232,7 @@ export async function resolveOrgSettings(organizationId: string): Promise<OrgSet
     airbnbUrl: airbnb,
     instagramUrl: instagram,
     tiktokUrl: tiktok,
+    mainSocialPlatform: mainResolved?.platform ?? picks.mainSocialPlatform.value,
     emailLogoUrl: picks.logo.value || DEFAULT_EMAIL_LOGO_URL,
   };
 }
@@ -215,23 +241,22 @@ export async function serializeOrgSettingsForAdmin(
   organizationId: string
 ): Promise<OrgSettingsDto> {
   const row = await loadOrgSettingsRow(organizationId);
-  const resolved = await resolveOrgSettings(organizationId);
   const picks = pickOrgSettingsFieldsFromRow(row);
 
-  const {
-    publicGuestAppOrigin: _origin,
-    facebookReviewsUrl: _facebookLegacy,
-    ...adminFields
-  } = resolved;
-
   return {
-    ...adminFields,
+    facebookPageUrl: picks.facebook.value,
+    airbnbUrl: picks.airbnb.value,
+    instagramUrl: picks.instagram.value,
+    tiktokUrl: picks.tiktok.value,
+    mainSocialPlatform: picks.mainSocialPlatform.value,
+    emailLogoUrl: picks.logo.value || DEFAULT_EMAIL_LOGO_URL,
     updatedAt: row?.updated_at ?? null,
     fieldSources: {
       facebookPageUrl: picks.facebook.source,
       airbnbUrl: picks.airbnb.source,
       instagramUrl: picks.instagram.source,
       tiktokUrl: picks.tiktok.source,
+      mainSocialPlatform: picks.mainSocialPlatform.source,
       emailLogoUrl: picks.logo.source,
     },
   };

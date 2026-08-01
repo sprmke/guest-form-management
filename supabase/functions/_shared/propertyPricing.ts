@@ -2,7 +2,13 @@
  * Property pricing — load/save defaults (app_settings) + date overrides + booked nights.
  */
 
+import { manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import { createServiceClient } from './orgAuth.ts';
+import {
+  deleteBlockedRangesCovering,
+  insertBlockedRange,
+  loadBlockedDateKeys,
+} from './propertyBlockedDates.ts';
 import { ensurePropertySettings } from './propertySettingsSeed.ts';
 
 const DEFAULT_WEEKDAY = 2799;
@@ -97,6 +103,7 @@ export type PropertyPricingDto = {
   guestAdditionalFee: number;
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
+  blockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
 };
 
@@ -156,9 +163,28 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/** Nights `[startDate, endDate)` as YYYY-MM-DD keys, checkout-exclusive. */
+function expandNightsInRange(startDate: string, endDate: string): string[] {
+  const start = parseOccupancyDate(startDate);
+  const end = parseOccupancyDate(endDate);
+  if (!start || !end || end <= start) return [];
+
+  const nights: string[] = [];
+  let cursor = new Date(start);
+  const lastNight = addDays(end, -1);
+  while (cursor <= lastNight) {
+    nights.push(formatDateKey(cursor));
+    cursor = addDays(cursor, 1);
+  }
+  return nights;
+}
+
 function rowToDefaults(
   row: AppSettingsPricingRow | null
-): Omit<PropertyPricingDto, 'dateOverrides' | 'bookedDateKeys' | 'holidayRules'> {
+): Omit<
+  PropertyPricingDto,
+  'dateOverrides' | 'bookedDateKeys' | 'blockedDateKeys' | 'holidayRules'
+> {
   return {
     weekdayNightlyRate: pickMoney(row?.weekday_nightly_rate, DEFAULT_WEEKDAY),
     weekendNightlyRate: pickMoney(row?.weekend_nightly_rate, DEFAULT_WEEKEND),
@@ -249,7 +275,7 @@ async function loadDateOverrides(propertyId: string): Promise<Record<string, num
 }
 
 /** Occupied nights [check-in, check-out) for non-cancelled bookings. */
-async function loadBookedDateKeys(
+export async function loadBookedDateKeys(
   propertyId: string,
   monthStart?: string,
   monthEnd?: string
@@ -308,15 +334,17 @@ export async function loadPropertyPricing(
     throw new Error(`Failed to load property pricing: ${error.message}`);
   }
 
-  const [dateOverrides, bookedDateKeys] = await Promise.all([
+  const [dateOverrides, bookedDateKeys, blockedDateKeys] = await Promise.all([
     loadDateOverrides(propertyId),
     loadBookedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
+    loadBlockedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
   ]);
 
   return {
     ...rowToDefaults(row as AppSettingsPricingRow | null),
     dateOverrides,
     bookedDateKeys,
+    blockedDateKeys,
     holidayRules: parseHolidayRules((row as AppSettingsPricingRow | null)?.pricing_holiday_rules),
   };
 }
@@ -344,11 +372,14 @@ export type PropertyPricingPatch = {
   guestAdditionalFee?: number;
   dateOverrides?: Record<string, number>;
   holidayRules?: PricingHolidayRuleDto[];
+  blockRange?: { startDate: string; endDate: string; note?: string };
+  unblockDateKeys?: string[];
 };
 
 export async function savePropertyPricing(
   propertyId: string,
-  patch: PropertyPricingPatch
+  patch: PropertyPricingPatch,
+  options?: { userId?: string | null }
 ): Promise<PropertyPricingDto> {
   await ensurePropertySettings(propertyId);
   const supabase = createServiceClient();
@@ -417,6 +448,36 @@ export async function savePropertyPricing(
         throw new Error(`Failed to save pricing overrides: ${insertError.message}`);
       }
     }
+  }
+
+  if (patch.blockRange) {
+    const { startDate, endDate } = patch.blockRange;
+    const nights = expandNightsInRange(startDate, endDate);
+    if (nights.length === 0) {
+      throw new Error('blockRange endDate must be after startDate');
+    }
+
+    const today = manilaTodayYmd();
+    if (nights.some((key) => key < today)) {
+      throw new Error('Cannot block dates in the past');
+    }
+
+    const bookedKeys = new Set(await loadBookedDateKeys(propertyId, startDate, endDate));
+    if (nights.some((key) => bookedKeys.has(key))) {
+      throw new Error('Cannot block dates that are already booked');
+    }
+
+    await insertBlockedRange(
+      propertyId,
+      startDate,
+      endDate,
+      patch.blockRange.note,
+      options?.userId
+    );
+  }
+
+  if (patch.unblockDateKeys && patch.unblockDateKeys.length > 0) {
+    await deleteBlockedRangesCovering(propertyId, patch.unblockDateKeys);
   }
 
   return loadPropertyPricing(propertyId);

@@ -20,7 +20,7 @@ Plan: `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md` (
 
 ===
 
-Support both property and parking bookings in /bookings module at org level.
+✅ Support both property and parking bookings in /bookings module at org level.
 
 We need to update /bookings module at org level to display info and available actions for both properties & parking.
 Right now, only properties are working and visible there.
@@ -32,7 +32,7 @@ The end goal is that we should support both properties & parking modules in book
 
 ===
 
-Socials at org and property level
+🚧 Socials at org and property level
 
 We should refine how we can improve the socials management for org and property level to prevent any redundant fill up.
 Provide a best UI/UX so that on property/parking level, we have option to reuse the same value of org level per fields.
@@ -64,12 +64,14 @@ Also, we still keep the get verified on sidebar
 
 ===
 
-Update pricing menu/page to be "Calendar"
+✅ Update pricing menu/page to be "Calendar"
 
 We will have different tabs or switch view inside our calendar page.
 
-1. Default View - similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
+1. Default View - think of better name. similar with our calendar view in property dashboard where we can toggle view between booked guest info and price view
 2. Pricing View - this is the current pricing page to configure pricing per booking. We should also have to support to block booking date
+
+Guide: `docs/guides/routes/org/property/calendar.md`
 
 ===
 

@@ -22,7 +22,7 @@ I want this to look very interactive, animated, looks professional and looks goo
 
 ===
 
-Refine Property Templates page
+✅ Refine Property Templates page
 
 We should have a tab for standard, email and other templates.
 Then, we should support for host to add new template for each tab/category.
@@ -72,7 +72,7 @@ We should also refine and update our sort options based on our data and make sur
 
 ===
 
-Marketing 1: Improve Marketing Calendar Templates
+✅ Marketing 1: Improve Marketing Calendar Templates
 
 Right now, our marketing calendar templates look simple and okay.
 They do not look beautiful, stunning, eye catching, and doesn't have that wow factor.
@@ -81,20 +81,30 @@ The end goal is the every template looks so good where host cannot select which 
 
 ===
 
-Marketing 2: Improve Marketing Design Templates & Customizablity
+✅ Marketing 2: Improve Marketing Design Templates & Customizablity
 
 Same with calendar templates above. Right now, our canvas template are too plain and does not look good.The
 goal is that each template should be production ready and "instagramable" and ready to publish with confidence and excitement to their social platforms.
 
 ===
 
-Marketing 3: Improve Marketing Video Templates & Customizablity
+✅ Marketing 3: Improve Marketing Video Templates & Customizablity
 
 Same with marketing design templates goal.
+
+→ **Follow-up (Quiet Coast Motion):** from-scratch Video redo — Video-only categories + storyboard recipes. Spec: `docs/superpowers/specs/2026-08-01-marketing-video-quiet-coast-motion-design.md`. Plan: `docs/planning/planned_modules/2026-08-01-marketing-video-quiet-coast-motion.md`.
 
 ===
 
 Marketing 4: Use AI to generate marketing calendar, design and video templates
+
+Now that we made some improvements on marketing calendar, canvas and video editors, I want to really extend by having AI feature that will generate design and video templates from scratch that looks very beautiful, elegant, instagrammable and has wow factor to hosts.
+
+The generated result can be configured by some prompts, suggestions, etc (please make some research how popular media editors do AI generated flow).
+
+We can also make some research if there's a free or low cost API that can do this. Either the AI generates the calendar, canvas and video from scratch or custom or it's own way, OR it will reads and build new designs based on our existing technologies, templates and settings that we have for each marketing module.
+
+The end goal is that with the help of AI, we should be able to generate calendar, canvas and video templates for our hosts that's still using our booking or property information and some prompts/settings.
 
 ===
 
@@ -227,6 +237,10 @@ Display announcements per development from super admin
 ===
 
 Monitoring for suspicious or unusual activities from super admin
+
+===
+
+Guest Review after booking
 
 ===
 

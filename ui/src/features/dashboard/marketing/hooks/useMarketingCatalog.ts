@@ -9,6 +9,11 @@ import {
   HIDDEN_CATEGORY_LABEL,
   isHiddenCategoryId,
 } from '@/features/dashboard/marketing/lib/marketingCatalogHidden';
+import {
+  VIDEO_CATEGORIES,
+  VIDEO_CATEGORY_LABELS,
+  type VideoCategory,
+} from '@/features/dashboard/marketing/lib/video/videoCategories';
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 export type MarketingCatalogTab = 'design' | 'video' | 'calendar';
@@ -20,10 +25,10 @@ export type CustomCategory = {
 
 export type MarketingCatalogPrefs = {
   customCategories: CustomCategory[];
-  hiddenBuiltinCategories: CampaignCategory[];
+  hiddenBuiltinCategories: string[];
   hiddenBuiltinTemplates: string[];
   hiddenSavedTemplateIds: string[];
-  categoryLabels: Partial<Record<CampaignCategory, string>>;
+  categoryLabels: Record<string, string>;
   templateLabels: Record<string, string>;
   /** Preset template id → category id override (Move). */
   presetTemplateCategories: Record<string, string>;
@@ -35,7 +40,24 @@ export type MarketingCatalogPrefs = {
   hiddenCalendarSavedTemplateIds: string[];
 };
 
-const BUILTIN_CATEGORIES: CampaignCategory[] = ['promo', 'slots', 'giveaway', 'fully-booked'];
+const DESIGN_BUILTIN_CATEGORIES: CampaignCategory[] = [
+  'promo',
+  'slots',
+  'giveaway',
+  'fully-booked',
+];
+
+function builtinCategoriesForTab(tab: MarketingCatalogTab): string[] {
+  if (tab === 'video') return [...VIDEO_CATEGORIES];
+  return [...DESIGN_BUILTIN_CATEGORIES];
+}
+
+function builtinLabel(tab: MarketingCatalogTab, id: string): string {
+  if (tab === 'video') {
+    return VIDEO_CATEGORY_LABELS[id as VideoCategory] ?? id;
+  }
+  return CAMPAIGN_CATEGORY_LABELS[id as CampaignCategory] ?? id;
+}
 
 const EMPTY_PREFS: MarketingCatalogPrefs = {
   customCategories: [],
@@ -105,13 +127,13 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const categories = useMemo<MarketingCategoryItem[]>(() => {
-    const builtIn = BUILTIN_CATEGORIES.filter(
-      (id) => !prefs.hiddenBuiltinCategories.includes(id)
-    ).map((id) => ({
-      id,
-      label: prefs.categoryLabels[id] ?? CAMPAIGN_CATEGORY_LABELS[id],
-      kind: 'builtin' as const,
-    }));
+    const builtIn = builtinCategoriesForTab(tab)
+      .filter((id) => !prefs.hiddenBuiltinCategories.includes(id))
+      .map((id) => ({
+        id,
+        label: prefs.categoryLabels[id] ?? builtinLabel(tab, id),
+        kind: 'builtin' as const,
+      }));
     const custom = prefs.customCategories.map((item) => ({
       id: item.id,
       label: item.label,
@@ -122,7 +144,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
       ...custom,
       { id: HIDDEN_CATEGORY_ID, label: HIDDEN_CATEGORY_LABEL, kind: 'hidden' as const },
     ];
-  }, [prefs]);
+  }, [prefs, tab]);
 
   const movableCategories = useMemo(
     () => categories.filter((item) => item.kind !== 'hidden'),
@@ -145,9 +167,8 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const getHiddenBuiltinCategoryLabel = useCallback(
-    (categoryId: CampaignCategory) =>
-      prefs.categoryLabels[categoryId] ?? CAMPAIGN_CATEGORY_LABELS[categoryId],
-    [prefs.categoryLabels]
+    (categoryId: string) => prefs.categoryLabels[categoryId] ?? builtinLabel(tab, categoryId),
+    [prefs.categoryLabels, tab]
   );
 
   const addCategory = useCallback(
@@ -169,7 +190,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
       if (isHiddenCategoryId(categoryId)) return;
       const trimmed = label.trim();
       if (!trimmed) return;
-      const builtin = BUILTIN_CATEGORIES.find((id) => id === categoryId);
+      const builtin = builtinCategoriesForTab(tab).find((id) => id === categoryId);
       if (builtin) {
         persist({
           ...prefs,
@@ -184,7 +205,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
         ),
       });
     },
-    [prefs, persist]
+    [prefs, persist, tab]
   );
 
   const deleteCategory = useCallback(
@@ -198,7 +219,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const hideBuiltinCategory = useCallback(
-    (categoryId: CampaignCategory) => {
+    (categoryId: string) => {
       if (prefs.hiddenBuiltinCategories.includes(categoryId)) return;
       persist({
         ...prefs,
@@ -209,7 +230,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const unhideBuiltinCategory = useCallback(
-    (categoryId: CampaignCategory) => {
+    (categoryId: string) => {
       persist({
         ...prefs,
         hiddenBuiltinCategories: prefs.hiddenBuiltinCategories.filter((id) => id !== categoryId),
@@ -231,7 +252,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const getPresetCategory = useCallback(
-    (templateId: string, defaultCategory: CampaignCategory) => {
+    (templateId: string, defaultCategory: string) => {
       const override = prefs.presetTemplateCategories[templateId];
       if (override && movableCategories.some((item) => item.id === override)) {
         return override;
@@ -382,7 +403,7 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
   );
 
   const resetCategoryLabel = useCallback(
-    (categoryId: CampaignCategory) => {
+    (categoryId: string) => {
       const next = { ...prefs.categoryLabels };
       delete next[categoryId];
       persist({ ...prefs, categoryLabels: next });
@@ -399,9 +420,10 @@ export function useMarketingCatalog(tab: MarketingCatalogTab) {
     [prefs, persist]
   );
 
-  const isBuiltinCategory = useCallback((categoryId: string): categoryId is CampaignCategory => {
-    return BUILTIN_CATEGORIES.includes(categoryId as CampaignCategory);
-  }, []);
+  const isBuiltinCategory = useCallback(
+    (categoryId: string) => builtinCategoriesForTab(tab).includes(categoryId),
+    [tab]
+  );
 
   return {
     categories,

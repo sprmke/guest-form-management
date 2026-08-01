@@ -101,6 +101,7 @@ For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, lo
 
 - `.cursor/rules/booking-workflow.mdc` — **read before any booking-state task**.
 - `.cursor/rules/admin-auth.mdc` — **read before any /bookings or auth task**.
+- `.cursor/rules/no-prod-deploy.mdc` — **never prod Supabase/DB deploy without user unlock word `kamewave`**.
 - `.cursor/rules/architecture.mdc` — feature folders, shared utils, import conventions.
 - `.cursor/rules/naming-conventions.mdc` — file/directory naming (bulletproof-react aligned).
 - `.cursor/rules/supabase-edge-functions.mdc` — conventions for new edge functions.

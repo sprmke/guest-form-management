@@ -13,7 +13,7 @@ import {
   adminTableMoneyClass,
   adminTableRowClass,
 } from '@/features/dashboard/bookings/components/AdminDataTable';
-import { BookingPropertyLabel } from '@/features/dashboard/bookings/components/BookingPropertyLabel';
+import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { BookingStayDatesCell } from '@/features/dashboard/bookings/components/BookingStayDatesCell';
 import { BookingStaySortControl } from '@/features/dashboard/bookings/components/BookingStaySortControl';
 import { bookingHasInvalidReceiptAi } from '@/features/dashboard/bookings/lib/bookingFlags';
@@ -93,7 +93,7 @@ export function BookingTable({
       <AdminTableHeadRow>
         <AdminTableTh className="pl-4 pr-3 sm:pl-5">Status</AdminTableTh>
         {showProperty ? (
-          <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Property</AdminTableTh>
+          <AdminTableTh className="hidden px-3 sm:table-cell sm:px-4">Resource</AdminTableTh>
         ) : null}
         <AdminTableTh className="px-3 sm:px-4">Guest</AdminTableTh>
         <AdminTableTh className="px-3 sm:px-4">
@@ -158,8 +158,9 @@ function BookingTableRow({
 
       {showProperty ? (
         <td className={cn('hidden sm:table-cell', adminTableCell.body)}>
-          <BookingPropertyLabel
-            name={row.property_name}
+          <BookingResourceLabel
+            row={row}
+            showKindBadge
             className="max-w-[10rem] text-xs font-medium sm:text-[13px]"
           />
         </td>

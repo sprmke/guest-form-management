@@ -84,7 +84,7 @@ export function ParkingPricingPage() {
       const isBooked = bookedDateKeys.has(key);
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
-        return { price: customPrice, isCustom: true as const, isBooked };
+        return { price: customPrice, isCustom: true as const, isBooked, isBlocked: false };
       }
 
       const price = resolveParkingNightlyRateForDate(date, {
@@ -92,7 +92,7 @@ export function ParkingPricingPage() {
         weekendNightlyRate: weekendRate,
       });
 
-      return { price, isCustom: false as const, isBooked };
+      return { price, isCustom: false as const, isBooked, isBlocked: false };
     },
     [bookedDateKeys, customDatePrices, weekdayRate, weekendRate]
   );

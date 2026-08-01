@@ -1,4 +1,5 @@
 import { Share2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import type {
@@ -6,62 +7,40 @@ import type {
   AppSettingsFormValues,
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { PropertyExternalReviewsBlock } from '@/features/dashboard/org/components/property-settings/PropertyExternalReviewsBlock';
-import {
-  PropertySettingsSectionAlert,
-  RequiredMark,
-} from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
+import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertySuperhostVerificationBlock } from '@/features/dashboard/org/components/property-settings/PropertySuperhostVerificationBlock';
+import { MainSocialPlatformPicker } from '@/features/dashboard/org/components/settings/MainSocialPlatformPicker';
+import { SocialLinkInheritField } from '@/features/dashboard/org/components/settings/SocialLinkInheritField';
 import type { SuperhostStatus } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
-
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
-import { cn } from '@/lib/utils';
-
-const SOCIAL_LINK_FIELDS = [
-  {
-    id: 'property-airbnb-url',
-    key: 'airbnbUrl' as const,
-    label: 'Airbnb',
-    placeholder: FORM_PLACEHOLDERS.airbnbListing,
-    required: false,
-  },
-  {
-    id: 'property-facebook-page-url',
-    key: 'facebookPageUrl' as const,
-    label: 'Facebook',
-    placeholder: FORM_PLACEHOLDERS.facebookPage,
-    required: true,
-  },
-  {
-    id: 'property-instagram-url',
-    key: 'instagramUrl' as const,
-    label: 'Instagram',
-    placeholder: FORM_PLACEHOLDERS.instagramProfile,
-    required: false,
-  },
-  {
-    id: 'property-tiktok-url',
-    key: 'tiktokUrl' as const,
-    label: 'TikTok',
-    placeholder: FORM_PLACEHOLDERS.tiktokProfile,
-    required: false,
-  },
-] as const;
+import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
+import {
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMapWithModes,
+  PLATFORM_TO_SOCIAL_LINK,
+  SOCIAL_LINK_FIELD_IDS,
+  SOCIAL_LINK_KEYS,
+  SOCIAL_LINK_LABELS,
+  socialLinkModesFromDraft,
+  type SocialLinkKey,
+  type SocialLinkMode,
+  type SocialPlatform,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
 
 export function PropertySocialsSection({
   data,
   draft,
+  orgSocialLinks,
   disabled,
   resolveFieldError,
   markFieldInteracted,
   onChange,
   sectionMessages,
 }: {
-  data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus'>;
+  data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
   draft: AppSettingsFormValues;
+  orgSocialLinks: OrgSocialLinks;
   disabled?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
@@ -73,6 +52,31 @@ export function PropertySocialsSection({
 }) {
   const externalReviewsError = resolveFieldError('property-external-reviews');
   const superhostError = resolveFieldError('property-superhost-verification-url');
+  const mainError = resolveFieldError('property-main-social-platform');
+
+  const [socialLinkModes, setSocialLinkModes] = useState<Record<SocialLinkKey, SocialLinkMode>>(
+    () => socialLinkModesFromDraft(draft)
+  );
+
+  useEffect(() => {
+    setSocialLinkModes(socialLinkModesFromDraft(draft));
+  }, [data.updatedAt]);
+
+  const urls = useMemo(
+    () => effectiveSocialUrlMapWithModes(draft, orgSocialLinks, socialLinkModes),
+    [draft, orgSocialLinks, socialLinkModes]
+  );
+
+  const effectiveMain =
+    effectiveMainSocialPlatform(
+      draft.mainSocialPlatform,
+      orgSocialLinks.mainSocialPlatform,
+      urls
+    ) ?? '';
+
+  const setSocialLinkMode = (key: SocialLinkKey, mode: SocialLinkMode) => {
+    setSocialLinkModes((current) => ({ ...current, [key]: mode }));
+  };
 
   return (
     <AdminSection id="branding" title="Socials" icon={Share2}>
@@ -82,41 +86,49 @@ export function PropertySocialsSection({
         />
       ) : null}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
-          {SOCIAL_LINK_FIELDS.map((field) => {
-            const socialError = resolveFieldError(field.id);
-            return (
-              <div
-                key={field.id}
-                className="bg-card flex flex-col gap-2 p-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-4"
-              >
-                <Label htmlFor={field.id} className="text-sm font-medium leading-none sm:pt-2.5">
-                  {field.label}
-                  {field.required ? <RequiredMark /> : null}
-                </Label>
-                <div className="min-w-0 space-y-1">
-                  <Input
-                    id={field.id}
-                    type="url"
-                    disabled={disabled}
-                    value={draft[field.key]}
-                    onChange={(event) => {
-                      markFieldInteracted(field.id);
-                      onChange(field.key, event.target.value);
-                    }}
-                    className={cn('h-10 min-w-0', socialError && 'border-destructive')}
-                    placeholder={field.placeholder}
-                    autoComplete="off"
-                    spellCheck={false}
-                    aria-invalid={Boolean(socialError)}
-                  />
-                  {socialError ? <p className="text-destructive text-xs">{socialError}</p> : null}
-                </div>
-              </div>
-            );
-          })}
+          {SOCIAL_LINK_KEYS.map((key) => (
+            <SocialLinkInheritField
+              key={key}
+              id={SOCIAL_LINK_FIELD_IDS[key]}
+              label={SOCIAL_LINK_LABELS[key]}
+              storedValue={draft[key]}
+              orgValue={orgSocialLinks[key]}
+              inheritsOrg={socialLinkModes[key] === 'inherit'}
+              disabled={disabled}
+              error={resolveFieldError(SOCIAL_LINK_FIELD_IDS[key])}
+              onStoredChange={(value) => {
+                onChange(key, value);
+                const platform = Object.entries(PLATFORM_TO_SOCIAL_LINK).find(
+                  ([, linkKey]) => linkKey === key
+                )?.[0] as SocialPlatform | undefined;
+                if (
+                  platform &&
+                  !value.trim() &&
+                  draft.mainSocialPlatform === platform &&
+                  !orgSocialLinks[key].trim()
+                ) {
+                  onChange('mainSocialPlatform', '');
+                }
+              }}
+              onInheritsOrgChange={(inherits) => {
+                setSocialLinkMode(key, inherits ? 'inherit' : 'custom');
+              }}
+              onInteract={() => markFieldInteracted(SOCIAL_LINK_FIELD_IDS[key])}
+            />
+          ))}
         </div>
+
+        <MainSocialPlatformPicker
+          id="property-main-social-platform"
+          value={effectiveMain}
+          urls={urls}
+          disabled={disabled}
+          error={mainError}
+          onChange={(platform) => onChange('mainSocialPlatform', platform)}
+          onInteract={() => markFieldInteracted('property-main-social-platform')}
+        />
 
         <PropertyExternalReviewsBlock
           reviews={draft.externalReviews}

@@ -2,11 +2,13 @@ import * as React from 'react';
 
 import { Eye, EyeOff } from 'lucide-react';
 
+import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import {
   telegramBotTokenPlaceholder,
   telegramChatIdPlaceholder,
 } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
 import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { TELEGRAM_CHAT_ID_HELP } from '@/features/dashboard/bookings/lib/telegramHelpContent';
 import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 
 import { Input } from '@/components/ui/input';
@@ -25,6 +27,7 @@ type SecretInputProps = {
   disabled?: boolean;
   onChange: (value: string) => void;
   className?: string;
+  labelAction?: React.ReactNode;
 };
 
 function SecretInput({
@@ -35,14 +38,18 @@ function SecretInput({
   disabled,
   onChange,
   className,
+  labelAction,
 }: SecretInputProps) {
   const [visible, setVisible] = React.useState(false);
 
   return (
     <div className={cn('min-w-0 space-y-1.5', className)}>
-      <Label htmlFor={id} className={FIELD_LABEL}>
-        {label}
-      </Label>
+      <div className="flex items-center justify-between gap-2">
+        <Label htmlFor={id} className={FIELD_LABEL}>
+          {label}
+        </Label>
+        {labelAction}
+      </div>
       <div className="relative">
         <Input
           id={id}
@@ -121,6 +128,14 @@ export function PropertyTelegramCredentialsFields({
         disabled={disabled}
         placeholder={telegramChatIdPlaceholder(Boolean(status?.chatIdConfigured))}
         onChange={onChatIdChange}
+        labelAction={
+          <TelegramHelpDialog
+            title="How to get a Telegram chat ID"
+            sections={TELEGRAM_CHAT_ID_HELP}
+            triggerLabel="Help"
+            className="min-h-[44px] px-1.5"
+          />
+        }
       />
 
       {connectAction ? <div className="min-w-0 md:justify-self-end">{connectAction}</div> : null}

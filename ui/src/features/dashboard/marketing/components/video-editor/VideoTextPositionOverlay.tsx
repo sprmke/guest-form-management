@@ -16,12 +16,13 @@ import {
   layerLabel,
   overlayLayersForScene,
 } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 
 import { cn } from '@/lib/utils';
 
 type Props = {
   scene: VideoScene;
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   compositionScale: number;
   previewWidthPx: number;
   compositionWidth: number;
@@ -78,7 +79,7 @@ function SelectionChrome({ active, selected }: { active: boolean; selected: bool
 
 function OverlayLayerTarget({
   layer,
-  brandColor,
+  templateTypography,
   compositionScale,
   renderScale,
   previewWidthPx,
@@ -94,7 +95,7 @@ function OverlayLayerTarget({
   onPointerLeave,
 }: {
   layer: ReturnType<typeof overlayLayersForScene>[number];
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   compositionScale: number;
   renderScale: number;
   previewWidthPx: number;
@@ -136,7 +137,7 @@ function OverlayLayerTarget({
     const observer = new ResizeObserver(measure);
     observer.observe(node);
     return () => observer.disconnect();
-  }, [layer, brandColor, renderScale, previewWidthPx, usesWidthPct]);
+  }, [layer, templateTypography, renderScale, previewWidthPx, usesWidthPct]);
 
   return (
     <div
@@ -155,6 +156,7 @@ function OverlayLayerTarget({
         }
         aria-label={`Move ${label}`}
         aria-pressed={isSelected}
+        data-video-layer=""
         onPointerDown={onPointerDown}
         onPointerEnter={onPointerEnter}
         onPointerLeave={onPointerLeave}
@@ -164,7 +166,7 @@ function OverlayLayerTarget({
           aria-hidden
           className={cn('invisible', usesWidthPct ? 'block w-full' : 'inline-block max-w-full')}
         >
-          <VideoLayerBody layer={layer} brandColor={brandColor} scale={renderScale} />
+          <VideoLayerBody layer={layer} typography={templateTypography} scale={renderScale} />
         </div>
         <SelectionChrome active={showChrome} selected={isSelected || isDragging || isResizing} />
         {isSelected && usesWidthPct ? (
@@ -182,7 +184,7 @@ function OverlayLayerTarget({
 
 export function VideoTextPositionOverlay({
   scene,
-  brandColor,
+  templateTypography,
   compositionScale,
   previewWidthPx,
   compositionWidth,
@@ -303,7 +305,7 @@ export function VideoTextPositionOverlay({
           <OverlayLayerTarget
             key={layer.id}
             layer={layer}
-            brandColor={brandColor}
+            templateTypography={templateTypography}
             compositionScale={compositionScale}
             renderScale={renderScale}
             previewWidthPx={previewWidthPx}

@@ -1,16 +1,19 @@
 import { useEffect, useRef } from 'react';
 
-import { Mic, MicOff, PhoneOff } from 'lucide-react';
+import { Loader2, Mic, MicOff, PhoneOff } from 'lucide-react';
 
 import {
   ReceptionistAvatar,
   type ReceptionistAvatarState,
 } from '@/features/guest/chat/components/voice/ReceptionistAvatar';
+import { VoiceBoothRing } from '@/features/guest/chat/components/voice/VoiceBoothRing';
+import { VoiceMicWaveform } from '@/features/guest/chat/components/voice/VoiceMicWaveform';
 import {
   useVoiceSession,
   type VoiceSessionPhase,
 } from '@/features/guest/chat/hooks/useVoiceSession';
 
+import { ChatRichBody } from '@/components/chat/ChatRichBody';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +21,16 @@ type Props = {
   propertySlug: string;
   onClose: () => void;
 };
+
+/** Phase 6.3 booth palette — night lobby, warm brass accent (not generic purple/cream AI). */
+const BOOTH = {
+  wash: '#0F1410',
+  fill: '#1A221C',
+  brass: '#C4A35A',
+  green: '#3D9B6A',
+  amber: '#D4A017',
+  paper: '#F5F2EA',
+} as const;
 
 function toAvatarState(phase: VoiceSessionPhase): ReceptionistAvatarState {
   switch (phase) {
@@ -36,18 +49,25 @@ function toAvatarState(phase: VoiceSessionPhase): ReceptionistAvatarState {
   }
 }
 
-function statusLabel(phase: VoiceSessionPhase): string {
+function statusLabel(
+  phase: VoiceSessionPhase,
+  userSpeaking: boolean,
+  toolPending: boolean
+): string {
+  if (userSpeaking && (phase === 'listening' || phase === 'thinking' || phase === 'speaking')) {
+    return "You're speaking";
+  }
   switch (phase) {
     case 'connecting':
       return 'Connecting…';
     case 'listening':
       return 'Listening';
     case 'thinking':
-      return 'Thinking…';
+      return toolPending ? 'Looking that up…' : 'Thinking…';
     case 'speaking':
       return 'Speaking';
     case 'ending':
-      return 'Ending…';
+      return 'Saving conversation…';
     case 'ended':
       return 'Call ended';
     case 'error':
@@ -72,6 +92,7 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
   const startedRef = useRef(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openedAtRef = useRef(Date.now());
+  const endingRef = useRef(false);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -82,107 +103,189 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
   }, []);
 
   useEffect(() => {
-    // 'error' (mic denied, caps hit, connection lost, …) stays open until the guest
-    // dismisses it manually — auto-closing a message they haven't had time to read yet
-    // is worse than requiring one extra tap.
     if (session.phase === 'error') return;
     if (session.phase !== 'ended') return;
-    closeTimeoutRef.current = setTimeout(onClose, session.errorMessage ? 2200 : 700);
+    closeTimeoutRef.current = setTimeout(onClose, session.errorMessage ? 2200 : 450);
     return () => {
       if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
     };
   }, [session.phase, session.errorMessage, onClose]);
 
   const handleClose = () => {
-    session.end('guest_ended');
-    onClose();
+    if (endingRef.current) return;
+    endingRef.current = true;
+    void session.end('guest_ended');
   };
 
   const handleOpenChange = (next: boolean) => {
     if (next) return;
-    // Ignore dismiss events in the first 400ms (dropdown→dialog focus race).
     if (Date.now() - openedAtRef.current < 400) return;
     handleClose();
   };
 
-  const captionLines = [...session.captions.slice(-3), session.liveCaption].filter(
-    (c): c is NonNullable<typeof c> => !!c?.text.trim()
-  );
+  // At most one prior turn + the live turn. Never stack 3+ STT fragments in one plate.
+  const live = session.liveCaption?.text.trim() ? session.liveCaption : null;
+  const captionLines = (() => {
+    if (!live) {
+      return session.captions.filter((c) => c.text.trim()).slice(-2);
+    }
+    const prior = [...session.captions].reverse().find((c) => {
+      if (!c.text.trim()) return false;
+      if (c.role === live.role && c.text === live.text) return false;
+      return c.role !== live.role;
+    });
+    return [...(prior ? [prior] : []), live];
+  })();
+
+  const avatarState = toAvatarState(session.phase);
+  const isEnding = session.phase === 'ending';
+  const showWave =
+    !isEnding &&
+    (session.phase === 'listening' ||
+      session.phase === 'thinking' ||
+      session.userSpeaking ||
+      session.phase === 'speaking');
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent
         showCloseButton={false}
         onPointerDownOutside={(event) => {
-          if (Date.now() - openedAtRef.current < 400) {
+          if (Date.now() - openedAtRef.current < 400 || isEnding) {
             event.preventDefault();
           }
         }}
         onInteractOutside={(event) => {
-          if (Date.now() - openedAtRef.current < 400) {
+          if (Date.now() - openedAtRef.current < 400 || isEnding) {
             event.preventDefault();
           }
         }}
-        className="flex h-[min(92dvh,720px)] max-h-[min(94dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),26rem)] flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-sm"
+        className={cn(
+          'flex h-[min(92dvh,720px)] max-h-[min(94dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),26rem)]',
+          'flex-col gap-0 overflow-hidden rounded-2xl border p-0 sm:max-w-sm',
+          'border-[#C4A35A]/25 text-[#F5F2EA] shadow-2xl'
+        )}
+        style={{ backgroundColor: BOOTH.wash }}
       >
         <DialogTitle className="sr-only">Voice receptionist</DialogTitle>
 
-        <div className="border-border flex shrink-0 items-center justify-between border-b px-3 py-2.5">
-          <span className="text-muted-foreground w-11 text-xs font-medium tabular-nums">
-            {formatCountdown(session.remainingSeconds)}
+        <div
+          className="flex shrink-0 items-center justify-between border-b px-3 py-2.5"
+          style={{ borderColor: 'rgba(196,163,90,0.22)', backgroundColor: BOOTH.fill }}
+        >
+          <span className="w-11 text-xs font-medium tabular-nums text-[#F5F2EA]/70">
+            {isEnding ? '' : formatCountdown(session.remainingSeconds)}
           </span>
           <p
             aria-live="polite"
-            className="text-muted-foreground text-xs font-medium uppercase tracking-wider"
+            className="text-[11px] font-medium uppercase tracking-[0.14em]"
+            style={{
+              color:
+                isEnding || session.phase === 'thinking'
+                  ? BOOTH.amber
+                  : session.userSpeaking || session.phase === 'listening'
+                    ? BOOTH.green
+                    : session.phase === 'speaking'
+                      ? BOOTH.brass
+                      : 'rgba(245,242,234,0.65)',
+            }}
           >
-            {statusLabel(session.phase)}
+            {statusLabel(session.phase, session.userSpeaking, session.toolPending)}
           </p>
           <button
             type="button"
             aria-label="End call"
             onClick={handleClose}
+            disabled={isEnding || session.phase === 'ended'}
             className={cn(
               controlButtonClass,
-              'text-muted-foreground hover:bg-muted hover:text-foreground w-11'
+              'w-11 text-[#F5F2EA]/70 hover:bg-white/5 hover:text-[#F5F2EA]'
             )}
           >
             <PhoneOff className="size-5" aria-hidden />
           </button>
         </div>
 
-        <div className="bg-muted/20 flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-4 py-6">
-          <ReceptionistAvatar
-            state={toAvatarState(session.phase)}
-            amplitude={session.amplitude}
-            size={172}
-          />
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 py-6">
+          <div className="relative" style={{ width: 196, height: 196 }}>
+            <VoiceBoothRing state={avatarState} amplitude={isEnding ? 0 : session.amplitude} />
+            <div className="absolute inset-[14px] flex items-center justify-center">
+              <ReceptionistAvatar
+                state={avatarState}
+                amplitude={isEnding ? 0 : session.amplitude}
+                size={168}
+              />
+            </div>
+          </div>
+
+          {isEnding ? (
+            <div
+              className="flex items-center gap-2 text-sm"
+              style={{ color: 'rgba(245,242,234,0.85)' }}
+              role="status"
+            >
+              <Loader2
+                className="size-4 shrink-0 animate-spin"
+                style={{ color: BOOTH.amber }}
+                aria-hidden
+              />
+              <span>Saving conversation…</span>
+            </div>
+          ) : null}
+
+          {showWave ? (
+            <VoiceMicWaveform
+              amplitude={session.amplitude}
+              active={
+                session.phase === 'listening' ||
+                session.userSpeaking ||
+                session.phase === 'speaking'
+              }
+            />
+          ) : null}
 
           {session.errorMessage ? (
-            <p role="alert" className="text-destructive max-w-xs text-center text-sm">
+            <p role="alert" className="max-w-xs text-center text-sm text-red-300">
               {session.errorMessage}
             </p>
           ) : null}
 
-          {captionLines.length > 0 ? (
-            <div className="w-full max-w-xs space-y-1.5">
-              {captionLines.map((line, i) => (
-                <p
-                  key={i}
-                  className={cn(
-                    'text-sm leading-snug',
-                    line.role === 'guest'
-                      ? 'text-foreground text-right'
-                      : 'text-muted-foreground text-left'
-                  )}
-                >
-                  {line.text}
-                </p>
-              ))}
+          {!isEnding && captionLines.length > 0 ? (
+            <div className="flex w-full max-w-sm flex-col gap-2 px-1">
+              {captionLines.map((line, i) => {
+                const guest = line.role === 'guest';
+                return (
+                  <div
+                    key={`${line.role}-${i}-${line.text.slice(0, 24)}`}
+                    className={cn(
+                      'w-fit max-w-full rounded-2xl px-3 py-2 text-left text-sm leading-snug',
+                      guest
+                        ? 'bg-[#3D9B6A]/28 self-end text-[#F5F2EA]'
+                        : 'self-start bg-[#1A221C] text-[#F5F2EA]/90'
+                    )}
+                  >
+                    {guest ? (
+                      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                        {line.text}
+                      </p>
+                    ) : (
+                      <ChatRichBody
+                        text={line.text}
+                        compactMaps
+                        className="text-[#F5F2EA]/90 [&_a]:text-[#C4A35A] [&_p]:text-[#F5F2EA]/90"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : null}
         </div>
 
-        <div className="border-border flex shrink-0 items-center justify-center gap-4 border-t px-4 py-3.5">
+        <div
+          className="flex shrink-0 items-center justify-center gap-4 border-t px-4 py-3.5"
+          style={{ borderColor: 'rgba(196,163,90,0.22)', backgroundColor: BOOTH.fill }}
+        >
           <button
             type="button"
             aria-label={session.muted ? 'Unmute microphone' : 'Mute microphone'}
@@ -198,8 +301,8 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
               controlButtonClass,
               'size-12 border',
               session.muted
-                ? 'bg-muted text-foreground border-border'
-                : 'bg-background text-foreground border-border hover:bg-muted'
+                ? 'border-white/20 bg-white/10 text-[#F5F2EA]'
+                : 'border-[#3D9B6A]/50 bg-[#0F1410] text-[#F5F2EA] hover:bg-white/5'
             )}
           >
             {session.muted ? (
@@ -212,12 +315,14 @@ export function VoiceSessionOverlay({ propertySlug, onClose }: Props) {
             type="button"
             aria-label="End call"
             onClick={handleClose}
-            className={cn(
-              controlButtonClass,
-              'bg-destructive text-destructive-foreground size-12 hover:opacity-90'
-            )}
+            disabled={isEnding || session.phase === 'ended'}
+            className={cn(controlButtonClass, 'size-12 bg-red-600 text-white hover:bg-red-500')}
           >
-            <PhoneOff className="size-5" aria-hidden />
+            {isEnding ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : (
+              <PhoneOff className="size-5" aria-hidden />
+            )}
           </button>
         </div>
       </DialogContent>

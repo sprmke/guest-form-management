@@ -14,6 +14,7 @@ import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/compon
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
+import type { VoiceReceptionistFormValues } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
 import {
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
@@ -38,6 +39,17 @@ type Props = {
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
   sectionMessages?: Partial<Record<PropertySettingsSectionId, string>>;
+  voiceReceptionist: {
+    draft: VoiceReceptionistFormValues | null;
+    availableVoices: readonly string[];
+    isLoading: boolean;
+    isError: boolean;
+    errorMessage: string | null;
+    onChange: <K extends keyof VoiceReceptionistFormValues>(
+      key: K,
+      value: VoiceReceptionistFormValues[K]
+    ) => void;
+  };
 };
 
 export function PropertyOperationalSettingsSections({
@@ -51,6 +63,7 @@ export function PropertyOperationalSettingsSections({
   resolveFieldError,
   markFieldInteracted,
   sectionMessages = {},
+  voiceReceptionist,
 }: Props) {
   const uploadMut = useUploadAppSettingsAsset();
 
@@ -149,7 +162,15 @@ export function PropertyOperationalSettingsSections({
         />
       </AdminSection>
 
-      <PropertyVoiceReceptionistSection />
+      <PropertyVoiceReceptionistSection
+        draft={voiceReceptionist.draft}
+        availableVoices={voiceReceptionist.availableVoices}
+        disabled={disabled}
+        isLoading={voiceReceptionist.isLoading}
+        isError={voiceReceptionist.isError}
+        errorMessage={voiceReceptionist.errorMessage}
+        onChange={voiceReceptionist.onChange}
+      />
     </>
   );
 }

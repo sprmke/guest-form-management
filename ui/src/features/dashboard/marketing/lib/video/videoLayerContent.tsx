@@ -1,10 +1,11 @@
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 
 import {
   resolveLayerTypography,
   typographyToCss,
 } from '@/features/dashboard/marketing/lib/video/videoLayerTypography';
 import type { VideoSceneLayer } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 
 export function layerHasContent(layer: VideoSceneLayer): boolean {
   switch (layer.kind) {
@@ -23,13 +24,71 @@ export function layerHasContent(layer: VideoSceneLayer): boolean {
   }
 }
 
+function slotChipStyle(
+  look: VideoTypographyContext['look'],
+  palette: VideoTypographyContext['palette'],
+  fontFamily: string,
+  scale: number
+): CSSProperties {
+  const base: CSSProperties = {
+    textAlign: 'center',
+    fontFamily,
+    fontWeight: 800,
+  };
+
+  switch (look.pillStyle) {
+    case 'bare':
+      return {
+        ...base,
+        backgroundColor: 'transparent',
+        color: palette.cream,
+        fontSize: Math.round(56 * scale),
+        letterSpacing: `${0.5 * scale}px`,
+        textShadow: '0 2px 18px rgba(0,0,0,0.5)',
+        padding: `${Math.round(8 * scale)}px ${Math.round(12 * scale)}px`,
+      };
+    case 'outline':
+      return {
+        ...base,
+        backgroundColor: 'transparent',
+        color: palette.cream,
+        border: `${Math.max(2, Math.round(2 * scale))}px solid ${palette.cream}`,
+        borderRadius: Math.round(16 * scale),
+        padding: `${Math.round(14 * scale)}px ${Math.round(22 * scale)}px`,
+        minWidth: Math.round(120 * scale),
+        fontSize: Math.round(24 * scale),
+      };
+    case 'compact':
+      return {
+        ...base,
+        backgroundColor: palette.cream,
+        color: palette.ink,
+        borderRadius: Math.round(12 * scale),
+        padding: `${Math.round(12 * scale)}px ${Math.round(18 * scale)}px`,
+        minWidth: Math.round(110 * scale),
+        fontSize: Math.round(22 * scale),
+      };
+    case 'filled':
+    default:
+      return {
+        ...base,
+        backgroundColor: palette.cream,
+        color: palette.ink,
+        borderRadius: Math.round(20 * scale),
+        padding: `${Math.round(20 * scale)}px ${Math.round(28 * scale)}px`,
+        minWidth: Math.round(140 * scale),
+        fontSize: Math.round(28 * scale),
+      };
+  }
+}
+
 export function VideoLayerBody({
   layer,
-  brandColor,
+  typography: typographyContext,
   scale,
 }: {
   layer: VideoSceneLayer;
-  brandColor: string;
+  typography: VideoTypographyContext;
   scale: number;
 }): ReactNode {
   if (layer.kind === 'logo' && layer.imageUrl) {
@@ -64,29 +123,32 @@ export function VideoLayerBody({
   }
 
   if (layer.kind === 'slots' && layer.lines?.length) {
+    const chip = slotChipStyle(
+      typographyContext.look,
+      typographyContext.palette,
+      typographyContext.fontPairing.label,
+      scale
+    );
+    const gap =
+      typographyContext.look.pillStyle === 'bare'
+        ? Math.round(8 * scale)
+        : typographyContext.look.pillStyle === 'compact'
+          ? Math.round(10 * scale)
+          : Math.round(16 * scale);
+
     return (
       <div
         style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: Math.round(16 * scale),
+          gap,
           justifyContent: 'center',
+          alignItems: 'center',
+          maxWidth: '92%',
         }}
       >
         {layer.lines.map((label) => (
-          <div
-            key={label}
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: Math.round(20 * scale),
-              padding: `${Math.round(20 * scale)}px ${Math.round(28 * scale)}px`,
-              minWidth: Math.round(140 * scale),
-              textAlign: 'center',
-              color: '#7c4a2d',
-              fontSize: Math.round(28 * scale),
-              fontWeight: 800,
-            }}
-          >
+          <div key={label} style={chip}>
             {label}
           </div>
         ))}
@@ -95,8 +157,11 @@ export function VideoLayerBody({
   }
 
   if ((layer.kind === 'text' || layer.kind === 'cta') && layer.text) {
-    const typography = resolveLayerTypography(layer, brandColor);
-    const css = typographyToCss(typography, scale, { isCta: layer.kind === 'cta' });
+    const typography = resolveLayerTypography(layer, typographyContext);
+    const css = typographyToCss(typography, scale, {
+      isCta: layer.kind === 'cta',
+      ctaChrome: typographyContext.look.ctaChrome,
+    });
     const whiteSpace = layer.text.includes('\n') ? 'pre-wrap' : 'nowrap';
     return (
       <div style={{ ...css, whiteSpace, display: 'inline-block', maxWidth: '100%' }}>

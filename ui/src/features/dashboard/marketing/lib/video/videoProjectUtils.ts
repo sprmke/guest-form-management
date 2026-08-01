@@ -151,7 +151,7 @@ export function addPhotoScene(
       slotLabels: [],
       rulesLine: '',
     },
-    textLayout: defaultTextLayoutForSceneKind('photo'),
+    textLayout: defaultTextLayoutForSceneKind('photo', project.templateId),
   };
   return { ...project, scenes: [...project.scenes, scene] };
 }

@@ -22,7 +22,6 @@ type Props = {
 export function RequirePropertyPermission({ section, children }: Props) {
   const { orgSlug, propertySlug } = useOrgContext();
   const { data, isLoading, isError } = usePropertyPermissions();
-  const required = PROPERTY_SECTION_VIEW_PERMISSION[section];
 
   if (isLoading) {
     return (
@@ -32,7 +31,7 @@ export function RequirePropertyPermission({ section, children }: Props) {
     );
   }
 
-  if (isError || !data || !hasPropertyPermission(data.permissions, required)) {
+  if (isError || !data || !canViewPropertySection(data.permissions, section)) {
     const fallback = findFirstAllowedSection(data?.permissions);
     if (fallback) {
       return <Navigate to={propertySectionPath(orgSlug, propertySlug, fallback)} replace />;
@@ -54,7 +53,7 @@ const PROPERTY_SECTION_ORDER: readonly PropertySection[] = [
   'dashboard',
   'bookings',
   'finance',
-  'pricing',
+  'calendar',
   'maintenance',
   'marketing',
   'inbox',
@@ -69,10 +68,23 @@ function findFirstAllowedSection(
 ): PropertySection | null {
   if (!permissions?.length) return null;
   for (const section of PROPERTY_SECTION_ORDER) {
-    const perm = PROPERTY_SECTION_VIEW_PERMISSION[section];
-    if (hasPropertyPermission(permissions, perm)) {
+    if (canViewPropertySection(permissions, section)) {
       return section;
     }
   }
   return null;
+}
+
+function canViewPropertySection(
+  permissions: readonly string[] | undefined,
+  section: PropertySection
+): boolean {
+  if (section === 'calendar') {
+    return (
+      hasPropertyPermission(permissions, 'pricing:view') ||
+      hasPropertyPermission(permissions, 'bookings:view')
+    );
+  }
+
+  return hasPropertyPermission(permissions, PROPERTY_SECTION_VIEW_PERMISSION[section]);
 }

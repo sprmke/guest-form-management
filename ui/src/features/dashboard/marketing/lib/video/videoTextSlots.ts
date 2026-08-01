@@ -2,6 +2,7 @@ import type {
   VideoScene,
   VideoSceneKind,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import { textLayoutForTemplate } from '@/features/dashboard/marketing/lib/video/videoTemplateLayouts';
 
 export type VideoTextSlotId =
   'headline' | 'subheadline' | 'promoLine' | 'ctaLine' | 'rulesLine' | 'slotLabels';
@@ -30,6 +31,10 @@ export const VIDEO_TEXT_SLOT_LABELS: Record<VideoTextSlotId, string> = {
 const DEFAULT_LAYOUT_BY_KIND: Record<VideoSceneKind, VideoSceneTextLayout> = {
   photo: {
     headline: { x: 50, y: 88, align: 'center' },
+    /** Quiet Coast amenity / caption beats on b-roll. */
+    subheadline: { x: 50, y: 52, align: 'center' },
+    promoLine: { x: 50, y: 52, align: 'center' },
+    rulesLine: { x: 50, y: 88, align: 'center' },
   },
   promo: {
     headline: { x: 50, y: 42, align: 'center' },
@@ -43,6 +48,7 @@ const DEFAULT_LAYOUT_BY_KIND: Record<VideoSceneKind, VideoSceneTextLayout> = {
     ctaLine: { x: 50, y: 78, align: 'center' },
   },
   cta: {
+    promoLine: { x: 50, y: 36, align: 'center' },
     ctaLine: { x: 50, y: 48, align: 'center' },
     rulesLine: { x: 50, y: 68, align: 'center' },
   },
@@ -65,7 +71,17 @@ export function isVideoTextSlotId(id: string): id is VideoTextSlotId {
   return VIDEO_TEXT_SLOT_IDS.has(id);
 }
 
-export function defaultTextLayoutForSceneKind(kind: VideoSceneKind): VideoSceneTextLayout {
+/**
+ * Default positions for a scene kind. Pass `templateId` so each campaign preset
+ * seeds a distinct composition (Quiet Coast parity).
+ */
+export function defaultTextLayoutForSceneKind(
+  kind: VideoSceneKind,
+  templateId?: string
+): VideoSceneTextLayout {
+  if (templateId) {
+    return textLayoutForTemplate(templateId, kind) as VideoSceneTextLayout;
+  }
   return { ...DEFAULT_LAYOUT_BY_KIND[kind] };
 }
 

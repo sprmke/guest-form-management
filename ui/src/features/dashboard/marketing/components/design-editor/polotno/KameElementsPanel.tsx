@@ -16,6 +16,7 @@ import {
   KAME_POLOTNO_DEFAULT_SHAPE_FILL,
   type KamePolotnoShape,
 } from '@/features/dashboard/marketing/lib/polotno/kamePolotnoShapes';
+import { roundedOutlineSvgUrl } from '@/features/dashboard/marketing/lib/polotno/roundedOutlineSvg';
 import type { PolotnoStore } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 
 type LineStyleItem = { preview: string; data: Record<string, unknown> };
@@ -65,6 +66,28 @@ function addShapeToCanvas(
   const h = baseH * ratio;
   const x = (pos?.x ?? page.computedWidth / 2) - w / 2;
   const y = (pos?.y ?? page.computedHeight / 2) - h / 2;
+
+  if (item.kind === 'outline-svg') {
+    const strokeWidth = Math.max(2, (item.strokeWidth / item.height) * h);
+    page.addElement({
+      type: 'svg',
+      name: item.label,
+      x,
+      y,
+      width: w,
+      height: h,
+      src: roundedOutlineSvgUrl({
+        width: Math.round(w),
+        height: Math.round(h),
+        stroke: item.stroke,
+        strokeWidth,
+        cornerRadius: h / 2,
+      }),
+      keepRatio: false,
+      stretchEnabled: true,
+    });
+    return;
+  }
 
   const element: Record<string, unknown> = {
     type: 'figure',

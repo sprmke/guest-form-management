@@ -1,12 +1,27 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import type { ReceptionistAvatarState } from '@/features/guest/chat/components/voice/receptionistAvatarTypes';
+import {
+  TURTLE_AVATAR_CROP_ZOOM,
+  TURTLE_AVATAR_OBJECT_POSITION,
+  TURTLE_AVATAR_TRANSFORM_ORIGIN,
+  TURTLE_IDLE_POSTER_SRC,
+  TURTLE_TALK_VIDEO_SRC,
+  TURTLE_VIDEO_SEGMENTS,
+} from '@/features/guest/chat/components/voice/receptionistAvatarVideo';
+import { ReceptionistFacePlate } from '@/features/guest/chat/components/voice/ReceptionistFacePlate';
+
 import { cn } from '@/lib/utils';
 
-export type ReceptionistAvatarState =
-  | 'idle'
-  | 'connecting'
-  | 'listening'
-  | 'thinking'
-  | 'speaking'
-  | 'error';
+export type { ReceptionistAvatarState };
+
+const FADE_MS = 200;
+const LOOP_EPS = 0.04;
+
+const MOTION_STYLE = {
+  transition: `opacity ${FADE_MS}ms ease-out, transform ${FADE_MS}ms ease-out`,
+  transformOrigin: TURTLE_AVATAR_TRANSFORM_ORIGIN,
+} as const;
 
 type Props = {
   state: ReceptionistAvatarState;
@@ -16,94 +31,157 @@ type Props = {
   className?: string;
 };
 
-/** Procedural CSS/SVG turtle receptionist — the signature element of the voice overlay. */
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/**
+ * Full-body HeyGen turtle in a circular booth. Talk loop plays **only** while
+ * `state === 'speaking'` (same gate as AI PCM playback). Idle still otherwise.
+ */
 export function ReceptionistAvatar({ state, amplitude = 0, size = 160, className }: Props) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const speakingRef = useRef(false);
+  const [failed, setFailed] = useState(false);
+
+  const reducedMotion = prefersReducedMotion();
   const amp = Math.max(0, Math.min(1, amplitude));
-  const shellScale = 1 + amp * 0.05;
-  const mouthRy = state === 'speaking' ? 3 + amp * 7 : 3;
-  const bobbing = state === 'idle' || state === 'listening';
+  /** Strict sync with AI audio — no outro/intro after speech ends. */
+  const speaking = state === 'speaking' && !reducedMotion;
   const thinking = state === 'thinking';
-  const errored = state === 'error';
+  const showTalkVideo = speaking;
+  const scale =
+    TURTLE_AVATAR_CROP_ZOOM + (reducedMotion ? 0 : speaking ? amp * 0.012 : thinking ? 0.008 : 0);
+  const translateY = reducedMotion ? 0 : speaking ? -amp * 1 : thinking ? -1 : 0;
+  const transform = `translateY(${translateY}px) scale(${scale})`;
+  const mediaPosition = { objectPosition: TURTLE_AVATAR_OBJECT_POSITION };
+
+  useEffect(() => {
+    speakingRef.current = speaking;
+  }, [speaking]);
+
+  const pauseAtIdle = useCallback((video: HTMLVideoElement) => {
+    video.pause();
+    window.setTimeout(() => {
+      try {
+        video.currentTime = TURTLE_VIDEO_SEGMENTS.idleAt;
+      } catch {
+        // ignore seek before metadata
+      }
+    }, FADE_MS);
+  }, []);
+
+  const seekAndPlay = useCallback((video: HTMLVideoElement, time: number) => {
+    video.muted = true;
+    const run = () => {
+      try {
+        if (Math.abs(video.currentTime - time) > 0.05) {
+          video.currentTime = time;
+        }
+      } catch {
+        // ignore seek before metadata
+      }
+      const play = video.play();
+      if (play && typeof play.catch === 'function') {
+        play.catch(() => {
+          // Autoplay can still fail on some browsers even when muted.
+        });
+      }
+    };
+    if (video.readyState >= 1) {
+      run();
+    } else {
+      video.addEventListener('loadedmetadata', run, { once: true });
+    }
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || failed) return;
+
+    if (speaking) {
+      seekAndPlay(video, TURTLE_VIDEO_SEGMENTS.loop.start);
+      return;
+    }
+
+    pauseAtIdle(video);
+  }, [speaking, failed, seekAndPlay, pauseAtIdle]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || failed) return;
+
+    const onTimeUpdate = () => {
+      if (!speakingRef.current) return;
+      const { loop } = TURTLE_VIDEO_SEGMENTS;
+      if (video.currentTime >= loop.end - LOOP_EPS) {
+        try {
+          video.currentTime = loop.start;
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    video.addEventListener('timeupdate', onTimeUpdate);
+    return () => video.removeEventListener('timeupdate', onTimeUpdate);
+  }, [failed]);
 
   return (
     <div
-      className={cn('relative inline-flex shrink-0 items-center justify-center', className)}
+      className={cn(
+        'relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full',
+        'bg-[#B8E0C8] ring-1 ring-[#C4A35A]/30',
+        className
+      )}
       style={{ width: size, height: size }}
       aria-hidden
     >
-      <div className={cn('h-full w-full', bobbing && 'animate-float')}>
-        <svg
-          viewBox="0 0 200 200"
-          className={cn('h-full w-full transition-transform duration-200 ease-out', errored && 'opacity-60')}
-          style={{ transform: `scale(${shellScale})` }}
-        >
-          <defs>
-            <radialGradient id="turtle-shell-fill" cx="35%" cy="28%" r="80%">
-              <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={errored ? 0.5 : 0.95} />
-              <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={errored ? 0.35 : 0.75} />
-            </radialGradient>
-          </defs>
+      {failed ? (
+        <ReceptionistFacePlate state={state} amplitude={amplitude} size={size} />
+      ) : (
+        <>
+          <img
+            src={TURTLE_IDLE_POSTER_SRC}
+            alt=""
+            width={size}
+            height={size}
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover',
+              showTalkVideo ? 'opacity-0' : 'opacity-100',
+              state === 'connecting' && !showTalkVideo && 'opacity-80',
+              state === 'error' && !showTalkVideo && 'opacity-65 grayscale'
+            )}
+            style={{ ...MOTION_STYLE, transform, ...mediaPosition }}
+            onError={() => setFailed(true)}
+          />
+          <video
+            ref={videoRef}
+            src={TURTLE_TALK_VIDEO_SRC}
+            muted
+            playsInline
+            preload="auto"
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover',
+              showTalkVideo ? 'opacity-100' : 'opacity-0'
+            )}
+            style={{ ...MOTION_STYLE, transform, ...mediaPosition }}
+            onError={() => setFailed(true)}
+          />
+        </>
+      )}
 
-          <g fill="hsl(var(--primary) / 0.55)">
-            <ellipse cx="46" cy="160" rx="14" ry="9" />
-            <ellipse cx="154" cy="160" rx="14" ry="9" />
-            <ellipse cx="38" cy="118" rx="11" ry="15" />
-            <ellipse cx="162" cy="118" rx="11" ry="15" />
-          </g>
-
-          <ellipse cx="100" cy="116" rx="74" ry="60" fill="url(#turtle-shell-fill)" />
-          <g stroke="hsl(var(--background))" strokeOpacity="0.32" strokeWidth="2" fill="none">
-            <path d="M100 62 L100 172" />
-            <path d="M48 96 L152 96" />
-            <path d="M40 132 L160 132" />
-            <path d="M66 68 L134 68" />
-          </g>
-
-          <g>
-            <circle cx="100" cy="52" r="30" fill="hsl(var(--primary))" fillOpacity={errored ? 0.6 : 1} />
-            <g className={errored ? '' : 'animate-turtle-blink'} style={{ transformOrigin: '100px 48px' }}>
-              <circle cx="88" cy="48" r="5" fill="hsl(var(--background))" />
-              <circle cx="112" cy="48" r="5" fill="hsl(var(--background))" />
-              <circle cx="88" cy="48" r="2.3" fill="hsl(var(--foreground))" />
-              <circle cx="112" cy="48" r="2.3" fill="hsl(var(--foreground))" />
-            </g>
-            <ellipse
-              cx="100"
-              cy="64"
-              rx="7"
-              ry={mouthRy}
-              fill="hsl(var(--background))"
-              opacity={state === 'speaking' ? 0.9 : 0.45}
-            />
-          </g>
-
-          {thinking ? (
-            <g fill="hsl(var(--primary))">
-              <circle cx="142" cy="26" r="4" className="animate-think-dot" />
-              <circle
-                cx="156"
-                cy="18"
-                r="3"
-                className="animate-think-dot"
-                style={{ animationDelay: '150ms' }}
-              />
-              <circle
-                cx="166"
-                cy="8"
-                r="2.2"
-                className="animate-think-dot"
-                style={{ animationDelay: '300ms' }}
-              />
-            </g>
-          ) : null}
-        </svg>
-      </div>
-
-      {state === 'connecting' ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="size-9 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        </div>
-      ) : null}
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-[14%] bottom-0 h-[16%] rounded-full bg-[#C4A35A]/0 blur-xl',
+          speaking && 'bg-[#C4A35A]/30'
+        )}
+        style={{
+          opacity: speaking ? 0.35 + amp * 0.55 : 0,
+          transition: `opacity ${FADE_MS}ms ease-out, background-color ${FADE_MS}ms ease-out`,
+        }}
+      />
     </div>
   );
 }

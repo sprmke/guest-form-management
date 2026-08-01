@@ -13,6 +13,7 @@ import type {
   VideoLayerTypography,
   VideoSceneLayer,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type { VideoTypographyContext } from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,18 +27,18 @@ import { cn } from '@/lib/utils';
 
 type Props = {
   layer: VideoSceneLayer;
-  brandColor: string;
+  templateTypography: VideoTypographyContext;
   onChange: (patch: Partial<VideoSceneLayer>) => void;
 };
 
-export function VideoTextStyleControls({ layer, brandColor, onChange }: Props) {
+export function VideoTextStyleControls({ layer, templateTypography, onChange }: Props) {
   const isCta = layer.kind === 'cta';
-  const typography = resolveLayerTypography(layer, brandColor);
+  const typography = resolveLayerTypography(layer, templateTypography);
   const activePreset = detectActivePreset(layer);
 
   const patchTypography = (patch: Partial<VideoLayerTypography>) => {
     onChange({
-      typography: { ...resolveLayerTypography(layer, brandColor), ...patch },
+      typography: { ...resolveLayerTypography(layer, templateTypography), ...patch },
     });
   };
 
@@ -45,7 +46,7 @@ export function VideoTextStyleControls({ layer, brandColor, onChange }: Props) {
     const preset = VIDEO_TEXT_PRESETS[presetId];
     onChange({
       textStyle: preset.textStyle,
-      typography: buildTypographyFromPreset(presetId, brandColor),
+      typography: buildTypographyFromPreset(presetId, templateTypography),
     });
   };
 
@@ -133,7 +134,7 @@ export function VideoTextStyleControls({ layer, brandColor, onChange }: Props) {
         {isCta ? (
           <ColorPicker
             label="Fill"
-            value={typography.backgroundColor ?? brandColor}
+            value={typography.backgroundColor ?? templateTypography.palette.accent}
             onChange={(value) => patchTypography({ backgroundColor: value })}
           />
         ) : (
