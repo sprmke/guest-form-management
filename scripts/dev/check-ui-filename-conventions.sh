@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Verify ui/src file names match .cursor/rules/naming-conventions.mdc
-# Exit 1 on violations. See docs/reference/naming-audit.md for intentional exceptions.
+# Exit 1 on violations. See docs/reference/archive/naming-audit.md for intentional exceptions.
 
 set -euo pipefail
 
@@ -86,7 +86,7 @@ done < <(find "$SRC" -type f \( -name '*.ts' -o -name '*.tsx' \) -print0)
 
 if [[ "$VIOLATIONS" -gt 0 ]]; then
   echo ""
-  echo "$VIOLATIONS naming violation(s). See docs/reference/naming-audit.md"
+  echo "$VIOLATIONS naming violation(s). See docs/reference/archive/naming-audit.md"
   exit 1
 fi
 

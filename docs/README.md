@@ -44,14 +44,14 @@ Navigation for **guest-form-management**.
 
 ## Reference
 
-| Doc                                                                                          | Purpose                              |
-| -------------------------------------------------------------------------------------------- | ------------------------------------ |
-| [`reference/booking-flow-guide-for-admin.md`](./reference/booking-flow-guide-for-admin.md)   | Non-technical admin walkthrough      |
-| [`reference/ai-payment-receipt-validation.md`](./reference/ai-payment-receipt-validation.md) | Receipt AI                           |
-| [`reference/telegram-marketing-reminders.md`](./reference/telegram-marketing-reminders.md)   | Telegram marketing cron              |
-| [`reference/project-structure.md`](./reference/project-structure.md)                         | Guest vs dashboard feature layout    |
-| [`reference/public-property-catalog.md`](./reference/public-property-catalog.md)             | Public property detail API + UI gaps |
-| [`reference/naming-audit.md`](./reference/naming-audit.md)                                   | UI filename audit + rename log       |
+| Doc                                                                                          | Purpose                                   |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| [`reference/booking-flow-guide-for-admin.md`](./reference/booking-flow-guide-for-admin.md)   | Non-technical admin walkthrough           |
+| [`reference/ai-payment-receipt-validation.md`](./reference/ai-payment-receipt-validation.md) | Receipt AI                                |
+| [`reference/telegram-marketing-reminders.md`](./reference/telegram-marketing-reminders.md)   | Telegram marketing cron                   |
+| [`reference/project-structure.md`](./reference/project-structure.md)                         | Guest vs dashboard feature layout         |
+| [`reference/public-property-catalog.md`](./reference/public-property-catalog.md)             | Public property detail API + UI gaps      |
+| [`reference/archive/naming-audit.md`](./reference/archive/naming-audit.md)                   | UI filename audit + rename log (archived) |
 
 ## Agent tooling
 

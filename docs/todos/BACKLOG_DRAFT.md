@@ -328,7 +328,7 @@ Multi-users/multi-tenant todos:
 
 ## Project improvements (tooling & DX)
 
-**Status: shipped** (Jul 2026). Full audit + rename log: **`docs/reference/naming-audit.md`**. Verify: `bun run check:filenames`.
+**Status: shipped** (Jul 2026). Full audit + rename log: **`docs/reference/archive/naming-audit.md`**. Verify: `bun run check:filenames`.
 
 Backlog for codebase quality, agent tooling, and local dev speed.
 
@@ -367,12 +367,12 @@ Backlog for codebase quality, agent tooling, and local dev speed.
 
 - [x] Renamed **`bookingEditLayout.tsx`** → `BookingEditLayout.tsx`, **`telegramTemplateDialogContext.tsx`** → `TelegramTemplateDialogContext.tsx`
 - [x] Renamed **`utils/booking-display.ts`** → `bookingDisplay.ts` (21 importers)
-- [x] **Filename audit** — `docs/reference/naming-audit.md` + `scripts/dev/check-ui-filename-conventions.sh` (`bun run check:filenames`, CI)
+- [x] **Filename audit** — `docs/reference/archive/naming-audit.md` + `scripts/dev/check-ui-filename-conventions.sh` (`bun run check:filenames`, CI)
 - [x] Align **`.claude/skills/`** mirror — synced from `.cursor/skills/`
 - [x] ESLint **`unicorn/filename-case`** (warn) for `features/**/components`, `hooks`, `lib`
 - [x] Document intentional exceptions in `naming-conventions.mdc`
 
-**Do not** mass-rename without updating imports and logging in **`docs/reference/naming-audit.md`**.
+**Do not** mass-rename without updating imports and logging in **`docs/reference/archive/naming-audit.md`**.
 
 ### C. Bun package manager + local dev without Docker (optional)
 

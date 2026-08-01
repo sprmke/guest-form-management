@@ -23,19 +23,19 @@ Do not implement from memory. Align with repo docs first.
 
 ## Topic map
 
-| Topic                  | Primary doc / rule                                                       |
-| ---------------------- | ------------------------------------------------------------------------ |
-| Routes & page behavior | `docs/guides/routes/*.md`                                                |
-| Booking workflow       | `.cursor/rules/booking-workflow.mdc`                                     |
-| Admin auth             | `.cursor/rules/admin-auth.mdc`                                           |
-| Edge functions         | `.cursor/rules/supabase-edge-functions.mdc`                              |
-| Multi-tenancy          | `.cursor/skills/multi-tenancy/SKILL.md`                                  |
-| TanStack Query         | `.cursor/skills/tanstack-query/SKILL.md`                                 |
-| Forms                  | `.cursor/rules/forms.mdc`                                                |
-| Emails / integrations  | `.cursor/skills/emails/SKILL.md`, `integrations/SKILL.md`                |
-| Social inbox           | `.cursor/skills/social-inbox/SKILL.md`                                   |
-| File naming            | `.cursor/rules/naming-conventions.mdc`, `docs/reference/naming-audit.md` |
-| Full agent index       | `.cursor/rules/README.md`                                                |
+| Topic                  | Primary doc / rule                                                               |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| Routes & page behavior | `docs/guides/routes/*.md`                                                        |
+| Booking workflow       | `.cursor/rules/booking-workflow.mdc`                                             |
+| Admin auth             | `.cursor/rules/admin-auth.mdc`                                                   |
+| Edge functions         | `.cursor/rules/supabase-edge-functions.mdc`                                      |
+| Multi-tenancy          | `.cursor/skills/multi-tenancy/SKILL.md`                                          |
+| TanStack Query         | `.cursor/skills/tanstack-query/SKILL.md`                                         |
+| Forms                  | `.cursor/rules/forms.mdc`                                                        |
+| Emails / integrations  | `.cursor/skills/emails/SKILL.md`, `integrations/SKILL.md`                        |
+| Social inbox           | `.cursor/skills/social-inbox/SKILL.md`                                           |
+| File naming            | `.cursor/rules/naming-conventions.mdc`, `docs/reference/archive/naming-audit.md` |
+| Full agent index       | `.cursor/rules/README.md`                                                        |
 
 ## Rule
 
