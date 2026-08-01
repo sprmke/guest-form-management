@@ -53,6 +53,9 @@ export function useMarketingAutoSave({
   const [status, setStatus] = useState<MarketingAutoSaveStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const contentFingerprintRef = useRef(contentFingerprint);
+  contentFingerprintRef.current = contentFingerprint;
+
   const lastSavedFingerprintRef = useRef<string | null>(null);
   const templateIdRef = useRef<string | null>(templateId);
   const saveGenerationRef = useRef(0);
@@ -92,7 +95,7 @@ export function useMarketingAutoSave({
       return;
     }
 
-    setStatus('pending');
+    setStatus((current) => (current === 'pending' ? current : 'pending'));
     setErrorMessage(null);
 
     const timer = window.setTimeout(() => {
@@ -172,12 +175,13 @@ export function useMarketingAutoSave({
   );
 
   const markBaseline = useCallback(() => {
-    if (contentFingerprint) {
-      lastSavedFingerprintRef.current = contentFingerprint;
+    const fingerprint = contentFingerprintRef.current;
+    if (fingerprint) {
+      lastSavedFingerprintRef.current = fingerprint;
       setStatus('idle');
       setErrorMessage(null);
     }
-  }, [contentFingerprint]);
+  }, []);
 
   return { status, errorMessage, markBaseline };
 }

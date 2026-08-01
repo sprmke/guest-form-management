@@ -9,8 +9,8 @@ import {
 
 const ORANGE = '#e8752a';
 const CREAM = '#fff8f0';
-const GREEN = '#16a34a';
 const RED = '#dc2626';
+const ALL_FORMATS: DesignTemplateFormat[] = ['instagram-post', 'instagram-story', 'facebook-post'];
 
 type BaseCampaignTemplate = {
   baseId: string;
@@ -18,6 +18,8 @@ type BaseCampaignTemplate = {
   category: CampaignCategory;
   formats: DesignTemplateFormat[];
   preview: { primary: string; secondary?: string };
+  preservePresetPalette?: boolean;
+  presetAccent?: string;
 };
 
 const BASE_TEMPLATES: BaseCampaignTemplate[] = [
@@ -25,71 +27,89 @@ const BASE_TEMPLATES: BaseCampaignTemplate[] = [
     baseId: 'promo-500-off',
     name: '₱500 off',
     category: 'promo',
-    formats: ['instagram-post', 'instagram-story'],
+    formats: ALL_FORMATS,
     preview: { primary: ORANGE, secondary: CREAM },
   },
   {
     baseId: 'promo-300-off',
     name: '₱300 off',
     category: 'promo',
-    formats: ['instagram-post', 'instagram-story'],
-    preview: { primary: '#fb923c', secondary: CREAM },
+    formats: ALL_FORMATS,
+    preview: { primary: '#24a88e', secondary: '#174c43' },
   },
   {
     baseId: 'promo-10-off',
     name: '10% off',
     category: 'promo',
-    formats: ['instagram-post', 'facebook-post'],
-    preview: { primary: '#ea580c', secondary: '#fef3c7' },
+    formats: ALL_FORMATS,
+    preview: { primary: '#ea580c', secondary: CREAM },
   },
   {
     baseId: 'promo-free-breakfast',
     name: 'Free breakfast',
     category: 'promo',
-    formats: ['instagram-post', 'instagram-story'],
-    preview: { primary: GREEN, secondary: CREAM },
+    formats: ALL_FORMATS,
+    preview: { primary: '#f59e0b', secondary: CREAM },
   },
   {
     baseId: 'promo-free-parking',
     name: 'Free parking',
     category: 'promo',
-    formats: ['instagram-post', 'facebook-post'],
-    preview: { primary: '#2563eb', secondary: CREAM },
+    formats: ALL_FORMATS,
+    preview: { primary: '#2563eb', secondary: '#dbeafe' },
   },
   {
     baseId: 'slots-1',
     name: 'Last 1 slot',
     category: 'slots',
-    formats: ['instagram-post', 'instagram-story'],
+    formats: ALL_FORMATS,
     preview: { primary: '#2563eb', secondary: '#ffffff' },
   },
   {
     baseId: 'slots-3',
     name: 'Last 3 slots',
     category: 'slots',
-    formats: ['instagram-post', 'instagram-story'],
+    formats: ALL_FORMATS,
     preview: { primary: ORANGE, secondary: '#ffffff' },
   },
   {
     baseId: 'slots-5',
     name: 'Last 5 slots',
     category: 'slots',
-    formats: ['instagram-post', 'instagram-story'],
+    formats: ALL_FORMATS,
     preview: { primary: RED, secondary: '#ffffff' },
   },
   {
     baseId: 'giveaway',
     name: 'Giveaway',
     category: 'giveaway',
-    formats: ['instagram-post', 'instagram-story'],
+    formats: ALL_FORMATS,
     preview: { primary: RED, secondary: ORANGE },
+  },
+  {
+    baseId: 'giveaway-raffle',
+    name: 'Giveaway raffle',
+    category: 'giveaway',
+    formats: ALL_FORMATS,
+    preview: { primary: '#b91c1c', secondary: '#fbbf24' },
+    preservePresetPalette: true,
+    presetAccent: '#fbbf24',
   },
   {
     baseId: 'fully-booked',
     name: 'Fully booked',
     category: 'fully-booked',
-    formats: ['instagram-post', 'instagram-story', 'facebook-post'],
-    preview: { primary: '#64748b', secondary: CREAM },
+    formats: ALL_FORMATS,
+    preview: { primary: '#292524', secondary: RED },
+    preservePresetPalette: true,
+    presetAccent: '#1c1917',
+  },
+  {
+    baseId: 'fully-booked-waitlist',
+    name: 'Join waitlist',
+    category: 'fully-booked',
+    formats: ALL_FORMATS,
+    preview: { primary: '#24a88e', secondary: CREAM },
   },
 ];
 
@@ -100,6 +120,8 @@ export const DESIGN_CAMPAIGN_TEMPLATES: CampaignTemplateDef[] = BASE_TEMPLATES.f
     category: base.category,
     format,
     preview: base.preview,
+    preservePresetPalette: base.preservePresetPalette,
+    presetAccent: base.presetAccent,
   }))
 );
 

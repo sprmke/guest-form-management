@@ -86,22 +86,71 @@ export function canvasFrameDefaultsForFormat(
   };
 }
 
-export function computeCalendarSquareSize(
+export function computeCalendarLayoutBounds(
   canvasWidth: number,
   canvasHeight: number,
   padding: number,
   calendarScalePercent: number
-): number {
+): { maxWidth: number; maxHeight: number } {
   const innerW = Math.max(0, canvasWidth - padding * 2);
   const innerH = Math.max(0, canvasHeight - padding * 2);
-  const base = Math.min(innerW, innerH);
-  return Math.max(120, Math.floor(base * (calendarScalePercent / 100)));
+  const scale = calendarScalePercent / 100;
+  return {
+    maxWidth: Math.max(120, Math.floor(innerW * scale)),
+    maxHeight: Math.max(120, Math.floor(innerH * scale)),
+  };
 }
 
 export function calendarPreviewWidthForFormat(format: CalendarCanvasFormat): number {
   if (format === 'landscape') return 520;
   if (format === 'portrait') return 300;
   return 400;
+}
+
+/** Relative zoom steps — 100% always means "fit to the preview pane". */
+export const CALENDAR_PREVIEW_ZOOM_LEVELS = [25, 50, 75, 100, 125, 150, 175, 200] as const;
+
+export const CALENDAR_MIN_RELATIVE_ZOOM = 25;
+export const CALENDAR_MAX_RELATIVE_ZOOM = 200;
+
+export type CalendarPreviewDisplayLayout = {
+  nativeWidth: number;
+  nativeHeight: number;
+  displayScale: number;
+  layoutWidth: number;
+  layoutHeight: number;
+  /** displayScale when relative zoom is 100% (fit). */
+  fitDisplayScale: number;
+  /** Max relative zoom (percent of fit). */
+  maxRelativeZoomPercent: number;
+};
+
+export function calendarPreviewDisplayLayout(
+  format: CalendarCanvasFormat,
+  containerWidth: number,
+  containerHeight: number,
+  relativeZoomPercent: number,
+  padding = 48
+): CalendarPreviewDisplayLayout {
+  const dims = CALENDAR_CANVAS_DIMENSIONS[format];
+  const availableWidth = Math.max(120, containerWidth - padding);
+  const availableHeight = Math.max(120, containerHeight - padding);
+  const fitDisplayScale = Math.min(availableWidth / dims.width, availableHeight / dims.height);
+  const maxRelativeZoomPercent = CALENDAR_MAX_RELATIVE_ZOOM;
+  const minDisplayScale = fitDisplayScale * (CALENDAR_MIN_RELATIVE_ZOOM / 100);
+  const maxDisplayScale = fitDisplayScale * (maxRelativeZoomPercent / 100);
+  const targetScale = fitDisplayScale * (relativeZoomPercent / 100);
+  const displayScale = Math.max(minDisplayScale, Math.min(maxDisplayScale, targetScale));
+
+  return {
+    nativeWidth: dims.width,
+    nativeHeight: dims.height,
+    displayScale,
+    layoutWidth: dims.width * displayScale,
+    layoutHeight: dims.height * displayScale,
+    fitDisplayScale,
+    maxRelativeZoomPercent,
+  };
 }
 
 export function calendarPreviewLayout(
@@ -129,6 +178,7 @@ export function calendarPreviewLayout(
   };
 }
 
+/** @deprecated Use calendarPreviewDisplayLayout with relative zoom instead. */
 export function fitZoomLevelForContainer(
   format: CalendarCanvasFormat,
   containerWidth: number,
@@ -141,7 +191,7 @@ export function fitZoomLevelForContainer(
   const baseW = layout.nativeWidth * layout.baseScale;
   const baseH = layout.nativeHeight * layout.baseScale;
   const fit = Math.min(availableWidth / baseW, availableHeight / baseH) * 100;
-  return Math.max(25, Math.min(200, Math.round(fit / 5) * 5));
+  return Math.max(CALENDAR_MIN_RELATIVE_ZOOM, Math.round(fit / 5) * 5);
 }
 
 export function calendarCanvasAspectRatio(format: CalendarCanvasFormat): string {

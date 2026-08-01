@@ -32,9 +32,13 @@ export type CampaignTemplateDef = {
   category: CampaignCategory;
   format: DesignTemplateFormat;
   preview: { primary: string; secondary?: string };
+  preservePresetPalette?: boolean;
+  /** Fixed accent hex when `preservePresetPalette` is true. */
+  presetAccent?: string;
 };
 
-export type VideoCampaignCategory = CampaignCategory;
+/** @deprecated Use `VideoCategory` from `video/videoCategories.ts` — Video has its own axis. */
+export type VideoCampaignCategory = string;
 
 export type VideoTemplateFields = {
   headline: string;
