@@ -92,7 +92,7 @@ goal is that each template should be production ready and "instagramable" and re
 
 Same with marketing design templates goal.
 
-→ **Follow-up (Quiet Coast Motion):** from-scratch Video redo — Video-only categories + storyboard recipes. Spec: `docs/superpowers/specs/2026-08-01-marketing-video-quiet-coast-motion-design.md`. Plan: `docs/planning/planned_modules/2026-08-01-marketing-video-quiet-coast-motion.md`.
+→ **Follow-up (Quiet Coast Motion):** from-scratch Video redo — Video-only categories + storyboard recipes. Spec: `docs/superpowers/archive/specs/2026-08-01-marketing-video-quiet-coast-motion-design.md`. Plan: `docs/planning/planned_modules/2026-08-01-marketing-video-quiet-coast-motion.md`.
 
 ===
 

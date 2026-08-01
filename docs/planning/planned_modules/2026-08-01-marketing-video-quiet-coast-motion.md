@@ -1,7 +1,7 @@
 # Marketing Video — Quiet Coast Motion (from scratch)
 
 **Status:** Done  
-**Spec:** `docs/superpowers/specs/2026-08-01-marketing-video-quiet-coast-motion-design.md`  
+**Spec:** `docs/superpowers/archive/specs/2026-08-01-marketing-video-quiet-coast-motion-design.md`  
 **Supersedes sidebar library from:** `2026-08-01-marketing-video-templates.md` (Marketing 3 incremental pass)
 
 ## Summary
