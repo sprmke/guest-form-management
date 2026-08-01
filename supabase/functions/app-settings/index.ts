@@ -239,9 +239,23 @@ serveAuthenticated('app-settings', async (req) => {
     }
     if (typeof body.facebookPageUrl === 'string') {
       const trimmed = body.facebookPageUrl.trim();
-      const err = validateRequiredUrl(trimmed, 'Facebook page URL', 'Enter Facebook page URL');
-      if (err) return jsonError(req, err);
-      patch.facebook_reviews_url = trimmed;
+      if (trimmed) {
+        const err = validateOptionalUrl(trimmed, 'Facebook page URL');
+        if (err) return jsonError(req, err);
+        patch.facebook_reviews_url = trimmed;
+      } else {
+        patch.facebook_reviews_url = null;
+      }
+    }
+    if (typeof body.mainSocialPlatform === 'string') {
+      const trimmed = body.mainSocialPlatform.trim();
+      if (!trimmed) {
+        patch.main_social_platform = null;
+      } else if (['facebook', 'airbnb', 'instagram', 'tiktok'].includes(trimmed)) {
+        patch.main_social_platform = trimmed;
+      } else {
+        return jsonError(req, 'Invalid main social platform');
+      }
     }
     if (typeof body.airbnbUrl === 'string') {
       const trimmed = body.airbnbUrl.trim();

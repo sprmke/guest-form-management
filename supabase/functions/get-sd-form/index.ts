@@ -49,6 +49,9 @@ servePublic('get-sd-form', async (req) => {
     (row.property_id as string | null | undefined) ?? undefined
   );
   const facebookReviewsUrl = settings.facebookReviewsUrl;
+  const reviewSocialUrl = settings.reviewSocialUrl || facebookReviewsUrl;
+  const reviewSocialPlatform = settings.reviewSocialPlatform || '';
+  const reviewSocialLabel = settings.reviewSocialLabel || '';
   const sd = row.security_deposit != null ? Number(row.security_deposit) : 1500;
   const guestReviewSubmitted = await guestReviewExistsForBooking(bookingId);
 
@@ -59,7 +62,10 @@ servePublic('get-sd-form', async (req) => {
     security_deposit: sd,
     check_in_date: row.check_in_date,
     check_out_date: row.check_out_date,
-    facebook_reviews_url: facebookReviewsUrl,
+    facebook_reviews_url: reviewSocialUrl,
+    review_social_url: reviewSocialUrl,
+    review_social_platform: reviewSocialPlatform,
+    review_social_label: reviewSocialLabel,
     guest_review_submitted: guestReviewSubmitted,
     email_logo_url: settings.emailLogoUrl,
     brand_color: settings.brandColor,

@@ -336,6 +336,9 @@ verify_jwt = false
 [functions.telegram-chat-settings]
 verify_jwt = false
 
+[functions.telegram-global-settings]
+verify_jwt = false
+
 [functions.upload-app-settings-asset]
 verify_jwt = false
 
@@ -574,6 +577,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.voice-receptionist-usage]
+verify_jwt = false
+
+[functions.voice-receptionist-voice-preview]
 verify_jwt = false
 
 [functions.voice-receptionist-global-settings]
