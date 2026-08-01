@@ -23,16 +23,17 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 
 ## Dev (`scripts/dev/`)
 
-| Script                                 | Used by                            | Purpose                                                                                        |
-| -------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `run-with-ui-dev-env.sh`               | `dev.sh`, `bun run start:supabase` | Load `ui/.env.development` then exec command                                                   |
-| `build-local-functions-env.sh`         | `dev.sh`, `bun run dev:api`        | Merge `.env.local` + local API keys for `functions serve`                                      |
-| `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`     | Export `SUPABASE_URL` / service role from `supabase status`                                    |
-| `check-ui-filename-conventions.sh`     | `bun run check:filenames`          | Verify `ui/src` filenames match naming rules                                                   |
-| `port-pma-public-ui.sh`                | (manual)                           | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes) |
-| `migrate-shared-imports.sh`            | (one-shot reference)               | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                     |
-| `gh-issue.mjs`                         | (manual)                           | View / create / update / **ship** GitHub issues → `docs/todos/shipped/` (see `/github-issue`)  |
-| `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`              | Auto-label heuristics for new issues                                                           |
+| Script                                 | Used by                                       | Purpose                                                                                                             |
+| -------------------------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `run-with-ui-dev-env.sh`               | `dev.sh`, `bun run start:supabase`            | Load `ui/.env.development` then exec command                                                                        |
+| `build-local-functions-env.sh`         | `dev.sh`, `bun run dev:api`                   | Merge `.env.local` + local API keys for `functions serve`                                                           |
+| `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`                | Export `SUPABASE_URL` / service role from `supabase status`                                                         |
+| `check-ui-filename-conventions.sh`     | `bun run check:filenames`                     | Verify `ui/src` filenames match naming rules                                                                        |
+| `port-pma-public-ui.sh`                | (manual)                                      | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                      |
+| `migrate-shared-imports.sh`            | (one-shot reference)                          | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                          |
+| `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/todos/shipped/` (see `/github-issue`)                       |
+| `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`                         | Auto-label heuristics for new issues                                                                                |
+| `check-video-motion-profiles.mjs`      | (manual, `bun`; source `ui/.env.development`) | Quiet Coast Motion: finite Remotion springs, recipe layout coverage, and storyboard→layer seed for all 16 templates |
 
 ## Data (`scripts/data/`)
 
