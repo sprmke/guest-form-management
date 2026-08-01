@@ -17,8 +17,10 @@ import { formatDateToLongFormat, normalizeDateString } from '@/utils/format/date
 type Phase = 'intro' | 'rolling' | 'revealed';
 
 interface VoucherRevealProps {
-  /** Facebook reviews URL (shown again after the voucher so guests can open or re-open the page). */
-  facebookReviewsUrl: string;
+  /** Guest review / social CTA URL (main platform). */
+  reviewSocialUrl: string;
+  /** Platform label for CTA copy (e.g. Facebook, Instagram). */
+  reviewSocialLabel?: string;
   /** Pre-existing voucher (returning guests skip the animation). */
   existingVoucher?: Voucher | null;
   isClaiming: boolean;
@@ -93,7 +95,8 @@ function buildStrip(winner: Voucher): Voucher[] {
 }
 
 export function VoucherReveal({
-  facebookReviewsUrl,
+  reviewSocialUrl,
+  reviewSocialLabel = 'Facebook',
   existingVoucher,
   isClaiming,
   onClaim,
@@ -135,26 +138,28 @@ export function VoucherReveal({
           <Camera className="mt-0.5 size-5 shrink-0 text-amber-700" aria-hidden />
           <p className="text-sm leading-relaxed text-amber-900">
             <span className="font-semibold">Screenshot your voucher code.</span> Show it with a
-            public Facebook review on your next booking.
+            public {reviewSocialLabel} review on your next booking.
           </p>
         </div>
 
         <div className="flex flex-col gap-3">
-          <Button
-            asChild
-            variant="outline"
-            className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary min-h-[48px] w-full gap-2"
-          >
-            <a
-              href={facebookReviewsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2"
+          {reviewSocialUrl.trim() ? (
+            <Button
+              asChild
+              variant="outline"
+              className="border-primary/40 text-primary hover:bg-primary/10 hover:text-primary min-h-[48px] w-full gap-2"
             >
-              Edit your Facebook review
-              <ExternalLink className="size-4 shrink-0" aria-hidden />
-            </a>
-          </Button>
+              <a
+                href={reviewSocialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2"
+              >
+                {`Edit your ${reviewSocialLabel} review`}
+                <ExternalLink className="size-4 shrink-0" aria-hidden />
+              </a>
+            </Button>
+          ) : null}
 
           <Button
             type="button"

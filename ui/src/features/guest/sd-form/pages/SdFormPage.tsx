@@ -374,7 +374,8 @@ export function SdFormPage() {
 
       {step === 2 && step2Phase === 'voucher' && !data.awaiting_balance_settlement && (
         <VoucherReveal
-          facebookReviewsUrl={data.facebook_reviews_url}
+          reviewSocialUrl={data.review_social_url || data.facebook_reviews_url}
+          reviewSocialLabel={data.review_social_label || 'Facebook'}
           existingVoucher={existingVoucher}
           isClaiming={claimMut.isPending}
           onClaim={() => claimMut.mutateAsync()}
