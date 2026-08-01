@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { GuestFormData, GuestSubmission, transformFormToSubmission } from './types.ts';
 import { applyGafDefaultsToFormData } from './appSettings.ts';
+import { hasBlockedNightsInRange } from './propertyBlockedDates.ts';
 import {
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
@@ -1065,9 +1066,17 @@ export class DatabaseService {
         `✓ Overlap check complete: Found ${overlappingBookings.length} overlapping booking(s)`
       );
 
+      // Owner-managed date blocks (`property_blocked_dates`) are unavailable to guests
+      // the same way an existing booking is — checked alongside the overlap query so
+      // every caller (submit-form today, future update paths) gets both signals at once.
+      const blockedByOwner = propertyId
+        ? await hasBlockedNightsInRange(propertyId, newCheckIn, newCheckOut)
+        : false;
+
       return {
         hasOverlap: overlappingBookings.length > 0,
         overlappingBookings,
+        blockedByOwner,
       };
     } catch (error) {
       console.error('Error checking overlapping bookings:', error);

@@ -108,12 +108,18 @@ serve(async (req) => {
     // Check for overlapping bookings (only if saving to database)
     if (isSaveToDatabaseEnabled) {
       console.log('🔍 Starting overlap check...');
-      const { hasOverlap, overlappingBookings } = await DatabaseService.checkOverlappingBookings(
-        checkInDate,
-        checkOutDate,
-        bookingId,
-        propertyId
-      );
+      const { hasOverlap, overlappingBookings, blockedByOwner } =
+        await DatabaseService.checkOverlappingBookings(
+          checkInDate,
+          checkOutDate,
+          bookingId,
+          propertyId
+        );
+
+      if (blockedByOwner) {
+        console.error('❌ OWNER-BLOCKED DATES SELECTED!');
+        throw new Error('DATES_BLOCKED: Selected dates are unavailable.');
+      }
 
       if (hasOverlap) {
         console.error('❌ BOOKING OVERLAP DETECTED!');
