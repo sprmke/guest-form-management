@@ -10,17 +10,25 @@ import { KamePolotnoEditor } from '@/features/dashboard/marketing/components/des
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
 import type { MarketingFormatOption } from '@/features/dashboard/marketing/components/shared/MarketingFormatPicker';
-import { MarketingPolotnoThumbnailHost } from '@/features/dashboard/marketing/components/shared/MarketingPolotnoThumbnailHost';
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import {
   MarketingTemplatesPanel,
   type PresetTemplateItem,
 } from '@/features/dashboard/marketing/components/shared/MarketingTemplatesPanel';
+import { useDesignTemplateCleanup } from '@/features/dashboard/marketing/hooks/useDesignTemplateCleanup';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
+import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
 import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
-import { useMarketingTemplates } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
+import {
+  useMarketingTemplates,
+  type MarketingTemplateRecord,
+} from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import { usePolotnoStoreFingerprint } from '@/features/dashboard/marketing/hooks/usePolotnoStoreFingerprint';
+import {
+  DESIGN_CUSTOM_SOURCE_PRESET_ID,
+  findDesignAutosaveTemplate,
+} from '@/features/dashboard/marketing/lib/designAutosave';
 import {
   campaignTemplatesForFormat,
   DESIGN_FORMAT_DIMENSIONS,
@@ -29,22 +37,14 @@ import {
   type CampaignCategory,
   type DesignBinding,
 } from '@/features/dashboard/marketing/lib/designCanvasTypes';
-import { isDesignPresetThumbnailCaptureReady } from '@/features/dashboard/marketing/lib/designPresetThumbnailCapture';
 import {
   availabilityTextForMonth,
   openSlotDatesForMonth,
 } from '@/features/dashboard/marketing/lib/marketingBookedDates';
-import { DEFAULT_MARKETING_THUMB_BINDING } from '@/features/dashboard/marketing/lib/marketingDefaultBinding';
 import {
-  waitForMarketingIdle,
-  yieldToMainThread,
-} from '@/features/dashboard/marketing/lib/marketingIdle';
-import { setPersistedPresetThumbnail } from '@/features/dashboard/marketing/lib/marketingPresetThumbnailStore';
-import {
-  designPresetThumbnailKey,
-  getCachedMarketingThumbnail,
-  publishMarketingPresetThumbnail,
-} from '@/features/dashboard/marketing/lib/marketingTemplateThumbnailCache';
+  marketingDesignSidebarRecords,
+  marketingSavedTemplateCategoryId,
+} from '@/features/dashboard/marketing/lib/marketingSavedTemplates';
 import { ensurePolotnoConfigured } from '@/features/dashboard/marketing/lib/polotno/initPolotno';
 import { buildPolotnoCampaignDocument } from '@/features/dashboard/marketing/lib/polotno/polotnoCampaignDocuments';
 import {
@@ -53,10 +53,7 @@ import {
   type PolotnoStore,
 } from '@/features/dashboard/marketing/lib/polotno/polotnoStore';
 import { syncPolotnoTextBounds } from '@/features/dashboard/marketing/lib/polotno/syncPolotnoTextBounds';
-import {
-  renderDesignPresetThumbnail,
-  renderDesignStoreThumbnail,
-} from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
+import { renderDesignStoreThumbnail } from '@/features/dashboard/marketing/lib/renderMarketingDesignThumbnail';
 import type { DesignTemplateFormat } from '@/features/dashboard/marketing/lib/templateRegistry';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
@@ -103,6 +100,19 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
   const [savedTemplateId, setSavedTemplateId] = useState<string | null>(null);
 
   const { data: savedTemplates = [] } = useMarketingTemplates('design');
+  useDesignTemplateCleanup(true);
+  const customSavedTemplates = useMemo(
+    () => marketingDesignSidebarRecords(savedTemplates),
+    [savedTemplates]
+  );
+  const savedTemplatesRef = useRef(savedTemplates);
+  savedTemplatesRef.current = savedTemplates;
+
+  const {
+    suspended: autoSaveSuspended,
+    begin: beginAutoSaveSuspension,
+    end: endAutoSaveSuspension,
+  } = useMarketingAutoSaveSuspension();
 
   const { data: publicProperty } = usePublicPropertyDetail(property.slug);
   const { data: bookedDates } = useMarketingBookedDates();
@@ -128,7 +138,8 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
 
   const showPresetTemplates = catalog.isBuiltinCategory(category);
   const templates = useMemo(
-    () => (showPresetTemplates ? campaignTemplatesForFormat(format, category) : []),
+    () =>
+      showPresetTemplates ? campaignTemplatesForFormat(format, category as CampaignCategory) : [],
     [format, category, showPresetTemplates]
   );
 
@@ -156,46 +167,109 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     }
   }, [templates, selectedId]);
 
-  const applyTemplate = useCallback(async (templateId: string) => {
-    const store = storeRef.current;
-    if (!store || !templateId) return;
+  const applyTemplate = useCallback(
+    async (templateId: string) => {
+      const store = storeRef.current;
+      if (!store || !templateId) return;
 
-    const doc = buildPolotnoCampaignDocument(templateId, bindingRef.current!);
-    if (!doc) return;
+      beginAutoSaveSuspension();
+      setLoadingTemplate(true);
+      try {
+        const autosave = findDesignAutosaveTemplate(savedTemplatesRef.current, templateId, format);
+        if (autosave?.designJson?.polotno && typeof autosave.designJson.polotno === 'object') {
+          setSavedTemplateId(autosave.id);
+          store.loadJSON(autosave.designJson.polotno as Record<string, unknown>);
+          store.history.clear();
+          await syncPolotnoTextBounds(store);
+          return;
+        }
 
-    setLoadingTemplate(true);
-    try {
-      setSavedTemplateId(null);
-      store.loadJSON(doc);
-      store.history.clear();
-      await syncPolotnoTextBounds(store);
+        const doc = buildPolotnoCampaignDocument(templateId, bindingRef.current!, { brandColor });
+        if (!doc) return;
 
-      const thumbnailDataUrl = await renderDesignStoreThumbnail(store);
-      if (thumbnailDataUrl) {
-        const cacheKey = designPresetThumbnailKey(templateId);
-        publishMarketingPresetThumbnail(templateId, cacheKey, thumbnailDataUrl);
-        void setPersistedPresetThumbnail(`design:${cacheKey}`, thumbnailDataUrl);
+        setSavedTemplateId(null);
+        store.loadJSON(doc);
+        store.history.clear();
+        await syncPolotnoTextBounds(store);
+      } catch {
+        toast.error('Could not load template');
+      } finally {
+        setLoadingTemplate(false);
+        endAutoSaveSuspension();
       }
-    } catch {
-      toast.error('Could not load template');
-    } finally {
-      setLoadingTemplate(false);
-    }
-  }, []);
+    },
+    [beginAutoSaveSuspension, brandColor, endAutoSaveSuspension, format]
+  );
+
+  const applyTemplateRef = useRef(applyTemplate);
+  applyTemplateRef.current = applyTemplate;
+
+  const applySavedTemplate = useCallback(
+    async (record: MarketingTemplateRecord) => {
+      const store = storeRef.current;
+      if (!store) return;
+
+      const polotno = record.designJson.polotno;
+      if (!polotno || typeof polotno !== 'object') {
+        toast.error('Could not load template');
+        return;
+      }
+
+      const savedFormat =
+        record.aspectPreset ??
+        (typeof record.designJson.format === 'string'
+          ? (record.designJson.format as DesignTemplateFormat)
+          : null);
+      const savedCategory = marketingSavedTemplateCategoryId(record);
+
+      skipPresetApplyRef.current = true;
+      appliedDocumentKeyRef.current = `saved:${record.id}`;
+      beginAutoSaveSuspension();
+      setLoadingTemplate(true);
+
+      try {
+        if (savedFormat && savedFormat !== format) {
+          setFormat(savedFormat as DesignTemplateFormat);
+        }
+        if (savedCategory && savedCategory !== category) {
+          setCategory(savedCategory);
+        }
+
+        setSavedTemplateId(record.id);
+        const baseTemplateId =
+          typeof record.designJson.templateId === 'string' ? record.designJson.templateId : '';
+        if (baseTemplateId) {
+          setSelectedId(baseTemplateId);
+        }
+
+        store.loadJSON(polotno);
+        store.history.clear();
+        await syncPolotnoTextBounds(store);
+      } catch {
+        toast.error('Could not load template');
+      } finally {
+        setLoadingTemplate(false);
+        endAutoSaveSuspension();
+      }
+    },
+    [beginAutoSaveSuspension, category, endAutoSaveSuspension, format]
+  );
 
   useEffect(() => {
     if (skipPresetApplyRef.current) {
       skipPresetApplyRef.current = false;
       return;
     }
-    if (!storeReady || !templates.some((template) => template.id === selectedId)) return;
+    if (savedTemplateId) return;
+    if (!storeReady || !selectedId) return;
+    if (!templates.some((template) => template.id === selectedId)) return;
 
     const applyKey = `${selectedId}:${format}`;
     if (appliedDocumentKeyRef.current === applyKey) return;
 
     appliedDocumentKeyRef.current = applyKey;
-    void applyTemplate(selectedId);
-  }, [selectedId, storeReady, format, templates, applyTemplate]);
+    void applyTemplateRef.current(selectedId);
+  }, [selectedId, storeReady, format, templates, savedTemplateId]);
 
   const store = storeRef.current;
 
@@ -218,10 +292,18 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
   } = useMarketingAutoSave({
     contentFingerprint: storeReady ? designFingerprint : null,
     templateId: savedTemplateId,
-    suspended: loadingTemplate,
+    suspended: loadingTemplate || autoSaveSuspended,
+    resolveTemplateId: () => {
+      if (savedTemplateId) return savedTemplateId;
+      if (!selectedId) return null;
+      return findDesignAutosaveTemplate(savedTemplates, selectedId, format)?.id ?? null;
+    },
     onTemplateIdChange: setSavedTemplateId,
     buildSavePayload: () => {
       if (!store) return null;
+      const editingCustom = Boolean(
+        savedTemplateId && customSavedTemplates.some((record) => record.id === savedTemplateId)
+      );
       return {
         name: designTemplateName,
         contentType: 'design',
@@ -229,6 +311,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         platform: format.includes('facebook') ? 'facebook' : 'instagram',
         designJson: {
           templateId: selectedId,
+          sourcePresetId: editingCustom ? DESIGN_CUSTOM_SOURCE_PRESET_ID : selectedId,
           format,
           categoryId: category,
           category,
@@ -239,10 +322,15 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     },
   });
 
-  useEffect(() => {
-    if (loadingTemplate) return;
-    window.setTimeout(() => markBaseline(), 0);
-  }, [loadingTemplate, selectedId, savedTemplateId, markBaseline]);
+  const handleSavedTemplateCreated = useCallback(
+    (record: MarketingTemplateRecord) => {
+      skipPresetApplyRef.current = true;
+      appliedDocumentKeyRef.current = `saved:${record.id}`;
+      setSavedTemplateId(record.id);
+      markBaseline();
+    },
+    [markBaseline]
+  );
 
   const handleResetDesign = useCallback(() => {
     if (!selectedId) return;
@@ -254,33 +342,30 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     toast.success('Reset to default');
   }, [applyTemplate, selectedId, format, markBaseline]);
 
-  const designJson = useMemo(() => {
-    if (!store) {
-      return { templateId: selectedId, format, binding };
-    }
+  // Capture polotno JSON only when Save runs — avoid store.toJSON() every render.
+  const designJsonForSave = useCallback(() => {
+    const activeStore = storeRef.current;
+    if (!activeStore) return null;
     return {
       templateId: selectedId,
       format,
-      binding,
-      polotno: store.toJSON(),
+      binding: bindingRef.current!,
+      polotno: activeStore.toJSON(),
     };
-  }, [store, selectedId, format, binding]);
+  }, [selectedId, format]);
 
-  const exportDesign = async (): Promise<Blob | null> => {
-    if (!store) return null;
-    return exportPolotnoStorePng(store);
-  };
-
-  const handleDownload = async () => {
-    if (!selectedTemplate) return;
+  const handleDownload = useCallback(async () => {
+    const activeStore = storeRef.current;
+    const template = selectedTemplate;
+    if (!activeStore || !template) return;
     setExporting(true);
     try {
-      const blob = await exportDesign();
+      const blob = await exportPolotnoStorePng(activeStore);
       if (!blob) return;
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `design-${property.slug}-${selectedTemplate.id}.png`;
+      link.download = `design-${property.slug}-${template.id}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -291,21 +376,23 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     } finally {
       setExporting(false);
     }
-  };
+  }, [property.slug, selectedTemplate]);
 
-  const handlePublish = async () => {
-    if (!onPublish || !selectedTemplate) return;
+  const handlePublish = useCallback(async () => {
+    const activeStore = storeRef.current;
+    const template = selectedTemplate;
+    if (!onPublish || !activeStore || !template) return;
     setExporting(true);
     try {
-      const blob = await exportDesign();
+      const blob = await exportPolotnoStorePng(activeStore);
       if (!blob) return;
-      onPublish({ blob, format, templateId: selectedTemplate.id });
+      onPublish({ blob, format, templateId: template.id });
     } catch {
       toast.error('Failed to prepare design');
     } finally {
       setExporting(false);
     }
-  };
+  }, [format, onPublish, selectedTemplate]);
 
   const propertyImageUrls = useMemo(
     () => publicProperty?.images ?? (binding.propertyPhoto ? [binding.propertyPhoto] : []),
@@ -357,12 +444,16 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     ]
   );
 
-  const builderStatus = loadingTemplate ? (
-    <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-      <Loader2 className="size-3.5 animate-spin" aria-hidden />
-      Loading…
-    </span>
-  ) : null;
+  const builderStatus = useMemo(
+    () =>
+      loadingTemplate ? (
+        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          Loading…
+        </span>
+      ) : null,
+    [loadingTemplate]
+  );
 
   const headerActions = useMemo(
     () => (
@@ -400,51 +491,6 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
     [format]
   );
 
-  const formatPresetIds = useMemo(
-    () =>
-      CATEGORIES.flatMap((cat) =>
-        campaignTemplatesForFormat(format, cat).map((template) => template.id)
-      ),
-    [format]
-  );
-
-  useEffect(() => {
-    if (!storeReady || formatPresetIds.length === 0) return;
-
-    let cancelled = false;
-
-    void (async () => {
-      for (let attempt = 0; attempt < 60 && !isDesignPresetThumbnailCaptureReady(); attempt += 1) {
-        await new Promise<void>((resolve) => window.setTimeout(resolve, 50));
-        if (cancelled) return;
-      }
-
-      await waitForMarketingIdle(400);
-      if (cancelled) return;
-
-      for (const templateId of formatPresetIds) {
-        if (cancelled) break;
-
-        const cacheKey = designPresetThumbnailKey(templateId);
-        if (getCachedMarketingThumbnail(cacheKey)) continue;
-
-        const dataUrl = await renderDesignPresetThumbnail(
-          templateId,
-          DEFAULT_MARKETING_THUMB_BINDING
-        );
-        if (cancelled || !dataUrl) continue;
-
-        publishMarketingPresetThumbnail(templateId, cacheKey, dataUrl);
-        void setPersistedPresetThumbnail(`design:${cacheKey}`, dataUrl);
-        await yieldToMainThread();
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [storeReady, formatPresetIds]);
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
       <MarketingEditorSidebar
@@ -454,15 +500,32 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
         <MarketingTemplatesPanel
           tab="design"
           contentType="design"
+          brandColor={brandColor}
           formatOptions={formatOptions}
           format={format}
-          onFormatChange={(value) => setFormat(value as DesignTemplateFormat)}
+          onFormatChange={(value) => {
+            setSavedTemplateId(null);
+            appliedDocumentKeyRef.current = null;
+            setFormat(value as DesignTemplateFormat);
+          }}
           category={category}
           onCategoryChange={setCategory}
           presetTemplates={presetTemplates}
           selectedId={selectedId}
-          onSelectPreset={(templateId) => setSelectedId(templateId)}
-          designJsonForSave={designJson}
+          onSelectPreset={(templateId) => {
+            setSavedTemplateId(null);
+            appliedDocumentKeyRef.current = null;
+            setSelectedId(templateId);
+          }}
+          savedRecords={customSavedTemplates}
+          selectedSavedId={
+            savedTemplateId && customSavedTemplates.some((record) => record.id === savedTemplateId)
+              ? savedTemplateId
+              : null
+          }
+          onSelectSaved={(record) => void applySavedTemplate(record)}
+          onSavedTemplate={handleSavedTemplateCreated}
+          designJsonForSave={designJsonForSave}
           aspectPreset={format}
           platform={format.includes('facebook') ? 'facebook' : 'instagram'}
           captureSaveThumbnail={async () => {
@@ -474,7 +537,6 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
       </MarketingEditorSidebar>
 
       <div className="polotno-studio-root relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <MarketingPolotnoThumbnailHost />
         <div className="relative min-h-0 flex-1">
           {storeReady && store ? (
             <KamePolotnoEditor
@@ -484,7 +546,7 @@ export function PolotnoDesignStudio({ onPublish }: Props) {
               logoUrl={orgLogoUrl}
               style={{ width: '100%', height: '100%' }}
               onResetDesign={handleResetDesign}
-              resetDisabled={loadingTemplate || !selectedId}
+              resetDisabled={loadingTemplate || (!selectedId && !savedTemplateId)}
             />
           ) : (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">

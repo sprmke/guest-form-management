@@ -24,7 +24,7 @@ import {
 // ========================================
 interface CalendarBuilderActions {
   // Style updates
-  setStyles: (styles: CalendarStyles) => void;
+  setStyles: (styles: CalendarStyles, options?: { markDirty?: boolean }) => void;
   updateStyles: (path: string, value: unknown) => void;
   resetStyles: (brandColor?: string) => void;
 
@@ -172,10 +172,12 @@ export const useCalendarBuilderStore = create<CalendarBuilderStore>()(
       historyIndex: 0,
 
       // Actions
-      setStyles: (styles) =>
+      setStyles: (styles, options) =>
         set((state) => {
           state.styles = normalizeCalendarStyles(styles);
-          state.isDirty = true;
+          if (options?.markDirty !== false) {
+            state.isDirty = true;
+          }
         }),
 
       updateStyles: (path, value) =>
@@ -293,9 +295,20 @@ export const useCalendarBuilderStore = create<CalendarBuilderStore>()(
       applyPreset: (preset, brandColor, propertyPhotoUrl) =>
         set((state) => {
           const preservedFrame = state.styles.canvasFrame;
+          const preservedFormat = preservedFrame?.format ?? 'square';
+          const frameDefaults = canvasFrameDefaultsForFormat(preservedFormat, brandColor);
+
           if (preset === 'default') {
             state.styles = applyBrandAccentToCalendarStyles(
-              createDefaultStyles(brandColor),
+              normalizeCalendarStyles({
+                ...createDefaultStyles(brandColor),
+                canvasFrame: {
+                  format: preservedFormat,
+                  padding: frameDefaults.padding,
+                  calendarScale: frameDefaults.calendarScale,
+                  background: frameDefaults.background,
+                },
+              }),
               brandColor
             );
             state.isDirty = false;

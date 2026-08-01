@@ -27,9 +27,10 @@ import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/
 import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
-import { useMarketingCatalog } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
+import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
 import {
   aspectPresetForCalendarFormat,
+  calendarTemplateMatchesAspectPreset,
   findCalendarAutosaveTemplate,
   isCalendarBlankPreset,
   isCalendarCustomPreset,
@@ -38,10 +39,11 @@ import {
 } from '@/features/dashboard/marketing/lib/calendarAutosave';
 import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
+  CALENDAR_MIN_RELATIVE_ZOOM,
+  CALENDAR_PREVIEW_ZOOM_LEVELS,
   calendarFormatToAspectPreset,
-  calendarPreviewLayout,
+  calendarPreviewDisplayLayout,
   canvasFrameDefaultsForFormat,
-  fitZoomLevelForContainer,
   normalizeCalendarCanvasFrame,
   type CalendarCanvasFormat,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
@@ -97,9 +99,39 @@ interface CalendarBuilderProps {
   isExporting?: boolean;
 }
 
-const ZOOM_LEVELS = [25, 50, 75, 100, 125, 150, 200];
-const MIN_ZOOM = 25;
-const MAX_ZOOM = 200;
+function useContainerSize(ref: React.RefObject<HTMLElement | null>, watchKey?: unknown) {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+
+    const update = () => {
+      const rect = node.getBoundingClientRect();
+      setSize({ width: rect.width, height: rect.height });
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [ref, watchKey]);
+
+  return size;
+}
+
+function stepCalendarZoomIn(current: number, max: number): number {
+  const next = CALENDAR_PREVIEW_ZOOM_LEVELS.find((level) => level > current);
+  if (!next) return current;
+  return Math.min(next, max);
+}
+
+function stepCalendarZoomOut(current: number): number {
+  return (
+    [...CALENDAR_PREVIEW_ZOOM_LEVELS].reverse().find((level) => level < current) ??
+    CALENDAR_MIN_RELATIVE_ZOOM
+  );
+}
 
 export function CalendarBuilder({
   propertyName = 'Beach Villa',
@@ -130,16 +162,17 @@ export function CalendarBuilder({
   const calendarRef = useRef<HTMLDivElement>(null);
   const previewContainerRef = useRef<HTMLDivElement>(null);
   const fullscreenContainerRef = useRef<HTMLDivElement>(null);
-  const [zoomLevel, setZoomLevel] = useState(100);
+  const [relativeZoom, setRelativeZoom] = useState(100);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [fullscreenZoom, setFullscreenZoom] = useState(100);
+  const [fullscreenRelativeZoom, setFullscreenRelativeZoom] = useState(100);
+  const previewContainerSize = useContainerSize(previewContainerRef);
+  const fullscreenContainerSize = useContainerSize(fullscreenContainerRef, isFullscreen);
   const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const [activeAutosaveTemplateId, setActiveAutosaveTemplateId] = useState<string | null>(null);
   const [activeCustomTemplateId, setActiveCustomTemplateId] = useState<string | null>(null);
 
-  const { apiTemplates, savedTemplates } = useCalendarTemplates(propertySlug);
-  const catalog = useMarketingCatalog('calendar');
+  const { apiTemplates, savedTemplates, deleteTemplate } = useCalendarTemplates(propertySlug);
   useCalendarTemplateDedupe(true);
 
   const calendarPresetIds = useMemo(() => ['default', ...CALENDAR_DESIGNER_PRESET_IDS], []);
@@ -172,8 +205,13 @@ export function CalendarBuilder({
   }, [selectedTemplateKey]);
 
   const customTemplates = useMemo(
-    () => savedTemplates.filter((template) => isCalendarCustomPreset(template.sourcePresetId)),
-    [savedTemplates]
+    () =>
+      savedTemplates.filter(
+        (template) =>
+          isCalendarCustomPreset(template.sourcePresetId) &&
+          calendarTemplateMatchesAspectPreset(template.aspectPreset, canvasFrame.format)
+      ),
+    [savedTemplates, canvasFrame.format]
   );
 
   const designerAutosaveEnabled = isCalendarPresetAutosave(activeSourcePresetId);
@@ -184,7 +222,7 @@ export function CalendarBuilder({
   const calendarTemplateName = useMemo(() => {
     if (activeCustomTemplateId) {
       return (
-        customTemplates.find((template) => template.id === activeCustomTemplateId)?.name ??
+        savedTemplates.find((template) => template.id === activeCustomTemplateId)?.name ??
         'Custom calendar'
       );
     }
@@ -195,7 +233,7 @@ export function CalendarBuilder({
       if (preset) return preset.label;
     }
     return 'Calendar';
-  }, [activeCustomTemplateId, activeSourcePresetId, customTemplates]);
+  }, [activeCustomTemplateId, activeSourcePresetId, savedTemplates]);
 
   const calendarAspectPreset = useMemo(
     () => aspectPresetForCalendarFormat(canvasFrame.format),
@@ -208,11 +246,18 @@ export function CalendarBuilder({
   );
 
   const {
+    suspended: autoSaveSuspended,
+    begin: beginAutoSaveSuspension,
+    end: endAutoSaveSuspension,
+  } = useMarketingAutoSaveSuspension();
+
+  const {
     status: autoSaveStatus,
     errorMessage: autoSaveError,
     markBaseline,
   } = useMarketingAutoSave({
     enabled: calendarAutosaveEnabled,
+    suspended: autoSaveSuspended,
     contentFingerprint: calendarFingerprint,
     templateId: activeAutosaveTemplateId,
     resolveTemplateId: () => {
@@ -272,7 +317,7 @@ export function CalendarBuilder({
       setActiveAutosaveTemplateId(record.id);
       setSelectedTemplateKey(`custom:${record.id}`);
       setIsDirty(false);
-      window.setTimeout(() => markBaseline(), 0);
+      markBaseline();
     },
     [markBaseline, setIsDirty]
   );
@@ -297,86 +342,119 @@ export function CalendarBuilder({
 
   const handleCanvasFormatChange = useCallback(
     (format: CalendarCanvasFormat) => {
-      const aspectPreset = aspectPresetForCalendarFormat(format);
+      beginAutoSaveSuspension();
+      try {
+        const aspectPreset = aspectPresetForCalendarFormat(format);
 
-      if (designerAutosaveEnabled && activeSourcePresetId) {
-        const autosave = findCalendarAutosaveTemplate(
-          apiTemplates,
-          activeSourcePresetId,
-          aspectPreset
-        );
-        if (autosave?.designJson?.styles && typeof autosave.designJson.styles === 'object') {
-          setStyles(
-            normalizeCalendarStyles(
-              JSON.parse(JSON.stringify(autosave.designJson.styles)) as CalendarStyles
-            )
+        if (designerAutosaveEnabled && activeSourcePresetId) {
+          const autosave = findCalendarAutosaveTemplate(
+            apiTemplates,
+            activeSourcePresetId,
+            aspectPreset
           );
-          setActiveAutosaveTemplateId(autosave.id);
+          if (autosave?.designJson?.styles && typeof autosave.designJson.styles === 'object') {
+            setStyles(
+              normalizeCalendarStyles(
+                JSON.parse(JSON.stringify(autosave.designJson.styles)) as CalendarStyles
+              ),
+              { markDirty: false }
+            );
+            setActiveAutosaveTemplateId(autosave.id);
+            setIsDirty(false);
+            saveToHistory();
+            return;
+          }
+          setStyles(mergeCanvasFormat(format), { markDirty: false });
+          setActiveAutosaveTemplateId(null);
+          setIsDirty(false);
           saveToHistory();
-          window.setTimeout(() => markBaseline(), 0);
           return;
         }
-        setStyles(mergeCanvasFormat(format));
-        setActiveAutosaveTemplateId(null);
-        saveToHistory();
-        window.setTimeout(() => markBaseline(), 0);
-        return;
-      }
 
-      setStyles(mergeCanvasFormat(format));
-      saveToHistory();
-      window.setTimeout(() => markBaseline(), 0);
+        if (customAutosaveEnabled && activeCustomTemplateId) {
+          const current = savedTemplates.find((template) => template.id === activeCustomTemplateId);
+          if (!current || !calendarTemplateMatchesAspectPreset(current.aspectPreset, format)) {
+            setActiveCustomTemplateId(null);
+            setActiveAutosaveTemplateId(null);
+            setSelectedTemplateKey('preset:default');
+            setStyles(mergeCanvasFormat(format), { markDirty: false });
+            applyPreset('default', brandColor, propertyPhotoUrl);
+            setIsDirty(false);
+            saveToHistory();
+            return;
+          }
+        }
+
+        setStyles(mergeCanvasFormat(format), { markDirty: false });
+        setIsDirty(false);
+        saveToHistory();
+      } finally {
+        endAutoSaveSuspension();
+      }
     },
     [
+      activeCustomTemplateId,
       activeSourcePresetId,
       apiTemplates,
-      markBaseline,
-      mergeCanvasFormat,
+      applyPreset,
+      beginAutoSaveSuspension,
+      brandColor,
+      customAutosaveEnabled,
       designerAutosaveEnabled,
+      endAutoSaveSuspension,
+      mergeCanvasFormat,
+      propertyPhotoUrl,
       saveToHistory,
+      savedTemplates,
+      setIsDirty,
       setStyles,
     ]
   );
 
   const loadPresetEditorState = useCallback(
     (presetId: string, options?: { openAdvanced?: boolean }) => {
-      setActiveCustomTemplateId(null);
+      beginAutoSaveSuspension();
+      try {
+        setActiveCustomTemplateId(null);
 
-      if (isCalendarBlankPreset(presetId)) {
-        applyPreset(presetId, brandColor, propertyPhotoUrl);
-        setActiveAutosaveTemplateId(null);
+        if (isCalendarBlankPreset(presetId)) {
+          applyPreset(presetId, brandColor, propertyPhotoUrl);
+          setActiveAutosaveTemplateId(null);
+          setSelectedTemplateKey(`preset:${presetId}`);
+          setShowAdvancedSettings(options?.openAdvanced ?? false);
+          setIsDirty(false);
+          return;
+        }
+
+        const aspectPreset = aspectPresetForCalendarFormat(canvasFrame.format);
+        const autosave = findCalendarAutosaveTemplate(apiTemplates, presetId, aspectPreset);
+        const savedStyles = autosave?.designJson?.styles;
+
+        if (savedStyles && typeof savedStyles === 'object') {
+          setStyles(
+            normalizeCalendarStyles(JSON.parse(JSON.stringify(savedStyles)) as CalendarStyles),
+            { markDirty: false }
+          );
+          setActiveAutosaveTemplateId(autosave!.id);
+        } else {
+          applyPreset(presetId, brandColor, propertyPhotoUrl);
+          setActiveAutosaveTemplateId(null);
+        }
+
         setSelectedTemplateKey(`preset:${presetId}`);
         setShowAdvancedSettings(options?.openAdvanced ?? false);
         setIsDirty(false);
-        window.setTimeout(() => markBaseline(), 0);
-        return;
+      } finally {
+        endAutoSaveSuspension();
       }
-
-      const aspectPreset = aspectPresetForCalendarFormat(canvasFrame.format);
-      const autosave = findCalendarAutosaveTemplate(apiTemplates, presetId, aspectPreset);
-      const savedStyles = autosave?.designJson?.styles;
-
-      if (savedStyles && typeof savedStyles === 'object') {
-        setStyles(
-          normalizeCalendarStyles(JSON.parse(JSON.stringify(savedStyles)) as CalendarStyles)
-        );
-        setActiveAutosaveTemplateId(autosave!.id);
-      } else {
-        applyPreset(presetId, brandColor, propertyPhotoUrl);
-        setActiveAutosaveTemplateId(null);
-      }
-
-      setSelectedTemplateKey(`preset:${presetId}`);
-      setShowAdvancedSettings(options?.openAdvanced ?? false);
-      setIsDirty(false);
-      window.setTimeout(() => markBaseline(), 0);
     },
     [
       apiTemplates,
       applyPreset,
+      beginAutoSaveSuspension,
       brandColor,
       canvasFrame.format,
-      markBaseline,
+      endAutoSaveSuspension,
       propertyPhotoUrl,
       setIsDirty,
       setStyles,
@@ -387,32 +465,39 @@ export function CalendarBuilder({
     (templateId: string, options?: { openAdvanced?: boolean }) => {
       const template = savedTemplates.find((item) => item.id === templateId);
       if (!template) return;
+      if (!calendarTemplateMatchesAspectPreset(template.aspectPreset, canvasFrame.format)) return;
 
-      setStyles(
-        normalizeCalendarStyles(JSON.parse(JSON.stringify(template.styles)) as CalendarStyles)
-      );
-      setActiveCustomTemplateId(templateId);
-      setActiveAutosaveTemplateId(templateId);
-      setSelectedTemplateKey(`custom:${templateId}`);
-      setShowAdvancedSettings(options?.openAdvanced ?? false);
-      setIsDirty(false);
-      window.setTimeout(() => markBaseline(), 0);
+      beginAutoSaveSuspension();
+      try {
+        setStyles(
+          normalizeCalendarStyles(JSON.parse(JSON.stringify(template.styles)) as CalendarStyles),
+          { markDirty: false }
+        );
+        setActiveCustomTemplateId(templateId);
+        setActiveAutosaveTemplateId(templateId);
+        setSelectedTemplateKey(`custom:${templateId}`);
+        setShowAdvancedSettings(options?.openAdvanced ?? false);
+        setIsDirty(false);
+      } finally {
+        endAutoSaveSuspension();
+      }
     },
-    [markBaseline, savedTemplates, setIsDirty, setStyles]
+    [
+      beginAutoSaveSuspension,
+      canvasFrame.format,
+      endAutoSaveSuspension,
+      savedTemplates,
+      setIsDirty,
+      setStyles,
+    ]
   );
-
-  const didEstablishBaselineRef = useRef(false);
-  useEffect(() => {
-    if (didEstablishBaselineRef.current) return;
-    didEstablishBaselineRef.current = true;
-    window.setTimeout(() => markBaseline(), 0);
-  }, [markBaseline]);
 
   const savedCalendarTemplatesForThumbs = useMemo(
     () =>
       savedTemplates.map((template) => ({
         id: template.id,
         sourcePresetId: template.sourcePresetId,
+        aspectPreset: template.aspectPreset,
         styles: template.styles,
         updatedAt: template.createdAt,
         thumbnailDataUrl: template.thumbnailDataUrl,
@@ -426,6 +511,28 @@ export function CalendarBuilder({
   }, [selectedTemplateKey, loadPresetEditorState]);
 
   useEffect(() => {
+    if (!activeCustomTemplateId) return;
+    const template = savedTemplates.find((item) => item.id === activeCustomTemplateId);
+    if (
+      template &&
+      calendarTemplateMatchesAspectPreset(template.aspectPreset, canvasFrame.format)
+    ) {
+      return;
+    }
+    setActiveCustomTemplateId(null);
+    setActiveAutosaveTemplateId(null);
+    if (selectedTemplateKey?.startsWith('custom:')) {
+      loadPresetEditorState('default');
+    }
+  }, [
+    activeCustomTemplateId,
+    canvasFrame.format,
+    loadPresetEditorState,
+    savedTemplates,
+    selectedTemplateKey,
+  ]);
+
+  useEffect(() => {
     if (!designerAutosaveEnabled || !activeSourcePresetId || activeAutosaveTemplateId) return;
     const autosave = findCalendarAutosaveTemplate(
       apiTemplates,
@@ -435,17 +542,25 @@ export function CalendarBuilder({
     const savedStyles = autosave?.designJson?.styles;
     if (!autosave || !savedStyles || typeof savedStyles !== 'object') return;
 
-    setStyles(normalizeCalendarStyles(JSON.parse(JSON.stringify(savedStyles)) as CalendarStyles));
-    setActiveAutosaveTemplateId(autosave.id);
-    setIsDirty(false);
-    window.setTimeout(() => markBaseline(), 0);
+    beginAutoSaveSuspension();
+    try {
+      setStyles(
+        normalizeCalendarStyles(JSON.parse(JSON.stringify(savedStyles)) as CalendarStyles),
+        { markDirty: false }
+      );
+      setActiveAutosaveTemplateId(autosave.id);
+      setIsDirty(false);
+    } finally {
+      endAutoSaveSuspension();
+    }
   }, [
     activeAutosaveTemplateId,
     activeSourcePresetId,
     apiTemplates,
+    beginAutoSaveSuspension,
     calendarAspectPreset,
-    markBaseline,
     designerAutosaveEnabled,
+    endAutoSaveSuspension,
     setIsDirty,
     setStyles,
   ]);
@@ -481,14 +596,23 @@ export function CalendarBuilder({
     ]
   );
 
-  const previewLayout = useMemo(
-    () => calendarPreviewLayout(canvasFrame.format, zoomLevel),
-    [canvasFrame.format, zoomLevel]
-  );
-  const fullscreenLayout = useMemo(
-    () => calendarPreviewLayout(canvasFrame.format, fullscreenZoom),
-    [canvasFrame.format, fullscreenZoom]
-  );
+  const previewLayout = useMemo(() => {
+    const width = previewContainerSize.width || 640;
+    const height = previewContainerSize.height || 480;
+    return calendarPreviewDisplayLayout(canvasFrame.format, width, height, relativeZoom);
+  }, [canvasFrame.format, previewContainerSize, relativeZoom]);
+
+  const fullscreenLayout = useMemo(() => {
+    const width = fullscreenContainerSize.width || 960;
+    const height = fullscreenContainerSize.height || 720;
+    return calendarPreviewDisplayLayout(
+      canvasFrame.format,
+      width,
+      height,
+      fullscreenRelativeZoom,
+      96
+    );
+  }, [canvasFrame.format, fullscreenContainerSize, fullscreenRelativeZoom]);
 
   const previewRef = exportContainerRef ?? calendarRef;
 
@@ -498,45 +622,39 @@ export function CalendarBuilder({
     const normalized = resolveOrgBrandHex(brandColor).toLowerCase();
     if (lastAppliedBrandRef.current === normalized) return;
     lastAppliedBrandRef.current = normalized;
-    const current = useCalendarBuilderStore.getState().styles;
-    const preservePresetPalette = Boolean(
-      activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)
-    );
-    setStyles(applyBrandAccentToCalendarStyles(current, brandColor, { preservePresetPalette }));
-  }, [activeSourcePresetId, brandColor, setStyles]);
-
-  const applyFitZoom = useCallback(() => {
-    const node = previewContainerRef.current;
-    if (!node) return;
-    const rect = node.getBoundingClientRect();
-    setZoomLevel(fitZoomLevelForContainer(canvasFrame.format, rect.width, rect.height));
-  }, [canvasFrame.format]);
+    beginAutoSaveSuspension();
+    try {
+      const current = useCalendarBuilderStore.getState().styles;
+      const preservePresetPalette = Boolean(
+        activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)
+      );
+      setStyles(applyBrandAccentToCalendarStyles(current, brandColor, { preservePresetPalette }), {
+        markDirty: false,
+      });
+    } finally {
+      endAutoSaveSuspension();
+    }
+  }, [activeSourcePresetId, beginAutoSaveSuspension, brandColor, endAutoSaveSuspension, setStyles]);
 
   useEffect(() => {
-    applyFitZoom();
-  }, [canvasFrame.format, applyFitZoom]);
+    setRelativeZoom(100);
+  }, [canvasFrame.format]);
 
-  // Zoom handlers
   const handleZoomIn = useCallback(() => {
-    setZoomLevel((prev) => {
-      const nextLevel = ZOOM_LEVELS.find((level) => level > prev);
-      return nextLevel ?? MAX_ZOOM;
-    });
-  }, []);
+    setRelativeZoom((prev) => stepCalendarZoomIn(prev, previewLayout.maxRelativeZoomPercent));
+  }, [previewLayout.maxRelativeZoomPercent]);
 
   const handleZoomOut = useCallback(() => {
-    setZoomLevel((prev) => {
-      const prevLevel = [...ZOOM_LEVELS].reverse().find((level) => level < prev);
-      return prevLevel ?? MIN_ZOOM;
-    });
+    setRelativeZoom((prev) => stepCalendarZoomOut(prev));
   }, []);
 
   const handleFitToScreen = useCallback(() => {
-    applyFitZoom();
-  }, [applyFitZoom]);
+    setRelativeZoom(100);
+  }, []);
 
   // Fullscreen handlers
   const handleOpenFullscreen = useCallback(() => {
+    setFullscreenRelativeZoom(100);
     setIsFullscreen(true);
     document.body.style.overflow = 'hidden';
   }, []);
@@ -547,31 +665,18 @@ export function CalendarBuilder({
   }, []);
 
   const handleFullscreenZoomIn = useCallback(() => {
-    setFullscreenZoom((prev) => {
-      const nextLevel = ZOOM_LEVELS.find((level) => level > prev);
-      return nextLevel ?? MAX_ZOOM;
-    });
-  }, []);
+    setFullscreenRelativeZoom((prev) =>
+      stepCalendarZoomIn(prev, fullscreenLayout.maxRelativeZoomPercent)
+    );
+  }, [fullscreenLayout.maxRelativeZoomPercent]);
 
   const handleFullscreenZoomOut = useCallback(() => {
-    setFullscreenZoom((prev) => {
-      const prevLevel = [...ZOOM_LEVELS].reverse().find((level) => level < prev);
-      return prevLevel ?? MIN_ZOOM;
-    });
+    setFullscreenRelativeZoom((prev) => stepCalendarZoomOut(prev));
   }, []);
 
   const handleFullscreenFitToScreen = useCallback(() => {
-    const node = fullscreenContainerRef.current;
-    if (!node) return;
-    const rect = node.getBoundingClientRect();
-    setFullscreenZoom(fitZoomLevelForContainer(canvasFrame.format, rect.width, rect.height, 96));
-  }, [canvasFrame.format]);
-
-  useEffect(() => {
-    if (!isFullscreen) return;
-    const id = window.requestAnimationFrame(() => handleFullscreenFitToScreen());
-    return () => window.cancelAnimationFrame(id);
-  }, [isFullscreen, canvasFrame.format, handleFullscreenFitToScreen]);
+    setFullscreenRelativeZoom(100);
+  }, []);
 
   // Handle Escape key to close fullscreen
   useEffect(() => {
@@ -591,12 +696,17 @@ export function CalendarBuilder({
       toast.success('Reset to saved');
       return;
     }
-    if (activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)) {
-      applyPreset(activeSourcePresetId, brandColor, propertyPhotoUrl);
-    } else {
-      resetStyles(brandColor);
+    beginAutoSaveSuspension();
+    try {
+      if (activeSourcePresetId && !isCalendarBlankPreset(activeSourcePresetId)) {
+        applyPreset(activeSourcePresetId, brandColor, propertyPhotoUrl);
+      } else {
+        resetStyles(brandColor);
+      }
+      setIsDirty(false);
+    } finally {
+      endAutoSaveSuspension();
     }
-    window.setTimeout(() => markBaseline(), 0);
     toast.success('Reset to default');
   };
 
@@ -623,6 +733,18 @@ export function CalendarBuilder({
   const handleCustomizeCustom = (id: string) => {
     loadCustomTemplateState(id, { openAdvanced: true });
   };
+
+  const handleRemoveCustom = useCallback(
+    async (id: string) => {
+      const removed = await deleteTemplate(id);
+      if (!removed) return;
+      if (activeCustomTemplateId === id || selectedTemplateKey === `custom:${id}`) {
+        loadPresetEditorState('default');
+      }
+      toast.success('Template removed');
+    },
+    [activeCustomTemplateId, deleteTemplate, loadPresetEditorState, selectedTemplateKey]
+  );
 
   const headerActions = useMemo(
     () => (
@@ -737,13 +859,13 @@ export function CalendarBuilder({
                     customTemplates={customTemplates}
                     selectedKey={selectedTemplateKey}
                     canvasFormat={canvasFrame.format}
-                    catalog={catalog}
                     onSelectPreset={handleApplyPreset}
                     onCustomizePreset={handleCustomizePreset}
                     onSelectBlank={handleSelectBlank}
                     onCustomizeBlank={handleCustomizeBlank}
                     onSelectCustom={handleSelectCustom}
                     onCustomizeCustom={handleCustomizeCustom}
+                    onRemoveCustom={handleRemoveCustom}
                   />
                 </div>
               )}
@@ -810,7 +932,7 @@ export function CalendarBuilder({
                             size="icon"
                             className="h-9 min-h-[44px] w-9 min-w-[44px]"
                             onClick={handleZoomOut}
-                            disabled={zoomLevel <= MIN_ZOOM}
+                            disabled={relativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
                           >
                             <ZoomOut className="h-4 w-4" />
                           </Button>
@@ -818,7 +940,7 @@ export function CalendarBuilder({
                         <TooltipContent>Zoom Out</TooltipContent>
                       </Tooltip>
                       <span className="min-w-[48px] text-center text-xs font-medium">
-                        {zoomLevel}%
+                        {relativeZoom}%
                       </span>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -827,7 +949,7 @@ export function CalendarBuilder({
                             size="icon"
                             className="h-9 min-h-[44px] w-9 min-w-[44px]"
                             onClick={handleZoomIn}
-                            disabled={zoomLevel >= MAX_ZOOM}
+                            disabled={relativeZoom >= previewLayout.maxRelativeZoomPercent}
                           >
                             <ZoomIn className="h-4 w-4" />
                           </Button>
@@ -941,7 +1063,7 @@ export function CalendarBuilder({
                           size="icon"
                           className="h-8 w-8"
                           onClick={handleFullscreenZoomOut}
-                          disabled={fullscreenZoom <= MIN_ZOOM}
+                          disabled={fullscreenRelativeZoom <= CALENDAR_MIN_RELATIVE_ZOOM}
                         >
                           <ZoomOut className="h-4 w-4" />
                         </Button>
@@ -949,7 +1071,7 @@ export function CalendarBuilder({
                       <TooltipContent>Zoom Out</TooltipContent>
                     </Tooltip>
                     <span className="min-w-[56px] text-center text-sm font-medium">
-                      {fullscreenZoom}%
+                      {fullscreenRelativeZoom}%
                     </span>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -958,7 +1080,9 @@ export function CalendarBuilder({
                           size="icon"
                           className="h-8 w-8"
                           onClick={handleFullscreenZoomIn}
-                          disabled={fullscreenZoom >= MAX_ZOOM}
+                          disabled={
+                            fullscreenRelativeZoom >= fullscreenLayout.maxRelativeZoomPercent
+                          }
                         >
                           <ZoomIn className="h-4 w-4" />
                         </Button>

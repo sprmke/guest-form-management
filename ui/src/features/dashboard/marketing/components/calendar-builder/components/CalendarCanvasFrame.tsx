@@ -1,17 +1,84 @@
-import { forwardRef } from 'react';
+import { forwardRef, useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 import { getBackgroundStyle } from '@/features/dashboard/marketing/components/calendar-builder/components/controls/BackgroundControl';
 import type { CalendarStyles } from '@/features/dashboard/marketing/components/calendar-builder/types';
 import {
   CALENDAR_CANVAS_DIMENSIONS,
-  computeCalendarSquareSize,
+  computeCalendarLayoutBounds,
   normalizeCalendarCanvasFrame,
 } from '@/features/dashboard/marketing/lib/calendarCanvasFormats';
 
 type Props = {
   styles: CalendarStyles;
-  children: (calendarSize: number) => React.ReactNode;
+  children: (calendarWidth: number) => React.ReactNode;
 };
+
+function CalendarContentFit({
+  maxWidth,
+  maxHeight,
+  styles,
+  children,
+}: {
+  maxWidth: number;
+  maxHeight: number;
+  styles: CalendarStyles;
+  children: (calendarWidth: number) => React.ReactNode;
+}) {
+  const measureRef = useRef<HTMLDivElement>(null);
+  const [fitScale, setFitScale] = useState(1);
+  const boundsRef = useRef({ maxWidth, maxHeight });
+  boundsRef.current = { maxWidth, maxHeight };
+
+  const measure = useCallback(() => {
+    const node = measureRef.current;
+    if (!node) return;
+    const naturalWidth = node.scrollWidth;
+    const naturalHeight = node.scrollHeight;
+    if (naturalWidth <= 0 || naturalHeight <= 0) return;
+    const { maxWidth: currentMaxWidth, maxHeight: currentMaxHeight } = boundsRef.current;
+    const scale = Math.min(1, currentMaxWidth / naturalWidth, currentMaxHeight / naturalHeight);
+    setFitScale((prev) => (Math.abs(prev - scale) < 0.001 ? prev : scale));
+  }, []);
+
+  // Observer stays alive for the component's lifetime — cheaper than tearing it
+  // down and reattaching on every style/bounds change (which only need a remeasure).
+  useLayoutEffect(() => {
+    const node = measureRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [measure]);
+
+  useLayoutEffect(() => {
+    measure();
+  }, [maxWidth, maxHeight, styles, measure]);
+
+  return (
+    <div
+      style={{
+        width: maxWidth,
+        height: maxHeight,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+        flexShrink: 0,
+      }}
+    >
+      <div
+        style={{
+          width: maxWidth,
+          transform: fitScale < 1 ? `scale(${fitScale})` : undefined,
+          transformOrigin: 'center center',
+          flexShrink: 0,
+        }}
+      >
+        <div ref={measureRef}>{children(maxWidth)}</div>
+      </div>
+    </div>
+  );
+}
 
 export const CalendarCanvasFrame = forwardRef<HTMLDivElement, Props>(function CalendarCanvasFrame(
   { styles, children },
@@ -19,7 +86,7 @@ export const CalendarCanvasFrame = forwardRef<HTMLDivElement, Props>(function Ca
 ) {
   const frame = normalizeCalendarCanvasFrame(styles.canvasFrame);
   const dims = CALENDAR_CANVAS_DIMENSIONS[frame.format];
-  const calendarSize = computeCalendarSquareSize(
+  const layoutBounds = computeCalendarLayoutBounds(
     dims.width,
     dims.height,
     frame.padding,
@@ -43,19 +110,13 @@ export const CalendarCanvasFrame = forwardRef<HTMLDivElement, Props>(function Ca
         ...getBackgroundStyle(frame.background),
       }}
     >
-      <div
-        style={{
-          width: calendarSize,
-          height: calendarSize,
-          flexShrink: 0,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-        }}
+      <CalendarContentFit
+        maxWidth={layoutBounds.maxWidth}
+        maxHeight={layoutBounds.maxHeight}
+        styles={styles}
       >
-        {children(calendarSize)}
-      </div>
+        {children}
+      </CalendarContentFit>
     </div>
   );
 });
