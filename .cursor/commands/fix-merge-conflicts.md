@@ -1,5 +1,5 @@
 # fix-merge-conflicts
 
-Pull new changes from our current branch. Please fix merge conflicts and make sure we don't break between our ticket changes here and upcoming changes
+Pull new changes from main. Please fix merge conflicts and make sure we don't break existing functionality between our ticket changes here and upcoming changes from main.
 
-This command will be available in chat with /fix-merge-conflicts
+This command is available in chat with **/fix-merge-conflicts**

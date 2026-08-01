@@ -1,8 +1,6 @@
----
-description: Work the GitHub backlog on sprmke/kame-homes — view, create, update, or ship issues
----
+# github-issue
 
-Work the **GitHub backlog** on **sprmke/kame-homes** — view, create, ship issues. Read **`.cursor/skills/github-issues/SKILL.md`** completely (mirrored at `.claude/skills/github-issues/SKILL.md`).
+Work the **GitHub backlog** on **sprmke/kame-homes** — view, create, ship issues. Read **`.cursor/skills/github-issues/SKILL.md`** completely.
 
 ## User intent → action
 

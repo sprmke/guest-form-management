@@ -1,5 +1,5 @@
----
-description: Resolve merge conflicts without breaking this branch's changes or upcoming changes from main
----
+# fix-merge-conflicts
 
-Please fix merge conflicts and make sure we dont break existing funcitonalities between our ticket changes here and upcoming changes from main
+Pull new changes from main. Please fix merge conflicts and make sure we don't break existing functionality between our ticket changes here and upcoming changes from main.
+
+This command is available in chat with **/fix-merge-conflicts**

@@ -31,6 +31,11 @@
       {
         "command": "[ ! -f \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
         "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/guard-shipped-migrations.sh",
+        "matcher": "StrReplace",
+        "timeout": 5
       }
     ]
   }
