@@ -3,7 +3,10 @@ import { useMemo, useState } from 'react';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
-import type { BookingCalendarPillLabelMode } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
+import {
+  BookingCalendarPillLabelToggle,
+  type BookingCalendarPillLabelMode,
+} from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
 import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import {
   DEFAULT_BOOKINGS_QUERY,
@@ -13,12 +16,9 @@ import {
 /** Higher cap so an entire month of stays renders without pagination. */
 const OCCUPANCY_BOOKINGS_LIMIT = 100;
 
-type Props = {
-  pillLabelMode: BookingCalendarPillLabelMode;
-};
-
-export function PropertyOccupancyCalendarPanel({ pillLabelMode }: Props) {
+export function PropertyOccupancyCalendarPanel() {
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [pillLabelMode, setPillLabelMode] = useState<BookingCalendarPillLabelMode>('name');
 
   const query = useMemo(
     (): BookingsQuery => ({
@@ -43,6 +43,13 @@ export function PropertyOccupancyCalendarPanel({ pillLabelMode }: Props) {
       initialMonth={currentMonth}
       onMonthChange={setCurrentMonth}
       pillLabelMode={pillLabelMode}
+      navigationAccessory={
+        <BookingCalendarPillLabelToggle
+          value={pillLabelMode}
+          onChange={setPillLabelMode}
+          size="toolbar"
+        />
+      }
     />
   );
 }

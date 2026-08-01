@@ -58,12 +58,13 @@ Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Co
 
 ## MCP servers (`.mcp.json`, shared with Cursor via `.cursor/mcp.json` symlink)
 
-| Server       | Needs                                                 | Use for                                                                          |
-| ------------ | ----------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `supabase`   | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (env) | Schema/logs/advisors against local or hosted Supabase — **read-only by default** |
-| `playwright` | nothing                                               | Drive the real guest form / admin dashboard in a browser (used by `/verify`)     |
-| `context7`   | nothing (optional key for higher rate limits)         | Current docs for React Router, TanStack Query, Zod, Radix, date-fns, …           |
-| `github`     | `GITHUB_TOKEN` (env — `gh auth token` works)          | Repo/PR/Actions visibility from chat                                             |
+| Server       | Needs                                                                              | Use for                                                                                                                      |
+| ------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `supabase`   | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (env)                              | Schema/logs/advisors against local or hosted Supabase — **read-only by default**                                             |
+| `playwright` | nothing                                                                            | Drive the real guest form / admin dashboard in a browser (used by `/verify`)                                                 |
+| `context7`   | nothing (optional key for higher rate limits)                                      | Current docs for React Router, TanStack Query, Zod, Radix, date-fns, …                                                       |
+| `github`     | `GITHUB_TOKEN` (env — `gh auth token` works)                                       | Repo/PR/Actions visibility from chat                                                                                         |
+| `markitdown` | `uv tool install markitdown-mcp` (binary on PATH, or set command to absolute path) | Convert PDF/Office/HTML → markdown via `convert_to_markdown` (saves tokens vs raw). See always-on rule `markitdown-mcp.mdc`. |
 
 Export the env vars in your shell profile — never commit them. `SUPABASE_ACCESS_TOKEN`: Supabase dashboard → Account → Access Tokens. `SUPABASE_PROJECT_REF`: the `<ref>` in your project's Supabase URL. `GITHUB_TOKEN`: `gh auth token` (requires `gh auth login` once) or a PAT with repo scope.
 
