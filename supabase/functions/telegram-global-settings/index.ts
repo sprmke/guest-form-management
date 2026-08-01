@@ -1,6 +1,6 @@
 /**
  * telegram-global-settings — shared Telegram bot token for Notifications modules.
- * GET/PATCH/POST (verify_global_telegram_bot). Property or parking scope via query param.
+ * GET/PATCH/POST (verify_global_telegram_bot | discover_telegram_chats). Property or parking scope via query param.
  */
 
 import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
@@ -11,6 +11,7 @@ import {
   patchPropertyTelegramGlobalBotToken,
   verifyTelegramBotTokenOnly,
 } from '../_shared/telegramGlobalBotToken.ts';
+import { discoverTelegramChats } from '../_shared/telegramDiscoverChats.ts';
 import {
   ensureTelegramAssetSettings,
   resolveTelegramAssetAccess,
@@ -57,7 +58,26 @@ serveAuthenticated('telegram-global-settings', async (req) => {
       });
     }
 
-    return telegramUnknownAction(req, action, 'Use verify_global_telegram_bot');
+    if (action === 'discover_telegram_chats') {
+      const token = typeof body.botToken === 'string' ? body.botToken.trim() : '';
+      if (!token) {
+        const saved =
+          asset.kind === 'property'
+            ? await getPropertyTelegramGlobalBotAdminStatus(asset.id)
+            : await getParkingTelegramGlobalBotAdminStatus(asset.id);
+        if (!saved.botToken) {
+          return jsonError(req, 'Bot token is required');
+        }
+        return telegramVerifyResponse(req, await discoverTelegramChats(saved.botToken));
+      }
+      return telegramVerifyResponse(req, await discoverTelegramChats(token));
+    }
+
+    return telegramUnknownAction(
+      req,
+      action,
+      'Use verify_global_telegram_bot | discover_telegram_chats'
+    );
   }
 
   if (req.method === 'PATCH') {

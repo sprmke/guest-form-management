@@ -4,6 +4,7 @@
 
 import { createServiceClient } from './orgAuth.ts';
 import { trimOrEmpty } from './stringUtils.ts';
+import { fetchTelegramJson } from './telegramApi.ts';
 import { decryptPropertySecret } from './propertySecretCrypto.ts';
 
 export type TelegramChannel =
@@ -227,36 +228,47 @@ export async function verifyPropertyTelegramChannel(
   }
 
   const meUrl = `https://api.telegram.org/bot${token}/getMe`;
-  const meRes = await fetch(meUrl);
-  const meJson = (await meRes.json().catch(() => ({}))) as {
+  const meFetched = await fetchTelegramJson<{
     ok?: boolean;
     result?: { username?: string };
     description?: string;
-  };
+  }>(meUrl);
 
   const chatUrl = `https://api.telegram.org/bot${token}/getChat?chat_id=${encodeURIComponent(
     normalizedChatId
   )}`;
-  const chatRes = await fetch(chatUrl);
-  const chatJson = (await chatRes.json().catch(() => ({}))) as {
+  const chatFetched = await fetchTelegramJson<{
     ok?: boolean;
     result?: { type?: string; title?: string; username?: string };
     description?: string;
-  };
+  }>(chatUrl);
+
+  const meJson = meFetched.ok ? meFetched.json : null;
+  const meRes = meFetched.ok ? meFetched.response : null;
+  const chatJson = chatFetched.ok ? chatFetched.json : null;
+  const chatRes = chatFetched.ok ? chatFetched.response : null;
 
   return {
     credentials,
     getMe: {
       ok: !!meJson?.ok,
       username: meJson?.result?.username,
-      error: meJson?.ok ? undefined : String(meJson?.description ?? meRes.statusText),
+      error: !meFetched.ok
+        ? meFetched.error
+        : meJson?.ok
+          ? undefined
+          : String(meJson?.description ?? meRes?.statusText ?? 'getMe failed'),
     },
     getChat: {
       ok: !!chatJson?.ok,
       type: chatJson?.result?.type,
       title: chatJson?.result?.title,
       username: chatJson?.result?.username,
-      error: chatJson?.ok ? undefined : String(chatJson?.description ?? chatRes.statusText),
+      error: !chatFetched.ok
+        ? chatFetched.error
+        : chatJson?.ok
+          ? undefined
+          : String(chatJson?.description ?? chatRes?.statusText ?? 'getChat failed'),
     },
   };
 }
