@@ -20,9 +20,10 @@ Navigation for **guest-form-management**.
 
 ## Todos (detail)
 
-| Doc                                  | Purpose                                 |
-| ------------------------------------ | --------------------------------------- |
-| [`todos/shipped/`](./todos/shipped/) | Completed issues + legacy phase history |
+| Doc                                                  | Purpose                                  |
+| ---------------------------------------------------- | ---------------------------------------- |
+| [`todos/BACKLOG_DRAFT.md`](./todos/BACKLOG_DRAFT.md) | Legacy unfiled items (not GitHub Issues) |
+| [`todos/shipped/`](./todos/shipped/)                 | Completed issues + legacy phase history  |
 
 ## Operations
 

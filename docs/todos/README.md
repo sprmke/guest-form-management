@@ -2,9 +2,10 @@
 
 **Source of truth:** [GitHub Issues](https://github.com/sprmke/kame-homes/issues) on `sprmke/kame-homes`  
 **Project board:** @sprmke's Kame Homes  
-**Shipped archive:** [`shipped/`](./shipped/)
+**Shipped archive:** [`shipped/`](./shipped/)  
+**Legacy draft (unfiled):** [`BACKLOG_DRAFT.md`](./BACKLOG_DRAFT.md) — items not yet filed as GitHub Issues
 
-Do not mirror open backlog items as markdown in this repo — that causes drift. Use GitHub for pending work; use `shipped/` only after an issue is done.
+Do not mirror open backlog items as markdown in this repo — that causes drift. Use GitHub for pending work; use `shipped/` only after an issue is done. `BACKLOG_DRAFT.md` is a migration holding pen only — file items into GitHub before treating them as tracked work.
 
 ## Epics (GitHub parent issues)
 
