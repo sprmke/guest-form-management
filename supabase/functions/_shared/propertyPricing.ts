@@ -2,6 +2,7 @@
  * Property pricing — load/save defaults (app_settings) + date overrides + booked nights.
  */
 
+import { manilaTodayYmd } from './calendarAvailabilityManila.ts';
 import { createServiceClient } from './orgAuth.ts';
 import {
   deleteBlockedRangesCovering,
@@ -162,6 +163,22 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
+/** Nights `[startDate, endDate)` as YYYY-MM-DD keys, checkout-exclusive. */
+function expandNightsInRange(startDate: string, endDate: string): string[] {
+  const start = parseOccupancyDate(startDate);
+  const end = parseOccupancyDate(endDate);
+  if (!start || !end || end <= start) return [];
+
+  const nights: string[] = [];
+  let cursor = new Date(start);
+  const lastNight = addDays(end, -1);
+  while (cursor <= lastNight) {
+    nights.push(formatDateKey(cursor));
+    cursor = addDays(cursor, 1);
+  }
+  return nights;
+}
+
 function rowToDefaults(
   row: AppSettingsPricingRow | null
 ): Omit<
@@ -258,7 +275,7 @@ async function loadDateOverrides(propertyId: string): Promise<Record<string, num
 }
 
 /** Occupied nights [check-in, check-out) for non-cancelled bookings. */
-async function loadBookedDateKeys(
+export async function loadBookedDateKeys(
   propertyId: string,
   monthStart?: string,
   monthEnd?: string
@@ -434,10 +451,26 @@ export async function savePropertyPricing(
   }
 
   if (patch.blockRange) {
+    const { startDate, endDate } = patch.blockRange;
+    const nights = expandNightsInRange(startDate, endDate);
+    if (nights.length === 0) {
+      throw new Error('blockRange endDate must be after startDate');
+    }
+
+    const today = manilaTodayYmd();
+    if (nights.some((key) => key < today)) {
+      throw new Error('Cannot block dates in the past');
+    }
+
+    const bookedKeys = new Set(await loadBookedDateKeys(propertyId, startDate, endDate));
+    if (nights.some((key) => bookedKeys.has(key))) {
+      throw new Error('Cannot block dates that are already booked');
+    }
+
     await insertBlockedRange(
       propertyId,
-      patch.blockRange.startDate,
-      patch.blockRange.endDate,
+      startDate,
+      endDate,
       patch.blockRange.note,
       options?.userId
     );

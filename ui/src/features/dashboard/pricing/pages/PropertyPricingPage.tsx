@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -273,6 +274,21 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
 
   const blockSelected = async () => {
     if (selectedDates.length === 0 || !canEdit) return;
+
+    // Revalidate against current state right before mutating — availability may
+    // have refreshed (new booking, or a date rolling into the past) since the
+    // modal opened with a stale selection.
+    const today = startOfToday();
+    const stillBlockable = selectedDates.every((date) => {
+      const key = dateKey(date);
+      return !isBefore(date, today) && !bookedDateKeys.has(key) && !blockedDateKeys.has(key);
+    });
+    if (!stillBlockable) {
+      toast.error('Dates unavailable');
+      clearSelection();
+      return;
+    }
+
     const ranges = contiguousDateRanges(selectedDates);
     try {
       let lastData: PropertyPricingDto | undefined;
