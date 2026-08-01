@@ -1,14 +1,20 @@
 import type { CSSProperties } from 'react';
 
+import type { CampaignPalette } from '@/features/dashboard/marketing/lib/designBrandColors';
 import type {
   VideoLayerTypography,
   VideoSceneLayer,
   VideoTextStyle,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
+import type {
+  VideoFontRole,
+  VideoTypographyContext,
+} from '@/features/dashboard/marketing/lib/video/videoTemplateTypography';
 
 /** Fonts preloaded in ui/index.html — safe for Remotion preview + export. */
 export const VIDEO_FONT_FAMILIES = [
   { value: 'Plus Jakarta Sans', label: 'Plus Jakarta Sans' },
+  { value: 'Jost', label: 'Jost' },
   { value: 'DM Sans', label: 'DM Sans' },
   { value: 'Outfit', label: 'Outfit' },
   { value: 'Manrope', label: 'Manrope' },
@@ -24,8 +30,12 @@ export const VIDEO_FONT_FAMILIES = [
   { value: 'system-ui', label: 'System' },
 ] as const;
 
-export type VideoTextPresetId = 'title' | 'subtitle' | 'promo' | 'body' | 'label' | 'cta';
+export type VideoTextPresetId = VideoFontRole;
 
+/**
+ * Size / weight / spacing stay role-driven; `fontFamily` is a fallback that the
+ * project's template font pairing replaces at resolve time.
+ */
 export const VIDEO_TEXT_PRESETS: Record<
   VideoTextPresetId,
   {
@@ -38,14 +48,14 @@ export const VIDEO_TEXT_PRESETS: Record<
     label: 'Title',
     textStyle: 'headline',
     typography: {
-      fontFamily: 'Plus Jakarta Sans',
-      fontSize: 52,
-      fontWeight: 800,
-      letterSpacing: 0,
-      lineHeight: 1.1,
+      fontFamily: 'Fraunces',
+      fontSize: 48,
+      fontWeight: 600,
+      letterSpacing: 1,
+      lineHeight: 1.12,
       textTransform: 'uppercase',
-      strokeColor: '#ffffff',
-      strokeWidth: 2,
+      strokeColor: null,
+      strokeWidth: 0,
       shadow: true,
     },
   },
@@ -53,12 +63,12 @@ export const VIDEO_TEXT_PRESETS: Record<
     label: 'Subtitle',
     textStyle: 'subheadline',
     typography: {
-      fontFamily: 'DM Sans',
-      fontSize: 36,
-      fontWeight: 600,
-      letterSpacing: 0.5,
-      lineHeight: 1.2,
-      textTransform: 'none',
+      fontFamily: 'Jost',
+      fontSize: 28,
+      fontWeight: 500,
+      letterSpacing: 2,
+      lineHeight: 1.25,
+      textTransform: 'uppercase',
       strokeColor: null,
       strokeWidth: 0,
       shadow: true,
@@ -68,26 +78,26 @@ export const VIDEO_TEXT_PRESETS: Record<
     label: 'Promo',
     textStyle: 'promo',
     typography: {
-      fontFamily: 'Space Grotesk',
-      fontSize: 88,
-      fontWeight: 800,
-      letterSpacing: -1,
-      lineHeight: 1,
-      textTransform: 'uppercase',
-      strokeColor: '#5c3d2e',
-      strokeWidth: 3,
-      shadow: false,
+      fontFamily: 'Fraunces',
+      fontSize: 72,
+      fontWeight: 600,
+      letterSpacing: -0.5,
+      lineHeight: 1.05,
+      textTransform: 'none',
+      strokeColor: null,
+      strokeWidth: 0,
+      shadow: true,
     },
   },
   body: {
     label: 'Body',
     textStyle: 'body',
     typography: {
-      fontFamily: 'DM Sans',
-      fontSize: 32,
-      fontWeight: 600,
+      fontFamily: 'Plus Jakarta Sans',
+      fontSize: 30,
+      fontWeight: 500,
       letterSpacing: 0,
-      lineHeight: 1.25,
+      lineHeight: 1.3,
       textTransform: 'none',
       strokeColor: null,
       strokeWidth: 0,
@@ -98,10 +108,10 @@ export const VIDEO_TEXT_PRESETS: Record<
     label: 'Label',
     textStyle: 'footer',
     typography: {
-      fontFamily: 'DM Sans',
-      fontSize: 26,
-      fontWeight: 600,
-      letterSpacing: 1,
+      fontFamily: 'Jost',
+      fontSize: 22,
+      fontWeight: 500,
+      letterSpacing: 2,
       lineHeight: 1.2,
       textTransform: 'uppercase',
       strokeColor: null,
@@ -114,11 +124,11 @@ export const VIDEO_TEXT_PRESETS: Record<
     textStyle: 'body',
     typography: {
       fontFamily: 'Plus Jakarta Sans',
-      fontSize: 28,
-      fontWeight: 700,
+      fontSize: 26,
+      fontWeight: 600,
       letterSpacing: 0.5,
       lineHeight: 1,
-      textTransform: 'uppercase',
+      textTransform: 'none',
       strokeColor: null,
       strokeWidth: 0,
       shadow: false,
@@ -128,23 +138,24 @@ export const VIDEO_TEXT_PRESETS: Record<
 
 function presetColors(
   preset: VideoTextPresetId,
-  brandColor: string
+  palette: CampaignPalette
 ): Pick<VideoLayerTypography, 'color' | 'backgroundColor'> {
+  const light = palette.cream;
   if (preset === 'cta') {
-    return { color: '#ffffff', backgroundColor: brandColor };
+    // Outline CTAs use cream for border + label; filled CTAs keep ink on cream.
+    return { color: palette.ink, backgroundColor: light };
   }
-  if (preset === 'title') {
-    return { color: brandColor, backgroundColor: null };
-  }
-  if (preset === 'promo') {
-    return { color: '#fff8f0', backgroundColor: null };
-  }
-  return { color: '#fff8f0', backgroundColor: null };
+  // Titles / promo / body stay light on photo — never brand-brown with shadow.
+  return { color: light, backgroundColor: null };
 }
 
 export function typographyPresetForLayer(layer: VideoSceneLayer): VideoTextPresetId {
-  if (layer.kind === 'cta') return 'cta';
-  switch (layer.textStyle) {
+  return presetIdForLayer(layer.textStyle ?? 'headline', layer.kind);
+}
+
+function presetIdForLayer(style: VideoTextStyle, kind: VideoSceneLayer['kind']): VideoTextPresetId {
+  if (kind === 'cta') return 'cta';
+  switch (style) {
     case 'subheadline':
       return 'subtitle';
     case 'promo':
@@ -160,52 +171,56 @@ export function typographyPresetForLayer(layer: VideoSceneLayer): VideoTextPrese
 
 function baseTypographyForStyle(
   style: VideoTextStyle,
-  brandColor: string,
-  kind: VideoSceneLayer['kind']
+  kind: VideoSceneLayer['kind'],
+  context: VideoTypographyContext
 ): VideoLayerTypography {
-  const presetId =
-    kind === 'cta'
-      ? 'cta'
-      : style === 'subheadline'
-        ? 'subtitle'
-        : style === 'promo'
-          ? 'promo'
-          : style === 'footer'
-            ? 'label'
-            : style === 'body'
-              ? 'body'
-              : 'title';
-  const preset = VIDEO_TEXT_PRESETS[presetId];
-  return {
-    ...preset.typography,
-    ...presetColors(presetId, brandColor),
-  };
+  return buildTypographyFromPreset(presetIdForLayer(style, kind), context);
 }
 
 export function resolveLayerTypography(
   layer: VideoSceneLayer,
-  brandColor: string
+  context: VideoTypographyContext
 ): VideoLayerTypography {
-  const base = baseTypographyForStyle(layer.textStyle ?? 'headline', brandColor, layer.kind);
+  const base = baseTypographyForStyle(layer.textStyle ?? 'headline', layer.kind, context);
   if (!layer.typography) return base;
   return { ...base, ...layer.typography };
 }
 
 export function buildTypographyFromPreset(
   presetId: VideoTextPresetId,
-  brandColor: string
+  context: VideoTypographyContext
 ): VideoLayerTypography {
   const preset = VIDEO_TEXT_PRESETS[presetId];
+  const look = context.look;
+  const sizeScale =
+    presetId === 'title'
+      ? (look.titleScale ?? 1)
+      : presetId === 'promo'
+        ? (look.promoScale ?? 1)
+        : 1;
+  const titleOverrides =
+    presetId === 'title'
+      ? {
+          ...(look.titleLetterSpacing !== undefined
+            ? { letterSpacing: look.titleLetterSpacing }
+            : null),
+          ...(look.titleFontWeight !== undefined ? { fontWeight: look.titleFontWeight } : null),
+        }
+      : null;
+
   return {
     ...preset.typography,
-    ...presetColors(presetId, brandColor),
+    fontFamily: context.fontPairing[presetId] ?? preset.typography.fontFamily,
+    fontSize: Math.round(preset.typography.fontSize * sizeScale),
+    ...presetColors(presetId, context.palette),
+    ...titleOverrides,
   };
 }
 
 export function typographyToCss(
   typography: VideoLayerTypography,
   scale: number,
-  options?: { isCta?: boolean }
+  options?: { isCta?: boolean; ctaChrome?: 'filled' | 'outline' }
 ): CSSProperties {
   const fontSize = Math.round(typography.fontSize * scale);
   const strokeWidth = typography.strokeWidth ?? 0;
@@ -226,14 +241,31 @@ export function typographyToCss(
     style.WebkitTextStroke = `${Math.max(1, Math.round(strokeWidth * scale))}px ${strokeColor}`;
   }
 
-  if (options?.isCta && typography.backgroundColor) {
-    return {
-      ...style,
-      backgroundColor: typography.backgroundColor,
-      borderRadius: 999,
-      padding: `${Math.round(14 * scale)}px ${Math.round(36 * scale)}px`,
-      display: 'inline-block',
-    };
+  if (options?.isCta) {
+    const padY = Math.round(14 * scale);
+    const padX = Math.round(36 * scale);
+    const light = typography.backgroundColor || typography.color || '#fff7eb';
+    if (options.ctaChrome === 'outline') {
+      return {
+        ...style,
+        backgroundColor: 'transparent',
+        color: light,
+        border: `${Math.max(2, Math.round(2 * scale))}px solid ${light}`,
+        borderRadius: 999,
+        padding: `${padY}px ${padX}px`,
+        display: 'inline-block',
+      };
+    }
+    if (typography.backgroundColor) {
+      return {
+        ...style,
+        backgroundColor: typography.backgroundColor,
+        color: typography.color,
+        borderRadius: 999,
+        padding: `${padY}px ${padX}px`,
+        display: 'inline-block',
+      };
+    }
   }
 
   return style;

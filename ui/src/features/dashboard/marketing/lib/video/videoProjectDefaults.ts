@@ -1,11 +1,10 @@
-import type {
-  CampaignCategory,
-  DesignBinding,
-} from '@/features/dashboard/marketing/lib/designCanvasTypes';
+import type { DesignBinding } from '@/features/dashboard/marketing/lib/designCanvasTypes';
 import {
   pickBindingMediaAt,
   resolveDesignBindingMedia,
 } from '@/features/dashboard/marketing/lib/propertyBindingMedia';
+import { isVideoCategory } from '@/features/dashboard/marketing/lib/video/videoCategories';
+import { isVideoMotionOverride } from '@/features/dashboard/marketing/lib/video/videoMotionProfiles';
 import {
   DEFAULT_VIDEO_MUSIC,
   VIDEO_MUSIC_CLEARED_TRACK_ID,
@@ -15,201 +14,150 @@ import type {
   VideoProject,
   VideoProjectMusic,
   VideoScene,
-  VideoSceneKind,
+  VideoSceneTextFields,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
-import { VIDEO_MUSIC_DEFAULT_VOLUME } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import {
   VIDEO_FPS,
+  VIDEO_MUSIC_DEFAULT_VOLUME,
   VIDEO_SCENE_DURATION,
 } from '@/features/dashboard/marketing/lib/video/videoProjectTypes';
 import { createSceneId } from '@/features/dashboard/marketing/lib/video/videoProjectUtils';
-import { normalizeSceneLayers } from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+import {
+  defaultLayersForKind,
+  normalizeSceneLayers,
+  persistSceneLayers,
+} from '@/features/dashboard/marketing/lib/video/videoSceneLayers';
+import type {
+  VideoOverlayMode,
+  VideoStoryboardClip,
+  VideoTextBeat,
+} from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
+import { resolveVideoStoryboardRecipe } from '@/features/dashboard/marketing/lib/video/videoStoryboardRecipes';
 import {
   defaultTextLayoutForSceneKind,
   normalizeSceneTextLayout,
 } from '@/features/dashboard/marketing/lib/video/videoTextSlots';
 import { defaultVideoFields } from '@/features/dashboard/marketing/lib/videoCampaignTemplates';
 
-function normalizeScene(scene: VideoScene): VideoScene {
-  return normalizeSceneLayers(normalizeSceneTextLayout(scene));
-}
-
-function sceneTexts(templateId: string, binding: DesignBinding) {
-  return defaultVideoFields(templateId, binding);
-}
-
-type SceneBackground = {
-  url: string | null;
-  mediaType: 'image' | 'video';
+const LEGACY_VIDEO_CATEGORY_MAP: Record<string, string> = {
+  promo: 'flash-deal',
+  slots: 'last-openings',
+  giveaway: 'social-proof',
 };
 
-function photoScene(
-  label: string,
-  background: SceneBackground,
-  transition: VideoScene['transition'],
-  texts: ReturnType<typeof sceneTexts>,
-  headlineOnly = false
-): VideoScene {
+function normalizeCampaignCategory(value: string | undefined, fallback: string): string {
+  if (value && isVideoCategory(value)) return value;
+  if (value && LEGACY_VIDEO_CATEGORY_MAP[value]) return LEGACY_VIDEO_CATEGORY_MAP[value];
+  if (isVideoCategory(fallback)) return fallback;
+  return LEGACY_VIDEO_CATEGORY_MAP[fallback] ?? 'soft-stay';
+}
+
+function normalizeScene(scene: VideoScene): VideoScene {
+  const normalized = normalizeSceneLayers(normalizeSceneTextLayout(scene));
+  if (normalized.motion !== undefined && !isVideoMotionOverride(normalized.motion)) {
+    return { ...normalized, motion: undefined };
+  }
+  return normalized;
+}
+
+function emptyTexts(): VideoSceneTextFields {
   return {
-    id: createSceneId(),
-    kind: 'photo',
-    label,
-    durationSec: VIDEO_SCENE_DURATION.default,
-    transition,
-    imageUrl: background.url,
-    backgroundMediaType: background.mediaType,
-    texts: {
-      headline: headlineOnly ? texts.headline : '',
-      subheadline: '',
-      promoLine: '',
-      ctaLine: '',
-      slotLabels: [],
-      rulesLine: '',
-    },
-    textLayout: defaultTextLayoutForSceneKind('photo'),
+    headline: '',
+    subheadline: '',
+    promoLine: '',
+    ctaLine: '',
+    slotLabels: [],
+    rulesLine: '',
   };
 }
 
-function contentScene(
-  kind: VideoSceneKind,
-  label: string,
-  background: SceneBackground,
-  transition: VideoScene['transition'],
-  texts: ReturnType<typeof sceneTexts>,
-  durationSec = VIDEO_SCENE_DURATION.default
+function textsForBeats(beats: VideoTextBeat[], source: VideoSceneTextFields): VideoSceneTextFields {
+  const next = emptyTexts();
+  for (const beat of beats) {
+    if (beat === 'slotLabels') {
+      next.slotLabels = [...source.slotLabels];
+    } else {
+      next[beat] = source[beat];
+    }
+  }
+  return next;
+}
+
+function clampDuration(seconds: number): number {
+  return Math.min(
+    VIDEO_SCENE_DURATION.max,
+    Math.max(VIDEO_SCENE_DURATION.min, Number(seconds.toFixed(2)))
+  );
+}
+
+function sceneFromClip(
+  templateId: string,
+  clip: VideoStoryboardClip,
+  background: { url: string | null; mediaType: 'image' | 'video' },
+  sourceTexts: VideoSceneTextFields
 ): VideoScene {
-  return {
+  const texts = textsForBeats(clip.textBeats, sourceTexts);
+  const textLayout = defaultTextLayoutForSceneKind(clip.kind, templateId);
+  const base: VideoScene = {
     id: createSceneId(),
-    kind,
-    label,
-    durationSec,
-    transition,
+    kind: clip.kind,
+    label: clip.label,
+    durationSec: clampDuration(clip.durationSec),
+    transition: clip.transition,
+    overlay: clip.overlay,
+    motion: clip.motion,
     imageUrl: background.url,
     backgroundMediaType: background.mediaType,
-    texts: {
-      headline: texts.headline,
-      subheadline: texts.subheadline,
-      promoLine: texts.promoLine,
-      ctaLine: texts.ctaLine,
-      slotLabels: [...texts.slotLabels],
-      rulesLine: texts.rulesLine,
-    },
-    textLayout: defaultTextLayoutForSceneKind(kind),
+    texts,
+    textLayout,
   };
+
+  // Seed layers from storyboard beats so photo amenity words / CTA offer lines
+  // are never dropped by kind-default layer builders.
+  return persistSceneLayers(
+    base,
+    defaultLayersForKind(clip.kind, background.url, texts, templateId)
+  );
 }
 
-function ctaScene(
-  background: SceneBackground,
-  transition: VideoScene['transition'],
-  texts: ReturnType<typeof sceneTexts>
-): VideoScene {
+/** Build a project from the Quiet Coast Motion storyboard recipe. */
+export function buildDefaultVideoProject(
+  templateId: string,
+  category: string,
+  binding: DesignBinding,
+  format: VideoFormat = 'instagram-story'
+): VideoProject {
+  const recipe = resolveVideoStoryboardRecipe(templateId);
+  const texts = defaultVideoFields(recipe.id, binding);
+  const media = resolveDesignBindingMedia({
+    propertyMedia: binding.propertyMedia,
+    propertyPhoto: binding.propertyPhoto,
+  });
+
+  const scenes = recipe.clips.map((clip, index) => {
+    const background = pickBindingMediaAt(media, index);
+    return normalizeScene(sceneFromClip(recipe.id, clip, background, texts));
+  });
+
+  const music: VideoProjectMusic = recipe.musicCue
+    ? {
+        title: recipe.musicCue.title,
+        artist: recipe.musicCue.artist,
+        source: 'jamendo',
+        url: null,
+        volume: VIDEO_MUSIC_DEFAULT_VOLUME,
+      }
+    : { ...DEFAULT_VIDEO_MUSIC };
+
   return {
-    id: createSceneId(),
-    kind: 'cta',
-    label: 'CTA',
-    durationSec: VIDEO_SCENE_DURATION.default,
-    transition,
-    imageUrl: background.url,
-    backgroundMediaType: background.mediaType,
-    texts: {
-      headline: '',
-      subheadline: '',
-      promoLine: '',
-      ctaLine: texts.ctaLine,
-      slotLabels: [],
-      rulesLine: texts.rulesLine,
-    },
-    textLayout: defaultTextLayoutForSceneKind('cta'),
+    version: 1,
+    templateId: recipe.id,
+    campaignCategory: recipe.category || category,
+    format,
+    fps: VIDEO_FPS,
+    scenes,
+    music,
   };
-}
-
-function ctaTransitionForCategory(category: CampaignCategory): VideoScene['transition'] {
-  switch (category) {
-    case 'giveaway':
-      return 'wipe';
-    case 'fully-booked':
-      return 'fade';
-    default:
-      return 'slide-left';
-  }
-}
-
-function contentSceneForCategory(
-  category: CampaignCategory,
-  background: SceneBackground,
-  transition: VideoScene['transition'],
-  texts: ReturnType<typeof sceneTexts>
-): VideoScene {
-  switch (category) {
-    case 'slots':
-      return contentScene('slots', 'Slots', background, transition, texts);
-    case 'giveaway':
-      return contentScene('promo', 'Giveaway', background, transition, texts);
-    case 'fully-booked':
-      return contentScene('promo', 'Message', background, transition, texts);
-    default:
-      return contentScene('promo', 'Promo', background, transition, texts);
-  }
-}
-
-/** One timeline clip per gallery item; template copy on intro, second-to-last, and CTA. */
-function buildGalleryScenes(
-  category: CampaignCategory,
-  media: ReturnType<typeof resolveDesignBindingMedia>,
-  texts: ReturnType<typeof sceneTexts>
-): VideoScene[] {
-  const count = media.length;
-  const bg = (index: number) => pickBindingMediaAt(media, index);
-
-  if (count === 1) {
-    return [
-      photoScene('Intro', bg(0), 'none', texts, true),
-      ctaScene(bg(0), ctaTransitionForCategory(category), texts),
-    ];
-  }
-
-  if (count === 2) {
-    return [
-      photoScene('Intro', bg(0), 'none', texts, true),
-      ctaScene(bg(1), ctaTransitionForCategory(category), texts),
-    ];
-  }
-
-  if (count === 3) {
-    return [
-      photoScene('Intro', bg(0), 'none', texts, true),
-      contentSceneForCategory(category, bg(1), 'fade', texts),
-      ctaScene(bg(2), ctaTransitionForCategory(category), texts),
-    ];
-  }
-
-  const contentIndex = count - 2;
-  const ctaIndex = count - 1;
-  const scenes: VideoScene[] = [];
-
-  for (let index = 0; index < count; index += 1) {
-    const background = bg(index);
-    const transition: VideoScene['transition'] = index === 0 ? 'none' : 'fade';
-
-    if (index === 0) {
-      scenes.push(photoScene('Intro', background, transition, texts, true));
-      continue;
-    }
-
-    if (index === contentIndex) {
-      scenes.push(contentSceneForCategory(category, background, transition, texts));
-      continue;
-    }
-
-    if (index === ctaIndex) {
-      scenes.push(ctaScene(background, ctaTransitionForCategory(category), texts));
-      continue;
-    }
-
-    scenes.push(photoScene(`Photo ${index}`, background, transition, texts, false));
-  }
-
-  return scenes;
 }
 
 function normalizeProjectMusic(raw: Partial<VideoProjectMusic> | undefined): VideoProjectMusic {
@@ -251,35 +199,19 @@ function normalizeProjectMusic(raw: Partial<VideoProjectMusic> | undefined): Vid
   return normalized;
 }
 
-export function buildDefaultVideoProject(
-  templateId: string,
-  category: CampaignCategory,
-  binding: DesignBinding,
-  format: VideoFormat = 'instagram-story'
-): VideoProject {
-  const texts = sceneTexts(templateId, binding);
-  const media = resolveDesignBindingMedia({
-    propertyMedia: binding.propertyMedia,
-    propertyPhoto: binding.propertyPhoto,
-  });
+const OVERLAY_MODES = new Set<VideoOverlayMode>(['none', 'soft-scrim', 'bottom-band', 'top-band']);
 
-  const scenes = buildGalleryScenes(category, media, texts);
-
-  return {
-    version: 1,
-    templateId,
-    campaignCategory: category,
-    format,
-    fps: VIDEO_FPS,
-    scenes: scenes.map((scene) => normalizeScene(scene)),
-    music: { ...DEFAULT_VIDEO_MUSIC },
-  };
+function normalizeOverlay(value: unknown): VideoOverlayMode | undefined {
+  if (typeof value === 'string' && OVERLAY_MODES.has(value as VideoOverlayMode)) {
+    return value as VideoOverlayMode;
+  }
+  return undefined;
 }
 
 export function parseVideoProject(
   raw: unknown,
   fallbackTemplateId: string,
-  category: CampaignCategory,
+  category: string,
   binding: DesignBinding,
   format: VideoFormat
 ): VideoProject {
@@ -292,13 +224,23 @@ export function parseVideoProject(
     return buildDefaultVideoProject(fallbackTemplateId, category, binding, format);
   }
 
+  const templateId = typeof data.templateId === 'string' ? data.templateId : fallbackTemplateId;
+  const recipe = resolveVideoStoryboardRecipe(templateId);
+
   return {
     version: 1,
-    templateId: typeof data.templateId === 'string' ? data.templateId : fallbackTemplateId,
-    campaignCategory: data.campaignCategory ?? category,
+    templateId,
+    campaignCategory: normalizeCampaignCategory(
+      typeof data.campaignCategory === 'string' ? data.campaignCategory : undefined,
+      recipe.category || category
+    ),
     format: data.format ?? format,
     fps: typeof data.fps === 'number' ? data.fps : VIDEO_FPS,
-    scenes: data.scenes.map((scene) => normalizeScene(scene as VideoScene)),
+    scenes: data.scenes.map((scene) => {
+      const normalized = normalizeScene(scene as VideoScene);
+      const overlay = normalizeOverlay((scene as VideoScene).overlay) ?? normalized.overlay;
+      return overlay ? { ...normalized, overlay } : normalized;
+    }),
     music: normalizeProjectMusic(data.music),
   };
 }
