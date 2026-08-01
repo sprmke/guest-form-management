@@ -306,9 +306,14 @@ export function VideoMusicSettings({ music, onChange }: Props) {
 
   const handleSelectTrack = async (track: JamendoTrack) => {
     stopPreview();
+    if (!propertyId) {
+      toast.error('Property required');
+      return;
+    }
     setImportingTrackId(track.id);
     try {
-      onChange(await importJamendoTrackViaUpload(track, music, uploadMusic));
+      // Edge import — browser cannot fetch Jamendo streams (CORS).
+      onChange(await importJamendoTrackViaUpload(track, music, propertyId));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not import track');
     } finally {
