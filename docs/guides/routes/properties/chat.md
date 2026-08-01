@@ -12,8 +12,6 @@ Route: `/properties/:propertySlug/messages`
 | Chat thread  | Partial | Yes        | Yes  | Phase 1 bubble UX shipped; see § UX roadmap |
 | Host inbox   | Partial | Yes        | Yes  | **Web** tab on Guest Inbox                  |
 
-**Flow spec:** `docs/temp/guest-contact-host-flow.md` (Phase 0 approved Jul 2026).
-
 ## Overview
 
 Pre-booking messaging between an authenticated guest and the property host. Threads use **`social_conversations`** / **`social_messages`** with **`platform = web`** and appear in the org **Guest Inbox** (**Web** tab).
@@ -128,26 +126,27 @@ Backlog: [GitHub Issue #110 — Epic 10](https://github.com/sprmke/kame-homes/is
 
 ## Implementation map
 
-| Area            | Path                                                                                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                            |
-| Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                                 |
-| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                   |
-| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`       |
-| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                       |
-| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                               |
-| Voice UI        | `ReceptionistAvatar` circular muted turtle video + idle still; `ReceptionistFacePlate` fallback; `VoiceSessionOverlay`                                  |
-| Voice hooks/API | `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `lib/voiceReceptionistApi.ts`, `lib/voiceAudioCodec.ts`, `public/worklets/voice-pcm-recorder.js` |
-| Voice polish    | `_shared/polishVoiceUtterance.ts` (batch on end); `ChatUrlLinkCard` for https in bubbles                                                                |
-| Avatar asset    | `receptionist-turtle-talk.mp4` + `receptionist-turtle-idle.png` + `ATTRIBUTION.md`                                                                      |
-| Voice edge      | `supabase/functions/voice-receptionist-start/`, `voice-receptionist-tool/`, `voice-receptionist-end/`, `_shared/voiceReceptionistService.ts`            |
-| CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                            |
-| Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                                 |
-| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/`                            |
-| Lifecycle       | `supabase/functions/_shared/chatMessageLifecycle.ts`, `guestChatAttachments.ts`, `guestChatEmail.ts` — read, edit, reply, attachments, offline notify   |
-| Auto-reply      | `supabase/functions/_shared/webInboxAutoReply.ts` — when inbox Automation → Send automatically → Chat is on                                             |
-| Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                      |
-| Host inbox      | `ui/src/features/dashboard/inbox/**` — **Web** tab                                                                                                      |
+| Area            | Path                                                                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sheet (primary) | `ui/src/features/guest/chat/components/ContactHostSheet.tsx`                                                                                                           |
+| Full page       | `ui/src/features/guest/chat/pages/PropertyChatPage.tsx`                                                                                                                |
+| Thread UI       | `ui/src/features/guest/chat/components/GuestChatThread.tsx`, `GuestChatHeaderBar.tsx`                                                                                  |
+| Shared bubble   | `ui/src/components/chat/ChatMessageBubble.tsx`, `ChatMessageList.tsx`, `ChatDateSeparator.tsx`, `ChatThreadSearch.tsx`, `ChatHighlightedText.tsx`                      |
+| Format helpers  | `ui/src/lib/chat/chatMessageFormat.ts`, `useChatTyping.ts`, `useChatThreadSearch.ts`, `chatThreadSearch.ts`, `chatAttachments.ts`                                      |
+| Hooks / API     | `ui/src/features/guest/chat/hooks/useGuestChat.ts`, `lib/guestChatApi.ts`                                                                                              |
+| Voice UI        | `ReceptionistAvatar` circular muted turtle video + idle still; `ReceptionistFacePlate` fallback; `VoiceSessionOverlay`                                                 |
+| Voice hooks/API | `ui/src/features/guest/chat/hooks/useVoiceSession.ts`, `lib/voiceReceptionistApi.ts`, `lib/voiceAudioCodec.ts`, `public/worklets/voice-pcm-recorder.js`                |
+| Voice polish    | `_shared/polishVoiceUtterance.ts` (batch on end); `ChatUrlLinkCard` for https in bubbles                                                                               |
+| Avatar asset    | `receptionist-turtle-talk.mp4` + `receptionist-turtle-idle.png` + `ATTRIBUTION.md`                                                                                     |
+| Voice edge      | `supabase/functions/voice-receptionist-start/`, `voice-receptionist-tool/`, `voice-receptionist-end/`, `_shared/voiceReceptionistService.ts`                           |
+| CTA hook        | `ui/src/features/guest/marketing/properties/hooks/usePropertyContactHost.ts`                                                                                           |
+| OAuth resume    | `ui/src/features/guest/auth/lib/guestAuthResume.ts` — `contact_host_sheet` → property `?contactHost=open` + dates; draft `kame_contact_host_draft` in `sessionStorage` |
+| Host card       | `ui/src/features/guest/marketing/shared/components/ListingHostCard.tsx`                                                                                                |
+| Edge            | `supabase/functions/guest-web-chat-resume/`, `guest-web-chat-start/`, `guest-web-chat-messages/`, `upload-guest-chat-asset/`                                           |
+| Lifecycle       | `supabase/functions/_shared/chatMessageLifecycle.ts`, `guestChatAttachments.ts`, `guestChatEmail.ts` — read, edit, reply, attachments, offline notify                  |
+| Auto-reply      | `supabase/functions/_shared/webInboxAutoReply.ts` — when inbox Automation → Send automatically → Chat is on                                                            |
+| Migration       | `20260719153000_web_guest_chat.sql`, `20260927120000_chat_message_lifecycle.sql`, `20260928120000_chat_phase5.sql`                                                     |
+| Host inbox      | `ui/src/features/dashboard/inbox/**` — **Web** tab                                                                                                                     |
 
 ## Related
 

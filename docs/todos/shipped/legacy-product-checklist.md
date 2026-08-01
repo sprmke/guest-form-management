@@ -305,7 +305,7 @@ Multi-users/multi-tenant todos:
 ### Guest ↔ host communication
 
 - [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **`docs/guides/routes/properties/chat.md`**.
-- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Send; **`/messages`** for return visits only. Spec: **`docs/temp/guest-contact-host-flow.md`**.
+- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Contact host; **`/messages`** for return visits only. Guide: **`docs/guides/routes/properties/chat.md`**.
 - [x] **Guest Messages hub (Phase 2).** Cross-property thread list + inline chat on `/account/messages` for signed-in guests.
 - [ ] **Booking bridge in thread (Phase 3).** Host booking link / reserve CTA inside pre-booking chat.
 
