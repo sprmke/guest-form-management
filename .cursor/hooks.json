@@ -5,6 +5,10 @@
       {
         "command": ".cursor/hooks/session-superpowers-opt-in.sh",
         "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/session-ai-tooling-sync.sh",
+        "timeout": 10
       }
     ],
     "afterFileEdit": [

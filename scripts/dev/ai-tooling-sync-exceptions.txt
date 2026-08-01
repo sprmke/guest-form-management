@@ -1,0 +1,15 @@
+# Intentional Cursor/Claude AI-tooling asymmetries.
+#
+# One entry per line, format: <check-kind>:<name>  # note
+# check-kind is one of: hook
+#
+# Entries here are skipped by scripts/dev/check-ai-tooling-sync.sh so
+# pre-commit does not block on known, already-tracked gaps.
+
+hook:guard-shipped-migrations  # Claude-only today; Cursor port tracked — Task 12 will close
+hook:session-superpowers-opt-in  # Cursor-only today; Claude port tracked — Task 12 will close
+
+# NOTE (not a check exception): lint-staged's git stash step can fail when
+# staged paths are symlinks (e.g. .cursor/skills/*, .claude/skills/*,
+# .cursor/mcp.json) — see .husky/pre-commit. Revisit .lintstagedrc.js glob
+# scoping if this trips on a real commit; out of scope for Task 11.
