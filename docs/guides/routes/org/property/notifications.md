@@ -25,8 +25,9 @@ Single hub for all **Telegram notification bots** on a property.
 
 ### Per-module flow (all six bots)
 
+0. **Shared bot token** — optional card at the top. Save one token for all modules; **Test token** runs Telegram `getMe`. When you enable a module, the bot token field pre-fills from this value (still editable). Help opens step-by-step BotFather instructions.
 1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
-2. **Telegram connection** — bot token row, chat ID row, and **Connect** (outline) beside chat ID. After a successful verify the button becomes a green **Connected** state (disabled); editing either field resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials are returned from the settings API and shown in the fields (hidden by default; use the eye toggle to reveal).
+2. **Telegram connection** — bot token row, chat ID row (with **Help** for chat ID lookup), and **Connect** (outline) beside chat ID. After a successful verify the button becomes a green **Connected** state (disabled); editing either field resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials are returned from the settings API and shown in the fields (hidden by default; use the eye toggle to reveal).
 3. **Manage cards** — after connect, shown inside a bordered group (Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**; Chat: **New message**), same card pattern as **Telegram connection**:
    - **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
    - **Staff:** Schedule alerts · Message templates
@@ -64,7 +65,7 @@ Page header subtitle: **Configure Telegram notifications for this property.**
 
 **Sidebar:** uppercase **Telegram notifications** group label above module links (PMA templates pattern), with separator before additional groups when added later (e.g. email).
 
-**Main content:** **Telegram notifications** group heading with module count badge before the six module cards.
+**Main content:** **Shared bot token** card, then **Telegram notifications** group heading with module count badge before the six module cards. Each module card includes a short description of what it sends.
 
 ---
 
@@ -114,6 +115,10 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 | Concern                                            | Path                                                                                                        |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                            |
+| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                   |
+| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                           |
+| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                       |
+| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                      |
 | Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                |
 | Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                  |
 | Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx` |

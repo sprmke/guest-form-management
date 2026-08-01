@@ -6,22 +6,22 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                         |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------- |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete    |
-| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum               |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                       |
-| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum             |
-| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing               |
-| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card      |
-| Location           | Done     | Done       | Done | Address + map pin required                                    |
-| Socials            | Done     | Done       | Done | Per-property social links                                     |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                           |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                   |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                      |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional |
-| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row, not app_settings |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                           |
+| Section            | E2E save | Validation | Docs | Notes                                                                     |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------- |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                |
+| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                           |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                   |
+| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                         |
+| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                           |
+| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                  |
+| Location           | Done     | Done       | Done | Address + map pin required                                                |
+| Socials            | Done     | Done       | Done | Per-property social links                                                 |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
+| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional             |
+| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
 ---
 
@@ -60,7 +60,7 @@ Incomplete sections still show a **red dot** on the in-page section nav and on t
 | Property details (capacity, check-in/out)                      | Yes                                                          |
 | Amenities                                                      | Yes — at least **5** selected                                |
 | Location (address + map pin)                                   | Yes                                                          |
-| Socials (Facebook page)                                        | Yes — org Facebook counts when property inherits             |
+| Socials (at least one link + main platform)                    | Yes — org values count when property inherits                |
 | Brand color (Basic information)                                | No — defaults to `#24a88e`; property inherits org when unset |
 | Payment (provider, account, QR upload)                         | Yes                                                          |
 | Building forms (GAF fields + signature)                        | Yes                                                          |
@@ -273,20 +273,23 @@ Implementation: `ui/src/features/dashboard/org/lib/propertyCancellationPolicy.ts
 
 ## Socials
 
-Per-property operational settings in `app_settings`. Empty link columns inherit organization values from `org_settings` (same runtime merge as brand color).
+Per-property operational settings in `app_settings`. Empty link / main-platform columns inherit organization values from `org_settings`.
 
-| Field            | Column                       | Notes                                                                                                                        |
-| ---------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Facebook page    | `facebook_reviews_url`       | Required (effective value); toggle **Organization** to inherit; custom override stored in column                             |
-| Airbnb           | `airbnb_url`                 | Optional; inherit or per-listing override                                                                                    |
-| Instagram        | `instagram_url`              | Optional; inherit or override                                                                                                |
-| TikTok           | `tiktok_url`                 | Optional; inherit or override                                                                                                |
-| External reviews | `external_reviews` (JSONB)   | Up to **5**; source `facebook` \| `airbnb`; screenshot + optional proof URL; moderation `pending` until super-admin approval |
-| Superhost URL    | `superhost_verification_url` | Optional Airbnb profile URL                                                                                                  |
-| Superhost proof  | `superhost_proof_image_url`  | Upload via `upload-app-settings-asset` (`superhost_proof`); sets `superhost_status = pending`                                |
-| Superhost status | `superhost_status`           | `none` \| `pending` \| `approved` \| `rejected`; public page uses `isSuperhost` when `approved`                              |
+| Field         | Column                 | Notes                                                                                                           |
+| ------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Facebook page | `facebook_reviews_url` | Optional; **Customize link** / **Use org link** per row                                                         |
+| Airbnb        | `airbnb_url`           | Optional; inherit or per-listing override                                                                       |
+| Instagram     | `instagram_url`        | Optional; inherit or override                                                                                   |
+| TikTok        | `tiktok_url`           | Optional; inherit or override                                                                                   |
+| Main platform | `main_social_platform` | Empty inherits org; drives guest review / voucher CTA (`review_social_*` on `get-sd-form` / `get-guest-review`) |
 
-**UI:** Each social link row has an **Organization / Custom** toggle. Inherited rows are read-only and show the org URL with a link to org settings. **Use organization for all** / **Customize links** bulk actions apply to the four link fields only. **External reviews** and **Superhost** remain property-local.
+**UI:** Link rows use **Customize link** / **Use org link**. **Guest review link** picker sits below the link fields and lists only platforms with a filled effective URL. **External reviews** and **Superhost** remain property-local.
+
+**Validation:** at least one effective social URL + a main platform whose effective URL is filled.
+| External reviews | `external_reviews` (JSONB) | Up to **5**; source `facebook` \| `airbnb`; screenshot + optional proof URL; moderation `pending` until super-admin approval |
+| Superhost URL | `superhost_verification_url` | Optional Airbnb profile URL |
+| Superhost proof | `superhost_proof_image_url` | Upload via `upload-app-settings-asset` (`superhost_proof`); sets `superhost_status = pending` |
+| Superhost status | `superhost_status` | `none` \| `pending` \| `approved` \| `rejected`; public page uses `isSuperhost` when `approved` |
 
 **Uploads:** Review screenshots use `upload-app-settings-asset` with `assetType=external_review_image` + `reviewId` (URL returned; persisted on Save via `externalReviews` PATCH).
 
@@ -371,21 +374,23 @@ Read-only status on this page. Connect/disconnect via cards linking to dedicated
 
 ## Voice Receptionist
 
-Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Own table (`voice_receptionist_settings`), **own GET/PATCH edge function** and **own Save button** — not part of `app_settings` / the page's shared Save Changes flow.
+Opt-in AI voice assistant guests can talk to (check-in, wifi, parking, and other stay questions). Own table (`voice_receptionist_settings`) and **own GET/PATCH edge function** — draft state lives on the property Settings page and saves with the shared **Save Changes** footer (same as profile / `app_settings`), not a section-local Save button.
 
-| Field                        | Column                           | Notes                                                                                      |
-| ---------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
-| Enable                       | `enabled`                        | Also gated by the platform-wide super-admin kill switch                                    |
-| Voice                        | `voice_id`                       | Gemini Live prebuilt voice; options from `availableVoices`                                 |
-| Persona prompt               | `persona_prompt`                 | Optional tone/personality guidance; guest-safe grounding is fixed and cannot be overridden |
-| Max session length (sec)     | `max_session_seconds`            | Default 300                                                                                |
-| Max sessions per guest / day | `max_sessions_per_guest_per_day` | Default 3                                                                                  |
-| Max concurrent sessions      | `max_concurrent_sessions`        | Default 3, property-wide                                                                   |
+| Field               | Column                           | Notes                                                                          |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| Enable              | `enabled`                        | Also gated by the platform-wide super-admin kill switch                        |
+| Voice               | `voice_id`                       | Gemini Live prebuilt voice; options from `availableVoices` (labeled in UI)     |
+| Persona prompt      | `persona_prompt`                 | Optional tone guidance; guest-safe grounding is fixed and cannot be overridden |
+| Max session (sec)   | `max_session_seconds`            | Default 300; allowed **60–3600**                                               |
+| Max per guest / day | `max_sessions_per_guest_per_day` | Default 3; allowed **1–999**                                                   |
+| Max concurrent      | `max_concurrent_sessions`        | Default 3, property-wide; allowed **1–50**                                     |
 
-Save path: `PATCH voice-receptionist-settings?property_id=` (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts` (manual draft-state, mirrors `useAppSettings.ts`). UI: `PropertyVoiceReceptionistSection.tsx`.
+Save path: page **Save Changes** → `PATCH voice-receptionist-settings?property_id=` when this section is dirty (`settings:edit`). Hook: `useVoiceReceptionistSettings.ts`. UI: `PropertyVoiceReceptionistSection.tsx` (controlled from `PropertySettingsCard.tsx`).
 
-**Usage panel** — read-only "Usage — last 30 days" stat grid (sessions today, last 7 days, avg.
-length, estimated cost) below the Save button. `GET voice-receptionist-usage?property_id=`
+**Test voice** — outline button beside the voice picker. `POST voice-receptionist-voice-preview?property_id=` (`settings:edit`) runs a short Gemini TTS sample with a fixed headline (_"Hi, I'm the Kame Homes receptionist…"_) using the selected prebuilt voice, then plays PCM audio in the browser. Uses Gemini API tokens (not a free local sample). Hook: `usePreviewVoiceReceptionistVoice`.
+
+**Usage panel** — read-only "Usage — last 30 days" stat grid (sessions today, last 30 days, avg.
+length, estimated cost) below the form fields. `GET voice-receptionist-usage?property_id=`
 (`settings:view`), hook `useVoiceReceptionistUsage`. Estimated cost is a rough per-minute
 blended-rate estimate persisted on `voice_receptionist_sessions.estimated_cost_usd` when a
 session ends — visibility only, not a billing figure (Gemini Live bills by token, not duration).
@@ -436,6 +441,7 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 | Media upload/delete                          | `POST` / `DELETE upload-property-media?property_id=`   |
 | Payment QR / signature                       | `POST upload-app-settings-asset?property_id=`          |
 | Voice receptionist settings                  | `GET`/`PATCH voice-receptionist-settings?property_id=` |
+| Voice receptionist voice preview (TTS)       | `POST voice-receptionist-voice-preview?property_id=`   |
 | Voice receptionist usage/cost read           | `GET voice-receptionist-usage?property_id=`            |
 | Archive                                      | `PATCH update-property` `{ status: "INACTIVE" }`       |
 | Restore                                      | `PATCH update-property` `{ status: "ACTIVE" }`         |

@@ -17,6 +17,7 @@ Route: `/org/:orgSlug/parking/:parkingSlug/notifications`
 
 Two Telegram sections (same layout as property notifications):
 
+0. **Shared bot token** — optional card at the top (one token for Parking + Finance modules). **Test token** validates via Telegram `getMe`. Help covers BotFather setup. Chat ID fields include **Help** with lookup steps.
 1. **Parking** — reservation request, check-in reminder, payment received (`telegram_parking_settings`)
 2. **Finance** — operating expense due-date reminders (`telegram_finance_settings`)
 
