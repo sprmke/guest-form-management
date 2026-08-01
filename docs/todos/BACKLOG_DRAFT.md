@@ -224,7 +224,7 @@ PAY PARKING -> PARKING OWNERS -> OUR GUESTS
 
 Multi-users/multi-tenant todos:
 
-- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb UI coming soon. **Full roadmap:** [[guides/routes/org/inbox|Guest Inbox (/org/]] § Roadmap.
+- ✅ **Guest Inbox (org-level) — Phase 0–5 shipped.** Route `/org/:orgSlug/inbox`; Meta OAuth (Facebook Messenger DMs); quick replies; AI suggest + optional auto-send. TikTok/Airbnb UI coming soon. **Full roadmap:** [[guides/routes/org/inbox]] § Roadmap.
 - [x] Guest Inbox — DM thread ID canonicalization + legacy migration on sync/webhook
 - [x] Guest Inbox — thread list + message history pagination (infinite scroll / load earlier)
 - [x] Guest Inbox — Meta backfill Graph pagination + `meta_backfill_*` state columns
@@ -240,7 +240,7 @@ Multi-users/multi-tenant todos:
 - [x] Guest Inbox — Channels setup panel (webhook/OAuth URLs, sync backfill, OAuth error messages)
 - [ ] Guest Inbox — Meta App Review submission (production Advanced Access)
 
-**Guest Inbox v2 — see [[guides/routes/org/inbox|Guest Inbox (/org/]] § Roadmap for detail**
+**Guest Inbox v2 — see [[guides/routes/org/inbox]] § Roadmap for detail**
 
 - [ ] Guest Inbox — **Instagram DMs** — blocked on Meta App Review / Advanced Access (skip until verified)
 - [ ] Guest Inbox — **background full sync** — persist all conversations to DB (cron/chunked backfill); refresh = DB only
@@ -317,8 +317,8 @@ Multi-users/multi-tenant todos:
 
 ### Guest ↔ host communication
 
-- [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **[[chat|Guest web chat (/properties/]]**.
-- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Contact host; **`/messages`** for return visits only. Guide: **[[chat|Guest web chat (/properties/]]**.
+- [x] **Public property page — guest chat (backend + inbox).** Web threads via **`platform=web`**; org Guest Inbox **Web** tab. Guide: **[[chat]]**.
+- [x] **Contact host UX — Phase 0 + Phase 1.** Sheet-first on listing (Airbnb-style); auth on Contact host; **`/messages`** for return visits only. Guide: **[[chat]]**.
 - [x] **Guest Messages hub (Phase 2).** Cross-property thread list + inline chat on `/account/messages` for signed-in guests.
 - [ ] **Booking bridge in thread (Phase 3).** Host booking link / reserve CTA inside pre-booking chat.
 
@@ -555,4 +555,4 @@ Needs to finalize:
 - [ ] Quick replies on Web tab
 - [ ] Report / block (public guest chat)
 
-See **[[chat|Guest web chat (/properties/]]** § UX roadmap and **[[guides/routes/org/inbox|Guest Inbox (/org/]]** § Chat UX roadmap.
+See **[[chat]]** § UX roadmap and **[[guides/routes/org/inbox]]** § Chat UX roadmap.

@@ -196,6 +196,14 @@ const BACKTICK_REF_RE = /`(docs\/[\w.\-/]+\.md)(#[\w-]*)?`(?!\]\()/g;
 // rows we emit a bare `[[identifier]]` with no alias.
 const TABLE_ROW_RE = /^\s*\|.*\|\s*$/;
 
+// Obsidian treats `:` inside `[[id|Alias: …]]` as a block-ref suffix, truncating
+// the alias. Pipe characters would break markdown table parsing. Emit bare links.
+function formatWikilink(identifier, title, isTableRow) {
+  if (isTableRow) return `[[${identifier}]]`;
+  if (title.includes(':') || title.includes('|')) return `[[${identifier}]]`;
+  return `[[${identifier}|${title}]]`;
+}
+
 function rewriteWikilinks(content, noteMap) {
   const lines = content.split('\n');
   let inFence = false;
@@ -217,7 +225,7 @@ function rewriteWikilinks(content, noteMap) {
       const entry = noteMap.get(docsPath);
       if (!entry) return full; // target renamed/deleted — leave prose as-is
       conversions += 1;
-      return isTableRow ? `[[${entry.identifier}]]` : `[[${entry.identifier}|${entry.title}]]`;
+      return formatWikilink(entry.identifier, entry.title, isTableRow);
     });
   });
 

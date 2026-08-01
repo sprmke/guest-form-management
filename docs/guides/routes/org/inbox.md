@@ -219,7 +219,7 @@ Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../t
 
 ## Chat UX roadmap (guest web + inbox)
 
-Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat|Guest web chat (/properties/]]** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
+Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat]]** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
 
 | Phase | Inbox impact                                                                                                                                               |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |

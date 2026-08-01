@@ -121,6 +121,6 @@ No tunnel needed; ensure secrets are set in Supabase Dashboard → Edge Function
 
 ## Related
 
-- Route guide: **[[guides/routes/org/inbox|Guest Inbox (/org/]]**
+- Route guide: **[[guides/routes/org/inbox]]**
 - Permissions: **`org:inbox:*`** in **`orgTeamPermissions.ts`**
 - Rule: **`.cursor/rules/social-inbox.mdc`**
