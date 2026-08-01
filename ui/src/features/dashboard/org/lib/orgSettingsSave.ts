@@ -46,7 +46,8 @@ function orgBrandingDirty(
     draft.facebookPageUrl.trim() !== baseline.facebookPageUrl.trim() ||
     draft.airbnbUrl.trim() !== baseline.airbnbUrl.trim() ||
     draft.instagramUrl.trim() !== baseline.instagramUrl.trim() ||
-    draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim()
+    draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
+    draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim()
   );
 }
 
@@ -85,6 +86,9 @@ function orgDirtyFieldIdsInSection(
     }
     if (operatorDraft.tiktokUrl.trim() !== operatorBaseline.tiktokUrl.trim()) {
       ids.push('tiktok-url');
+    }
+    if (operatorDraft.mainSocialPlatform.trim() !== operatorBaseline.mainSocialPlatform.trim()) {
+      ids.push('org-main-social-platform');
     }
   }
 

@@ -4,7 +4,9 @@ import type {
 } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
 import {
-  effectiveSocialLink,
+  countFilledSocialUrls,
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMap,
   propertySocialLinkInherits,
 } from '@/features/dashboard/org/lib/propertySocialLinks';
 import { validateOrgBrandColor } from '@/features/dashboard/org/lib/orgSettingsValidation';
@@ -35,7 +37,6 @@ import {
   validateAdminEmailList,
   validateOptionalAdminEmail,
   validateOptionalAdminUrl,
-  validateRequiredAdminUrl,
 } from '@/lib/validation/adminSettings';
 import {
   validateEmailAddress,
@@ -200,21 +201,15 @@ export function computePropertySettingsCompletion(
       airbnbUrl: '',
       instagramUrl: '',
       tiktokUrl: '',
+      mainSocialPlatform: '',
     };
 
-    const effectiveFacebook = effectiveSocialLink(
-      operational.facebookPageUrl,
-      orgSocials.facebookPageUrl
-    );
-    const facebookErr = validateRequiredAdminUrl(
-      effectiveFacebook,
-      'Facebook page URL',
-      propertySocialLinkInherits(operational.facebookPageUrl)
-        ? 'Add Facebook on organization settings'
-        : 'Enter Facebook page URL'
-    );
-    if (facebookErr) {
-      addFieldError('property-facebook-page-url', facebookErr, 'branding');
+    if (!propertySocialLinkInherits(operational.facebookPageUrl)) {
+      const facebookErr = validateOptionalAdminUrl(
+        operational.facebookPageUrl,
+        'Facebook page URL'
+      );
+      if (facebookErr) addFieldError('property-facebook-page-url', facebookErr, 'branding');
     }
 
     if (!propertySocialLinkInherits(operational.airbnbUrl)) {
@@ -232,6 +227,32 @@ export function computePropertySettingsCompletion(
     if (!propertySocialLinkInherits(operational.tiktokUrl)) {
       const tiktokErr = validateOptionalAdminUrl(operational.tiktokUrl, 'TikTok URL');
       if (tiktokErr) addFieldError('property-tiktok-url', tiktokErr, 'branding');
+    }
+
+    const urls = effectiveSocialUrlMap(operational, orgSocials);
+    const filled = countFilledSocialUrls(urls);
+    if (filled === 0) {
+      addFieldError('property-main-social-platform', 'Add at least one social link', 'branding');
+    } else {
+      const preferred = propertySocialLinkInherits(operational.mainSocialPlatform)
+        ? orgSocials.mainSocialPlatform
+        : operational.mainSocialPlatform;
+      if (!preferred.trim()) {
+        addFieldError('property-main-social-platform', 'Choose a guest review link', 'branding');
+      } else {
+        const main = effectiveMainSocialPlatform(
+          operational.mainSocialPlatform,
+          orgSocials.mainSocialPlatform,
+          urls
+        );
+        if (!main || main !== preferred.trim()) {
+          addFieldError(
+            'property-main-social-platform',
+            'Choose a platform that has a URL',
+            'branding'
+          );
+        }
+      }
     }
 
     const externalReviewsErr = validateExternalReviewsDraft(operational.externalReviews);

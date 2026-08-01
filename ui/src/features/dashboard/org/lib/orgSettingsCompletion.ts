@@ -6,7 +6,11 @@ import {
   validateOrgTagline,
 } from '@/features/dashboard/org/lib/orgSettingsValidation';
 
-import { validateOptionalAdminUrl, validateRequiredAdminUrl } from '@/lib/validation/adminSettings';
+import { validateOptionalAdminUrl } from '@/lib/validation/adminSettings';
+import {
+  countFilledSocialUrls,
+  socialUrlMapFromLinks,
+} from '@/features/dashboard/org/lib/propertySocialLinks';
 
 export const ORG_NAME_MAX_LENGTH = 120;
 
@@ -63,11 +67,7 @@ export function computeOrgSettingsCompletion(
   const brandColorErr = validateOrgBrandColor(profile.brandColor);
   if (brandColorErr) addIssue('org-brand-color', brandColorErr, 'basic');
 
-  const facebookErr = validateRequiredAdminUrl(
-    operator.facebookPageUrl,
-    'Facebook page URL',
-    'Enter Facebook page URL'
-  );
+  const facebookErr = validateOptionalAdminUrl(operator.facebookPageUrl, 'Facebook page URL');
   if (facebookErr) addIssue('facebook-page-url', facebookErr, 'branding');
 
   const airbnbErr = validateOptionalAdminUrl(operator.airbnbUrl, 'Airbnb URL');
@@ -78,6 +78,11 @@ export function computeOrgSettingsCompletion(
 
   const tiktokErr = validateOptionalAdminUrl(operator.tiktokUrl, 'TikTok URL');
   if (tiktokErr) addIssue('tiktok-url', tiktokErr, 'branding');
+
+  const urls = socialUrlMapFromLinks(operator);
+  if (countFilledSocialUrls(urls) === 0) {
+    addIssue('facebook-page-url', 'Add at least one social link', 'branding');
+  }
 
   const firstErrorMessage = Object.values(fieldErrors)[0] ?? null;
 

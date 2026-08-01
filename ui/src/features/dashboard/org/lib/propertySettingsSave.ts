@@ -42,6 +42,7 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-airbnb-url': 'branding',
   'property-instagram-url': 'branding',
   'property-tiktok-url': 'branding',
+  'property-main-social-platform': 'branding',
   'property-external-reviews': 'branding',
   'property-superhost-verification-url': 'branding',
   'property-bedrooms': 'details',
@@ -208,6 +209,8 @@ export function propertySettingsSectionDirty(
           operationalDraft.airbnbUrl.trim() !== operationalBaseline.airbnbUrl.trim() ||
           operationalDraft.instagramUrl.trim() !== operationalBaseline.instagramUrl.trim() ||
           operationalDraft.tiktokUrl.trim() !== operationalBaseline.tiktokUrl.trim() ||
+          operationalDraft.mainSocialPlatform.trim() !==
+            operationalBaseline.mainSocialPlatform.trim() ||
           !externalReviewsEqual(
             operationalDraft.externalReviews,
             operationalBaseline.externalReviews
@@ -325,6 +328,13 @@ function dirtyFieldIdsInSection(
         operationalDraft.tiktokUrl.trim() !== operationalBaseline.tiktokUrl.trim()
       ) {
         ids.push('property-tiktok-url');
+      }
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        operationalDraft.mainSocialPlatform.trim() !== operationalBaseline.mainSocialPlatform.trim()
+      ) {
+        ids.push('property-main-social-platform');
       }
       if (
         operationalDraft &&
@@ -701,6 +711,7 @@ export type AppSettingsPatchBody = {
   airbnbUrl?: string;
   instagramUrl?: string;
   tiktokUrl?: string;
+  mainSocialPlatform?: string;
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
@@ -723,6 +734,7 @@ export function buildAppSettingsPatchForSections(
     patch.airbnbUrl = draft.airbnbUrl;
     patch.instagramUrl = draft.instagramUrl;
     patch.tiktokUrl = draft.tiktokUrl;
+    patch.mainSocialPlatform = draft.mainSocialPlatform;
     patch.externalReviews = draft.externalReviews;
     patch.superhostVerificationUrl = draft.superhostVerificationUrl;
   }
@@ -840,6 +852,7 @@ export function applySavedOperationalSections(
       airbnbUrl: saved.airbnbUrl,
       instagramUrl: saved.instagramUrl,
       tiktokUrl: saved.tiktokUrl,
+      mainSocialPlatform: saved.mainSocialPlatform,
       externalReviews: saved.externalReviews,
       superhostVerificationUrl: saved.superhostVerificationUrl,
     };
