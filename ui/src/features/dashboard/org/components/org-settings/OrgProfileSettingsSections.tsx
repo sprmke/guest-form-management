@@ -7,7 +7,6 @@ import {
   OrgSettingsFieldSpan,
 } from '@/features/dashboard/org/components/org-settings/OrgSettingsFields';
 import { OrgSettingsImageField } from '@/features/dashboard/org/components/org-settings/OrgSettingsImageField';
-import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { type OrgSettingsFieldSource } from '@/features/dashboard/org/hooks/useOrgSettings';
 import type { OrgSettingsDraft } from '@/features/dashboard/org/lib/orgSettingsForm';
@@ -203,28 +202,24 @@ const SOCIAL_LINK_FIELDS = [
     key: 'facebookPageUrl' as const,
     label: 'Facebook',
     placeholder: FORM_PLACEHOLDERS.facebookPage,
-    required: true,
   },
   {
     id: 'airbnb-url',
     key: 'airbnbUrl' as const,
     label: 'Airbnb',
     placeholder: FORM_PLACEHOLDERS.airbnbListing,
-    required: false,
   },
   {
     id: 'instagram-url',
     key: 'instagramUrl' as const,
     label: 'Instagram',
     placeholder: FORM_PLACEHOLDERS.instagramProfile,
-    required: false,
   },
   {
     id: 'tiktok-url',
     key: 'tiktokUrl' as const,
     label: 'TikTok',
     placeholder: FORM_PLACEHOLDERS.tiktokProfile,
-    required: false,
   },
 ] as const;
 
@@ -240,6 +235,7 @@ export function OrgSocialsSection({
     airbnbUrl: string;
     instagramUrl: string;
     tiktokUrl: string;
+    mainSocialPlatform: string;
   };
   disabled?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
@@ -256,44 +252,51 @@ export function OrgSocialsSection({
       <p className="text-muted-foreground -mt-2 text-xs">
         Properties inherit these when not customized.
       </p>
-      <OrgSettingsFieldGrid>
-        <OrgSettingsFieldSpan>
-          <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
-            {SOCIAL_LINK_FIELDS.map((field) => {
-              const socialError = fieldError(field.id);
-              return (
-                <div
-                  key={field.id}
-                  className="bg-card flex flex-col gap-2 p-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-4"
-                >
-                  <Label htmlFor={field.id} className="text-sm font-medium leading-none sm:pt-2.5">
-                    {field.label}
-                    {field.required ? <RequiredMark /> : null}
-                  </Label>
-                  <div className="min-w-0 space-y-1">
-                    <Input
-                      id={field.id}
-                      type="url"
-                      disabled={disabled}
-                      value={operatorDraft[field.key]}
-                      onChange={(event) => {
-                        markFieldInteracted(field.id);
-                        onOperatorChange(field.key, event.target.value);
-                      }}
-                      className={cn('h-10 min-w-0', socialError && 'border-destructive')}
-                      placeholder={field.placeholder}
-                      autoComplete="off"
-                      spellCheck={false}
-                      aria-invalid={Boolean(socialError)}
-                    />
-                    {socialError ? <p className="text-destructive text-xs">{socialError}</p> : null}
+      <div className="space-y-4">
+        <OrgSettingsFieldGrid>
+          <OrgSettingsFieldSpan>
+            <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
+              {SOCIAL_LINK_FIELDS.map((field) => {
+                const socialError = fieldError(field.id);
+                return (
+                  <div
+                    key={field.id}
+                    className="bg-card flex flex-col gap-2 p-3 sm:grid sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-start sm:gap-4"
+                  >
+                    <Label
+                      htmlFor={field.id}
+                      className="text-sm font-medium leading-none sm:pt-2.5"
+                    >
+                      {field.label}
+                    </Label>
+                    <div className="min-w-0 space-y-1">
+                      <Input
+                        id={field.id}
+                        type="text"
+                        inputMode="url"
+                        disabled={disabled}
+                        value={operatorDraft[field.key]}
+                        onChange={(event) => {
+                          markFieldInteracted(field.id);
+                          onOperatorChange(field.key, event.target.value);
+                        }}
+                        className={cn('h-10 min-w-0', socialError && 'border-destructive')}
+                        placeholder={field.placeholder}
+                        autoComplete="off"
+                        spellCheck={false}
+                        aria-invalid={Boolean(socialError)}
+                      />
+                      {socialError ? (
+                        <p className="text-destructive text-xs">{socialError}</p>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </OrgSettingsFieldSpan>
-      </OrgSettingsFieldGrid>
+                );
+              })}
+            </div>
+          </OrgSettingsFieldSpan>
+        </OrgSettingsFieldGrid>
+      </div>
     </AdminSection>
   );
 }

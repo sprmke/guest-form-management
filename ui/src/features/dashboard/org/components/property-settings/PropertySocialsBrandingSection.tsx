@@ -1,4 +1,5 @@
 import { Share2 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import type {
@@ -8,51 +9,38 @@ import type {
 import { PropertyExternalReviewsBlock } from '@/features/dashboard/org/components/property-settings/PropertyExternalReviewsBlock';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertySuperhostVerificationBlock } from '@/features/dashboard/org/components/property-settings/PropertySuperhostVerificationBlock';
+import { MainSocialPlatformPicker } from '@/features/dashboard/org/components/settings/MainSocialPlatformPicker';
 import { SocialLinkInheritField } from '@/features/dashboard/org/components/settings/SocialLinkInheritField';
 import type { SuperhostStatus } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
+import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
 import {
-  allPropertySocialLinksInherit,
-  anyPropertySocialLinkCustom,
+  effectiveMainSocialPlatform,
+  effectiveSocialUrlMapWithModes,
+  PLATFORM_TO_SOCIAL_LINK,
   SOCIAL_LINK_FIELD_IDS,
   SOCIAL_LINK_KEYS,
+  SOCIAL_LINK_LABELS,
+  socialLinkModesFromDraft,
+  type SocialLinkKey,
+  type SocialLinkMode,
+  type SocialPlatform,
 } from '@/features/dashboard/org/lib/propertySocialLinks';
-import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
-
-import { Button } from '@/components/ui/button';
-
-const SOCIAL_LINK_LABELS: Record<(typeof SOCIAL_LINK_KEYS)[number], string> = {
-  facebookPageUrl: 'Facebook',
-  airbnbUrl: 'Airbnb',
-  instagramUrl: 'Instagram',
-  tiktokUrl: 'TikTok',
-};
-
-const SOCIAL_LINK_REQUIRED: Record<(typeof SOCIAL_LINK_KEYS)[number], boolean> = {
-  facebookPageUrl: true,
-  airbnbUrl: false,
-  instagramUrl: false,
-  tiktokUrl: false,
-};
 
 export function PropertySocialsSection({
   data,
   draft,
   orgSocialLinks,
-  orgName,
-  orgSettingsHref,
   disabled,
   resolveFieldError,
   markFieldInteracted,
   onChange,
   sectionMessages,
 }: {
-  data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus'>;
+  data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
   draft: AppSettingsFormValues;
   orgSocialLinks: OrgSocialLinks;
-  orgName: string;
-  orgSettingsHref: string;
   disabled?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
@@ -64,23 +52,30 @@ export function PropertySocialsSection({
 }) {
   const externalReviewsError = resolveFieldError('property-external-reviews');
   const superhostError = resolveFieldError('property-superhost-verification-url');
-  const allInherit = allPropertySocialLinksInherit(draft);
-  const anyCustom = anyPropertySocialLinkCustom(draft);
+  const mainError = resolveFieldError('property-main-social-platform');
 
-  const inheritAll = () => {
-    for (const key of SOCIAL_LINK_KEYS) {
-      if (draft[key].trim()) {
-        onChange(key, '');
-      }
-    }
-  };
+  const [socialLinkModes, setSocialLinkModes] = useState<Record<SocialLinkKey, SocialLinkMode>>(
+    () => socialLinkModesFromDraft(draft)
+  );
 
-  const customizeAll = () => {
-    for (const key of SOCIAL_LINK_KEYS) {
-      if (!draft[key].trim()) {
-        onChange(key, orgSocialLinks[key].trim());
-      }
-    }
+  useEffect(() => {
+    setSocialLinkModes(socialLinkModesFromDraft(draft));
+  }, [data.updatedAt]);
+
+  const urls = useMemo(
+    () => effectiveSocialUrlMapWithModes(draft, orgSocialLinks, socialLinkModes),
+    [draft, orgSocialLinks, socialLinkModes]
+  );
+
+  const effectiveMain =
+    effectiveMainSocialPlatform(
+      draft.mainSocialPlatform,
+      orgSocialLinks.mainSocialPlatform,
+      urls
+    ) ?? '';
+
+  const setSocialLinkMode = (key: SocialLinkKey, mode: SocialLinkMode) => {
+    setSocialLinkModes((current) => ({ ...current, [key]: mode }));
   };
 
   return (
@@ -91,54 +86,49 @@ export function PropertySocialsSection({
         />
       ) : null}
 
-      <div className="space-y-3">
-        {anyCustom ? (
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled}
-              className="min-h-[44px] w-full sm:w-auto"
-              onClick={inheritAll}
-            >
-              Use organization for all
-            </Button>
-          </div>
-        ) : null}
-        {allInherit ? (
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={disabled}
-              className="min-h-[44px] w-full sm:w-auto"
-              onClick={customizeAll}
-            >
-              Customize links
-            </Button>
-          </div>
-        ) : null}
-
+      <div className="space-y-4">
         <div className="border-border/60 divide-border/50 divide-y overflow-hidden rounded-xl border">
           {SOCIAL_LINK_KEYS.map((key) => (
             <SocialLinkInheritField
               key={key}
               id={SOCIAL_LINK_FIELD_IDS[key]}
               label={SOCIAL_LINK_LABELS[key]}
-              required={SOCIAL_LINK_REQUIRED[key]}
               storedValue={draft[key]}
               orgValue={orgSocialLinks[key]}
-              orgName={orgName}
-              orgSettingsHref={orgSettingsHref}
+              inheritsOrg={socialLinkModes[key] === 'inherit'}
               disabled={disabled}
               error={resolveFieldError(SOCIAL_LINK_FIELD_IDS[key])}
-              onStoredChange={(value) => onChange(key, value)}
+              onStoredChange={(value) => {
+                onChange(key, value);
+                const platform = Object.entries(PLATFORM_TO_SOCIAL_LINK).find(
+                  ([, linkKey]) => linkKey === key
+                )?.[0] as SocialPlatform | undefined;
+                if (
+                  platform &&
+                  !value.trim() &&
+                  draft.mainSocialPlatform === platform &&
+                  !orgSocialLinks[key].trim()
+                ) {
+                  onChange('mainSocialPlatform', '');
+                }
+              }}
+              onInheritsOrgChange={(inherits) => {
+                setSocialLinkMode(key, inherits ? 'inherit' : 'custom');
+              }}
               onInteract={() => markFieldInteracted(SOCIAL_LINK_FIELD_IDS[key])}
             />
           ))}
         </div>
+
+        <MainSocialPlatformPicker
+          id="property-main-social-platform"
+          value={effectiveMain}
+          urls={urls}
+          disabled={disabled}
+          error={mainError}
+          onChange={(platform) => onChange('mainSocialPlatform', platform)}
+          onInteract={() => markFieldInteracted('property-main-social-platform')}
+        />
 
         <PropertyExternalReviewsBlock
           reviews={draft.externalReviews}
