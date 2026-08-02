@@ -2,8 +2,8 @@
 
 > **Do not edit product rules here.** Only two plan files:
 
-| Phase | File                                                            |
-| ----- | --------------------------------------------------------------- |
+| Phase | File                                                   |
+| ----- | ------------------------------------------------------ |
 | **A** | [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md) |
 | **B** | [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md) |
 
