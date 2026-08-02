@@ -19,7 +19,7 @@ export const META_INBOX_OAUTH_SCOPES = [
 
 /**
  * Marketing Content Studio publishing — included in OAuth by default.
- * Requires matching Meta app use cases; see docs/operations/meta-app-review.md.
+ * Requires matching Meta app use cases; see docs/archive/operations/meta-app-review.md.
  * Set META_OAUTH_EXCLUDE_PUBLISHING_SCOPES=1 to omit while configuring the Meta app.
  */
 export const META_PUBLISHING_SCOPES = [

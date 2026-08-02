@@ -145,7 +145,7 @@ export async function discoverTelegramChats(
     return {
       getMe,
       chats: [],
-      hint: 'No group chats found. Add the bot to your group, send a test message, then scan again.',
+      hint: 'No group chats found. Make sure the bot is added to your group, send a test message, then scan again.',
     };
   }
 
