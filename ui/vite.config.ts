@@ -148,6 +148,19 @@ export default defineConfig({
       'use-image',
       'swr',
       '@tiptap/react',
+      // Remotion transition subpaths — keep in sync with VideoCompositions imports
+      // so Vite does not fail on stale optimize cache after @remotion/transitions upgrades.
+      '@remotion/transitions',
+      '@remotion/transitions/clock-wipe',
+      '@remotion/transitions/dissolve',
+      '@remotion/transitions/fade',
+      '@remotion/transitions/flip',
+      '@remotion/transitions/push-cut',
+      '@remotion/transitions/slide',
+      '@remotion/transitions/wipe',
+      '@remotion/transitions/zoom-in-out',
+      '@remotion/player',
+      'remotion',
     ],
     esbuildOptions: {
       plugins: [openPolotnoHighlighterEsbuildPlugin()],
