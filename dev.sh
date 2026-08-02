@@ -51,7 +51,7 @@ if ! docker info >/dev/null 2>&1; then
   fi
 fi
 
-# Invalid tag after `supabase link` breaks storage-api pull (see docs/operations/migration-runbook.md §3.5.5).
+# Invalid tag after `supabase link` breaks storage-api pull (see docs/archive/operations/migration-runbook.md §3.5.5).
 STORAGE_VER_FILE="$ROOT/supabase/.temp/storage-version"
 if [[ -f "$STORAGE_VER_FILE" ]]; then
   ver="$(tr -d '[:space:]' <"$STORAGE_VER_FILE")"

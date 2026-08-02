@@ -58,4 +58,4 @@ Pass `property_id` or `parking_id` on inbox edge calls; `resolveInboxAccess` pic
 
 - `.cursor/rules/social-inbox.mdc`
 - `.cursor/skills/meta-messaging/SKILL.md`
-- Plan: `docs/planning/planned_modules/2026-07-30-inbox-org-property-parking.md`
+- Plan: `docs/workflow/done/inbox-org-property-parking.md`

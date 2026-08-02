@@ -12,6 +12,16 @@ Stack: **Vite + React 18 SPA** (`ui/`) + **Supabase Edge Functions** (Deno, `sup
 
 **Before non-trivial work**, read `docs/PROJECT.md` (architecture/API/routes/env vars) and, for booking-status/email/calendar/sheet changes, `.cursor/rules/booking-workflow.mdc` — both are authoritative, not just background reading (see "Docs are the source of truth" below).
 
+## AI session hygiene
+
+See **`.cursor/rules/ai-usage.mdc`** (always-on in Cursor; follow here too):
+
+- **One task ≈ one session** — `/clear` when switching goals; avoid multi-day threads.
+- **No subagent swarms by default** — Explore/Plan/brainstorm only when asked or clearly necessary.
+- **Superpowers is opt-in** (`/superpowers-*` only). Do not auto-run brainstorming.
+- Prefer `/effort medium` for routine chores; reserve high effort + thinking for hard judgment.
+- Heavy rules (`booking-workflow`, `admin-auth`) are **not** always injected — **read them when the task touches those surfaces**.
+
 ## Commands
 
 ```bash
@@ -60,7 +70,7 @@ features/{guest|dashboard}/{module}/
 ├── components/  ├── hooks/  ├── lib/  ├── pages/  └── routes/
 ```
 
-Path alias `@/` → `ui/src/`. No barrel `index.ts` re-exports across features. Guest modules: `calendar/`, `form/`, `sd-form/`, `pay-parking/`, `marketing/`, `property/`. Dashboard modules: `bookings/`, `org/`, `property/`, `finance/`, `maintenance/`, `pricing/`, `inbox/`, `team/` — `bookings/` is not a junk drawer, new domain UI belongs in its own module. Full map: `docs/reference/project-structure.md`.
+Path alias `@/` → `ui/src/`. No barrel `index.ts` re-exports across features. Guest modules: `calendar/`, `form/`, `sd-form/`, `pay-parking/`, `marketing/`, `property/`. Dashboard modules: `bookings/`, `org/`, `property/`, `finance/`, `maintenance/`, `pricing/`, `inbox/`, `team/` — `bookings/` is not a junk drawer, new domain UI belongs in its own module. Full map: `docs/archive/reference/project-structure.md`.
 
 ### Multi-tenancy
 
@@ -86,7 +96,7 @@ All transitions go through `_shared/workflowOrchestrator.ts#transition()` — ne
 
 ### Edge functions
 
-Prefer `serveAdmin`/`servePublic`/`serveCronPost` (`_shared/serveEdge.ts`) over hand-rolled `serve()`. Deno, pinned remote imports (`esm.sh`, `deno.land`). Email-sending functions need `static_files` in `config.toml` for `_shared/email-templates/**` or production throws `ENOENT`. Scheduled jobs run via hosted `pg_cron` + `pg_net`, not `config.toml` schedule (local CLI mishandles it) — see `docs/operations/scheduled-jobs-and-testing.md`.
+Prefer `serveAdmin`/`servePublic`/`serveCronPost` (`_shared/serveEdge.ts`) over hand-rolled `serve()`. Deno, pinned remote imports (`esm.sh`, `deno.land`). Email-sending functions need `static_files` in `config.toml` for `_shared/email-templates/**` or production throws `ENOENT`. Scheduled jobs run via hosted `pg_cron` + `pg_net`, not `config.toml` schedule (local CLI mishandles it) — see `docs/archive/operations/scheduled-jobs-and-testing.md`.
 
 ### Conventions
 
@@ -108,10 +118,10 @@ Prefer `serveAdmin`/`servePublic`/`serveCronPost` (`_shared/serveEdge.ts`) over 
 When planning without implementing (Cursor Plan mode, or the user asks for a plan only), follow `.cursor/rules/plan-mode.mdc`:
 
 - **Do not write code** during planning.
-- When the plan is finished, save it to **`docs/planning/planned_modules/YYYY-MM-DD-<slug>.md`** and add a row to `docs/planning/planned_modules/README.md`.
+- When the plan is finished, save it to **`docs/workflow/planned/<slug>.md`** (no date prefix) and add a row to `docs/workflow/planned/README.md`.
 - If Plan mode blocks file writes, persist the plan as the **first** step after switching to Agent mode.
 
-Superpowers plans (`docs/superpowers/plans/`) are opt-in only — see `.cursor/rules/superpowers-opt-in.mdc`.
+Superpowers uses the same **`docs/workflow/planned/`** paths as Plan mode — see `.agent/skills/superpowers/SKILL.md`. Never `docs/superpowers/`.
 
 ## Docs are the source of truth
 
@@ -125,7 +135,7 @@ Update the matching doc in the same change that alters behavior, per `.cursor/ru
 | Edge function conventions / JWT policy          | `.cursor/rules/supabase-edge-functions.mdc`      |
 | Page/section behavior, save flows, validation   | `docs/guides/routes/*.md`                        |
 | Backlog / shipped work                          | GitHub Issues + `docs/todos/`                    |
-| Booking-flow redesign decisions                 | `docs/planning/NEW_FLOW_PLAN.md`                 |
+| Booking-flow redesign decisions                 | `docs/archive/planning/NEW_FLOW_PLAN.md`         |
 
 Doc index: `docs/README.md`. Full rules/skills index: `.cursor/rules/README.md`.
 
