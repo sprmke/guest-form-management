@@ -94,6 +94,7 @@ function fieldSectionId(fieldId: string): PropertySettingsSectionId | undefined 
   const direct = FIELD_SECTIONS[fieldId];
   if (direct) return direct;
   if (fieldId.startsWith('payment-method-')) return 'payment';
+  if (fieldId.startsWith('document-requirement-')) return 'workflow-documents';
   return undefined;
 }
 

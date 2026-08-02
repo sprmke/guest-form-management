@@ -141,6 +141,8 @@ export type AppSettingsDto = {
   documentRequirementsOverride: DocumentRequirement[] | null;
   /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
   resolvedDocumentRequirements: DocumentRequirement[];
+  /** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
+  residenceDefaultDocumentRequirements: DocumentRequirement[];
   syncCalendar: boolean;
   syncSheets: boolean;
 };

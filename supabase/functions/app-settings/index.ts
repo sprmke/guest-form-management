@@ -344,9 +344,11 @@ serveAuthenticated('app-settings', async (req) => {
       const raw = body.documentRequirementsOverride;
       if (raw === null) {
         patch.document_requirements_override = null;
+      } else if (!Array.isArray(raw)) {
+        return jsonError(req, 'Invalid document requirements override');
       } else {
         const parsed = parseDocumentRequirements(raw);
-        if (parsed === null) {
+        if (parsed === null || parsed.length !== raw.length) {
           return jsonError(req, 'Invalid document requirements override');
         }
         patch.document_requirements_override = parsed;

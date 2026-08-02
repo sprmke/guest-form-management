@@ -203,6 +203,19 @@ async function loadDevelopmentDocumentRequirements(residenceName: string): Promi
   return (workflowDefaults as Record<string, unknown>).documentRequirements ?? null;
 }
 
+/** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
+export async function resolveResidenceDefaultDocumentRequirements(
+  propertyId: string
+): Promise<DocumentRequirement[]> {
+  const residenceName = await loadPropertyResidenceName(propertyId);
+  const developmentRaw = await loadDevelopmentDocumentRequirements(residenceName);
+  if (developmentRaw !== null && developmentRaw !== undefined) {
+    return mergeDocumentRequirements(developmentRaw);
+  }
+
+  return DEFAULT_DOCUMENT_REQUIREMENTS.map((req) => ({ ...req }));
+}
+
 export async function resolveDocumentRequirements(
   propertyId: string
 ): Promise<DocumentRequirement[]> {
@@ -212,11 +225,5 @@ export async function resolveDocumentRequirements(
     return parsed ?? [];
   }
 
-  const residenceName = await loadPropertyResidenceName(propertyId);
-  const developmentRaw = await loadDevelopmentDocumentRequirements(residenceName);
-  if (developmentRaw !== null && developmentRaw !== undefined) {
-    return mergeDocumentRequirements(developmentRaw);
-  }
-
-  return DEFAULT_DOCUMENT_REQUIREMENTS.map((req) => ({ ...req }));
+  return resolveResidenceDefaultDocumentRequirements(propertyId);
 }

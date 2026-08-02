@@ -10,6 +10,7 @@ import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
 import {
   parseDocumentRequirements,
   resolveDocumentRequirements,
+  resolveResidenceDefaultDocumentRequirements,
   type DocumentRequirement,
 } from './documentRequirements.ts';
 import { mergePropertySyncToggles } from './propertySyncToggles.ts';
@@ -180,6 +181,8 @@ export type AppSettingsDto = AppSettingsResolved & {
   documentRequirementsOverride: DocumentRequirement[] | null;
   /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
   resolvedDocumentRequirements: DocumentRequirement[];
+  /** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
+  residenceDefaultDocumentRequirements: DocumentRequirement[];
   syncCalendar: boolean;
   syncSheets: boolean;
   updatedAt: string | null;
@@ -617,6 +620,12 @@ export async function serializeAppSettingsForAdmin(
         return [];
       }
     ),
+    residenceDefaultDocumentRequirements: await resolveResidenceDefaultDocumentRequirements(
+      resolvedPropertyId
+    ).catch((e) => {
+      console.warn('[appSettings] resolveResidenceDefaultDocumentRequirements failed:', e);
+      return [];
+    }),
     ...mergePropertySyncToggles({
       sync_calendar: row?.sync_calendar,
       sync_sheets: row?.sync_sheets,

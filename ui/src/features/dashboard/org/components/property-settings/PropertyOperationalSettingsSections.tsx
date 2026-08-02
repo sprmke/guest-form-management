@@ -147,6 +147,8 @@ export function PropertyOperationalSettingsSections({
         data={data}
         draft={draft}
         disabled={disabled}
+        resolveFieldError={resolveFieldError}
+        markFieldInteracted={markFieldInteracted}
         onChange={onChange}
       />
 

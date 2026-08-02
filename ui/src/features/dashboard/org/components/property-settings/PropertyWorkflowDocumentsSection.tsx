@@ -168,6 +168,7 @@ function DocumentRequirementEditRow({
   index,
   total,
   disabled,
+  labelError,
   onChange,
   onMoveUp,
   onMoveDown,
@@ -177,6 +178,7 @@ function DocumentRequirementEditRow({
   index: number;
   total: number;
   disabled?: boolean;
+  labelError?: string | null;
   onChange: (patch: Partial<DocumentRequirement>) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -198,8 +200,15 @@ function DocumentRequirementEditRow({
             disabled={disabled}
             placeholder="e.g. GAF Request"
             onChange={(event) => onChange({ label: event.target.value })}
-            className="h-10"
+            className={cn('h-10', labelError && 'border-destructive')}
+            aria-invalid={Boolean(labelError)}
+            aria-describedby={labelError ? `${rowId}-label-error` : undefined}
           />
+          {labelError ? (
+            <p id={`${rowId}-label-error`} className="text-destructive mt-1.5 text-xs">
+              {labelError}
+            </p>
+          ) : null}
         </div>
         <div className="flex shrink-0 gap-0.5">
           <RowActionButton label="Move up" disabled={disabled || index === 0} onClick={onMoveUp}>
@@ -277,11 +286,15 @@ export function PropertyWorkflowDocumentsSection({
   data,
   draft,
   disabled = false,
+  resolveFieldError,
+  markFieldInteracted,
   onChange,
 }: {
   data: AppSettingsDto;
   draft: AppSettingsFormValues;
   disabled?: boolean;
+  resolveFieldError?: (fieldId: string) => string | null;
+  markFieldInteracted?: (fieldId: string) => void;
   onChange: <K extends keyof AppSettingsFormValues>(
     key: K,
     value: AppSettingsFormValues[K]
@@ -289,6 +302,7 @@ export function PropertyWorkflowDocumentsSection({
 }) {
   const mode = overrideMode(draft.documentRequirementsOverride);
   const customList = draft.documentRequirementsOverride ?? [];
+  const fieldError = resolveFieldError ?? (() => null);
 
   const setMode = (next: DocumentOverrideMode) => {
     if (next === 'default') {
@@ -296,7 +310,7 @@ export function PropertyWorkflowDocumentsSection({
     } else {
       onChange(
         'documentRequirementsOverride',
-        data.resolvedDocumentRequirements.map((req) => ({ ...req }))
+        data.residenceDefaultDocumentRequirements.map((req) => ({ ...req }))
       );
     }
   };
@@ -375,7 +389,7 @@ export function PropertyWorkflowDocumentsSection({
 
           {mode === 'default' ? (
             <div className="space-y-2">
-              {data.resolvedDocumentRequirements.map((requirement, index) => (
+              {data.residenceDefaultDocumentRequirements.map((requirement, index) => (
                 <DocumentRequirementReadRow
                   key={requirement.id}
                   requirement={requirement}
@@ -398,9 +412,11 @@ export function PropertyWorkflowDocumentsSection({
                     index={index}
                     total={customList.length}
                     disabled={disabled}
-                    onChange={(patch) =>
-                      setCustomList(updateDocumentRequirement(customList, index, patch))
-                    }
+                    labelError={fieldError(`document-requirement-${index}-label`)}
+                    onChange={(patch) => {
+                      markFieldInteracted?.(`document-requirement-${index}-label`);
+                      setCustomList(updateDocumentRequirement(customList, index, patch));
+                    }}
                     onMoveUp={() => setCustomList(moveDocumentRequirement(customList, index, -1))}
                     onMoveDown={() => setCustomList(moveDocumentRequirement(customList, index, 1))}
                     onRemove={() => setCustomList(removeDocumentRequirement(customList, index))}

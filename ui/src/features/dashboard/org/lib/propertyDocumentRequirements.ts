@@ -35,6 +35,20 @@ export function documentRequirementsOverrideEqual(
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+/** Per-row field ids: `document-requirement-${index}-label`. */
+export function documentRequirementLabelFieldErrors(
+  list: DocumentRequirement[] | null
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (list === null) return errors;
+  list.forEach((req, index) => {
+    if (!req.label.trim()) {
+      errors[`document-requirement-${index}-label`] = 'Enter a document label';
+    }
+  });
+  return errors;
+}
+
 function withNormalizedOrder(list: DocumentRequirement[]): DocumentRequirement[] {
   return list.map((req, index) => ({ ...req, order: index + 1 }));
 }
