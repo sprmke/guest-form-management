@@ -10,6 +10,11 @@
  */
 
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  requirementApplies,
+  type DocumentRequirement,
+  type DocumentRequirementCompletion,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 
 // ─── Allowed transitions ──────────────────────────────────────────────────────
 
@@ -201,6 +206,138 @@ export function arePendingDocumentsComplete(booking: ApplicabilityFlags): boolea
     isSubStatusCompleted('PENDING_PARKING_REQUEST', booking) &&
     isSubStatusCompleted('PENDING_PET_REQUEST', booking)
   );
+}
+
+// ─── Configurable document requirements (mirror of statusMachine.ts — D3) ────
+//
+// Generalized nested-completion + calendar-prefix helpers driven by a
+// per-property `DocumentRequirement[]` list. Not yet wired into the stepper /
+// WorkflowPanel (Task 7) — kept in lockstep now so both files evolve together.
+
+export type DocumentCompletionsMap = Record<string, DocumentRequirementCompletion>;
+
+type ConfigurableDocsBooking = ApplicabilityFlags & { document_requirement_completions?: unknown };
+
+function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const entry = raw as Record<string, unknown>;
+  return {
+    completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
+    approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
+    manualIncomplete: flagTrue(entry.manualIncomplete),
+  };
+}
+
+function parseCompletionsMap(raw: unknown): DocumentCompletionsMap {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: DocumentCompletionsMap = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    const parsed = parseCompletionEntry(value);
+    if (parsed) out[id] = parsed;
+  }
+  return out;
+}
+
+/**
+ * Dual-read: prefer the JSONB `document_requirement_completions` map; fall back
+ * to the legacy named `gaf_*` / `pet_*` fields for those ids when the map has no
+ * entry for them. Mirrors `statusMachine.ts#readDocumentCompletions`.
+ */
+export function readDocumentCompletions(booking: ConfigurableDocsBooking): DocumentCompletionsMap {
+  const map = parseCompletionsMap(booking.document_requirement_completions);
+  if (!map.gaf) {
+    map.gaf = {
+      completedAt: booking.gaf_completed_at ?? null,
+      approvedPdfUrl: booking.approved_gaf_pdf_url ?? null,
+      manualIncomplete: flagTrue(booking.gaf_manual_incomplete),
+    };
+  }
+  if (!map.pet) {
+    map.pet = {
+      completedAt: booking.pet_completed_at ?? null,
+      approvedPdfUrl: booking.approved_pet_pdf_url ?? null,
+      manualIncomplete: flagTrue(booking.pet_manual_incomplete),
+    };
+  }
+  return map;
+}
+
+function isCompletionDone(completion: DocumentRequirementCompletion | undefined): boolean {
+  if (!completion || completion.manualIncomplete) return false;
+  return !!completion.completedAt || !!completion.approvedPdfUrl;
+}
+
+/** Mirrors `statusMachine.ts#getPendingDocumentsNestedCompletion`. */
+export function getPendingDocumentsNestedCompletion(
+  booking: ConfigurableDocsBooking,
+  requirements: DocumentRequirement[]
+): {
+  needParking: boolean;
+  hasPets: boolean;
+  gafDone: boolean;
+  parkingDone: boolean;
+  petDone: boolean;
+  byRequirementId: Record<string, boolean>;
+  allConfigurableDocsDone: boolean;
+} {
+  const needParking = !!booking.need_parking;
+  const hasPets = !!booking.has_pets;
+  const completions = readDocumentCompletions(booking);
+
+  const byRequirementId: Record<string, boolean> = {};
+  let allConfigurableDocsDone = true;
+  for (const req of requirements) {
+    if (!requirementApplies(req, booking)) continue;
+    const done = isCompletionDone(completions[req.id]);
+    byRequirementId[req.id] = done;
+    if (!done) allConfigurableDocsDone = false;
+  }
+
+  const parkingDone = !needParking || !!booking.parking_completed_at;
+  const gafDone = byRequirementId.gaf ?? true;
+  const petDone = byRequirementId.pet ?? true;
+
+  return {
+    needParking,
+    hasPets,
+    gafDone,
+    parkingDone,
+    petDone,
+    byRequirementId,
+    allConfigurableDocsDone,
+  };
+}
+
+/** Mirrors `statusMachine.ts#buildPendingDocumentsCalendarSummaryPrefix`. */
+export function buildPendingDocumentsCalendarSummaryPrefix(
+  booking: ConfigurableDocsBooking,
+  requirements: DocumentRequirement[]
+): string {
+  const { needParking, parkingDone, byRequirementId } = getPendingDocumentsNestedCompletion(
+    booking,
+    requirements
+  );
+
+  const applicable = [...requirements]
+    .sort((a, b) => a.order - b.order)
+    .filter((req) => requirementApplies(req, booking));
+
+  const segments: string[] = [];
+  let parkingInserted = false;
+  const insertParkingIfNeeded = () => {
+    if (parkingInserted) return;
+    parkingInserted = true;
+    if (needParking && !parkingDone) segments.push('PARKING');
+  };
+
+  for (const req of applicable) {
+    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
+    if (!byRequirementId[req.id]) segments.push(req.id.toUpperCase());
+  }
+  insertParkingIfNeeded();
+
+  if (segments.length === 0) return 'PENDING DOCUMENTS';
+  return `PENDING_${segments.join('_')}_DOCS`;
 }
 
 /**

@@ -14,6 +14,7 @@ import {
 } from './propertyTelegramCredentials.ts';
 import { listAllPropertyIds, propertyIdFromRow } from './propertyCron.ts';
 import { getPendingDocumentsNestedCompletion } from './statusMachine.ts';
+import { DEFAULT_DOCUMENT_REQUIREMENTS } from './documentRequirements.ts';
 import {
   computeTotalGuestBalanceFromBooking,
   guestBalancePaymentReceiptRequired,
@@ -321,9 +322,12 @@ function buildSdRefundPlaceholderFields(booking: BookingRow): Record<string, str
   };
 }
 
+// Telegram admin builds these across many bookings synchronously (hourly scan,
+// message placeholders) — property-scoped resolution lands in a later task, so
+// use the default requirement list (GAF + pet) for now.
 function buildPendingDocsList(booking: BookingRow): string {
   const { needParking, hasPets, gafDone, parkingDone, petDone } =
-    getPendingDocumentsNestedCompletion(booking);
+    getPendingDocumentsNestedCompletion(booking, DEFAULT_DOCUMENT_REQUIREMENTS);
   const items: string[] = [];
   if (!gafDone) items.push('GAF');
   if (needParking && !parkingDone) items.push('Parking');
@@ -332,7 +336,10 @@ function buildPendingDocsList(booking: BookingRow): string {
 }
 
 function areAllRequiredDocsComplete(booking: BookingRow): boolean {
-  const { gafDone, parkingDone, petDone } = getPendingDocumentsNestedCompletion(booking);
+  const { gafDone, parkingDone, petDone } = getPendingDocumentsNestedCompletion(
+    booking,
+    DEFAULT_DOCUMENT_REQUIREMENTS
+  );
   return gafDone && parkingDone && petDone;
 }
 

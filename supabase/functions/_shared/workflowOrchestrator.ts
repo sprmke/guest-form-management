@@ -43,6 +43,10 @@ import {
   pendingDocumentsClearPatchForGuestEditRevert,
   STATUS_HUMAN_LABEL,
 } from './statusMachine.ts';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  resolveDocumentRequirements,
+} from './documentRequirements.ts';
 import type { SdRefundBank } from './sdRefundBank.ts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -501,8 +505,13 @@ export class WorkflowOrchestrator {
       docComplete &&
       flag(devControls, 'saveToDatabase')
     ) {
+      const docsPropertyId = (updatedBooking.property_id as string | null | undefined) ?? undefined;
+      const documentRequirements = docsPropertyId
+        ? await resolveDocumentRequirements(docsPropertyId)
+        : DEFAULT_DOCUMENT_REQUIREMENTS;
       const { gafDone, parkingDone, petDone } = getPendingDocumentsNestedCompletion(
-        updatedBooking as Parameters<typeof getPendingDocumentsNestedCompletion>[0]
+        updatedBooking as Parameters<typeof getPendingDocumentsNestedCompletion>[0],
+        documentRequirements
       );
       if (gafDone && parkingDone && petDone) {
         console.log(
