@@ -1,21 +1,19 @@
 import * as React from 'react';
 
-import { Activity, Bot, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Activity, Bot, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { telegramBotTokenPlaceholder } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
-import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
+import { TelegramSecretInput } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramSecretInput';
+import { useTelegramBotDisplayLabel } from '@/features/dashboard/bookings/hooks/useTelegramBotDisplayLabel';
 import {
   useTelegramGlobalBotToken,
   useUpdateTelegramGlobalBotToken,
   useVerifyTelegramGlobalBotToken,
 } from '@/features/dashboard/bookings/hooks/useTelegramGlobalBotToken';
-import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -24,145 +22,99 @@ export function TelegramGlobalBotTokenCard() {
   const save = useUpdateTelegramGlobalBotToken();
   const verify = useVerifyTelegramGlobalBotToken();
   const [botToken, setBotToken] = React.useState('');
-  const [visible, setVisible] = React.useState(false);
-  const [tokenOk, setTokenOk] = React.useState<boolean | null>(null);
 
   const serverToken = data?.botToken ?? '';
+  const { label, isResolving } = useTelegramBotDisplayLabel(botToken);
 
   React.useEffect(() => {
     setBotToken(serverToken);
-    setTokenOk(null);
   }, [serverToken]);
 
   const busy = isLoading || save.isPending || verify.isPending;
   const trimmed = botToken.trim();
   const dirty = trimmed !== serverToken.trim();
+  const saved = Boolean(data?.tokenConfigured) && !dirty && Boolean(trimmed);
 
-  const onTest = () => {
+  const onSaveAndTest = () => {
     if (!trimmed) {
       toast.error('Enter a bot token first');
       return;
     }
+
     verify.mutate(trimmed, {
       onSuccess: (result) => {
         const ok = Boolean(result.verify?.getMe?.ok);
-        setTokenOk(ok);
-        if (ok) {
-          const username = result.verify?.getMe?.username;
-          toast.success(username ? `Valid — @${username}` : 'Bot token is valid');
-        } else {
+        if (!ok) {
           toast.error(
             friendlyToastError(
               result.verify?.getMe?.error,
-              'Check that the Telegram bot token is correct'
+              'Invalid bot token. Please double-check your token and try again.'
             )
           );
+          return;
         }
+
+        save.mutate(trimmed, {
+          onSuccess: () => {
+            const username = result.verify?.getMe?.username;
+            toast.success(username ? `Saved — @${username}` : 'Shared bot token saved');
+          },
+          onError: (e) => toast.error(friendlyToastError(e, 'Could not save shared bot token')),
+        });
       },
       onError: (e) => {
-        setTokenOk(false);
         toast.error(friendlyToastError(e, 'Could not verify bot token'));
       },
     });
   };
 
-  const onSave = () => {
-    save.mutate(trimmed || null, {
-      onSuccess: () => {
-        toast.success('Shared bot token saved');
-        setTokenOk(null);
-      },
-      onError: (e) => toast.error(friendlyToastError(e, 'Could not save shared bot token')),
-    });
-  };
+  const actionLabel = verify.isPending ? 'Testing…' : save.isPending ? 'Saving…' : 'Save and test';
 
   return (
     <Card id="section-global-bot" className="scroll-mt-2">
       <CardHeader className="space-y-0">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Bot className="size-5 shrink-0" aria-hidden />
-            Shared bot token
-          </CardTitle>
-          <TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />
-        </div>
-        <CardDescription>
-          One bot token for all notification modules. New modules pre-fill this value — you can
-          still override per module.
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Bot className="size-5 shrink-0" aria-hidden />
+          Shared bot token
+        </CardTitle>
+        <CardDescription className="pt-1.5">
+          One token for all modules by default. You can still configure a different bot & chat ID
+          per module if needed.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {isLoading ? (
           <Skeleton className="h-10 w-full max-w-xl" aria-label="Loading shared bot token" />
         ) : (
-          <div className="flex flex-col gap-3 sm:max-w-xl">
-            <div className="min-w-0 space-y-1.5">
-              <div className="flex items-center gap-0.5">
-                <Label htmlFor="global-bot-token" className={SETTINGS_FIELD_LABEL_COMPACT}>
-                  Bot token
-                </Label>
-                <TelegramHelpDialog defaultTab="bot-token" variant="icon" />
-              </div>
-              <div className="relative">
-                <Input
-                  id="global-bot-token"
-                  type={visible ? 'text' : 'password'}
-                  autoComplete="off"
-                  value={botToken}
-                  disabled={busy}
-                  placeholder={telegramBotTokenPlaceholder(Boolean(data?.tokenConfigured))}
-                  onChange={(e) => {
-                    setBotToken(e.target.value);
-                    setTokenOk(null);
-                  }}
-                  className="h-10 pr-11"
-                />
-                <button
-                  type="button"
-                  disabled={busy}
-                  aria-label={visible ? 'Hide bot token' : 'Show bot token'}
-                  onClick={() => setVisible((v) => !v)}
-                  className="text-muted-foreground hover:text-foreground absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-r-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
-                >
-                  {visible ? (
-                    <EyeOff className="size-4 shrink-0" aria-hidden />
-                  ) : (
-                    <Eye className="size-4 shrink-0" aria-hidden />
-                  )}
-                </button>
-              </div>
-            </div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+            <TelegramSecretInput
+              id="global-bot-token"
+              label="Bot token"
+              value={botToken}
+              disabled={busy}
+              helpTab="bot-token"
+              maskedLabel={label}
+              labelLoading={isResolving}
+              placeholder={telegramBotTokenPlaceholder(Boolean(data?.tokenConfigured))}
+              onChange={setBotToken}
+            />
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+            {saved ? (
+              <span className="inline-flex min-h-[44px] items-center gap-1.5 text-sm font-medium text-emerald-600 md:justify-self-end">
+                <CheckCircle2 className="size-4 shrink-0" aria-hidden />
+                Saved
+              </span>
+            ) : (
               <Button
                 type="button"
-                variant="outline"
                 disabled={busy || !trimmed}
-                className="min-h-[44px] w-full gap-2 sm:w-auto"
-                onClick={onTest}
+                className="min-h-[44px] w-full gap-2 md:w-auto md:min-w-[7.5rem] md:justify-self-end"
+                onClick={onSaveAndTest}
               >
-                {verify.isPending ? (
-                  <Activity className="size-4 shrink-0 animate-pulse" aria-hidden />
-                ) : tokenOk === true ? (
-                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden />
-                ) : null}
-                {verify.isPending ? 'Testing…' : 'Test token'}
+                {busy ? <Activity className="size-4 shrink-0 animate-pulse" aria-hidden /> : null}
+                {actionLabel}
               </Button>
-              <Button
-                type="button"
-                disabled={busy || !dirty}
-                className="min-h-[44px] w-full sm:w-auto"
-                onClick={onSave}
-              >
-                {save.isPending ? 'Saving…' : 'Save'}
-              </Button>
-              {tokenOk === true && !verify.isPending ? (
-                <span className="text-muted-foreground inline-flex items-center gap-1.5 text-xs font-medium">
-                  <CheckCircle2 className="size-3.5 text-emerald-600" aria-hidden />
-                  Token verified
-                </span>
-              ) : null}
-            </div>
+            )}
           </div>
         )}
       </CardContent>

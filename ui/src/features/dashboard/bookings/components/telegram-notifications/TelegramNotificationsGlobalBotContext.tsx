@@ -1,8 +1,19 @@
 import * as React from 'react';
 
+import { useTelegramBotDisplayLabel } from '@/features/dashboard/bookings/hooks/useTelegramBotDisplayLabel';
 import { useTelegramGlobalBotToken } from '@/features/dashboard/bookings/hooks/useTelegramGlobalBotToken';
 
-const TelegramNotificationsGlobalBotContext = React.createContext('');
+export type TelegramGlobalBotContextValue = {
+  token: string;
+  label: string;
+  labelResolving: boolean;
+};
+
+const TelegramNotificationsGlobalBotContext = React.createContext<TelegramGlobalBotContextValue>({
+  token: '',
+  label: '',
+  labelResolving: false,
+});
 
 export function TelegramNotificationsGlobalBotProvider({
   children,
@@ -10,7 +21,17 @@ export function TelegramNotificationsGlobalBotProvider({
   children: React.ReactNode;
 }) {
   const { data } = useTelegramGlobalBotToken();
-  const value = data?.botToken?.trim() ?? '';
+  const token = data?.botToken?.trim() ?? '';
+  const { label, isResolving } = useTelegramBotDisplayLabel(token);
+
+  const value = React.useMemo(
+    () => ({
+      token,
+      label: label ?? '',
+      labelResolving: isResolving,
+    }),
+    [token, label, isResolving]
+  );
 
   return (
     <TelegramNotificationsGlobalBotContext.Provider value={value}>
@@ -19,6 +40,6 @@ export function TelegramNotificationsGlobalBotProvider({
   );
 }
 
-export function useTelegramNotificationsGlobalBot(): string {
+export function useTelegramNotificationsGlobalBot(): TelegramGlobalBotContextValue {
   return React.useContext(TelegramNotificationsGlobalBotContext);
 }

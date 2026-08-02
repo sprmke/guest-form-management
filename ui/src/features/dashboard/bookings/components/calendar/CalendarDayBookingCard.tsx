@@ -9,6 +9,8 @@ import {
   bookingFlagIconChipClass,
 } from '@/features/dashboard/bookings/lib/bookingFlags';
 
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
+
 import { cn } from '@/lib/utils';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
@@ -49,6 +51,11 @@ type Props = {
 
 export function CalendarDayBookingCard({ row, amount, showProperty = false, onOpen }: Props) {
   const name = row.primary_guest_name || row.guest_facebook_name || row.guest_email || 'Guest';
+  const nights = occupiedNightsFromStay(
+    row.check_in_date,
+    row.check_out_date,
+    row.number_of_nights
+  );
 
   return (
     <button
@@ -105,9 +112,9 @@ export function CalendarDayBookingCard({ row, amount, showProperty = false, onOp
           {formatBookingDate(row.check_out_date)}
         </p>
         <p className="text-muted-foreground mt-0.5 text-[11px]">
-          {row.number_of_nights != null ? (
+          {nights > 0 ? (
             <>
-              {row.number_of_nights} {row.number_of_nights === 1 ? 'night' : 'nights'}
+              {nights} {nights === 1 ? 'night' : 'nights'}
             </>
           ) : null}
           {amount.amount != null && (
