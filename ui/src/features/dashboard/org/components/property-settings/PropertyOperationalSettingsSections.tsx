@@ -14,6 +14,7 @@ import { PropertyEmailAutomationsSection } from '@/features/dashboard/org/compon
 import { PropertyPaymentMethodsSection } from '@/features/dashboard/org/components/property-settings/PropertyPaymentMethodsSection';
 import { PropertySettingsSectionAlert } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { PropertyVoiceReceptionistSection } from '@/features/dashboard/org/components/property-settings/PropertyVoiceReceptionistSection';
+import { PropertyWorkflowDocumentsSection } from '@/features/dashboard/org/components/property-settings/PropertyWorkflowDocumentsSection';
 import type { VoiceReceptionistFormValues } from '@/features/dashboard/bookings/hooks/useVoiceReceptionistSettings';
 import {
   syncLegacyPaymentFieldsFromMethods,
@@ -140,6 +141,13 @@ export function PropertyOperationalSettingsSections({
         markFieldInteracted={markFieldInteracted}
         onChange={onChange}
         onAutomationToggleChange={onAutomationToggleChange}
+      />
+
+      <PropertyWorkflowDocumentsSection
+        data={data}
+        draft={draft}
+        disabled={disabled}
+        onChange={onChange}
       />
 
       <AdminSection

@@ -90,6 +90,7 @@ export type PropertySettingsSectionId =
   | 'payment'
   | 'building-forms'
   | 'email-automations'
+  | 'workflow-documents'
   | 'integrations';
 
 export type PropertySettingsCompletionInput = {
