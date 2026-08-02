@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy migrations and Edge Functions to the linked Supabase project.
 # Prerequisites: supabase login, supabase link --project-ref <prod-ref>
-# See docs/operations/production-deployment.md for the full cutover checklist (backups, secrets, UI).
+# See docs/archive/operations/production-deployment.md for the full cutover checklist (backups, secrets, UI).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -73,7 +73,7 @@ fi
 
 PROJECT_REF="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
 echo "Linked project: $PROJECT_REF"
-echo "See docs/operations/production-deployment.md for backups and post-deploy steps."
+echo "See docs/archive/operations/production-deployment.md for backups and post-deploy steps."
 echo
 
 run_db_push() {

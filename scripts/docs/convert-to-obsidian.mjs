@@ -25,8 +25,8 @@ const VERBOSE = args.has('--verbose');
 // Files whose body prose must stay untouched (project constraints from the
 // docs-obsidian-tooling-sync plan). Frontmatter is still added on top.
 const WIKILINK_EXCLUDE = new Set([
-  'planning/CLAUDE_TO_PLAN.md',
-  'planning/TASKS_TO_PROMPT.md',
+  'archive/planning/CLAUDE_TO_PLAN.md',
+  'archive/planning/TASKS_TO_PROMPT.md',
   // Historical record of this very refactor plan — full of stale references
   // to files already renamed/deleted by earlier tasks (docs/TODOS.md, the
   // old FOR_HOSTS_LANDING_PAGE_PLAN.md name, etc). Rewriting would fabricate
@@ -35,7 +35,7 @@ const WIKILINK_EXCLUDE = new Set([
 ]);
 
 function isPlannedModule(relFromDocs) {
-  return relFromDocs.startsWith('planning/planned_modules/');
+  return relFromDocs.startsWith('workflow/planned/') && !relFromDocs.endsWith('README.md');
 }
 
 const ACRONYMS = new Set([
@@ -115,6 +115,8 @@ const TOP_DIR_TAGS = {
   reference: 'reference',
   superpowers: 'superpowers',
   todos: 'todos',
+  workflow: 'workflow',
+  archive: 'archive',
 };
 
 function deriveTags(relFromDocs) {
@@ -129,8 +131,11 @@ function deriveTags(relFromDocs) {
   if (parts.includes('property')) tags.add('property');
   if (parts.includes('parking')) tags.add('parking');
   if (parts.includes('account')) tags.add('account');
-  if (parts.includes('planned_modules')) tags.add('planned-modules');
+  if (parts.includes('planned')) tags.add('planned');
+  if (parts[0] === 'workflow' && parts[1]) tags.add(parts[1]);
   if (parts.includes('shipped')) tags.add('shipped');
+  if (parts[0] === 'archive' && parts[1] === 'reference') tags.add('reference');
+  if (parts[0] === 'archive' && parts[1] === 'operations') tags.add('operations');
   if (parts.includes('archive')) tags.add('archive');
 
   for (const [re, tag] of KEYWORD_TAGS) {

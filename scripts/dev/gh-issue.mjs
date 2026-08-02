@@ -8,7 +8,7 @@
  *   bun scripts/dev/gh-issue.mjs update --github 32 [--title T] [--body B | --body-file PATH]
  *   bun scripts/dev/gh-issue.mjs ship --github 32 [--notes "…"] [--reason completed|not_planned] [--no-close]
  *
- * ship: closes the issue (unless --no-close) and writes docs/todos/shipped/{N}-{slug}.md
+ * ship: closes the issue (unless --no-close) and writes docs/archive/todos/shipped/{N}-{slug}.md
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
@@ -18,7 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { computeIssueMetadata } from './backlog-issue-sizing.mjs';
 
 const DEFAULT_REPO = 'sprmke/kame-homes';
-const SHIPPED_DIR = 'docs/todos/shipped';
+const SHIPPED_DIR = 'docs/archive/todos/shipped';
 
 /** @param {string} title */
 function itemSlug(title) {
