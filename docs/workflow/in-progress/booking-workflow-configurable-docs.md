@@ -2,7 +2,7 @@
 title: 'Booking workflow configurable document requirements — Implementation Plan'
 status: in-progress
 tags: [workflow, in-progress, booking-workflow, multi-tenancy]
-updated: 2026-08-02
+updated: 2026-08-03
 stage: in-progress
 kind: plan
 ---
@@ -550,7 +550,7 @@ EOF
 
 - [x] **Step 2: Confirm architecture docs mention new columns / resolve helpers**
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git commit -m "$(cat <<'EOF'
