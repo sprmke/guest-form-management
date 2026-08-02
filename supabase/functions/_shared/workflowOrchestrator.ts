@@ -251,16 +251,32 @@ export class WorkflowOrchestrator {
 
     // D2: empty configurable document requirements → rewrite the target straight to
     // READY_FOR_CHECKIN so old clients (still sending PENDING_DOCUMENTS) keep working.
+    // Also resolved whenever the target is PENDING_DOCUMENTS (even outside a review
+    // proceed attempt — e.g. same-status document_completion_target marks, or legacy
+    // PENDING_GAF/PENDING_PARKING_REQUEST/PENDING_PET_REQUEST → PENDING_DOCUMENTS edges)
+    // so the calendar prefix (§4.5) always reflects this property's actual list.
     let documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS;
-    if (isReviewProceedAttempt) {
+    if (isReviewProceedAttempt || toStatus === 'PENDING_DOCUMENTS') {
       documentRequirements = propertyId
         ? await resolveDocumentRequirements(propertyId)
         : DEFAULT_DOCUMENT_REQUIREMENTS;
+    }
+    if (isReviewProceedAttempt) {
       if (documentRequirements.length === 0 && toStatus !== 'READY_FOR_CHECKIN') {
         console.log(
           `[orchestrator] Empty document requirements for property ${propertyId ?? 'unknown'} — rewriting ${toStatus} → READY_FOR_CHECKIN`
         );
         toStatus = 'READY_FOR_CHECKIN';
+      } else if (documentRequirements.length > 0 && toStatus === 'READY_FOR_CHECKIN') {
+        // Graph gap fix: TRANSITION_GRAPH.PENDING_REVIEW allows READY_FOR_CHECKIN
+        // unconditionally (to support the D2 empty-requirements rewrite above and
+        // any caller that already resolved reqs itself). Reject an explicit client
+        // request to skip PENDING_DOCUMENTS when this property still has pending
+        // document requirements — otherwise GAF/pet can be bypassed by sending
+        // toStatus=READY_FOR_CHECKIN directly from PENDING_REVIEW.
+        throw new Error(
+          `Cannot skip to READY_FOR_CHECKIN from PENDING_REVIEW: this property has ${documentRequirements.length} pending document requirement(s). Proceed to PENDING_DOCUMENTS first.`
+        );
       }
     }
     const requirementIds = new Set(documentRequirements.map((req) => req.id));
@@ -663,7 +679,8 @@ export class WorkflowOrchestrator {
           pax,
           nights,
           guestName,
-          updatedBooking
+          updatedBooking,
+          documentRequirements
         );
         calendarOk = result.success;
       } catch (err) {

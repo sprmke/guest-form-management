@@ -131,13 +131,22 @@ type ApplicabilityFlags = {
 export type PendingDocumentSubStatus =
   'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
 
+/**
+ * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (GAF always + pet on
+ * `has_pets`) for Azure parity when a caller has no resolved list handy — but a
+ * property with a custom (or empty) override must not show GAF/pet as required
+ * just because they aren't in that list. Pass the property's resolved
+ * `resolvedDocumentRequirements` (from `useAppSettings`) whenever available.
+ */
 export function isSubStatusRequired(
   subStatus: PendingDocumentSubStatus,
-  booking: ApplicabilityFlags
+  booking: ApplicabilityFlags,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): boolean {
   if (subStatus === 'PENDING_PARKING_REQUEST') return !!booking.need_parking;
-  if (subStatus === 'PENDING_PET_REQUEST') return !!booking.has_pets;
-  return true;
+  const requirementId = subStatus === 'PENDING_GAF' ? 'gaf' : 'pet';
+  const req = requirements.find((r) => r.id === requirementId);
+  return !!req && requirementApplies(req, booking);
 }
 
 function flagTrue(v: unknown): boolean {
@@ -173,9 +182,10 @@ export function canNavigatePendingParkingSubStep(
 
 export function isSubStatusCompleted(
   subStatus: PendingDocumentSubStatus,
-  booking: ApplicabilityFlags
+  booking: ApplicabilityFlags,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): boolean {
-  if (!isSubStatusRequired(subStatus, booking)) return true;
+  if (!isSubStatusRequired(subStatus, booking, requirements)) return true;
   if (subStatus === 'PENDING_GAF') {
     if (flagTrue(booking.gaf_manual_incomplete)) return false;
     return !!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url;
