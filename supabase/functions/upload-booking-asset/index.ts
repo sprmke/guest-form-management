@@ -19,6 +19,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { DatabaseService } from '../_shared/databaseService.ts';
 import {
+  pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../_shared/statusMachine.ts';
@@ -201,6 +202,9 @@ serveAuthenticated('upload-booking-asset', async (req) => {
     isGuestDocRevertAssetType(assetType)
   ) {
     Object.assign(workflowUpdate, pendingDocumentsClearPatchForGuestEditRevert());
+    workflowUpdate.document_requirement_completions = pendingDocumentsClearCompletionsJsonbPatch(
+      booking.document_requirement_completions
+    );
     workflowUpdate.status = 'PENDING_REVIEW';
     workflowUpdate.status_updated_at = new Date().toISOString();
     console.log(

@@ -25,7 +25,6 @@ import {
 } from 'react-hook-form';
 import { toast } from 'sonner';
 
-
 import { normalizeBookingSource } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import {
   computeGuestCounts,
@@ -524,6 +523,9 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
         currentStatus: booking.status,
         payload,
         revertToPendingReview,
+        currentDocumentRequirementCompletions: (
+          booking as { document_requirement_completions?: unknown }
+        ).document_requirement_completions,
       });
 
       if (revertToPendingReview) {

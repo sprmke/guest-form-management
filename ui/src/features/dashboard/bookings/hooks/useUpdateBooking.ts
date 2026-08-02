@@ -6,7 +6,11 @@
  * or Ready for check-in (see `shouldRevertGuestFieldEditsToPendingReview` in
  * `bookingStatus.ts`), this also resets status → PENDING_REVIEW and merges
  * `pendingDocumentsClearPatchForGuestEditRevert` (nested doc completion, PDF URLs,
- * parking settlement, guest balance settlement — **not** pricing snapshot fields).
+ * parking settlement, guest balance settlement — **not** pricing snapshot fields)
+ * plus `pendingDocumentsClearCompletionsJsonbPatch` (gaf/pet reset merged into the
+ * `document_requirement_completions` JSONB map so the dual-read stepper doesn't show
+ * a stale "complete" substep). The caller must pass the currently-loaded row's
+ * `document_requirement_completions` via `currentDocumentRequirementCompletions`.
  * The caller should set `revertToPendingReview` only when workflow-sensitive guest fields changed.
  */
 
@@ -23,6 +27,7 @@ import { toGuestSubmissionDate, toGuestSubmissionTime } from '@/utils/format/dat
 
 import { BOOKING_QUERY_KEY } from './useBooking';
 import {
+  pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from '../lib/bookingStatus';
@@ -198,6 +203,13 @@ type MutationArgs = {
   payload: UpdateBookingPayload;
   /** When true (and current status allows), also resets status to PENDING_REVIEW. */
   revertToPendingReview?: boolean;
+  /**
+   * Row's current `document_requirement_completions` value (from the loaded
+   * booking) — required so the revert patch can merge the gaf/pet reset into
+   * the JSONB map instead of dropping unrelated ids. Only read when
+   * `revertToPendingReview` ends up applying.
+   */
+  currentDocumentRequirementCompletions?: unknown;
 };
 
 export function useUpdateBooking() {
@@ -210,6 +222,7 @@ export function useUpdateBooking() {
       currentStatus,
       payload,
       revertToPendingReview,
+      currentDocumentRequirementCompletions,
     }: MutationArgs) => {
       let patch: Record<string, unknown> = {
         ...payload,
@@ -236,6 +249,9 @@ export function useUpdateBooking() {
 
       if (revertToPendingReview && shouldRevertGuestFieldEditsToPendingReview(currentStatus)) {
         Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+        patch.document_requirement_completions = pendingDocumentsClearCompletionsJsonbPatch(
+          currentDocumentRequirementCompletions
+        );
         patch.status = 'PENDING_REVIEW';
         patch.status_updated_at = new Date().toISOString();
       }

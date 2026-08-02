@@ -3,6 +3,7 @@ import { GuestFormData, GuestSubmission, transformFormToSubmission } from './typ
 import { applyGafDefaultsToFormData } from './appSettings.ts';
 import { hasBlockedNightsInRange } from './propertyBlockedDates.ts';
 import {
+  pendingDocumentsClearCompletionsJsonbPatch,
   pendingDocumentsClearPatchForGuestEditRevert,
   shouldRevertGuestFieldEditsToPendingReview,
 } from './statusMachine.ts';
@@ -485,6 +486,10 @@ export class DatabaseService {
             shouldRevertGuestFieldEditsToPendingReview(existingBooking.status)
           ) {
             Object.assign(patch, pendingDocumentsClearPatchForGuestEditRevert());
+            (patch as Record<string, unknown>).document_requirement_completions =
+              pendingDocumentsClearCompletionsJsonbPatch(
+                existingBooking.document_requirement_completions
+              );
             patch.status = 'PENDING_REVIEW';
             patch.status_updated_at = new Date().toISOString();
           }

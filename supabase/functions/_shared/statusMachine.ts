@@ -113,6 +113,10 @@ export function canGuestPublicUpdateForm(status: string | null | undefined): boo
  * Documents” (pricing on the row is preserved unless the transition payload
  * overwrites it).
  *
+ * Named-column patch only — callers that also write the `document_requirement_completions`
+ * JSONB column must additionally call `pendingDocumentsClearCompletionsJsonbPatch()` below
+ * with the row's current column value so gaf/pet reset there too (dual-write invariant).
+ *
  * Mirror: `ui/src/features/dashboard/bookings/lib/bookingStatus.ts#pendingDocumentsClearPatchForGuestEditRevert`.
  */
 export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, null | false> {
@@ -336,6 +340,26 @@ export function readDocumentCompletions(
       manualIncomplete: bookingFlagTrue(booking.pet_manual_incomplete),
     };
   }
+  return map;
+}
+
+/**
+ * Merges the guest-edit-revert gaf/pet reset into the row's *current*
+ * `document_requirement_completions` JSONB map, preserving any other ids
+ * (e.g. future configurable-doc entries). Every caller of
+ * `pendingDocumentsClearPatchForGuestEditRevert()` that also intends to write
+ * `document_requirement_completions` must call this with the pre-update value
+ * of that column — never write a bare `{ gaf, pet }` object over the column,
+ * that would silently drop unrelated ids.
+ *
+ * Mirror: `ui/.../bookings/lib/bookingStatus.ts#pendingDocumentsClearCompletionsJsonbPatch`.
+ */
+export function pendingDocumentsClearCompletionsJsonbPatch(
+  existingCompletions: unknown
+): DocumentCompletionsMap {
+  const map = parseCompletionsMap(existingCompletions);
+  map.gaf = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  map.pet = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
   return map;
 }
 
