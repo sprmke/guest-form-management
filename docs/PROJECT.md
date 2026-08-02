@@ -9,7 +9,7 @@ updated: 2026-08-02
 
 This document is the entry point for the **guest-form-management** architecture docs. Full detail now lives under [`docs/architecture/`](architecture/overview.md), split by topic so each file stays focused and easy to update.
 
-> **Looking for a non-technical walkthrough?** See [`docs/reference/booking-flow-guide-for-admin.md`](reference/booking-flow-guide-for-admin.md) (also available as [PDF](reference/booking-flow-guide-for-admin.pdf)) — a plain-English guide to every booking status, what the admin does at each step, what the cron jobs / Gmail listener do automatically, and the calendar color cheat sheet. Forward this to ops / Airbnb admin.
+> **Looking for a non-technical walkthrough?** See [`docs/archive/reference/booking-flow-guide-for-admin.md`](archive/reference/booking-flow-guide-for-admin.md) (also available as [PDF](archive/reference/booking-flow-guide-for-admin.pdf)) — a plain-English guide to every booking status, what the admin does at each step, what the cron jobs / Gmail listener do automatically, and the calendar color cheat sheet. Forward this to ops / Airbnb admin.
 
 ## Architecture docs
 
