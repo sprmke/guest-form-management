@@ -19,6 +19,7 @@ import {
   type SuperhostStatus,
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { AppSettingsPatchBody } from '@/features/dashboard/org/lib/propertySettingsSave';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 
 import { supabase } from '@/lib/supabase/client';
 import { propertyBrandColorFormValue, propertyBrandColorsEquivalent } from '@/lib/theme/brandColor';
@@ -136,6 +137,12 @@ export type AppSettingsDto = {
   superhostVerificationUrl: string;
   superhostProofImageUrl: string;
   superhostStatus: SuperhostStatus;
+  /** Raw stored override — `null` inherits the residence default; `[]` is a valid explicit empty override. */
+  documentRequirementsOverride: DocumentRequirement[] | null;
+  /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
+  resolvedDocumentRequirements: DocumentRequirement[];
+  syncCalendar: boolean;
+  syncSheets: boolean;
 };
 
 export type AppSettingsFormValues = {
@@ -162,6 +169,10 @@ export type AppSettingsFormValues = {
   mainSocialPlatform: string;
   externalReviews: PropertyExternalReview[];
   superhostVerificationUrl: string;
+  /** `null` inherits the residence default; `[]` is a valid explicit empty override. */
+  documentRequirementsOverride: DocumentRequirement[] | null;
+  syncCalendar: boolean;
+  syncSheets: boolean;
 };
 
 function sdRefundLeadMinutesToHours(minutes: number): number {
@@ -208,6 +219,9 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     mainSocialPlatform: data.mainSocialPlatformStored ?? '',
     externalReviews: normalizeExternalReviewsDraft(data.externalReviews),
     superhostVerificationUrl: data.superhostVerificationUrl,
+    documentRequirementsOverride: data.documentRequirementsOverride,
+    syncCalendar: data.syncCalendar,
+    syncSheets: data.syncSheets,
   };
 }
 

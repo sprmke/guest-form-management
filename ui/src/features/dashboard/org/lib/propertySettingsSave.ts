@@ -1,4 +1,5 @@
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   paymentMethodsEqual,
   syncLegacyPaymentFieldsFromMethods,
@@ -715,6 +716,10 @@ export type AppSettingsPatchBody = {
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
+  /** `null` clears the override (inherit residence default). Wired by Task 6 UI. */
+  documentRequirementsOverride?: DocumentRequirement[] | null;
+  syncCalendar?: boolean;
+  syncSheets?: boolean;
 };
 
 export function buildAppSettingsPatchForSections(
