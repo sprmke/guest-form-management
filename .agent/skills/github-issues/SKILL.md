@@ -2,7 +2,7 @@
 name: github-issue
 description: >-
   Work the GitHub backlog on sprmke/kame-homes: view issues, create new ones,
-  ship completed work to docs/todos/shipped. Use when filing tickets, picking up
+  ship completed work to docs/archive/todos/shipped. Use when filing tickets, picking up
   work, or closing/shipping an issue.
 disable-model-invocation: false
 ---
@@ -12,11 +12,11 @@ disable-model-invocation: false
 **Repo:** `sprmke/kame-homes`  
 **Pending backlog:** GitHub Issues + Project board  
 **Epic grouping:** GitHub parent issue (`--parent` on create) — not body text  
-**Shipped archive:** `docs/todos/shipped/{issueNumber}-{slug}.md`
+**Shipped archive:** `docs/archive/todos/shipped/{issueNumber}-{slug}.md`
 
 ## Before starting work
 
-1. Epic index: **`docs/todos/README.md`** (parent issues #101–#119).
+1. Epic index: **`docs/README.md`** (Product backlog — parent issues #101–#119).
 2. Fetch issue: `bun scripts/dev/gh-issue.mjs view --github N`
 3. Read `docs/guides/routes/` when the issue touches a page.
 4. Never add Cursor co-author trailers (`git-commits.mdc`).
@@ -50,4 +50,4 @@ Raw `gh` works too; prefer **`gh-issue.mjs ship`** over bare `gh issue close` to
 - Update **`docs/PROJECT.md`** / route guides if behavior changed.
 - Do **not** add Spec/Epic footers or local spec files.
 
-See: `.cursor/rules/github-issues.mdc`, `docs/todos/README.md`.
+See: `.cursor/rules/github-issues.mdc`, `docs/README.md` (Product backlog).

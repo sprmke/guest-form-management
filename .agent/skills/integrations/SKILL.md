@@ -18,14 +18,14 @@ Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAU
 
 - Five modules: marketing, staff, admin, finance, maintenance
 - Settings UI: `/notifications` (property) — bot token + chat id encrypted in DB
-- Crons: `telegram-*-cron` + `docs/operations/scheduled-jobs-and-testing.md`
-- Reference: `docs/reference/telegram-marketing-reminders.md`
+- Crons: `telegram-*-cron` + `docs/archive/operations/scheduled-jobs-and-testing.md`
+- Reference: `docs/archive/reference/telegram-marketing-reminders.md`
 
 ## Meta Guest Inbox (org)
 
 - Skills: `social-inbox`, `meta-messaging`
 - Rule: `social-inbox.mdc`
-- Runbook: `docs/operations/inbox-e2e-runbook.md`
+- Runbook: `docs/archive/operations/inbox-e2e-runbook.md`
 
 ## Resend
 
@@ -34,7 +34,7 @@ Env: `GMAIL_API_WEB_CLIENT_JSON`, `GMAIL_OAUTH_TOKEN_ENCRYPTION_KEY`, `GMAIL_OAU
 
 ## AI (receipt validation)
 
-- `GEMINI_API_KEYS` / `GROQ_API_KEY` — `docs/reference/ai-payment-receipt-validation.md`
+- `GEMINI_API_KEYS` / `GROQ_API_KEY` — `docs/archive/reference/ai-payment-receipt-validation.md`
 
 ## Local scripts
 

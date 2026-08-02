@@ -9,8 +9,8 @@ This skill is the **playbook** for the redesign. The **rules of engagement** liv
 
 ## Required reading before you start
 
-1. `docs/planning/NEW_FLOW_PLAN.md` — plan, open questions, phased rollout.
-2. `docs/planning/NEW_FLOW.md` — original product spec.
+1. `docs/archive/planning/NEW_FLOW_PLAN.md` — plan, open questions, phased rollout.
+2. `docs/archive/planning/NEW_FLOW.md` — original product spec.
 3. `.cursor/rules/booking-workflow.mdc` — canonical status/transition/color map.
 4. `.cursor/rules/admin-auth.mdc` — who can transition and how.
 5. `.cursor/rules/supabase-edge-functions.mdc` — function conventions.

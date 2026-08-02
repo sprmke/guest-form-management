@@ -60,7 +60,7 @@ ui/src/features/guest/
 
 - `docs/guides/routes/README.md` + route-specific guide
 - `docs/architecture/routing.md` routes table
-- `docs/reference/project-structure.md` guest modules
+- `docs/archive/reference/project-structure.md` guest modules
 - `.cursor/rules/public-ui.mdc` if conventions change
 
 ## Related

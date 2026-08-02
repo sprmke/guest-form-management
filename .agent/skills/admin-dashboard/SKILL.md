@@ -5,7 +5,7 @@ description: Patterns for the new /bookings admin list and /bookings/:bookingId 
 
 # Admin dashboard skill
 
-Implements the admin surface described in `docs/planning/NEW_FLOW.md` lines 67-76 and refined in `docs/planning/NEW_FLOW_PLAN.md §3.1`.
+Implements the admin surface described in `docs/archive/planning/NEW_FLOW.md` lines 67-76 and refined in `docs/archive/planning/NEW_FLOW_PLAN.md §3.1`.
 
 ## Required context
 

@@ -3,13 +3,23 @@ name: competitive-ux-research
 description: >-
   Researches how Airbnb (guest) and leading vacation-rental PMS apps (Guesty,
   Hostaway, Lodgify, Hospitable, OwnerRez) handle UI and user flows before
-  implementing features. Use when adding or changing pages, modals, booking
-  flows, auth, payments, inbox, settings, onboarding, or any user-facing task.
+  material UX work. Use for new routes/flows, auth, checkout, payments,
+  messaging, settings, onboarding, or redesigns. Skip polish, spacing, renames,
+  bugfixes that restore documented behavior, and already-specced wiring.
 ---
 
 # Competitive UX Research
 
 Study how category leaders solve the **same job** before writing UI or flow code. Adapt patterns to Kame Homes constraints — do not clone competitor chrome.
+
+## Skip this skill when
+
+- Pure backend / edge / DB
+- Bugfix restoring documented behavior
+- Verbatim copy tweaks
+- Visual polish (spacing, colors, typography, control height/density)
+- Renames / refactors with no interaction change
+- Implementing an already-written plan or route-guide spec without changing the flow
 
 ## Workflow (follow in order)
 

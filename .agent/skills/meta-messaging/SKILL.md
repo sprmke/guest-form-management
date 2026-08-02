@@ -44,7 +44,7 @@ Subscribe fields: `messages`, `message_echoes`, `messaging_postbacks`, `message_
 
 ## App Review checklist
 
-See **`docs/operations/meta-app-review.md`**. Screencast must show: sign in → Channels → Connect with Meta → receive message → reply from Guest Inbox.
+See **`docs/archive/operations/meta-app-review.md`**. Screencast must show: sign in → Channels → Connect with Meta → receive message → reply from Guest Inbox.
 
 ## Policy reminders
 

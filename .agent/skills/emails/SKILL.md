@@ -40,5 +40,5 @@ Property template editor: `_shared/propertyTemplatePlaceholders.ts`, UI catalog 
 
 ## Docs
 
-- `docs/reference/booking-flow-guide-for-admin.md`
-- `docs/operations/production-deployment.md` (Resend + static_files)
+- `docs/archive/reference/booking-flow-guide-for-admin.md`
+- `docs/archive/operations/production-deployment.md` (Resend + static_files)

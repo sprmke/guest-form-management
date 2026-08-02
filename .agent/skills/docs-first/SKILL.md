@@ -17,9 +17,10 @@ Do not implement from memory. Align with repo docs first.
 
 1. **`docs/README.md`** — index; then **`docs/PROJECT.md`** for architecture, API, env vars, routes
 2. **`docs/guides/routes/README.md`** — per-route behavior (update matching guide in the same change)
-3. **`docs/todos/README.md`** — backlog on GitHub Issues; shipped history in `docs/todos/shipped/`
-4. **Booking / admin work** — `docs/planning/NEW_FLOW_PLAN.md`, `.cursor/rules/booking-workflow.mdc`, `.cursor/rules/admin-auth.mdc`
+3. **`docs/README.md`** — backlog on GitHub Issues (Product backlog section); shipped history in `docs/archive/todos/shipped/`
+4. **Booking / admin work** — read `docs/archive/planning/NEW_FLOW_PLAN.md`, `.cursor/rules/booking-workflow.mdc`, and `.cursor/rules/admin-auth.mdc` (these are glob-scoped, not always-on — open them when the task touches status/auth)
 5. **Edge functions** — `.cursor/rules/supabase-edge-functions.mdc`
+6. **Session hygiene** — `.cursor/rules/ai-usage.mdc` (short sessions, no default subagent swarms)
 
 ## Topic map
 
@@ -34,7 +35,7 @@ Do not implement from memory. Align with repo docs first.
 | Forms                  | `.cursor/rules/forms.mdc`                                                        |
 | Emails / integrations  | `.cursor/skills/emails/SKILL.md`, `integrations/SKILL.md`                        |
 | Social inbox           | `.cursor/skills/social-inbox/SKILL.md`                                           |
-| File naming            | `.cursor/rules/naming-conventions.mdc`, `docs/reference/archive/naming-audit.md` |
+| File naming            | `.cursor/rules/naming-conventions.mdc`, `docs/archive/reference/naming-audit.md` |
 | Full agent index       | `.cursor/rules/README.md`                                                        |
 
 ## Rule

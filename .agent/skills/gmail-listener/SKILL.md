@@ -35,7 +35,7 @@ This skill translates the **proven Gmail automation** from `pay-credit-cards` in
 
 …then download `APPROVED GAF.pdf`, upload to Supabase Storage, set `approved_*_pdf_url`, and call `transition-booking` → `workflowOrchestrator`.
 
-**Matching rules** are already locked in `docs/planning/NEW_FLOW_PLAN.md` §6.1 **Q6.3/Q6.4** (subjects mirror `supabase/functions/_shared/emailService.ts`).
+**Matching rules** are already locked in `docs/archive/planning/NEW_FLOW_PLAN.md` §6.1 **Q6.3/Q6.4** (subjects mirror `supabase/functions/_shared/emailService.ts`).
 
 ## Deno / Edge differences vs pay-credit-cards (Node)
 
@@ -68,7 +68,7 @@ Initialize like pay-credit `--init`: set `historyId` to **current profile `histo
 
 ### `processed_emails`
 
-Already planned in `docs/planning/NEW_FLOW_PLAN.md` — keep it:
+Already planned in `docs/archive/planning/NEW_FLOW_PLAN.md` — keep it:
 
 - `message_id TEXT PRIMARY KEY`
 - `kind TEXT` (`gaf` | `pet`)
@@ -108,4 +108,4 @@ Use this as the **durable** dedupe layer across function deploys. The in-memory 
 
 ## Resolved listener decisions
 
-**Q6.2** (inbox), **Q6.5** (multi-match), and **Q6.6** (retries + admin manual triggers) are **locked in `docs/planning/NEW_FLOW_PLAN.md` §6.1**. Only **§6.2** refinement (**Q7.4** surprise field) is unrelated to Gmail unless we add new product rules.
+**Q6.2** (inbox), **Q6.5** (multi-match), and **Q6.6** (retries + admin manual triggers) are **locked in `docs/archive/planning/NEW_FLOW_PLAN.md` §6.1**. Only **§6.2** refinement (**Q7.4** surprise field) is unrelated to Gmail unless we add new product rules.
