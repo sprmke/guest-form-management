@@ -68,6 +68,10 @@ export function TelegramParkingSettingsCard() {
     setChatId,
     busy,
     connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
     onTestConnection,
     onEnabledChange,
     update,
@@ -158,8 +162,11 @@ export function TelegramParkingSettingsCard() {
             onBotTokenChange={setBotToken}
             onChatIdChange={setChatId}
             onTestConnection={onTestConnection}
-            testPending={testSend.isPending}
+            testPending={connectPending}
             connectionOk={connectionOk}
+            connectionLabels={connectionLabels}
+            chatLabelLoading={backgroundVerifyPending}
+            onBotTokenValidated={resetConnection}
             manageSectionTitle="Message templates"
           >
             <TelegramSettingsManageCard

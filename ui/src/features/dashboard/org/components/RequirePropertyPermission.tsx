@@ -79,12 +79,5 @@ function canViewPropertySection(
   permissions: readonly string[] | undefined,
   section: PropertySection
 ): boolean {
-  if (section === 'calendar') {
-    return (
-      hasPropertyPermission(permissions, 'pricing:view') ||
-      hasPropertyPermission(permissions, 'bookings:view')
-    );
-  }
-
   return hasPropertyPermission(permissions, PROPERTY_SECTION_VIEW_PERMISSION[section]);
 }
