@@ -83,4 +83,4 @@ End with a **Summary** table: severity → count → one-line theme.
 - `.cursor/rules/security.mdc`
 - `.cursor/rules/supabase-edge-functions.mdc`
 - `.cursor/rules/booking-workflow.mdc`
-- `docs/planning/NEW_FLOW_PLAN.md` — especially auth and Gmail listener sections.
+- `docs/archive/planning/NEW_FLOW_PLAN.md` — especially auth and Gmail listener sections.

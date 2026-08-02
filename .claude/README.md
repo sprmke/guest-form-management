@@ -8,7 +8,7 @@ Agent context for **Claude Code** in this repo. Mirrors `.cursor/rules/README.md
 | ----------- | --------------------------------------------------------------------------- |
 | `CLAUDE.md` | Stack, commands, architecture, booking workflow, doc-sync rules — repo root |
 
-**Plan mode:** `.cursor/rules/plan-mode.mdc` — finished plans go to `docs/planning/planned_modules/` (also summarized in `CLAUDE.md` § Plan mode).
+**Plan mode:** `.cursor/rules/plan-mode.mdc` — finished plans go to `docs/workflow/planned/` (also summarized in `CLAUDE.md` § Plan mode).
 
 ## Skills (`.claude/skills/*/SKILL.md` — invoke `/name` or Claude decides)
 
@@ -45,6 +45,23 @@ Same as Cursor's `.cursor/commands/`; Claude Code commands and skills both creat
 | `/fix-merge-conflicts` | Resolve merge conflicts without breaking either side's changes                                     |
 | `/github-issue`        | View / create / update / ship issues on `sprmke/kame-homes` (backed by `scripts/dev/gh-issue.mjs`) |
 
+## Display (`~/.claude/settings.json` — user scope, not committed)
+
+Personal Claude Code UI settings live in **`~/.claude/settings.json`**, not in this repo. Current defaults:
+
+| Setting                      | Value                     | What it shows                                                                                        |
+| ---------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `statusLine`                 | `~/.claude/statusline.sh` | 2-line bar: model, effort, git branch, context %, in/out tokens, session cost, duration, rate limits |
+| `showTurnDuration`           | `true`                    | Per-turn timing (e.g. "Cooked for 1m 6s") after responses                                            |
+| `showThinkingSummaries`      | `true`                    | Extended-thinking summaries in **terminal CLI only** (not VS Code extension)                         |
+| `effortLevel`                | `high`                    | Reasoning effort; change mid-session with `/effort`                                                  |
+| `model`                      | `sonnet`                  | Default model; switch with `/model`                                                                  |
+| `terminalProgressBarEnabled` | `true`                    | Progress bar in supported terminals (iTerm2, Ghostty, ConEmu)                                        |
+
+**Quick checks:** `/status` (loaded settings + model), `/cost` (token/cost breakdown), `/config` (interactive settings UI). Reload the VS Code extension after changing `model` or `outputStyle`.
+
+To regenerate the status line script: `/statusline show model, effort, context bar, tokens, cost, git branch, and rate limits`.
+
 ## Hooks (`.claude/settings.json` → `"hooks"`, scripts in `.claude/hooks/`)
 
 Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Code's stdin JSON shape (`tool_input.file_path` / `tool_input.command`) and output contract (`hookSpecificOutput.permissionDecision`). See `.claude/skills/README.md` for the exact translation notes if re-syncing after a Cursor-side hook change.
@@ -58,17 +75,40 @@ Ported from `.cursor/hooks.json` + `.cursor/hooks/*.sh`, translated to Claude Co
 
 ## MCP servers (`.mcp.json`, shared with Cursor via `.cursor/mcp.json` symlink)
 
-| Server       | Needs                                                                              | Use for                                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| `supabase`   | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (env)                              | Schema/logs/advisors against local or hosted Supabase — **read-only by default**                                             |
-| `playwright` | nothing                                                                            | Drive the real guest form / admin dashboard in a browser (used by `/verify`)                                                 |
-| `context7`   | nothing (optional key for higher rate limits)                                      | Current docs for React Router, TanStack Query, Zod, Radix, date-fns, …                                                       |
-| `github`     | `GITHUB_TOKEN` (env — `gh auth token` works)                                       | Repo/PR/Actions visibility from chat                                                                                         |
-| `markitdown` | `uv tool install markitdown-mcp` (binary on PATH, or set command to absolute path) | Convert PDF/Office/HTML → markdown via `convert_to_markdown` (saves tokens vs raw). See always-on rule `markitdown-mcp.mdc`. |
+**Project-required (stdio only — Claude Code–compatible):**
 
-Export the env vars in your shell profile — never commit them. `SUPABASE_ACCESS_TOKEN`: Supabase dashboard → Account → Access Tokens. `SUPABASE_PROJECT_REF`: the `<ref>` in your project's Supabase URL. `GITHUB_TOKEN`: `gh auth token` (requires `gh auth login` once) or a PAT with repo scope.
+| Server       | Needs                                                         | Use for                                         |
+| ------------ | ------------------------------------------------------------- | ----------------------------------------------- |
+| `supabase`   | `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_REF` (env)         | Schema/logs/advisors — **read-only by default** |
+| `playwright` | nothing                                                       | Browser drive for `/verify`                     |
+| `context7`   | nothing (optional key for higher rate limits)                 | Current library docs                            |
+| `markitdown` | `markitdown-mcp` on `PATH` (`uv tool install markitdown-mcp`) | PDF/Office → markdown (`markitdown-mcp.mdc`)    |
+
+**Not in project `.mcp.json` (use these instead):**
+
+| Need                    | Prefer                                                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| GitHub                  | `gh` CLI, or Claude/Cursor **GitHub plugin** MCP (not project `.mcp.json` — HTTP shape was invalid for Claude Code) |
+| Notion / Figma / Vercel | User/plugin MCP only when that task needs them — keep disabled otherwise                                            |
+
+Export `SUPABASE_*` in your shell profile — never commit them. Ensure `markitdown-mcp` resolves on `PATH` (avoid `${HOME}/…` in `.mcp.json` — Claude Code rejects that).
 
 To allow Supabase MCP to write (default is `--read-only`), edit the `args` in `.mcp.json` locally — don't commit that change unless the whole team should have write access from chat.
+
+## Token / usage playbook
+
+Canonical: **`.cursor/rules/ai-usage.mdc`**. Summary:
+
+| Do                                             | Don't                                             |
+| ---------------------------------------------- | ------------------------------------------------- |
+| `/clear` between tasks                         | Multi-day sessions / >150k context by default     |
+| Composer (Cursor) / Sonnet for implementation  | Opus / high-thinking for polish                   |
+| Read `booking-workflow.mdc` only when relevant | Expect the full status-machine dump every turn    |
+| One agent + `rg`/`Read`                        | Explore → Plan → brainstorm chains without asking |
+| `/superpowers-*` when you want that workflow   | Auto-invoke Superpowers brainstorming             |
+| `/effort medium` for chores                    | `effort=high` on every rename                     |
+
+**User-scope Claude plugins (`~/.claude/settings.json`):** keep what you use. Strong candidates to **disable** if unused (they still cost discovery/context): `skill-creator`, `claude-code-setup`, `feature-dev`, `vercel` (unless deploying), `obsidian` (unless vault tasks), `code-review` (if you use Bugbot/PR review elsewhere). Keep **`superpowers`** only if you still run `/superpowers-*`; otherwise disable the plugin entirely to cut accidental brainstorming spend.
 
 ## Updating
 

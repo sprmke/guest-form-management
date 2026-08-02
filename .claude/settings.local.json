@@ -41,5 +41,5 @@
     ]
   },
   "description": "Impeccable design detector: immediate-tier checks after Edit/Write/MultiEdit on UI files, full-rule deep pass on Stop.",
-  "enabledMcpjsonServers": ["supabase", "playwright", "context7", "github", "markitdown"]
+  "enabledMcpjsonServers": ["supabase", "playwright", "context7", "markitdown"]
 }

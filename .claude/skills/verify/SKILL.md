@@ -29,7 +29,7 @@ Stop and fix before continuing if any of these fail — don't try to verify beha
      -d '{"...": "..."}'
    ```
    Admin functions need a JWT for an `ADMIN_ALLOWED_EMAILS` account; public functions (`submit-form`, `get-booked-dates`, ...) work with the anon key.
-3. Scheduled jobs (`gmail-listener`, `sd-refund-cron`, telegram crons) — see `docs/operations/scheduled-jobs-and-testing.md` for the exact curl payloads and admin-scoped vs global invocation.
+3. Scheduled jobs (`gmail-listener`, `sd-refund-cron`, telegram crons) — see `docs/archive/operations/scheduled-jobs-and-testing.md` for the exact curl payloads and admin-scoped vs global invocation.
 4. For anything touching booking status, confirm against `.cursor/rules/booking-workflow.mdc` §3 (side-effect matrix): did the right DB fields, calendar color/title, sheet row, and emails fire — and _only_ those?
 
 ## 3. UI changes — drive the real browser, don't just read the diff

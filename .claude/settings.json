@@ -36,6 +36,11 @@
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-ai-tooling-sync.sh",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-workflow-in-progress.sh",
+            "timeout": 5
           }
         ]
       }
