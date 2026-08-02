@@ -1,2 +1,4 @@
 npx lint-staged
+bash scripts/dev/touch-in-progress-docs.sh
+bash scripts/dev/check-retired-docs-paths.sh
 bun run check:ai-tooling-sync

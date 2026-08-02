@@ -40,7 +40,8 @@ function telegramVerifyToastContent(
     return {
       ok: false,
       title: 'Bot not reachable',
-      description: verify.getMe.error ?? 'Check that the Telegram bot token is correct.',
+      description:
+        verify.getMe.error ?? 'Invalid bot token. Please double-check your token and try again.',
     };
   }
   if (!verify.getChat.ok) {
