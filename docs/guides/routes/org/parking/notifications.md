@@ -24,9 +24,16 @@ Route: `/org/:orgSlug/parking/:parkingSlug/notifications`
 
 Two Telegram sections (same layout as property notifications):
 
-0. **Shared bot token** — optional card at the top (one token for Parking + Finance modules). **Test token** validates via Telegram `getMe`. Help covers BotFather setup. Chat ID fields include **Help** with lookup steps.
+### Shared bot token (recommended default)
+
+One BotFather token at the top pre-fills Parking and Finance module fields. Override per module anytime. One bot handles typical volume; use **separate Chat IDs** for parking ops vs finance reminders when you want different groups.
+
+**Telegram notifications** group heading includes **Get Help**. **Shared bot token** card: **Save and test** validates via `getMe`, then saves; **Saved** replaces the button when complete.
+
 1. **Parking** — reservation request, check-in reminder, payment received (`telegram_parking_settings`)
 2. **Finance** — operating expense due-date reminders (`telegram_finance_settings`)
+
+**Find chat ID** is inline on the Chat ID field — **Scan for chats**, then a group dropdown. Hidden after **Connected** (group name + **Reveal** instead). Saved credentials show **@bot username** and **group name** by default; **Reveal** shows the raw token or chat ID.
 
 Deep links: `?module=finance` scrolls to the Finance section.
 
@@ -39,7 +46,7 @@ Parking **Notifications** configures Telegram alerts for this slot. The **Parkin
 **Common host questions**
 
 - Q: Do I need two different Telegram setups?
-  A: You can use one bot and chat for both sections, or separate channels if you want ops alerts and finance reminders in different group chats.
+  A: No for the bot — one shared token is enough. Use separate **Chat IDs** if you want parking ops alerts and finance reminders in different groups. Each module can still use its own bot token if you override the field.
 - Q: Why aren’t I getting parking reservation alerts yet?
   A: Reservation Telegram templates are wired for this slot, but some reservation events depend on the parking booking flow shipping. Finance due-date reminders work today when finance Telegram is enabled and transactions have due dates.
 - Q: How do I jump straight to finance reminders?

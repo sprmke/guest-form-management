@@ -159,7 +159,7 @@ Guest Inbox is where you read and reply to guest messages from Facebook Messenge
 
 ## Roadmap & next goals
 
-Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../todos/README.md) as they ship.
+Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../README.md) as they ship.
 
 ### P0 — Platform reliability & data foundation
 
@@ -219,7 +219,7 @@ Prioritized themes for Guest Inbox v2. Check items in [`docs/todos/`](../../../t
 
 ## Chat UX roadmap (guest web + inbox)
 
-Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat]]** § UX roadmap and **[`docs/todos/`](../../../todos/README.md)**.
+Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat]]** § UX roadmap and **[`docs/todos/`](../../../README.md)**.
 
 | Phase | Inbox impact                                                                                                                                               |
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -237,7 +237,7 @@ Shared bubble components: `ui/src/components/chat/*`. Full phase list: **[[chat]
 - `.cursor/rules/social-inbox.mdc`
 - [[meta-app-review|Meta app setup — Guest Inbox + Marketing Content Studio]]
 - [[inbox-e2e-runbook|Guest Inbox — E2E runbook (local + staging)]]
-- [`docs/todos/README.md`](../../../todos/README.md) — Guest Inbox backlog on GitHub ([#108](https://github.com/sprmke/kame-homes/issues/108))
+- [`docs/README.md`](../../../README.md) — Guest Inbox backlog on GitHub ([#108](https://github.com/sprmke/kame-homes/issues/108))
 
 ## Pending / follow-ups (legacy checklist)
 

@@ -56,9 +56,10 @@ Three KPI chips: weekday base rate, weekend premium %, count of custom calendar 
 
 ### Calendar
 
-- Month grid; **Fri–Sun** use the weekend nightly rate.
+- Month grid titled **Nightly rates**; legend under the grid.
 - Legend: **Available**, **Custom** (pen icon), **Booked** (disabled when inventory exists), **Selected**.
-- Click or drag future available dates → **Set nightly rate** modal.
+- Click or drag future available dates → **Set nightly rate** modal (**Reset** / **Apply**; close via X).
+  **Apply** skips storing an override when the amount matches the weekday/weekend base for that night.
 - Modal **Apply** / **Reset** persist overrides immediately (`parking_pricing_date_overrides`).
 
 ### Base rates (right column)
