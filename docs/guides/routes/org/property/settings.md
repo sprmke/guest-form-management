@@ -13,23 +13,23 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                                           |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------- |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                      |
-| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                                 |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                         |
-| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                               |
-| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                                 |
-| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                        |
-| Location           | Done     | Done       | Done | Address + map pin required                                                      |
-| Socials            | Done     | Done       | Done | Per-property social links                                                       |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                             |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                     |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                        |
-| Workflow documents | Done     | Done       | Done | Doc requirements override (or residence default) + Calendar/Sheets sync toggles |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional                   |
-| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes       |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                             |
+| Section            | E2E save | Validation | Docs | Notes                                                                                |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------------ |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                           |
+| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                                      |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                              |
+| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                                    |
+| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                                      |
+| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                             |
+| Location           | Done     | Done       | Done | Address + map pin required                                                           |
+| Socials            | Done     | Done       | Done | Per-property social links                                                            |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                                  |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                          |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                             |
+| Workflow documents | Done     | Done       | Done | Doc requirements override (or residence-type default) + Calendar/Sheets sync toggles |
+| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional                        |
+| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes            |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                  |
 
 ---
 
@@ -51,7 +51,7 @@ Property Settings is where you complete your listing and day-to-day setup — ba
   A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property and is blocked if any bookings exist — use Archive for units with past stays.
 - Q: Where do guests see my cancellation policy and house rules?
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
-- Q: What does "Use residence default" mean under Workflow documents?
+- Q: What does "Use residence-type default" mean under Workflow documents?
   A: Your booking's required documents (e.g. GAF request, pet approval) follow the shared default for your residence unless you switch to **Custom list** and build your own. An empty custom list is valid — bookings then skip straight to Ready for check-in.
 
 ---
@@ -380,15 +380,15 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 Per-property document requirements for `PENDING_DOCUMENTS` and Calendar/Sheets sync switches — both in `app_settings`.
 
-| Field                 | Column                           | Notes                                                                                                                                                                                                                                                |
-| --------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Document requirements | `document_requirements_override` | `null` inherits the residence default (`developments.settings.workflowDefaults.documentRequirements` → `DEFAULT_DOCUMENT_REQUIREMENTS`); `[]` is a valid explicit override (D2) — booking skips straight to Ready for check-in with no docs required |
-| Sync Google Calendar  | `sync_calendar`                  | Off skips Calendar event writes on workflow transitions for this property                                                                                                                                                                            |
-| Sync Google Sheets    | `sync_sheets`                    | Off skips Sheet row writes on workflow transitions for this property                                                                                                                                                                                 |
+| Field                 | Column                           | Notes                                                                                                                                                                                                                                                     |
+| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document requirements | `document_requirements_override` | `null` inherits the residence-type default (`developments.settings.workflowDefaults.documentRequirements` → `DEFAULT_DOCUMENT_REQUIREMENTS`); `[]` is a valid explicit override (D2) — booking skips straight to Ready for check-in with no docs required |
+| Sync Google Calendar  | `sync_calendar`                  | Off skips Calendar event writes on workflow transitions for this property                                                                                                                                                                                 |
+| Sync Google Sheets    | `sync_sheets`                    | Off skips Sheet row writes on workflow transitions for this property                                                                                                                                                                                      |
 
 ### Document requirements editor
 
-- **Use residence default** — read-only ordered list showing the **residence-type default** requirements (`residenceDefaultDocumentRequirements` — development default chain, ignoring any property override; label, trigger, approval source).
+- **Use residence-type default** — read-only ordered list showing the **development default** requirements (`residenceDefaultDocumentRequirements` — development default chain, ignoring any property override; label, trigger, approval source).
 - **Custom list** — add / remove / reorder rows; each sets **label**, **trigger** (Always required / Guest has pets / Guest needs parking), and **approval source** (Manual / Email listener / None). New rows default `pdfTemplateId` and `calendarIcon` to `null` — no UI field for those yet, keeping the editor a practical checklist rather than a PDF-template CMS.
 - Empty custom list is valid — the pipeline skips `PENDING_DOCUMENTS` entirely for that property.
 

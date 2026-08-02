@@ -41,12 +41,12 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 ### Edge (`supabase/.env.local` / hosted secrets)
 
-**Operator config (non-secrets):** **`org_settings`** (one row per organization — social links, team logo; **Org → Settings**) and **`app_settings`** (one row per property — payment, GAF, **email routing**, automation toggles, integration IDs; **Property → Settings**). Edge code merges org branding + property operational fields via **`resolveAppSettings(propertyId)`** (`_shared/appSettings.ts` + `_shared/orgSettings.ts`). Secrets **never** go in these tables.
+**Operator config (non-secrets):** **`org_settings`** (one row per organization — social links, team logo; **Org → Settings**) and **`app_settings`** (one row per property — payment, GAF, **email routing**, automation toggles, **workflow document requirements** (`document_requirements_override`, `sync_calendar`, `sync_sheets`), integration IDs; **Property → Settings**). Edge code merges org branding + property operational fields via **`resolveAppSettings(propertyId)`** (`_shared/appSettings.ts` + `_shared/orgSettings.ts`). Document requirement lists resolve via **`documentRequirements.ts#resolveDocumentRequirements`** (override → `developments.settings.workflowDefaults` → defaults); Calendar/Sheets sync via **`propertySyncToggles.ts#resolvePropertySyncToggles`**. Secrets **never** go in these tables.
 
-| Settings UI                                                            | Table              | Scope        |
-| ---------------------------------------------------------------------- | ------------------ | ------------ |
-| Org → Settings → Socials                                               | **`org_settings`** | organization |
-| Property → Settings → Payment / GAF / Email automations / Integrations | **`app_settings`** | property     |
+| Settings UI                                                                                 | Table              | Scope        |
+| ------------------------------------------------------------------------------------------- | ------------------ | ------------ |
+| Org → Settings → Socials                                                                    | **`org_settings`** | organization |
+| Property → Settings → Payment / GAF / Email automations / Workflow documents / Integrations | **`app_settings`** | property     |
 
 | Org settings (`org_settings`)                           | Property settings (`app_settings`)                  | Env fallback (legacy)                                                                                   |
 | ------------------------------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
