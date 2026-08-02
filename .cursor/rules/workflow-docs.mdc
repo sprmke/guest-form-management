@@ -1,0 +1,33 @@
+---
+description: Workflow docs lifecycle — in-progress tracking, no silent moves
+alwaysApply: false
+---
+
+# Workflow docs
+
+Active feature work uses **`docs/workflow/`** lifecycle folders:
+
+```
+intake → planned → in-progress → done
+```
+
+## Agent behavior
+
+1. **Session start:** check `docs/workflow/in-progress/*.md` for the primary task doc.
+2. **Starting work:** run `/workflow-start` or `scripts/dev/workflow-move.sh start <slug>` — never move files silently.
+3. **Finishing work:** run `/workflow-done` or `scripts/dev/workflow-move.sh done <slug>`.
+4. **New plans:** write to `docs/workflow/planned/` per `plan-mode.mdc`; update `docs/workflow/planned/README.md` index only.
+5. **Legacy / historical:** `docs/archive/` — read-only unless explicitly archiving more material.
+
+## Frontmatter
+
+Workflow items should include `stage:` (`intake` | `planned` | `in-progress` | `done`) and `updated:` (YYYY-MM-DD). Pre-commit bumps `updated:` on staged in-progress files.
+
+## Naming
+
+**`<kebab-case-slug>.md`** — no `YYYY-MM-DD-` prefix. Intake specs: `<slug>-design.md`. Use frontmatter `updated:` for dates.
+
+## Do not
+
+- Edit markdown **bodies** in `workflow/planned/` after initial write (except user-requested changes).
+- Recreate `docs/superpowers/`, `docs/planning/`, or `docs/todos/` — retired; use `docs/workflow/` and `docs/README.md` (GitHub backlog).

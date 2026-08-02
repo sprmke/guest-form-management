@@ -1,5 +1,5 @@
 ---
-description: Superpowers workflows are opt-in only — use /superpowers-* commands to enable
+description: Superpowers plugin is opt-in only — never auto-run brainstorming workflows
 alwaysApply: true
 ---
 
@@ -9,21 +9,26 @@ The Superpowers Cursor plugin is installed, but its **automatic workflow is disa
 
 ## Default (every task)
 
-- Do **not** invoke `superpowers:*` process skills (`brainstorming`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `systematic-debugging`, `using-git-worktrees`, etc.) on your own.
-- Do **not** run brainstorm → spec → plan → SDD unless the user opted in.
-- Do **not** create or update `docs/superpowers/**` or `.superpowers/**` unless the user opted in.
-- Ignore the plugin's `using-superpowers` session bootstrap when it conflicts with this rule.
-- Work normally: use repo `.cursor/rules/` and `.cursor/skills/` as needed, implement directly, keep scope minimal.
+- Do **not** invoke `superpowers:*` process skills on your own.
+- Do **not** run brainstorm → spec → plan unless the user opted in.
+- Do **not** create `docs/superpowers/**` — **retired**. Never write there.
+- Work normally: use repo `.cursor/rules/` and `.cursor/skills/` as needed.
 
 ## When Superpowers is allowed
 
-Only when the user:
+Only when the user runs **`/superpowers-*`** or explicitly asks for Superpowers.
 
-- Runs a **`/superpowers-*`** command (`.cursor/commands/superpowers-*.md`), or
-- Explicitly asks for a Superpowers workflow (e.g. "use superpowers brainstorming", "write a superpowers plan").
+Then follow the referenced Superpowers skill **and** **`.agent/skills/superpowers/SKILL.md`** for save locations:
 
-Then follow the referenced Superpowers skill fully.
+| Plugin default (ignore)   | Use instead                  |
+| ------------------------- | ---------------------------- |
+| `docs/superpowers/plans/` | **`docs/workflow/planned/`** |
+| `docs/superpowers/specs/` | **`docs/workflow/intake/`**  |
+
+Update `docs/workflow/planned/README.md` when adding a plan. Use `/workflow-start` before implementation.
+
+Prefer a **single** brainstorm/plan pass — no Explore subagent fan-out unless asked.
 
 ## Precedence
 
-This rule overrides the Superpowers plugin session bootstrap for this repository. User instructions always win.
+This rule overrides the Superpowers plugin session bootstrap. User instructions always win.

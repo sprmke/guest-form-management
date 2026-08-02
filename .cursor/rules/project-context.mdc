@@ -1,146 +1,54 @@
 ---
-description: Guest Form Management — stack, flows, and where to change code. Always start here.
+description: Guest Form Management — stack, doc index, where to edit. Keep lean; deep specs live in linked rules/docs.
 alwaysApply: true
 ---
 
 # Guest Form Management — agent context
 
-**Start every task by reading:**
+## Read first (task-scoped)
 
-1. `docs/README.md` — doc index; then **`docs/PROJECT.md`** for architecture, API tables, env vars, routes.
-2. **`docs/reference/project-structure.md`** — guest vs dashboard feature folders.
-3. `docs/guides/routes/README.md` — per-page behavior guides (update via `.cursor/rules/route-guides.mdc` when changing a page/section).
-4. **`docs/todos/README.md`** — product backlog on GitHub Issues; shipped history in `docs/todos/shipped/`.
-5. `docs/planning/NEW_FLOW_PLAN.md` — **active redesign plan** for the booking workflow + admin dashboard. If a task relates to booking status, admin UI, emails, calendar, or Google Sheets, **this plan supersedes `docs/PROJECT.md` for anything already implemented per the plan**.
-6. `docs/planning/NEW_FLOW.md` — original product spec for the redesign.
+1. `docs/README.md` → **`docs/PROJECT.md`** (architecture / API / env / routes)
+2. `docs/guides/routes/README.md` — per-page behavior (update when changing a page)
+3. Booking status / email / calendar / sheets → **read** `.cursor/rules/booking-workflow.mdc` (not always-on; load when relevant)
+4. Admin JWT / allow list / `/bookings` auth → **read** `.cursor/rules/admin-auth.mdc`
+5. Product backlog → GitHub Issues + `docs/README.md`; shipped → `docs/archive/todos/shipped/`
 
-**User-facing features:** run **`competitive-ux-research`** skill first (`.cursor/rules/competitive-ux-research.mdc`) — study Airbnb + PMS leaders before designing UI or flows.
+**Material new UX** (new routes/flows, auth, checkout, payments, messaging, onboarding — not polish/bugs): run `competitive-ux-research` skill. See `.cursor/rules/competitive-ux-research.mdc`.
 
-## What this is
+## Stack (authoritative)
 
-Vite + React SPA (`ui/`) submits a guest booking form to **Supabase Edge Functions** (Deno) under `supabase/functions/`. Data lives in Postgres table **`guest_submissions`**; files in **Supabase Storage**. Emails via **Resend**, calendar via **Google Calendar API**, spreadsheet via **Google Sheets API**, all from inside edge functions.
+- **UI**: Vite + React 18 + React Router 6 + Tailwind + RHF + Zod (`ui/`)
+- **API**: Supabase Edge Functions (Deno) — **no** Node API, tRPC, Drizzle, Next.js
+- **DB**: Postgres via `supabase/migrations/` + `@supabase/supabase-js`
+- **Auth**: public guest anon; admin = Supabase Auth + Google OAuth + allow list
 
-### Tech stack (authoritative)
+Stale if a skill mentions Next.js App Router, tRPC, Drizzle, Neon, or AWS S3 for this repo — ignore / flag it.
 
-- **Frontend**: Vite + React 18 + React Router 6 + Tailwind + shadcn-style primitives + React Hook Form + Zod + Sonner + Lucide icons.
-- **Backend**: Supabase Edge Functions (Deno), remote URL imports. **No Node API, no tRPC, no Drizzle.**
-- **DB**: Supabase Postgres, plain SQL migrations in `supabase/migrations/`. (No ORM — direct `@supabase/supabase-js` from edge functions.)
-- **Auth**: None today on public flows. New admin flow adds **Supabase Auth + Google OAuth** for `/bookings` (see `admin-auth.mdc`).
-- **Storage**: Supabase Storage (not AWS S3).
+## Tooling index
 
-If a rule, skill, or doc references Next.js, React 19 RSC, tRPC, Drizzle, Neon, `packages/emails`, `apps/web`, or PMA-only multi-tenant patterns → **that content is stale/wrong for this repo** and should be flagged or deleted.
+- Rules/skills: **`.cursor/rules/README.md`**
+- Claude Code: **`.claude/README.md`** + root **`CLAUDE.md`**
+- AI session hygiene / model routing: **`.cursor/rules/ai-usage.mdc`**
+- Local stack: `bun install` → `./dev.sh` (or `./dev.sh --ui-only`)
 
-**Cursor agent tooling:** index at **`.cursor/rules/README.md`**; use **`docs-first`** skill before new features. Keep always-on rules lean (see README).
+## Where to edit (pointers)
 
-## Monorepo gotcha
+| Concern                | Path                                                                                     |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| Guest form UI / schema | `ui/src/features/guest/form/`                                                            |
+| Guest submit           | `supabase/functions/submit-form/` + `_shared/*Service.ts`                                |
+| Booking workflow       | `_shared/statusMachine.ts`, `workflowOrchestrator.ts`; UI `features/dashboard/bookings/` |
+| Org / property admin   | `ui/src/features/dashboard/{org,property,team}/`                                         |
+| Edge conventions       | `.cursor/rules/supabase-edge-functions.mdc`                                              |
+| Feature folder layout  | `docs/archive/reference/project-structure.md`                                            |
 
-Root `package.json` workspaces list `ui` only (no `api/` package). Use **`bun install`** at root, then **`bun run dev`** / `./dev.sh` for full stack, or **`./dev.sh --ui-only`** for Vite against remote Supabase (no Docker).
+## Conventions (short)
 
-## Routes
+- Dates: DB guest fields often `MM-DD-YYYY`; UI/query often `YYYY-MM-DD`. TZ: **Asia/Manila**.
+- Secrets: `supabase/.env.local` — never commit or log tokens/PII.
+- Imports: UI `@/`; edge relative `../_shared/...`.
+- Prod Supabase deploy: blocked unless user says **`kamewave`** (`.cursor/rules/no-prod-deploy.mdc`).
 
-### Current (public)
+## Docs sync
 
-**Marketing (PMA port — Phase 1 UI, mock data):** `/`, `/for-hosts`, `/properties/*`, `/developments/*`, `/terms`, `/privacy` — see **`features/guest/marketing/`** and **`docs/guides/routes/properties.md`**.
-
-**Operational booking:**
-
-- `/calendar` — date picker (`CalendarPage`); **Proceed** → `/form` with dates and query params preserved (e.g. `?source=airbnb`, `?property=`). Legacy `/?property=` redirects here from the landing page. Legacy `/?bookingId=` on calendar redirects to `/form`.
-- `/form` — guest form (`GuestFormPage`); always reachable. Optional **`?source=airbnb`** for Airbnb copy + `booking_source`.
-- `/success` — needs `bookingId` query param; summary from `navigate` state.
-- `/sd-form` — guest security-deposit refund stepper (`SdFormPage`); uses **`KameFormBrandHeader`** with title **Security Deposit Refund** (same logo treatment as `/form`). Requires `?bookingId=`; **`get-sd-form`** allows `READY_FOR_CHECKOUT`, or `READY_FOR_CHECKIN` once the check-out email was sent (`sd_refund_form_emailed_at`), returning **`awaiting_balance_settlement`** until the stay advances. **`submit-sd-form`** and **`claim-sd-voucher`** require `READY_FOR_CHECKOUT`. **Step 1:** in-app guest review. **Step 2:** optional balance wait, then slot-machine **voucher reveal** (`VoucherReveal` + `claim-sd-voucher`) that idempotently awards a `KAME-*` next-stay voucher. **Step 3:** SD refund payout details. Persists `next_stay_voucher_*` on `guest_submissions`.
-
-### Planned (new flow — see `admin-auth.mdc` + `booking-workflow.mdc`)
-
-- `/for-hosts/login` — Google OAuth for hosts (PMA auth UI); legacy `/sign-in` redirects here.
-- `/bookings` — admin dashboard (list with search / filter / sort / pagination).
-- `/bookings/:bookingId` — detail page; renders the guest form with dev controls + workflow panel.
-- `/settings` — admin settings (**Gmail listener** connect / reconnect / disconnect via `GmailMailIntegrationCard`).
-- `/notifications` — unified Telegram settings for Marketing, Staff, Operations, Finance, and Maintenance (`NotificationsPage`; see `docs/guides/routes/org/property/notifications.md`).
-- `/finance` — Finance dashboard (overview KPIs, stays ledger, property transactions). Telegram reminders: **Notifications → Finance**.
-- `/maintenance` — Maintenance dashboard (overview KPIs, property upkeep reminders). Telegram reminders: **Notifications → Maintenance**.
-
-## When editing the guest form
-
-- Schema: `ui/src/features/guest/form/schemas/guestFormSchema.ts`
-- Large UI: `ui/src/features/guest/form/components/GuestForm.tsx` (dev controls — **all toggles on by default** when the panel is shown, submit `FormData`, clipboard recovery)
-- Match existing patterns: React Hook Form, Zod, Sonner, Tailwind, `@/` imports.
-
-## When editing submit behavior
-
-- Entry: `supabase/functions/submit-form/index.ts`
-- Shared services: `supabase/functions/_shared/{databaseService,calendarService,sheetsService,emailService,pdfService,uploadService}.ts`
-- Field-level diff for no-op updates: `compareFormData` in `_shared/utils.ts` — **must** stay in sync with DB columns and form field names.
-- Under the **new flow**, `submit-form` only saves DB + storage (guest uploads). Filled GAF / pet **request** PDFs are generated in `workflowOrchestrator` when admins move **`PENDING_REVIEW` → initial documents** (`generatePdf` dev control), then attached to Azure request emails. Email/calendar/sheet side effects otherwise move to `transition-booking`. **Exception:** after a successful DB save, when **`sendEmail` ≠ `false`**, `submit-form` calls **`sendNewBookingRequestNotify`** (HTML to **`EMAIL_REPLY_TO`** only — not workflow mail; guest dev checkbox **Send email**). See `booking-workflow.mdc`.
-
-## When touching booking status, admin UI, emails, calendar, sheets
-
-Read `.cursor/rules/booking-workflow.mdc` first. It has the canonical:
-
-- Status enum (**10** canonical literals — includes `READY_FOR_CHECKOUT`; see `booking-workflow.mdc`)
-- Allowed transition graph
-- Side-effect matrix per transition
-- Calendar `colorId` + title prefix map
-- "Where do I edit this?" file map
-- Invariants (don't break these)
-
-## Conventions
-
-- **Dates**: DB submission path uses **MM-DD-YYYY** text; UI often uses **YYYY-MM-DD**. Reuse `formatDate` / normalizers in `_shared/utils.ts` and `ui/src/utils/dates.ts`.
-- **Timezone**: `Asia/Manila` for everything user-visible (urgency checks, SD refund cron, check-in reminders).
-- **Secrets**: Local edge secrets live in `supabase/.env.local` (gitignored). Never commit credentials. Never log service-role keys, OAuth tokens, or guest PII beyond what's necessary for debugging.
-- **Imports**: UI uses `@/` alias (`ui/tsconfig.json`). Edge functions use relative imports (`../_shared/...`) and ESM URLs (`esm.sh`, `deno.land`).
-- **Testing**: No automated tests today. If you add any, use Vitest + React Testing Library for UI and Deno test for edge functions — do not introduce Bun test.
-
-## Docs workflow
-
-Per `.cursor/rules/documentation-maintenance.mdc`, update `docs/PROJECT.md`, close/ship the matching **GitHub Issue** (`gh-issue.mjs ship`), and — for redesign work — `docs/planning/NEW_FLOW_PLAN.md` in the same change set as code.
-
-For **`gmail-listener`** / **`sd-refund-cron`** (hosted `pg_cron` + `pg_net`, local `functions serve`, curl / admin “Run now” testing), see **`docs/operations/scheduled-jobs-and-testing.md`**.
-
-## Related rules
-
-- `.cursor/rules/booking-workflow.mdc` — **read before any booking-state task**.
-- `.cursor/rules/admin-auth.mdc` — **read before any /bookings or auth task**.
-- `.cursor/rules/no-prod-deploy.mdc` — **never prod Supabase/DB deploy without user unlock word `kamewave`**.
-- `.cursor/rules/architecture.mdc` — feature folders, shared utils, import conventions.
-- `.cursor/rules/naming-conventions.mdc` — file/directory naming (bulletproof-react aligned).
-- `.cursor/rules/supabase-edge-functions.mdc` — conventions for new edge functions.
-- `.cursor/rules/documentation-maintenance.mdc` — when and what docs to update.
-- `.cursor/rules/route-guides.mdc` — per-route guides in `docs/guides/routes/`.
-- `.cursor/skills/route-guides/SKILL.md` — workflow for writing route guides.
-- `.cursor/rules/ui-minimal-copy.mdc` — no extra UI labels or descriptions unless asked or required.
-
-## Related skills (in `.cursor/skills/`)
-
-Full index: **`.cursor/rules/README.md`**.
-
-### Platform
-
-- `docs-first` — read `docs/README.md` + `docs/PROJECT.md` before implementing
-- `supabase-stack` — Postgres, Storage, edge platform
-- `supabase-auth` — OAuth, JWT, org/property RBAC
-- `tanstack-query` — admin hooks + edge fetch
-- `multi-tenancy` — org/property routes and scoping
-- `integrations` — Google, Telegram, Meta, Resend
-
-### Booking & admin
-
-- `booking-workflow` — status machine, orchestrator
-- `admin-dashboard` — bookings list + detail
-- `bookings-table` — table UI patterns
-- `gmail-listener` — Gmail OAuth + approvals
-- `social-inbox` / `meta-messaging` — Guest Inbox
-- `emails` — HTML templates + workflow mail
-- `forms` — RHF + Zod guest/admin forms
-
-### UI
-
-- `competitive-ux-research` — Airbnb + PMS UX before new features/flows
-- `frontend-design` — layout and visual patterns
-- `component-generator` — scaffold components
-- `tanstack-table` — admin list tables
-- `minimal-ui-copy` — sparse copy
-- `accessibility` — WCAG 2.1 AA
-- `route-guides` — per-route docs workflow
-- `public-ui` — PMA marketing port + guest public routes (Vite adapters)
-- `performance` — Vite + query tuning
+Behavior changes → update matching docs in the same change (`.cursor/rules/documentation-maintenance.mdc`). Per-route → `docs/guides/routes/`.

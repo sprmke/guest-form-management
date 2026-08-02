@@ -26,7 +26,7 @@ No Drizzle — raw SQL migrations + `@supabase/supabase-js` in Deno.
 
 - New file per change: `supabase/migrations/YYYYMMDDHHMMSS_description.sql`
 - Never edit shipped migrations
-- Runbook: `docs/operations/migration-runbook.md`
+- Runbook: `docs/archive/operations/migration-runbook.md`
 
 ## Env
 
@@ -52,7 +52,7 @@ Document new vars in `docs/architecture/validation-and-env.md`.
 
 ## RLS
 
-Admin scoping is primarily **edge-function checks** today; tighten RLS per [`docs/todos/`](../../docs/todos/README.md) (Epic 14).
+Admin scoping is primarily **edge-function checks** today; tighten RLS per [`docs/README.md`](../../docs/README.md) (Epic 14).
 
 ## MCP
 

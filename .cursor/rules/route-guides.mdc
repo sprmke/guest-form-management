@@ -32,12 +32,12 @@ Update the **Progress overview** table when section status changes. Mark guide *
 
 ## Relationship to other docs
 
-| Doc                                  | Role                                                                  |
-| ------------------------------------ | --------------------------------------------------------------------- |
-| **`docs/guides/routes/*.md`**        | Per-route behavior spec (operator + agent reference)                  |
-| **`docs/PROJECT.md`**                | Architecture, API inventory, env vars                                 |
-| **`.cursor/rules/*.mdc`**            | Canonical invariants (booking workflow, auth) — link, don't duplicate |
-| **`docs/planning/NEW_FLOW_PLAN.md`** | Redesign plan / decisions                                             |
+| Doc                                          | Role                                                                  |
+| -------------------------------------------- | --------------------------------------------------------------------- |
+| **`docs/guides/routes/*.md`**                | Per-route behavior spec (operator + agent reference)                  |
+| **`docs/PROJECT.md`**                        | Architecture, API inventory, env vars                                 |
+| **`.cursor/rules/*.mdc`**                    | Canonical invariants (booking workflow, auth) — link, don't duplicate |
+| **`docs/archive/planning/NEW_FLOW_PLAN.md`** | Redesign plan / decisions                                             |
 
 New route → create guide from **`docs/guides/_template.md`**, add row to **`docs/guides/routes/README.md`**.
 

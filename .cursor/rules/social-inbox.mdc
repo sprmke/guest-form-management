@@ -54,7 +54,7 @@ Keep in sync: `_shared/orgTeamPermissions.ts`, `propertyTeamPermissions.ts`, `pa
 - **24-hour window:** outbound DMs only when `messaging_window_expires_at` > now (set from last inbound). **Does not apply to `platform=web`.**
 - **Comments:** public reply via Graph API; IG private reply via `recipient.comment_id` (one DM per comment, 7 days).
 - **Webhook-first:** Conversations API backfill on connect only; do not poll in a loop.
-- **App Review:** production requires Advanced Access — see `docs/operations/meta-app-review.md`.
+- **App Review:** production requires Advanced Access — see `docs/archive/operations/meta-app-review.md`.
 
 ## AI auto-reply
 
