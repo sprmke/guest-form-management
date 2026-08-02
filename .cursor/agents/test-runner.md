@@ -16,6 +16,6 @@ bun run build
 
 For edge logic changes, exercise via local `./dev.sh` or `bun run dev:api` + curl against `http://127.0.0.1:54321/functions/v1/<name>`.
 
-Scheduled jobs: `docs/operations/scheduled-jobs-and-testing.md`.
+Scheduled jobs: `docs/archive/operations/scheduled-jobs-and-testing.md`.
 
 Report: pass/fail per command, first error line, suggested fix.
