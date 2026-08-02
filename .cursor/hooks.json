@@ -9,6 +9,10 @@
       {
         "command": ".cursor/hooks/session-ai-tooling-sync.sh",
         "timeout": 10
+      },
+      {
+        "command": ".cursor/hooks/session-workflow-in-progress.sh",
+        "timeout": 5
       }
     ],
     "afterFileEdit": [

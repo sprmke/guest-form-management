@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Reinforce Superpowers opt-in policy after the plugin's session-start bootstrap.
-# See .cursor/rules/superpowers-opt-in.mdc
+# Reinforce Superpowers opt-in + repo workflow doc paths.
+# See .cursor/rules/superpowers-opt-in.mdc and .agent/skills/superpowers/SKILL.md
 
 set -euo pipefail
 
@@ -14,8 +14,7 @@ escape_for_json() {
   printf '%s' "$s"
 }
 
-context=$'SUPERPOWERS OPT-IN (this repo)\n\nSuperpowers plugin is installed but auto-workflows are OFF unless the user runs /superpowers-* or explicitly asks for Superpowers.\n\nDo NOT auto-invoke superpowers:brainstorming, writing-plans, executing-plans, subagent-driven-development, or systematic-debugging.\n\nUse normal repo rules/skills and implement directly. See .cursor/rules/superpowers-opt-in.mdc.'
+context=$'SUPERPOWERS OPT-IN (this repo)\n\nSuperpowers auto-workflows are OFF unless the user runs /superpowers-* or explicitly asks.\n\nDo NOT auto-invoke superpowers:brainstorming, writing-plans, executing-plans, etc.\n\nWhen Superpowers IS allowed:\n- Plans → docs/workflow/planned/<slug>.md (no YYYY-MM-DD- prefix)\n- Specs → docs/workflow/intake/<slug>-design.md\n- Read .agent/skills/superpowers/SKILL.md for path overrides.\n\nRetired folders (must not exist): docs/superpowers/, docs/planning/, docs/todos/ — GitHub backlog is in docs/README.md.'
 
 escaped=$(escape_for_json "$context")
-
 printf '{\n  "additional_context": "%s"\n}\n' "$escaped"
