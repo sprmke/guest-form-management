@@ -13,6 +13,7 @@ PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
 DB_ONLY=false
 FUNCTIONS_ONLY=false
 INCLUDE_ALL=false
+ALLOW_MULTI_TENANCY=false
 
 usage() {
   cat <<'EOF'
@@ -21,10 +22,12 @@ Usage: ./scripts/deploy/deploy-supabase.sh [options]
 Deploy to the linked Supabase project (supabase link --project-ref <ref>).
 
 Options:
-  --db-only          Run supabase db push only
-  --functions-only   Run supabase functions deploy only
-  --include-all      Pass --include-all to db push (migration history repair)
-  -h, --help         Show this help
+  --db-only              Run supabase db push only
+  --functions-only       Run supabase functions deploy only
+  --include-all          Pass --include-all to db push (migration history repair)
+  --allow-multi-tenancy  Skip guard when this tree has multi-tenancy edge code
+                         (requires matching DB migrations on the linked project)
+  -h, --help             Show this help
 
 Examples:
   npm run deploy:supabase
@@ -46,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --include-all)
       INCLUDE_ALL=true
+      shift
+      ;;
+    --allow-multi-tenancy)
+      ALLOW_MULTI_TENANCY=true
       shift
       ;;
     -h | --help)
@@ -76,6 +83,25 @@ echo "Linked project: $PROJECT_REF"
 echo "See docs/archive/operations/production-deployment.md for backups and post-deploy steps."
 echo
 
+assert_functions_match_db_schema() {
+  if [[ "$ALLOW_MULTI_TENANCY" == true ]]; then
+    return 0
+  fi
+
+  local sd_cron="$ROOT/supabase/functions/sd-refund-cron/index.ts"
+  local property_scope="$ROOT/supabase/functions/_shared/propertyScope.ts"
+
+  if [[ -f "$property_scope" ]] || grep -q "property_id" "$sd_cron" 2>/dev/null; then
+    echo "Refusing to deploy Edge Functions: this tree includes multi-tenancy code" >&2
+    echo "(propertyScope.ts and/or sd-refund-cron selects guest_submissions.property_id)." >&2
+    echo "Production needs matching migrations (organizations, properties, property_id columns)" >&2
+    echo "before that code can run. For single-tenant prod, deploy from main:" >&2
+    echo "  git checkout main && npm run deploy:supabase:functions" >&2
+    echo "To override intentionally: ./scripts/deploy-supabase.sh --functions-only --allow-multi-tenancy" >&2
+    exit 1
+  fi
+}
+
 run_db_push() {
   local -a push_args=(db push)
   if [[ "$INCLUDE_ALL" == true ]]; then
@@ -86,6 +112,7 @@ run_db_push() {
 }
 
 run_functions_deploy() {
+  assert_functions_match_db_schema
   echo "→ supabase functions deploy"
   "${SUPABASE[@]}" functions deploy
 }

@@ -36,6 +36,7 @@ import {
 import { guestBookedDatesUrl } from '@/features/guest/form/lib/guestPropertyScope';
 import { countParkingNights } from '@/features/guest/pay-parking/lib/payParkingHelpers';
 
+import { BookingEditSaveChoiceDialog } from '@/features/dashboard/bookings/components/BookingEditSaveChoiceDialog';
 import { BookingEditStickyBar } from '@/features/dashboard/bookings/components/booking-detail/edit/BookingEditStickyBar';
 import {
   BookingEditTabs,
@@ -317,6 +318,8 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
     sdRefundGuest: null,
   });
   const [progressTouched, setProgressTouched] = useState(false);
+  const [saveChoiceOpen, setSaveChoiceOpen] = useState(false);
+  const [pendingPayload, setPendingPayload] = useState<UpdateBookingPayload | null>(null);
   const [visibleAdditionalGuestCount, setVisibleAdditionalGuestCount] = useState(() =>
     getInitialVisibleAdditionalGuestCount(booking)
   );
@@ -493,8 +496,8 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
     editTabsRef.current?.focusFirstError(fieldErrors as FieldErrors<FormValues>);
   };
 
-  const onSubmit: SubmitHandler<FormValues> = async (values) => {
-    const payload = {
+  const buildPayloadFromValues = (values: FormValues): UpdateBookingPayload => {
+    const payload: UpdateBookingPayload = {
       ...bookingEditPayloadFromValues(values),
       ...(progressTouched ? progressFormPayloadFromState(booking, progressFormState) : {}),
     };
@@ -519,110 +522,147 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
       payload.balance_receipt_ai_summary = null;
     }
 
-    const revertToPendingReview =
+    return payload;
+  };
+
+  const persistBooking = async (payload: UpdateBookingPayload, revertToPendingReview: boolean) => {
+    const updated = await updateMut.mutateAsync({
+      bookingId: booking.id,
+      currentStatus: booking.status,
+      payload,
+      revertToPendingReview,
+      currentDocumentRequirementCompletions: (
+        booking as { document_requirement_completions?: unknown }
+      ).document_requirement_completions,
+    });
+
+    if (revertToPendingReview) {
+      toast.success('Booking updated — moved to Pending Review');
+    } else {
+      toast.success('Booking updated');
+    }
+
+    setSaveChoiceOpen(false);
+    setPendingPayload(null);
+    onSaved(updated);
+  };
+
+  const onSubmit: SubmitHandler<FormValues> = async (values) => {
+    const payload = buildPayloadFromValues(values);
+    const needsSaveChoice =
       guestEditRevertPipeline &&
       hasWorkflowSensitiveGuestFieldDiff(savedSensitiveBaseline, payload, documentRequirements);
 
-    try {
-      const updated = await updateMut.mutateAsync({
-        bookingId: booking.id,
-        currentStatus: booking.status,
-        payload,
-        revertToPendingReview,
-        currentDocumentRequirementCompletions: (
-          booking as { document_requirement_completions?: unknown }
-        ).document_requirement_completions,
-      });
+    if (needsSaveChoice) {
+      setPendingPayload(payload);
+      setSaveChoiceOpen(true);
+      return;
+    }
 
-      if (revertToPendingReview) {
-        toast.success('Booking updated — moved to Pending Review');
-      } else {
-        toast.success('Booking updated');
-      }
-      onSaved(updated);
+    try {
+      await persistBooking(payload, false);
     } catch (err: unknown) {
       toast.error(friendlyToastError(err, 'Could not save booking'));
     }
   };
 
-  const saveLabel = showSensitiveRevertHint ? 'Save & Revert Status' : 'Save';
+  const handleSaveChoice = async (revertToPendingReview: boolean) => {
+    if (!pendingPayload) return;
+    try {
+      await persistBooking(pendingPayload, revertToPendingReview);
+    } catch (err: unknown) {
+      toast.error(friendlyToastError(err, 'Could not save booking'));
+    }
+  };
+
+  const saveLabel = 'Save';
   const formId = `booking-edit-form-${booking.id}`;
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit, onInvalid)}>
-      <BookingEditTabs
-        ref={editTabsRef}
-        booking={booking}
-        onDiscard={onClose}
-        discardDisabled={updateMut.isPending}
-        errors={errors}
-        showDocsTab={showDocsTab}
-        sensitiveNoticeVisible={showSensitiveRevertHint}
-        tabs={{
-          guest: (
-            <GuestIdentityTab
-              booking={booking}
-              register={register}
-              errors={errors}
-              setValue={setValue}
-              onPreview={onPreview}
-              formSnapshot={formSnapshot}
-              adminPartySize={adminPartySize}
-              visibleAdditionalGuestCount={visibleAdditionalGuestCount}
-              visibleAdditionalGuestSlots={visibleAdditionalGuestSlots}
-              onAddAdditionalGuest={handleAddAdditionalGuest}
-              onRemoveAdditionalGuest={handleRemoveAdditionalGuest}
-              surpriseDecorChangedFromSaved={surpriseDecorChangedFromSaved}
+    <>
+      <form id={formId} onSubmit={handleSubmit(onSubmit, onInvalid)}>
+        <BookingEditTabs
+          ref={editTabsRef}
+          booking={booking}
+          onDiscard={onClose}
+          discardDisabled={updateMut.isPending}
+          errors={errors}
+          showDocsTab={showDocsTab}
+          sensitiveNoticeVisible={showSensitiveRevertHint}
+          tabs={{
+            guest: (
+              <GuestIdentityTab
+                booking={booking}
+                register={register}
+                errors={errors}
+                setValue={setValue}
+                onPreview={onPreview}
+                formSnapshot={formSnapshot}
+                adminPartySize={adminPartySize}
+                visibleAdditionalGuestCount={visibleAdditionalGuestCount}
+                visibleAdditionalGuestSlots={visibleAdditionalGuestSlots}
+                onAddAdditionalGuest={handleAddAdditionalGuest}
+                onRemoveAdditionalGuest={handleRemoveAdditionalGuest}
+                surpriseDecorChangedFromSaved={surpriseDecorChangedFromSaved}
+              />
+            ),
+            stay: (
+              <StayDetailsTab
+                booking={booking}
+                register={register}
+                errors={errors}
+                setValue={setValue}
+                formSnapshot={formSnapshot}
+                bookedDates={bookedDates}
+              />
+            ),
+            parking: (
+              <ParkingTab register={register} setValue={setValue} watchParking={watchParking} />
+            ),
+            pets: (
+              <PetsTab
+                register={register}
+                setValue={setValue}
+                watchPets={watchPets}
+                petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
+              />
+            ),
+            docs: showDocsTab ? (
+              <DocumentsTab
+                booking={booking}
+                onPreview={onPreview}
+                watchHasPets={watchPets}
+                watchBookingSource={formSnapshot?.booking_source}
+              />
+            ) : undefined,
+            workflow: (
+              <WorkflowDetailsTab
+                booking={booking}
+                onStateChange={setProgressFormState}
+                onTouchedChange={setProgressTouched}
+              />
+            ),
+          }}
+          footer={
+            <BookingEditStickyBar
+              onCancel={onClose}
+              cancelDisabled={updateMut.isPending}
+              saveDisabled={updateMut.isPending || !canSave}
+              savePending={updateMut.isPending}
+              saveLabel={saveLabel}
+              formId={formId}
             />
-          ),
-          stay: (
-            <StayDetailsTab
-              booking={booking}
-              register={register}
-              errors={errors}
-              setValue={setValue}
-              formSnapshot={formSnapshot}
-              bookedDates={bookedDates}
-            />
-          ),
-          parking: (
-            <ParkingTab register={register} setValue={setValue} watchParking={watchParking} />
-          ),
-          pets: (
-            <PetsTab
-              register={register}
-              setValue={setValue}
-              watchPets={watchPets}
-              petVaccinationDate={formSnapshot?.pet_vaccination_date ?? ''}
-            />
-          ),
-          docs: showDocsTab ? (
-            <DocumentsTab
-              booking={booking}
-              onPreview={onPreview}
-              watchHasPets={watchPets}
-              watchBookingSource={formSnapshot?.booking_source}
-            />
-          ) : undefined,
-          workflow: (
-            <WorkflowDetailsTab
-              booking={booking}
-              onStateChange={setProgressFormState}
-              onTouchedChange={setProgressTouched}
-            />
-          ),
-        }}
-        footer={
-          <BookingEditStickyBar
-            onCancel={onClose}
-            cancelDisabled={updateMut.isPending}
-            saveDisabled={updateMut.isPending || !canSave}
-            savePending={updateMut.isPending}
-            saveLabel={saveLabel}
-            formId={formId}
-          />
-        }
+          }
+        />
+      </form>
+
+      <BookingEditSaveChoiceDialog
+        open={saveChoiceOpen}
+        onOpenChange={setSaveChoiceOpen}
+        isSaving={updateMut.isPending}
+        onSaveOnly={() => void handleSaveChoice(false)}
+        onSaveAndRevert={() => void handleSaveChoice(true)}
       />
-    </form>
+    </>
   );
 }

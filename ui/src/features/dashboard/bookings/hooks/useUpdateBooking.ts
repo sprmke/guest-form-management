@@ -11,7 +11,8 @@
  * `document_requirement_completions` JSONB map so the dual-read stepper doesn't show
  * a stale "complete" substep). The caller must pass the currently-loaded row's
  * `document_requirement_completions` via `currentDocumentRequirementCompletions`.
- * The caller should set `revertToPendingReview` only when workflow-sensitive guest fields changed.
+ * When workflow-sensitive guest fields changed, `BookingEditSaveChoiceDialog` lets
+ * the admin choose revert vs save-only before calling this hook.
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
