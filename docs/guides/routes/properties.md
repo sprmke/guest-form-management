@@ -1,3 +1,10 @@
+---
+title: 'Properties (guest marketing) — operator guide'
+status: active
+tags: [guides, routes, properties]
+updated: 2026-08-02
+---
+
 # Properties (guest marketing) — operator guide
 
 Routes:
@@ -100,7 +107,7 @@ Route is registered **before** `/properties/:propertySlug` so `in` is not treate
 
 **Phase 2a:** `usePublicPropertyDetail` calls **`get-public-property?property=<slug>`** (anon). **ACTIVE** DB properties return live dashboard data; **404** falls back to mock (`mockPropertyDetail` / `mockProperties`). TanStack Query caches 5 min; mock `placeholderData` paints instantly while loading.
 
-Gap analysis (ratings, nearby POIs, etc.): **`docs/reference/public-property-catalog.md`**.
+Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public property catalog — reference]]**.
 
 | Section     | Component                                                                             | Data                                                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -139,7 +146,7 @@ Operational guest booking form remains **`/form`** (see [form.md](./form.md)).
 | Booked dates    | Existing `get-booked-dates?property=`         |
 | Form submit     | Property-scoped form submission API           |
 
-Full field map + dashboard gaps: **`docs/reference/public-property-catalog.md`**.
+Full field map + dashboard gaps: **[[public-property-catalog|Public property catalog — reference]]**.
 
 ---
 

@@ -5,6 +5,10 @@
       {
         "command": ".cursor/hooks/session-superpowers-opt-in.sh",
         "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/session-ai-tooling-sync.sh",
+        "timeout": 10
       }
     ],
     "afterFileEdit": [
@@ -26,6 +30,11 @@
     "preToolUse": [
       {
         "command": "[ ! -f \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\" ] || node \"/Users/michaelmanlulu/.cursor/skills/impeccable/scripts/hook-before-edit.mjs\"",
+        "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/guard-shipped-migrations.sh",
+        "matcher": "StrReplace",
         "timeout": 5
       }
     ]

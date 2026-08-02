@@ -1,3 +1,10 @@
+---
+title: 'Legal pages — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Legal pages — operator guide
 
 Routes: `/terms` · `/privacy`

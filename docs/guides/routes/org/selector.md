@@ -1,3 +1,10 @@
+---
+title: 'Organization hub — operator guide'
+status: active
+tags: [guides, routes, org]
+updated: 2026-08-02
+---
+
 # Organization hub — operator guide
 
 Route: `/org`

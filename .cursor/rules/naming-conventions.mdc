@@ -41,7 +41,7 @@ Reference: [bulletproof-react](https://github.com/alan2207/bulletproof-react) (p
 
 ## Migration
 
-Renames are **batch-safe** when tracked in `docs/reference/naming-audit.md`. Run `./scripts/dev/check-ui-filename-conventions.sh` after renames.
+Renames are **batch-safe** when tracked in `docs/reference/archive/naming-audit.md`. Run `./scripts/dev/check-ui-filename-conventions.sh` after renames.
 
 ## ESLint (warn-only)
 

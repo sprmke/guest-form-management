@@ -1,44 +1,54 @@
+---
+title: 'Calendar — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Calendar — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/calendar`
 
-> **Status:** Documented — Occupancy and Pricing views, including owner-managed date blocks.
+> **Status:** Documented — unified pricing calendar with booked-stay pills and date blocking.
 
 ## Progress overview
 
-| Section                    | E2E save | Validation | Docs | Notes                                      |
-| -------------------------- | -------- | ---------- | ---- | ------------------------------------------ |
-| Occupancy calendar         | N/A      | Done       | Done | Name/Price labels; live property bookings  |
-| Pricing rates and fees     | Done     | Done       | Done | Existing pricing workflow is embedded here |
-| Per-date rates             | Done     | Done       | Done | Future, available nights only              |
-| Block / unblock dates      | Done     | Done       | Done | Checkout-exclusive ranges                  |
-| Guest availability         | Done     | Done       | Done | Blocks are returned as unavailable ranges  |
-| Permissions and view gates | N/A      | Done       | Done | View-specific permissions                  |
+| Section                  | E2E save | Validation | Docs | Notes                                     |
+| ------------------------ | -------- | ---------- | ---- | ----------------------------------------- |
+| Pricing rates and fees   | Done     | Done       | Done | Weekday/weekend defaults + fee sidebar    |
+| Per-date rates           | Done     | Done       | Done | Future, available nights only             |
+| Booked stays on calendar | Done     | Done       | Done | Spanning pills; click for guest modal     |
+| Block / unblock dates    | Done     | Done       | Done | Checkout-exclusive ranges                 |
+| Guest availability       | Done     | Done       | Done | Blocks are returned as unavailable ranges |
+| Permissions              | N/A      | Done       | Done | `pricing:view` / `pricing:edit`           |
 
 ---
 
 ## Overview
 
-Property **Calendar** combines a read-only occupancy view with pricing and availability
-controls. The route uses `?view=occupancy|pricing`; Occupancy is the default when both views
-are allowed. The former property `/pricing` route redirects to this page with
-`?view=pricing`.
+Property **Calendar** is the single place to manage nightly rates, see booked stays, and
+block dates. The former property `/pricing` route redirects here. Booked nights show the
+saved booking rate (not editable); click a stay pill to open guest details and jump to the
+booking record.
 
 ---
 
 ## Host-facing knowledge
 
-Calendar is where a host sees which nights are occupied, reviews the nightly value of each
-stay, updates future rates, and closes dates that should not be available to guests.
+Calendar is where a host updates future rates, sees which nights are occupied, and closes
+dates that should not be available to guests.
 
 **Common host questions**
 
-- Q: What is the difference between Name and Price?
-  A: Name shows the guest's first name on each stay. Price shows that booking's average
-  nightly rate.
+- Q: How do I see who is staying on a night?
+  A: Booked stays appear as colored pills spanning check-in through the night before
+  check-out. Click the day cell or the pill to open guest details.
+- Q: Can I change the rate on a booked night?
+  A: No. Booked nights show that booking's nightly rate. Change pricing on the booking
+  itself if needed.
 - Q: Can I close dates without creating a booking?
-  A: Yes. Open Pricing, select future available nights, and choose Block. Guests cannot
-  select or submit those nights.
+  A: Yes. Select future available nights and choose Block. Guests cannot select or submit
+  those nights.
 - Q: Can I block a date that already has a booking?
   A: No. Existing booked nights must be handled through the booking itself.
 - Q: Can I reopen only part of a blocked range?
@@ -47,218 +57,102 @@ stay, updates future rates, and closes dates that should not be available to gue
 - Q: Will changing rates update existing bookings?
   A: No. Bookings with saved pricing keep their amounts. Updated defaults apply to future
   pricing reviews that do not already have saved amounts.
-- Q: Why can a team member see only one Calendar view?
-  A: Calendar access follows their team permissions. Booking access enables Occupancy;
-  pricing access enables Pricing; pricing edit access is required to save changes.
 
 ---
 
-## Views and permissions
+## Permissions
 
-The property route guard and sidebar use a dual gate: the page is available when the user
-has either `bookings:view` or `pricing:view`. The page then applies each permission again
-to its own view.
+| Capability                         | Required permission |
+| ---------------------------------- | ------------------- |
+| Open Calendar route                | `pricing:view`      |
+| Change rates, fees, or date blocks | `pricing:edit`      |
 
-| Capability                         | Required permission                   |
-| ---------------------------------- | ------------------------------------- |
-| Open Calendar route                | `bookings:view` **or** `pricing:view` |
-| View Occupancy                     | `bookings:view`                       |
-| View Pricing                       | `pricing:view`                        |
-| Change rates, fees, or date blocks | `pricing:edit`                        |
-
-- When both views are allowed, both tabs are visible and Occupancy is the default.
-- When only one view is allowed, the other tab is hidden and the URL is normalized to the
-  allowed `?view=`.
-- An unauthorized or unknown `view` value falls back to the first allowed view.
-- Pricing remains read-only without `pricing:edit`.
-- The server independently enforces `pricing:view` on GET and `pricing:edit` on PATCH.
+- Without `pricing:edit`, the calendar and fee sidebar are read-only.
+- The server enforces `pricing:view` on GET and `pricing:edit` on PATCH.
 
 ---
 
-## Occupancy view
+## Calendar grid
 
-Occupancy loads the selected calendar month's property bookings, including completed
-stays, with a page size of 100 so a full month normally renders without pagination.
-Non-cancelled stays appear as status-colored occupancy spans.
+Month grid titled **Nightly rates**, with the legend under the grid. Close the date
+modal with the X or Escape (no Cancel button).
 
-| Control | Behavior                                                       |
-| ------- | -------------------------------------------------------------- |
-| Name    | Shows the primary guest's first name; falls back to Guest      |
-| Price   | Shows `booking_rate ÷ number_of_nights`, compactly formatted   |
-| Month   | Changes the booking query to the visible month's start and end |
-| Stay    | Opens the booking detail page when selected                    |
+### Available nights
 
-The label toggle is local UI state and does not write to the database.
+- Weekday and weekend list rates apply by default; holiday rules and custom overrides adjust
+  the displayed nightly amount.
+- Select one or more **future, unbooked** nights to open the date modal: set a custom rate,
+  reset to default, or block. **Block** sits on the left of the footer; **Reset** / **Apply**
+  on the right. **Apply** only stores an override when the amount differs from that night's
+  base rate (weekday/weekend/holiday); applying the default clears any override so the cell
+  is not marked custom.
 
-### Load path
+### Booked nights
 
-1. `PropertyOccupancyCalendarPanel` builds the visible month range.
-2. `useBookings` calls **`list-bookings`** with property scope and
-   `showCompletedBookings=true`.
-3. `BookingCalendarView` renders the results using the selected Name/Price label mode.
+- Occupied nights `[check-in, check-out)` render a nightly amount in the day cell: the saved
+  booking rate ÷ nights when set; otherwise the property default for that night (same source
+  as Review Pricing). New **Pending Review** stays therefore show weekday/weekend/holiday rates
+  instead of ₱0.
+- A status-colored pill spans the stay across the week grid (Airbnb-style), inset to match
+  the rate badge width, with the guest avatar (valid ID photo or initial) on the label.
+  Multiple stays stack in separate lanes when they overlap in the same week.
+- Click the booked day cell (or the pill) to open a **Booking** modal with guest name, stay
+  dates, status, flags, and total booking rate (or estimated default total); from there open
+  the full booking detail page.
 
----
+### Blocked nights
 
-## Pricing view
-
-Pricing preserves the former Pricing page inside Calendar. It supports base weekday and
-Fri–Sun rates, fee defaults, holiday premiums, custom date rates, and owner date blocks.
-
-### Rates and fees
-
-| Field               | Storage column                              | Validation          |
-| ------------------- | ------------------------------------------- | ------------------- |
-| Weekday rate        | `app_settings.weekday_nightly_rate`         | Non-negative number |
-| Fri–Sun rate        | `app_settings.weekend_nightly_rate`         | Non-negative number |
-| Down payment        | `app_settings.default_down_payment`         | Non-negative number |
-| Security deposit    | `app_settings.default_security_deposit`     | Non-negative number |
-| Pet fee             | `app_settings.default_pet_fee`              | Non-negative number |
-| Parking rate        | `app_settings.default_parking_rate_guest`   | Non-negative number |
-| Extra guest fee     | `app_settings.default_guest_additional_fee` | Non-negative number |
-| Holiday rules       | `app_settings.pricing_holiday_rules`        | Valid dated rules   |
-| Custom nightly rate | `property_pricing_date_overrides`           | Non-negative number |
-
-Custom date overrides take precedence over holiday premiums. Booked and past nights cannot
-be selected for pricing mutations.
-
-### Save path
-
-1. Fee-only changes PATCH **`property-pricing`** immediately.
-2. Base-rate changes open **Save pricing**, then PATCH either property-wide defaults or
-   visible-month date overrides.
-3. Selecting future available nights opens **Set nightly rate**; Apply or Reset PATCHes the
-   date override map.
-4. The response refreshes rates, booked nights, blocked nights, overrides, and holiday
-   rules in the pricing query cache.
-
-### Save pricing dialog
-
-| Option                | Effect                                                                                                                     |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| All future dates      | Saves the weekday and Fri–Sun rates as property defaults used for future pricing calculations.                             |
-| This month only       | Leaves property defaults unchanged and saves resolved rates as overrides for future, unbooked nights in the visible month. |
-| Override custom rates | Replaces existing custom date overrides instead of preserving them; unchecked custom rates remain authoritative.           |
-
-### Booking workflow integration
-
-The booking detail workflow loads these property defaults, date overrides, and holiday
-rules into `ReviewPricingForm`. For a booking without saved pricing, the form computes the
-stay rate from its occupied nights and fills applicable fee defaults. Values already saved
-on the booking take precedence, so later Calendar Pricing changes do not rewrite that
-booking's pricing snapshot. See the
-[booking detail operator guide](./bookings-detail.md#progress-panel) for the workflow UI and
-transition behavior.
-
-### Summary and calendar states
-
-The KPI chips show Base Rate, Weekend Premium, Custom Dates, and Fixed Fees. The calendar
-legend distinguishes Available, Holiday, Custom, Booked, Blocked, and Selected nights.
+- Blocked nights use a muted cell with a ban icon. They cannot be selected for custom
+  pricing until unblocked.
+- Blocking rejects past dates and any night that is already booked.
 
 ---
 
-## Blocked dates
+## Rates and fees sidebar
 
-Owner blocks are availability records, not bookings. Each stored range represents occupied
-nights in `[start_date, end_date)`: the start night is blocked and the end date is available
-for a new check-in.
-
-### Storage
-
-| Column        | Type        | Purpose                                      |
-| ------------- | ----------- | -------------------------------------------- |
-| `id`          | UUID        | Block identifier                             |
-| `property_id` | UUID        | Property scope; cascades when property ends  |
-| `start_date`  | date        | First blocked night                          |
-| `end_date`    | date        | Checkout-exclusive end                       |
-| `note`        | text        | Optional operator note                       |
-| `created_at`  | timestamptz | Audit timestamp                              |
-| `created_by`  | UUID        | Admin user; retained as null if user is gone |
-
-`end_date` must be after `start_date`. Direct client table access is not used; the service
-role operates through authenticated edge functions.
-
-### Block save path
-
-1. A user with `pricing:edit` selects one or more contiguous future available nights.
-2. **Block** PATCHes `blockRange: { startDate, endDate, note? }` to
-   **`property-pricing`**.
-3. The server validates strict `YYYY-MM-DD` dates, an end after start, no past nights, and
-   no overlap with a non-cancelled booking.
-4. A `property_blocked_dates` row is inserted with the property and admin user.
-5. The response returns refreshed `blockedDateKeys`.
-
-### Unblock save path
-
-1. The user selects blocked nights and chooses **Unblock**.
-2. The UI PATCHes `unblockDateKeys: string[]`.
-3. The server validates every date key, then transactionally removes or splits intersecting
-   ranges so unselected nights remain blocked.
-4. The response returns refreshed `blockedDateKeys`.
-
-Mixed available/blocked selections are not combined. Drag selection stops at booked nights
-or at a change between available and blocked state.
-
-### Guest enforcement
-
-- **`get-booked-dates`** merges future booking ranges and owner-blocked ranges into the
-  same unavailable-range response used by the public guest calendar and booking editor.
-- **`submit-form`** separately checks blocked nights during the database overlap check.
-  This prevents a stale or manually crafted client request from saving a booking on a
-  blocked night.
-- Cancelled bookings do not block occupancy; owner blocks remain unavailable until
-  explicitly unblocked.
+Same as the legacy pricing page: weekday/weekend base rates, fee defaults (down payment,
+security deposit, pet, parking, extra guest), and save flows for base-rate scope and
+fee-only updates.
 
 ---
 
-## API reference
+## API and data
 
-| Action              | Endpoint                 | Permission      | Fields / result                                                                                                  |
-| ------------------- | ------------------------ | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Load occupancy      | `GET list-bookings`      | `bookings:view` | Month range, completed included, property scope                                                                  |
-| Load pricing        | `GET property-pricing`   | `pricing:view`  | Optional `month=YYYY-MM`; returns defaults, `dateOverrides`, `bookedDateKeys`, `blockedDateKeys`, `holidayRules` |
-| Save pricing        | `PATCH property-pricing` | `pricing:edit`  | Rate/fee fields, `dateOverrides`, optional `holidayRules`                                                        |
-| Block nights        | `PATCH property-pricing` | `pricing:edit`  | `blockRange: { startDate, endDate, note? }`                                                                      |
-| Unblock nights      | `PATCH property-pricing` | `pricing:edit`  | `unblockDateKeys: string[]`                                                                                      |
-| Public availability | `GET get-booked-dates`   | Public          | Booking and blocked ranges in `{ id, checkInDate, checkOutDate }`                                                |
+| Concern                               | Path                              |
+| ------------------------------------- | --------------------------------- |
+| Load/save pricing + calendar bookings | `property-pricing` edge function  |
+| Blocked dates table                   | `property_blocked_dates`          |
+| Date overrides                        | `property_pricing_date_overrides` |
+| Defaults                              | `app_settings` per property       |
 
-All admin requests are property-scoped and revalidated server-side.
+**GET** `property-pricing?month=YYYY-MM` returns defaults, overrides, `bookedDateKeys`,
+`blockedDateKeys`, and `calendarBookings` (non-cancelled stays overlapping that month).
+
+**PATCH** accepts rate/fee fields, `dateOverrides`, `blockRange`, and `unblockDateKeys`.
+
+Guest availability (`get-booked-dates`, `submit-form`) treats blocked nights as
+unavailable alongside existing bookings.
 
 ---
 
 ## Implementation map
 
-| Concern                 | Path                                                                                                                                        |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Calendar page shell     | `ui/src/features/dashboard/pricing/pages/PropertyCalendarPage.tsx`                                                                          |
-| Occupancy adapter       | `ui/src/features/dashboard/pricing/components/PropertyOccupancyCalendarPanel.tsx`                                                           |
-| Occupancy calendar      | `ui/src/features/dashboard/bookings/components/BookingCalendarView.tsx`                                                                     |
-| View toggle             | `ui/src/features/dashboard/pricing/components/PropertyCalendarViewToggle.tsx`                                                               |
-| Pricing content         | `ui/src/features/dashboard/pricing/pages/PropertyPricingPage.tsx`                                                                           |
-| Pricing calendar/modal  | `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`, `ui/src/features/dashboard/pricing/components/PricingDateModal.tsx` |
-| Pricing hooks/API       | `ui/src/features/dashboard/pricing/hooks/usePropertyPricing.ts`, `ui/src/features/dashboard/pricing/lib/propertyPricingApi.ts`              |
-| Route and redirect      | `ui/src/features/dashboard/pricing/routes/index.tsx`                                                                                        |
-| Route permission gate   | `ui/src/features/dashboard/org/components/RequirePropertyPermission.tsx`                                                                    |
-| Sidebar permission gate | `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts`                                                                                 |
-| Edge function           | `supabase/functions/property-pricing/index.ts`                                                                                              |
-| Pricing service         | `supabase/functions/_shared/propertyPricing.ts`                                                                                             |
-| Block service           | `supabase/functions/_shared/propertyBlockedDates.ts`                                                                                        |
-| Guest availability      | `supabase/functions/get-booked-dates/index.ts`                                                                                              |
-| Submit enforcement      | `supabase/functions/_shared/databaseService.ts`, `supabase/functions/submit-form/index.ts`                                                  |
-| Schema                  | `supabase/migrations/20260801120000_property_blocked_dates.sql`                                                                             |
-| Transactional unblock   | `supabase/migrations/20261001150000_unblock_property_dates_function.sql`                                                                    |
+| UI                                                                             | Server                                               |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `ui/src/features/dashboard/pricing/pages/PropertyPricingPage.tsx`              | `supabase/functions/property-pricing/index.ts`       |
+| `ui/src/features/dashboard/pricing/components/PricingCalendarGrid.tsx`         | `supabase/functions/_shared/propertyPricing.ts`      |
+| `ui/src/features/dashboard/pricing/components/PricingCalendarBookingModal.tsx` | —                                                    |
+| `ui/src/features/dashboard/pricing/routes/index.tsx`                           | `supabase/functions/_shared/propertyBlockedDates.ts` |
+
+Spanning pill layout reuses `calendarDateUtils` and `CalendarOccupancySpanTrack` from the
+bookings calendar module.
 
 ---
 
-## Related docs
+## Edge cases
 
-- [Route index](../../README.md)
-- [Legacy Pricing route](./pricing.md)
-- [Property team permissions](./team.md)
-- [Public guest calendar](../../calendar.md)
-- [`docs/PROJECT.md`](../../../../PROJECT.md)
-
----
-
-## Pending / follow-ups
-
-- [ ] Keep parking Pricing as a separate page until a parking Calendar project is defined.
+- **Past nights:** not selectable for pricing or blocking edits.
+- **Checkout morning:** not counted as an occupied calendar night.
+- **Cancelled bookings:** excluded from pills and booked-night locks.
+- **Month navigation:** refetches pricing + bookings for the visible month via
+  `?month=YYYY-MM`.

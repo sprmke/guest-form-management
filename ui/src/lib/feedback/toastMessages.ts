@@ -132,7 +132,7 @@ export function gmailOAuthCallbackError(code: string): string {
     case 'save_failed':
       return 'Could not save Google credentials — try Connect Google again';
     case 'token_exchange_failed':
-      return 'Google token exchange failed — add the Edge callback redirect URI in Google Cloud (see docs/PROJECT.md §11)';
+      return 'Google token exchange failed — add the Edge callback redirect URI in Google Cloud (see docs/architecture/validation-and-env.md)';
     case 'invalid_state':
       return 'OAuth session expired or invalid — click Connect Google again';
     case 'missing_refresh_token':

@@ -2,6 +2,9 @@
 
 Run the **Superpowers writing-plans** workflow.
 
-Read and follow **`superpowers:writing-plans`** completely. Save the plan to `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`.
+1. Read **`.agent/skills/superpowers/SKILL.md`** (repo path overrides).
+2. Read and follow **`superpowers:writing-plans`** completely.
+3. **Save the plan to `docs/workflow/planned/<feature>.md`** — never `docs/superpowers/plans/`. **No date prefix.**
+4. Add an index row to `docs/workflow/planned/README.md`.
 
-Use after a spec exists (often via `/superpowers-brainstorm`). This command opts in to Superpowers for the current chat. Available as **/superpowers-plan**.
+Use after a spec exists (often via `/superpowers-brainstorm`). Opts in to Superpowers for this chat.

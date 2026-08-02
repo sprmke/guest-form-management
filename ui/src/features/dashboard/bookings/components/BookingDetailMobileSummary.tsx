@@ -1,5 +1,6 @@
 import { Calendar, ChevronDown, Edit2, PencilLine, Users, X } from 'lucide-react';
 
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { BookingDetailFlagChips } from '@/features/dashboard/bookings/components/BookingDetailFlagChips';
 import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
@@ -36,6 +37,11 @@ export function BookingDetailMobileSummary({
   className,
 }: Props) {
   const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const nights = occupiedNightsFromStay(
+    booking.check_in_date,
+    booking.check_out_date,
+    booking.number_of_nights
+  );
   const fb = booking.guest_facebook_name?.trim() ?? '';
   const primary = booking.primary_guest_name?.trim() ?? '';
   const heading = fb || primary || 'Booking';
@@ -77,8 +83,7 @@ export function BookingDetailMobileSummary({
         </span>
         <span className="text-muted-foreground inline-flex items-center gap-1">
           <Users className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-          {pax} pax · {booking.number_of_nights}{' '}
-          {booking.number_of_nights === 1 ? 'night' : 'nights'}
+          {pax} pax · {nights} {nights === 1 ? 'night' : 'nights'}
         </span>
       </p>
 

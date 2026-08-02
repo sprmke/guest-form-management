@@ -1,0 +1,112 @@
+---
+title: 'Mobile native redesign'
+stage: planned
+status: planned
+updated: 2026-08-01
+---
+
+# Ground-Up Mobile Redesign — "Feels Like a Native App"
+
+## Context
+
+Today the app is a responsive website: pages reflow at breakpoints, but the mobile experience is still "a desktop layout that fits on a phone" — a hamburger-triggered drawer for admin nav, centered dialogs at every viewport, hand-rolled CSS transitions in most flows, and no persistent app-like navigation outside a single top-docked account tab strip. The user wants every page — public marketing/browsing, the guest booking flow, the guest portal, and the full admin dashboard (org/property/parking/super-admin) — rebuilt so mobile feels like a native app: bottom tab navigation, native-feeling transitions/gestures, and sheet-style modals where appropriate, not just adjusted breakpoints.
+
+This is a whole-app effort touching dozens of routes, so this plan defines the shared architecture once and phases the rollout across the app rather than speccing every page individually. **This is a planning-only deliverable** — no code has been changed. Each phase below should get its own follow-up implementation pass (and, per repo convention, likely its own detailed plan) when picked up.
+
+### Locked product decisions
+
+1. **Scope**: visual/interaction redesign only. PWA installability (manifest, service worker, offline shell) is explicitly **out of scope** — flagged as a future phase, not designed here.
+2. **Bottom tab navigation** appears everywhere — dashboard admin, guest portal, public marketing/browsing, and even inside the guest booking form/calendar/sd-form/pay-parking flow. The wizard-vs-tab-bar conflict this creates is resolved below (§3).
+3. **Modals**: hybrid — short confirmations/alerts stay centered `Dialog`; longer forms/detail panels/filters become bottom sheets on mobile.
+4. **Animation**: framer-motion (already a dependency, `^12.42.2`) becomes the app-wide standard for page transitions, sheet/drawer open-close, list enter/exit, and gestures (swipe-to-dismiss, drag-to-close). Raw CSS transitions remain only for cheap hover/press micro-interactions.
+
+## Current-state findings (verified against code, not assumed)
+
+- **Breakpoints**: Tailwind defaults only (`sm:640 md:768 lg:1024 xl:1280`), no custom breakpoints (`ui/tailwind.config.js`).
+- **A viewport-query hook already exists**: `ui/src/hooks/useMediaQuery.ts` exports `useIsBelowMd/Lg/Xl` + `usePrefersReducedMotion`, built on a shared `useMediaQuery(query)` primitive (`matchMedia` + change subscription). Reused across `BookingsListPage`, `FinancePage`, `MaintenancePage`, `MarketingNav`, etc. **No `useIsMobile()` phone-tier export exists yet** — needs adding.
+- **No existing bottom tab bar anywhere in the app** (correcting an earlier assumption made mid-research). The closest precedent, `ui/src/features/guest/account/components/GuestAccountMobileNav.tsx`, is actually a **top** `sticky top-16` segmented tab strip (verified in `GuestAccountLayout.tsx:14-18`) — not bottom-docked. What _is_ genuinely reusable from it: `ui/src/components/ui/SlidingActivePill.tsx` + `ui/src/hooks/useSlidingActivePill.ts`, confirmed fully generic (pure ref/DOM-measurement, no nav-specific coupling) — this becomes the animated active-indicator for a **new** bottom tab bar, not a relocation of an existing one.
+- **Admin shell** (`ui/src/features/dashboard/bookings/components/AdminLayout.tsx`): mobile (`<lg`) = sticky topbar + hand-built hamburger slide-in left drawer (custom `-translate-x-full`↔`translate-x-0`, no shadcn Sheet, no framer-motion, but does already do `inert` mgmt + scroll-lock correctly). Desktop (`lg+`) = fixed collapsible sidebar, untouched by this plan.
+- **List/table → card-list precedent already shipped**: `BookingCardGrid.tsx` + `FinanceLedgerCardGrid.tsx`, wired via a `view: 'table'|'card'|'kanban'` state + existing `ui/src/hooks/useAdminMobileCardViewGuard.ts` + `hideTableView={isMobileLayout}`, live on `BookingsListPage`, `ParkingBookingsPage`, `FinancePage`. This is the template to generalize, not invent.
+- **`ui/src/components/ui/sheet.tsx`** is built on `@radix-ui/react-dialog` (confirmed), already supports a `side: 'bottom'` variant in `sheetVariants`, but is **imported nowhere in the app today** — a clean slate. It gives focus-trap/scroll-lock/portal handling for free; it lacks native drag-to-dismiss (addable with framer-motion `drag="y"`, matching decision #4 instead of adding a second gesture engine like `vaul`).
+- **`Dialog`** (`@/components/ui/dialog`) is used in 55 files today, universally, regardless of viewport.
+- Safe-area-inset handling is an already-established pattern (`dialog.tsx`, `MainLayout.tsx`, `BookingEditStickyBar.tsx`, `StayGuideHero.tsx`) — not new ground.
+- Full page/route inventory (every route grouped by surface: public marketing/browsing, host auth, operational guest flow, guest portal, super-admin, org onboarding, org-scoped, property-scoped, parking-scoped) was enumerated during research — see Phase breakdown below for how it's grouped into shippable chunks.
+
+## Architecture
+
+### 1. Foundation primitives (`ui/src/components/mobile/`, new directory)
+
+- **`BottomTabBar.tsx`** — shared bottom nav primitive. Props: `items: { href, label, Icon, badge? }[]`, `activePathname`, optional `onMoreClick`. Built on `useSlidingActivePill` + `SlidingActivePill` (reused as-is). Fixed (`fixed inset-x-0 bottom-0 z-40`), `pb-[max(0.5rem,env(safe-area-inset-bottom))]`, 44px+ touch targets.
+- **`BottomBarSlot.tsx`** + `BottomBarSlotProvider` — the single fixed bottom band renders exactly one of `<BottomTabBar>` (persistent nav) or `<ContextualActionBar>` (screen-owned primary action, e.g. wizard Back/Continue) at a time, via a `useContextualActionBar(node)` hook screens call to claim the slot and release it on unmount. Cross-fade via framer-motion `AnimatePresence`. This generalizes the existing `BookingEditStickyBar.tsx` pattern into a reusable slot rather than a one-off.
+- **`ContextualActionBar.tsx`** — the "primary action" bottom bar consumed by wizards/detail-edit screens.
+- **`MobileAppShell.tsx`** — per-surface scaffold owning content bottom-offset and `overscroll-behavior-contain` (never `overflow-hidden` on body/root, preserving the existing iOS-momentum-scroll rule). `AdminLayout`, `MainLayout`, `MarketingLayoutShell` each delegate their mobile path to this.
+- **`PageTransition.tsx`** — thin `motion.div` wrapper (opacity + 8-12px slide) applied per-surface around route `Outlet`s, not globally (avoids double-animating nested layouts). Respects `usePrefersReducedMotion` (existing hook — do not add framer-motion's own `useReducedMotion`, keep one source of truth) by rendering with no animation at all when reduced motion is on.
+- **`AdminCardGrid.tsx` / `AdminCardRow.tsx`** — generic card-list shell (loading/empty/error states + tappable card with keyboard support) extracted from `BookingCardGrid`/`FinanceLedgerCardGrid`'s duplicated logic, so every future list-page conversion reuses it instead of hand-rolling.
+- **`useMediaQuery.ts`**: add `useIsMobile()` (phone-tier, e.g. `max-width: 639px`) alongside the existing `useIsBelowMd/Lg/Xl` exports.
+- **Sheet primitive**: extend `ui/src/components/ui/sheet.tsx` in place — bottom-side polish (`rounded-t-2xl`, drag-handle affordance, safe-area padding, `max-h-[85dvh]` with internal scroll) + framer-motion `drag="y"` for dismiss. New **`ui/src/components/ui/bottom-sheet.tsx`** (thin re-export defaulting `side="bottom"`) and **`ui/src/components/ui/responsive-modal.tsx`** (renders `Dialog` above `sm`, `BottomSheet` below — the thing most of the 55 Dialog call sites migrate onto instead of each hand-rolling a breakpoint check). **Decision: do not add `vaul`** — it would run a second, independent gesture/animation engine alongside framer-motion, contradicting decision #4; Sheet-on-Radix already gives the a11y primitives vaul would otherwise re-solve.
+
+### 2. Mobile shell per surface
+
+- `AdminLayout.tsx` mobile path rebuilds on `MobileAppShell` + `BottomTabBar` + `BottomBarSlot`; the hamburger drawer's content becomes a "More" bottom sheet instead of a left-slide panel. Desktop (`lg+`) fixed sidebar is untouched.
+- `MainLayout.tsx` (guest operational flow) gains a `BottomBarSlot`; its current floating corner buttons (admin entry/theme toggle) get normalized into a slim top bar so it isn't floating-buttons-plus-tab-bar.
+- `MarketingLayoutShell.tsx` gets bottom tabs (Explore/Properties/Parkings-Developments/Account) + a "More" bottom sheet for secondary links (For Hosts, Services, Terms, Privacy, theme toggle); `MarketingNav.tsx`'s current full-screen hamburger `AnimatePresence` overlay is retired, not kept alongside the new tab bar (two nav paradigms stacked is exactly what decision #2 must avoid).
+- Guest account (`GuestAccountLayout.tsx`) keeps its existing top segmented strip conceptually but is migrated to consume the new shared `BottomTabBar`/`BottomBarSlot` at the bottom instead, for consistency with every other surface (this is a real behavior change for guest account, not just a refactor, since it moves from top to bottom placement) — call this out explicitly to the user during Phase 2 implementation as a visible change from what exists today.
+
+### 3. Booking-form-flow bottom-nav resolution
+
+**Rule**: screens with a single dominant linear action or multi-step flow claim the `ContextualActionBar` and the tab bar is unmounted for that route; browsing/list/dashboard screens with no single dominant action show the persistent tab bar. Same rule resolves PDP CTAs, edit-form Save/Cancel, and payment forms — one rule, not one exception per screen type.
+
+| Route                                                         | Bottom band                                                                                                                                                 |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `stay-guide`, `calendar`, `messages`                          | Tab bar                                                                                                                                                     |
+| `form` (`GuestForm.tsx` wizard)                               | `ContextualActionBar` = promoted `GuestFormStepNavigation.tsx` Back/Continue (fixed, safe-area padded, same upgrade `BookingEditStickyBar.tsx` already has) |
+| `sd-form`, `guest-review`, `parking/:bookingId` (pay-parking) | `ContextualActionBar` (verify each has a single dominant submit/pay action during implementation)                                                           |
+| `success`                                                     | Tab bar reappears                                                                                                                                           |
+
+Rationale: stacking a 56px tab bar + a 56-64px Back/Continue bar burns 112-120px+ safe-area on the narrowest supported viewport (375px) on a form already tight on space — time-slicing the same band costs zero extra space and matches checkout-flow mental models users already know. While the tab bar is hidden, the top area gets an explicit exit affordance ("X" / "Back to Calendar") so users aren't stranded.
+
+### 4. List/table → mobile card-list conversion
+
+Every remaining table page (Team, Maintenance, Templates, super-admin Developments/Approvals/Hosts/PlatformProperties, org Properties/Parkings) adopts the same 3-part pattern already proven on Bookings/Finance: (1) `view` state + `useAdminMobileCardViewGuard`, (2) a `<Domain>CardGrid.tsx` built on the new `AdminCardGrid`/`AdminCardRow` shells, (3) `hideTableView={isMobileLayout}` passed to the existing table. Mechanical work once the shared shell exists (Phase 0) — not new architecture.
+
+### 5. Dialog → hybrid modal conversion rule
+
+Converts to bottom sheet (via `ResponsiveModal`) when **any** of: >~3 fields or a rich/file-upload field; it's a picker/list; it's a full read+edit detail panel; it's opened from an already mobile-optimized flow. **Stays** a centered `Dialog` when it's a short confirm/alert (destructive confirms, single-field prompts, brief informational dialogs).
+
+Rough sweep of the 55 sites, by module (destructive confirms and single-field prompts stay Dialog everywhere; forms/pickers/detail panels convert):
+
+- **Inbox**: quick-reply/AI-response/page-picker dialogs → sheet; `InboxMediaPreviewDialog` → special-cased as a full-bleed lightbox, not `ResponsiveModal`.
+- **Bookings**: `PayParkingModal`, `BookingKanbanWorkflowModal`, `PropertyIntegrationsPanel`, Telegram/template config dialogs → sheet; `GmailReconnectModal`/`TelegramHelpDialog` (short info) → stays Dialog.
+- **Org**: `GetVerifiedModal` (multi-step) → sheet; `AddEntityDialog`/`OrgDangerZoneSection` (destructive) → stays Dialog; `PropertyMediaPreviewDialog` → lightbox special case.
+- **Team**: invite/edit-permission dialogs → sheet; `RemoveMemberDialog` (destructive) → stays Dialog.
+- **Finance/Maintenance**: `RecurringSeriesModal`/`StayFinanceModal` → sheet; `RecurringDeleteDialog` (destructive) → stays Dialog.
+- **Marketing (dashboard)**: `PublishDialog`/move-template picker → sheet; `MarketingNameDialog` (single field) → stays Dialog.
+- **Parking/Pricing**: booking/settings forms → sheet; `PricingSaveDialog` (single confirm) → stays Dialog.
+- **Guest-facing**: `ContactHostSheet` (already named "Sheet" but built on `Dialog` today — first to migrate onto the real primitive); `GuestAuthModal` → flagged as a UX call to make during implementation, default to keeping centered (trust/auth convention); `VoiceSessionOverlay` excluded (already full-screen, not a hybrid candidate); `PropertyRules`/`PropertyAmenities` → sheet; `BookingCalendarModal` → sheet.
+
+Net: roughly 35-40 of 55 sites convert; ~15 (destructive confirms, single-field prompts, 2 media lightboxes, auth modal) stay Dialog everywhere.
+
+## Phased rollout (each phase independently shippable)
+
+- **Phase 0 — Foundation**: build everything in §1 (no visible route changes). Refactor `BookingCardGrid`/`FinanceLedgerCardGrid` onto the new `AdminCardGrid`/`AdminCardRow` shells to prove the extraction against two already-shipped consumers before anything new depends on it. No skill-doc edits yet.
+- **Phase 1 — Guest booking flow** (highest traffic, highest risk — the 2100-line `GuestForm.tsx`): `MainLayout` gets `BottomBarSlot` + tab bar; `GuestFormStepNavigation` promoted to `ContextualActionBar` across `form`/`sd-form`/`guest-review`/`parking/:bookingId`. Ship and verify alone before touching anything else.
+- **Phase 2 — Guest portal + public marketing/browsing**: migrate `GuestAccountMobileNav` onto shared `BottomTabBar`/`BottomBarSlot` (top→bottom placement change, call out explicitly); add bottom tabs + "More" sheet to `MarketingLayoutShell`, retiring the hamburger overlay; PDP CTAs become `ContextualActionBar` consumers. Host auth pages get lower priority — confirm during implementation whether they need a tab bar at all.
+- **Phase 3 — Dashboard admin shell**: `AdminLayout` mobile path rebuilt on `MobileAppShell`/`BottomTabBar`/`BottomBarSlot`; tab items = top 3-4 nav sections per surface (property/org/parking/super-admin) from existing `buildPropertyNavSections`/`buildOrgNavSections`/etc. (`ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts`) + "More" sheet for the rest. Desktop untouched. `BookingEditStickyBar` migrated onto `ContextualActionBar`.
+- **Phase 4 — Remaining dashboard modules**: list/card conversions for every table page not already covered; Dialog → `ResponsiveModal` sweep per §5, splittable into sub-PRs per module group (mechanical, low interdependency).
+- **Phase 5 — Doc updates**: amend `.cursor/rules/mobile-responsive.mdc` + mirrored `.claude/skills/mobile-responsive/SKILL.md` — admin shell diagram (3-zone: topbar/content/`BottomBarSlot`, hamburger retired), modal guidance reversal (hybrid rule replaces "avoid full-screen sheets"), new "Bottom navigation & contextual bars" + "Animation standard" sections, updated testing checklist. Landed last, once shipped behavior is the source of truth. Note PWA as an explicit future follow-up, not built here.
+
+## Verification approach (no automated test suite in this repo)
+
+Per phase: `bun run type-check` / `lint` / `build` clean first, then manual Playwright-driven viewport passes at 375/390/768/1024/1440px (`browser_resize` + `browser_navigate` + `browser_snapshot`/`browser_take_screenshot`) checking: tab bar and contextual bar are never both visible, sheet drag-to-dismiss doesn't fight page scroll, safe-area padding present on new fixed-bottom elements. Phase-specific smoke flows: Phase 1 drives the full booking wizard end-to-end at 375px; Phase 3 confirms the "More" sheet surfaces every permission-filtered nav item the old drawer did, per tenant type; Phase 4 spot-checks card-grid data parity against the table view it replaces. Include one dark-mode and one reduced-motion-emulated pass per phase. Phase 0's refactor gets an explicit regression check on the _existing_ Bookings/Finance card views before any new consumer is built on the extracted shells.
+
+## Critical files
+
+- `ui/src/features/guest/account/components/GuestAccountMobileNav.tsx` + `ui/src/components/ui/SlidingActivePill.tsx` + `ui/src/hooks/useSlidingActivePill.ts` — reusable primitives for the new `BottomTabBar`
+- `ui/src/layouts/MainLayout.tsx` — guest operational shell, Phase 1
+- `ui/src/features/guest/form/components/GuestFormStepNavigation.tsx` / `GuestForm.tsx` — first `ContextualActionBar` consumer
+- `ui/src/features/dashboard/bookings/components/AdminLayout.tsx` — admin shell mobile rebuild, Phase 3
+- `ui/src/features/dashboard/bookings/lib/adminSidebarNav.ts` — existing nav-section builders to source bottom-tab items from
+- `ui/src/components/ui/sheet.tsx` — extended in place (not replaced by `vaul`)
+- `ui/src/features/dashboard/bookings/components/BookingCardGrid.tsx` + `FinanceLedgerCardGrid.tsx` — precedent generalized into `ui/src/components/mobile/AdminCardGrid.tsx`/`AdminCardRow.tsx`
+- `ui/src/hooks/useMediaQuery.ts` / `useAdminMobileCardViewGuard.ts` — extended, not replaced
+- `.cursor/rules/mobile-responsive.mdc` + `.claude/skills/mobile-responsive/SKILL.md` — Phase 5 amendments

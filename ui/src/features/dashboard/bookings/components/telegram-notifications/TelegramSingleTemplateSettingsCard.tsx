@@ -87,6 +87,10 @@ export function TelegramSingleTemplateSettingsCard<TDto extends TelegramSingleTe
     setChatId,
     busy,
     connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
     onTestConnection,
     onEnabledChange,
     update,
@@ -157,8 +161,11 @@ export function TelegramSingleTemplateSettingsCard<TDto extends TelegramSingleTe
             onBotTokenChange={setBotToken}
             onChatIdChange={setChatId}
             onTestConnection={onTestConnection}
-            testPending={testSend.isPending}
+            testPending={connectPending}
             connectionOk={connectionOk}
+            connectionLabels={connectionLabels}
+            chatLabelLoading={backgroundVerifyPending}
+            onBotTokenValidated={resetConnection}
             manageSectionTitle="Reminder message"
           >
             <TelegramSettingsManageCard

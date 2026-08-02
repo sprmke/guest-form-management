@@ -17,6 +17,10 @@ import {
   kanbanColumnForBooking,
 } from '@/features/dashboard/bookings/lib/bookingStages';
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
@@ -30,6 +34,8 @@ type Props = {
   error: string | null;
   isRefreshing?: boolean;
   showProperty?: boolean;
+  /** Resolved per-property list (§4.5) — defaults to Azure-parity GAF + pet-on-has_pets. */
+  documentRequirements?: DocumentRequirement[];
 };
 
 function guestName(row: BookingRow): string {
@@ -153,6 +159,7 @@ type KanbanColumnProps = {
   onDrop: (e: React.DragEvent, status: BookingStatus) => void;
   draggedRow: BookingRow | null;
   isDropTarget: boolean;
+  documentRequirements: DocumentRequirement[];
 };
 
 function KanbanColumn({
@@ -166,8 +173,9 @@ function KanbanColumn({
   onDrop,
   draggedRow,
   isDropTarget,
+  documentRequirements,
 }: KanbanColumnProps) {
-  const canDrop = draggedRow ? canKanbanDropTo(draggedRow, status) : false;
+  const canDrop = draggedRow ? canKanbanDropTo(draggedRow, status, documentRequirements) : false;
   const isInvalidDrop = draggedRow && !canDrop && draggedRow.status !== status;
 
   return (
@@ -267,6 +275,7 @@ export function BookingKanban({
   error,
   isRefreshing,
   showProperty = false,
+  documentRequirements = DEFAULT_DOCUMENT_REQUIREMENTS,
 }: Props) {
   const [draggedRow, setDraggedRow] = useState<BookingRow | null>(null);
   const suppressClickRef = useRef(false);
@@ -317,7 +326,7 @@ export function BookingKanban({
         setDropTargetStatus(null);
         return;
       }
-      if (!canKanbanDropTo(draggedRow, targetStatus)) {
+      if (!canKanbanDropTo(draggedRow, targetStatus, documentRequirements)) {
         setDraggedRow(null);
         setDropTargetStatus(null);
         return;
@@ -327,7 +336,7 @@ export function BookingKanban({
       setDraggedRow(null);
       setDropTargetStatus(null);
     },
-    [draggedRow, openWorkflow]
+    [draggedRow, openWorkflow, documentRequirements]
   );
 
   const rowsByStatus = useMemo(() => {
@@ -337,12 +346,12 @@ export function BookingKanban({
     >;
 
     for (const row of rows) {
-      const col = kanbanColumnForBooking(row);
+      const col = kanbanColumnForBooking(row, documentRequirements);
       if (!col || col === 'CANCELLED') continue;
       map[col]?.push(row);
     }
     return map;
-  }, [rows]);
+  }, [rows, documentRequirements]);
 
   if (error) return <BookingsErrorState error={error} />;
   if (isLoading) return <BookingsCardGridSkeleton />;
@@ -372,6 +381,7 @@ export function BookingKanban({
               onDrop={handleDrop}
               draggedRow={draggedRow}
               isDropTarget={dropTargetStatus === status}
+              documentRequirements={documentRequirements}
             />
           </div>
         ))}

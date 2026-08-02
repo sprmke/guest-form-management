@@ -1,3 +1,10 @@
+---
+title: 'Bookings List — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Bookings List — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/bookings`
@@ -97,7 +104,7 @@ New: `stage` (see above).
 
 ## API
 
-- `list-bookings` edge function — admin JWT; see `docs/PROJECT.md` API table.
+- `list-bookings` edge function — admin JWT; see [[PROJECT|Guest Form Management — Project Documentation]] API table.
 
 ---
 

@@ -93,6 +93,23 @@ const DEFAULT_HOLIDAY_RULES: PricingHolidayRuleDto[] = [
   },
 ];
 
+export type PropertyPricingCalendarBooking = {
+  id: string;
+  status: string;
+  check_in_date: string;
+  check_out_date: string;
+  primary_guest_name: string;
+  guest_facebook_name: string;
+  guest_email: string;
+  guest_phone_number: string | null;
+  booking_rate: number | null;
+  number_of_nights: number | null;
+  need_parking: boolean | null;
+  has_pets: boolean | null;
+  guest_requests_surprise_decor: unknown;
+  valid_id_url: string | null;
+};
+
 export type PropertyPricingDto = {
   weekdayNightlyRate: number;
   weekendNightlyRate: number;
@@ -105,6 +122,7 @@ export type PropertyPricingDto = {
   bookedDateKeys: string[];
   blockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
+  calendarBookings: PropertyPricingCalendarBooking[];
 };
 
 type AppSettingsPricingRow = {
@@ -315,6 +333,77 @@ export async function loadBookedDateKeys(
   return [...keys].sort();
 }
 
+function bookingOverlapsMonth(
+  checkIn: Date,
+  checkOut: Date,
+  monthStart: Date,
+  monthEnd: Date
+): boolean {
+  if (checkIn >= checkOut) return false;
+  const lastNight = addDays(checkOut, -1);
+  return checkIn <= monthEnd && lastNight >= monthStart;
+}
+
+/** Bookings visible on the property pricing calendar for a month window. */
+export async function loadCalendarBookings(
+  propertyId: string,
+  monthStart: string,
+  monthEnd: string
+): Promise<PropertyPricingCalendarBooking[]> {
+  const rangeStart = parseOccupancyDate(monthStart);
+  const rangeEnd = parseOccupancyDate(monthEnd);
+  if (!rangeStart || !rangeEnd) return [];
+
+  const supabase = createServiceClient();
+  const { data, error } = await supabase
+    .from('guest_submissions')
+    .select(
+      'id, status, check_in_date, check_out_date, primary_guest_name, guest_facebook_name, guest_email, guest_phone_number, booking_rate, number_of_nights, need_parking, has_pets, guest_requests_surprise_decor, valid_id_url'
+    )
+    .eq('property_id', propertyId)
+    .neq('status', 'CANCELLED');
+
+  if (error) {
+    throw new Error(`Failed to load calendar bookings: ${error.message}`);
+  }
+
+  const rows: PropertyPricingCalendarBooking[] = [];
+  for (const row of data ?? []) {
+    if (row.status === 'CANCELLED') continue;
+    const checkIn = parseOccupancyDate(row.check_in_date);
+    const checkOut = parseOccupancyDate(row.check_out_date);
+    if (!checkIn || !checkOut || !bookingOverlapsMonth(checkIn, checkOut, rangeStart, rangeEnd)) {
+      continue;
+    }
+
+    rows.push({
+      id: String(row.id),
+      status: String(row.status ?? ''),
+      check_in_date: String(row.check_in_date ?? ''),
+      check_out_date: String(row.check_out_date ?? ''),
+      primary_guest_name: String(row.primary_guest_name ?? ''),
+      guest_facebook_name: String(row.guest_facebook_name ?? ''),
+      guest_email: String(row.guest_email ?? ''),
+      guest_phone_number: row.guest_phone_number != null ? String(row.guest_phone_number) : null,
+      booking_rate: row.booking_rate != null ? pickMoney(row.booking_rate, 0) : null,
+      number_of_nights:
+        row.number_of_nights != null && Number.isFinite(Number(row.number_of_nights))
+          ? Number(row.number_of_nights)
+          : null,
+      need_parking: row.need_parking ?? null,
+      has_pets: row.has_pets ?? null,
+      guest_requests_surprise_decor: row.guest_requests_surprise_decor ?? null,
+      valid_id_url: row.valid_id_url != null ? String(row.valid_id_url) : null,
+    });
+  }
+
+  return rows.sort((a, b) => {
+    const aIn = parseOccupancyDate(a.check_in_date)?.getTime() ?? 0;
+    const bIn = parseOccupancyDate(b.check_in_date)?.getTime() ?? 0;
+    return aIn - bIn || a.primary_guest_name.localeCompare(b.primary_guest_name);
+  });
+}
+
 export async function loadPropertyPricing(
   propertyId: string,
   options?: { monthStart?: string; monthEnd?: string }
@@ -334,10 +423,13 @@ export async function loadPropertyPricing(
     throw new Error(`Failed to load property pricing: ${error.message}`);
   }
 
-  const [dateOverrides, bookedDateKeys, blockedDateKeys] = await Promise.all([
+  const [dateOverrides, bookedDateKeys, blockedDateKeys, calendarBookings] = await Promise.all([
     loadDateOverrides(propertyId),
     loadBookedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
     loadBlockedDateKeys(propertyId, options?.monthStart, options?.monthEnd),
+    options?.monthStart && options?.monthEnd
+      ? loadCalendarBookings(propertyId, options.monthStart, options.monthEnd)
+      : Promise.resolve([] as PropertyPricingCalendarBooking[]),
   ]);
 
   return {
@@ -346,6 +438,7 @@ export async function loadPropertyPricing(
     bookedDateKeys,
     blockedDateKeys,
     holidayRules: parseHolidayRules((row as AppSettingsPricingRow | null)?.pricing_holiday_rules),
+    calendarBookings,
   };
 }
 

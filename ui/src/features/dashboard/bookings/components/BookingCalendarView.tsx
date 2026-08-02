@@ -2,6 +2,7 @@ import { useCallback, useMemo, type ReactNode } from 'react';
 
 import { useNavigate } from 'react-router-dom';
 
+import { bookingResourceName } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import type { BookingCalendarPillLabelMode } from '@/features/dashboard/bookings/components/calendar/BookingCalendarPillLabelToggle';
 import { calendarOccupancySpanPosition } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { CalendarDayBookingCard } from '@/features/dashboard/bookings/components/calendar/CalendarDayBookingCard';
@@ -10,7 +11,6 @@ import {
   CalendarOccupancyPill,
   OccupancyCalendarView,
 } from '@/features/dashboard/bookings/components/calendar/OccupancyCalendarView';
-import { bookingResourceName } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -46,7 +46,12 @@ function bookingPillLabel(row: BookingRow): string {
 }
 
 function bookingPillPriceLabel(row: BookingRow): string {
-  const perNight = amountPerOccupiedNight(row.booking_rate, row.number_of_nights);
+  const perNight = amountPerOccupiedNight(
+    row.booking_rate,
+    row.number_of_nights,
+    row.check_in_date,
+    row.check_out_date
+  );
   if (perNight == null) return '—';
   return formatMoneyCompact(perNight);
 }

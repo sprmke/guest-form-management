@@ -1,3 +1,10 @@
+---
+title: 'Super Admin Approvals — operator guide'
+status: active
+tags: [guides, routes, admin]
+updated: 2026-08-02
+---
+
 # Super Admin Approvals — operator guide
 
 Route: `/admin/approvals`
@@ -91,7 +98,7 @@ Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `ba
 - [Route index](../README.md)
 - [Onboarding](../onboarding.md) — base verification submit + Get Verified
 - [`docs/PROJECT.md`](../../PROJECT.md) — API inventory
-- Plan: `docs/planning/planned_modules/2026-07-31-host-approvals.md`
+- Plan: [[2026-07-31-host-approvals|Wire up SuperAdmin Approvals (host verification review)]]
 
 ---
 

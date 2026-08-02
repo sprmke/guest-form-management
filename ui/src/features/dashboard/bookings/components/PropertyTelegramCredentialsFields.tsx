@@ -1,96 +1,55 @@
 import * as React from 'react';
 
-import { Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { TelegramChatIdFinder } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramChatIdFinder';
-import {
-  TelegramHelpDialog,
-  type TelegramHelpTab,
-} from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
+import { TelegramChatIdField } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramChatIdField';
 import {
   telegramBotTokenPlaceholder,
   telegramChatIdPlaceholder,
 } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
+import { useTelegramNotificationsGlobalBot } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
+import { TelegramSecretInput } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramSecretInput';
 import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import { SETTINGS_FIELD_LABEL_COMPACT } from '@/features/dashboard/org/lib/settingsFieldLabel';
+import { useVerifyTelegramGlobalBotToken } from '@/features/dashboard/bookings/hooks/useTelegramGlobalBotToken';
+import {
+  telegramBotDisplayLabel,
+  type TelegramConnectionLabels,
+} from '@/features/dashboard/bookings/lib/telegramConnectionLabels';
 
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
 export type { PropertyTelegramCredentialsStatus };
 
-const FIELD_LABEL = SETTINGS_FIELD_LABEL_COMPACT;
-
-type SecretInputProps = {
-  id: string;
-  label: string;
-  value: string;
-  placeholder: string;
-  disabled?: boolean;
-  helpTab?: TelegramHelpTab;
-  onChange: (value: string) => void;
-  className?: string;
-};
-
-function SecretInput({
-  id,
-  label,
-  value,
-  placeholder,
-  disabled,
-  helpTab,
-  onChange,
-  className,
-}: SecretInputProps) {
-  const [visible, setVisible] = React.useState(false);
-
-  return (
-    <div className={cn('min-w-0 space-y-1.5', className)}>
-      <div className="flex items-center gap-0.5">
-        <Label htmlFor={id} className={FIELD_LABEL}>
-          {label}
-        </Label>
-        {helpTab ? <TelegramHelpDialog defaultTab={helpTab} variant="icon" /> : null}
-      </div>
-      <div className="relative">
-        <Input
-          id={id}
-          type={visible ? 'text' : 'password'}
-          autoComplete="off"
-          value={value}
-          disabled={disabled}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-10 pr-11"
-        />
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={visible ? `Hide ${label}` : `Show ${label}`}
-          onClick={() => setVisible((v) => !v)}
-          className="text-muted-foreground hover:text-foreground absolute right-0 top-0 flex h-10 w-10 items-center justify-center rounded-r-lg transition-colors disabled:pointer-events-none disabled:opacity-50"
-        >
-          {visible ? (
-            <EyeOff className="size-4 shrink-0" aria-hidden />
-          ) : (
-            <Eye className="size-4 shrink-0" aria-hidden />
-          )}
-        </button>
-      </div>
-    </div>
-  );
+function resolveBotMaskedLabel(
+  botToken: string,
+  connectionLabels: TelegramConnectionLabels | undefined,
+  globalBot: { token: string; label: string },
+  validatedBotLabel?: string
+): string | undefined {
+  if (connectionLabels?.botLabel) return connectionLabels.botLabel;
+  if (validatedBotLabel) return validatedBotLabel;
+  const trimmed = botToken.trim();
+  if (trimmed && trimmed === globalBot.token.trim() && globalBot.label) {
+    return globalBot.label;
+  }
+  return undefined;
 }
 
 interface PropertyTelegramCredentialsFieldsProps {
   botToken: string;
   chatId: string;
   status?: PropertyTelegramCredentialsStatus;
+  connectionLabels?: TelegramConnectionLabels;
+  chatLabelLoading?: boolean;
   disabled?: boolean;
   onBotTokenChange: (value: string) => void;
   onChatIdChange: (value: string) => void;
+  onBotTokenValidated?: () => void;
   idPrefix?: string;
   connectAction?: React.ReactNode;
+  /** Inline scan + group picker while setup is incomplete. */
+  allowChatScan?: boolean;
   className?: string;
 }
 
@@ -98,48 +57,131 @@ export function PropertyTelegramCredentialsFields({
   botToken,
   chatId,
   status,
+  connectionLabels,
+  chatLabelLoading = false,
   disabled,
   onBotTokenChange,
   onChatIdChange,
+  onBotTokenValidated,
   idPrefix = 'telegram',
   connectAction,
+  allowChatScan = true,
   className,
 }: PropertyTelegramCredentialsFieldsProps) {
+  const globalBot = useTelegramNotificationsGlobalBot();
+  const verifyBot = useVerifyTelegramGlobalBotToken();
+  const [committedBotToken, setCommittedBotToken] = React.useState('');
+  const [validatedBotLabel, setValidatedBotLabel] = React.useState<string | undefined>();
+
+  const credentialsSyncKey = [
+    status?.tokenConfigured,
+    status?.botToken,
+    status?.chatId,
+    globalBot.token,
+  ].join('|');
+
+  React.useEffect(() => {
+    setCommittedBotToken(botToken.trim());
+    setValidatedBotLabel(undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset when server credentials reload
+  }, [credentialsSyncKey]);
+
   const botTokenId = `${idPrefix}-bot-token`;
   const chatIdId = `${idPrefix}-chat-id`;
+
+  const trimmedBotToken = botToken.trim();
+  const botTokenDirty = trimmedBotToken !== committedBotToken.trim();
+  const usesGlobalToken = trimmedBotToken.length > 0 && trimmedBotToken === globalBot.token.trim();
+
+  const botMaskedLabel = botTokenDirty
+    ? undefined
+    : resolveBotMaskedLabel(botToken, connectionLabels, globalBot, validatedBotLabel);
+
+  const botLabelLoading = Boolean(
+    !botTokenDirty &&
+    trimmedBotToken &&
+    !botMaskedLabel &&
+    usesGlobalToken &&
+    globalBot.labelResolving
+  );
+
+  const onBotTokenSave = () => {
+    if (!trimmedBotToken || verifyBot.isPending || disabled) return;
+
+    verifyBot.mutate(trimmedBotToken, {
+      onSuccess: (result) => {
+        const getMe = result.verify?.getMe;
+        if (!getMe?.ok) {
+          toast.error(
+            friendlyToastError(
+              getMe?.error,
+              'Invalid bot token. Please double-check your token and try again.'
+            )
+          );
+          return;
+        }
+
+        const label = telegramBotDisplayLabel(getMe.username);
+        setCommittedBotToken(trimmedBotToken);
+        setValidatedBotLabel(label);
+        if (chatId.trim()) onChatIdChange('');
+        onBotTokenValidated?.();
+      },
+      onError: (e) => {
+        toast.error(friendlyToastError(e, 'Could not verify bot token'));
+      },
+    });
+  };
+
+  const handleBotTokenChange = (value: string) => {
+    const willBeDirty = value.trim() !== committedBotToken.trim();
+    onBotTokenChange(value);
+    if (
+      willBeDirty &&
+      (chatId.trim() || connectionLabels?.chatLabel || connectionLabels?.botLabel)
+    ) {
+      onChatIdChange('');
+      onBotTokenValidated?.();
+    }
+  };
+
+  const chatMaskedLabel = botTokenDirty ? undefined : connectionLabels?.chatLabel;
+  const chatFieldLabelLoading = Boolean(
+    !botTokenDirty && chatId.trim() && !chatMaskedLabel && chatLabelLoading
+  );
 
   return (
     <div className={cn('space-y-3', className)}>
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end">
-        <SecretInput
+        <TelegramSecretInput
           id={botTokenId}
           label="Bot token"
           value={botToken}
-          disabled={disabled}
+          disabled={disabled || verifyBot.isPending}
           helpTab="bot-token"
+          maskedLabel={botMaskedLabel}
+          labelLoading={botLabelLoading}
+          dirty={botTokenDirty}
+          commitPending={verifyBot.isPending}
+          onCommit={onBotTokenSave}
           placeholder={telegramBotTokenPlaceholder(Boolean(status?.tokenConfigured))}
-          onChange={onBotTokenChange}
+          onChange={handleBotTokenChange}
         />
 
-        <SecretInput
+        <TelegramChatIdField
           id={chatIdId}
-          label="Chat ID"
-          value={chatId}
-          disabled={disabled}
-          helpTab="chat-id"
+          botToken={botToken}
+          chatId={chatId}
+          disabled={disabled || botTokenDirty}
+          allowScan={allowChatScan}
+          maskedLabel={chatMaskedLabel}
+          labelLoading={chatFieldLabelLoading}
           placeholder={telegramChatIdPlaceholder(Boolean(status?.chatIdConfigured))}
           onChange={onChatIdChange}
         />
 
         {connectAction ? <div className="min-w-0 md:justify-self-end">{connectAction}</div> : null}
       </div>
-
-      <TelegramChatIdFinder
-        botToken={botToken}
-        chatId={chatId}
-        disabled={disabled}
-        onChatIdSelect={onChatIdChange}
-      />
     </div>
   );
 }

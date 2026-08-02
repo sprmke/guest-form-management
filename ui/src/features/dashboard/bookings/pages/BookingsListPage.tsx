@@ -17,6 +17,7 @@ import { BookingKanban } from '@/features/dashboard/bookings/components/BookingK
 import { BookingsSummaryCards } from '@/features/dashboard/bookings/components/BookingsSummaryCards';
 import { BookingTable } from '@/features/dashboard/bookings/components/BookingTable';
 import type { BookingView } from '@/features/dashboard/bookings/components/BookingViewToggle';
+import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { useBookings } from '@/features/dashboard/bookings/hooks/useBookings';
 import {
   useDateNavigation,
@@ -225,6 +226,10 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
 
   const { data, isLoading, isFetching, error } = useBookings(listQuery, { scope });
   const { data: summaryData } = useBookings(summaryQuery, { scope });
+  // Resolved document requirements (§4.5) for the kanban view only — property-scoped,
+  // disabled automatically when `usePropertyIdParam()` has no property (org scope).
+  const { data: appSettings } = useAppSettings();
+  const documentRequirements = appSettings?.resolvedDocumentRequirements;
 
   const resolveBookingHref = useCallback(
     (row: Parameters<typeof resolveBookingListHref>[0]) =>
@@ -423,6 +428,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           error={error ? (error as Error).message : null}
           isRefreshing={isFetching}
           showProperty={showProperty}
+          documentRequirements={documentRequirements}
         />
       ) : null}
       {view === 'calendar' && (

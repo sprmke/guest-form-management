@@ -10,7 +10,19 @@
  * Mirror: ui/src/features/dashboard/bookings/lib/workflow.ts (kept in sync manually).
  * Rule:   .cursor/rules/booking-workflow.mdc
  * Plan:   docs/planning/NEW_FLOW_PLAN.md §1.3 + §1.4 + §6.1 Q1.3
+ *
+ * Nested Pending Documents completion is driven by a per-property configurable
+ * `DocumentRequirement[]` list (`./documentRequirements.ts`) — callers resolve
+ * the list once (or pass `DEFAULT_DOCUMENT_REQUIREMENTS`) and pass it through so
+ * this module stays free of DB access.
  */
+
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  requirementApplies,
+  type DocumentRequirement,
+  type DocumentRequirementCompletion,
+} from './documentRequirements.ts';
 
 // ─── Status enum ─────────────────────────────────────────────────────────────
 
@@ -101,6 +113,10 @@ export function canGuestPublicUpdateForm(status: string | null | undefined): boo
  * Documents” (pricing on the row is preserved unless the transition payload
  * overwrites it).
  *
+ * Named-column patch only — callers that also write the `document_requirement_completions`
+ * JSONB column must additionally call `pendingDocumentsClearCompletionsJsonbPatch()` below
+ * with the row's current column value so gaf/pet reset there too (dual-write invariant).
+ *
  * Mirror: `ui/src/features/dashboard/bookings/lib/bookingStatus.ts#pendingDocumentsClearPatchForGuestEditRevert`.
  */
 export function pendingDocumentsClearPatchForGuestEditRevert(): Record<string, null | false> {
@@ -138,7 +154,12 @@ export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED
  * Any call from workflowOrchestrator or the Gmail listener uses this.
  */
 const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'CANCELLED'],
+  // READY_FOR_CHECKIN is always graph-legal here (D2): workflowOrchestrator only
+  // takes it when resolved `documentRequirements` are empty (or the admin
+  // explicitly skips); the normal Azure-style path still goes through
+  // PENDING_DOCUMENTS. See docs/workflow/in-progress/booking-workflow-configurable-docs.md
+  // "Graph note (D2)".
+  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_DOCUMENTS: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   // Legacy edges (existing rows may still be here):
   PENDING_GAF: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
@@ -272,47 +293,167 @@ function bookingFlagTrue(v: unknown): boolean {
   return v === true || v === 'true';
 }
 
+/** Per-requirement-id completion map read from `guest_submissions.document_requirement_completions`. */
+export type DocumentCompletionsMap = Record<string, DocumentRequirementCompletion>;
+
+function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const entry = raw as Record<string, unknown>;
+  return {
+    completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
+    approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
+    manualIncomplete: bookingFlagTrue(entry.manualIncomplete),
+  };
+}
+
+function parseCompletionsMap(raw: unknown): DocumentCompletionsMap {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: DocumentCompletionsMap = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    const parsed = parseCompletionEntry(value);
+    if (parsed) out[id] = parsed;
+  }
+  return out;
+}
+
 /**
- * Completion flags for GAF / parking / pet while the parent row is still PENDING_DOCUMENTS.
- * Parking is "done" only when `parking_completed_at` is set (not merely `parking_endorsement_url`).
+ * Dual-read: prefer the JSONB `document_requirement_completions` map; fall back
+ * to the legacy named `gaf_*` / `pet_*` columns for `gaf`/`pet` ids when the map
+ * has no entry for them (rows written before the migration 1's backfill, or
+ * before a caller has started writing the JSONB map for that id).
  */
-export function getPendingDocumentsNestedCompletion(booking: PendingDocumentsCalendarBooking): {
+export function readDocumentCompletions(
+  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }
+): DocumentCompletionsMap {
+  const map = parseCompletionsMap(booking.document_requirement_completions);
+  if (!map.gaf) {
+    map.gaf = {
+      completedAt: booking.gaf_completed_at ?? null,
+      approvedPdfUrl: booking.approved_gaf_pdf_url ?? null,
+      manualIncomplete: bookingFlagTrue(booking.gaf_manual_incomplete),
+    };
+  }
+  if (!map.pet) {
+    map.pet = {
+      completedAt: booking.pet_completed_at ?? null,
+      approvedPdfUrl: booking.approved_pet_pdf_url ?? null,
+      manualIncomplete: bookingFlagTrue(booking.pet_manual_incomplete),
+    };
+  }
+  return map;
+}
+
+/**
+ * Merges the guest-edit-revert gaf/pet reset into the row's *current*
+ * `document_requirement_completions` JSONB map, preserving any other ids
+ * (e.g. future configurable-doc entries). Every caller of
+ * `pendingDocumentsClearPatchForGuestEditRevert()` that also intends to write
+ * `document_requirement_completions` must call this with the pre-update value
+ * of that column — never write a bare `{ gaf, pet }` object over the column,
+ * that would silently drop unrelated ids.
+ *
+ * Mirror: `ui/.../bookings/lib/bookingStatus.ts#pendingDocumentsClearCompletionsJsonbPatch`.
+ */
+export function pendingDocumentsClearCompletionsJsonbPatch(
+  existingCompletions: unknown
+): DocumentCompletionsMap {
+  const map = parseCompletionsMap(existingCompletions);
+  map.gaf = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  map.pet = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  return map;
+}
+
+function isCompletionDone(completion: DocumentRequirementCompletion | undefined): boolean {
+  if (!completion || completion.manualIncomplete) return false;
+  return !!completion.completedAt || !!completion.approvedPdfUrl;
+}
+
+/**
+ * Completion flags for the configurable document list + parking while the parent
+ * row is still PENDING_DOCUMENTS. Parking is "done" only when `parking_completed_at`
+ * is set (not merely `parking_endorsement_url`) — it stays outside `requirements`
+ * (hardcoded, not configurable).
+ *
+ * `gafDone` / `parkingDone` / `petDone` are kept for callers (`workflowOrchestrator`,
+ * `telegramAdmin`) mid-cutover; they read `byRequirementId.gaf` / `.pet` and default
+ * to `true` (non-blocking) when that id isn't part of the resolved `requirements`.
+ */
+export function getPendingDocumentsNestedCompletion(
+  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown },
+  requirements: DocumentRequirement[]
+): {
   needParking: boolean;
   hasPets: boolean;
   gafDone: boolean;
   parkingDone: boolean;
   petDone: boolean;
+  byRequirementId: Record<string, boolean>;
+  allConfigurableDocsDone: boolean;
 } {
   const needParking = bookingFlagTrue(booking.need_parking);
   const hasPets = bookingFlagTrue(booking.has_pets);
-  const gafManualIncomplete = bookingFlagTrue(booking.gaf_manual_incomplete);
-  const petManualIncomplete = bookingFlagTrue(booking.pet_manual_incomplete);
-  const gafDone =
-    !gafManualIncomplete && (!!booking.gaf_completed_at || !!booking.approved_gaf_pdf_url);
-  // Parking: URL alone does not clear the nested step — only `parking_completed_at`
-  // (admin "Mark as Complete — Pending Parking Request" / same-field transition).
+  const completions = readDocumentCompletions(booking);
+
+  const byRequirementId: Record<string, boolean> = {};
+  let allConfigurableDocsDone = true;
+  for (const req of requirements) {
+    if (!requirementApplies(req, booking)) continue;
+    const done = isCompletionDone(completions[req.id]);
+    byRequirementId[req.id] = done;
+    if (!done) allConfigurableDocsDone = false;
+  }
+
   const parkingDone = !needParking || !!booking.parking_completed_at;
-  const petDone =
-    !hasPets ||
-    (!petManualIncomplete && (!!booking.pet_completed_at || !!booking.approved_pet_pdf_url));
-  return { needParking, hasPets, gafDone, parkingDone, petDone };
+  const gafDone = byRequirementId.gaf ?? true;
+  const petDone = byRequirementId.pet ?? true;
+
+  return {
+    needParking,
+    hasPets,
+    gafDone,
+    parkingDone,
+    petDone,
+    byRequirementId,
+    allConfigurableDocsDone,
+  };
 }
 
 /**
  * First segment of the Google Calendar `summary` when `status === PENDING_DOCUMENTS`.
- * Lists every incomplete required sub-step in order (GAF → PARKING → PET), e.g.
- * `PENDING_GAF_PARKING_PET_DOCS`, `PENDING_PARKING_DOCS`. When nothing is left,
- * falls back to `PENDING DOCUMENTS` (parent not yet advanced to ready).
+ * Lists every incomplete applicable requirement (sorted by `order`) using
+ * `id.toUpperCase()`, e.g. `PENDING_GAF_PARKING_PET_DOCS`, `PENDING_PARKING_DOCS`.
+ * PARKING is inserted just before the first `has_pets`-triggered requirement to
+ * preserve today's Azure GAF → PARKING → PET ordering (or appended at the end when
+ * no such requirement is configured/applicable). When nothing is left — including
+ * the edge case of an empty applicable list — falls back to `PENDING DOCUMENTS`.
  */
 export function buildPendingDocumentsCalendarSummaryPrefix(
-  booking: PendingDocumentsCalendarBooking
+  booking: PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown },
+  requirements: DocumentRequirement[]
 ): string {
-  const { needParking, hasPets, gafDone, parkingDone, petDone } =
-    getPendingDocumentsNestedCompletion(booking);
+  const { needParking, parkingDone, byRequirementId } = getPendingDocumentsNestedCompletion(
+    booking,
+    requirements
+  );
+
+  const applicable = [...requirements]
+    .sort((a, b) => a.order - b.order)
+    .filter((req) => requirementApplies(req, booking));
+
   const segments: string[] = [];
-  if (!gafDone) segments.push('GAF');
-  if (needParking && !parkingDone) segments.push('PARKING');
-  if (hasPets && !petDone) segments.push('PET');
+  let parkingInserted = false;
+  const insertParkingIfNeeded = () => {
+    if (parkingInserted) return;
+    parkingInserted = true;
+    if (needParking && !parkingDone) segments.push('PARKING');
+  };
+
+  for (const req of applicable) {
+    if (req.triggerCondition === 'has_pets') insertParkingIfNeeded();
+    if (!byRequirementId[req.id]) segments.push(req.id.toUpperCase());
+  }
+  insertParkingIfNeeded();
+
   if (segments.length === 0) return STATUS_CALENDAR_META.PENDING_DOCUMENTS.label;
   return `PENDING_${segments.join('_')}_DOCS`;
 }
@@ -340,17 +481,22 @@ function buildCalendarSummaryIconPrefix(booking: PendingDocumentsCalendarBooking
  *
  * When `status === PENDING_DOCUMENTS'` and `booking` is passed, the first segment is
  * built from outstanding document sub-steps (see `buildPendingDocumentsCalendarSummaryPrefix`).
+ *
+ * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (GAF + pet) so existing
+ * callers keep today's behavior until they're wired to resolve per-property lists.
  */
 export function buildCalendarSummary(
   status: BookingStatus,
   pax: number,
   nights: number,
   guestName: string,
-  booking?: PendingDocumentsCalendarBooking | null
+  booking?:
+    (PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }) | null,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): string {
   const label =
     status === 'PENDING_DOCUMENTS' && booking != null
-      ? buildPendingDocumentsCalendarSummaryPrefix(booking)
+      ? buildPendingDocumentsCalendarSummaryPrefix(booking, requirements)
       : STATUS_CALENDAR_META[status].label;
   const nightsText = `${nights}${nights === 1 ? 'night' : 'nights'}`;
   const core = `${label} - ${pax}pax ${nightsText} - ${guestName}`;
@@ -367,12 +513,14 @@ export function buildCalendarSummary(
  */
 export function resolveCalendarSummaryStatus(
   status: BookingStatus,
-  booking?: PendingDocumentsCalendarBooking | null
+  booking?:
+    (PendingDocumentsCalendarBooking & { document_requirement_completions?: unknown }) | null,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): BookingStatus {
   if (status !== 'PENDING_DOCUMENTS' || !booking) return status;
 
   const { needParking, hasPets, gafDone, parkingDone, petDone } =
-    getPendingDocumentsNestedCompletion(booking);
+    getPendingDocumentsNestedCompletion(booking, requirements);
 
   if (!gafDone) return 'PENDING_GAF';
   if (!parkingDone) return 'PENDING_PARKING_REQUEST';

@@ -1,3 +1,10 @@
+---
+title: 'Finance — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Finance — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/finance` (also used, minus stays, at `/org/:orgSlug/parking/:parkingSlug/finance`)

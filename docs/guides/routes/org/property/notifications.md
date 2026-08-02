@@ -1,3 +1,10 @@
+---
+title: 'Notifications — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Notifications — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/notifications`
@@ -23,11 +30,18 @@ Deep link: `?module=marketing|staff|operations|finance|maintenance|chat` scrolls
 
 Single hub for all **Telegram notification bots** on a property.
 
+### Shared bot token (recommended default)
+
+Save **one** BotFather token at the top. It pre-fills each module’s bot token field when you enable that module. You can still type a **different token on any module** — credentials are stored per module in the database.
+
+**Product guidance:** One bot token handles all module traffic at typical property volume. Use **separate Chat IDs** per module so ops, staff, marketing, and inbox alerts land in the right groups. Use a different bot token per module only when you want separate bot identities or isolated credential rotation.
+
 ### Per-module flow (all six bots)
 
-0. **Shared bot token** — optional card at the top. Save one token for all modules; **Test token** runs Telegram `getMe`. When you enable a module, the bot token field pre-fills from this value (still editable). Help opens step-by-step BotFather instructions.
+**Telegram notifications** group heading includes **Get Help** (BotFather + chat ID setup). **Shared bot token** card: **Save and test** validates via Telegram `getMe`, then saves; when saved, the card shows **Saved** instead of the button. When you enable a module, the bot token field pre-fills from this value (still editable per module).
+
 1. **Enable notifications** — master toggle (**off by default**; opt-in per module). When off, only this toggle is shown.
-2. **Telegram connection** — bot token row, chat ID row (inline **?** help on each label), **Find chat ID** scanner (uses the bot token to list recent group/channel chats from Telegram), and **Connect** beside chat ID. After a successful verify the button becomes a green **Connected** state (disabled); editing either field resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials are returned from the settings API and shown in the fields (hidden by default; use the eye toggle to reveal).
+2. **Telegram connection** — bot token row, chat ID row (inline **?** help on each label), and **Connect** beside chat ID. While setup is incomplete, Chat ID shows **Scan for chats** in the field; after scan, a **group dropdown** replaces the empty state. After **Connected**, chat ID shows the group name with **Reveal** for the raw id. Editing bot token or chat ID resets to **Connect**. Failed verify shows **Connection failed** beside the section title and an outline-destructive **Connect** to retry. Saved credentials show **@bot username** and **group name** by default.
 3. **Manage cards** — after connect, shown inside a bordered group (Marketing/Staff: **Notification controls**; Operations: **Workflow alerts**; Finance/Maintenance: **Reminder message**; Chat: **New message**), same card pattern as **Telegram connection**:
    - **Marketing:** Schedule alerts (daily times + calendar rules) · Message templates
    - **Staff:** Schedule alerts · Message templates
@@ -79,6 +93,12 @@ Notifications is the one place to set up Telegram alerts for this property — m
   A: No — once you enter your bot token and chat ID and tap **Connect** successfully, credentials save automatically. Template and schedule changes save when you confirm in each modal.
 - Q: Can I turn off just one type of alert?
   A: Yes — each module (Marketing, Staff, Operations, Finance, Maintenance, Chat) has its own **Enable notifications** toggle so you can opt in only to what you need.
+- Q: Do I need a different bot for every module?
+  A: No — one shared bot token is enough. Save it once at the top; each module can reuse it or override with its own token. Use different **Chat IDs** so each module posts to the right group.
+- Q: How do I pick a Telegram group?
+  A: Leave Chat ID empty, tap **Scan for chats** in that field, then choose your group from the dropdown. Add the bot to the group and send a message first if nothing appears.
+- Q: Where did the Find chat ID scanner go?
+  A: It moved into the Chat ID field — **Scan for chats**, then a group dropdown. After **Connected**, the field shows the group name; use **Reveal** for the numeric id.
 - Q: I used to have separate Staff or Operations pages — where did they go?
   A: They all moved here. Old links to Staff, Operations, Finance, or Maintenance settings redirect to the matching section on this Notifications page.
 
@@ -112,24 +132,26 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 ## Implementation map
 
-| Concern                                            | Path                                                                                                        |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                            |
-| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                   |
-| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                           |
-| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                       |
-| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                      |
-| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                |
-| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                  |
-| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx` |
-| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                  |
-| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                          |
-| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                         |
-| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                 |
-| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                    |
-| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                  |
-| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                   |
-| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                           |
+| Concern                                            | Path                                                                                                                   |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Page                                               | `ui/src/features/dashboard/bookings/pages/NotificationsPage.tsx`                                                       |
+| Shared bot token card                              | `…/telegram-notifications/TelegramGlobalBotTokenCard.tsx`                                                              |
+| Help dialogs                                       | `…/telegram-notifications/TelegramHelpDialog.tsx`, `…/lib/telegramHelpContent.ts`                                      |
+| Global bot hook + context                          | `…/hooks/useTelegramGlobalBotToken.ts`, `…/TelegramNotificationsGlobalBotContext.tsx`                                  |
+| Edge: shared token                                 | `supabase/functions/telegram-global-settings/index.ts`                                                                 |
+| Chat settings card                                 | `ui/src/features/dashboard/bookings/components/TelegramChatSettingsCard.tsx`                                           |
+| Chat notify (inbound)                              | `supabase/functions/_shared/telegramChat.ts` → `notifyTelegramChatInbound`                                             |
+| Module shell (enable → credentials → manage cards) | `ui/src/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationModuleLayout.tsx`            |
+| Module loading skeleton                            | `…/TelegramNotificationModuleSkeleton.tsx`                                                                             |
+| Manage summary card                                | `…/TelegramSettingsManageCard.tsx`                                                                                     |
+| Manage / template dialogs                          | `…/TelegramManageDialog.tsx`, `…/TelegramTemplatesManageDialog.tsx`                                                    |
+| Credential auto-save on Connect                    | `ui/src/features/dashboard/bookings/hooks/useTelegramCredentialAutoSave.ts`                                            |
+| Stacked placeholders modal                         | `…/TelegramPlaceholdersNestedDialog.tsx`                                                                               |
+| Credentials helpers                                | `…/telegramCredentials.ts`                                                                                             |
+| Chat ID scan + picker (setup)                      | `…/telegram-notifications/TelegramChatIdField.tsx` — inline scan; dropdown after scan; masked label when **Connected** |
+| Friendly credential mask + reveal                  | `…/telegram-notifications/TelegramSecretInput.tsx`, `…/lib/telegramConnectionLabels.ts`                                |
+| Section nav                                        | `ui/src/features/dashboard/bookings/components/AdminSectionNavLayout.tsx`                                              |
+| Dialog stacking (`overlayClassName`)               | `ui/src/components/ui/dialog.tsx`                                                                                      |
 
 ---
 
@@ -137,4 +159,4 @@ Credentials unlock logic: `telegramCredentialsReady()` — saved token **and** c
 
 - [Route index](../../README.md)
 - [`docs/PROJECT.md`](../../../PROJECT.md)
-- [`docs/reference/telegram-marketing-reminders.md`](../../../reference/telegram-marketing-reminders.md)
+- [`docs/archive/reference/telegram-marketing-reminders.md`](../../../archive/reference/telegram-marketing-reminders.md)

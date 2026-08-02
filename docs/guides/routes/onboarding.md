@@ -1,3 +1,10 @@
+---
+title: 'Onboarding — operator guide'
+status: active
+tags: [guides, routes, onboarding]
+updated: 2026-08-02
+---
+
 # Onboarding — operator guide
 
 Route: `/onboarding`

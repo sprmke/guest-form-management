@@ -1,5 +1,6 @@
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 import { formatTime, DEFAULT_CHECK_IN_TIME, DEFAULT_CHECK_OUT_TIME } from './utils.ts';
+import { computeGuestCounts } from './guestCounts.ts';
 
 // ─── Booking status enum ──────────────────────────────────────────────────────
 // Canonical values must match the CHECK constraint in Phase 2 migration and
@@ -263,6 +264,14 @@ export const transformFormToSubmission = (
     guest5ValidIdUrl?: string;
   } = {}
 ): GuestSubmission => {
+  const guestCounts = computeGuestCounts([
+    { name: formData.primaryGuestName, age: formData.primaryGuestAge },
+    { name: formData.guest2Name, age: formData.guest2Age },
+    { name: formData.guest3Name, age: formData.guest3Age },
+    { name: formData.guest4Name, age: formData.guest4Age },
+    { name: formData.guest5Name, age: formData.guest5Age },
+  ]);
+
   return {
     guest_facebook_name: formData.guestFacebookName,
     primary_guest_name: formData.primaryGuestName,
@@ -274,8 +283,8 @@ export const transformFormToSubmission = (
     check_in_time: formatTime(formData.checkInTime) || DEFAULT_CHECK_IN_TIME,
     check_out_time: formatTime(formData.checkOutTime) || DEFAULT_CHECK_OUT_TIME,
     nationality: formData.nationality,
-    number_of_adults: toNumber(formData.numberOfAdults),
-    number_of_children: toNumber(formData.numberOfChildren),
+    number_of_adults: guestCounts.adults,
+    number_of_children: guestCounts.children,
     number_of_nights: toNumber(formData.numberOfNights),
     primary_guest_age: toNumber(formData.primaryGuestAge),
     guest2_name: validateGuestName(formData.guest2Name),

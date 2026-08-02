@@ -14,12 +14,38 @@ import {
   buildCalendarSummary,
   isBookingStatus,
 } from './statusMachine.ts';
+import { resolveDocumentRequirements, type DocumentRequirement } from './documentRequirements.ts';
 import { resolveGoogleCalendarAuth } from './propertyGoogleApiAuth.ts';
 import dayjs from 'https://esm.sh/dayjs@1.11.10';
 
 function propertyIdFromBooking(booking?: { property_id?: unknown }): string | undefined {
   const id = String(booking?.property_id ?? '').trim();
   return id || undefined;
+}
+
+/**
+ * Resolves the `DocumentRequirement[]` used for the `PENDING_DOCUMENTS` calendar
+ * prefix (§4.5). Callers that already resolved the property's list (e.g.
+ * `workflowOrchestrator`) should pass it in directly to avoid a second lookup;
+ * callers that don't (e.g. `sync-booking-integrations`, `submit-pay-parking`,
+ * calendar backfill) get it resolved here so custom per-property lists never
+ * fall back to the GAF/pet default title segments they don't use.
+ */
+async function resolveRequirementsForCalendarSummary(
+  status: BookingStatus,
+  booking: unknown,
+  provided?: DocumentRequirement[]
+): Promise<DocumentRequirement[] | undefined> {
+  if (provided) return provided;
+  if (status !== 'PENDING_DOCUMENTS') return undefined;
+  const propertyId = propertyIdFromBooking(booking as { property_id?: unknown } | undefined);
+  if (!propertyId) return undefined;
+  try {
+    return await resolveDocumentRequirements(propertyId);
+  } catch (err) {
+    console.warn('[calendarService] Failed to resolve document requirements:', err);
+    return undefined;
+  }
 }
 
 export class CalendarService {
@@ -137,6 +163,10 @@ export class CalendarService {
    * @param nights     Number of nights.
    * @param guestName  Guest Facebook/display name.
    * @param booking    Full DB row — used to create a new event when none exists.
+   * @param documentRequirements Resolved per-property list for the `PENDING_DOCUMENTS`
+   *   calendar prefix (§4.5). Pass it when the caller already resolved it (e.g.
+   *   `workflowOrchestrator`); otherwise it's resolved here from `booking.property_id`
+   *   when `status === 'PENDING_DOCUMENTS'`.
    */
   static async updateCalendarEventStatus(
     bookingId: string,
@@ -144,7 +174,8 @@ export class CalendarService {
     pax: number,
     nights: number,
     guestName: string,
-    booking?: any
+    booking?: any,
+    documentRequirements?: DocumentRequirement[]
   ): Promise<{ success: boolean; updated: number; skipped?: boolean; created?: boolean }> {
     try {
       console.log(`Updating calendar event status → ${status} for booking: ${bookingId}`);
@@ -163,8 +194,20 @@ export class CalendarService {
         booking
       );
 
+      const resolvedRequirements = await resolveRequirementsForCalendarSummary(
+        status,
+        booking,
+        documentRequirements
+      );
       const meta = STATUS_CALENDAR_META[status];
-      const summary = buildCalendarSummary(status, pax, nights, guestName, booking);
+      const summary = buildCalendarSummary(
+        status,
+        pax,
+        nights,
+        guestName,
+        booking,
+        resolvedRequirements
+      );
 
       if (eventIds.length === 0) {
         if (!booking) {

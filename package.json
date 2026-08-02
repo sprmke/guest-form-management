@@ -18,6 +18,7 @@
     "lint": "cd ui && bun run lint",
     "lint:fix": "cd ui && bun run lint:fix",
     "check:filenames": "./scripts/dev/check-ui-filename-conventions.sh",
+    "check:ai-tooling-sync": "bash scripts/dev/check-ai-tooling-sync.sh",
     "type-check": "cd ui && bun run type-check",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,md,json,mdc,css}\"",

@@ -41,8 +41,20 @@ import {
   isLatePendingParkingDocumentTransition,
   isPostPendingDocumentsStatus,
   pendingDocumentsClearPatchForGuestEditRevert,
+  readDocumentCompletions,
   STATUS_HUMAN_LABEL,
+  type DocumentCompletionsMap,
 } from './statusMachine.ts';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  resolveDocumentRequirements,
+  type DocumentRequirement,
+  type DocumentRequirementCompletion,
+} from './documentRequirements.ts';
+import {
+  DEFAULT_PROPERTY_SYNC_TOGGLES,
+  resolvePropertySyncToggles,
+} from './propertySyncToggles.ts';
 import type { SdRefundBank } from './sdRefundBank.ts';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -97,14 +109,19 @@ export type TransitionPayload = {
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
 
-  /** PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step complete (no status change). */
-  document_completion_target?: 'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
+  /**
+   * PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step complete (no status change).
+   * Accepts legacy literals (`PENDING_GAF` → `gaf`, `PENDING_PET_REQUEST` → `pet`,
+   * `PENDING_PARKING_REQUEST` special-cased) or a bare requirement id (e.g. `"gaf"`).
+   */
+  document_completion_target?:
+    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | string;
   /**
    * PENDING_DOCUMENTS → PENDING_DOCUMENTS: admin marks a sub-step incomplete again (manual only).
    * GAF/pet keep approved PDF URLs but are treated as incomplete until Gmail or admin completes again.
    */
   document_completion_clear_target?:
-    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST';
+    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | string;
 };
 
 /**
@@ -152,6 +169,22 @@ function buildPaxNights(booking: any): { pax: number; nights: number } {
   const pax = (booking.number_of_adults || 1) + (booking.number_of_children || 0);
   const nights = booking.number_of_nights || 1;
   return { pax, nights };
+}
+
+/**
+ * `document_completion_target` / `document_completion_clear_target` accept the legacy
+ * `PENDING_GAF` / `PENDING_PET_REQUEST` literals or a bare requirement id (e.g. `"gaf"`).
+ * Parking stays special-cased on `PENDING_PARKING_REQUEST` (not a `documentRequirements` id).
+ */
+const LEGACY_DOC_TARGET_TO_REQUIREMENT_ID: Record<string, string> = {
+  PENDING_GAF: 'gaf',
+  PENDING_PET_REQUEST: 'pet',
+};
+
+function docTargetMatchesRequirement(target: string | undefined, requirementId: string): boolean {
+  if (!target) return false;
+  const normalized = LEGACY_DOC_TARGET_TO_REQUIREMENT_ID[target] ?? target;
+  return normalized === requirementId;
 }
 
 function assertParkingPaymentReceiptIfRequired(
@@ -204,6 +237,51 @@ export class WorkflowOrchestrator {
     }
 
     const fromStatus = booking.status as BookingStatus;
+    const propertyId =
+      typeof booking.property_id === 'string' ? booking.property_id.trim() || null : null;
+
+    // First step after review: either legacy PENDING_GAF or parent PENDING_DOCUMENTS,
+    // or (D2) a direct skip to READY_FOR_CHECKIN — all share the same pricing capture
+    // and outbound "document request" email bundle (minus GAF/pet when skipped/absent).
+    const isReviewProceedAttempt =
+      fromStatus === 'PENDING_REVIEW' &&
+      (toStatus === 'PENDING_GAF' ||
+        toStatus === 'PENDING_DOCUMENTS' ||
+        toStatus === 'READY_FOR_CHECKIN');
+
+    // D2: empty configurable document requirements → rewrite the target straight to
+    // READY_FOR_CHECKIN so old clients (still sending PENDING_DOCUMENTS) keep working.
+    // Also resolved whenever the target is PENDING_DOCUMENTS (even outside a review
+    // proceed attempt — e.g. same-status document_completion_target marks, or legacy
+    // PENDING_GAF/PENDING_PARKING_REQUEST/PENDING_PET_REQUEST → PENDING_DOCUMENTS edges)
+    // so the calendar prefix (§4.5) always reflects this property's actual list.
+    let documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS;
+    if (isReviewProceedAttempt || toStatus === 'PENDING_DOCUMENTS') {
+      documentRequirements = propertyId
+        ? await resolveDocumentRequirements(propertyId)
+        : DEFAULT_DOCUMENT_REQUIREMENTS;
+    }
+    if (isReviewProceedAttempt) {
+      if (documentRequirements.length === 0 && toStatus !== 'READY_FOR_CHECKIN') {
+        console.log(
+          `[orchestrator] Empty document requirements for property ${propertyId ?? 'unknown'} — rewriting ${toStatus} → READY_FOR_CHECKIN`
+        );
+        toStatus = 'READY_FOR_CHECKIN';
+      } else if (documentRequirements.length > 0 && toStatus === 'READY_FOR_CHECKIN') {
+        // Graph gap fix: TRANSITION_GRAPH.PENDING_REVIEW allows READY_FOR_CHECKIN
+        // unconditionally (to support the D2 empty-requirements rewrite above and
+        // any caller that already resolved reqs itself). Reject an explicit client
+        // request to skip PENDING_DOCUMENTS when this property still has pending
+        // document requirements — otherwise GAF/pet can be bypassed by sending
+        // toStatus=READY_FOR_CHECKIN directly from PENDING_REVIEW.
+        throw new Error(
+          `Cannot skip to READY_FOR_CHECKIN from PENDING_REVIEW: this property has ${documentRequirements.length} pending document requirement(s). Proceed to PENDING_DOCUMENTS first.`
+        );
+      }
+    }
+    const requirementIds = new Set(documentRequirements.map((req) => req.id));
+    const gafRequirementPresent = requirementIds.has('gaf');
+    const petRequirementPresent = requirementIds.has('pet');
 
     // 2. Validate transition (late parking doc actions stay on current status at RFCI+)
     const isLateParkingDocAction = isLatePendingParkingDocumentTransition(
@@ -216,31 +294,34 @@ export class WorkflowOrchestrator {
       throw new Error(`Transition ${fromStatus} → ${toStatus} is not allowed (manual=${manual})`);
     }
 
-    // First step after review: either legacy PENDING_GAF or parent PENDING_DOCUMENTS
-    // (same pricing + same outbound “document request” email bundle).
-    const isReviewToInitialDocs =
-      fromStatus === 'PENDING_REVIEW' &&
-      (toStatus === 'PENDING_GAF' || toStatus === 'PENDING_DOCUMENTS');
+    // Whether GAF/pet PDF + email side effects should run — false when the
+    // requirements list is empty (D2 skip) or the admin skipped straight to
+    // READY_FOR_CHECKIN with a non-empty list (explicit override).
+    const isReviewToInitialDocs = isReviewProceedAttempt && toStatus !== 'READY_FOR_CHECKIN';
 
     const wantsSurpriseDecor =
       booking.guest_requests_surprise_decor === true ||
       booking.guest_requests_surprise_decor === 'true';
 
-    if (isReviewToInitialDocs && wantsSurpriseDecor && !payload.surprise_decor_staff_acknowledged) {
+    if (
+      isReviewProceedAttempt &&
+      wantsSurpriseDecor &&
+      !payload.surprise_decor_staff_acknowledged
+    ) {
       throw new Error(
         'Confirm with staff that this guest’s surprise decor (theme and agreed price) is coordinated before proceeding.'
       );
     }
 
     // 3. Compute derived fields
-    const balance = isReviewToInitialDocs
+    const balance = isReviewProceedAttempt
       ? computeBalance(payload.booking_rate, payload.down_payment)
       : null;
 
     // 4. Build workflow fields to persist in DB
     const workflowFields: Record<string, unknown> = {};
 
-    if (isReviewToInitialDocs) {
+    if (isReviewProceedAttempt) {
       // Strip any stale workflow data from a prior cycle so nested substeps and
       // pricing/parking forms do not read as “complete” before admins re-enter them.
       Object.assign(workflowFields, pendingDocumentsClearPatchForGuestEditRevert());
@@ -267,6 +348,31 @@ export class WorkflowOrchestrator {
       }
     }
 
+    // D1: dual-write completion state — JSONB map is the forward-looking source of
+    // truth, named gaf_*/pet_* columns stay in sync during cutover. Base off the
+    // dual-read map (which already falls back to named columns) so a merge here
+    // never drops an entry that only exists in one representation.
+    const completionsMap: DocumentCompletionsMap = readDocumentCompletions(
+      booking as Parameters<typeof readDocumentCompletions>[0]
+    );
+    let completionsChanged = false;
+    function patchCompletion(id: string, patch: Partial<DocumentRequirementCompletion>): void {
+      const prev: DocumentRequirementCompletion = completionsMap[id] ?? {
+        completedAt: null,
+        approvedPdfUrl: null,
+        manualIncomplete: false,
+      };
+      completionsMap[id] = { ...prev, ...patch };
+      completionsChanged = true;
+    }
+
+    if (isReviewProceedAttempt) {
+      // Mirror pendingDocumentsClearPatchForGuestEditRevert()'s named-column reset in
+      // the JSONB map so dual-read doesn't show a substep "done" from a prior cycle.
+      patchCompletion('gaf', { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
+      patchCompletion('pet', { completedAt: null, approvedPdfUrl: null, manualIncomplete: false });
+    }
+
     // Approved GAF: Gmail listener uses PENDING_DOCUMENTS → PENDING_DOCUMENTS; forward
     // transitions (→ parking / pet / ready) also carry the URL from the prior step.
     if (payload.approved_gaf_pdf_url) {
@@ -278,6 +384,10 @@ export class WorkflowOrchestrator {
       ) {
         workflowFields.approved_gaf_pdf_url = payload.approved_gaf_pdf_url;
         workflowFields.gaf_manual_incomplete = false;
+        patchCompletion('gaf', {
+          approvedPdfUrl: payload.approved_gaf_pdf_url,
+          manualIncomplete: false,
+        });
       }
     }
 
@@ -289,6 +399,10 @@ export class WorkflowOrchestrator {
       ) {
         workflowFields.approved_pet_pdf_url = payload.approved_pet_pdf_url;
         workflowFields.pet_manual_incomplete = false;
+        patchCompletion('pet', {
+          approvedPdfUrl: payload.approved_pet_pdf_url,
+          manualIncomplete: false,
+        });
       }
     }
 
@@ -323,14 +437,16 @@ export class WorkflowOrchestrator {
         docClear === 'PENDING_PARKING_REQUEST';
 
       if (fromStatus === 'PENDING_DOCUMENTS' && toStatus === 'PENDING_DOCUMENTS') {
-        if (docClear === 'PENDING_GAF') {
+        if (docTargetMatchesRequirement(docClear, 'gaf')) {
           workflowFields.gaf_completed_at = null;
           workflowFields.gaf_manual_incomplete = true;
+          patchCompletion('gaf', { completedAt: null, manualIncomplete: true });
         } else if (docClear === 'PENDING_PARKING_REQUEST') {
           workflowFields.parking_completed_at = null;
-        } else if (docClear === 'PENDING_PET_REQUEST') {
+        } else if (docTargetMatchesRequirement(docClear, 'pet')) {
           workflowFields.pet_completed_at = null;
           workflowFields.pet_manual_incomplete = true;
+          patchCompletion('pet', { completedAt: null, manualIncomplete: true });
         }
       } else if (lateParkingClear) {
         workflowFields.parking_completed_at = null;
@@ -352,14 +468,16 @@ export class WorkflowOrchestrator {
       }
 
       if (fromStatus === 'PENDING_DOCUMENTS' && toStatus === 'PENDING_DOCUMENTS') {
-        if (docComplete === 'PENDING_GAF') {
+        if (docTargetMatchesRequirement(docComplete, 'gaf')) {
           workflowFields.gaf_completed_at = now;
           workflowFields.gaf_manual_incomplete = false;
+          patchCompletion('gaf', { completedAt: now, manualIncomplete: false });
         } else if (docComplete === 'PENDING_PARKING_REQUEST') {
           workflowFields.parking_completed_at = now;
-        } else if (docComplete === 'PENDING_PET_REQUEST') {
+        } else if (docTargetMatchesRequirement(docComplete, 'pet')) {
           workflowFields.pet_completed_at = now;
           workflowFields.pet_manual_incomplete = false;
+          patchCompletion('pet', { completedAt: now, manualIncomplete: false });
         }
       } else if (lateParkingComplete) {
         workflowFields.parking_completed_at = now;
@@ -471,6 +589,10 @@ export class WorkflowOrchestrator {
       }
     }
 
+    if (completionsChanged) {
+      workflowFields.document_requirement_completions = completionsMap;
+    }
+
     // 5. Persist workflow fields + update status
     if (flag(devControls, 'saveToDatabase')) {
       if (Object.keys(workflowFields).length > 0) {
@@ -483,7 +605,7 @@ export class WorkflowOrchestrator {
 
     // Re-fetch to get latest row (needed for email content)
     const persistedStatus = fromStatus !== toStatus ? toStatus : fromStatus;
-    const updatedBooking = (await DatabaseService.getBookingById(bookingId)) ?? {
+    let updatedBooking = (await DatabaseService.getBookingById(bookingId)) ?? {
       ...booking,
       status: persistedStatus,
     };
@@ -501,10 +623,14 @@ export class WorkflowOrchestrator {
       docComplete &&
       flag(devControls, 'saveToDatabase')
     ) {
-      const { gafDone, parkingDone, petDone } = getPendingDocumentsNestedCompletion(
-        updatedBooking as Parameters<typeof getPendingDocumentsNestedCompletion>[0]
+      const autoAdvanceRequirements = propertyId
+        ? await resolveDocumentRequirements(propertyId)
+        : DEFAULT_DOCUMENT_REQUIREMENTS;
+      const { allConfigurableDocsDone, parkingDone } = getPendingDocumentsNestedCompletion(
+        updatedBooking as Parameters<typeof getPendingDocumentsNestedCompletion>[0],
+        autoAdvanceRequirements
       );
-      if (gafDone && parkingDone && petDone) {
+      if (allConfigurableDocsDone && parkingDone) {
         console.log(
           `[orchestrator] All document sub-steps complete for ${bookingId} — auto-advancing to READY_FOR_CHECKIN`
         );
@@ -536,9 +662,16 @@ export class WorkflowOrchestrator {
     let gafPdfBuffer: Uint8Array | null = null;
     let petPdfBuffer: Uint8Array | null = null;
 
+    // Property-level Calendar/Sheets master switches — an additional gate on top of
+    // the per-request DevControlFlags (both must allow for the sync to run).
+    const syncToggles = propertyId
+      ? await resolvePropertySyncToggles(propertyId)
+      : DEFAULT_PROPERTY_SYNC_TOGGLES;
+
     // 6. Google Calendar update
     let calendarOk = true;
-    if (flag(devControls, 'updateGoogleCalendar')) {
+    const calendarEnabled = flag(devControls, 'updateGoogleCalendar') && syncToggles.syncCalendar;
+    if (calendarEnabled) {
       try {
         const result = await CalendarService.updateCalendarEventStatus(
           bookingId,
@@ -546,7 +679,8 @@ export class WorkflowOrchestrator {
           pax,
           nights,
           guestName,
-          updatedBooking
+          updatedBooking,
+          documentRequirements
         );
         calendarOk = result.success;
       } catch (err) {
@@ -555,13 +689,14 @@ export class WorkflowOrchestrator {
       }
     } else {
       console.log(
-        `[orchestrator] Calendar update skipped (flag=${flag(devControls, 'updateGoogleCalendar')})`
+        `[orchestrator] Calendar update skipped (flag=${flag(devControls, 'updateGoogleCalendar')}, syncCalendar=${syncToggles.syncCalendar})`
       );
     }
 
     // 7. Google Sheets update
     let sheetOk = true;
-    if (flag(devControls, 'updateGoogleSheets')) {
+    const sheetsEnabled = flag(devControls, 'updateGoogleSheets') && syncToggles.syncSheets;
+    if (sheetsEnabled) {
       try {
         const result = await SheetsService.updateSheetWorkflowStatus(
           bookingId,
@@ -590,18 +725,26 @@ export class WorkflowOrchestrator {
         console.error('[orchestrator] Sheet update failed (non-fatal):', err);
         sheetOk = false;
       }
+    } else {
+      console.log(
+        `[orchestrator] Sheet update skipped (flag=${flag(devControls, 'updateGoogleSheets')}, syncSheets=${syncToggles.syncSheets})`
+      );
     }
 
     // 7b. Filled GAF / pet request PDFs (for Azure emails + optional Storage) — same transition as §3 PENDING_REVIEW → docs
+    // Skipped entirely when requirements are empty (D2) or the admin skipped straight
+    // to READY_FOR_CHECKIN; gated per-requirement so a property without "gaf" (or "pet")
+    // never gets that PDF even when the other one is configured.
     if (isReviewToInitialDocs && flag(devControls, 'generatePdf')) {
       const fd = buildGuestFormData(updatedBooking);
-      const propertyId = (updatedBooking.property_id as string | null | undefined) ?? undefined;
-      try {
-        gafPdfBuffer = await generatePDF(fd, propertyId);
-      } catch (err) {
-        console.error('[orchestrator] GAF PDF generation failed:', err);
+      if (gafRequirementPresent) {
+        try {
+          gafPdfBuffer = await generatePDF(fd, propertyId);
+        } catch (err) {
+          console.error('[orchestrator] GAF PDF generation failed:', err);
+        }
       }
-      if (updatedBooking.has_pets) {
+      if (updatedBooking.has_pets && petRequirementPresent) {
         try {
           petPdfBuffer = await generatePetPDF(fd, propertyId);
         } catch (err) {
@@ -638,23 +781,21 @@ export class WorkflowOrchestrator {
 
     // 8. Emails — based on side-effect matrix in booking-workflow.mdc §3
     const emailsSent: string[] = [];
-    const orchestratorPropertyId =
-      typeof updatedBooking.property_id === 'string'
-        ? updatedBooking.property_id.trim() || null
-        : null;
 
     const propertyEmailAllowed = async (key: PropertyAutomationToggleKey): Promise<boolean> =>
-      propertyAutomationEnabled(orchestratorPropertyId, key);
+      propertyAutomationEnabled(propertyId, key);
 
-    // PENDING_REVIEW → PENDING_GAF or PENDING_DOCUMENTS (same bundle):
-    // - GAF request to Azure
-    // - Booking acknowledgement to guest
-    // - Pet request to Azure (if pets)
-    // - Parking broadcast (if parking)
-    if (isReviewToInitialDocs) {
+    // PENDING_REVIEW → PENDING_GAF | PENDING_DOCUMENTS | READY_FOR_CHECKIN (D2 skip), same bundle:
+    // - GAF request to Azure (only when "gaf" is in the resolved requirements)
+    // - Booking acknowledgement to guest (always)
+    // - Pet request to Azure (only when has_pets AND "pet" is in the resolved requirements)
+    // - Parking broadcast (if parking) — parking stays outside documentRequirements
+    if (isReviewProceedAttempt) {
       const formData = buildGuestFormData(updatedBooking);
 
       if (
+        isReviewToInitialDocs &&
+        gafRequirementPresent &&
         flag(devControls, 'sendGafRequestEmail') &&
         (await propertyEmailAllowed('emailGafRequest'))
       ) {
@@ -664,7 +805,11 @@ export class WorkflowOrchestrator {
         } catch (err) {
           console.error('[orchestrator] GAF request email failed:', err);
         }
-      } else if (flag(devControls, 'sendGafRequestEmail')) {
+      } else if (
+        isReviewToInitialDocs &&
+        gafRequirementPresent &&
+        flag(devControls, 'sendGafRequestEmail')
+      ) {
         console.log('[orchestrator] GAF request email skipped (org automation off)');
       }
 
@@ -683,7 +828,9 @@ export class WorkflowOrchestrator {
       }
 
       if (
+        isReviewToInitialDocs &&
         updatedBooking.has_pets &&
+        petRequirementPresent &&
         flag(devControls, 'sendPetRequestEmail') &&
         (await propertyEmailAllowed('emailPetRequest'))
       ) {
@@ -700,7 +847,12 @@ export class WorkflowOrchestrator {
         } catch (err) {
           console.error('[orchestrator] Pet request email failed:', err);
         }
-      } else if (updatedBooking.has_pets && flag(devControls, 'sendPetRequestEmail')) {
+      } else if (
+        isReviewToInitialDocs &&
+        updatedBooking.has_pets &&
+        petRequirementPresent &&
+        flag(devControls, 'sendPetRequestEmail')
+      ) {
         console.log('[orchestrator] Pet request email skipped (org automation off)');
       }
 
@@ -732,7 +884,10 @@ export class WorkflowOrchestrator {
     }
 
     // forward → READY_FOR_CHECKIN: send ready-for-check-in to guest.
+    // PENDING_REVIEW is included for the D2 empty-requirements skip (and explicit
+    // admin skip) — the only way that specific edge fires.
     const isForwardToReady =
+      fromStatus === 'PENDING_REVIEW' ||
       fromStatus === 'PENDING_DOCUMENTS' ||
       fromStatus === 'PENDING_GAF' ||
       fromStatus === 'PENDING_PARKING_REQUEST' ||

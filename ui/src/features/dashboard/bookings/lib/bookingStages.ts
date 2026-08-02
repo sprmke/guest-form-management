@@ -19,6 +19,10 @@ import {
 } from 'lucide-react';
 
 import { type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   applicableTransitions,
@@ -234,6 +238,10 @@ export const KANBAN_COLUMNS: readonly BookingStatus[] = [
 /**
  * `PENDING_DOCUMENTS` is a parent status — place the card in the first
  * incomplete nested step (GAF → parking → pet), matching calendar summary logic.
+ *
+ * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (Azure parity) —
+ * pass the property's resolved list when available so an empty or custom
+ * override doesn't show GAF/pet as a required (thus incomplete) step.
  */
 export function kanbanColumnForBooking(
   booking: Pick<
@@ -248,16 +256,17 @@ export function kanbanColumnForBooking(
     | 'pet_completed_at'
     | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
-  >
+  >,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): BookingStatus | null {
   const status = String(booking.status);
 
   if (status === 'PENDING_DOCUMENTS') {
-    if (!isSubStatusCompleted('PENDING_GAF', booking)) return 'PENDING_GAF';
-    if (!isSubStatusCompleted('PENDING_PARKING_REQUEST', booking)) {
+    if (!isSubStatusCompleted('PENDING_GAF', booking, requirements)) return 'PENDING_GAF';
+    if (!isSubStatusCompleted('PENDING_PARKING_REQUEST', booking, requirements)) {
       return 'PENDING_PARKING_REQUEST';
     }
-    if (!isSubStatusCompleted('PENDING_PET_REQUEST', booking)) {
+    if (!isSubStatusCompleted('PENDING_PET_REQUEST', booking, requirements)) {
       return 'PENDING_PET_REQUEST';
     }
     // Nested docs complete — parent not yet advanced to ready.
@@ -317,22 +326,34 @@ function kanbanDocStepsBeforeTargetComplete(
     | 'pet_manual_incomplete'
     | 'approved_pet_pdf_url'
   >,
-  target: BookingStatus
+  target: BookingStatus,
+  requirements: DocumentRequirement[]
 ): boolean {
   if (!isKanbanDocSubColumn(target)) return false;
   const targetIdx = kanbanDocSubColumnIndex(target);
   for (let i = 0; i < targetIdx; i++) {
     const step = KANBAN_DOC_SUB_COLUMNS[i];
-    if (isSubStatusRequired(step, booking) && !isSubStatusCompleted(step, booking)) {
+    if (
+      isSubStatusRequired(step, booking, requirements) &&
+      !isSubStatusCompleted(step, booking, requirements)
+    ) {
       return false;
     }
   }
   return true;
 }
 
-export function canKanbanDropTo(booking: BookingRow, targetStatus: BookingStatus): boolean {
+/**
+ * `requirements` defaults to `DEFAULT_DOCUMENT_REQUIREMENTS` (Azure parity) —
+ * pass the property's resolved list when available (see `kanbanColumnForBooking`).
+ */
+export function canKanbanDropTo(
+  booking: BookingRow,
+  targetStatus: BookingStatus,
+  requirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+): boolean {
   const from = String(booking.status);
-  const currentColumn = kanbanColumnForBooking(booking);
+  const currentColumn = kanbanColumnForBooking(booking, requirements);
   if (currentColumn === targetStatus) return false;
 
   if (applicableTransitions(from, { manual: true }, booking).includes(targetStatus)) {
@@ -347,17 +368,20 @@ export function canKanbanDropTo(booking: BookingRow, targetStatus: BookingStatus
     return false;
   }
 
-  if (!kanbanDocStepsBeforeTargetComplete(booking, targetStatus)) {
+  if (!kanbanDocStepsBeforeTargetComplete(booking, targetStatus, requirements)) {
     return false;
   }
 
   // Pending Review → first doc column after Proceed to Pending Documents.
   if (from === 'PENDING_REVIEW') {
     if (!canTransition(from, 'PENDING_DOCUMENTS', { manual: true })) return false;
-    const landing = kanbanColumnForBooking({
-      ...booking,
-      status: 'PENDING_DOCUMENTS',
-    });
+    const landing = kanbanColumnForBooking(
+      {
+        ...booking,
+        status: 'PENDING_DOCUMENTS',
+      },
+      requirements
+    );
     return landing === targetStatus;
   }
 
@@ -369,8 +393,8 @@ export function canKanbanDropTo(booking: BookingRow, targetStatus: BookingStatus
         : -1;
     const targetIdx = kanbanDocSubColumnIndex(targetStatus);
     if (currentIdx < 0 || targetIdx <= currentIdx) return false;
-    if (!isSubStatusRequired(targetStatus, booking)) return false;
-    return !isSubStatusCompleted(targetStatus, booking);
+    if (!isSubStatusRequired(targetStatus, booking, requirements)) return false;
+    return !isSubStatusCompleted(targetStatus, booking, requirements);
   }
 
   return false;

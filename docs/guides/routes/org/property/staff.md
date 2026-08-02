@@ -1,3 +1,10 @@
+---
+title: 'Staff — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Staff — operator guide
 
 > **Moved:** Staff Telegram settings now live on **[Notifications](./notifications.md)** (`…/notifications?module=staff`).

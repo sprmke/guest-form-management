@@ -1,3 +1,10 @@
+---
+title: 'SD Refund Form — operator guide'
+status: active
+tags: [guides, routes, sd-refund]
+updated: 2026-08-02
+---
+
 # SD Refund Form — operator guide
 
 Route: `/properties/:propertySlug/sd-form?bookingId=` (legacy `/sd-form?property=<slug>&bookingId=` redirects here)

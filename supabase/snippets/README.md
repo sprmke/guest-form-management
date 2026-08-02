@@ -11,4 +11,4 @@ Reference SQL for **hosted Supabase** (`pg_cron` / `pg_net`) — not migrations.
 | `cron-job-run-details.sql`      | Inspect recent cron runs                 |
 | `cron-gmail-sd-run-details.sql` | Inspect Gmail / SD cron runs             |
 
-Prefer migrations + admin UI for production. See **`docs/operations/scheduled-jobs-and-testing.md`**.
+Prefer migrations + admin UI for production. See **`docs/archive/operations/scheduled-jobs-and-testing.md`**.

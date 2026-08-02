@@ -1,3 +1,10 @@
+---
+title: 'Guest Messages — operator guide'
+status: active
+tags: [guides, routes, account, inbox]
+updated: 2026-08-02
+---
+
 # Guest Messages — operator guide
 
 Route: `/account/messages`

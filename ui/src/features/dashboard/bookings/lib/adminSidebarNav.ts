@@ -272,10 +272,7 @@ export function filterPropertyNavSections(
       items: section.items.filter((item) => {
         if (item.disabled || !item.href) return true;
         if (item.label === 'Calendar') {
-          return (
-            hasPropertyPermission(granted, 'pricing:view') ||
-            hasPropertyPermission(granted, 'bookings:view')
-          );
+          return hasPropertyPermission(granted, 'pricing:view');
         }
         const required = PROPERTY_NAV_VIEW_PERMISSION[item.label];
         if (!required) return true;

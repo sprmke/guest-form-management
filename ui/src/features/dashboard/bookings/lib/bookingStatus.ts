@@ -2,6 +2,8 @@
 // Mirrors `supabase/functions/_shared/statusMachine.ts` (to be authored in Phase 2).
 // If you change the enum here, change it there too. See `.cursor/rules/booking-workflow.mdc`.
 
+import type { DocumentRequirementCompletion } from '@/features/dashboard/bookings/lib/documentRequirements';
+
 export const BOOKING_STATUSES = [
   'PENDING_REVIEW',
   'PENDING_DOCUMENTS',
@@ -100,6 +102,51 @@ export function isBookingStatus(value: string): value is BookingStatus {
   return (BOOKING_STATUSES as ReadonlyArray<string>).includes(value);
 }
 
+// ─── Document completions JSONB merge (mirror of statusMachine.ts) ──────────
+
+type DocumentCompletionsMap = Record<string, DocumentRequirementCompletion>;
+
+function completionFlagTrue(value: unknown): boolean {
+  return value === true || value === 'true';
+}
+
+function parseCompletionEntry(raw: unknown): DocumentRequirementCompletion | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const entry = raw as Record<string, unknown>;
+  return {
+    completedAt: typeof entry.completedAt === 'string' ? entry.completedAt : null,
+    approvedPdfUrl: typeof entry.approvedPdfUrl === 'string' ? entry.approvedPdfUrl : null,
+    manualIncomplete: completionFlagTrue(entry.manualIncomplete),
+  };
+}
+
+function parseCompletionsMap(raw: unknown): DocumentCompletionsMap {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: DocumentCompletionsMap = {};
+  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+    const parsed = parseCompletionEntry(value);
+    if (parsed) out[id] = parsed;
+  }
+  return out;
+}
+
+/**
+ * Merges the guest-edit-revert gaf/pet reset into the booking's *current*
+ * `document_requirement_completions` JSONB map, preserving any other ids.
+ * Callers must pass the currently-loaded row's column value — never write a
+ * bare `{ gaf, pet }` object over the column, that drops unrelated ids.
+ *
+ * Mirror: `supabase/functions/_shared/statusMachine.ts#pendingDocumentsClearCompletionsJsonbPatch`.
+ */
+export function pendingDocumentsClearCompletionsJsonbPatch(
+  existingCompletions: unknown
+): DocumentCompletionsMap {
+  const map = parseCompletionsMap(existingCompletions);
+  map.gaf = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  map.pet = { completedAt: null, approvedPdfUrl: null, manualIncomplete: false };
+  return map;
+}
+
 /**
  * Guest/admin edits to workflow-sensitive fields (or guest-doc uploads) reset
  * `status` → `PENDING_REVIEW` only in these stages. Mirrors
@@ -124,6 +171,10 @@ export function shouldRevertGuestFieldEditsToPendingReview(
  * parking settlement, and guest balance settlement when sensitive guest edits
  * revert the row to `PENDING_REVIEW`. Does **not** clear pricing snapshot
  * fields — same column set as server.
+ *
+ * Named-column patch only — callers that also write `document_requirement_completions`
+ * must additionally call `pendingDocumentsClearCompletionsJsonbPatch()` above with the
+ * row's current column value (dual-write invariant).
  *
  * Mirror: `supabase/functions/_shared/statusMachine.ts#pendingDocumentsClearPatchForGuestEditRevert`.
  */

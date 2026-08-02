@@ -1,3 +1,10 @@
+---
+title: 'Guest landing — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Guest landing — operator guide
 
 Route: `/`

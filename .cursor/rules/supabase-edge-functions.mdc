@@ -102,8 +102,8 @@ Per `booking-workflow.mdc`, **never put fan-out logic inside handler functions**
 1. Create `supabase/functions/<name>/index.ts` using the skeleton above.
 2. Decide JWT category; set `[functions.<name>]` block in `supabase/config.toml`. If the function sends email (imports `emailService` or `workflowOrchestrator`), add **`static_files`** for `_shared/email-templates` globs (see **Email HTML templates** above).
 3. If scheduled, add **`pg_cron` + `net.http_post`** in the hosted project (see `docs/operations/scheduled-jobs-and-testing.md`) — do not add `schedule` to `config.toml` here.
-4. Document env vars in `docs/PROJECT.md` §11.
-5. Update the API table in `docs/PROJECT.md` §8.
+4. Document env vars in `docs/architecture/validation-and-env.md`.
+5. Update the API table in `docs/architecture/edge-functions.md`.
 6. If the function participates in the booking workflow, make it go through `workflowOrchestrator`.
 7. Add a `README` comment at the top of `index.ts` with: purpose, trigger, idempotency strategy.
 

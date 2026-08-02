@@ -1,3 +1,10 @@
+---
+title: 'Organization Team — operator guide'
+status: active
+tags: [guides, routes, org, team]
+updated: 2026-08-02
+---
+
 # Organization Team — operator guide
 
 Route: `/org/:orgSlug/team`

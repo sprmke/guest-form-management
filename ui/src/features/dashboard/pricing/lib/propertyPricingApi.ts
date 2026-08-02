@@ -4,11 +4,29 @@ import type { PropertyPricingDefaults } from '@/features/dashboard/pricing/lib/p
 
 import { supabase } from '@/lib/supabase/client';
 
+export type PropertyPricingCalendarBooking = {
+  id: string;
+  status: string;
+  check_in_date: string;
+  check_out_date: string;
+  primary_guest_name: string;
+  guest_facebook_name: string;
+  guest_email: string;
+  guest_phone_number: string | null;
+  booking_rate: number | null;
+  number_of_nights: number | null;
+  need_parking: boolean | null;
+  has_pets: boolean | null;
+  guest_requests_surprise_decor?: unknown;
+  valid_id_url: string | null;
+};
+
 export type PropertyPricingDto = PropertyPricingDefaults & {
   dateOverrides: Record<string, number>;
   bookedDateKeys: string[];
   blockedDateKeys: string[];
   holidayRules: PricingHolidayRuleDto[];
+  calendarBookings: PropertyPricingCalendarBooking[];
 };
 
 export type PropertyPricingPatch = Partial<PropertyPricingDefaults> & {
@@ -46,7 +64,7 @@ export async function fetchPropertyPricing(
   if (!res.ok) {
     throw new Error(json?.error ?? json?.message ?? 'Failed to load pricing');
   }
-  return { blockedDateKeys: [], ...json.data } as PropertyPricingDto;
+  return { blockedDateKeys: [], calendarBookings: [], ...json.data } as PropertyPricingDto;
 }
 
 export async function savePropertyPricing(

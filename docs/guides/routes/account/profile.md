@@ -1,3 +1,10 @@
+---
+title: 'Guest account — operator guide'
+status: active
+tags: [guides, routes, account]
+updated: 2026-08-02
+---
+
 # Guest account — operator guide
 
 Routes (authenticated explore mode):

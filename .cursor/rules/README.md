@@ -127,12 +127,12 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 Add rules with `globs` + update this README. Claude Code has its own equivalent tooling under `.claude/` (index: **`.claude/README.md`**) — when you add or change something here, mirror it there in the same change:
 
-| Cursor                                      | Claude Code                                                | Notes                                                                                                                     |
-| ------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `.cursor/skills/*`                          | `.claude/skills/*`                                         | Straight copy — see `.claude/skills/README.md` for the sync command                                                       |
-| `.cursor/agents/*.md`                       | `.claude/agents/*.md`                                      | Translate frontmatter: `readonly: true` → drop `Write`/`Edit`/`NotebookEdit` from `tools`; `model: fast` → `model: haiku` |
-| `.cursor/commands/*.md`                     | `.claude/commands/*.md`                                    | Content is portable as-is                                                                                                 |
-| `.cursor/hooks.json` + `.cursor/hooks/*.sh` | `.claude/settings.json` (`"hooks"`) + `.claude/hooks/*.sh` | **Not** a straight copy — different stdin JSON shape and output contract, see `.claude/skills/README.md`                  |
-| —                                           | `.mcp.json` (symlinked from `.cursor/mcp.json`)            | Shared MCP config, no mirroring needed — one file, one symlink                                                            |
+| Cursor                                      | Claude Code                                                | Notes                                                                                                                      |
+| ------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `.cursor/skills/*`                          | `.claude/skills/*`                                         | Both are relative symlinks into `.agent/skills/<name>/` — edit only under `.agent/skills/`; see `.claude/skills/README.md` |
+| `.cursor/agents/*.md`                       | `.claude/agents/*.md`                                      | Translate frontmatter: `readonly: true` → drop `Write`/`Edit`/`NotebookEdit` from `tools`; `model: fast` → `model: haiku`  |
+| `.cursor/commands/*.md`                     | `.claude/commands/*.md`                                    | Content is portable as-is                                                                                                  |
+| `.cursor/hooks.json` + `.cursor/hooks/*.sh` | `.claude/settings.json` (`"hooks"`) + `.claude/hooks/*.sh` | **Not** a straight copy — different stdin JSON shape and output contract, see `.claude/skills/README.md`                   |
+| —                                           | `.mcp.json` (symlinked from `.cursor/mcp.json`)            | Shared MCP config, no mirroring needed — one file, one symlink                                                             |
 
 Not everything here has a Claude Code equivalent (glob-scoped `alwaysApply: false` rules like `security.mdc`, `state-management.mdc`, `tech-stack.mdc` don't auto-load in Claude Code the way they do in Cursor) — `CLAUDE.md` tells Claude to read `.cursor/rules/*.mdc` directly when relevant instead of duplicating them.

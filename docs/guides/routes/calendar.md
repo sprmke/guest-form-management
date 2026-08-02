@@ -1,3 +1,10 @@
+---
+title: 'Calendar (booking picker) — operator guide'
+status: active
+tags: [guides, routes, calendar]
+updated: 2026-08-02
+---
+
 # Calendar (booking picker) — operator guide
 
 Route: `/properties/:propertySlug/calendar`
@@ -80,4 +87,4 @@ This is the guest-facing date picker guests see before filling out a booking for
 - [Guest landing](./index-landing.md)
 - [Form](./form.md)
 - [Guest & host auth](./auth.md)
-- [`docs/PROJECT.md`](../../PROJECT.md) §4–§5
+- [`docs/architecture/routing.md`](../../architecture/routing.md)

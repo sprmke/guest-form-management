@@ -1,0 +1,10 @@
+# Intentional Cursor/Claude AI-tooling asymmetries.
+#
+# One entry per line, format: <check-kind>:<name>  # note
+# check-kind is one of: hook
+#
+# Entries here are skipped by scripts/dev/check-ai-tooling-sync.sh so
+# pre-commit does not block on known, already-tracked gaps.
+
+# NOTE (not a check exception): lint-staged uses --no-stash in .husky/pre-commit
+# because git stash fails when staged skill paths are symlinks into .agent/skills.

@@ -1,3 +1,10 @@
+---
+title: 'Development Settings — operator guide'
+status: active
+tags: [guides, routes, admin, developments]
+updated: 2026-08-02
+---
+
 # Development Settings — operator guide
 
 Route: `/admin/developments/:developmentSlug`

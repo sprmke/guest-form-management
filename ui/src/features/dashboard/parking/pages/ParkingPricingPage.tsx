@@ -30,6 +30,7 @@ import {
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
 import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
 import { PricingSaveDialog } from '@/features/dashboard/pricing/components/PricingSaveDialog';
+import { mergeDateRateOverrides } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 
@@ -194,10 +195,13 @@ export function ParkingPricingPage() {
     const price = parseFloat(newPrice);
     if (!Number.isFinite(price) || price < 0) return;
 
-    const next = new Map(customDatePrices);
-    selectedDates.forEach((date) => {
-      next.set(format(date, 'yyyy-MM-dd'), price);
-    });
+    const defaults = {
+      weekdayNightlyRate: weekdayRate,
+      weekendNightlyRate: weekendRate,
+    };
+    const next = mergeDateRateOverrides(customDatePrices, selectedDates, price, (date) =>
+      resolveParkingNightlyRateForDate(date, defaults)
+    );
     persistDateOverrides(next, clearSelection);
   };
 
@@ -248,8 +252,12 @@ export function ParkingPricingPage() {
   const suggestedPrice = useMemo(() => {
     if (selectedDates.length === 0) return weekdayRate;
     const first = [...selectedDates].sort((a, b) => a.getTime() - b.getTime())[0];
-    return first ? getPriceForDate(first).price : weekdayRate;
-  }, [getPriceForDate, selectedDates, weekdayRate]);
+    if (!first) return weekdayRate;
+    return resolveParkingNightlyRateForDate(first, {
+      weekdayNightlyRate: weekdayRate,
+      weekendNightlyRate: weekendRate,
+    });
+  }, [selectedDates, weekdayRate, weekendRate]);
 
   if (isLoading && !hydratedRef.current) {
     return (
@@ -287,11 +295,13 @@ export function ParkingPricingPage() {
           <PricingCalendarGrid
             currentMonth={currentMonth}
             selectedDates={selectedDates}
+            bookings={[]}
             onMonthChange={setCurrentMonth}
             onDateClick={handleDateClick}
             onDateMouseDown={handleDateMouseDown}
             onDateMouseEnter={handleDateMouseEnter}
             onSelectionEnd={handleSelectionEnd}
+            onBookingClick={() => {}}
             getPriceForDate={getPriceForDate}
           />
 
@@ -326,7 +336,6 @@ export function ParkingPricingPage() {
         suggestedPrice={suggestedPrice}
         newPrice={newPrice}
         onNewPriceChange={setNewPrice}
-        onClearSelection={clearSelection}
         onResetToDefault={resetSelectedToDefault}
         onApply={applyCustomPrice}
         saving={saveMutation.isPending}

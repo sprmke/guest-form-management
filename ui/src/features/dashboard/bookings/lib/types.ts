@@ -121,6 +121,8 @@ export type BookingRow = {
   pet_completed_at?: string | null;
   gaf_manual_incomplete?: boolean | null;
   pet_manual_incomplete?: boolean | null;
+  /** Per-requirement-id completion map — see `lib/documentRequirements.ts#DocumentRequirementCompletion`. */
+  document_requirement_completions?: Record<string, unknown> | null;
   sd_additional_expense_items?: SdSettlementLineItem[] | null;
   sd_additional_profit_items?: SdSettlementLineItem[] | null;
   sd_additional_expenses?: number[] | null;

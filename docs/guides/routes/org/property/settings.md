@@ -1,3 +1,10 @@
+---
+title: 'Property Settings — operator guide'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property Settings — operator guide
 
 Route: `/org/:orgSlug/property/:propertySlug/settings`
@@ -6,22 +13,23 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                                     |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------- |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                |
-| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                           |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                   |
-| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                         |
-| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                           |
-| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                  |
-| Location           | Done     | Done       | Done | Address + map pin required                                                |
-| Socials            | Done     | Done       | Done | Per-property social links                                                 |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional             |
-| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
+| Section            | E2E save | Validation | Docs | Notes                                                                                |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------------ |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                           |
+| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                                      |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                              |
+| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                                    |
+| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                                      |
+| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                             |
+| Location           | Done     | Done       | Done | Address + map pin required                                                           |
+| Socials            | Done     | Done       | Done | Per-property social links                                                            |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                                  |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                          |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                             |
+| Workflow documents | Done     | Done       | Done | Doc requirements override (or residence-type default) + Calendar/Sheets sync toggles |
+| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional                        |
+| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes            |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                  |
 
 ---
 
@@ -43,6 +51,8 @@ Property Settings is where you complete your listing and day-to-day setup — ba
   A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property and is blocked if any bookings exist — use Archive for units with past stays.
 - Q: Where do guests see my cancellation policy and house rules?
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
+- Q: What does "Use residence-type default" mean under Workflow documents?
+  A: Your booking's required documents (e.g. GAF request, pet approval) follow the shared default for your residence unless you switch to **Custom list** and build your own. An empty custom list is valid — bookings then skip straight to Ready for check-in.
 
 ---
 
@@ -366,6 +376,34 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 ---
 
+## Workflow documents
+
+Per-property document requirements for `PENDING_DOCUMENTS` and Calendar/Sheets sync switches — both in `app_settings`.
+
+| Field                 | Column                           | Notes                                                                                                                                                                                                                                                     |
+| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document requirements | `document_requirements_override` | `null` inherits the residence-type default (`developments.settings.workflowDefaults.documentRequirements` → `DEFAULT_DOCUMENT_REQUIREMENTS`); `[]` is a valid explicit override (D2) — booking skips straight to Ready for check-in with no docs required |
+| Sync Google Calendar  | `sync_calendar`                  | Off skips Calendar event writes on workflow transitions for this property                                                                                                                                                                                 |
+| Sync Google Sheets    | `sync_sheets`                    | Off skips Sheet row writes on workflow transitions for this property                                                                                                                                                                                      |
+
+### Document requirements editor
+
+- **Use residence-type default** — read-only ordered list showing the **development default** requirements (`residenceDefaultDocumentRequirements` — development default chain, ignoring any property override; label, trigger, approval source).
+- **Custom list** — add / remove / reorder rows; each sets **label**, **trigger** (Always required / Guest has pets / Guest needs parking), and **approval source** (Manual / Email listener / None). New rows default `pdfTemplateId` and `calendarIcon` to `null` — no UI field for those yet, keeping the editor a practical checklist rather than a PDF-template CMS.
+- Empty custom list is valid — the pipeline skips `PENDING_DOCUMENTS` entirely for that property.
+
+### Competitive UX note
+
+- **Airbnb** host tools have no direct equivalent — cohost task lists live in messaging, not settings.
+- **Guesty / Hostaway** model this as a per-listing task checklist (ordered items + trigger + approver) alongside separate calendar/channel sync toggles — closest match adopted here.
+- **Adopted:** ordered checklist rows + sync toggles, same toggle language as Email automations. **Skipped:** PMS-style "connect an app" marketplace onboarding — Calendar/Sheets are already connected per property (see Integrations below); these are just per-property kill switches.
+
+Save path: **Save Changes** → `app-settings` PATCH (dirty `workflow-documents` section).
+
+Logic: `ui/src/features/dashboard/org/lib/propertyDocumentRequirements.ts`, `PropertyWorkflowDocumentsSection.tsx`; edge resolution: `supabase/functions/_shared/documentRequirements.ts`.
+
+---
+
 ## Integrations
 
 Read-only status on this page. Connect/disconnect via cards linking to dedicated settings flows.
@@ -404,7 +442,7 @@ open until the guest dismisses them (no forced auto-close).
 
 **Guest UX polish (Phase 6):** **6.1–6.4 shipped** (speech VAD; rich bubbles; leaner prompts;
 booth UI; premium human concierge portrait). Admin settings fields above are unchanged. Plan:
-`docs/planning/planned_modules/2026-07-30-ai-voice-receptionist.md` § Phase 6.
+[[2026-07-30-ai-voice-receptionist|AI Voice Receptionist — Implementation Plan]] § Phase 6.
 
 ---
 
@@ -435,18 +473,18 @@ booth UI; premium human concierge portrait). Admin settings fields above are unc
 
 ## API reference (this page)
 
-| Action                                       | Endpoint                                               |
-| -------------------------------------------- | ------------------------------------------------------ |
-| Profile + settings                           | `PATCH update-property`                                |
-| Payment + building forms + email automations | `PATCH app-settings?property_id=`                      |
-| Media upload/delete                          | `POST` / `DELETE upload-property-media?property_id=`   |
-| Payment QR / signature                       | `POST upload-app-settings-asset?property_id=`          |
-| Voice receptionist settings                  | `GET`/`PATCH voice-receptionist-settings?property_id=` |
-| Voice receptionist voice preview (TTS)       | `POST voice-receptionist-voice-preview?property_id=`   |
-| Voice receptionist usage/cost read           | `GET voice-receptionist-usage?property_id=`            |
-| Archive                                      | `PATCH update-property` `{ status: "INACTIVE" }`       |
-| Restore                                      | `PATCH update-property` `{ status: "ACTIVE" }`         |
-| Delete                                       | `DELETE delete-property` `{ propertyId }`              |
+| Action                                                            | Endpoint                                               |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| Profile + settings                                                | `PATCH update-property`                                |
+| Payment + building forms + email automations + workflow documents | `PATCH app-settings?property_id=`                      |
+| Media upload/delete                                               | `POST` / `DELETE upload-property-media?property_id=`   |
+| Payment QR / signature                                            | `POST upload-app-settings-asset?property_id=`          |
+| Voice receptionist settings                                       | `GET`/`PATCH voice-receptionist-settings?property_id=` |
+| Voice receptionist voice preview (TTS)                            | `POST voice-receptionist-voice-preview?property_id=`   |
+| Voice receptionist usage/cost read                                | `GET voice-receptionist-usage?property_id=`            |
+| Archive                                                           | `PATCH update-property` `{ status: "INACTIVE" }`       |
+| Restore                                                           | `PATCH update-property` `{ status: "ACTIVE" }`         |
+| Delete                                                            | `DELETE delete-property` `{ propertyId }`              |
 
 ---
 

@@ -1,3 +1,10 @@
+---
+title: 'Parking Team — operator guide'
+status: active
+tags: [guides, routes, org, parking]
+updated: 2026-08-02
+---
+
 # Parking Team — operator guide
 
 Route: `/org/:orgSlug/parking/:parkingSlug/team`

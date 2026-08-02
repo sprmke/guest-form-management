@@ -1,3 +1,10 @@
+---
+title: 'Guest Form — operator guide'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Guest Form — operator guide
 
 Route: `/properties/:propertySlug/form` (legacy `/form?property=<slug>` redirects here)

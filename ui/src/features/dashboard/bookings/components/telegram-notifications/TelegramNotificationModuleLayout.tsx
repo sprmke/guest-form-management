@@ -6,6 +6,7 @@ import { PropertyTelegramCredentialsFields } from '@/features/dashboard/bookings
 import { telegramCredentialsReady } from '@/features/dashboard/bookings/components/telegram-notifications/telegramCredentials';
 import { TelegramToggleRow } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramToggleRow';
 import type { PropertyTelegramCredentialsStatus } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { TelegramConnectionLabels } from '@/features/dashboard/bookings/lib/telegramConnectionLabels';
 
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -26,7 +27,9 @@ type Props = {
   testPending?: boolean;
   /** null = not tested this session; true/false = last result */
   connectionOk?: boolean | null;
-  /** Shown when connected; wraps manage rows (Schedule, templates, etc.). */
+  connectionLabels?: TelegramConnectionLabels;
+  chatLabelLoading?: boolean;
+  onBotTokenValidated?: () => void;
   manageSectionTitle?: string;
   children?: React.ReactNode;
 };
@@ -46,6 +49,9 @@ export function TelegramNotificationModuleLayout({
   onTestConnection,
   testPending,
   connectionOk = null,
+  connectionLabels,
+  chatLabelLoading,
+  onBotTokenValidated,
   manageSectionTitle = 'Notification Controls',
   children,
 }: Props) {
@@ -115,10 +121,14 @@ export function TelegramNotificationModuleLayout({
             botToken={botToken}
             chatId={chatId}
             status={credentialsStatus}
+            connectionLabels={connectionLabels}
+            chatLabelLoading={chatLabelLoading}
             disabled={disabled}
             onBotTokenChange={onBotTokenChange}
             onChatIdChange={onChatIdChange}
+            onBotTokenValidated={onBotTokenValidated}
             connectAction={connectButton}
+            allowChatScan
           />
         </div>
       ) : null}

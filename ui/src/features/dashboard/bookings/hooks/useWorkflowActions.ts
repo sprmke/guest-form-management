@@ -11,48 +11,65 @@
  * of it.
  */
 
-import { isParkingRequestDraftComplete } from '@/features/dashboard/bookings/components/ParkingRequestForm';
+import {
+  isParkingRequestDraftComplete,
+  type ParkingRequestValues,
+} from '@/features/dashboard/bookings/components/ParkingRequestForm';
 import {
   TERMINAL_STATUSES,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
-  arePendingDocumentsComplete,
   bookingPipeline,
   canNavigatePendingParkingSubStep,
-  defaultPendingDocSub,
+  defaultPendingDocNestedKey,
+  getPendingDocumentsNestedCompletion,
   isLiveWorkflowView,
-  isSubStatusCompleted,
-  isSubStatusRequired,
+  nestedKeyLabel,
   nextStep,
+  pendingDocumentsNestedItems,
   previousStep,
   workflowContentForView,
-  type PendingDocumentSubStatus,
+  PARKING_NESTED_KEY,
+  type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
-import type { ParkingRequestValues } from '@/features/dashboard/bookings/components/ParkingRequestForm';
 
 export function useWorkflowActions(
   booking: BookingRow,
   status: BookingStatus,
   viewedStep: ViewedWorkflowStep,
-  parkingValues: ParkingRequestValues | null
+  parkingValues: ParkingRequestValues | null,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ) {
   const isTerminal = TERMINAL_STATUSES.has(status);
 
-  const activePendingDocSubStatus: PendingDocumentSubStatus =
-    viewedStep.kind === 'pending-doc-sub' ? viewedStep.sub : defaultPendingDocSub(booking);
+  const activePendingDocSubStatus: PendingDocNestedKey =
+    viewedStep.kind === 'pending-doc-sub'
+      ? viewedStep.sub
+      : (defaultPendingDocNestedKey(booking, documentRequirements) ?? '');
+  const activePendingDocLabel = nestedKeyLabel(activePendingDocSubStatus, documentRequirements);
 
   // Pipeline navigation — the stepper + Proceed/Back buttons read from these.
-  const pipeline = bookingPipeline(booking, status);
-  const next = !isTerminal ? nextStep(booking, status) : null;
-  const prev = !isTerminal ? previousStep(booking, status) : null;
+  const pipeline = bookingPipeline(booking, status, documentRequirements);
+  const next = !isTerminal ? nextStep(booking, status, documentRequirements) : null;
+  const prev = !isTerminal ? previousStep(booking, status, documentRequirements) : null;
   const inPendingDocuments = status === 'PENDING_DOCUMENTS';
-  const pendingDocumentsComplete = arePendingDocumentsComplete(booking);
-  const selectedPendingDocRequired = isSubStatusRequired(activePendingDocSubStatus, booking);
-  const selectedPendingDocCompleted = isSubStatusCompleted(activePendingDocSubStatus, booking);
-  const selectedPendingDocIsParking = activePendingDocSubStatus === 'PENDING_PARKING_REQUEST';
+
+  const nestedCompletion = getPendingDocumentsNestedCompletion(booking, documentRequirements);
+  const pendingDocumentsComplete =
+    nestedCompletion.allConfigurableDocsDone && nestedCompletion.parkingDone;
+
+  const nestedItems = pendingDocumentsNestedItems(booking, documentRequirements);
+  const activeItem = nestedItems.find((item) => item.key === activePendingDocSubStatus);
+  const selectedPendingDocRequired = !!activeItem;
+  const selectedPendingDocCompleted = activeItem?.completed ?? false;
+  const selectedPendingDocIsParking = activePendingDocSubStatus === PARKING_NESTED_KEY;
   const selectedPendingDocCanMarkComplete =
     selectedPendingDocRequired &&
     !selectedPendingDocCompleted &&
@@ -61,23 +78,35 @@ export function useWorkflowActions(
     selectedPendingDocRequired && selectedPendingDocCompleted;
   const isLiveView = isLiveWorkflowView(viewedStep, status, booking);
   const contentReadOnly = !isLiveView || status === 'COMPLETED' || status === 'CANCELLED';
-  const viewedContent = workflowContentForView(viewedStep, booking);
+  const viewedContent = workflowContentForView(viewedStep, booking, documentRequirements);
   const viewingPendingDocSub = viewedStep.kind === 'pending-doc-sub';
 
   const canShowLateParkingForm =
     isLiveView &&
     viewingPendingDocSub &&
-    activePendingDocSubStatus === 'PENDING_PARKING_REQUEST' &&
+    activePendingDocSubStatus === PARKING_NESTED_KEY &&
     !inPendingDocuments &&
     canNavigatePendingParkingSubStep(booking, status);
   const showLateParkingActions = canShowLateParkingForm;
 
   const showProceedToReadyForCheckin = isLiveView && inPendingDocuments && viewingPendingDocSub;
-  const livePipelineActions = isLiveView && viewedStep.kind === 'pipeline' && !inPendingDocuments;
+  // D2 edge case: resolved documentRequirements can become [] (and no parking)
+  // while a booking already sits at PENDING_DOCUMENTS, leaving no nested item to
+  // browse — defaultPendingDocNestedKey() is null, so viewedStep falls back to
+  // the plain pipeline view. Without this, livePipelineActions and the
+  // pending-doc-sub action block are both false and only Cancel Booking shows.
+  // Fall back to plain pipeline Proceed/Back in that case, same as any other
+  // live pipeline status (nextStep already resolves to READY_FOR_CHECKIN).
+  const noNestedDocItemsToBrowse = inPendingDocuments && nestedItems.length === 0;
+  const livePipelineActions =
+    isLiveView &&
+    viewedStep.kind === 'pipeline' &&
+    (!inPendingDocuments || noNestedDocItemsToBrowse);
 
   return {
     isTerminal,
     activePendingDocSubStatus,
+    activePendingDocLabel,
     pipeline,
     next,
     prev,

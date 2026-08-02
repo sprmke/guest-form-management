@@ -1,10 +1,12 @@
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   paymentMethodsEqual,
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
 import { cancellationPolicySettingsEqual } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
+import { documentRequirementsOverrideEqual } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
 import {
   automationTogglesEqual,
   type PropertyAutomationToggles,
@@ -71,6 +73,9 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'parking-owner-emails': 'email-automations',
   'sd-lead-hours': 'email-automations',
   'sd-max-age': 'email-automations',
+  'document-requirements-override': 'workflow-documents',
+  'sync-calendar': 'workflow-documents',
+  'sync-sheets': 'workflow-documents',
   'cancellation-custom-title': 'cancellation',
   'cancellation-custom-description': 'cancellation',
 };
@@ -89,6 +94,7 @@ function fieldSectionId(fieldId: string): PropertySettingsSectionId | undefined 
   const direct = FIELD_SECTIONS[fieldId];
   if (direct) return direct;
   if (fieldId.startsWith('payment-method-')) return 'payment';
+  if (fieldId.startsWith('document-requirement-')) return 'workflow-documents';
   return undefined;
 }
 
@@ -98,6 +104,7 @@ const OPERATIONAL_SECTIONS: PropertySettingsSectionId[] = [
   'payment',
   'building-forms',
   'email-automations',
+  'workflow-documents',
 ];
 
 export type PropertySettingsSavePlan = {
@@ -251,6 +258,17 @@ export function propertySettingsSectionDirty(
             operationalDraft.automationToggles,
             operationalBaseline.automationToggles
           ))
+      );
+    case 'workflow-documents':
+      return Boolean(
+        operationalDraft &&
+        operationalBaseline &&
+        (!documentRequirementsOverrideEqual(
+          operationalDraft.documentRequirementsOverride,
+          operationalBaseline.documentRequirementsOverride
+        ) ||
+          operationalDraft.syncCalendar !== operationalBaseline.syncCalendar ||
+          operationalDraft.syncSheets !== operationalBaseline.syncSheets)
       );
     default:
       return false;
@@ -472,6 +490,32 @@ function dirtyFieldIdsInSection(
         ids.push('sd-max-age');
       }
       break;
+    case 'workflow-documents':
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        !documentRequirementsOverrideEqual(
+          operationalDraft.documentRequirementsOverride,
+          operationalBaseline.documentRequirementsOverride
+        )
+      ) {
+        ids.push('document-requirements-override');
+      }
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        operationalDraft.syncCalendar !== operationalBaseline.syncCalendar
+      ) {
+        ids.push('sync-calendar');
+      }
+      if (
+        operationalDraft &&
+        operationalBaseline &&
+        operationalDraft.syncSheets !== operationalBaseline.syncSheets
+      ) {
+        ids.push('sync-sheets');
+      }
+      break;
     default:
       break;
   }
@@ -541,6 +585,7 @@ export function planPropertySettingsSave(input: {
       'payment',
       'building-forms',
       'email-automations',
+      'workflow-documents',
     ] as PropertySettingsSectionId[]
   ).filter((sectionId) =>
     propertySettingsSectionDirty(
@@ -715,6 +760,10 @@ export type AppSettingsPatchBody = {
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
+  /** `null` clears the override (inherit residence default). Wired by Task 6 UI. */
+  documentRequirementsOverride?: DocumentRequirement[] | null;
+  syncCalendar?: boolean;
+  syncSheets?: boolean;
 };
 
 export function buildAppSettingsPatchForSections(
@@ -753,6 +802,11 @@ export function buildAppSettingsPatchForSections(
     patch.sdRefundCronEmailLeadHours = draft.sdRefundCronEmailLeadHours;
     patch.sdRefundCronMaxCheckoutAgeDays = draft.sdRefundCronMaxCheckoutAgeDays;
     patch.automationToggles = draft.automationToggles;
+  }
+  if (sectionSet.has('workflow-documents')) {
+    patch.documentRequirementsOverride = draft.documentRequirementsOverride;
+    patch.syncCalendar = draft.syncCalendar;
+    patch.syncSheets = draft.syncSheets;
   }
 
   return Object.keys(patch).length > 0 ? patch : null;
@@ -883,6 +937,14 @@ export function applySavedOperationalSections(
       sdRefundCronMaxCheckoutAgeDays: saved.sdRefundCronMaxCheckoutAgeDays,
       defaultParkingRateGuest: saved.defaultParkingRateGuest,
       automationToggles: saved.automationToggles,
+    };
+  }
+  if (sectionSet.has('workflow-documents')) {
+    next = {
+      ...next,
+      documentRequirementsOverride: saved.documentRequirementsOverride,
+      syncCalendar: saved.syncCalendar,
+      syncSheets: saved.syncSheets,
     };
   }
 

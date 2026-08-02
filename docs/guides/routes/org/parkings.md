@@ -1,3 +1,10 @@
+---
+title: 'Org parkings list — operator guide'
+status: active
+tags: [guides, routes, org, parking]
+updated: 2026-08-02
+---
+
 # Org parkings list — operator guide
 
 Route: `/org/:orgSlug/parkings`

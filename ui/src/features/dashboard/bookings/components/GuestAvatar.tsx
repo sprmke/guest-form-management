@@ -4,9 +4,10 @@ import { normalizeStoragePublicUrl } from '@/features/dashboard/bookings/lib/sto
 
 import { cn } from '@/lib/utils';
 
-type Size = 'sm' | 'md' | 'lg';
+type Size = 'xs' | 'sm' | 'md' | 'lg';
 
 const SIZE_CLASS: Record<Size, string> = {
+  xs: 'size-5 text-[9px]',
   sm: 'size-7 text-[11px]',
   md: 'size-9 text-[12px]',
   lg: 'size-12 text-[15px]',

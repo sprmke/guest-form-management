@@ -1,3 +1,10 @@
+---
+title: 'Accept team invite — operator guide'
+status: active
+tags: [guides, routes, auth]
+updated: 2026-08-02
+---
+
 # Accept team invite — operator guide
 
 Route: `/accept-invite?token=…` (optional `scope=org|property|parking`)

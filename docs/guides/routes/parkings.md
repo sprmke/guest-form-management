@@ -1,3 +1,10 @@
+---
+title: 'Parkings (guest marketing) — operator guide'
+status: active
+tags: [guides, routes, parking]
+updated: 2026-08-02
+---
+
 # Parkings (guest marketing) — operator guide
 
 Routes:

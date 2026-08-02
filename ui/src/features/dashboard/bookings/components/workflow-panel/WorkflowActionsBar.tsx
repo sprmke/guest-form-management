@@ -8,7 +8,10 @@
 import { ArrowLeft, ChevronRight, Loader2, RotateCcw, X } from 'lucide-react';
 
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
-import type { PendingDocumentSubStatus } from '@/features/dashboard/bookings/lib/workflow';
+import {
+  PARKING_NESTED_KEY,
+  type PendingDocNestedKey,
+} from '@/features/dashboard/bookings/lib/workflow';
 import {
   workflowBackActionClass,
   workflowDestructiveActionClass,
@@ -33,9 +36,10 @@ type Props = {
   selectedPendingDocCanMarkIncomplete: boolean;
   selectedPendingDocCanMarkComplete: boolean;
   selectedPendingDocRequired: boolean;
-  activePendingDocSubStatus: PendingDocumentSubStatus;
-  onMarkPendingDocSubStatusIncomplete: (sub: PendingDocumentSubStatus) => void;
-  onMarkPendingDocSubStatusComplete: (sub: PendingDocumentSubStatus) => void;
+  activePendingDocSubStatus: PendingDocNestedKey;
+  activePendingDocLabel: string;
+  onMarkPendingDocSubStatusIncomplete: (sub: PendingDocNestedKey) => void;
+  onMarkPendingDocSubStatusComplete: (sub: PendingDocNestedKey) => void;
   showProceedToReadyForCheckin: boolean;
   pendingDocumentsComplete: boolean;
   onOpenForwardProceedConfirm: (toStatus: BookingStatus, label: string) => void;
@@ -62,6 +66,7 @@ export function WorkflowActionsBar({
   selectedPendingDocCanMarkComplete,
   selectedPendingDocRequired,
   activePendingDocSubStatus,
+  activePendingDocLabel,
   onMarkPendingDocSubStatusIncomplete,
   onMarkPendingDocSubStatusComplete,
   showProceedToReadyForCheckin,
@@ -122,7 +127,7 @@ export function WorkflowActionsBar({
                     className={workflowWarningActionClass()}
                   >
                     <span className="min-w-0 pr-2 text-left">
-                      Mark as Incomplete - {statusLabel(activePendingDocSubStatus)}
+                      Mark as Incomplete - {activePendingDocLabel}
                     </span>
                     {transitionPending ? (
                       <Loader2 className="size-4 shrink-0 animate-spin text-amber-700" />
@@ -132,7 +137,7 @@ export function WorkflowActionsBar({
                   </button>
                 ) : !selectedPendingDocRequired ? (
                   <p className="border-border/50 bg-muted/50 text-muted-foreground flex min-h-[44px] items-center rounded-xl border px-3.5 py-2.5 text-sm">
-                    {statusLabel(activePendingDocSubStatus)} is not required for this booking.
+                    {activePendingDocLabel} is not required for this booking.
                   </p>
                 ) : (
                   <button
@@ -144,7 +149,7 @@ export function WorkflowActionsBar({
                     )}
                   >
                     <span className="min-w-0 pr-2 text-left">
-                      Mark as Complete - {statusLabel(activePendingDocSubStatus)}
+                      Mark as Complete - {activePendingDocLabel}
                     </span>
                     {transitionPending ? (
                       <Loader2 className="size-4 shrink-0 animate-spin" />
@@ -183,7 +188,7 @@ export function WorkflowActionsBar({
               <button
                 type="button"
                 disabled={!selectedPendingDocCanMarkComplete || transitionPending}
-                onClick={() => onMarkPendingDocSubStatusComplete('PENDING_PARKING_REQUEST')}
+                onClick={() => onMarkPendingDocSubStatusComplete(PARKING_NESTED_KEY)}
                 className={workflowPrimaryActionClass(
                   selectedPendingDocCanMarkComplete && !transitionPending
                 )}

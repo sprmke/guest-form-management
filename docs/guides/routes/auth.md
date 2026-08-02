@@ -1,3 +1,10 @@
+---
+title: 'Guest & host auth — operator guide'
+status: active
+tags: [guides, routes, auth]
+updated: 2026-08-02
+---
+
 # Guest & host auth — operator guide
 
 Routes:
@@ -34,7 +41,7 @@ Guests browse dates and fill the booking form **without signing in**. Auth appea
 
 Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**.
 
-When a guest session exists on **explore** pages, a **rounded avatar** appears beside **Become a host?** with links to **`/account/*`** (profile, stays, wishlist, messages). See **`docs/guides/routes/account/profile.md`**.
+When a guest session exists on **explore** pages, a **rounded avatar** appears beside **Become a host?** with links to **`/account/*`** (profile, stays, wishlist, messages). See **[[profile|Guest account — operator guide]]**.
 
 ### Guest checkout modal
 

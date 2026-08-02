@@ -43,14 +43,15 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
     isLoading: boolean;
     isError: boolean;
     error: unknown;
+    dataUpdatedAt?: number;
   };
   useUpdate: () => UpdateMutate;
   useTestSend: () => TestSendMutate;
   verify: { action: string; groupLabel: string };
 }) {
   const { useSettings, useUpdate, useTestSend, verify } = config;
-  const { data, isLoading, isError, error } = useSettings();
-  const globalBotToken = useTelegramNotificationsGlobalBot();
+  const { data, isLoading, isError, error, dataUpdatedAt } = useSettings();
+  const globalBot = useTelegramNotificationsGlobalBot();
   const scope = useAdminAssetScope();
   const scopeKey = assetScopeKey(scope);
   const update = useUpdate();
@@ -58,7 +59,7 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
   const [draft, setDraft] = React.useState<TDto | null>(null);
   const { botToken, setBotToken, chatId, setChatId } = useTelegramCredentialFields(
     data?.credentials,
-    globalBotToken
+    globalBot.token
   );
   const saveCredentials = useTelegramCredentialAutoSave(botToken, chatId, update);
 
@@ -100,25 +101,32 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
     [testSend, verify.action, verify.groupLabel, botToken, chatId, saveCredentials]
   );
 
-  const { connectionOk, triggerVerify } = useTelegramModuleConnection({
+  const {
+    connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
+    triggerVerify,
+  } = useTelegramModuleConnection({
     scopeKey,
     credentialsStatus: data?.credentials,
     botToken,
     chatId,
-    settingsVersion: data,
+    settingsVersion: dataUpdatedAt ?? 0,
     runVerify,
   });
 
-  const busy = isLoading || update.isPending || testSend.isPending;
+  const busy = isLoading || update.isPending || connectPending;
 
   const onTestConnection = React.useCallback(() => {
-    triggerVerify(false);
+    triggerVerify({ silent: false });
   }, [triggerVerify]);
 
   const onEnabledChange = React.useCallback(
     (enabled: boolean) => {
-      if (enabled && !botToken.trim() && globalBotToken.trim()) {
-        setBotToken(globalBotToken.trim());
+      if (enabled && !botToken.trim() && globalBot.token) {
+        setBotToken(globalBot.token);
       }
       setDraft((d) => (d ? { ...d, enabled } : d));
       update.mutate(
@@ -128,7 +136,7 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
         }
       );
     },
-    [botToken, globalBotToken, setBotToken, update]
+    [botToken, globalBot.token, setBotToken, update]
   );
 
   return {
@@ -140,6 +148,10 @@ export function useTelegramNotificationModuleBase<TDto extends TelegramSettingsD
     setChatId,
     busy,
     connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
     onTestConnection,
     onEnabledChange,
     update,

@@ -1,60 +1,66 @@
+---
+title: 'Documentation index'
+status: active
+tags: [docs]
+updated: 2026-08-02
+---
+
 # Documentation index
 
 Navigation for **guest-form-management**.
 
-**AI agents:** **`.cursor/rules/README.md`** (rules + skills index) → then **`docs/PROJECT.md`** for architecture/API.
+**AI agents:** **[`.cursor/rules/README.md`](../.cursor/rules/README.md)** → **[`architecture/overview.md`](./architecture/overview.md)**
 
-## Core
+## Workflow (active feature work)
 
-| Doc                                    | Purpose                                           |
-| -------------------------------------- | ------------------------------------------------- |
-| [`PROJECT.md`](./PROJECT.md)           | Architecture, API inventory, env vars, routes     |
-| [`todos/README.md`](./todos/README.md) | Product backlog — GitHub Issues + shipped archive |
+| Doc                                                | Purpose                                          |
+| -------------------------------------------------- | ------------------------------------------------ |
+| [`workflow/README.md`](./workflow/README.md)       | Lifecycle: intake → planned → in-progress → done |
+| [`workflow/planned/`](./workflow/planned/)         | Plans not yet shipped                            |
+| [`workflow/in-progress/`](./workflow/in-progress/) | Active implementation                            |
+| [`workflow/done/`](./workflow/done/)               | Verified shipped plans                           |
 
-## Planning
+## Product backlog (GitHub Issues)
 
-| Doc                                                        | Purpose                              |
-| ---------------------------------------------------------- | ------------------------------------ |
-| [`planning/NEW_FLOW_PLAN.md`](./planning/NEW_FLOW_PLAN.md) | Booking redesign — decisions, phases |
-| [`planning/NEW_FLOW.md`](./planning/NEW_FLOW.md)           | Original product spec                |
+**Source of truth:** [GitHub Issues](https://github.com/sprmke/kame-homes/issues)  
+**Shipped archive:** [`archive/todos/shipped/`](./archive/todos/shipped/)
 
-## Todos (detail)
+See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive/todos/BACKLOG_DRAFT.md) or GitHub. Agent CLI: **`.cursor/skills/github-issues/SKILL.md`**.
 
-| Doc                                  | Purpose                                 |
-| ------------------------------------ | --------------------------------------- |
-| [`todos/shipped/`](./todos/shipped/) | Completed issues + legacy phase history |
+## Architecture (live)
 
-## Operations
+| Doc                                                                          | Purpose                                        |
+| ---------------------------------------------------------------------------- | ---------------------------------------------- |
+| [`PROJECT.md`](./PROJECT.md)                                                 | Thin index into `architecture/`                |
+| [`architecture/overview.md`](./architecture/overview.md)                     | Stack, repo layout, key files                  |
+| [`architecture/routing.md`](./architecture/routing.md)                       | Routes and user flows                          |
+| [`architecture/data-model.md`](./architecture/data-model.md)                 | Postgres schema                                |
+| [`architecture/edge-functions.md`](./architecture/edge-functions.md)         | Edge function inventory                        |
+| [`architecture/integrations.md`](./architecture/integrations.md)             | Resend, Google, PDF                            |
+| [`architecture/validation-and-env.md`](./architecture/validation-and-env.md) | Validation + env vars                          |
+| [`architecture/deployment.md`](./architecture/deployment.md)                 | Deployment summary (links runbooks in archive) |
+| [`architecture/roadmap.md`](./architecture/roadmap.md)                       | Roadmap / gaps                                 |
 
-| Doc                                                                                      | Purpose                                    |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------ |
-| [`operations/migration-runbook.md`](./operations/migration-runbook.md)                   | DB migrations, local setup, prod data sync |
-| [`operations/production-deployment.md`](./operations/production-deployment.md)           | Production cutover checklist               |
-| [`operations/scheduled-jobs-and-testing.md`](./operations/scheduled-jobs-and-testing.md) | `pg_cron`, Gmail listener, SD refund cron  |
-| [`operations/inbox-e2e-runbook.md`](./operations/inbox-e2e-runbook.md)                   | Meta Guest Inbox E2E                       |
-| [`operations/meta-app-review.md`](./operations/meta-app-review.md)                       | Meta App Review submission                 |
-
-## Guides (per-route behavior)
+## Guides (live — per-route behavior)
 
 | Doc                                                    | Purpose               |
 | ------------------------------------------------------ | --------------------- |
 | [`guides/README.md`](./guides/README.md)               | Route guides overview |
 | [`guides/routes/README.md`](./guides/routes/README.md) | Route → file index    |
 
-## Reference
+## Archive
 
-| Doc                                                                                          | Purpose                              |
-| -------------------------------------------------------------------------------------------- | ------------------------------------ |
-| [`reference/booking-flow-guide-for-admin.md`](./reference/booking-flow-guide-for-admin.md)   | Non-technical admin walkthrough      |
-| [`reference/ai-payment-receipt-validation.md`](./reference/ai-payment-receipt-validation.md) | Receipt AI                           |
-| [`reference/telegram-marketing-reminders.md`](./reference/telegram-marketing-reminders.md)   | Telegram marketing cron              |
-| [`reference/project-structure.md`](./reference/project-structure.md)                         | Guest vs dashboard feature layout    |
-| [`reference/public-property-catalog.md`](./reference/public-property-catalog.md)             | Public property detail API + UI gaps |
-| [`reference/naming-audit.md`](./reference/naming-audit.md)                                   | UI filename audit + rename log       |
+| Folder                                         | Purpose                                                                      |
+| ---------------------------------------------- | ---------------------------------------------------------------------------- |
+| [`archive/README.md`](./archive/README.md)     | Archive index                                                                |
+| [`archive/reference/`](./archive/reference/)   | Project structure, admin walkthrough, receipt AI, Telegram, property catalog |
+| [`archive/operations/`](./archive/operations/) | Migration runbook, prod deploy, scheduled jobs, Meta inbox/review            |
+| [`archive/planning/`](./archive/planning/)     | Booking redesign history (`NEW_FLOW*`)                                       |
+| [`archive/todos/`](./archive/todos/)           | Legacy backlog draft + shipped issue archive                                 |
 
 ## Agent tooling
 
-| Resource                                                                      | Purpose                                |
-| ----------------------------------------------------------------------------- | -------------------------------------- |
-| [`.cursor/rules/README.md`](../.cursor/rules/README.md)                       | Rules, skills, subagents — agent index |
-| [`.cursor/skills/docs-first/SKILL.md`](../.cursor/skills/docs-first/SKILL.md) | Docs-first workflow                    |
+| Resource                                                                      | Purpose              |
+| ----------------------------------------------------------------------------- | -------------------- |
+| [`.cursor/rules/README.md`](../.cursor/rules/README.md)                       | Rules + skills index |
+| [`.cursor/skills/docs-first/SKILL.md`](../.cursor/skills/docs-first/SKILL.md) | Docs-first workflow  |

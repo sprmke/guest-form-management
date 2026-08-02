@@ -12,9 +12,10 @@ import {
   type AdminSectionNavGroup,
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
-import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramGlobalBotTokenCard';
+import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
 import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
+import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/components/TelegramParkingSettingsCard';
 
 const PARKING_NOTIFICATION_MODULES = ['parking', 'finance'] as const;
@@ -72,9 +73,13 @@ export function ParkingNotificationsPage() {
         }
       >
         <div className="space-y-3 sm:space-y-4">
-          <TelegramGlobalBotTokenCard />
+          <AdminSectionGroupHeading
+            title="Telegram notifications"
+            count={MODULE_SECTIONS.length}
+            action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
+          />
 
-          <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
+          <TelegramGlobalBotTokenCard />
 
           <AdminSection
             id="parking"

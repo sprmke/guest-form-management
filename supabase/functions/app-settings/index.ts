@@ -21,6 +21,7 @@ import {
   mergePropertyAutomationToggles,
   parsePropertyAutomationTogglesPatch,
 } from '../_shared/propertyAutomationToggles.ts';
+import { parseDocumentRequirements } from '../_shared/documentRequirements.ts';
 import {
   formatPaymentAccountNumberDisplay,
   normalizePaymentProvider,
@@ -337,6 +338,27 @@ serveAuthenticated('app-settings', async (req) => {
         (await loadAppSettingsRow(propertyId))?.automation_toggles
       );
       patch.automation_toggles = { ...existing, ...automationPatch };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'documentRequirementsOverride')) {
+      const raw = body.documentRequirementsOverride;
+      if (raw === null) {
+        patch.document_requirements_override = null;
+      } else if (!Array.isArray(raw)) {
+        return jsonError(req, 'Invalid document requirements override');
+      } else {
+        const parsed = parseDocumentRequirements(raw);
+        if (parsed === null || parsed.length !== raw.length) {
+          return jsonError(req, 'Invalid document requirements override');
+        }
+        patch.document_requirements_override = parsed;
+      }
+    }
+    if (typeof body.syncCalendar === 'boolean') {
+      patch.sync_calendar = body.syncCalendar;
+    }
+    if (typeof body.syncSheets === 'boolean') {
+      patch.sync_sheets = body.syncSheets;
     }
 
     if (Object.keys(patch).length === 0) {

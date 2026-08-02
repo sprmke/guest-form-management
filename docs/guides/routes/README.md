@@ -1,3 +1,10 @@
+---
+title: 'Route-based operator guides'
+status: active
+tags: [guides, routes]
+updated: 2026-08-02
+---
+
 # Route-based operator guides
 
 Per-page documentation mirrors the app routes. Each guide tracks **behavior**, **save paths**, **validation**, and **implementation status**.
@@ -26,7 +33,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/finance`             | [org/property/finance.md](./org/property/finance.md)                 | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/calendar`            | [org/property/calendar.md](./org/property/calendar.md)               | Documented — Occupancy + Pricing + date blocks                     |
-| `/org/:orgSlug/property/:propertySlug/pricing`             | [org/property/pricing.md](./org/property/pricing.md)                 | Redirect → `/calendar?view=pricing`                                |
+| `/org/:orgSlug/property/:propertySlug/pricing`             | [org/property/pricing.md](./org/property/pricing.md)                 | Redirect → `/calendar`                                             |
 | `/org/:orgSlug/property/:propertySlug/maintenance`         | [org/property/maintenance.md](./org/property/maintenance.md)         | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/notifications`       | [org/property/notifications.md](./org/property/notifications.md)     | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/templates`           | [org/property/templates.md](./org/property/templates.md)             | Documented — UI + DB + workflow email sends                        |

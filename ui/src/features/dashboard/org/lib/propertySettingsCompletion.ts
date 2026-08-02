@@ -20,6 +20,7 @@ import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import { documentRequirementLabelFieldErrors } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
 import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
@@ -90,6 +91,7 @@ export type PropertySettingsSectionId =
   | 'payment'
   | 'building-forms'
   | 'email-automations'
+  | 'workflow-documents'
   | 'integrations';
 
 export type PropertySettingsCompletionInput = {
@@ -481,6 +483,15 @@ export function computePropertySettingsCompletion(
     const maxAgeDays = operational.sdRefundCronMaxCheckoutAgeDays;
     if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0 || maxAgeDays > 365) {
       addFieldError('sd-max-age', 'Days after checkout must be 0–365', 'email-automations');
+    }
+  }
+
+  // ── Workflow documents ──
+  if (operational && operational.documentRequirementsOverride !== null) {
+    for (const [fieldId, message] of Object.entries(
+      documentRequirementLabelFieldErrors(operational.documentRequirementsOverride)
+    )) {
+      addFieldError(fieldId, message, 'workflow-documents');
     }
   }
 

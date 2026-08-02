@@ -402,14 +402,12 @@ export function AdminSectionNavLayout({
           ) : null}
 
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-8 lg:overflow-hidden xl:gap-10">
-            <aside className="bg-background relative z-10 hidden w-56 shrink-0 self-start lg:block">
-              <div className="sticky top-24 space-y-4">
-                <Card>
-                  <CardContent className="p-2">
-                    <SectionNavList />
-                  </CardContent>
-                </Card>
-              </div>
+            <aside className="bg-background relative z-10 hidden w-56 shrink-0 lg:flex lg:min-h-0 lg:flex-col lg:self-stretch">
+              <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+                  <SectionNavList />
+                </CardContent>
+              </Card>
             </aside>
 
             <div

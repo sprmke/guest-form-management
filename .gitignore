@@ -66,6 +66,10 @@ supabase_backup*.dump
 # Local development
 **/.local
 
+# Obsidian local UI state (vault content stays tracked)
+docs/.obsidian/workspace.json
+docs/.obsidian/graph.json
+
 # Tests / local agent tooling (keep .fallowrc.json tracked)
 .playwright-mcp/
 .worktrees/

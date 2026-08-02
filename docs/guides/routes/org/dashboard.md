@@ -1,3 +1,10 @@
+---
+title: 'Organization Dashboard — operator guide'
+status: active
+tags: [guides, routes, org]
+updated: 2026-08-02
+---
+
 # Organization Dashboard — operator guide
 
 Route: `/org/:orgSlug/dashboard`

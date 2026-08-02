@@ -1,3 +1,10 @@
+---
+title: 'Property templates'
+status: active
+tags: [guides, routes, org, property]
+updated: 2026-08-02
+---
+
 # Property templates
 
 Route: `/org/:orgSlug/property/:propertySlug/templates`
@@ -43,7 +50,7 @@ Templates is where you customize the text guests and your team receive — stay 
 
 ### Standard templates → guest stay guide (shipped)
 
-The four **standard** keys (`house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`) render on the token-gated guest page **`/properties/:slug/stay-guide?token=`** during the booking access window. See **`docs/guides/routes/stay-guide.md`**.
+The four **standard** keys (`house-rules`, `check-in-instructions`, `check-out-instructions`, `parking-reminders`) render on the token-gated guest page **`/properties/:slug/stay-guide?token=`** during the booking access window. See **[[stay-guide|Guest stay guide (token-gated brochure)]]**.
 
 **Stay guide preview** — **Standard templates** group heading includes **Preview stay guide** (opens new tab). URL: **`/properties/:slug/stay-guide?preview=1&property_id=`**; loads via **`GET preview-guest-stay-guide`** with host JWT (`templates:view`). Uses sample guest/booking placeholders so all four standard sections (including parking) are visible without a real booking token.
 

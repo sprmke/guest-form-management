@@ -11,6 +11,7 @@ scripts/
   data/          Prod → local Postgres sync
   deploy/        Linked Supabase project deploy
   preview/       Email template preview from DB
+  docs/          One-off docs/ vault migrations
 ```
 
 ## Marketing (`scripts/marketing/`)
@@ -31,7 +32,7 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | `check-ui-filename-conventions.sh`     | `bun run check:filenames`                     | Verify `ui/src` filenames match naming rules                                                                        |
 | `port-pma-public-ui.sh`                | (manual)                                      | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                      |
 | `migrate-shared-imports.sh`            | (one-shot reference)                          | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                          |
-| `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/todos/shipped/` (see `/github-issue`)                       |
+| `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/archive/todos/shipped/` (see `/github-issue`)               |
 | `backlog-issue-sizing.mjs`             | `gh-issue.mjs create`                         | Auto-label heuristics for new issues                                                                                |
 | `check-video-motion-profiles.mjs`      | (manual, `bun`; source `ui/.env.development`) | Quiet Coast Motion: finite Remotion springs, recipe layout coverage, and storyboard→layer seed for all 16 templates |
 
@@ -54,7 +55,13 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | ---------------------------- | --------------------------- | ---------------------------------------- |
 | `preview-emails-from-db.mjs` | `bun run preview:emails:db` | Render email HTML previews from local DB |
 
-See also **`dev.sh`** (full stack) and **`docs/operations/`** runbooks.
+## Docs (`scripts/docs/`)
+
+| Script                    | npm script                   | Purpose                                                                                                                                                |
+| ------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `convert-to-obsidian.mjs` | (manual, one-shot; ran once) | Adds Obsidian frontmatter to every `docs/**/*.md` and rewrites safe `docs/...md` code-span refs into `[[wikilinks]]`. `--dry-run` / `--verbose` flags. |
+
+See also **`dev.sh`** (full stack) and **`docs/archive/operations/`** runbooks.
 
 ## VS Code (`.vscode/`)
 

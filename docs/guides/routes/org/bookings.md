@@ -1,3 +1,10 @@
+---
+title: 'Org Bookings List — operator guide'
+status: active
+tags: [guides, routes, org, booking-workflow]
+updated: 2026-08-02
+---
+
 # Org Bookings List — operator guide
 
 Route: `/org/:orgSlug/bookings`

@@ -19,9 +19,10 @@ import type { SdRefundValues } from '@/features/dashboard/bookings/components/Sd
 import { SurpriseDecorAckCard } from '@/features/dashboard/bookings/components/SurpriseDecorAckCard';
 import { PendingDocSubStatusCard } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowPendingDocStatusCard';
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import type {
-  PendingDocumentSubStatus,
+  PendingDocNestedKey,
   WorkflowViewContent,
 } from '@/features/dashboard/bookings/lib/workflow';
 import {
@@ -38,7 +39,8 @@ type Props = {
   booking: BookingRow;
   viewedContent: WorkflowViewContent | null;
   contentReadOnly: boolean;
-  activePendingDocSubStatus: PendingDocumentSubStatus;
+  activePendingDocSubStatus: PendingDocNestedKey;
+  documentRequirements: DocumentRequirement[];
 
   // Pricing sub-form
   pricingValues: ReviewPricingFormValues | null;
@@ -75,6 +77,7 @@ export function WorkflowSubFormHost({
   viewedContent,
   contentReadOnly,
   activePendingDocSubStatus,
+  documentRequirements,
   pricingValues,
   onPricingChange,
   propertyPricingLoaded,
@@ -179,6 +182,7 @@ export function WorkflowSubFormHost({
         <PendingDocSubStatusCard
           booking={booking}
           sub={activePendingDocSubStatus}
+          requirements={documentRequirements}
           plain={isModal}
         />
       )}

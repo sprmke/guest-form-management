@@ -1,4 +1,5 @@
 import { parseOccupancyDate } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { amountPerOccupiedNight } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   DEFAULT_PRICING_HOLIDAY_RULES_DTO,
@@ -15,6 +16,16 @@ import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,
   DEFAULT_WEEKEND_NIGHTLY_RATE,
 } from '@/features/dashboard/pricing/lib/pricingDefaults';
+
+type StayPricingFields = Pick<
+  BookingRow,
+  'check_in_date' | 'check_out_date' | 'number_of_nights' | 'booking_rate'
+>;
+
+type NightlyRateOptions = {
+  dateOverrides?: Record<string, number>;
+  holidayRules?: PricingHolidayRuleDto[] | null;
+};
 
 export type PropertyPricingDefaults = {
   weekdayNightlyRate: number;
@@ -125,4 +136,57 @@ export function computeDefaultBookingRate(
   }
 
   return defaults.weekdayNightlyRate;
+}
+
+/** Saved booking rate, or property default stay total (same as Review Pricing). */
+export function resolveBookingRateTotal(
+  booking: StayPricingFields,
+  defaults: PropertyPricingDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
+  options?: NightlyRateOptions
+): number | null {
+  if (booking.booking_rate != null && booking.booking_rate !== '') {
+    const amount = Number(booking.booking_rate);
+    if (Number.isFinite(amount)) return amount;
+  }
+  return computeDefaultBookingRate(
+    booking,
+    defaults,
+    options?.dateOverrides,
+    options?.holidayRules
+  );
+}
+
+/**
+ * Per-night amount for a booked calendar cell.
+ * Uses saved booking_rate ÷ nights when set; otherwise that night's property rate
+ * (weekday/weekend/holiday/custom) — covers PENDING_REVIEW before pricing is confirmed.
+ */
+export function resolveBookingNightlyForDate(
+  booking: StayPricingFields,
+  date: Date,
+  defaults: PropertyPricingDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
+  options?: NightlyRateOptions
+): number {
+  const fromSaved = amountPerOccupiedNight(
+    booking.booking_rate,
+    booking.number_of_nights,
+    booking.check_in_date,
+    booking.check_out_date
+  );
+  if (fromSaved != null) return fromSaved;
+  return resolveNightlyRateForDate(date, defaults, options);
+}
+
+/** Average nightly for pills/tooltips when a specific night is not available. */
+export function resolveBookingAverageNightly(
+  booking: StayPricingFields,
+  defaults: PropertyPricingDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
+  options?: NightlyRateOptions
+): number | null {
+  return amountPerOccupiedNight(
+    resolveBookingRateTotal(booking, defaults, options),
+    booking.number_of_nights,
+    booking.check_in_date,
+    booking.check_out_date
+  );
 }

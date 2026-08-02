@@ -1,4 +1,13 @@
 import type { UpdateBookingPayload } from '@/features/dashboard/bookings/hooks/useUpdateBooking';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
+
+/** True when some resolved requirement is triggered by (or literally is) pet approval. */
+function petDocumentationConfigured(requirements: DocumentRequirement[]): boolean {
+  return requirements.some((req) => req.id === 'pet' || req.triggerCondition === 'has_pets');
+}
 
 function trimText(v: string | null | undefined): string {
   return (v ?? '').trim();
@@ -55,7 +64,8 @@ function normDate(d: string | null | undefined): string {
  */
 export function hasWorkflowSensitiveGuestFieldDiff(
   baseline: UpdateBookingPayload,
-  draft: UpdateBookingPayload
+  draft: UpdateBookingPayload,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): boolean {
   if (!sameText(baseline.guest_facebook_name, draft.guest_facebook_name)) {
     return true;
@@ -102,14 +112,19 @@ export function hasWorkflowSensitiveGuestFieldDiff(
     if (!sameText(baseline.car_color, draft.car_color)) return true;
   }
 
-  if (!sameBool(baseline.has_pets, draft.has_pets)) return true;
-  if (draft.has_pets) {
-    if (!sameText(baseline.pet_name, draft.pet_name)) return true;
-    if (!sameText(baseline.pet_type, draft.pet_type)) return true;
-    if (!sameText(baseline.pet_breed, draft.pet_breed)) return true;
-    if (!sameText(baseline.pet_age, draft.pet_age)) return true;
-    if (normDate(baseline.pet_vaccination_date) !== normDate(draft.pet_vaccination_date ?? '')) {
-      return true;
+  // Pet details only revert the booking to review when a `has_pets`-triggered
+  // requirement (or literal id `pet`) is actually configured for this
+  // property — otherwise no downstream document workflow depends on them.
+  if (petDocumentationConfigured(documentRequirements)) {
+    if (!sameBool(baseline.has_pets, draft.has_pets)) return true;
+    if (draft.has_pets) {
+      if (!sameText(baseline.pet_name, draft.pet_name)) return true;
+      if (!sameText(baseline.pet_type, draft.pet_type)) return true;
+      if (!sameText(baseline.pet_breed, draft.pet_breed)) return true;
+      if (!sameText(baseline.pet_age, draft.pet_age)) return true;
+      if (normDate(baseline.pet_vaccination_date) !== normDate(draft.pet_vaccination_date ?? '')) {
+        return true;
+      }
     }
   }
 

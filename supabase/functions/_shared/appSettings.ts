@@ -7,6 +7,13 @@ import { createServiceClient } from './orgAuth.ts';
 import { applyPropertyOrLegacySingletonFilter } from './supabaseQuery.ts';
 import { trimOrEmpty } from './stringUtils.ts';
 import { DEFAULT_EMAIL_LOGO_URL } from './renderEmailHtml.ts';
+import {
+  parseDocumentRequirements,
+  resolveDocumentRequirements,
+  resolveResidenceDefaultDocumentRequirements,
+  type DocumentRequirement,
+} from './documentRequirements.ts';
+import { mergePropertySyncToggles } from './propertySyncToggles.ts';
 
 type AppSettingsRow = {
   id: number;
@@ -40,6 +47,9 @@ type AppSettingsRow = {
   superhost_verification_url: string | null;
   superhost_proof_image_url: string | null;
   superhost_status: string | null;
+  document_requirements_override: unknown;
+  sync_calendar: boolean | null;
+  sync_sheets: boolean | null;
 };
 
 const EMPTY_GAF_DEFAULT = '';
@@ -167,6 +177,14 @@ export type AppSettingsDto = AppSettingsResolved & {
   superhostVerificationUrl: string;
   superhostProofImageUrl: string;
   superhostStatus: SuperhostStatus;
+  /** Raw stored override — `null` means "inherit residence default"; `[]` is a valid explicit empty override (D2). */
+  documentRequirementsOverride: DocumentRequirement[] | null;
+  /** Override → residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS`, fully resolved for display. */
+  resolvedDocumentRequirements: DocumentRequirement[];
+  /** Residence-type default → `DEFAULT_DOCUMENT_REQUIREMENTS` — ignores property override. */
+  residenceDefaultDocumentRequirements: DocumentRequirement[];
+  syncCalendar: boolean;
+  syncSheets: boolean;
   updatedAt: string | null;
   fieldSources: Record<
     | keyof AppSettingsResolved
@@ -593,6 +611,25 @@ export async function serializeAppSettingsForAdmin(
     superhostVerificationUrl: (row?.superhost_verification_url ?? '').trim(),
     superhostProofImageUrl: (row?.superhost_proof_image_url ?? '').trim(),
     superhostStatus: normalizeSuperhostStatus(row?.superhost_status),
+    documentRequirementsOverride: Array.isArray(row?.document_requirements_override)
+      ? parseDocumentRequirements(row.document_requirements_override)
+      : null,
+    resolvedDocumentRequirements: await resolveDocumentRequirements(resolvedPropertyId).catch(
+      (e) => {
+        console.warn('[appSettings] resolveDocumentRequirements failed:', e);
+        return [];
+      }
+    ),
+    residenceDefaultDocumentRequirements: await resolveResidenceDefaultDocumentRequirements(
+      resolvedPropertyId
+    ).catch((e) => {
+      console.warn('[appSettings] resolveResidenceDefaultDocumentRequirements failed:', e);
+      return [];
+    }),
+    ...mergePropertySyncToggles({
+      sync_calendar: row?.sync_calendar,
+      sync_sheets: row?.sync_sheets,
+    }),
     updatedAt: row?.updated_at ?? null,
     fieldSources: {
       emailTo: property.emailTo.source,

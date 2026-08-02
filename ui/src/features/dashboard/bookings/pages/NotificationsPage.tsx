@@ -12,14 +12,15 @@ import {
   type AdminSectionNavGroup,
   type AdminSectionNavItem,
 } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramGlobalBotTokenCard';
+import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramHelpDialog';
+import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import { TelegramAdminSettingsCard } from '@/features/dashboard/bookings/components/TelegramAdminSettingsCard';
 import { TelegramChatSettingsCard } from '@/features/dashboard/bookings/components/TelegramChatSettingsCard';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { TelegramMaintenanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramMaintenanceSettingsCard';
 import { TelegramMarketingSettingsCard } from '@/features/dashboard/bookings/components/TelegramMarketingSettingsCard';
 import { TelegramStaffSettingsCard } from '@/features/dashboard/bookings/components/TelegramStaffSettingsCard';
-import { TelegramGlobalBotTokenCard } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramGlobalBotTokenCard';
-import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 
 const NOTIFICATION_MODULES = [
   'marketing',
@@ -88,9 +89,13 @@ export function NotificationsPage() {
         }
       >
         <div className="space-y-3 sm:space-y-4">
-          <TelegramGlobalBotTokenCard />
+          <AdminSectionGroupHeading
+            title="Telegram notifications"
+            count={MODULE_SECTIONS.length}
+            action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
+          />
 
-          <AdminSectionGroupHeading title="Telegram notifications" count={MODULE_SECTIONS.length} />
+          <TelegramGlobalBotTokenCard />
 
           <AdminSection
             id="marketing"

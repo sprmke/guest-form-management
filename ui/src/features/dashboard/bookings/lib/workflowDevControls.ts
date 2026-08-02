@@ -1,5 +1,9 @@
 import type { DevControlFlags } from '@/features/dashboard/bookings/hooks/useTransitionBooking';
 import type { BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import {
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 const STORAGE_PREFIX = 'admin.workflowDevControls:v1:';
@@ -105,17 +109,30 @@ export function mergeWorkflowDevControlsWithDefaults(
   return merged;
 }
 
-function isReviewToInitialDocs(fromStatus: BookingStatus, toStatus: BookingStatus): boolean {
+/**
+ * Mirrors `workflowOrchestrator.ts#isReviewProceedAttempt` — the D2 direct
+ * skip to READY_FOR_CHECKIN shares the same PENDING_REVIEW email/PDF bundle
+ * as the PENDING_GAF / PENDING_DOCUMENTS targets (minus GAF/pet, gated below).
+ */
+function isReviewProceedAttempt(fromStatus: BookingStatus, toStatus: BookingStatus): boolean {
   return (
     fromStatus === 'PENDING_REVIEW' &&
-    (toStatus === 'PENDING_GAF' || toStatus === 'PENDING_DOCUMENTS')
+    (toStatus === 'PENDING_GAF' ||
+      toStatus === 'PENDING_DOCUMENTS' ||
+      toStatus === 'READY_FOR_CHECKIN')
   );
+}
+
+/** Mirrors `isReviewToInitialDocs` — false for the D2 skip (empty requirements). */
+function isReviewToInitialDocs(fromStatus: BookingStatus, toStatus: BookingStatus): boolean {
+  return isReviewProceedAttempt(fromStatus, toStatus) && toStatus !== 'READY_FOR_CHECKIN';
 }
 
 function isForwardToReadyForCheckin(fromStatus: BookingStatus, toStatus: BookingStatus): boolean {
   return (
     toStatus === 'READY_FOR_CHECKIN' &&
-    (fromStatus === 'PENDING_DOCUMENTS' ||
+    (fromStatus === 'PENDING_REVIEW' ||
+      fromStatus === 'PENDING_DOCUMENTS' ||
       fromStatus === 'PENDING_GAF' ||
       fromStatus === 'PENDING_PARKING_REQUEST' ||
       fromStatus === 'PENDING_PET_REQUEST')
@@ -125,26 +142,38 @@ function isForwardToReadyForCheckin(fromStatus: BookingStatus, toStatus: Booking
 /**
  * Which dev-control checkboxes apply to a specific admin transition.
  * Server still gates side effects; this only drives the confirm modal UI.
+ * GAF/pet/PDF controls are additionally gated on the property's resolved
+ * `documentRequirements` — a property without "gaf" (or "pet") never shows
+ * that control, matching what the orchestrator will actually do.
  */
 function isWorkflowDevControlRelevant(
   key: keyof DevControlFlags,
   fromStatus: BookingStatus,
   toStatus: BookingStatus,
-  booking: BookingRow
+  booking: BookingRow,
+  documentRequirements: DocumentRequirement[]
 ): boolean {
+  const hasRequirement = (id: string) => documentRequirements.some((req) => req.id === id);
   switch (key) {
     case 'saveToDatabase':
     case 'updateGoogleCalendar':
     case 'updateGoogleSheets':
       return true;
     case 'generatePdf':
+      return (
+        isReviewToInitialDocs(fromStatus, toStatus) &&
+        (hasRequirement('gaf') || hasRequirement('pet'))
+      );
     case 'sendGafRequestEmail':
+      return isReviewToInitialDocs(fromStatus, toStatus) && hasRequirement('gaf');
     case 'sendBookingAcknowledgementEmail':
-      return isReviewToInitialDocs(fromStatus, toStatus);
+      return isReviewProceedAttempt(fromStatus, toStatus);
     case 'sendParkingBroadcastEmail':
-      return isReviewToInitialDocs(fromStatus, toStatus) && !!booking.need_parking;
+      return isReviewProceedAttempt(fromStatus, toStatus) && !!booking.need_parking;
     case 'sendPetRequestEmail':
-      return isReviewToInitialDocs(fromStatus, toStatus) && !!booking.has_pets;
+      return (
+        isReviewToInitialDocs(fromStatus, toStatus) && !!booking.has_pets && hasRequirement('pet')
+      );
     case 'sendReadyForCheckinEmail':
       return isForwardToReadyForCheckin(fromStatus, toStatus);
     case 'sendSdRefundFormEmail':
@@ -157,10 +186,11 @@ function isWorkflowDevControlRelevant(
 export function workflowDevControlsForTransition(
   fromStatus: BookingStatus,
   toStatus: BookingStatus,
-  booking: BookingRow
+  booking: BookingRow,
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
 ): WorkflowDevControlDef[] {
   return WORKFLOW_DEV_CONTROLS.filter((c) =>
-    isWorkflowDevControlRelevant(c.key, fromStatus, toStatus, booking)
+    isWorkflowDevControlRelevant(c.key, fromStatus, toStatus, booking, documentRequirements)
   );
 }
 
