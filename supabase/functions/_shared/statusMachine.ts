@@ -150,7 +150,12 @@ export const TERMINAL_STATUSES = new Set<BookingStatus>(['COMPLETED', 'CANCELLED
  * Any call from workflowOrchestrator or the Gmail listener uses this.
  */
 const TRANSITION_GRAPH: Record<BookingStatus, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'CANCELLED'],
+  // READY_FOR_CHECKIN is always graph-legal here (D2): workflowOrchestrator only
+  // takes it when resolved `documentRequirements` are empty (or the admin
+  // explicitly skips); the normal Azure-style path still goes through
+  // PENDING_DOCUMENTS. See docs/workflow/in-progress/booking-workflow-configurable-docs.md
+  // "Graph note (D2)".
+  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_DOCUMENTS: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   // Legacy edges (existing rows may still be here):
   PENDING_GAF: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],

@@ -23,7 +23,9 @@ import {
  * Mirrors TRANSITION_GRAPH in statusMachine.ts.
  */
 const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
-  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'CANCELLED'],
+  // READY_FOR_CHECKIN is always graph-legal here (D2): the server only takes it
+  // when resolved documentRequirements are empty — see statusMachine.ts.
+  PENDING_REVIEW: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   PENDING_DOCUMENTS: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
   // Legacy compatibility for already-in-flight rows:
   PENDING_GAF: ['PENDING_DOCUMENTS', 'READY_FOR_CHECKIN', 'CANCELLED'],
