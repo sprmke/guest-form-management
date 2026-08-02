@@ -1,13 +1,14 @@
 import { Check } from 'lucide-react';
 
 import { statusLabel, type BookingStatus } from '@/features/dashboard/bookings/lib/bookingStatus';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   bookingPipeline,
   canNavigatePendingParkingSubStep,
-  isSubStatusCompletedInStepper,
-  isSubStatusRequired,
-  type PendingDocumentSubStatus,
+  pendingDocumentsNestedItemsForStepper,
+  PARKING_NESTED_KEY,
+  type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
 
@@ -26,8 +27,9 @@ type BookingStepperProps = {
   currentStatus: BookingStatus;
   statusUpdatedAt?: string | null;
   viewedStep: ViewedWorkflowStep;
+  documentRequirements: DocumentRequirement[];
   onSelectStep: (step: BookingStatus) => void;
-  onSelectSubStep: (sub: PendingDocumentSubStatus) => void;
+  onSelectSubStep: (sub: PendingDocNestedKey) => void;
   disabled?: boolean;
   size?: 'default' | 'compact';
 };
@@ -42,12 +44,13 @@ export function BookingStepper({
   currentStatus,
   statusUpdatedAt,
   viewedStep,
+  documentRequirements,
   onSelectStep,
   onSelectSubStep,
   disabled,
   size = 'default',
 }: BookingStepperProps) {
-  const pipeline = bookingPipeline(booking, currentStatus);
+  const pipeline = bookingPipeline(booking, currentStatus, documentRequirements);
   const currentIdx = pipeline.indexOf(currentStatus);
   const pendingDocsIdx = pipeline.indexOf('PENDING_DOCUMENTS');
   const pendingDocsBrowsable =
@@ -135,6 +138,7 @@ export function BookingStepper({
               {step === 'PENDING_DOCUMENTS' && pendingDocsBrowsable && (
                 <PendingDocumentsSubTree
                   booking={booking}
+                  documentRequirements={documentRequirements}
                   viewedStep={viewedStep}
                   onSelect={onSelectSubStep}
                   disabled={disabled}
@@ -156,6 +160,7 @@ export function BookingStepper({
 
 function PendingDocumentsSubTree({
   booking,
+  documentRequirements,
   viewedStep,
   onSelect,
   disabled,
@@ -164,52 +169,53 @@ function PendingDocumentsSubTree({
   pendingDocsIdx,
 }: {
   booking: BookingRow;
+  documentRequirements: DocumentRequirement[];
   viewedStep: ViewedWorkflowStep;
-  onSelect: (status: PendingDocumentSubStatus) => void;
+  onSelect: (key: PendingDocNestedKey) => void;
   disabled?: boolean;
   currentStatus: BookingStatus;
   currentIdx: number;
   pendingDocsIdx: number;
 }) {
-  const allStatuses: PendingDocumentSubStatus[] = [
-    'PENDING_GAF',
-    'PENDING_PARKING_REQUEST',
-    'PENDING_PET_REQUEST',
-  ];
-
-  const statuses = allStatuses.filter((s) => isSubStatusRequired(s, booking));
-  const activeStatus = viewedStep.kind === 'pending-doc-sub' ? viewedStep.sub : undefined;
+  const items = pendingDocumentsNestedItemsForStepper(booking, documentRequirements);
+  const activeKey = viewedStep.kind === 'pending-doc-sub' ? viewedStep.sub : undefined;
   const isLivePendingDocs = currentStatus === 'PENDING_DOCUMENTS';
   const canBrowseCompletedPendingDocs = pendingDocsIdx >= 0 && currentIdx > pendingDocsIdx;
 
-  function isSubStepInteractive(sub: PendingDocumentSubStatus): boolean {
+  function isItemInteractive(key: PendingDocNestedKey): boolean {
     if (isLivePendingDocs) return true;
     if (canBrowseCompletedPendingDocs) return true;
-    if (
-      sub === 'PENDING_PARKING_REQUEST' &&
-      canNavigatePendingParkingSubStep(booking, currentStatus)
-    ) {
+    if (key === PARKING_NESTED_KEY && canNavigatePendingParkingSubStep(booking, currentStatus)) {
       return true;
     }
     return false;
   }
 
+  if (items.length === 0) return null;
+
   return (
     <ul className="relative flex flex-col gap-3">
-      {statuses.length > 1 ? (
+      {items.length > 1 ? (
         <div
           aria-hidden
           className="bg-muted pointer-events-none absolute bottom-[10px] left-2 top-[10px] w-px"
         />
       ) : null}
-      {statuses.map((sub) => {
-        const completed = isSubStatusCompletedInStepper(booking, sub);
-        const isActive = activeStatus === sub;
-        const subInteractive = isSubStepInteractive(sub);
+      {items.map((item) => {
+        const isActive = activeKey === item.key;
+        const itemInteractive = isItemInteractive(item.key);
+        const approvalHint =
+          item.approvalSource === 'email-listener'
+            ? 'Email'
+            : item.approvalSource === 'manual'
+              ? 'Manual'
+              : null;
 
         const iconClass = cn(
           'relative z-[1] box-border flex size-4 shrink-0 items-center justify-center rounded-full',
-          completed ? 'gradient-primary text-primary-foreground' : 'border-border/60 bg-card border'
+          item.completed
+            ? 'gradient-primary text-primary-foreground'
+            : 'border-border/60 bg-card border'
         );
 
         const labelClass = cn(
@@ -218,52 +224,59 @@ function PendingDocumentsSubTree({
             ? 'text-muted-foreground cursor-not-allowed'
             : isActive
               ? 'text-primary font-semibold'
-              : completed
+              : item.completed
                 ? 'text-foreground font-medium'
                 : 'text-muted-foreground font-medium',
-          subInteractive && !disabled && !isActive && 'hover:text-primary'
+          itemInteractive && !disabled && !isActive && 'hover:text-primary'
         );
 
         return (
-          <li key={sub} className="flex items-center gap-2.5">
+          <li key={item.key} className="flex items-center gap-2.5">
             <div className={iconClass}>
-              {completed ? <Check className="size-2.5" strokeWidth={3} /> : null}
+              {item.completed ? <Check className="size-2.5" strokeWidth={3} /> : null}
             </div>
 
-            {subInteractive ? (
+            {itemInteractive ? (
               <div className="flex min-h-6 min-w-0 flex-1 items-center justify-between gap-3">
                 <button
                   type="button"
                   onClick={() => {
-                    if (!disabled) onSelect(sub);
+                    if (!disabled) onSelect(item.key);
                   }}
                   disabled={!!disabled}
                   className={cn(
                     '-my-[10px] inline-flex min-h-[44px] min-w-0 flex-1 items-center py-2 text-left',
                     labelClass
                   )}
-                  aria-label={`View ${statusLabel(sub)}`}
+                  aria-label={`View ${item.label}`}
                   aria-current={isActive ? 'step' : undefined}
                 >
-                  {statusLabel(sub)}
+                  {item.label}
                 </button>
-                <span
-                  className={cn(
-                    'shrink-0 text-xs font-semibold leading-4',
-                    completed ? 'text-primary' : 'text-amber-600'
-                  )}
-                >
-                  {completed ? 'Complete' : 'Incomplete'}
+                <span className="flex shrink-0 items-center gap-1.5">
+                  {approvalHint ? (
+                    <span className="text-muted-foreground/70 text-[10px] font-medium uppercase tracking-wide">
+                      {approvalHint}
+                    </span>
+                  ) : null}
+                  <span
+                    className={cn(
+                      'text-xs font-semibold leading-4',
+                      item.completed ? 'text-primary' : 'text-amber-600'
+                    )}
+                  >
+                    {item.completed ? 'Complete' : 'Incomplete'}
+                  </span>
                 </span>
               </div>
             ) : (
               <div
                 className={cn(
                   'flex min-h-6 flex-1 items-center text-xs leading-4',
-                  completed ? 'text-primary font-medium' : 'text-muted-foreground'
+                  item.completed ? 'text-primary font-medium' : 'text-muted-foreground'
                 )}
               >
-                {statusLabel(sub)}
+                {item.label}
               </div>
             )}
           </li>

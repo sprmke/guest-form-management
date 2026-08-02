@@ -11,6 +11,7 @@ import { ExternalLink, Loader2 } from 'lucide-react';
 
 import { WorkflowSubFormCard } from '@/features/dashboard/bookings/components/WorkflowSubFormCard';
 import { statusLabel } from '@/features/dashboard/bookings/lib/bookingStatus';
+import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   isStorageObjectNotFoundError,
   normalizeStoragePublicUrl,
@@ -19,8 +20,10 @@ import {
   resolveAssetUrlForBrowser,
 } from '@/features/dashboard/bookings/lib/storageUrls';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
-import type { PendingDocumentSubStatus } from '@/features/dashboard/bookings/lib/workflow';
-import { isSubStatusCompleted } from '@/features/dashboard/bookings/lib/workflow';
+import {
+  getPendingDocumentsNestedCompletion,
+  type PendingDocNestedKey,
+} from '@/features/dashboard/bookings/lib/workflow';
 import { workflowInlineLink } from '@/features/dashboard/bookings/lib/workflowActionButtonStyles';
 
 import { cn } from '@/lib/utils';
@@ -28,30 +31,48 @@ import { cn } from '@/lib/utils';
 export function PendingDocSubStatusCard({
   booking,
   sub,
+  requirements,
   plain = false,
 }: {
   booking: BookingRow;
-  sub: PendingDocumentSubStatus;
+  sub: PendingDocNestedKey;
+  requirements: DocumentRequirement[];
   plain?: boolean;
 }) {
-  const completed = isSubStatusCompleted(sub, booking);
-  const isGaf = sub === 'PENDING_GAF';
-  const isPet = sub === 'PENDING_PET_REQUEST';
+  const { byRequirementId } = getPendingDocumentsNestedCompletion(booking, requirements);
+  const completed = byRequirementId[sub] ?? false;
+  const requirement = requirements.find((req) => req.id === sub);
+  const title = requirement?.label ?? statusLabel(sub);
+  const approvalHint =
+    requirement?.approvalSource === 'email-listener'
+      ? 'Email'
+      : requirement?.approvalSource === 'manual'
+        ? 'Manual'
+        : null;
+  const isGaf = sub === 'gaf';
+  const isPet = sub === 'pet';
 
   return (
-    <WorkflowSubFormCard title={statusLabel(sub)} plain={plain}>
+    <WorkflowSubFormCard title={title} plain={plain}>
       <div className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-muted-foreground text-xs">Status</span>
-          <span
-            className={cn(
-              'rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              completed
-                ? 'bg-primary/10 text-primary'
-                : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
-            )}
-          >
-            {completed ? 'Complete' : 'Incomplete'}
+          <span className="flex items-center gap-1.5">
+            {approvalHint ? (
+              <span className="text-muted-foreground/70 text-[10px] font-medium uppercase tracking-wide">
+                {approvalHint}
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                'rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                completed
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'
+              )}
+            >
+              {completed ? 'Complete' : 'Incomplete'}
+            </span>
           </span>
         </div>
 
@@ -84,6 +105,12 @@ export function PendingDocSubStatusCard({
             <DocLinkRow label="Pet vaccination" url={booking.pet_vaccination_url} />
             <DocLinkRow label="Pet photo" url={booking.pet_image_url} />
           </div>
+        ) : null}
+
+        {!isGaf && !isPet ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {completed ? 'Marked complete.' : 'Waiting for this document to be marked complete.'}
+          </p>
         ) : null}
       </div>
     </WorkflowSubFormCard>

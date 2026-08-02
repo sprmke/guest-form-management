@@ -88,6 +88,8 @@ Tabs with invalid fields show a small error-dot badge; submitting a failing form
 
 When status is in the revert-eligible pipeline (`PENDING_DOCUMENTS` and its nested sub-statuses, or `READY_FOR_CHECKIN`) and the draft changes a **workflow-sensitive** field (names, email, phone, dates/times, parking/pet details, decor flag, guest docs, etc. — see `workflowSensitiveGuestDiff.ts`), a sensitive-fields notice appears and the save button reads **Save & Revert Status**. Saving sets status → `PENDING_REVIEW` and clears nested doc completion per `pendingDocumentsClearPatchForGuestEditRevert` (booking-workflow.mdc §2.3).
 
+Pet-detail fields (toggle, name, type, breed, age, vaccination date) are only workflow-sensitive when the property's resolved document requirements include a `has_pets`-triggered requirement (or the literal id `pet`) — properties without pet documentation configured never revert on pet-field edits alone. Parking-field sensitivity is unaffected (parking stays a hardcoded step outside `documentRequirements`).
+
 Non-sensitive edits (e.g. special requests only) do not revert status.
 
 ### Save path
@@ -101,11 +103,12 @@ Non-sensitive edits (e.g. special requests only) do not revert status.
 
 `WorkflowPanel` (right rail) is unaffected by the edit-form redesign — it owns:
 
-- **Pipeline stepper** (`BookingStepper`) with `StatusBadge` — click any step/sub-step to preview it without transitioning.
+- **Pipeline stepper** (`BookingStepper`) with `StatusBadge` — click any step/sub-step to preview it without transitioning. The **Pending Documents** nested tree is data-driven: it renders the property's resolved `documentRequirements` (in `order`, filtered by `requirementApplies`) plus a hardcoded Parking row inserted where a `has_pets`-triggered requirement would land, when `need_parking`. Each row shows a short muted approval-source hint ("Email" / "Manual"). A property with an empty requirements override shows no nested tree at all — Proceed goes straight from Pending Review to Ready for Check-in.
 - **Stage sub-form** (`WorkflowSubFormHost`) — pricing, parking settlement, guest balance, SD refund, surprise-decor staff ack, depending on the viewed step.
 - **Stay guide block** — auto-issues a guest stay-guide token/link once the booking reaches an RFCI+ status (`issue-guest-stay-guide-token`).
 - **Automation triggers** (collapsible) — manual "Run Gmail poll", "Run check-out automation" (sd-refund-cron), "Resend SD refund form email", shown only for the statuses where each applies.
-- **Transition actions bar** — Proceed / Back / mark-sub-step-complete-or-incomplete / **Cancel booking**, each behind a confirm modal with dev-control checkboxes (session-persisted per booking; see `admin-auth.mdc` §5 and `workflowDevControls.ts`).
+- **Transition actions bar** — Proceed / Back / mark-sub-step-complete-or-incomplete / **Cancel booking**, each behind a confirm modal with dev-control checkboxes (session-persisted per booking; see `admin-auth.mdc` §5 and `workflowDevControls.ts`). Dev-control resend checkboxes (GAF/pet request emails, generate PDF) only appear when the property's resolved requirements include the matching `gaf`/`pet` id.
+- Mark-complete/incomplete calls send the requirement id (or the legacy `PENDING_PARKING_REQUEST` literal for parking) as `document_completion_target`/`document_completion_clear_target` — see `useTransitionBooking.ts`.
 
 `PendingReviewWorkflowGate` wraps the panel while `status === PENDING_REVIEW`: admins must check "I reviewed the guest submission…" (session-storage ack, keyed by `status_updated_at`) before workflow actions unlock.
 
@@ -170,6 +173,8 @@ This is the page a host opens to manage one specific booking end to end — gues
 | Transition/cancel/automation mutations | `ui/src/features/dashboard/bookings/hooks/useTransitionBooking.ts`                                                                                                                      |
 | Receipt AI backfill                    | `ui/src/features/dashboard/bookings/hooks/useReceiptAiBackfill.ts`                                                                                                                      |
 | Revert rules                           | `ui/src/features/dashboard/bookings/lib/workflowSensitiveGuestDiff.ts`, `ui/src/features/dashboard/bookings/lib/bookingStatus.ts`                                                       |
+| Configurable document requirements     | `ui/src/features/dashboard/bookings/lib/documentRequirements.ts` (types + defaults), `ui/src/features/dashboard/bookings/lib/workflow.ts` (nested-item/completion helpers, D2 skip)     |
+| Dev-control visibility rules           | `ui/src/features/dashboard/bookings/lib/workflowDevControls.ts`                                                                                                                         |
 | Status machine + orchestrator (server) | `supabase/functions/_shared/statusMachine.ts`, `supabase/functions/_shared/workflowOrchestrator.ts`                                                                                     |
 
 ---
@@ -198,4 +203,4 @@ This is the page a host opens to manage one specific booking end to end — gues
 - [Route index](../../README.md)
 - [`.cursor/rules/booking-workflow.mdc`](../../../../../.cursor/rules/booking-workflow.mdc) — canonical status enum, transition graph, side-effect matrix
 - [`.cursor/rules/admin-auth.mdc`](../../../../../.cursor/rules/admin-auth.mdc) §5 — dev-control checkboxes
-- [`docs/planning/NEW_FLOW_PLAN.md`](../../../../planning/NEW_FLOW_PLAN.md) §3.1
+- [`docs/archive/planning/NEW_FLOW_PLAN.md`](../../../../archive/planning/NEW_FLOW_PLAN.md) §3.1

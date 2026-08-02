@@ -35,6 +35,7 @@ import { WorkflowAutomationTriggers } from '@/features/dashboard/bookings/compon
 import { WorkflowConfirmModal } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowConfirmModal';
 import { WorkflowStayGuideBlock } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowStayGuideBlock';
 import { WorkflowSubFormHost } from '@/features/dashboard/bookings/components/workflow-panel/WorkflowSubFormHost';
+import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { BOOKING_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBooking';
 import {
   useTransitionBooking,
@@ -55,12 +56,15 @@ import {
   statusLabel,
   type BookingStatus,
 } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import {
   bookingNeedsGmailListenerPoll,
-  defaultPendingDocSub,
+  defaultPendingDocNestedKey,
   initialViewedWorkflowStep,
-  type PendingDocumentSubStatus,
+  nestedKeyLabel,
+  PARKING_NESTED_KEY,
+  type PendingDocNestedKey,
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
 import {
@@ -116,6 +120,10 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   } = usePropertyPricingDefaults();
   const status = booking.status as BookingStatus;
 
+  const { data: appSettings } = useAppSettings();
+  const documentRequirements =
+    appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
+
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
 
   // Dev controls — session-persisted per booking; defaults all checked.
@@ -144,33 +152,34 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const subFormDrafts = useWorkflowSubFormDrafts(booking, status);
 
   const [viewedStep, setViewedStep] = useState<ViewedWorkflowStep>(() =>
-    initialViewedWorkflowStep(status, booking)
+    initialViewedWorkflowStep(status, booking, documentRequirements)
   );
 
   useEffect(() => {
-    setViewedStep(initialViewedWorkflowStep(status, booking));
-  }, [booking.id, status, booking.need_parking, booking.has_pets]);
+    setViewedStep(initialViewedWorkflowStep(status, booking, documentRequirements));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking.id, status, booking.need_parking, booking.has_pets, documentRequirements]);
 
   const focusPipelineView = useCallback(() => {
     setViewedStep({ kind: 'pipeline', status });
   }, [status]);
 
-  const focusPendingDocSubView = useCallback((sub: PendingDocumentSubStatus) => {
+  const focusPendingDocSubView = useCallback((sub: PendingDocNestedKey) => {
     setViewedStep({ kind: 'pending-doc-sub', sub });
   }, []);
 
   const selectPipelineStep = useCallback(
     (step: BookingStatus) => {
       if (step === 'PENDING_DOCUMENTS') {
-        setViewedStep({
-          kind: 'pending-doc-sub',
-          sub: defaultPendingDocSub(booking),
-        });
-        return;
+        const key = defaultPendingDocNestedKey(booking, documentRequirements);
+        if (key) {
+          setViewedStep({ kind: 'pending-doc-sub', sub: key });
+          return;
+        }
       }
       setViewedStep({ kind: 'pipeline', status: step });
     },
-    [booking]
+    [booking, documentRequirements]
   );
 
   // Pipeline navigation — the stepper + Proceed/Back buttons read from these.
@@ -178,12 +187,13 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     booking,
     status,
     viewedStep,
-    subFormDrafts.parkingValues
+    subFormDrafts.parkingValues,
+    documentRequirements
   );
 
   const returnToLiveStep = useCallback(() => {
-    setViewedStep(initialViewedWorkflowStep(status, booking));
-  }, [status, booking]);
+    setViewedStep(initialViewedWorkflowStep(status, booking, documentRequirements));
+  }, [status, booking, documentRequirements]);
 
   // Confirm modals
   const [confirm, setConfirm] = useState<ConfirmState>(null);
@@ -356,7 +366,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   }
 
   const transitionConfirmDevControls = confirm
-    ? workflowDevControlsForTransition(status, confirm.toStatus, booking)
+    ? workflowDevControlsForTransition(status, confirm.toStatus, booking, documentRequirements)
     : [];
   const cancelConfirmDevControls = workflowDevControlsForCancel();
 
@@ -391,14 +401,15 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     }
   }
 
-  async function handleMarkPendingDocSubStatusComplete(subStatus: PendingDocumentSubStatus) {
+  async function handleMarkPendingDocSubStatusComplete(subStatus: PendingDocNestedKey) {
+    const label = nestedKeyLabel(subStatus, documentRequirements);
     try {
       const payload: TransitionPayload = {
         document_completion_target: subStatus,
       };
       const parkingValues = subFormDrafts.parkingValues;
       if (
-        subStatus === 'PENDING_PARKING_REQUEST' &&
+        subStatus === PARKING_NESTED_KEY &&
         parkingValues &&
         isParkingRequestDraftComplete(parkingValues)
       ) {
@@ -418,7 +429,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         devControls: sessionDevControls,
         manual: true,
       });
-      toast.success(`Marked ${statusLabel(subStatus)} as complete`);
+      toast.success(`Marked ${label} as complete`);
       if (!workflowActions.inPendingDocuments) {
         focusPipelineView();
       }
@@ -427,7 +438,8 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
     }
   }
 
-  async function handleMarkPendingDocSubStatusIncomplete(subStatus: PendingDocumentSubStatus) {
+  async function handleMarkPendingDocSubStatusIncomplete(subStatus: PendingDocNestedKey) {
+    const label = nestedKeyLabel(subStatus, documentRequirements);
     try {
       await transitionMut.mutateAsync({
         bookingId: booking.id,
@@ -436,7 +448,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         devControls: sessionDevControls,
         manual: true,
       });
-      toast.success(`Marked ${statusLabel(subStatus)} as incomplete`);
+      toast.success(`Marked ${label} as incomplete`);
     } catch (err: unknown) {
       toastUnlessGmailReconnect(err, 'Could not mark step incomplete');
     }
@@ -476,6 +488,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
           </div>
           <BookingStepper
             booking={booking}
+            documentRequirements={documentRequirements}
             currentStatus={status}
             statusUpdatedAt={booking.status_updated_at}
             viewedStep={viewedStep}
@@ -500,6 +513,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         viewedContent={workflowActions.viewedContent}
         contentReadOnly={workflowActions.contentReadOnly}
         activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
+        documentRequirements={documentRequirements}
         pricingValues={subFormDrafts.pricingValues}
         onPricingChange={subFormDrafts.setPricingValues}
         propertyPricingLoaded={propertyPricingLoaded}
@@ -562,6 +576,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         selectedPendingDocCanMarkComplete={workflowActions.selectedPendingDocCanMarkComplete}
         selectedPendingDocRequired={workflowActions.selectedPendingDocRequired}
         activePendingDocSubStatus={workflowActions.activePendingDocSubStatus}
+        activePendingDocLabel={workflowActions.activePendingDocLabel}
         onMarkPendingDocSubStatusIncomplete={handleMarkPendingDocSubStatusIncomplete}
         onMarkPendingDocSubStatusComplete={handleMarkPendingDocSubStatusComplete}
         showProceedToReadyForCheckin={workflowActions.showProceedToReadyForCheckin}

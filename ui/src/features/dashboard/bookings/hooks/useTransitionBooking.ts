@@ -47,10 +47,13 @@ export type TransitionPayload = {
   sd_refund_account_number?: string | null;
   approved_gaf_pdf_url?: string | null;
   approved_pet_pdf_url?: string | null;
-  document_completion_target?:
-    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | null;
-  document_completion_clear_target?:
-    'PENDING_GAF' | 'PENDING_PARKING_REQUEST' | 'PENDING_PET_REQUEST' | null;
+  /**
+   * Legacy `PENDING_GAF` / `PENDING_PARKING_REQUEST` / `PENDING_PET_REQUEST`
+   * literals, or a bare configurable-requirement id (e.g. `"gaf"`, a custom
+   * id) — mirrors `workflowOrchestrator.ts` §`LEGACY_DOC_TARGET_TO_REQUIREMENT_ID`.
+   */
+  document_completion_target?: string | null;
+  document_completion_clear_target?: string | null;
 };
 
 export type DevControlFlags = {

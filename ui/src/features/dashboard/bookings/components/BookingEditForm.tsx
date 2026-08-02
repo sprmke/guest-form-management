@@ -50,6 +50,7 @@ import { ParkingTab } from '@/features/dashboard/bookings/components/booking-det
 import { PetsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/PetsTab';
 import { StayDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/StayDetailsTab';
 import { WorkflowDetailsTab } from '@/features/dashboard/bookings/components/booking-detail/edit/tabs/WorkflowDetailsTab';
+import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import {
   useUpdateBooking,
   type UpdateBookingPayload,
@@ -60,6 +61,7 @@ import {
   type ProgressFormEditState,
 } from '@/features/dashboard/bookings/lib/bookingProgressEditPayload';
 import { shouldRevertGuestFieldEditsToPendingReview } from '@/features/dashboard/bookings/lib/bookingStatus';
+import { DEFAULT_DOCUMENT_REQUIREMENTS } from '@/features/dashboard/bookings/lib/documentRequirements';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { hasWorkflowSensitiveGuestFieldDiff } from '@/features/dashboard/bookings/lib/workflowSensitiveGuestDiff';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
@@ -296,6 +298,9 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
   const updateMut = useUpdateBooking();
   const apiUrl = import.meta.env.VITE_API_URL;
   const orgContext = useOptionalOrgContext();
+  const { data: appSettings } = useAppSettings();
+  const documentRequirements =
+    appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
   const editTabsRef = useRef<BookingEditTabsHandle>(null);
   const propertySearchParams = React.useMemo(() => {
     const params = new URLSearchParams();
@@ -344,7 +349,8 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
     (isDirty || progressDirty) &&
     hasWorkflowSensitiveGuestFieldDiff(
       savedSensitiveBaseline,
-      bookingEditPayloadFromValues(formSnapshot)
+      bookingEditPayloadFromValues(formSnapshot),
+      documentRequirements
     );
   const canSave = isDirty || progressDirty;
 
@@ -515,7 +521,7 @@ export function BookingEditForm({ booking, onClose, onSaved, onPreview }: Props)
 
     const revertToPendingReview =
       guestEditRevertPipeline &&
-      hasWorkflowSensitiveGuestFieldDiff(savedSensitiveBaseline, payload);
+      hasWorkflowSensitiveGuestFieldDiff(savedSensitiveBaseline, payload, documentRequirements);
 
     try {
       const updated = await updateMut.mutateAsync({

@@ -388,7 +388,7 @@ Per-property document requirements for `PENDING_DOCUMENTS` and Calendar/Sheets s
 
 ### Document requirements editor
 
-- **Use residence default** — read-only ordered list showing the currently-resolved requirements (label, trigger, approval source).
+- **Use residence default** — read-only ordered list showing the **residence-type default** requirements (`residenceDefaultDocumentRequirements` — development default chain, ignoring any property override; label, trigger, approval source).
 - **Custom list** — add / remove / reorder rows; each sets **label**, **trigger** (Always required / Guest has pets / Guest needs parking), and **approval source** (Manual / Email listener / None). New rows default `pdfTemplateId` and `calendarIcon` to `null` — no UI field for those yet, keeping the editor a practical checklist rather than a PDF-template CMS.
 - Empty custom list is valid — the pipeline skips `PENDING_DOCUMENTS` entirely for that property.
 
