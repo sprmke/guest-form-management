@@ -90,7 +90,18 @@ export function useWorkflowActions(
   const showLateParkingActions = canShowLateParkingForm;
 
   const showProceedToReadyForCheckin = isLiveView && inPendingDocuments && viewingPendingDocSub;
-  const livePipelineActions = isLiveView && viewedStep.kind === 'pipeline' && !inPendingDocuments;
+  // D2 edge case: resolved documentRequirements can become [] (and no parking)
+  // while a booking already sits at PENDING_DOCUMENTS, leaving no nested item to
+  // browse — defaultPendingDocNestedKey() is null, so viewedStep falls back to
+  // the plain pipeline view. Without this, livePipelineActions and the
+  // pending-doc-sub action block are both false and only Cancel Booking shows.
+  // Fall back to plain pipeline Proceed/Back in that case, same as any other
+  // live pipeline status (nextStep already resolves to READY_FOR_CHECKIN).
+  const noNestedDocItemsToBrowse = inPendingDocuments && nestedItems.length === 0;
+  const livePipelineActions =
+    isLiveView &&
+    viewedStep.kind === 'pipeline' &&
+    (!inPendingDocuments || noNestedDocItemsToBrowse);
 
   return {
     isTerminal,
