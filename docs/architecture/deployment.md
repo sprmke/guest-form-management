@@ -7,7 +7,7 @@ updated: 2026-08-02
 
 # Deployment
 
-Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split. See also [`docs/operations/production-deployment.md`](../operations/production-deployment.md) and [`docs/operations/migration-runbook.md`](../operations/migration-runbook.md).
+Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split. See also [`docs/archive/operations/production-deployment.md`](../archive/operations/production-deployment.md) and [`docs/archive/operations/migration-runbook.md`](../archive/operations/migration-runbook.md).
 
 ---
 

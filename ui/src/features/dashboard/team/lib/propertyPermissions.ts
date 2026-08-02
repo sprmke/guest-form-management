@@ -54,7 +54,6 @@ export const PROPERTY_SECTION_VIEW_PERMISSION = {
   dashboard: 'bookings:view',
   bookings: 'bookings:view',
   finance: 'finance:view',
-  // RequirePropertyPermission applies the calendar's pricing:view || bookings:view gate.
   calendar: 'pricing:view',
   maintenance: 'maintenance:view',
   marketing: 'notifications:view',
