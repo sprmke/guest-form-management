@@ -116,6 +116,10 @@ export function TelegramMarketingSettingsCard({
     setChatId,
     busy,
     connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
     onTestConnection,
     onEnabledChange,
     update,
@@ -234,8 +238,11 @@ export function TelegramMarketingSettingsCard({
             onBotTokenChange={setBotToken}
             onChatIdChange={setChatId}
             onTestConnection={onTestConnection}
-            testPending={testSend.isPending}
+            testPending={connectPending}
             connectionOk={connectionOk}
+            connectionLabels={connectionLabels}
+            chatLabelLoading={backgroundVerifyPending}
+            onBotTokenValidated={resetConnection}
             manageSectionTitle="Notification controls"
           >
             <TelegramSettingsManageCard

@@ -37,6 +37,10 @@ export function TelegramChatSettingsCard({ embedded: _embedded = true }: { embed
     setChatId,
     busy,
     connectionOk,
+    connectionLabels,
+    connectPending,
+    backgroundVerifyPending,
+    resetConnection,
     onTestConnection,
     onEnabledChange,
     update,
@@ -100,8 +104,11 @@ export function TelegramChatSettingsCard({ embedded: _embedded = true }: { embed
             onBotTokenChange={setBotToken}
             onChatIdChange={setChatId}
             onTestConnection={onTestConnection}
-            testPending={testSend.isPending}
+            testPending={connectPending}
             connectionOk={connectionOk}
+            connectionLabels={connectionLabels}
+            chatLabelLoading={backgroundVerifyPending}
+            onBotTokenValidated={resetConnection}
             manageSectionTitle="New message"
           >
             <TelegramSettingsManageCard

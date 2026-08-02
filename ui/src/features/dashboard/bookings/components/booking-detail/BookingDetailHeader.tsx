@@ -1,5 +1,6 @@
 import { Calendar, Edit2, Users } from 'lucide-react';
 
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { BookingDetailFlagChips } from '@/features/dashboard/bookings/components/BookingDetailFlagChips';
 import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
@@ -23,6 +24,11 @@ type Props = {
  */
 export function BookingDetailHeader({ booking, onEdit, onPayParking, className }: Props) {
   const pax = (booking.number_of_adults ?? 0) + (booking.number_of_children ?? 0);
+  const nights = occupiedNightsFromStay(
+    booking.check_in_date,
+    booking.check_out_date,
+    booking.number_of_nights
+  );
   const fb = booking.guest_facebook_name?.trim() ?? '';
   const primary = booking.primary_guest_name?.trim() ?? '';
   const heading = fb || primary || 'Booking';
@@ -83,8 +89,7 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
             </span>
             <span className="border-border/70 bg-background/80 inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold shadow-sm">
               <Users className="text-muted-foreground size-3.5 shrink-0" aria-hidden />
-              {pax} pax · {booking.number_of_nights}{' '}
-              {booking.number_of_nights === 1 ? 'night' : 'nights'}
+              {pax} pax · {nights} {nights === 1 ? 'night' : 'nights'}
             </span>
           </div>
 
