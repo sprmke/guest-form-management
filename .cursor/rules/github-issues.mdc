@@ -4,11 +4,11 @@ Product backlog on **`sprmke/kame-homes` GitHub Issues** — not duplicated in r
 
 ## Source of truth
 
-| Layer           | Location                                                                       |
-| --------------- | ------------------------------------------------------------------------------ |
-| Pending work    | https://github.com/sprmke/kame-homes/issues + Project board                    |
-| Epic parents    | GitHub sub-issue parent (e.g. #104 for §4 emails) — see `docs/todos/README.md` |
-| Shipped archive | `docs/todos/shipped/`                                                          |
+| Layer           | Location                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| Pending work    | https://github.com/sprmke/kame-homes/issues + Project board                                |
+| Epic parents    | GitHub sub-issue parent (e.g. #104 for §4 emails) — see `docs/README.md` (Product backlog) |
+| Shipped archive | `docs/archive/todos/shipped/`                                                              |
 
 ## Required skill
 

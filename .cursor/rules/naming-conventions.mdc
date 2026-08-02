@@ -41,7 +41,7 @@ Reference: [bulletproof-react](https://github.com/alan2207/bulletproof-react) (p
 
 ## Migration
 
-Renames are **batch-safe** when tracked in `docs/reference/archive/naming-audit.md`. Run `./scripts/dev/check-ui-filename-conventions.sh` after renames.
+Renames are **batch-safe** when tracked in `docs/archive/reference/naming-audit.md`. Run `./scripts/dev/check-ui-filename-conventions.sh` after renames.
 
 ## ESLint (warn-only)
 
@@ -57,12 +57,12 @@ Renames are **batch-safe** when tracked in `docs/reference/archive/naming-audit.
 
 ## Intentional exceptions
 
-| Pattern                         | Example                                            | Why                                        |
-| ------------------------------- | -------------------------------------------------- | ------------------------------------------ |
-| Route modules                   | `routes/index.tsx`, `authRoutes.tsx`, `guards.tsx` | Composition, not components                |
-| shadcn primitives               | `dropdown-menu.tsx`                                | Generated; do not rename                   |
-| Co-located lib in `components/` | `calendar/calendarDateUtils.ts`                    | Utils, not React — `camelCase.ts`          |
-| Edge function folders           | `list-bookings/index.ts`                           | Kebab-case directory                       |
-| Vite entry                      | `main.tsx`, `vite-env.d.ts`                        | Framework conventions                      |
-| Shared `lib/utils.ts`           | `lib/utils.ts`                                     | shadcn `cn()` — single file at `lib/` root |
-| Shared categorized lib          | `lib/theme/`, `lib/validation/`, …                 | See `docs/reference/project-structure.md`  |
+| Pattern                         | Example                                            | Why                                               |
+| ------------------------------- | -------------------------------------------------- | ------------------------------------------------- |
+| Route modules                   | `routes/index.tsx`, `authRoutes.tsx`, `guards.tsx` | Composition, not components                       |
+| shadcn primitives               | `dropdown-menu.tsx`                                | Generated; do not rename                          |
+| Co-located lib in `components/` | `calendar/calendarDateUtils.ts`                    | Utils, not React — `camelCase.ts`                 |
+| Edge function folders           | `list-bookings/index.ts`                           | Kebab-case directory                              |
+| Vite entry                      | `main.tsx`, `vite-env.d.ts`                        | Framework conventions                             |
+| Shared `lib/utils.ts`           | `lib/utils.ts`                                     | shadcn `cn()` — single file at `lib/` root        |
+| Shared categorized lib          | `lib/theme/`, `lib/validation/`, …                 | See `docs/archive/reference/project-structure.md` |

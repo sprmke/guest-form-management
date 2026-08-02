@@ -1,6 +1,21 @@
 ---
 description: Admin authentication (Supabase Google OAuth + allow list) and dev-mode rules for the new /bookings dashboard
-alwaysApply: true
+globs:
+  - 'supabase/functions/_shared/auth.ts'
+  - 'supabase/functions/_shared/orgAuth.ts'
+  - 'supabase/functions/_shared/propertyScope.ts'
+  - 'supabase/functions/_shared/parkingScope.ts'
+  - 'supabase/functions/_shared/serveEdge.ts'
+  - 'ui/src/lib/supabase/**/*'
+  - 'ui/src/features/dashboard/bookings/components/RequireAdmin.tsx'
+  - 'ui/src/features/dashboard/org/**/*'
+  - 'ui/src/features/dashboard/team/**/*'
+  - 'ui/src/features/guest/form/components/GuestForm.tsx'
+  - 'ui/src/features/guest/marketing/**/login*'
+  - 'ui/src/features/guest/marketing/**/Login*'
+  - '.cursor/skills/supabase-auth/**/*'
+  - '.agent/skills/supabase-auth/**/*'
+alwaysApply: false
 ---
 
 # Admin auth — agent reference

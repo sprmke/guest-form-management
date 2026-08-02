@@ -3,7 +3,7 @@ description: Mobile-first, responsive UI standards for every screen and componen
 globs:
   - 'ui/src/**/*.tsx'
   - 'ui/src/**/*.ts'
-alwaysApply: true
+alwaysApply: false
 ---
 
 # Mobile-first responsive UI — agent reference

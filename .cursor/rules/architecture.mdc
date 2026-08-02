@@ -8,7 +8,7 @@ globs:
 
 Adapted from [bulletproof-react](https://github.com/alan2207/bulletproof-react) and Kame Homes PMA. **Vite + React SPA** (`ui/`) + **Supabase edge functions** (`supabase/functions/`).
 
-Full map + migration log: **`docs/reference/project-structure.md`**.
+Full map + migration log: **`docs/archive/reference/project-structure.md`**.
 
 ## Layer flow
 
@@ -77,7 +77,7 @@ Use only subfolders needed. **No barrel `index.ts` re-exports** across features.
 | Theme                  | `ui/src/lib/theme/`                     |
 | `cn()` helper          | `ui/src/lib/utils.ts`                   |
 
-Full map: **`docs/reference/project-structure.md`**.
+Full map: **`docs/archive/reference/project-structure.md`**.
 
 ## Public vs dashboard routes
 
@@ -93,7 +93,7 @@ Legacy flat paths (`/bookings`, `/finance`) redirect via `LegacyAdminRedirect`.
 1. `features/guest/{name}/` or `features/dashboard/{name}/`.
 2. Wire routes in parent context router.
 3. Route guide in `docs/guides/routes/`.
-4. Update `docs/reference/project-structure.md` if structure changes.
+4. Update `docs/archive/reference/project-structure.md` if structure changes.
 
 ## Don'ts
 

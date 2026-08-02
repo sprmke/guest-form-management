@@ -4,39 +4,43 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Always-on rules (core — loaded every session)
 
+Keep this list **small**. Heavy domain specs use globs.
+
 | File                            | Purpose                                               |
 | ------------------------------- | ----------------------------------------------------- |
-| `project-context.mdc`           | Stack, doc index, where to edit                       |
+| `project-context.mdc`           | Lean stack + doc index + where-to-edit pointers       |
+| `ai-usage.mdc`                  | Session hygiene, model routing, subagent discipline   |
 | `documentation-maintenance.mdc` | Sync docs with code                                   |
-| `booking-workflow.mdc`          | Status machine, transitions, emails, calendar         |
-| `admin-auth.mdc`                | Allow list, JWT, route guards, dev controls           |
-| `mobile-responsive.mdc`         | Breakpoints, touch targets, admin shell               |
 | `ui-minimal-copy.mdc`           | No extra UI prose                                     |
-| `competitive-ux-research.mdc`   | Airbnb + PMS UX research before features              |
 | `superpowers-opt-in.mdc`        | Superpowers opt-in only (see `/superpowers-*`)        |
 | `git-commits.mdc`               | No Cursor author/co-author in commits                 |
 | `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
 | `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP     |
+| `route-guides.mdc`              | Page behavior docs must stay in sync                  |
 
 ## Conditional rules (by file glob — loaded when relevant)
 
-| File                          | Globs / topic                                                       |
-| ----------------------------- | ------------------------------------------------------------------- |
-| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router                                    |
-| `architecture.mdc`            | Feature folders, imports, tooling                                   |
-| `naming-conventions.mdc`      | File naming                                                         |
-| `components.mdc`              | `*.tsx` — shadcn, theme, structure                                  |
-| `state-management.mdc`        | `hooks/`, TanStack Query v5                                         |
-| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod                                    |
-| `security.mdc`                | Edge auth, org/property RBAC                                        |
-| `public-ui.mdc`               | Guest form, calendar, sd-form                                       |
-| `supabase-platform.mdc`       | Migrations, env, Storage                                            |
-| `supabase-edge-functions.mdc` | `supabase/functions/**`                                             |
-| `accessibility.mdc`           | WCAG for UI                                                         |
-| `route-guides.mdc`            | Page behavior docs                                                  |
-| `plan-mode.mdc`               | Plan mode — save finished plans to `docs/planning/planned_modules/` |
-| `github-issues.mdc`           | GitHub Issues backlog + shipped archive                             |
-| `social-inbox.mdc`            | Meta inbox                                                          |
+| File                          | Globs / topic                                               |
+| ----------------------------- | ----------------------------------------------------------- |
+| `booking-workflow.mdc`        | Booking status, orchestrator, guest form / bookings UI      |
+| `admin-auth.mdc`              | JWT allow list, org/property auth surfaces                  |
+| `competitive-ux-research.mdc` | Material UX only (skip polish/bugs)                         |
+| `mobile-responsive.mdc`       | `ui/src/**` — breakpoints, touch targets, admin shell       |
+| `tech-stack.mdc`              | `ui/**`, Vite, Bun, React Router                            |
+| `architecture.mdc`            | Feature folders, imports, tooling                           |
+| `naming-conventions.mdc`      | File naming                                                 |
+| `components.mdc`              | `*.tsx` — shadcn, theme, structure                          |
+| `state-management.mdc`        | `hooks/`, TanStack Query v5                                 |
+| `forms.mdc`                   | `*Form*`, `schemas/` — RHF + Zod                            |
+| `security.mdc`                | Edge auth, org/property RBAC                                |
+| `public-ui.mdc`               | Guest form, calendar, sd-form                               |
+| `supabase-platform.mdc`       | Migrations, env, Storage                                    |
+| `supabase-edge-functions.mdc` | `supabase/functions/**`                                     |
+| `accessibility.mdc`           | WCAG for UI                                                 |
+| `plan-mode.mdc`               | Plan mode — save finished plans to `docs/workflow/planned/` |
+| `workflow-docs.mdc`           | Workflow lifecycle — in-progress tracking, no silent moves  |
+| `github-issues.mdc`           | GitHub Issues backlog + shipped archive                     |
+| `social-inbox.mdc`            | Meta inbox                                                  |
 
 ## Skills (`.cursor/skills/` — invoke `/name` or agent decides)
 
@@ -65,30 +69,34 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ### UI & quality
 
-| Skill                     | Use for                                                                                                           |
-| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `competitive-ux-research` | Airbnb + PMS flow research before UI/features                                                                     |
-| `frontend-design`         | Layout, visual patterns                                                                                           |
-| `component-generator`     | New components                                                                                                    |
-| `tanstack-table`          | Admin list tables                                                                                                 |
-| `accessibility`           | WCAG deep patterns                                                                                                |
-| `minimal-ui-copy`         | Sparse copy                                                                                                       |
-| `route-guides`            | `docs/guides/routes/*`                                                                                            |
-| `performance`             | Vite bundle, query tuning                                                                                         |
-| `batch-commit`            | Daily N commits × 5–10 files (not whole tree)                                                                     |
-| `github-issues`           | GitHub Issues — view, create, ship                                                                                |
-| `mobile-responsive`       | Breakpoints, touch targets, admin shell — same content as the always-on `.mdc`, invocable on the Claude Code side |
+| Skill                     | Use for                                                                                        |
+| ------------------------- | ---------------------------------------------------------------------------------------------- |
+| `competitive-ux-research` | Material UX only — Airbnb + PMS before new flows                                               |
+| `frontend-design`         | Layout, visual patterns                                                                        |
+| `component-generator`     | New components                                                                                 |
+| `tanstack-table`          | Admin list tables                                                                              |
+| `accessibility`           | WCAG deep patterns                                                                             |
+| `minimal-ui-copy`         | Sparse copy                                                                                    |
+| `route-guides`            | `docs/guides/routes/*`                                                                         |
+| `performance`             | Vite bundle, query tuning                                                                      |
+| `batch-commit`            | Daily N commits × 5–10 files (not whole tree)                                                  |
+| `github-issues`           | GitHub Issues — view, create, ship                                                             |
+| `workflow`                | Workflow docs lifecycle — start/done, in-progress tracking                                     |
+| `superpowers`             | Superpowers opt-in — save plans/specs to `docs/workflow/`                                      |
+| `mobile-responsive`       | Breakpoints, touch targets — same content as the glob rule; invoke on Claude Code for UI tasks |
 
 **No dedicated skill yet** (fall back to `docs-first` + `docs/PROJECT.md` directly): Finance module, Maintenance module, Marketing Studio (AI captions/video/Meta publish), Guest Inbox AI suggestions, guest portal (authenticated guest profile/trips), pricing calendars, super-admin platform ops (`/admin/*`, developments, hosts), org verification (base/enhanced tiers). These are real, shipped parts of the app — don't assume they don't exist just because there's no skill card for them yet.
 
 ## Subagents (`.cursor/agents/`)
 
-| Agent              | Use for                       |
-| ------------------ | ----------------------------- |
-| `verifier`         | Confirm work complete         |
-| `debugger`         | Failures, errors              |
-| `security-auditor` | Auth, secrets, guest PII      |
-| `test-runner`      | `type-check`, `lint`, `build` |
+| Agent              | Model   | Use for                       |
+| ------------------ | ------- | ----------------------------- |
+| `verifier`         | `fast`  | Confirm work complete         |
+| `debugger`         | inherit | Failures, errors              |
+| `security-auditor` | inherit | Auth, secrets, guest PII      |
+| `test-runner`      | `fast`  | `type-check`, `lint`, `build` |
+
+Do **not** spawn Explore / Plan subagents by default — see `ai-usage.mdc`.
 
 ## Hooks (`.cursor/hooks.json`)
 
@@ -99,10 +107,11 @@ Agent context for **Vite + React + Supabase Edge Functions**. Adapted from [prop
 
 ## Token budget
 
-- **Always-on** = 9 rules (booking + auth + competitive UX + superpowers opt-in + prod-deploy guard are domain-critical).
-- **Everything else** = globs or skills on demand.
+- **Always-on** ≈ lean context + hygiene (`project-context`, `ai-usage`, docs/copy/git/deploy guards). Target **well under 15k tokens**.
+- **Heavy specs** (`booking-workflow`, `admin-auth`, `mobile-responsive`, competitive UX) = **globs** or skills on demand.
 - Per-route detail → `docs/guides/routes/`, not rules.
 - **Skipped from PMA:** `thinking-framework` (too heavy), Drizzle, tRPC, Next.js, React Email monorepo, AWS S3, Zustand.
+- Avoid `ui-ux-pro-max` unless the user asks for a full design-system pass.
 
 ## PMA parity map
 

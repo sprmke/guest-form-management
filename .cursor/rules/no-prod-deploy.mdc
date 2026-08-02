@@ -21,7 +21,7 @@ When the user **has** said **`kamewave`** in the current request:
 
 - You may run **only** the specific prod operation they asked for.
 - Include **`kamewave`** in the shell command string so hooks allow it (e.g. `KAMEWAVE=kamewave bun run deploy:supabase`).
-- Still remind them of **`docs/operations/production-deployment.md`** (backup, diff, checklist) before executing.
+- Still remind them of **`docs/archive/operations/production-deployment.md`** (backup, diff, checklist) before executing.
 
 If they ask for prod deploy **without** **`kamewave`**, refuse briefly and tell them to say **`kamewave`** when they are ready.
 
@@ -59,7 +59,7 @@ Also **do not**:
 ## Agent behavior checklist
 
 1. Prefer **local** verification: `./dev.sh`, `bun run db:migrate`, curl local functions.
-2. When prod deploy is eventually needed, **stop** and point to **`docs/operations/production-deployment.md`** + **`docs/operations/migration-runbook.md`** § production — do not skip backup/diff steps.
+2. When prod deploy is eventually needed, **stop** and point to **`docs/archive/operations/production-deployment.md`** + **`docs/archive/operations/migration-runbook.md`** § production — do not skip backup/diff steps.
 3. Never chain prod deploy after unrelated tasks (“while we’re here, let’s push migrations”).
 4. Subagents (`test-runner`, `deployment-expert`, etc.) inherit this rule.
 
@@ -69,5 +69,5 @@ Also **do not**:
 
 ## Related docs
 
-- **`docs/operations/production-deployment.md`** — prod cutover checklist
-- **`docs/operations/migration-runbook.md`** — § applying to production
+- **`docs/archive/operations/production-deployment.md`** — prod cutover checklist
+- **`docs/archive/operations/migration-runbook.md`** — § applying to production
