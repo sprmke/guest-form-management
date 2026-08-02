@@ -11,6 +11,26 @@ export function dateKey(date: Date): string {
 }
 
 /**
+ * Set or clear per-date overrides. When `price` equals that night's base rate
+ * (weekday/weekend/holiday without an override), the override is removed so the
+ * cell is not marked custom.
+ */
+export function mergeDateRateOverrides(
+  existing: Map<string, number>,
+  dates: Date[],
+  price: number,
+  baseRateForDate: (date: Date) => number
+): Map<string, number> {
+  const next = new Map(existing);
+  for (const date of dates) {
+    const key = dateKey(date);
+    if (price === baseRateForDate(date)) next.delete(key);
+    else next.set(key, price);
+  }
+  return next;
+}
+
+/**
  * Groups a (possibly non-contiguous) set of dates into `[startDate, endDate)` night
  * ranges, checkout-exclusive like bookings. Used to submit `blockRange` per contiguous run.
  */

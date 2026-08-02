@@ -25,7 +25,6 @@ type Props = {
   suggestedPrice: number;
   newPrice: string;
   onNewPriceChange: (value: string) => void;
-  onClearSelection: () => void;
   onResetToDefault: () => void;
   onApply: () => void;
   onBlock?: () => void;
@@ -66,7 +65,6 @@ export function PricingDateModal({
   suggestedPrice,
   newPrice,
   onNewPriceChange,
-  onClearSelection,
   onResetToDefault,
   onApply,
   onBlock,
@@ -168,20 +166,11 @@ export function PricingDateModal({
           </div>
         ) : null}
 
-        <DialogFooter className="border-border/60 bg-muted/20 flex-col gap-2 border-t px-4 py-4 sm:flex-row sm:justify-between sm:px-5">
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-[44px] w-full sm:w-auto"
-            onClick={onClearSelection}
-            disabled={saving}
-          >
-            Cancel
-          </Button>
+        <DialogFooter className="border-border/60 bg-muted/20 flex-col gap-2 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           {mode === 'blocked' && onUnblock ? (
             <Button
               type="button"
-              className="min-h-[44px] w-full sm:w-auto"
+              className="min-h-[44px] w-full sm:ml-auto sm:w-auto"
               onClick={onUnblock}
               disabled={saving}
             >
@@ -189,16 +178,7 @@ export function PricingDateModal({
               Unblock
             </Button>
           ) : (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <Button
-                type="button"
-                variant="ghost"
-                className="min-h-[44px] w-full sm:w-auto"
-                onClick={onResetToDefault}
-                disabled={saving}
-              >
-                Reset
-              </Button>
+            <>
               {onBlock ? (
                 <Button
                   type="button"
@@ -207,19 +187,33 @@ export function PricingDateModal({
                   onClick={onBlock}
                   disabled={saving}
                 >
+                  <Ban className="mr-1.5 size-4" aria-hidden />
                   Block
                 </Button>
-              ) : null}
-              <Button
-                type="button"
-                className="min-h-[44px] w-full sm:w-auto"
-                onClick={onApply}
-                disabled={!newPrice.trim() || saving}
-              >
-                {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-                Apply
-              </Button>
-            </div>
+              ) : (
+                <span className="hidden sm:block" aria-hidden />
+              )}
+              <div className="flex w-full flex-col gap-2 sm:ml-auto sm:w-auto sm:flex-row">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  onClick={onResetToDefault}
+                  disabled={saving}
+                >
+                  Reset
+                </Button>
+                <Button
+                  type="button"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  onClick={onApply}
+                  disabled={!newPrice.trim() || saving}
+                >
+                  {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
+                  Apply
+                </Button>
+              </div>
+            </>
           )}
         </DialogFooter>
       </DialogContent>

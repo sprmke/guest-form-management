@@ -5,6 +5,8 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
+import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
 import { PricingDateModal } from '@/features/dashboard/pricing/components/PricingDateModal';
 import { PricingRatesFormCard } from '@/features/dashboard/pricing/components/PricingRatesFormCard';
@@ -18,13 +20,21 @@ import { findHolidayRuleForDate } from '@/features/dashboard/pricing/lib/phHolid
 import {
   contiguousDateRanges,
   dateKey,
+  mergeDateRateOverrides,
 } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import {
   propertyPricingDefaultsFromDto,
+  resolveBookingAverageNightly,
+  resolveBookingNightlyForDate,
+  resolveBookingRateTotal,
   resolveNightlyRateForDate,
   resolveHolidayRules,
+  type PropertyPricingDefaults,
 } from '@/features/dashboard/pricing/lib/pricingCompute';
-import type { PropertyPricingDto } from '@/features/dashboard/pricing/lib/propertyPricingApi';
+import type {
+  PropertyPricingCalendarBooking,
+  PropertyPricingDto,
+} from '@/features/dashboard/pricing/lib/propertyPricingApi';
 import {
   DEFAULT_WEEKDAY_NIGHTLY_RATE,
   DEFAULT_WEEKEND_NIGHTLY_RATE,
@@ -45,13 +55,9 @@ import {
 } from '@/features/dashboard/pricing/lib/pricingSave';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
+import { formatMoneyCompact } from '@/utils/format/currency';
 
-type Props = {
-  /** Rendered inside PropertyCalendarPage's Pricing tab — omit the page title/header. */
-  embedded?: boolean;
-};
-
-export function PropertyPricingPage({ embedded = false }: Props = {}) {
+export function PropertyPricingPage() {
   const { data: access } = usePropertyPermissions();
   const permissions = access?.permissions;
   const canEdit = hasPropertyPermission(permissions, 'pricing:edit');
@@ -80,6 +86,10 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [newPrice, setNewPrice] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<PropertyPricingCalendarBooking | null>(
+    null
+  );
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const hydratedRef = useRef(false);
   const baselineRef = useRef<PricingFormBaseline | null>(null);
 
@@ -104,29 +114,66 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
     hydratedRef.current = true;
   }, [pricingData, hasChanges, syncBaselineFromDto]);
 
+  const calendarBookings = pricingData?.calendarBookings ?? [];
+
+  const pricingDefaults = useMemo((): PropertyPricingDefaults => {
+    return {
+      weekdayNightlyRate: weekdayRate,
+      weekendNightlyRate: weekendRate,
+      downPayment: 0,
+      securityDeposit: 0,
+      petFee: 0,
+      parkingRateGuest: 0,
+      guestAdditionalFee: 0,
+    };
+  }, [weekdayRate, weekendRate]);
+
+  const dateOverridesRecord = useMemo(
+    () => Object.fromEntries(customDatePrices.entries()),
+    [customDatePrices]
+  );
+
+  const nightlyRateOptions = useMemo(
+    () => ({
+      dateOverrides: dateOverridesRecord,
+      holidayRules: holidayRuleDtos,
+    }),
+    [dateOverridesRecord, holidayRuleDtos]
+  );
+
+  const bookingsByDay = useMemo(
+    () =>
+      buildOccupancyByDay(
+        calendarBookings,
+        (row) => row.check_in_date,
+        (row) => row.check_out_date
+      ),
+    [calendarBookings]
+  );
+
   const getPriceForDate = useCallback(
     (date: Date) => {
       const key = dateKey(date);
+      const booking = bookingsByDay.get(key)?.[0];
       const isBooked = bookedDateKeys.has(key);
       const isBlocked = blockedDateKeys.has(key);
+
+      if (booking) {
+        return {
+          price: resolveBookingNightlyForDate(booking, date, pricingDefaults, nightlyRateOptions),
+          isCustom: false as const,
+          isBooked: true,
+          isBlocked,
+        };
+      }
+
       const customPrice = customDatePrices.get(key);
       if (customPrice !== undefined) {
         return { price: customPrice, isCustom: true as const, isBooked, isBlocked };
       }
 
-      const defaults = {
-        weekdayNightlyRate: weekdayRate,
-        weekendNightlyRate: weekendRate,
-        downPayment: 0,
-        securityDeposit: 0,
-        petFee: 0,
-        parkingRateGuest: 0,
-        guestAdditionalFee: 0,
-      };
       const rule = findHolidayRuleForDate(date, resolveHolidayRules(holidayRuleDtos));
-      const price = resolveNightlyRateForDate(date, defaults, {
-        holidayRules: holidayRuleDtos,
-      });
+      const price = resolveNightlyRateForDate(date, pricingDefaults, nightlyRateOptions);
 
       if (rule) {
         return { price, rule, isCustom: false as const, isBooked, isBlocked };
@@ -134,8 +181,35 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
 
       return { price, isCustom: false as const, isBooked, isBlocked };
     },
-    [bookedDateKeys, blockedDateKeys, customDatePrices, holidayRuleDtos, weekdayRate, weekendRate]
+    [
+      bookingsByDay,
+      bookedDateKeys,
+      blockedDateKeys,
+      customDatePrices,
+      holidayRuleDtos,
+      pricingDefaults,
+      nightlyRateOptions,
+    ]
   );
+
+  const getBookingPillPriceLabel = useCallback(
+    (booking: PropertyPricingCalendarBooking) => {
+      const perNight = resolveBookingAverageNightly(booking, pricingDefaults, nightlyRateOptions);
+      return perNight == null ? '—' : formatMoneyCompact(perNight);
+    },
+    [pricingDefaults, nightlyRateOptions]
+  );
+
+  const getBookingDisplayTotal = useCallback(
+    (booking: PropertyPricingCalendarBooking) =>
+      resolveBookingRateTotal(booking, pricingDefaults, nightlyRateOptions),
+    [pricingDefaults, nightlyRateOptions]
+  );
+
+  const openBookingModal = useCallback((booking: PropertyPricingCalendarBooking) => {
+    setSelectedBooking(booking);
+    setBookingModalOpen(true);
+  }, []);
 
   const selectionMode = useMemo<'available' | 'blocked'>(() => {
     const first = selectedDates[0];
@@ -252,15 +326,25 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
     );
   };
 
+  const baseNightlyForDate = useCallback(
+    (date: Date) => {
+      const key = dateKey(date);
+      const overridesWithout = { ...dateOverridesRecord };
+      delete overridesWithout[key];
+      return resolveNightlyRateForDate(date, pricingDefaults, {
+        dateOverrides: overridesWithout,
+        holidayRules: holidayRuleDtos,
+      });
+    },
+    [dateOverridesRecord, pricingDefaults, holidayRuleDtos]
+  );
+
   const applyCustomPrice = () => {
     if (!newPrice.trim() || selectedDates.length === 0) return;
     const price = parseFloat(newPrice);
     if (!Number.isFinite(price) || price < 0) return;
 
-    const next = new Map(customDatePrices);
-    selectedDates.forEach((date) => {
-      next.set(format(date, 'yyyy-MM-dd'), price);
-    });
+    const next = mergeDateRateOverrides(customDatePrices, selectedDates, price, baseNightlyForDate);
     persistDateOverrides(next, clearSelection);
   };
 
@@ -385,8 +469,8 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
   const suggestedPrice = useMemo(() => {
     if (selectedDates.length === 0) return weekdayRate;
     const first = [...selectedDates].sort((a, b) => a.getTime() - b.getTime())[0];
-    return first ? getPriceForDate(first).price : weekdayRate;
-  }, [getPriceForDate, selectedDates, weekdayRate]);
+    return first ? baseNightlyForDate(first) : weekdayRate;
+  }, [baseNightlyForDate, selectedDates, weekdayRate]);
 
   if (isLoading && !hydratedRef.current) {
     return (
@@ -407,14 +491,7 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
   return (
     <>
       <div className="space-y-3 sm:space-y-4">
-        {!embedded && (
-          <AdminPageHeader
-            id="pricing-heading"
-            title="Pricing"
-            subtitle="Manage booking rates and fees for this property."
-            variant="compact"
-          />
-        )}
+        <AdminPageHeader id="calendar-heading" title="Calendar" variant="compact" />
 
         <PricingStatsRow
           weekdayRate={weekdayRate}
@@ -427,12 +504,15 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
           <PricingCalendarGrid
             currentMonth={currentMonth}
             selectedDates={selectedDates}
+            bookings={calendarBookings}
             onMonthChange={setCurrentMonth}
             onDateClick={handleDateClick}
             onDateMouseDown={handleDateMouseDown}
             onDateMouseEnter={handleDateMouseEnter}
             onSelectionEnd={handleSelectionEnd}
+            onBookingClick={openBookingModal}
             getPriceForDate={getPriceForDate}
+            getBookingPillPriceLabel={getBookingPillPriceLabel}
           />
 
           <div className="lg:sticky lg:top-5">
@@ -469,7 +549,6 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
         suggestedPrice={suggestedPrice}
         newPrice={newPrice}
         onNewPriceChange={setNewPrice}
-        onClearSelection={clearSelection}
         onResetToDefault={resetSelectedToDefault}
         onApply={applyCustomPrice}
         onBlock={blockSelected}
@@ -482,6 +561,13 @@ export function PropertyPricingPage({ embedded = false }: Props = {}) {
         onOpenChange={setSaveDialogOpen}
         saving={saveMutation.isPending}
         onConfirm={handleSaveConfirm}
+      />
+
+      <PricingCalendarBookingModal
+        booking={selectedBooking}
+        open={bookingModalOpen}
+        onOpenChange={setBookingModalOpen}
+        displayAmount={selectedBooking ? getBookingDisplayTotal(selectedBooking) : null}
       />
     </>
   );
