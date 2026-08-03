@@ -302,9 +302,9 @@ export function ContactHostSheet({
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
           showCloseButton={false}
-          className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:px-4 sm:py-3"
+          className="flex h-[min(90dvh,720px)] max-h-[min(92dvh,720px)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0"
         >
-          <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-0 pb-4 pr-0 pt-2 text-left">
+          <DialogHeader className="border-border shrink-0 gap-0 space-y-0 border-b px-5 py-4 text-left">
             {showThread ? (
               <GuestChatHeaderBar
                 avatar={hostAvatarNode}
@@ -330,7 +330,9 @@ export function ContactHostSheet({
               </div>
             )}
           </DialogHeader>
-          {showThread ? <GuestChatSearchPanelRow threadSearch={threadSearch} /> : null}
+          {showThread ? (
+            <GuestChatSearchPanelRow threadSearch={threadSearch} className="px-5" />
+          ) : null}
 
           <div className="bg-muted/20 flex min-h-0 flex-1 flex-col">
             {loading ? (
@@ -369,7 +371,7 @@ export function ContactHostSheet({
               />
             ) : (
               <div className="flex min-h-0 flex-1 flex-col justify-end">
-                <div className="border-border bg-background shrink-0 border-t px-2.5 pb-2 pt-2 sm:px-3 sm:pb-2.5">
+                <div className="border-border bg-background shrink-0 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
                   <div className="flex items-end gap-2">
                     {canComposeWithoutDates ? (
                       <>

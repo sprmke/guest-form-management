@@ -1,4 +1,6 @@
-export type AppMode = 'guest' | 'host';
+export type AppMode = 'guest' | 'host' | 'admin';
+
+export const ADMIN_MODE_ROOT = '/admin';
 
 const HOST_DASHBOARD_PREFIXES = [
   '/org/',
@@ -20,6 +22,9 @@ export function isHostDashboardPath(pathname: string): boolean {
 }
 
 export function getAppModeFromPath(pathname: string): AppMode {
+  if (pathname === ADMIN_MODE_ROOT || pathname.startsWith(`${ADMIN_MODE_ROOT}/`)) {
+    return 'admin';
+  }
   if (pathname.startsWith('/for-hosts') || isHostDashboardPath(pathname)) {
     return 'host';
   }
@@ -40,6 +45,9 @@ export function isHostAuthPath(pathname: string): boolean {
 
 /** Target path when switching app mode (auth-aware; guest auth routes are not mounted in GFM). */
 export function resolveModeSwitchPath(mode: AppMode, pathname: string): string {
+  if (mode === 'admin') {
+    return ADMIN_MODE_ROOT;
+  }
   if (mode === 'host') {
     return '/for-hosts';
   }
@@ -50,5 +58,6 @@ export function resolveModeSwitchPath(mode: AppMode, pathname: string): string {
 }
 
 export function getModeSwitchHref(mode: AppMode): string {
+  if (mode === 'admin') return ADMIN_MODE_ROOT;
   return mode === 'host' ? '/for-hosts' : '/';
 }

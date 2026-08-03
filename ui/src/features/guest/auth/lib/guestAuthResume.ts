@@ -11,6 +11,14 @@ export type GuestAuthResume =
       checkOutDate?: string;
       draft?: string;
     }
+  | {
+      type: 'booking_form_modal';
+      propertySlug: string;
+      checkInDate?: string;
+      checkOutDate?: string;
+      adults?: number;
+      children?: number;
+    }
   | { type: 'form_submit' }
   | { type: 'save_property'; propertySlug: string };
 

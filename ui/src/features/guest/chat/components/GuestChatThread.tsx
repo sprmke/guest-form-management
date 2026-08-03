@@ -494,20 +494,15 @@ export function GuestChatThread({
         )}
       </div>
 
-      <div className="border-border bg-background shrink-0 border-t px-2 pb-2 pt-0 sm:px-0 sm:pb-2.5">
+      <div className="border-border bg-background shrink-0 space-y-2 border-t px-5 py-4 pb-[max(env(safe-area-inset-bottom,0px),1rem)]">
         {peerTyping ? (
-          <p className="text-muted-foreground px-0.5 pt-2 text-xs" aria-live="polite">
+          <p className="text-muted-foreground text-xs" aria-live="polite">
             Host is typing…
           </p>
         ) : null}
         {composerBar}
         {pendingAttachments.length > 0 ? (
-          <div
-            className={cn(
-              'flex flex-wrap gap-2',
-              composerBar ? 'pt-2' : peerTyping ? 'pt-1.5' : 'pt-2.5'
-            )}
-          >
+          <div className="flex flex-wrap gap-2">
             {pendingAttachments.map((att, index) => (
               <div
                 key={`${att.url}-${index}`}
@@ -532,12 +527,7 @@ export function GuestChatThread({
             ))}
           </div>
         ) : null}
-        <div
-          className={cn(
-            'flex items-end gap-2',
-            composerBar || pendingAttachments.length > 0 ? 'pt-2' : peerTyping ? 'pt-1.5' : 'pt-4'
-          )}
-        >
+        <div className="flex items-end gap-2">
           {onUploadAttachment && composerMode.kind !== 'edit' ? (
             <>
               <input

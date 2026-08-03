@@ -20,7 +20,10 @@ import {
   takeGuestAuthResume,
   type GuestAuthResume,
 } from '@/features/guest/auth/lib/guestAuthResume';
-import { guestPropertyContactHostOpenPath } from '@/features/guest/lib/guestPublicPaths';
+import {
+  guestPropertyContactHostOpenPath,
+  guestPropertyReserveFormOpenPath,
+} from '@/features/guest/lib/guestPublicPaths';
 
 import { supabase } from '@/lib/supabase/client';
 
@@ -82,6 +85,19 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
           resume.checkInDate,
           resume.checkOutDate
         )
+      );
+      pendingActionRef.current = null;
+      return;
+    }
+
+    if (resume?.type === 'booking_form_modal') {
+      navigate(
+        guestPropertyReserveFormOpenPath(resume.propertySlug, {
+          checkInDate: resume.checkInDate,
+          checkOutDate: resume.checkOutDate,
+          adults: resume.adults,
+          children: resume.children,
+        })
       );
       pendingActionRef.current = null;
       return;
@@ -159,7 +175,14 @@ export function GuestAuthProvider({ children }: { children: ReactNode }) {
                 options.resume.checkInDate,
                 options.resume.checkOutDate
               )
-            : returnPath;
+            : options?.resume?.type === 'booking_form_modal'
+              ? guestPropertyReserveFormOpenPath(options.resume.propertySlug, {
+                  checkInDate: options.resume.checkInDate,
+                  checkOutDate: options.resume.checkOutDate,
+                  adults: options.resume.adults,
+                  children: options.resume.children,
+                })
+              : returnPath;
       setOauthRedirectPath(redirectPath);
 
       if (status === 'loading') {
