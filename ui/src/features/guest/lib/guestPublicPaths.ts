@@ -1,6 +1,10 @@
 /** Property-scoped public guest URLs (`/properties/:propertySlug/...`). */
 
-import { formatDateToYYYYMMDD } from '@/utils/format/dates';
+import {
+  formatDateToYYYYMMDD,
+  getManilaYmdToday,
+  getManilaYmdTomorrow,
+} from '@/utils/format/dates';
 
 function propertyBase(propertySlug: string): string {
   const slug = propertySlug.trim();
@@ -50,8 +54,57 @@ export function guestPropertyContactHostOpenPath(
   return withQuery(guestPropertyPath(propertySlug), params);
 }
 
+/** Re-open Guest booking form modal after OAuth (`reserveForm=open`; dates + guests optional). */
+export function guestPropertyReserveFormOpenPath(
+  propertySlug: string,
+  options?: {
+    checkInDate?: string;
+    checkOutDate?: string;
+    adults?: number;
+    children?: number;
+  }
+): string {
+  const params = new URLSearchParams();
+  params.set('reserveForm', 'open');
+  const inDate = options?.checkInDate?.trim() ?? '';
+  const outDate = options?.checkOutDate?.trim() ?? '';
+  if (inDate && outDate) {
+    params.set('checkInDate', inDate);
+    params.set('checkOutDate', outDate);
+  }
+  if (options?.adults != null && options.adults >= 1) {
+    params.set('adults', String(options.adults));
+  }
+  if (options?.children != null && options.children >= 0) {
+    params.set('children', String(options.children));
+  }
+  return withQuery(guestPropertyPath(propertySlug), params);
+}
+
 export function guestFormPath(propertySlug: string, search?: URLSearchParams | string): string {
   return withQuery(`${propertyBase(propertySlug)}/form`, search);
+}
+
+export function guestMessagesPath(propertySlug: string, search?: URLSearchParams | string): string {
+  return withQuery(`${propertyBase(propertySlug)}/messages`, search);
+}
+
+/** Host dashboard preview — inquiry dates required by PropertyChatPage (check-in today, Manila). */
+export function guestMessagesPreviewPath(propertySlug: string): string {
+  const params = new URLSearchParams();
+  params.set('checkInDate', getManilaYmdToday());
+  params.set('checkOutDate', getManilaYmdTomorrow());
+  return guestMessagesPath(propertySlug, params);
+}
+
+/** Guest SD refund form — booking link adds `?bookingId=` via `guestSdFormPath`. */
+export function guestSdFormShellPath(propertySlug: string): string {
+  return `${propertyBase(propertySlug)}/sd-form`;
+}
+
+/** Post-stay guest review — booking link adds `?bookingId=` via `guestReviewPath`. */
+export function guestReviewShellPath(propertySlug: string): string {
+  return `${propertyBase(propertySlug)}/guest-review`;
 }
 
 export type GuestChatPathOptions = {
@@ -119,13 +172,17 @@ export function guestStayGuidePreviewPath(propertySlug: string, propertyId: stri
 }
 
 export function absoluteGuestCalendarUrl(propertySlug: string): string {
-  if (typeof window === 'undefined') return guestCalendarPath(propertySlug);
-  return `${window.location.origin}${guestCalendarPath(propertySlug)}`;
+  return absoluteGuestPath(guestCalendarPath(propertySlug));
 }
 
 export function absoluteGuestPropertyUrl(propertySlug: string): string {
-  if (typeof window === 'undefined') return guestPropertyPath(propertySlug);
-  return `${window.location.origin}${guestPropertyPath(propertySlug)}`;
+  return absoluteGuestPath(guestPropertyPath(propertySlug));
+}
+
+export function absoluteGuestPath(path: string): string {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  if (typeof window === 'undefined') return normalized;
+  return `${window.location.origin}${normalized}`;
 }
 
 export function guestParkingPath(parkingSlug: string): string {
@@ -154,8 +211,7 @@ export function absoluteGuestParkingFormUrl(parkingSlug: string): string {
 }
 
 export function absoluteGuestFormUrl(propertySlug: string): string {
-  if (typeof window === 'undefined') return guestFormPath(propertySlug);
-  return `${window.location.origin}${guestFormPath(propertySlug)}`;
+  return absoluteGuestPath(guestFormPath(propertySlug));
 }
 
 /** Public host (organization) profile — guest marketing. Prefer over `/orgs/` (admin uses `/org/`). */

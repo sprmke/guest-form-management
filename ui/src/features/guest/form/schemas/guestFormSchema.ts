@@ -2,8 +2,7 @@ import * as z from 'zod';
 
 import {
   additionalGuestOrdinal,
-  AZURE_ADULT_LIMIT_MESSAGE,
-  AZURE_MAX_ADULTS,
+  buildGuestLimitMessage,
   computeGuestCounts,
   computeGuestCountsByAge,
   FIFTH_PARTY_GUEST_MAX_AGE,
@@ -14,6 +13,10 @@ import {
   requiresValidId,
   VALID_ID_MIN_AGE,
 } from '@/features/guest/form/lib/guestCounts';
+import {
+  GUEST_FORM_DEFAULT_CHECK_IN_TIME,
+  GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
+} from '@/features/guest/form/lib/guestFormPropertyDefaults';
 
 import { getDefaultDates, formatDateToYYYYMMDD } from '@/utils/format/dates';
 import { validateName } from '@/utils/text/helpers';
@@ -44,13 +47,27 @@ const PARTY_AGE_FIELD_BY_POSITION = [
   'guest5Age',
 ] as const;
 
-function buildGuestFormSchema(isAirbnb: boolean) {
+export type GuestFormSchemaOptions = {
+  isAirbnb: boolean;
+  allowParking: boolean;
+  allowPets: boolean;
+  allowSurpriseDecor: boolean;
+  maxAdults: number;
+  maxChildren: number;
+};
+
+function buildGuestFormSchema(options: GuestFormSchemaOptions) {
+  const { isAirbnb, allowParking, allowPets, allowSurpriseDecor, maxAdults, maxChildren } = options;
+  const guestCapacity = { maxAdults, maxChildren };
+  const adultLimitMessage = buildGuestLimitMessage(guestCapacity, MAX_GUESTS);
+  const guestFacebookNameMessage = isAirbnb
+    ? 'Your Airbnb name is required'
+    : 'Your name is required';
+
   return z
     .object({
       // Required fields
-      guestFacebookName: z
-        .string()
-        .min(1, isAirbnb ? 'Your Airbnb name is required' : 'Your Facebook name is required'),
+      guestFacebookName: z.string().min(1, guestFacebookNameMessage),
       primaryGuestName: z
         .string()
         .min(1, 'Primary guest name is required')
@@ -87,11 +104,14 @@ function buildGuestFormSchema(isAirbnb: boolean) {
       findUs: z.string().min(1, 'Please tell us how you found us'),
 
       // Required fields with defaults
-      checkInTime: z.string().min(1, 'Please select your preferred check-in time').default('14:00'),
+      checkInTime: z
+        .string()
+        .min(1, 'Please select your preferred check-in time')
+        .default(GUEST_FORM_DEFAULT_CHECK_IN_TIME),
       checkOutTime: z
         .string()
         .min(1, 'Please select your preferred check-out time')
-        .default('11:00'),
+        .default(GUEST_FORM_DEFAULT_CHECK_OUT_TIME),
       nationality: z.string().min(1, 'Please select your nationality').default('Filipino'),
       numberOfAdults: z
         .number()
@@ -169,11 +189,11 @@ function buildGuestFormSchema(isAirbnb: boolean) {
       guest4ValidId: z.instanceof(File).optional(),
       guest5ValidId: z.instanceof(File).optional(),
 
-      // Unit and owner information with defaults
-      unitOwner: z.string().default('Arianna Perez'),
-      towerAndUnitNumber: z.string().default('Monaco 2604'),
-      ownerOnsiteContactPerson: z.string().default('Arianna Perez'),
-      ownerContactNumber: z.string().default('0962 541 2941'),
+      // Unit and owner information — populated from property settings on load
+      unitOwner: z.string().default(''),
+      towerAndUnitNumber: z.string().default(''),
+      ownerOnsiteContactPerson: z.string().default(''),
+      ownerContactNumber: z.string().default(''),
     })
     .superRefine((data, ctx) => {
       const guestSlots = [
@@ -225,10 +245,10 @@ function buildGuestFormSchema(isAirbnb: boolean) {
         });
       }
 
-      if (azureAgeCounts.adults > AZURE_MAX_ADULTS) {
+      if (azureAgeCounts.adults > maxAdults) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: AZURE_ADULT_LIMIT_MESSAGE,
+          message: adultLimitMessage,
           path: ['primaryGuestAge'],
         });
       }
@@ -423,17 +443,17 @@ function buildGuestFormSchema(isAirbnb: boolean) {
           });
         }
       }
-    });
+    })
+    .transform((data) => ({
+      ...data,
+      needParking: allowParking ? data.needParking : false,
+      hasPets: allowPets ? data.hasPets : false,
+      guestRequestsSurpriseDecor: allowSurpriseDecor ? data.guestRequestsSurpriseDecor : false,
+    }));
 }
 
-/** Default (Facebook) schema — used by admin helpers and non-Airbnb guest form. */
-export const guestFormSchema = buildGuestFormSchema(false);
-
-/** Airbnb schema — paymentReceipt is optional. */
-const guestFormSchemaAirbnb = buildGuestFormSchema(true);
-
-export function createGuestFormSchema(isAirbnb: boolean) {
-  return isAirbnb ? guestFormSchemaAirbnb : guestFormSchema;
+export function createGuestFormSchema(options: GuestFormSchemaOptions) {
+  return buildGuestFormSchema(options);
 }
 
-export type GuestFormData = z.infer<typeof guestFormSchema>;
+export type GuestFormData = z.infer<ReturnType<typeof createGuestFormSchema>>;

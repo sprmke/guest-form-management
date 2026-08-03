@@ -1,7 +1,11 @@
 import { CalendarDays, Car, FileText, PawPrint, User } from 'lucide-react';
 
+import { formatParkingStepHint } from '@/features/guest/form/lib/guestFormBranding';
 import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
-import { createGuestFormSchema } from '@/features/guest/form/schemas/guestFormSchema';
+import {
+  createGuestFormSchema,
+  type GuestFormSchemaOptions,
+} from '@/features/guest/form/schemas/guestFormSchema';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -13,6 +17,10 @@ export type GuestFormStepConfig = {
   label: string;
   hint: string;
   icon: LucideIcon;
+};
+
+export type GuestFormVisibilityFlags = GuestFormSchemaOptions & {
+  residenceName: string | null;
 };
 
 const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
@@ -34,7 +42,7 @@ const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
     id: 3,
     short: 'Parking',
     label: 'Parking',
-    hint: 'Optional paid parking inside Azure',
+    hint: 'Optional paid parking',
     icon: Car,
   },
   {
@@ -53,15 +61,25 @@ const ALL_GUEST_FORM_STEPS: GuestFormStepConfig[] = [
   },
 ];
 
-/** Airbnb skips the Payment step (step 5). */
-const AIRBNB_GUEST_FORM_STEPS = ALL_GUEST_FORM_STEPS.slice(0, 4);
-
-export function getGuestFormSteps(isAirbnb: boolean): GuestFormStepConfig[] {
-  return isAirbnb ? AIRBNB_GUEST_FORM_STEPS : ALL_GUEST_FORM_STEPS;
+function buildVisibleSteps(flags: GuestFormVisibilityFlags): GuestFormStepConfig[] {
+  return ALL_GUEST_FORM_STEPS.filter((step) => {
+    if (step.id === 3) return flags.allowParking;
+    if (step.id === 4) return flags.allowPets;
+    if (step.id === 5) return !flags.isAirbnb;
+    return true;
+  });
 }
 
-export function getGuestFormStepCount(isAirbnb: boolean): number {
-  return isAirbnb ? AIRBNB_GUEST_FORM_STEPS.length : ALL_GUEST_FORM_STEPS.length;
+export function getGuestFormSteps(flags: GuestFormVisibilityFlags): GuestFormStepConfig[] {
+  return buildVisibleSteps(flags).map((step) =>
+    step.id === 3 && flags.residenceName
+      ? { ...step, hint: formatParkingStepHint(flags.residenceName) }
+      : step
+  );
+}
+
+export function getGuestFormStepCount(flags: GuestFormVisibilityFlags): number {
+  return buildVisibleSteps(flags).length;
 }
 
 function stayNightCount(values: GuestFormData): number {
@@ -181,8 +199,8 @@ export function getFieldsForGuestFormStep(
   }
 }
 
-export function clampGuestFormStep(step: number, isAirbnb = false): GuestFormStepId {
-  const max = getGuestFormStepCount(isAirbnb);
+export function clampGuestFormStep(step: number, flags: GuestFormVisibilityFlags): GuestFormStepId {
+  const max = getGuestFormStepCount(flags);
   return Math.min(max, Math.max(1, step)) as GuestFormStepId;
 }
 
@@ -190,10 +208,10 @@ export function clampGuestFormStep(step: number, isAirbnb = false): GuestFormSte
 export function isGuestFormStepComplete(
   step: GuestFormStepId,
   values: GuestFormData,
-  isAirbnb = false
+  flags: GuestFormVisibilityFlags
 ): boolean {
   const stepFields = new Set(getFieldsForGuestFormStep(step, values));
-  const schema = createGuestFormSchema(isAirbnb);
+  const schema = createGuestFormSchema(flags);
   const result = schema.safeParse(values);
   if (result.success) return true;
 
