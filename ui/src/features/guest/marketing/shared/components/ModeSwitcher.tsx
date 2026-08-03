@@ -1,30 +1,45 @@
+import { useMemo } from 'react';
+
 import { useLocation } from 'react-router-dom';
 
-import { Building2, Compass } from 'lucide-react';
+import { Building2, Compass, Shield } from 'lucide-react';
 
+import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
 import { getAppModeFromPath, type AppMode } from '@/features/guest/auth/config/mode-switch';
 import { useModeSwitchTransition } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
 
+import { isSuperAdminEmail } from '@/lib/auth/superAdminAllowList';
 import { cn } from '@/lib/utils';
+
+import type { LucideIcon } from 'lucide-react';
 
 type Props = {
   className?: string;
   collapsed?: boolean;
 };
 
-const MODES: Array<{
+type ModeOption = {
   value: AppMode;
   label: string;
-  Icon: typeof Compass;
-}> = [
+  Icon: LucideIcon;
+};
+
+const BASE_MODES: ModeOption[] = [
   { value: 'guest', label: 'Explore', Icon: Compass },
   { value: 'host', label: 'Host', Icon: Building2 },
 ];
 
+const ADMIN_MODE: ModeOption = { value: 'admin', label: 'Admin', Icon: Shield };
+
 export function ModeSwitcher({ className, collapsed = false }: Props) {
   const { pathname } = useLocation();
+  const { email } = useAdminSession();
   const mode = getAppModeFromPath(pathname);
   const { switchMode, isTransitioning } = useModeSwitchTransition();
+  const modes = useMemo(
+    () => (isSuperAdminEmail(email) ? [...BASE_MODES, ADMIN_MODE] : BASE_MODES),
+    [email]
+  );
 
   const switchTo = (target: AppMode) => {
     if (target === mode || isTransitioning) return;
@@ -32,21 +47,25 @@ export function ModeSwitcher({ className, collapsed = false }: Props) {
   };
 
   if (collapsed) {
-    const other = MODES.find((m) => m.value !== mode) ?? MODES[1]!;
-    const OtherIcon = other.Icon;
+    const currentIndex = Math.max(
+      0,
+      modes.findIndex((entry) => entry.value === mode)
+    );
+    const next = modes[(currentIndex + 1) % modes.length]!;
+    const NextIcon = next.Icon;
     return (
       <button
         type="button"
-        onClick={() => switchTo(other.value)}
+        onClick={() => switchTo(next.value)}
         disabled={isTransitioning}
         className={cn(
           'text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors disabled:pointer-events-none disabled:opacity-60',
           className
         )}
-        aria-label={`Switch to ${other.label}`}
-        title={`Switch to ${other.label}`}
+        aria-label={`Switch to ${next.label}`}
+        title={`Switch to ${next.label}`}
       >
-        <OtherIcon className="size-5 shrink-0" aria-hidden />
+        <NextIcon className="size-5 shrink-0" aria-hidden />
       </button>
     );
   }
@@ -60,7 +79,7 @@ export function ModeSwitcher({ className, collapsed = false }: Props) {
       role="group"
       aria-label="App mode"
     >
-      {MODES.map(({ value, label, Icon }) => {
+      {modes.map(({ value, label, Icon }) => {
         const active = mode === value;
         return (
           <button
@@ -71,7 +90,7 @@ export function ModeSwitcher({ className, collapsed = false }: Props) {
             aria-pressed={active}
             aria-label={label}
             className={cn(
-              'flex min-h-[36px] flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-60',
+              'flex min-h-[36px] flex-1 items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-semibold transition-colors disabled:pointer-events-none disabled:opacity-60',
               active
                 ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
@@ -79,7 +98,7 @@ export function ModeSwitcher({ className, collapsed = false }: Props) {
             title={label}
           >
             <Icon className="size-3.5 shrink-0" aria-hidden />
-            <span>{label}</span>
+            <span className="truncate">{label}</span>
           </button>
         );
       })}

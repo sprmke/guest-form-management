@@ -6,6 +6,11 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import {
+  useGuestPaymentInfo,
+  DEFAULT_GUEST_PAYMENT_INFO,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBranding';
 import { PayParkingOwnerEmailDialog } from '@/features/guest/pay-parking/components/PayParkingOwnerEmailDialog';
 import {
   PayParkingIntro,
@@ -19,7 +24,7 @@ import { isLastMinutePayParkingRequest } from '@/features/guest/pay-parking/lib/
 import { payParkingVehicleSchema } from '@/features/guest/pay-parking/lib/payParkingSchema';
 import type { PayParkingVehicleValues } from '@/features/guest/pay-parking/lib/payParkingSchema';
 
-import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { PayParkingPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +41,8 @@ export function PayParkingPage() {
   const { bookingId: routeBookingId } = useParams<{ bookingId: string }>();
   const [searchParams] = useSearchParams();
   const bookingId = (routeBookingId ?? searchParams.get('bookingId') ?? '').trim();
+  const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
+  const brandHeader = pickGuestBrandHeaderProps(guestBrand);
 
   const isAdminMode = searchParams.get('admin') === 'true';
 
@@ -137,11 +144,10 @@ export function PayParkingPage() {
   if (!bookingId) {
     return (
       <div className={cn(PAY_PARKING_SHELL, 'text-center')}>
-        <KameFormBrandHeader title={PAY_PARKING_BRAND_TITLE} />
         <div className="space-y-3">
           <h1 className="text-foreground text-base font-bold">Missing booking link</h1>
           <p className="text-muted-foreground text-sm">
-            Use the link your host sent, or contact us on Facebook for help.
+            Use the link your host sent, or contact your host for help.
           </p>
           <Button asChild variant="outline" className="min-h-[44px]">
             <Link to="/">Back to home</Link>
@@ -158,7 +164,6 @@ export function PayParkingPage() {
   if (query.isError || !query.data) {
     return (
       <div className={cn(PAY_PARKING_SHELL, 'text-center')}>
-        <KameFormBrandHeader title={PAY_PARKING_BRAND_TITLE} />
         <div className="space-y-3">
           <h1 className="text-foreground text-base font-bold">Form not available</h1>
           <p className="text-muted-foreground text-sm">
@@ -174,14 +179,12 @@ export function PayParkingPage() {
   }
 
   const data = query.data;
-  const brandLogo = data.email_logo_url;
   const emailChoiceVariant = data.already_submitted ? 'update' : 'submit';
   const showLastMinuteParkingWarning = isLastMinutePayParkingRequest(data.parking_check_in_date);
 
   if (submitted) {
     return (
       <div className={cn(PAY_PARKING_SHELL, 'text-center')}>
-        <KameFormBrandHeader title={PAY_PARKING_BRAND_TITLE} logoSrc={brandLogo} />
         <div className="mx-auto flex w-4/6 flex-col items-center gap-5">
           <div className="bg-primary/15 text-primary flex size-14 shrink-0 items-center justify-center rounded-full">
             <Check className="size-7" strokeWidth={2.5} aria-hidden />
@@ -211,7 +214,9 @@ export function PayParkingPage() {
                 Vehicle details saved. No parking broadcast email was sent.
               </p>
             )}
-            {showLastMinuteParkingWarning ? <PayParkingLastMinuteWarning /> : null}
+            {showLastMinuteParkingWarning ? (
+              <PayParkingLastMinuteWarning residenceName={guestBrand.residenceName} />
+            ) : null}
           </div>
           <Button asChild className="mt-3 min-h-[44px] w-full min-w-[44px] sm:w-auto">
             {isAdminMode && <Link to={`/bookings/${bookingId}`}>Back to booking</Link>}
@@ -223,8 +228,7 @@ export function PayParkingPage() {
 
   return (
     <div className={PAY_PARKING_SHELL}>
-      <KameFormBrandHeader title={PAY_PARKING_BRAND_TITLE} logoSrc={brandLogo} />
-
+      <GuestFormBrandHeader {...brandHeader} title={PAY_PARKING_BRAND_TITLE} />
       <PayParkingIntro data={data} />
       <PayParkingRateCard data={data} />
 

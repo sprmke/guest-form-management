@@ -61,7 +61,7 @@ export function ListingPlaceMeta({
       {geo ? (
         <>
           {showDotBeforeGeo ? <MetaDot /> : null}
-          <span className="inline-flex items-center gap-1 align-middle">{geo}</span>
+          <span className="inline-flex items-center gap-1">{geo}</span>
         </>
       ) : null}
     </motion.p>

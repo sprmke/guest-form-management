@@ -1,6 +1,7 @@
 import { AlertCircle, CalendarDays, Car, ParkingCircle, type LucideIcon } from 'lucide-react';
 
 import type { PayParkingBootstrap } from '@/features/guest/pay-parking/lib/api';
+import { formatPayParkingLastMinuteWarning } from '@/features/guest/form/lib/guestFormBranding';
 
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 import { formatMoney } from '@/utils/format/currency';
@@ -98,14 +99,14 @@ function PayParkingDetailsCard({ data }: { data: PayParkingBootstrap }) {
 /** @deprecated Use PayParkingDetailsCard */
 export const PayParkingRateCard = PayParkingDetailsCard;
 
-export function PayParkingLastMinuteWarning() {
+export function PayParkingLastMinuteWarning({ residenceName }: { residenceName?: string | null }) {
   return (
     <p
       className="mt-3 flex gap-2 rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-left text-sm leading-relaxed text-amber-950/90"
       role="alert"
     >
       <AlertCircle className="mt-0.5 size-4 shrink-0 text-amber-600" aria-hidden />
-      <span>Last-minute parking may take longer—paid slots inside Azure are limited.</span>
+      <span>{formatPayParkingLastMinuteWarning(residenceName ?? null)}</span>
     </p>
   );
 }

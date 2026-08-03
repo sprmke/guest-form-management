@@ -131,6 +131,8 @@ export type ResolvedPropertyDetail = {
   bedrooms: number;
   bathrooms: number;
   guests: number;
+  maxAdults: number;
+  maxChildren: number;
   amenities: string[];
   images: string[];
   media: PublicPropertyMedia[];
