@@ -30,6 +30,7 @@
     "dev": "./dev.sh",
     "dev:ui": "cd ui && bun run dev",
     "dev:api": "bash -c './scripts/dev/build-local-functions-env.sh >/dev/null && ./scripts/dev/bunx --bun supabase@latest functions serve --env-file ./supabase/.temp/functions-serve.env'",
+    "dev:remote-api": "./scripts/dev/run-remote-functions-serve.sh",
     "start:supabase": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest start",
     "status:supabase": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest status",
     "stop:supabase": "./scripts/dev/run-with-ui-dev-env.sh ./scripts/dev/bunx --bun supabase@latest stop",
@@ -42,7 +43,8 @@
     "build": "bun run build:ui",
     "deploy:supabase": "./scripts/deploy/deploy-supabase.sh",
     "deploy:supabase:db": "./scripts/deploy/deploy-supabase.sh --db-only",
-    "deploy:supabase:functions": "./scripts/deploy/deploy-supabase.sh --functions-only"
+    "deploy:supabase:functions": "./scripts/deploy/deploy-supabase.sh --functions-only",
+    "deploy:supabase:dev": "./scripts/deploy/deploy-supabase-dev.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.8.0",

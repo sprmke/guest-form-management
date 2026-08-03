@@ -218,13 +218,18 @@ Treat the dump as **PII**; delete it when finished.
 
 ---
 
-## 4. Staging (if available)
+## 4. Staging / dev environment
 
-This project doesn't have a dedicated staging Supabase project today. If you spin one up:
+Dedicated dev Supabase project (separate account) + Vercel Preview wiring:
 
-1. Link: `supabase link --project-ref <staging-ref>`.
-2. Push: `supabase db push`.
-3. Repeat the verification queries from §3.
+**[`dev-staging-environment.md`](./dev-staging-environment.md)** — full step-by-step setup, env files, VS Code tasks, and daily workflows.
+
+Quick bootstrap after creating the dev project:
+
+1. `cp supabase/.env.dev.example supabase/.env.dev.local` — fill `DEV_PROJECT_REF`, keys, `PROD_PROJECT_REF` guard.
+2. `bun run deploy:supabase:dev` — migrations + functions.
+3. Configure Dashboard secrets + Auth (see runbook §2.5–2.7).
+4. Vercel Preview env vars → dev Supabase (runbook §3).
 
 ---
 

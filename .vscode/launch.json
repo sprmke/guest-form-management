@@ -30,6 +30,16 @@
       "name": "Dev: UI only + Chrome",
       "configurations": ["UI: Chrome (Vite)"],
       "preLaunchTask": "Dev: UI only (remote Supabase)"
+    },
+    {
+      "name": "Dev: Hosted dev + Chrome",
+      "configurations": ["UI: Chrome (Vite)"],
+      "preLaunchTask": "Dev: Hosted dev (UI only)"
+    },
+    {
+      "name": "Dev: Hosted dev (hybrid) + Chrome",
+      "configurations": ["UI: Chrome (Vite)"],
+      "preLaunchTask": "Dev: Hosted dev (hybrid — API + UI)"
     }
   ]
 }

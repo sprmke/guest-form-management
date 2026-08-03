@@ -28,6 +28,7 @@ Not yet shipped. See [`../done/`](../done/) for completed plans.
 | [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md)                                 | not started   | One ACTIVE listing per tower+unit; SA approve/swap                                                                                  |
 | [`host-verification-tiers.md`](./host-verification-tiers.md)                           | not started   | Host verification tier rules and gating                                                                                             |
 | [`property-public-pages-shell-redesign.md`](./property-public-pages-shell-redesign.md) | not started   | Persistent shell unifying property detail + calendar/form/chat/sd-form/pay-parking layout, media showcase panel, native transitions |
+| [`dev-staging-environment.md`](./dev-staging-environment.md)                           | in progress   | Dev Supabase + Vercel Preview + local mode picker — scripts/runbook shipped; operator bootstrap pending                             |
 
 **Done:** [`booking-workflow-configurable-docs.md`](../done/booking-workflow-configurable-docs.md), [`property-calendar-page.md`](../done/property-calendar-page.md), [`unit-handoff-phase-b.md`](../done/unit-handoff-phase-b.md)
 

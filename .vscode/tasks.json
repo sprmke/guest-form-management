@@ -17,6 +17,20 @@
       "group": { "kind": "build", "isDefault": true }
     },
     {
+      "label": "Dev: Local Supabase (full stack)",
+      "type": "shell",
+      "command": "./dev.sh",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
       "label": "Dev: UI only (remote Supabase)",
       "type": "shell",
       "command": "./dev.sh --ui-only",
@@ -31,7 +45,21 @@
       "presentation": { "reveal": "always", "panel": "dedicated" }
     },
     {
-      "label": "Dev: Edge functions only",
+      "label": "Dev: Hosted dev (UI only)",
+      "type": "shell",
+      "command": "./dev.sh --ui-only --env dev",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Dev: Edge functions (local stack)",
       "type": "shell",
       "command": "bun run dev:api",
       "options": {
@@ -43,6 +71,27 @@
       "isBackground": true,
       "problemMatcher": [],
       "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Dev: Edge functions (dev stack)",
+      "type": "shell",
+      "command": "bun run dev:remote-api",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PATH": "/usr/local/bin:/opt/homebrew/bin:${env:PATH}"
+        }
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Dev: Hosted dev (hybrid — API + UI)",
+      "dependsOn": ["Dev: Edge functions (dev stack)", "Dev: Hosted dev (UI only)"],
+      "dependsOrder": "parallel",
+      "problemMatcher": [],
+      "group": "build"
     },
     {
       "label": "Quality: CI",
@@ -116,6 +165,12 @@
       "label": "Deploy: Supabase (db + functions)",
       "type": "shell",
       "command": "bun run deploy:supabase",
+      "options": { "cwd": "${workspaceFolder}" }
+    },
+    {
+      "label": "Deploy: Supabase dev (db + functions)",
+      "type": "shell",
+      "command": "bun run deploy:supabase:dev",
       "options": { "cwd": "${workspaceFolder}" }
     },
     {

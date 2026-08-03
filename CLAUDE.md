@@ -26,16 +26,21 @@ See **`.cursor/rules/ai-usage.mdc`** (always-on in Cursor; follow here too):
 
 ```bash
 bun install
-./dev.sh                 # full stack: Docker + local Supabase + UI
-./dev.sh --ui-only       # UI only, hosted Supabase, no Docker
-bun run setup:ai-tooling # once after clone: Cursor/Claude rules, skills, hooks, MCP symlinks
+./dev.sh                      # full stack: Docker + local Supabase + UI (default)
+./dev.sh --ui-only              # UI only — ui/.env.development
+./dev.sh --ui-only --env dev    # UI only — hosted dev (ui/.env.development.dev)
+bun run dev:remote-api          # local edge functions → hosted dev DB (hybrid)
+bun run deploy:supabase:dev     # deploy migrations + functions to dev project
+bun run setup:ai-tooling        # once after clone: Cursor/Claude rules, skills, hooks, MCP symlinks
 
 bun run lint / lint:fix / type-check / build / check:filenames / format:check
 bun run start:supabase / stop:supabase / status:supabase / db:reset
 bun run db:migrate   # local only: migration up --local --include-all — see /fix-migration-issues
-bun run dev:api            # functions serve — for curl-testing edge functions locally
-bun run deploy:supabase    # add --db-only / --functions-only for partial deploys
+bun run dev:api            # functions serve — local stack
+bun run deploy:supabase    # PRODUCTION — kamewave unlock required for agents
 ```
+
+Dev/staging setup guide: **`docs/archive/operations/dev-staging-environment.md`**
 
 CI (`.github/workflows/ci.yml`): type-check, lint, check:filenames, build — no test step (none exist yet, see Conventions).
 

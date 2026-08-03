@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Deploy migrations and Edge Functions to the DEV Supabase project (never prod without kamewave).
+# Reads DEV_PROJECT_REF from supabase/.env.dev.local
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+cd "$ROOT"
+
+SUPABASE=("$ROOT/scripts/dev/bunx" --bun supabase@latest)
+ENV_FILE="$ROOT/supabase/.env.dev.local"
+PROJECT_REF_FILE="$ROOT/supabase/.temp/project-ref"
+
+DB_ONLY=false
+FUNCTIONS_ONLY=false
+INCLUDE_ALL=false
+ALLOW_MULTI_TENANCY=false
+
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/deploy/deploy-supabase-dev.sh [options]
+
+Deploy to the DEV Supabase project (supabase/.env.dev.local → DEV_PROJECT_REF).
+Refuses when DEV_PROJECT_REF matches the currently linked prod ref.
+
+Options:
+  --db-only              Run supabase db push only
+  --functions-only       Run supabase functions deploy only
+  --include-all          Pass --include-all to db push
+  --allow-multi-tenancy  Skip multi-tenancy guard on function deploy
+  -h, --help             Show this help
+
+Examples:
+  bun run deploy:supabase:dev
+  bun run deploy:supabase:dev -- --db-only
+  bun run deploy:supabase:dev -- --functions-only
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --db-only) DB_ONLY=true; shift ;;
+    --functions-only) FUNCTIONS_ONLY=true; shift ;;
+    --include-all) INCLUDE_ALL=true; shift ;;
+    --allow-multi-tenancy) ALLOW_MULTI_TENANCY=true; shift ;;
+    -h | --help) usage; exit 0 ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "$DB_ONLY" == true && "$FUNCTIONS_ONLY" == true ]]; then
+  echo "Cannot use --db-only and --functions-only together." >&2
+  exit 1
+fi
+
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "Missing supabase/.env.dev.local" >&2
+  echo "Copy supabase/.env.dev.example → supabase/.env.dev.local and set DEV_PROJECT_REF." >&2
+  exit 1
+fi
+
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
+
+DEV_REF="$(tr -d '[:space:]' <<<"${DEV_PROJECT_REF:-}")"
+if [[ -z "$DEV_REF" ]]; then
+  echo "DEV_PROJECT_REF is empty in supabase/.env.dev.local" >&2
+  exit 1
+fi
+
+PROD_REF_GUARD="$(tr -d '[:space:]' <<<"${PROD_PROJECT_REF:-}")"
+if [[ -n "$PROD_REF_GUARD" && "$DEV_REF" == "$PROD_REF_GUARD" ]]; then
+  echo "Refusing dev deploy: DEV_PROJECT_REF matches PROD_PROJECT_REF in .env.dev.local." >&2
+  echo "Use a separate Supabase project for dev." >&2
+  exit 1
+fi
+
+LINKED_REF=""
+if [[ -f "$PROJECT_REF_FILE" ]]; then
+  LINKED_REF="$(tr -d '[:space:]' <"$PROJECT_REF_FILE")"
+fi
+
+if [[ -n "$LINKED_REF" && "$LINKED_REF" != "$DEV_REF" ]]; then
+  echo "Note: CLI is currently linked to $LINKED_REF; will re-link to dev ($DEV_REF)." >&2
+fi
+
+echo "════════════════════════════════════════════════════════════"
+echo "  DEV Supabase deploy"
+echo "  Project ref: $DEV_REF"
+echo "  See docs/archive/operations/dev-staging-environment.md"
+echo "════════════════════════════════════════════════════════════"
+echo ""
+echo "Type dev to confirm deploy to this project:"
+read -r confirm
+if [[ "$confirm" != "dev" ]]; then
+  echo "Aborted (expected: dev)."
+  exit 1
+fi
+
+echo "→ supabase link --project-ref $DEV_REF"
+"${SUPABASE[@]}" link --project-ref "$DEV_REF"
+
+assert_functions_match_db_schema() {
+  if [[ "$ALLOW_MULTI_TENANCY" == true ]]; then
+    return 0
+  fi
+  local sd_cron="$ROOT/supabase/functions/sd-refund-cron/index.ts"
+  local property_scope="$ROOT/supabase/functions/_shared/propertyScope.ts"
+  if [[ -f "$property_scope" ]] || grep -q "property_id" "$sd_cron" 2>/dev/null; then
+    echo "Refusing function deploy: multi-tenancy edge code detected." >&2
+    echo "Ensure dev DB has matching migrations, or pass --allow-multi-tenancy intentionally." >&2
+    exit 1
+  fi
+}
+
+run_db_push() {
+  local -a push_args=(db push)
+  if [[ "$INCLUDE_ALL" == true ]]; then
+    push_args+=(--include-all)
+  fi
+  echo "→ supabase ${push_args[*]}"
+  "${SUPABASE[@]}" "${push_args[@]}"
+}
+
+run_functions_deploy() {
+  assert_functions_match_db_schema
+  echo "→ supabase functions deploy"
+  "${SUPABASE[@]}" functions deploy
+}
+
+if [[ "$DB_ONLY" == true ]]; then
+  run_db_push
+elif [[ "$FUNCTIONS_ONLY" == true ]]; then
+  run_functions_deploy
+else
+  run_db_push
+  echo
+  run_functions_deploy
+fi
+
+echo
+echo "Dev deploy complete (linked ref is now $DEV_REF)."
+if [[ -n "$LINKED_REF" && "$LINKED_REF" != "$DEV_REF" ]]; then
+  echo "Re-link prod before any production deploy:"
+  echo "  bunx supabase@latest link --project-ref $LINKED_REF"
+fi

@@ -2,17 +2,23 @@
 title: 'Deployment'
 status: active
 tags: [architecture, deployment]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Deployment
 
-Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split. See also [`docs/archive/operations/production-deployment.md`](../archive/operations/production-deployment.md) and [`docs/archive/operations/migration-runbook.md`](../archive/operations/migration-runbook.md).
+Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 
 ---
 
 ## 12. Deployment
 
-- **Production checklist (backups, `supabase db push`, `supabase functions deploy`, Dashboard secrets, Google OAuth clients + service account, Vercel `VITE_*`, `pg_cron`):** **[[production-deployment|Production deployment — checkout checklist]]**.
+| Environment       | Checklist / runbook                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Production**    | [`production-deployment.md`](../archive/operations/production-deployment.md) — backups, `db push`, secrets, Vercel Production (`kamewave` unlock for agents) |
+| **Dev / Preview** | [`dev-staging-environment.md`](../archive/operations/dev-staging-environment.md) — separate Supabase account, Vercel Preview env, local mode picker          |
+| **Migrations**    | [`migration-runbook.md`](../archive/operations/migration-runbook.md)                                                                                         |
+
 - `ui/vercel.json`: SPA rewrites to `index.html`, Vite build output `dist`.
-- Supabase: deploy functions + run migrations; configure secrets in dashboard (details in **[[migration-runbook|Migration Runbook — New Booking Flow]] §11**).
+- **Dev deploy:** `bun run deploy:supabase:dev` (reads `supabase/.env.dev.local`).
+- **Local modes:** `./dev.sh` (full Docker), `./dev.sh --ui-only --env dev` (hosted dev), `bun run dev:remote-api` (hybrid edge functions).

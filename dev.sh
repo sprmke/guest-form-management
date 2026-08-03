@@ -2,10 +2,12 @@
 # Local dev: Supabase stack (Docker) + edge functions + Vite UI.
 #
 # Usage:
-#   ./dev.sh              Full stack (default) + ngrok on :54321 for Meta/webhooks
-#   ./dev.sh --ui-only    Vite only — point ui/.env.development at a remote Supabase project
-#   SKIP_SUPABASE=1 ./dev.sh   Same as --ui-only
-#   SKIP_NGROK=1 ./dev.sh      Full stack without ngrok
+#   ./dev.sh                      Full stack (default) + ngrok on :54321 for Meta/webhooks
+#   ./dev.sh --ui-only              Vite only — uses ui/.env.development
+#   ./dev.sh --ui-only --env dev    Vite only — uses ui/.env.development.dev (hosted dev)
+#   ./dev.sh --ui-only --env local  Vite only — uses ui/.env.development.local (local stack)
+#   SKIP_SUPABASE=1 ./dev.sh        Same as --ui-only
+#   SKIP_NGROK=1 ./dev.sh           Full stack without ngrok
 #
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
@@ -14,20 +16,44 @@ export PATH="/usr/local/bin:/opt/homebrew/bin:${HOME}/.bun/bin:${PATH}"
 BUNX="$ROOT/scripts/dev/bunx"
 
 UI_ONLY=0
+ENV_PROFILE=""
+prev=""
 for arg in "$@"; do
   case "$arg" in
     --ui-only) UI_ONLY=1 ;;
   esac
+  if [[ "$prev" == "--env" ]]; then
+    ENV_PROFILE="$arg"
+  fi
+  prev="$arg"
 done
+
 if [[ "${SKIP_SUPABASE:-}" == "1" ]]; then
   UI_ONLY=1
 fi
 
 if [[ "$UI_ONLY" == "1" ]]; then
-  echo "UI-only mode (no Docker / Supabase). Ensure VITE_* in ui/.env.development targets your Supabase project."
-  echo "Starting UI development server..."
-  cd "$ROOT/ui" && bun run dev
-  exit 0
+  case "$ENV_PROFILE" in
+    dev|local)
+      echo "UI-only mode (--env $ENV_PROFILE). See docs/archive/operations/dev-staging-environment.md"
+      exec "$ROOT/scripts/dev/run-with-vite-env.sh" --env "$ENV_PROFILE"
+      ;;
+    "")
+      echo "UI-only mode (no Docker / Supabase). Ensure VITE_* in ui/.env.development targets your Supabase project."
+      echo "For hosted dev: ./dev.sh --ui-only --env dev"
+      echo "Starting UI development server..."
+      cd "$ROOT/ui" && bun run dev
+      exit 0
+      ;;
+    *)
+      echo "ERROR: Unknown --env profile: $ENV_PROFILE (use local or dev)" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+if [[ -n "$ENV_PROFILE" ]]; then
+  echo "NOTE: --env is ignored for full-stack mode; using local Docker Supabase." >&2
 fi
 
 # Docker Desktop must be running before Supabase can start containers.

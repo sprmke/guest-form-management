@@ -14,8 +14,11 @@
 **/.env
 **/.env.local
 **/.env.development
+**/.env.development.dev
+**/.env.development.local
 **/.env.test
 **/.env.production
+supabase/.env.dev.local
 
 # Logs
 **/logs

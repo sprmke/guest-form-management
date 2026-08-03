@@ -48,6 +48,7 @@ Stale if a skill mentions Next.js App Router, tRPC, Drizzle, Neon, or AWS S3 for
 - Secrets: `supabase/.env.local` — never commit or log tokens/PII.
 - Imports: UI `@/`; edge relative `../_shared/...`.
 - Prod Supabase deploy: blocked unless user says **`kamewave`** (`.cursor/rules/no-prod-deploy.mdc`).
+- Dev/staging: **`docs/archive/operations/dev-staging-environment.md`** — separate Supabase account, Vercel Preview, `./dev.sh --ui-only --env dev`, `bun run deploy:supabase:dev`.
 
 ## Docs sync
 

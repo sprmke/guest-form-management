@@ -51,13 +51,13 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 
 ## Archive
 
-| Folder                                         | Purpose                                                                      |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- |
-| [`archive/README.md`](./archive/README.md)     | Archive index                                                                |
-| [`archive/reference/`](./archive/reference/)   | Project structure, admin walkthrough, receipt AI, Telegram, property catalog |
-| [`archive/operations/`](./archive/operations/) | Migration runbook, prod deploy, scheduled jobs, Meta inbox/review            |
-| [`archive/planning/`](./archive/planning/)     | Booking redesign history (`NEW_FLOW*`)                                       |
-| [`archive/todos/`](./archive/todos/)           | Legacy backlog draft + shipped issue archive                                 |
+| Folder                                         | Purpose                                                                            |
+| ---------------------------------------------- | ---------------------------------------------------------------------------------- |
+| [`archive/README.md`](./archive/README.md)     | Archive index                                                                      |
+| [`archive/reference/`](./archive/reference/)   | Project structure, admin walkthrough, receipt AI, Telegram, property catalog       |
+| [`archive/operations/`](./archive/operations/) | Migration runbook, prod deploy, **dev/staging**, scheduled jobs, Meta inbox/review |
+| [`archive/planning/`](./archive/planning/)     | Booking redesign history (`NEW_FLOW*`)                                             |
+| [`archive/todos/`](./archive/todos/)           | Legacy backlog draft + shipped issue archive                                       |
 
 ## Agent tooling
 
