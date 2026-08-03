@@ -4,7 +4,15 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import dayjs from 'dayjs';
-import { Upload, Loader2, Settings, ClipboardPaste, XCircle, PartyPopper } from 'lucide-react';
+import {
+  Upload,
+  Loader2,
+  Settings,
+  ClipboardPaste,
+  XCircle,
+  PartyPopper,
+  User,
+} from 'lucide-react';
 import { useForm, useWatch } from 'react-hook-form';
 import { toast } from 'sonner';
 
@@ -38,12 +46,24 @@ import {
 } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { computeGuestCountsByAge } from '@/features/guest/form/lib/guestCounts';
 import {
+  formatGafEmailHint,
+  formatGuestCopyPasteHint,
+  formatGuestLockedChangeHint,
+  formatNoPaidParkingDescription,
+  formatPaidParkingDescription,
+  formatPetFeeLine,
+  formatPetPolicyTitle,
+  formatResidenceShortName,
+  pickGuestBrandHeaderProps,
+} from '@/features/guest/form/lib/guestFormBranding';
+import {
   clampGuestFormStep,
   getFieldsForGuestFormStep,
   isGuestFormStepComplete,
   getGuestFormSteps,
   getGuestFormStepCount,
   type GuestFormStepId,
+  type GuestFormVisibilityFlags,
 } from '@/features/guest/form/lib/guestFormSteps';
 import {
   appendGuestPropertyToParams,
@@ -53,16 +73,22 @@ import {
   createGuestFormSchema,
   type GuestFormData,
 } from '@/features/guest/form/schemas/guestFormSchema';
-
 import {
   useGuestPropertySearchParams,
   useGuestPropertySlug,
 } from '@/features/guest/hooks/useGuestPropertySlug';
-import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
+import {
+  guestCalendarPath,
+  guestFormPath,
+  guestSuccessPath,
+} from '@/features/guest/lib/guestPublicPaths';
+import { GuestStayContextBar } from '@/features/guest/property/components/GuestStayContextBar';
+
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { GuestFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
-import type { GuestNavState } from '@/layouts/guest/navState';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePicker } from '@/components/ui/date-picker';
 import {
   Form,
   FormControl,
@@ -72,7 +98,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { IsoDateInput } from '@/components/ui/iso-date-input';
 import {
   Select,
   SelectContent,
@@ -80,10 +106,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
+import { Textarea } from '@/components/ui/textarea';
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
+import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
 import {
+  formatTimeToAMPM,
   getNextDay,
   createDisabledDateMatcher,
   createDisabledCheckoutDateMatcher,
@@ -95,27 +123,77 @@ import {
   type BookedDateRange,
 } from '@/utils/format/dates';
 import { toCapitalCase, transformFieldValues } from '@/utils/text/formatters';
-import { generateRandomData, setDummyFile } from '@/utils/dev/mockData';
-
-import {
-  guestCalendarPath,
-  guestFormPath,
-  guestSuccessPath,
-} from '@/features/guest/lib/guestPublicPaths';
-
 import {
   handleNameInputChange,
   validateImageFile,
   fetchImageAsFile,
   handleFileUpload,
 } from '@/utils/text/helpers';
-import { DatePicker } from '@/components/ui/date-picker';
-import { IsoDateInput } from '@/components/ui/iso-date-input';
+
+function guestContactChannelLabel(isAirbnb: boolean, isFacebook: boolean): string {
+  if (isAirbnb) return 'on Airbnb';
+  if (isFacebook) return 'on Facebook';
+  return 'to contact us';
+}
+
+function guestNameFieldLabel(isAirbnb: boolean, isFacebook: boolean): string {
+  if (isAirbnb) return 'Airbnb Name';
+  if (isFacebook) return 'Facebook Name';
+  return 'Full Name';
+}
+
+function guestNamePlaceholder(isAirbnb: boolean, isFacebook: boolean): string {
+  if (isAirbnb || isFacebook) {
+    return `Your exact full name in ${isAirbnb ? 'Airbnb' : 'Facebook'}`;
+  }
+  return 'Your exact full name';
+}
+
+function decorPlatformLabel(isAirbnb: boolean, isFacebook: boolean): string | null {
+  if (isAirbnb) return 'Airbnb';
+  if (isFacebook) return 'Facebook';
+  return null;
+}
+
+function guestEarlyLateContactLabel(isAirbnb: boolean, isFacebook: boolean): string {
+  if (isAirbnb) return 'Message host via Airbnb.';
+  if (isFacebook) return 'Message us on Facebook.';
+  return 'Contact us to arrange.';
+}
 
 const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
 const apiUrl = import.meta.env.VITE_API_URL;
 
-export function GuestForm() {
+/** Step actions lifted into a host footer (e.g. GuestDialogShell). */
+export type GuestFormEmbedNav = {
+  currentStep: GuestFormStepId;
+  stepCount: number;
+  isSubmitting: boolean;
+  canProceed: boolean;
+  submitReady: boolean;
+  show: boolean;
+  onBack: () => void;
+  onNext: () => void;
+  onSubmit: () => void;
+};
+
+/** Embed the same form on another surface (e.g. property Reserve modal). */
+export type GuestFormEmbed = {
+  checkInDate?: string | null;
+  checkOutDate?: string | null;
+  numberOfAdults?: number;
+  numberOfChildren?: number;
+  /** Tighter outer padding when hosted inside a dialog. */
+  compactChrome?: boolean;
+  /** When set, step nav is omitted inline and reported here for a modal footer. */
+  onNavChange?: (nav: GuestFormEmbedNav | null) => void;
+};
+
+export type GuestFormProps = {
+  embed?: GuestFormEmbed;
+};
+
+export function GuestForm({ embed }: GuestFormProps = {}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [guestCanUpdate, setGuestCanUpdate] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,25 +221,91 @@ export function GuestForm() {
   const bookingId = searchParams.get('bookingId');
   const navigate = useNavigate();
   const { requireGuestAuth, formSubmitResumeTick } = useGuestAuth();
-  const { data: guestFormSettings = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
+  const {
+    data: guestPaymentInfo = DEFAULT_GUEST_PAYMENT_INFO,
+    isFetched: guestPaymentInfoFetched,
+    isPlaceholderData: guestPaymentInfoPlaceholder,
+  } = useGuestPaymentInfo();
 
   // `?source=airbnb` → Airbnb labels + DB `booking_source`
   const bookingSource = bookingSourceFromUrlSearchParams(searchParams);
   const isAirbnb = bookingSource === 'Airbnb';
+  const isFacebook = bookingSource === 'Facebook';
+
+  const visibilityFlags = useMemo<GuestFormVisibilityFlags>(
+    () => ({
+      isAirbnb,
+      allowParking: guestPaymentInfo.allowParking,
+      allowPets: guestPaymentInfo.allowPets,
+      allowSurpriseDecor: guestPaymentInfo.allowSurpriseDecor,
+      maxAdults: guestPaymentInfo.maxAdults,
+      maxChildren: guestPaymentInfo.maxChildren,
+      residenceName: guestPaymentInfo.residenceName,
+    }),
+    [
+      isAirbnb,
+      guestPaymentInfo.allowParking,
+      guestPaymentInfo.allowPets,
+      guestPaymentInfo.allowSurpriseDecor,
+      guestPaymentInfo.maxAdults,
+      guestPaymentInfo.maxChildren,
+      guestPaymentInfo.residenceName,
+    ]
+  );
+
+  const parkingNoPaidDescription = formatNoPaidParkingDescription(guestPaymentInfo.residenceName);
+  const parkingPaidDescription = formatPaidParkingDescription(
+    guestPaymentInfo.defaultParkingRateGuest,
+    guestPaymentInfo.residenceName
+  );
+  const petPolicyTitle = formatPetPolicyTitle(guestPaymentInfo.residenceName);
+  const petPolicyResidence =
+    formatResidenceShortName(guestPaymentInfo.residenceName) || 'The building';
+  const gafEmailHint = formatGafEmailHint(guestPaymentInfo.residenceName);
+  const petFeeLine = formatPetFeeLine(guestPaymentInfo.petFee);
+  const brandHeader = pickGuestBrandHeaderProps(guestPaymentInfo);
+
+  const propertyCheckInTime = guestPaymentInfo.checkInTime;
+  const propertyCheckOutTime = guestPaymentInfo.checkOutTime;
+  const propertyCheckInLabel = formatTimeToAMPM(propertyCheckInTime, true);
+  const propertyCheckOutLabel = formatTimeToAMPM(propertyCheckOutTime, false);
+  const guestCapacity = useMemo(
+    () => ({
+      maxAdults: guestPaymentInfo.maxAdults,
+      maxChildren: guestPaymentInfo.maxChildren,
+    }),
+    [guestPaymentInfo.maxAdults, guestPaymentInfo.maxChildren]
+  );
 
   /** Snapshot once per mount so RHF defaults match calendar URL (not overwritten by object identity). */
   const seededDefaultsRef = useRef<Partial<GuestFormData> | null>(null);
   if (seededDefaultsRef.current === null) {
     const defaults = getGuestFormDefaultValuesFromSearchParams(searchParams);
+    const embedIn = embed?.checkInDate?.trim();
+    const embedOut = embed?.checkOutDate?.trim();
+    if (embedIn && embedOut && !searchParams.get('bookingId')?.trim()) {
+      const normalizedIn = normalizeDateString(embedIn);
+      const normalizedOut = normalizeDateString(embedOut);
+      if (normalizedIn && normalizedOut) {
+        defaults.checkInDate = normalizedIn;
+        defaults.checkOutDate = normalizedOut;
+      }
+    }
+    if (embed?.numberOfAdults != null && embed.numberOfAdults >= 1) {
+      defaults.numberOfAdults = embed.numberOfAdults;
+    }
+    if (embed?.numberOfChildren != null && embed.numberOfChildren >= 0) {
+      defaults.numberOfChildren = embed.numberOfChildren;
+    }
     if (isAirbnb) {
       defaults.findUs = 'Airbnb';
     }
     seededDefaultsRef.current = defaults;
   }
 
-  // Get pre-selected dates from URL params (from calendar page)
-  const urlCheckInDate = searchParams.get('checkInDate');
-  const urlCheckOutDate = searchParams.get('checkOutDate');
+  // Pre-selected dates: embed (Reserve modal) wins over URL calendar handoff
+  const urlCheckInDate = embed?.checkInDate?.trim() || searchParams.get('checkInDate');
+  const urlCheckOutDate = embed?.checkOutDate?.trim() || searchParams.get('checkOutDate');
 
   /** Dev control panel: non-production builds only — never gated by `?dev=true`. */
   const showDevControls = !isProduction;
@@ -175,11 +319,12 @@ export function GuestForm() {
     sendEmail: true,
   });
 
-  const guestFormSteps = useMemo(() => getGuestFormSteps(isAirbnb), [isAirbnb]);
-  const guestFormStepCount = getGuestFormStepCount(isAirbnb);
+  const guestFormSteps = useMemo(() => getGuestFormSteps(visibilityFlags), [visibilityFlags]);
+  const guestFormStepCount = getGuestFormStepCount(visibilityFlags);
+  const activeStepConfig = guestFormSteps[currentStep - 1];
 
   const form = useForm<GuestFormData>({
-    resolver: zodResolver(createGuestFormSchema(isAirbnb), undefined, {
+    resolver: zodResolver(createGuestFormSchema(visibilityFlags), undefined, {
       raw: true,
       mode: 'sync',
     }),
@@ -201,14 +346,16 @@ export function GuestForm() {
   }, [bookingId]);
 
   // Strip `dev` / `testing` / control flags / legacy `from`; migrate `from=airbnb` → `source=airbnb`
+  // Skip when embedded — must not navigate the host page away to `/form`.
   useEffect(() => {
+    if (embed) return;
     if (!propertySlug || !hasStrippedGuestQueryKeys(searchParams)) return;
     const next = stripLegacyFromQueryParam(new URLSearchParams(searchParams));
     if (searchParams.get('from')?.trim().toLowerCase() === 'airbnb') {
       next.set('source', 'airbnb');
     }
     navigate(guestFormPath(propertySlug, next), { replace: true });
-  }, [navigate, propertySlug, searchParams]);
+  }, [embed, navigate, propertySlug, searchParams]);
 
   // Fetch booked dates function (extracted so it can be reused)
   const fetchBookedDates = async () => {
@@ -260,6 +407,35 @@ export function GuestForm() {
       }
     }
   }, [urlCheckInDate, urlCheckOutDate, bookingId, form]);
+
+  useEffect(() => {
+    if (bookingId || !guestPaymentInfoFetched || guestPaymentInfoPlaceholder) return;
+    form.setValue('checkInTime', propertyCheckInTime);
+    form.setValue('checkOutTime', propertyCheckOutTime);
+  }, [
+    bookingId,
+    guestPaymentInfoFetched,
+    guestPaymentInfoPlaceholder,
+    propertyCheckInTime,
+    propertyCheckOutTime,
+    form,
+  ]);
+
+  useEffect(() => {
+    if (bookingId || !guestPaymentInfoFetched || guestPaymentInfoPlaceholder) return;
+    const {
+      gafUnitOwner,
+      gafTowerAndUnitNumber,
+      gafGuestsOnsiteContactPerson,
+      gafOwnerContactNumber,
+    } = guestPaymentInfo;
+    if (gafUnitOwner) form.setValue('unitOwner', gafUnitOwner);
+    if (gafTowerAndUnitNumber) form.setValue('towerAndUnitNumber', gafTowerAndUnitNumber);
+    if (gafGuestsOnsiteContactPerson) {
+      form.setValue('ownerOnsiteContactPerson', gafGuestsOnsiteContactPerson);
+    }
+    if (gafOwnerContactNumber) form.setValue('ownerContactNumber', gafOwnerContactNumber);
+  }, [bookingId, guestPaymentInfo, guestPaymentInfoFetched, guestPaymentInfoPlaceholder, form]);
 
   const fetchFormData = async () => {
     if (!bookingId) return;
@@ -539,10 +715,7 @@ export function GuestForm() {
           ? guestCalendarPath(propertySlug, next)
           : next.toString()
             ? `/properties?${next.toString()}`
-            : '/properties',
-        {
-          state: { guestEnter: 'back' } satisfies GuestNavState,
-        }
+            : '/properties'
       );
     } catch (error) {
       console.error('Cancel booking error:', error);
@@ -562,10 +735,10 @@ export function GuestForm() {
 
     try {
       const transformedValues = transformFieldValues(values, {
-        gafUnitOwner: guestFormSettings.gafUnitOwner,
-        gafTowerAndUnitNumber: guestFormSettings.gafTowerAndUnitNumber,
-        gafGuestsOnsiteContactPerson: guestFormSettings.gafGuestsOnsiteContactPerson,
-        gafOwnerContactNumber: guestFormSettings.gafOwnerContactNumber,
+        gafUnitOwner: guestPaymentInfo.gafUnitOwner,
+        gafTowerAndUnitNumber: guestPaymentInfo.gafTowerAndUnitNumber,
+        gafGuestsOnsiteContactPerson: guestPaymentInfo.gafGuestsOnsiteContactPerson,
+        gafOwnerContactNumber: guestPaymentInfo.gafOwnerContactNumber,
       });
       const formData = new FormData();
 
@@ -733,9 +906,7 @@ export function GuestForm() {
             new URLSearchParams({ bookingId: currentBookingId ?? '' })
           ),
           {
-            state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
-              bookingData: typeof bookingData;
-            },
+            state: { bookingData },
           }
         );
         return;
@@ -774,9 +945,7 @@ export function GuestForm() {
       navigate(
         guestSuccessPath(propertySlug, new URLSearchParams({ bookingId: currentBookingId ?? '' })),
         {
-          state: { bookingData, guestEnter: 'success' } satisfies GuestNavState & {
-            bookingData: typeof bookingData;
-          },
+          state: { bookingData },
         }
       );
     } catch (error: unknown) {
@@ -795,7 +964,11 @@ export function GuestForm() {
       const handleCopyBookingInfo = async () => {
         try {
           const formValues = form.getValues();
-          const bookingInfo = formatBookingInfoForClipboard(formValues, currentBookingId);
+          const bookingInfo = formatBookingInfoForClipboard(
+            formValues,
+            currentBookingId,
+            bookingSource
+          );
           await navigator.clipboard.writeText(bookingInfo);
 
           // Dismiss all existing toasts (including the error toast) before showing success
@@ -827,9 +1000,7 @@ export function GuestForm() {
       } else if (errorMessage.includes('GUEST_FORM_LOCKED')) {
         toast.error('Booking already reviewed', {
           id: 'guest-form-locked',
-          description: isAirbnb
-            ? 'Contact your host on Airbnb to request changes.'
-            : 'Contact your host on Facebook to request changes.',
+          description: formatGuestLockedChangeHint(isAirbnb, isFacebook),
           duration: 7000,
         });
         setGuestCanUpdate(false);
@@ -845,9 +1016,7 @@ export function GuestForm() {
                 {cleanedMessage}
               </p>
               <p className="text-muted-foreground text-sm leading-relaxed">
-                {isAirbnb
-                  ? 'Copy your form below and share with your host so we can help. Sorry!'
-                  : 'Copy your form below and paste on Facebook Messenger so we can help. Sorry!'}
+                {formatGuestCopyPasteHint(isAirbnb, isFacebook)}
               </p>
               <Button
                 type="button"
@@ -903,29 +1072,40 @@ export function GuestForm() {
   }, [sameAsFacebookName, form.watch('guestFacebookName')]);
 
   const canProceed = useMemo(
-    () => isGuestFormStepComplete(currentStep, form.getValues(), isAirbnb),
-    [currentStep, watchedValues, form, isAirbnb]
+    () =>
+      activeStepConfig
+        ? isGuestFormStepComplete(activeStepConfig.id, form.getValues(), visibilityFlags)
+        : false,
+    [activeStepConfig, watchedValues, form, visibilityFlags]
   );
 
   const handleNextStep = async () => {
-    if (!canProceed) {
+    if (!canProceed || !activeStepConfig) {
       const values = form.getValues();
-      const fields = getFieldsForGuestFormStep(currentStep, values);
+      const fields = getFieldsForGuestFormStep(activeStepConfig?.id ?? currentStep, values);
       await form.trigger(fields);
       toast.error('Please complete all required fields before continuing.');
       return;
     }
-    setCurrentStep((step) => clampGuestFormStep(step + 1, isAirbnb));
+    setCurrentStep((step) => clampGuestFormStep(step + 1, visibilityFlags));
   };
 
   const handleBackStep = () => {
-    setCurrentStep((step) => clampGuestFormStep(step - 1, isAirbnb));
+    setCurrentStep((step) => clampGuestFormStep(step - 1, visibilityFlags));
   };
 
   useEffect(() => {
+    setCurrentStep((step) => clampGuestFormStep(step, visibilityFlags));
+  }, [visibilityFlags]);
+
+  useEffect(() => {
     stepPanelRef.current?.focus({ preventScroll: true });
+    if (embed?.compactChrome) {
+      stepPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return;
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentStep]);
+  }, [currentStep, embed?.compactChrome]);
 
   useEffect(() => {
     if (currentStep !== guestFormStepCount) {
@@ -948,6 +1128,43 @@ export function GuestForm() {
     );
   };
 
+  const onNavChange = embed?.onNavChange;
+  const onNavChangeRef = useRef(onNavChange);
+  onNavChangeRef.current = onNavChange;
+
+  // Lift step actions into the host modal footer when embedded.
+  useEffect(() => {
+    const report = onNavChangeRef.current;
+    if (!report) return;
+    const show = !bookingId || guestCanUpdate;
+    report({
+      currentStep,
+      stepCount: guestFormStepCount,
+      isSubmitting,
+      canProceed,
+      submitReady,
+      show,
+      onBack: handleBackStep,
+      onNext: () => {
+        void handleNextStep();
+      },
+      onSubmit: handleSubmitGuestForm,
+    });
+  }, [
+    bookingId,
+    guestCanUpdate,
+    currentStep,
+    guestFormStepCount,
+    isSubmitting,
+    canProceed,
+    submitReady,
+    onNavChange,
+  ]);
+
+  useEffect(() => {
+    return () => onNavChangeRef.current?.(null);
+  }, [onNavChange]);
+
   useEffect(() => {
     if (formSubmitResumeTick < 1) return;
     pendingSubmitAfterAuthRef.current = true;
@@ -960,8 +1177,7 @@ export function GuestForm() {
     void form.handleSubmit(onSubmit)();
   }, [formSubmitResumeTick, submitReady, isSubmitting, canProceed]);
 
-  const activeStepConfig = guestFormSteps[currentStep - 1];
-  const StepIcon = activeStepConfig.icon;
+  const StepIcon = activeStepConfig?.icon ?? User;
 
   return (
     <Form {...form}>
@@ -972,7 +1188,11 @@ export function GuestForm() {
             if (canProceed) void handleNextStep();
           }
         }}
-        className="guest-inner-enter relative space-y-6 p-4 sm:p-6 lg:p-8"
+        className={cn(
+          'guest-inner-enter relative',
+          embed?.compactChrome ? 'space-y-4' : 'space-y-6',
+          embed?.compactChrome ? 'p-0 sm:p-1' : 'p-4 sm:p-6 lg:p-8'
+        )}
       >
         {isLoading ? (
           <GuestFormPageSkeleton />
@@ -982,7 +1202,7 @@ export function GuestForm() {
               <h2 className="text-destructive mb-2 text-2xl font-bold">Booking Not Found</h2>
               <p className="text-muted-foreground max-w-md">
                 Invalid booking link or no form data. Screenshot this and contact us{' '}
-                {isAirbnb ? 'on Airbnb' : 'on Facebook'}.
+                {guestContactChannelLabel(isAirbnb, isFacebook)}.
               </p>
             </div>
             <div className="flex gap-2">
@@ -995,7 +1215,6 @@ export function GuestForm() {
                   next.delete('bookingId');
                   navigate(propertySlug ? guestCalendarPath(propertySlug, next) : '/properties', {
                     replace: true,
-                    state: { guestEnter: 'back' } satisfies GuestNavState,
                   });
                 }}
                 className="mt-4"
@@ -1016,7 +1235,8 @@ export function GuestForm() {
           </div>
         ) : (
           <div className="space-y-6">
-            <KameFormBrandHeader logoSrc={guestFormSettings.emailLogoUrl} />
+            {embed ? null : <GuestFormBrandHeader {...brandHeader} />}
+            {embed ? null : <GuestStayContextBar />}
             {bookingId && !guestCanUpdate ? (
               <div
                 className="text-foreground rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm"
@@ -1024,7 +1244,9 @@ export function GuestForm() {
               >
                 {isAirbnb
                   ? 'This booking was already reviewed. Contact your host on Airbnb to change details.'
-                  : 'This booking was already reviewed. Contact your host on Facebook to change details.'}
+                  : isFacebook
+                    ? 'This booking was already reviewed. Contact your host on Facebook to change details.'
+                    : 'This booking was already reviewed. Contact your host to change details.'}
               </div>
             ) : null}
             <GuestFormStepper activeStep={currentStep} steps={guestFormSteps} />
@@ -1037,24 +1259,40 @@ export function GuestForm() {
                 ref={stepPanelRef}
                 id="guest-form-step-panel"
                 tabIndex={-1}
-                className="border-border/80 bg-card space-y-5 rounded-xl border px-4 py-5 shadow-sm outline-none sm:px-6 sm:py-6"
+                className={cn(
+                  'border-border/80 bg-card space-y-5 rounded-xl border shadow-sm outline-none',
+                  embed?.compactChrome ? 'px-4 py-4 sm:px-5 sm:py-5' : 'px-4 py-5 sm:px-6 sm:py-6'
+                )}
                 aria-labelledby="guest-form-step-heading"
               >
-                <header className="border-separator flex items-center gap-3 border-b pb-4">
-                  <div className="bg-primary/15 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg">
+                <header
+                  className={cn(
+                    'flex items-center gap-3',
+                    embed?.compactChrome ? 'pb-3 sm:pb-2' : 'border-separator border-b pb-4'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'bg-primary/15 text-primary flex size-10 shrink-0 items-center justify-center rounded-lg',
+                      embed?.compactChrome && 'sm:hidden'
+                    )}
+                  >
                     <StepIcon className="size-5" aria-hidden />
                   </div>
                   <div className="min-w-0">
                     <h2
                       id="guest-form-step-heading"
-                      className="text-foreground text-base font-bold sm:text-lg"
+                      className={cn(
+                        'text-foreground font-bold',
+                        embed?.compactChrome ? 'text-sm sm:text-base' : 'text-base sm:text-lg'
+                      )}
                     >
-                      {activeStepConfig.label}
+                      {activeStepConfig?.label}
                     </h2>
                   </div>
                 </header>
 
-                {currentStep === 1 && (
+                {activeStepConfig?.id === 1 && (
                   <div className="space-y-4">
                     <FormField
                       control={form.control}
@@ -1062,12 +1300,12 @@ export function GuestForm() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            {isAirbnb ? 'Airbnb Name' : 'Facebook Name'}{' '}
+                            {guestNameFieldLabel(isAirbnb, isFacebook)}{' '}
                             <span className="text-destructive">*</span>
                           </FormLabel>
                           <FormControl>
                             <Input
-                              placeholder={`Your exact full name in ${isAirbnb ? 'Airbnb' : 'Facebook'}`}
+                              placeholder={guestNamePlaceholder(isAirbnb, isFacebook)}
                               {...field}
                               onChange={(e) =>
                                 handleNameInputChange(e, field.onChange, toCapitalCase)
@@ -1092,10 +1330,7 @@ export function GuestForm() {
                           </FormControl>
                           <FormMessage />
                           {field.value && !form.formState.errors.guestEmail && (
-                            <p className="text-muted-foreground mt-1 text-xs">
-                              Use an email you can access. Your GAF will be sent there for Azure
-                              check-in.
-                            </p>
+                            <p className="text-muted-foreground mt-1 text-xs">{gafEmailHint}</p>
                           )}
                         </FormItem>
                       )}
@@ -1155,7 +1390,7 @@ export function GuestForm() {
                   </div>
                 )}
 
-                {currentStep === 2 && (
+                {activeStepConfig?.id === 2 && (
                   <div className="space-y-4">
                     <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
                       <FormField
@@ -1220,17 +1455,18 @@ export function GuestForm() {
                       />
                     </div>
 
-                    {form.watch('checkInTime') && form.watch('checkInTime') < '14:00' && (
-                      <div
-                        className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
-                        role="alert"
-                      >
-                        <p className="text-sm font-medium">
-                          Check-in is 2:00 PM. Early arrival needs approval and may cost extra.{' '}
-                          {isAirbnb ? 'Message host via Airbnb.' : 'Message us on Facebook.'}
-                        </p>
-                      </div>
-                    )}
+                    {form.watch('checkInTime') &&
+                      form.watch('checkInTime') < propertyCheckInTime && (
+                        <div
+                          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
+                          role="alert"
+                        >
+                          <p className="text-sm font-medium">
+                            Check-in is {propertyCheckInLabel}. Early arrival needs approval and may
+                            cost extra. {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
+                          </p>
+                        </div>
+                      )}
 
                     <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2 md:[&>*]:min-w-0">
                       <FormField
@@ -1302,17 +1538,18 @@ export function GuestForm() {
                       />
                     </div>
 
-                    {form.watch('checkOutTime') && form.watch('checkOutTime') > '11:00' && (
-                      <div
-                        className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
-                        role="alert"
-                      >
-                        <p className="text-sm font-medium">
-                          Check-out is 11:00 AM. Late departure needs approval and may cost extra.{' '}
-                          {isAirbnb ? 'Contact host via Airbnb.' : 'Contact us on Facebook.'}
-                        </p>
-                      </div>
-                    )}
+                    {form.watch('checkOutTime') &&
+                      form.watch('checkOutTime') > propertyCheckOutTime && (
+                        <div
+                          className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
+                          role="alert"
+                        >
+                          <p className="text-sm font-medium">
+                            Check-out is {propertyCheckOutLabel}. Late departure needs approval and
+                            may cost extra. {guestEarlyLateContactLabel(isAirbnb, isFacebook)}
+                          </p>
+                        </div>
+                      )}
 
                     <FormField
                       control={form.control}
@@ -1335,11 +1572,13 @@ export function GuestForm() {
                     <GuestFormGuestsSection
                       form={form}
                       isAirbnb={isAirbnb}
+                      isFacebook={isFacebook}
                       sameAsFacebookName={sameAsFacebookName}
                       onSameAsFacebookNameChange={setSameAsFacebookName}
                       validIdPreviews={validIdPreviews}
                       validIdImageErrors={validIdImageErrors}
                       seedKey={guestSectionSeedKey}
+                      guestCapacity={guestCapacity}
                       onValidIdPreviewChange={(field, preview) =>
                         setValidIdPreviews((prev) => ({ ...prev, [field]: preview }))
                       }
@@ -1426,56 +1665,67 @@ export function GuestForm() {
                       />
                     )}
 
-                    <FormField
-                      control={form.control}
-                      name="guestRequestsSurpriseDecor"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Has surprise decor / room setup?</FormLabel>
-                          <div className="flex min-h-[44px] items-start gap-3">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                className="mt-1"
-                                aria-describedby="surprise-decor-hint"
-                              />
-                            </FormControl>
-                            <div className="min-w-0 flex-1 space-y-2">
-                              <FormLabel className="!mt-0 cursor-pointer text-sm font-medium leading-snug">
-                                <span className="inline-flex items-center gap-1.5">
-                                  Yes, I requested a surprise decor / room setup
-                                  <PartyPopper
-                                    className="size-4 shrink-0 text-violet-600"
-                                    aria-hidden
-                                  />
-                                </span>
-                              </FormLabel>
-                              {field.value ? (
-                                <div
-                                  id="surprise-decor-hint"
-                                  className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
-                                  role="status"
-                                >
-                                  <p className="text-foreground text-sm leading-relaxed">
-                                    You confirm you messaged us on{' '}
-                                    <span className="font-semibold">
-                                      {isAirbnb ? 'Airbnb' : 'Facebook'}
-                                    </span>{' '}
-                                    and agreed on theme and price before your stay.
-                                  </p>
-                                </div>
-                              ) : null}
+                    {guestPaymentInfo.allowSurpriseDecor ? (
+                      <FormField
+                        control={form.control}
+                        name="guestRequestsSurpriseDecor"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Has surprise decor / room setup?</FormLabel>
+                            <div className="flex min-h-[44px] items-start gap-3">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  className="mt-1"
+                                  aria-describedby="surprise-decor-hint"
+                                />
+                              </FormControl>
+                              <div className="min-w-0 flex-1 space-y-2">
+                                <FormLabel className="!mt-0 cursor-pointer text-sm font-medium leading-snug">
+                                  <span className="inline-flex items-center gap-1.5">
+                                    Yes, I requested a surprise decor / room setup
+                                    <PartyPopper
+                                      className="size-4 shrink-0 text-violet-600"
+                                      aria-hidden
+                                    />
+                                  </span>
+                                </FormLabel>
+                                {field.value ? (
+                                  <div
+                                    id="surprise-decor-hint"
+                                    className="border-primary/25 bg-primary/5 dark:border-primary/30 dark:bg-primary/10 rounded-lg border-2 px-4 py-3"
+                                    role="status"
+                                  >
+                                    <p className="text-foreground text-sm leading-relaxed">
+                                      {decorPlatformLabel(isAirbnb, isFacebook) ? (
+                                        <>
+                                          You confirm you messaged us on{' '}
+                                          <span className="font-semibold">
+                                            {decorPlatformLabel(isAirbnb, isFacebook)}
+                                          </span>{' '}
+                                          and agreed on theme and price before your stay.
+                                        </>
+                                      ) : (
+                                        <>
+                                          You confirm you agreed on theme and price with us before
+                                          your stay.
+                                        </>
+                                      )}
+                                    </p>
+                                  </div>
+                                ) : null}
+                              </div>
                             </div>
-                          </div>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    ) : null}
                   </div>
                 )}
 
-                {currentStep === 3 && (
+                {activeStepConfig?.id === 3 && (
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
@@ -1486,13 +1736,13 @@ export function GuestForm() {
                           selected={!form.watch('needParking')}
                           onSelect={() => form.setValue('needParking', false)}
                           title="No paid parking needed"
-                          description="No slot: tower drop-off only. Free parking outside Azure by Home Depot (3–5 min walk)."
+                          description={parkingNoPaidDescription}
                         />
                         <GuestFormOptionCard
                           selected={form.watch('needParking')}
                           onSelect={() => form.setValue('needParking', true)}
                           title="Yes, reserve paid parking"
-                          description="₱400 per night inside Azure North residence and is subject to availability."
+                          description={parkingPaidDescription}
                         />
                       </div>
                     </div>
@@ -1561,7 +1811,7 @@ export function GuestForm() {
                   </div>
                 )}
 
-                {currentStep === 4 && (
+                {activeStepConfig?.id === 4 && (
                   <div className="space-y-4">
                     <div className="space-y-3">
                       <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider">
@@ -1588,18 +1838,18 @@ export function GuestForm() {
 
                     {form.watch('hasPets') && (
                       <div className="space-y-5">
-                        <GuestFormInfoCallout title="🐶 Azure North Pet Policy">
+                        <GuestFormInfoCallout title={petPolicyTitle}>
                           <ul className="list-inside list-disc space-y-2">
                             <li>
                               Only one toy/small dog is allowed.{' '}
-                              <span className="text-foreground font-semibold">Pet fee: P300</span>
+                              <span className="text-foreground font-semibold">{petFeeLine}</span>
                             </li>
                             <li>
                               Use the service elevator only. Keep pets leashed outside the unit.
                             </li>
                             <li>
-                              Azure North requires complete pet details and vaccination records for
-                              PMO approval.
+                              {petPolicyResidence} requires complete pet details and vaccination
+                              records for PMO approval.
                             </li>
                             <li>
                               No pets allowed in: Main Lobby, Viewing Deck, Common/Amenity Areas,
@@ -1881,7 +2131,7 @@ export function GuestForm() {
                   </div>
                 )}
 
-                {currentStep === 5 && !isAirbnb && (
+                {activeStepConfig?.id === 5 && (
                   <div className="space-y-4">
                     <GuestFormPaymentStepContent form={form} />
 
@@ -2143,8 +2393,9 @@ export function GuestForm() {
               </div>
             </fieldset>
 
-            {(!bookingId || guestCanUpdate) && (
+            {(!bookingId || guestCanUpdate) && !embed?.onNavChange ? (
               <GuestFormStepNavigation
+                bare
                 currentStep={currentStep}
                 stepCount={guestFormStepCount}
                 isSubmitting={isSubmitting}
@@ -2154,7 +2405,7 @@ export function GuestForm() {
                 onNext={handleNextStep}
                 onSubmit={handleSubmitGuestForm}
               />
-            )}
+            ) : null}
           </div>
         )}
       </form>

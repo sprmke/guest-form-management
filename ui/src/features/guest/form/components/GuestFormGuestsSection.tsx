@@ -6,21 +6,23 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import type { GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
 import { GuestFormValidIdUpload } from '@/features/guest/form/components/GuestFormValidIdUpload';
-import { AzureGuestLimitReminder } from '@/features/guest/form/components/AzureGuestLimitReminder';
+import { PropertyGuestLimitReminder } from '@/features/guest/form/components/PropertyGuestLimitReminder';
 import {
-  computeAzureGuestCountsByAge,
+  computeOccupancyGuestCountsByAge,
   computeGuestCounts,
-  shouldShowAzureAdultLimitMessage,
+  shouldShowGuestLimitMessage,
   FIFTH_PARTY_GUEST_MAX_AGE,
   formatGuestAgeInputValue,
   getActivePartySize,
   getDefaultAgeForGuestFormPartyGuest,
   guestPartyPositionLabel,
   getInitialVisibleGuestCount,
-  isPartyFifthGuest,
+  isPartyOverflowGuest,
   MAX_GUESTS,
   parseGuestAgeInputChange,
   requiresValidId,
+  type PropertyGuestCapacity,
+  DEFAULT_PROPERTY_GUEST_CAPACITY,
 } from '@/features/guest/form/lib/guestCounts';
 import { handleNameInputChange } from '@/utils/text/helpers';
 import { toCapitalCase } from '@/utils/text/formatters';
@@ -74,6 +76,7 @@ const GUEST_SLOTS: GuestSlotConfig[] = [
 type GuestFormGuestsSectionProps = {
   form: UseFormReturn<GuestFormData>;
   isAirbnb: boolean;
+  isFacebook: boolean;
   sameAsFacebookName: boolean;
   onSameAsFacebookNameChange: (checked: boolean) => void;
   validIdPreviews: Record<string, string | null>;
@@ -82,6 +85,7 @@ type GuestFormGuestsSectionProps = {
   onValidIdImageErrorChange: (field: string, hasError: boolean) => void;
   /** Bumps when an existing booking is loaded so visible guest slots expand. */
   seedKey?: string | number;
+  guestCapacity?: PropertyGuestCapacity;
 };
 
 function clearGuestSlot(
@@ -101,6 +105,7 @@ function clearGuestSlot(
 export function GuestFormGuestsSection({
   form,
   isAirbnb,
+  isFacebook,
   sameAsFacebookName,
   onSameAsFacebookNameChange,
   validIdPreviews,
@@ -108,21 +113,29 @@ export function GuestFormGuestsSection({
   onValidIdPreviewChange,
   onValidIdImageErrorChange,
   seedKey,
+  guestCapacity = DEFAULT_PROPERTY_GUEST_CAPACITY,
 }: GuestFormGuestsSectionProps) {
+  const maxVisibleGuests = Math.min(
+    MAX_GUESTS,
+    guestCapacity.maxAdults + guestCapacity.maxChildren
+  );
   const [visibleCount, setVisibleCount] = useState(1);
 
   useEffect(() => {
     const values = form.getValues();
-    setVisibleCount(
-      getInitialVisibleGuestCount([
-        { name: values.primaryGuestName, age: values.primaryGuestAge },
-        { name: values.guest2Name, age: values.guest2Age },
-        { name: values.guest3Name, age: values.guest3Age },
-        { name: values.guest4Name, age: values.guest4Age },
-        { name: values.guest5Name, age: values.guest5Age },
-      ])
+    const fromSlots = getInitialVisibleGuestCount([
+      { name: values.primaryGuestName, age: values.primaryGuestAge },
+      { name: values.guest2Name, age: values.guest2Age },
+      { name: values.guest3Name, age: values.guest3Age },
+      { name: values.guest4Name, age: values.guest4Age },
+      { name: values.guest5Name, age: values.guest5Age },
+    ]);
+    const fromCounts = Math.min(
+      maxVisibleGuests,
+      Math.max(1, (values.numberOfAdults ?? 1) + (values.numberOfChildren ?? 0))
     );
-  }, [seedKey, form]);
+    setVisibleCount(Math.max(fromSlots, fromCounts));
+  }, [seedKey, form, maxVisibleGuests]);
 
   const watchedGuests = form.watch([
     'primaryGuestName',
@@ -164,7 +177,7 @@ export function GuestFormGuestsSection({
   const visiblePartyGuests = partyGuests.slice(0, visibleCount);
   const visibleAgeCounts = computeGuestCounts(visiblePartyGuests);
 
-  const azureAgeCounts = computeAzureGuestCountsByAge(
+  const occupancyAgeCounts = computeOccupancyGuestCountsByAge(
     visiblePartyGuests.map(({ name, age }) => ({
       age: name?.trim() || age != null ? age : undefined,
     }))
@@ -177,8 +190,10 @@ export function GuestFormGuestsSection({
     watchedGuests[7] != null ||
     watchedGuests[9] != null;
 
-  const showAzureAdultLimitInfo = shouldShowAzureAdultLimitMessage(
-    azureAgeCounts.adults,
+  const showGuestLimitInfo = shouldShowGuestLimitMessage(
+    occupancyAgeCounts.adults,
+    occupancyAgeCounts.children,
+    guestCapacity,
     partySize
   );
 
@@ -207,7 +222,11 @@ export function GuestFormGuestsSection({
         {visibleSlots.map((slot) => {
           const isPrimary = slot.index === 1;
           const partyPosition = slot.index;
-          const isFifthPartyGuest = isPartyFifthGuest(partyPosition, partySize);
+          const isOverflowPartyGuest = isPartyOverflowGuest(
+            partyPosition,
+            partySize,
+            guestCapacity
+          );
           const age = form.watch(slot.ageField) as number | undefined;
           const previewKey = slot.validIdField;
           const nameValue = form.watch(slot.nameField);
@@ -268,7 +287,7 @@ export function GuestFormGuestsSection({
                     htmlFor="sameAsFacebookName"
                     className="text-muted-foreground cursor-pointer text-sm"
                   >
-                    Same as {isAirbnb ? 'Airbnb' : 'Facebook'} Name
+                    Same as {isAirbnb ? 'Airbnb' : isFacebook ? 'Facebook' : 'Full'} Name
                   </label>
                 </div>
               )}
@@ -313,12 +332,12 @@ export function GuestFormGuestsSection({
                           type="text"
                           inputMode="numeric"
                           autoComplete="off"
-                          placeholder={isFifthPartyGuest ? '3' : 'Ex. 25'}
+                          placeholder={isOverflowPartyGuest ? '3' : 'Ex. 25'}
                           value={formatGuestAgeInputValue(field.value)}
                           onChange={(event) => {
                             let next = parseGuestAgeInputChange(event.target.value);
                             if (
-                              isFifthPartyGuest &&
+                              isOverflowPartyGuest &&
                               next != null &&
                               next > FIFTH_PARTY_GUEST_MAX_AGE
                             ) {
@@ -358,19 +377,24 @@ export function GuestFormGuestsSection({
         })}
       </div>
 
-      {showAzureAdultLimitInfo && <AzureGuestLimitReminder />}
+      {showGuestLimitInfo && (
+        <PropertyGuestLimitReminder capacity={guestCapacity} partySize={partySize} />
+      )}
 
-      {visibleCount < MAX_GUESTS && (
+      {visibleCount < maxVisibleGuests && (
         <Button
           type="button"
           variant="outline"
           className="min-h-[44px] w-full"
           onClick={() => {
             setVisibleCount((count) => {
-              const next = Math.min(MAX_GUESTS, count + 1);
+              const next = Math.min(maxVisibleGuests, count + 1);
               const slot = GUEST_SLOTS[next - 1];
               if (form.getValues(slot.ageField) == null) {
-                form.setValue(slot.ageField, getDefaultAgeForGuestFormPartyGuest(slot.index, next));
+                form.setValue(
+                  slot.ageField,
+                  getDefaultAgeForGuestFormPartyGuest(slot.index, next, guestCapacity)
+                );
               }
               return next;
             });

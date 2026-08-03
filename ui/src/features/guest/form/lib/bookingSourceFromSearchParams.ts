@@ -3,7 +3,7 @@
  * Use **`?source=airbnb`** (case-insensitive). Legacy **`?from=airbnb`** is migrated in
  * `GuestForm` to `source=airbnb` and stripped from the URL.
  */
-export const BOOKING_SOURCE_OPTIONS = ['Facebook', 'Airbnb'] as const;
+export const BOOKING_SOURCE_OPTIONS = ['Direct', 'Facebook', 'Airbnb'] as const;
 export type BookingSource = (typeof BOOKING_SOURCE_OPTIONS)[number];
 
 /** Browser URL keys that must never be preserved across guest navigations or share links. */
@@ -19,13 +19,17 @@ export const STRIPPED_GUEST_QUERY_KEYS = [
 ] as const;
 
 export function normalizeBookingSource(value: string | null | undefined): BookingSource {
-  return value?.trim() === 'Airbnb' ? 'Airbnb' : 'Facebook';
+  const v = value?.trim().toLowerCase();
+  if (v === 'airbnb') return 'Airbnb';
+  if (v === 'facebook') return 'Facebook';
+  return 'Direct';
 }
 
 export function bookingSourceFromUrlSearchParams(sp: URLSearchParams): BookingSource {
   const v = sp.get('source')?.trim().toLowerCase();
   if (v === 'airbnb') return 'Airbnb';
-  return 'Facebook';
+  if (v === 'facebook') return 'Facebook';
+  return 'Direct';
 }
 
 /** True when the URL still carries a deprecated guest/dev control query key. */

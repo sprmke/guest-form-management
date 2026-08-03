@@ -5,11 +5,22 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { Users, User, PawPrint, Mail, Phone, Info } from 'lucide-react';
 
-import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import {
+  formatGuestMessengerReturn,
+  formatGuestSuccessAdministration,
+  pickGuestBrandHeaderProps,
+} from '@/features/guest/form/lib/guestFormBranding';
+import { bookingSourceFromUrlSearchParams } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
 import { guestCalendarPath } from '@/features/guest/lib/guestPublicPaths';
+import { GuestStayDateRangeDisplay } from '@/features/guest/property/components/GuestStayDateRangeDisplay';
 
-import { formatDateToLongFormat, formatTimeToAMPM } from '@/utils/format/dates';
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
+import { formatTimeToAMPM, stringToDate } from '@/utils/format/dates';
 
 interface BookingData {
   checkInDate: string;
@@ -37,8 +48,14 @@ export function GuestFormSuccess() {
   const propertySlug = useGuestPropertySlug();
   const bookingId = searchParams.get('bookingId');
   const bookingData = location.state?.bookingData as BookingData | undefined;
-  const { data: guestBrand } = useGuestPaymentInfo();
-  const brandLogo = guestBrand?.emailLogoUrl;
+  const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
+  const brandHeader = pickGuestBrandHeaderProps(guestBrand);
+  const organizationName = guestBrand.organizationName?.trim() || 'us';
+  const administrationLabel = formatGuestSuccessAdministration(guestBrand.residenceName);
+  const bookingSource = bookingSourceFromUrlSearchParams(searchParams);
+  const isAirbnb = bookingSource === 'Airbnb';
+  const isFacebook = bookingSource === 'Facebook';
+  const messengerReturn = formatGuestMessengerReturn(isAirbnb, isFacebook);
 
   // Redirect to root if no booking ID
   useEffect(() => {
@@ -69,29 +86,12 @@ export function GuestFormSuccess() {
   const totalGuests = bookingData ? bookingData.numberOfAdults + bookingData.numberOfChildren : 0;
 
   return (
-    <div className="guest-inner-enter relative flex flex-col items-center justify-center px-5 pb-10 pt-14 text-center">
-      <div className="absolute left-0 right-0 top-[-3.25rem] mx-auto flex justify-center md:top-[-4.25rem]">
-        <div className="bg-card shadow-elevated ring-card rounded-full p-1 ring-4">
-          <img
-            src={brandLogo?.trim() || '/images/logo.png'}
-            alt="Kame Home"
-            className="h-[88px] w-[88px] rounded-full object-cover md:h-[120px] md:w-[120px]"
-          />
-        </div>
-      </div>
-
+    <div className="guest-inner-enter relative flex flex-col items-center justify-center px-5 py-8 text-center sm:py-10">
       <div className="w-full max-w-xl space-y-8">
-        <div className="space-y-3">
-          <p className="section-eyebrow">Booking submitted</p>
-          <div className="space-y-1">
-            <h1 className="text-foreground text-2xl font-bold tracking-tight md:text-3xl">
-              Booking Confirmed!
-            </h1>
-            <p className="text-muted-foreground text-base">
-              Thank you for booking with us, <strong className="text-primary">Ka-Homies!</strong>
-            </p>
-          </div>
-        </div>
+        <GuestFormBrandHeader {...brandHeader} title="Booking Confirmed!" />
+        <p className="text-muted-foreground text-base">
+          Thank you for booking with <strong className="text-primary">{organizationName}</strong>!
+        </p>
 
         {bookingData && (
           <div className="space-y-6">
@@ -110,37 +110,13 @@ export function GuestFormSuccess() {
                   </div>
                 </div>
 
-                {/* Check-in and Check-out Dates - Side by Side on Desktop */}
-                <div className="grid gap-4">
-                  <div className="border-border bg-muted/50 flex justify-between rounded-lg border p-3">
-                    <div className="border-border flex-1 border-r px-3">
-                      <div className="text-muted-foreground flex items-center gap-2">
-                        <p className="text-xs font-medium uppercase">Check-in</p>
-                      </div>
-                      <div>
-                        <p className="text-foreground text-sm font-bold">
-                          {formatDateToLongFormat(bookingData.checkInDate)}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {formatTimeToAMPM(bookingData.checkInTime, true)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex-1 px-3">
-                      <div className="text-muted-foreground flex items-center gap-2">
-                        <p className="text-xs font-medium uppercase">Check-out</p>
-                      </div>
-                      <div>
-                        <p className="text-foreground text-sm font-bold">
-                          {formatDateToLongFormat(bookingData.checkOutDate)}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {formatTimeToAMPM(bookingData.checkOutTime, false)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                {/* Stay dates */}
+                <GuestStayDateRangeDisplay
+                  checkIn={stringToDate(bookingData.checkInDate)}
+                  checkOut={stringToDate(bookingData.checkOutDate)}
+                  checkInDetail={formatTimeToAMPM(bookingData.checkInTime, true)}
+                  checkOutDetail={formatTimeToAMPM(bookingData.checkOutTime, false)}
+                />
 
                 <div className="space-y-5 border-t pt-6">
                   {/* Number of Guests */}
@@ -257,19 +233,14 @@ export function GuestFormSuccess() {
             <div className="text-foreground dark:text-foreground space-y-2 text-sm leading-relaxed">
               <p>
                 We will now review your booking request. Please wait for our booking acknowledgment
-                email. Once confirmed, we will forward your Guest Advice Form (GAF) to the property
-                administration (Azure) for approval.
+                email. Once confirmed, we will forward your Guest Advice Form (GAF) to the{' '}
+                {administrationLabel} for approval.
               </p>
               <p>
-                <span className="font-semibold">
-                  Kindly return to our conversation on Facebook Messenger / Airbnb
-                </span>{' '}
-                to review our policies and important reminders, or if you need to update your
-                booking details.
+                <span className="font-semibold">{messengerReturn}</span> to review our policies and
+                important reminders, or if you need to update your booking details.
               </p>
-              <p className="pt-1 font-medium">
-                See you soon, <span className="font-semibold">Ka-Homies</span>! 🐢💚
-              </p>
+              <p className="pt-1 font-medium">See you soon!</p>
             </div>
           </div>
         </div>

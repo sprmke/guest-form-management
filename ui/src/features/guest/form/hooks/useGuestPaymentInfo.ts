@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  GUEST_FORM_DEFAULT_CHECK_IN_TIME,
+  GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
+} from '@/features/guest/form/lib/guestFormPropertyDefaults';
 import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
 
 const FUNCTIONS_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -25,6 +29,20 @@ export type GuestPaymentInfo = {
   gafTowerAndUnitNumber: string;
   gafGuestsOnsiteContactPerson: string;
   gafOwnerContactNumber: string;
+  allowPets: boolean;
+  allowParking: boolean;
+  allowSurpriseDecor: boolean;
+  checkInTime: string;
+  checkOutTime: string;
+  maxAdults: number;
+  maxChildren: number;
+  propertyName: string;
+  propertyEyebrow: string;
+  propertyCoverImageUrl: string | null;
+  residenceName: string | null;
+  organizationName: string;
+  defaultParkingRateGuest: number;
+  petFee: number;
 };
 
 export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
@@ -39,6 +57,20 @@ export const DEFAULT_GUEST_PAYMENT_INFO: GuestPaymentInfo = {
   gafTowerAndUnitNumber: '',
   gafGuestsOnsiteContactPerson: '',
   gafOwnerContactNumber: '',
+  allowPets: true,
+  allowParking: true,
+  allowSurpriseDecor: true,
+  checkInTime: GUEST_FORM_DEFAULT_CHECK_IN_TIME,
+  checkOutTime: GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
+  maxAdults: 4,
+  maxChildren: 1,
+  propertyName: '',
+  propertyEyebrow: '',
+  propertyCoverImageUrl: null,
+  residenceName: null,
+  organizationName: '',
+  defaultParkingRateGuest: 400,
+  petFee: 300,
 };
 
 function guestPaymentInfoUrl(propertySlug: string | null): string {

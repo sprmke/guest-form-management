@@ -1,4 +1,8 @@
 import { DEFAULT_GUEST_AGE } from '@/features/guest/form/lib/guestCounts';
+import {
+  GUEST_FORM_DEFAULT_CHECK_IN_TIME,
+  GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
+} from '@/features/guest/form/lib/guestFormPropertyDefaults';
 import { type GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
 
 import {
@@ -18,8 +22,8 @@ export const defaultFormValues: Partial<GuestFormData> = {
   guestAddress: '',
   checkInDate: formatDateToYYYYMMDD(today),
   checkOutDate: formatDateToYYYYMMDD(tomorrow),
-  checkInTime: '14:00',
-  checkOutTime: '11:00',
+  checkInTime: GUEST_FORM_DEFAULT_CHECK_IN_TIME,
+  checkOutTime: GUEST_FORM_DEFAULT_CHECK_OUT_TIME,
   nationality: 'Filipino',
   numberOfAdults: 1,
   numberOfChildren: 0,
@@ -54,5 +58,11 @@ export function getGuestFormDefaultValuesFromSearchParams(
     base.checkInDate = checkInDate;
     base.checkOutDate = checkOutDate;
   }
+
+  const adults = Number.parseInt(sp.get('adults') ?? '', 10);
+  const children = Number.parseInt(sp.get('children') ?? '', 10);
+  if (Number.isFinite(adults) && adults >= 1) base.numberOfAdults = adults;
+  if (Number.isFinite(children) && children >= 0) base.numberOfChildren = children;
+
   return base;
 }

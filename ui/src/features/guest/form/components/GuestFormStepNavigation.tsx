@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import type { GuestFormStepId } from '@/features/guest/form/lib/guestFormSteps';
 
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type GuestFormStepNavigationProps = {
   currentStep: GuestFormStepId;
@@ -14,6 +15,8 @@ type GuestFormStepNavigationProps = {
   onBack: () => void;
   onNext: () => void;
   onSubmit: () => void;
+  /** When true, omit the top border (host already provides a modal footer separator). */
+  bare?: boolean;
 };
 
 export function GuestFormStepNavigation({
@@ -25,17 +28,19 @@ export function GuestFormStepNavigation({
   onBack,
   onNext,
   onSubmit,
+  bare = false,
 }: GuestFormStepNavigationProps) {
   const isFirst = currentStep === 1;
   const isLast = currentStep === stepCount;
 
   return (
     <div
-      className={
+      className={cn(
         isFirst
-          ? 'border-separator flex justify-end border-t pt-5'
-          : 'border-separator flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:items-center sm:justify-between'
-      }
+          ? 'flex justify-end'
+          : 'flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between',
+        bare ? null : 'border-separator border-t pt-5'
+      )}
     >
       {!isFirst ? (
         <Button

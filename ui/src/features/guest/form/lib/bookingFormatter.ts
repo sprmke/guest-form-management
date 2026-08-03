@@ -1,6 +1,13 @@
 import { type GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
+import type { BookingSource } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
 
 import { formatTimeToAMPM } from '@/utils/format/dates';
+
+function clipboardGuestNameLabel(source: BookingSource): string {
+  if (source === 'Airbnb') return 'Airbnb Name';
+  if (source === 'Facebook') return 'Facebook Name';
+  return 'Full Name';
+}
 
 /**
  * Formats booking data into a human-readable and parseable string format
@@ -8,7 +15,8 @@ import { formatTimeToAMPM } from '@/utils/format/dates';
  */
 export function formatBookingInfoForClipboard(
   formData: GuestFormData,
-  bookingId: string | null
+  bookingId: string | null,
+  bookingSource: BookingSource = 'Direct'
 ): string {
   const lines: string[] = [];
 
@@ -22,7 +30,7 @@ export function formatBookingInfoForClipboard(
 
   // Guest Information
   lines.push('--- Guest Information ---');
-  lines.push(`Facebook/Airbnb Name: ${formData.guestFacebookName || ''}`);
+  lines.push(`${clipboardGuestNameLabel(bookingSource)}: ${formData.guestFacebookName || ''}`);
   lines.push(`Primary Guest: ${formData.primaryGuestName || ''}`);
   lines.push(`Email: ${formData.guestEmail || ''}`);
   lines.push(`Phone: ${formData.guestPhoneNumber || ''}`);
@@ -94,10 +102,10 @@ export function formatBookingInfoForClipboard(
   // Property Information
   lines.push('');
   lines.push('--- Property Information ---');
-  lines.push(`Unit Owner: ${formData.unitOwner || 'Arianna Perez'}`);
-  lines.push(`Tower/Unit Number: ${formData.towerAndUnitNumber || 'Monaco 2604'}`);
-  lines.push(`Onsite Contact Person: ${formData.ownerOnsiteContactPerson || 'Arianna Perez'}`);
-  lines.push(`Contact Number: ${formData.ownerContactNumber || '0962 541 2941'}`);
+  lines.push(`Unit Owner: ${formData.unitOwner || ''}`);
+  lines.push(`Tower/Unit Number: ${formData.towerAndUnitNumber || ''}`);
+  lines.push(`Onsite Contact Person: ${formData.ownerOnsiteContactPerson || ''}`);
+  lines.push(`Contact Number: ${formData.ownerContactNumber || ''}`);
 
   lines.push('');
   lines.push('=== END BOOKING INFORMATION ===');
@@ -150,7 +158,12 @@ export function parseBookingInfoFromClipboard(
       }
 
       // Parse each field
-      if (trimmedLine.startsWith('Facebook/Airbnb Name:')) {
+      if (
+        trimmedLine.startsWith('Facebook/Airbnb Name:') ||
+        trimmedLine.startsWith('Facebook Name:') ||
+        trimmedLine.startsWith('Airbnb Name:') ||
+        trimmedLine.startsWith('Full Name:')
+      ) {
         formData.guestFacebookName = extractValue(trimmedLine);
       } else if (trimmedLine.startsWith('Primary Guest:')) {
         formData.primaryGuestName = extractValue(trimmedLine);
