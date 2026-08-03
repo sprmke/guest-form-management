@@ -26,6 +26,12 @@ const MOCK_HOUSE_RULES = resolveHouseRulesForDisplay({
   checkOutTime: '11:00 AM',
 });
 
+function mockListingGuestCapacity(guests: number): { maxAdults: number; maxChildren: number } {
+  const total = Math.max(1, guests);
+  const maxAdults = Math.min(6, Math.max(1, total - 1));
+  return { maxAdults, maxChildren: Math.max(0, total - maxAdults) };
+}
+
 export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): ResolvedPropertyDetail {
   return {
     source: 'api',
@@ -56,6 +62,8 @@ export function mapApiPropertyToResolved(dto: PublicPropertyDetailDto): Resolved
     bedrooms: dto.bedrooms,
     bathrooms: dto.bathrooms,
     guests: dto.maxGuests,
+    maxAdults: dto.maxAdults,
+    maxChildren: dto.maxChildren,
     amenities: dto.amenities,
     images: dto.images.length > 0 ? dto.images : dto.media.map((item) => item.url),
     media: dto.media,
@@ -122,6 +130,7 @@ export function mapMockPropertyToResolved(detail: PropertyDetail): ResolvedPrope
     bedrooms: detail.bedrooms,
     bathrooms: detail.bathrooms,
     guests: detail.guests,
+    ...mockListingGuestCapacity(detail.guests),
     amenities: detail.amenities,
     images: detail.images,
     media: detail.images.map((url, index) => ({
@@ -185,6 +194,7 @@ export function mapBasicMockToResolved(basic: Property): ResolvedPropertyDetail 
     bedrooms: basic.bedrooms,
     bathrooms: basic.bathrooms,
     guests: basic.guests,
+    ...mockListingGuestCapacity(basic.guests),
     amenities: basic.amenities,
     images: basic.images,
     media: basic.images.map((url, index) => ({

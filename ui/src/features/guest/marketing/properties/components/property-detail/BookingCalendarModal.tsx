@@ -1,10 +1,12 @@
 import { CalendarDays, ArrowRight, Check } from 'lucide-react';
 
+import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
+
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
-import { PublicPropertyCalendar } from './PublicPropertyCalendar';
+import { PublicPropertyCalendar } from '@/features/guest/property/components/PublicPropertyCalendar';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -47,7 +49,6 @@ export function BookingCalendarModal({
   const hasRange = checkIn !== null && checkOut !== null;
   const hasCheckIn = checkIn !== null;
 
-  // Step-based title: a single, clear instruction that doubles as status
   const stepTitle = hasRange
     ? `${nightsCount} night${nightsCount !== 1 ? 's' : ''} selected`
     : hasCheckIn
@@ -55,13 +56,13 @@ export function BookingCalendarModal({
       : 'Select check-in date';
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-[580px]"
-        aria-describedby={undefined}
-      >
-        {/* ── Header ─ single line, step-based instruction ─────────────────── */}
-        <div className="border-border flex items-center gap-3 border-b pb-4 pr-5">
+    <GuestDialogShell
+      open={open}
+      onOpenChange={onOpenChange}
+      sizeClassName="max-w-[min(calc(100vw-1.5rem),30rem)] sm:max-w-[min(90vw,30rem)]"
+      heightClassName="max-h-[min(90dvh,40rem)]"
+      title={
+        <div className="flex items-center gap-3">
           <div className="bg-primary/10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
             {hasRange ? (
               <Check className="text-primary h-3.5 w-3.5" />
@@ -75,26 +76,15 @@ export function BookingCalendarModal({
             {stepTitle}
           </DialogTitle>
         </div>
-
-        {/* ── Calendar (compact = no internal date summary) ─────────────────── */}
-        <div className="flex-1 p-5">
-          <PublicPropertyCalendar
-            propertyName={propertyName}
-            propertySlug={propertySlug}
-            value={{ checkIn, checkOut }}
-            onDatesChange={onDatesChange}
-            showBookingAction={false}
-            compact={true}
-          />
-        </div>
-
-        {/* ── Footer ───────────────────────────────────────────────────────── */}
-        <div className="border-border flex items-center justify-between gap-3 border-t pt-4">
+      }
+      footer={
+        <div className="flex items-center justify-between gap-3">
           <button
+            type="button"
             onClick={() => onDatesChange(null, null)}
             disabled={!hasCheckIn}
             className={cn(
-              'text-sm underline-offset-2 transition-colors',
+              'min-h-[44px] text-sm underline-offset-2 transition-colors',
               hasCheckIn
                 ? 'text-muted-foreground hover:text-foreground cursor-pointer underline'
                 : 'text-muted-foreground/30 cursor-not-allowed'
@@ -105,9 +95,10 @@ export function BookingCalendarModal({
           </button>
 
           <Button
+            type="button"
             onClick={() => onOpenChange(false)}
             disabled={!hasRange}
-            className="rounded-full px-6"
+            className="min-h-[44px] rounded-full px-6"
           >
             {hasRange ? (
               <span className="flex items-center gap-1.5">
@@ -119,7 +110,16 @@ export function BookingCalendarModal({
             )}
           </Button>
         </div>
-      </DialogContent>
-    </Dialog>
+      }
+    >
+      <PublicPropertyCalendar
+        propertyName={propertyName}
+        propertySlug={propertySlug}
+        value={{ checkIn, checkOut }}
+        onDatesChange={onDatesChange}
+        showBookingAction={false}
+        compact={true}
+      />
+    </GuestDialogShell>
   );
 }

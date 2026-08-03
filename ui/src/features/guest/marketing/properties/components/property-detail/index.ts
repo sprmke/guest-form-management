@@ -7,4 +7,5 @@ export { PropertyRules } from './PropertyRules';
 export { PropertyReviews } from './PropertyReviews';
 export { BookingCard } from './BookingCard';
 export { BookingCalendarModal } from './BookingCalendarModal';
+export { GuestBookingFormModal } from './GuestBookingFormModal';
 export { SimilarProperties } from './SimilarProperties';

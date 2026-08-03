@@ -20,12 +20,12 @@ import {
 } from 'lucide-react';
 
 import { CancellationPolicyDisplay } from '@/features/guest/marketing/properties/components/property-detail/CancellationPolicyDisplay';
+import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
 
 import type { ResolvedCancellationPolicyDisplay } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
 import type { ResolvedHouseRule } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PropertyRulesProps {
   houseRules: ResolvedHouseRule[];
@@ -179,28 +179,22 @@ export function PropertyRules({
         </div>
       </motion.section>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent
-          className="flex max-h-[min(90dvh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(90vw,32rem)]"
-          aria-describedby={undefined}
-        >
-          <DialogHeader className="border-border shrink-0 border-b pb-4 text-left">
-            <DialogTitle>House rules</DialogTitle>
-          </DialogHeader>
-
-          <div className="min-h-0 flex-1 overflow-y-auto py-4">
-            {maxGuests ? (
-              <div className="border-border bg-card mb-4 flex items-center gap-3 rounded-lg border p-4">
-                <Users className="text-primary h-5 w-5" />
-                <span className="text-foreground">
-                  Maximum {maxGuests} guest{maxGuests !== 1 && 's'}
-                </span>
-              </div>
-            ) : null}
-            <HouseRulesGrid rules={houseRules} />
+      <GuestDialogShell
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="House rules"
+        sizeClassName="max-w-[min(calc(100vw-1.5rem),32rem)] sm:max-w-[min(90vw,32rem)]"
+      >
+        {maxGuests ? (
+          <div className="border-border bg-card mb-4 flex items-center gap-3 rounded-lg border p-4">
+            <Users className="text-primary h-5 w-5" />
+            <span className="text-foreground">
+              Maximum {maxGuests} guest{maxGuests !== 1 && 's'}
+            </span>
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+        <HouseRulesGrid rules={houseRules} />
+      </GuestDialogShell>
     </>
   );
 }

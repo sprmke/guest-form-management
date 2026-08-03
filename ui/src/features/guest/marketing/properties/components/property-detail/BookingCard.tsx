@@ -1,19 +1,18 @@
 import { useMemo, useState } from 'react';
 
 import { motion } from 'framer-motion';
-import {
-  CalendarDays,
-  Users,
-  Star,
-  ChevronDown,
-  Info,
-  Shield,
-  Check,
-  ChevronRight,
-} from 'lucide-react';
+import { CalendarDays, Users, Star, ChevronDown, Info, Shield, ChevronRight } from 'lucide-react';
 
 import { useParkingReserve } from '@/features/guest/marketing/parkings/hooks/useParkingReserve';
 import { usePropertyReserve } from '@/features/guest/marketing/properties/hooks/usePropertyReserve';
+import {
+  adjustBookingGuestCount,
+  canAdjustBookingGuestCount,
+  clampBookingGuestCounts,
+  formatBookingGuestSummary,
+  resolveListingGuestCapacity,
+  type BookingGuestCounts,
+} from '@/features/guest/form/lib/guestCounts';
 
 import { computeParkingStayTotal } from '@/features/dashboard/parking/lib/parkingPricingCompute';
 import { parkingPricingDefaultsFromDto } from '@/features/dashboard/parking/lib/parkingPricingDefaults';
@@ -63,6 +62,11 @@ interface BookingCardProps {
   rating?: number;
   reviews?: number;
   maxGuests?: number | null;
+  maxAdults?: number | null;
+  maxChildren?: number | null;
+  adults?: number;
+  childCount?: number;
+  onGuestsChange?: (counts: BookingGuestCounts) => void;
   /** Slug used for the calendar's booking URL */
   propertySlug?: string;
   propertyName?: string;
@@ -79,7 +83,49 @@ interface BookingCardProps {
   onDatesChange?: (checkIn: Date | null, checkOut: Date | null) => void;
   calendarOpen?: boolean;
   onCalendarOpenChange?: (open: boolean) => void;
-  cancellationShortLabel?: string | null;
+}
+
+function GuestCountRow({
+  label,
+  value,
+  onDecrement,
+  onIncrement,
+  decrementDisabled,
+  incrementDisabled,
+}: {
+  label: string;
+  value: number;
+  onDecrement: () => void;
+  onIncrement: () => void;
+  decrementDisabled: boolean;
+  incrementDisabled: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+      <p className="text-foreground font-medium">{label}</p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onDecrement}
+          disabled={decrementDisabled}
+          aria-label={`Decrease ${label}`}
+          className="border-border text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-40"
+        >
+          −
+        </button>
+        <span className="text-foreground w-8 text-center font-medium tabular-nums">{value}</span>
+        <button
+          type="button"
+          onClick={onIncrement}
+          disabled={incrementDisabled}
+          aria-label={`Increase ${label}`}
+          className="border-border text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-40"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -94,6 +140,11 @@ export function BookingCard({
   rating = 4.9,
   reviews = 127,
   maxGuests = 6,
+  maxAdults,
+  maxChildren,
+  adults: externalAdults,
+  childCount: externalChildren,
+  onGuestsChange,
   propertySlug = '',
   propertyName = '',
   listingKind = 'property',
@@ -107,7 +158,6 @@ export function BookingCard({
   onDatesChange,
   calendarOpen: externalCalendarOpen,
   onCalendarOpenChange,
-  cancellationShortLabel,
 }: BookingCardProps) {
   // Internal state — used when parent doesn't control dates
   const [internalCheckIn, setInternalCheckIn] = useState<Date | null>(null);
@@ -137,7 +187,40 @@ export function BookingCard({
     }
   };
 
-  const [guests, setGuests] = useState(2);
+  const guestCapacity = useMemo(
+    () => resolveListingGuestCapacity(maxGuests ?? 6, maxAdults, maxChildren),
+    [maxGuests, maxAdults, maxChildren]
+  );
+
+  const [internalGuestCounts, setInternalGuestCounts] = useState<BookingGuestCounts>({
+    adults: 2,
+    children: 0,
+  });
+  const guestsControlled = externalAdults !== undefined && externalChildren !== undefined;
+  const guestCounts = guestsControlled
+    ? clampBookingGuestCounts(
+        { adults: externalAdults, children: externalChildren ?? 0 },
+        guestCapacity,
+        maxGuests ?? undefined
+      )
+    : internalGuestCounts;
+
+  const setGuestCounts = (next: BookingGuestCounts) => {
+    const clamped = clampBookingGuestCounts(next, guestCapacity, maxGuests ?? undefined);
+    if (guestsControlled) {
+      onGuestsChange?.(clamped);
+      return;
+    }
+    setInternalGuestCounts(clamped);
+    onGuestsChange?.(clamped);
+  };
+
+  const updateGuestCount = (key: keyof BookingGuestCounts, delta: number) => {
+    setGuestCounts(
+      adjustBookingGuestCount(key, delta, guestCounts, guestCapacity, maxGuests ?? undefined)
+    );
+  };
+
   const [showGuestPicker, setShowGuestPicker] = useState(false);
 
   const isParking = listingKind === 'parking';
@@ -281,7 +364,7 @@ export function BookingCard({
             </div>
 
             {/* Check-out field */}
-            <div className={cn('p-3 transition-colors', hasDates && 'bg-primary/10')}>
+            <div className="p-3 transition-colors">
               <p className="text-muted-foreground mb-1 text-[10px] font-semibold uppercase tracking-widest">
                 Check-out
               </p>
@@ -312,7 +395,7 @@ export function BookingCard({
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="bg-primary/10 -mt-2 mb-4 flex items-center justify-between rounded-lg px-3 py-2"
+              className="border-border bg-muted/40 -mt-2 mb-4 flex items-center justify-between rounded-lg border px-3 py-2"
             >
               <span className="text-muted-foreground text-xs">
                 {nightsCount} night{nightsCount !== 1 ? 's' : ''} selected
@@ -341,7 +424,7 @@ export function BookingCard({
                   <div className="flex items-center gap-2">
                     <Users className="text-muted-foreground h-4 w-4" />
                     <span className="text-foreground text-sm">
-                      {guests} guest{guests !== 1 && 's'}
+                      {formatBookingGuestSummary(guestCounts)}
                     </span>
                   </div>
                 </div>
@@ -360,32 +443,55 @@ export function BookingCard({
                   transition={{ duration: 0.15 }}
                   className="border-border bg-card absolute left-0 right-0 top-full z-10 mt-2 rounded-xl border p-4 shadow-lg"
                 >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-foreground font-medium">Guests</p>
-                      <p className="text-muted-foreground text-sm">Maximum {maxGuests} guests</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setGuests(Math.max(1, guests - 1))}
-                        disabled={guests <= 1}
-                        aria-label="Decrease guests"
-                        className="border-border text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-40"
-                      >
-                        −
-                      </button>
-                      <span className="text-foreground w-8 text-center font-medium">{guests}</span>
-                      <button
-                        type="button"
-                        onClick={() => setGuests(Math.min(maxGuests ?? 10, guests + 1))}
-                        disabled={guests >= (maxGuests ?? 10)}
-                        aria-label="Increase guests"
-                        className="border-border text-foreground hover:bg-muted flex h-8 w-8 items-center justify-center rounded-full border transition-colors disabled:opacity-40"
-                      >
-                        +
-                      </button>
-                    </div>
+                  <div className="divide-border divide-y">
+                    <GuestCountRow
+                      label="Adults"
+                      value={guestCounts.adults}
+                      onDecrement={() => updateGuestCount('adults', -1)}
+                      onIncrement={() => updateGuestCount('adults', 1)}
+                      decrementDisabled={
+                        !canAdjustBookingGuestCount(
+                          'adults',
+                          -1,
+                          guestCounts,
+                          guestCapacity,
+                          maxGuests ?? undefined
+                        )
+                      }
+                      incrementDisabled={
+                        !canAdjustBookingGuestCount(
+                          'adults',
+                          1,
+                          guestCounts,
+                          guestCapacity,
+                          maxGuests ?? undefined
+                        )
+                      }
+                    />
+                    <GuestCountRow
+                      label="Children"
+                      value={guestCounts.children}
+                      onDecrement={() => updateGuestCount('children', -1)}
+                      onIncrement={() => updateGuestCount('children', 1)}
+                      decrementDisabled={
+                        !canAdjustBookingGuestCount(
+                          'children',
+                          -1,
+                          guestCounts,
+                          guestCapacity,
+                          maxGuests ?? undefined
+                        )
+                      }
+                      incrementDisabled={
+                        !canAdjustBookingGuestCount(
+                          'children',
+                          1,
+                          guestCounts,
+                          guestCapacity,
+                          maxGuests ?? undefined
+                        )
+                      }
+                    />
                   </div>
                 </motion.div>
               )}
@@ -445,20 +551,6 @@ export function BookingCard({
               </>
             )}
           </div>
-        </div>
-      </div>
-
-      {/* Trust Badges */}
-      <div className="text-muted-foreground mt-4 flex flex-wrap items-center justify-center gap-4 text-sm">
-        {cancellationShortLabel ? (
-          <div className="flex items-center gap-1">
-            <Check className="text-primary h-4 w-4" />
-            <span>{cancellationShortLabel}</span>
-          </div>
-        ) : null}
-        <div className="flex items-center gap-1">
-          <Shield className="text-primary h-4 w-4" />
-          <span>Secure booking</span>
         </div>
       </div>
 

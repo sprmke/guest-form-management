@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Navigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ import {
   PropertyReviews,
   BookingCard,
   BookingCalendarModal,
+  GuestBookingFormModal,
   SimilarProperties,
 } from '@/features/guest/marketing/properties/components/property-detail';
 import { mockProperties } from '@/features/guest/marketing/properties/data/mockProperties';
@@ -24,6 +25,11 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { GuestPublicBrandShell } from '@/features/guest/marketing/shared/components/GuestPublicBrandShell';
 import type { ListingHostInfo } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { useMarketingBrandColor } from '@/features/guest/marketing/shared/context/ModeSwitchTransitionContext';
+import {
+  clampBookingGuestCounts,
+  resolveListingGuestCapacity,
+  type BookingGuestCounts,
+} from '@/features/guest/form/lib/guestCounts';
 
 import { Button } from '@/components/ui/button';
 import { parseGuestInquiryDateRange, formatDateToYYYYMMDD } from '@/utils/format/dates';
@@ -38,7 +44,31 @@ export function PropertyDetailPage() {
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [formModalOpen, setFormModalOpen] = useState(false);
   const [contactSheetOpen, setContactSheetOpen] = useState(false);
+  const [bookingGuests, setBookingGuests] = useState<BookingGuestCounts>({
+    adults: 2,
+    children: 0,
+  });
+
+  const guestCapacity = useMemo(
+    () =>
+      propertyData
+        ? resolveListingGuestCapacity(
+            propertyData.guests,
+            propertyData.maxAdults,
+            propertyData.maxChildren
+          )
+        : null,
+    [propertyData]
+  );
+
+  useEffect(() => {
+    if (!guestCapacity) return;
+    setBookingGuests((current) =>
+      clampBookingGuestCounts(current, guestCapacity, guestCapacity.maxGuests)
+    );
+  }, [guestCapacity]);
 
   const handleDatesChange = useCallback((ci: Date | null, co: Date | null) => {
     setCheckIn(ci);
@@ -78,7 +108,10 @@ export function PropertyDetailPage() {
     propertySlug,
     checkIn,
     checkOut,
+    adults: bookingGuests.adults,
+    children: bookingGuests.children,
     onNeedDates: openDatesForReserve,
+    onOpenForm: () => setFormModalOpen(true),
   });
 
   const { contactHost } = usePropertyContactHost({
@@ -96,18 +129,46 @@ export function PropertyDetailPage() {
       setCheckOut(fromUrl.checkOut);
     }
 
-    if (searchParams.get('contactHost') !== 'open') return;
+    const adultsParam = searchParams.get('adults');
+    const childrenParam = searchParams.get('children');
+    if (guestCapacity && (adultsParam || childrenParam)) {
+      setBookingGuests((current) => {
+        const nextAdults = adultsParam ? Number(adultsParam) : current.adults;
+        const nextChildren = childrenParam ? Number(childrenParam) : current.children;
+        if (!Number.isFinite(nextAdults) || !Number.isFinite(nextChildren)) return current;
+        return clampBookingGuestCounts(
+          { adults: nextAdults, children: nextChildren },
+          guestCapacity,
+          guestCapacity.maxGuests
+        );
+      });
+    }
+
     if (status === 'loading') return;
 
     const next = new URLSearchParams(searchParams);
-    next.delete('contactHost');
+    let shouldReplace = false;
 
-    if (status === 'authenticated') {
-      setContactSheetOpen(true);
+    if (searchParams.get('contactHost') === 'open') {
+      next.delete('contactHost');
+      shouldReplace = true;
+      if (status === 'authenticated') {
+        setContactSheetOpen(true);
+      }
     }
 
-    setSearchParams(next, { replace: true });
-  }, [propertySlug, searchParams, setSearchParams, status]);
+    if (searchParams.get('reserveForm') === 'open') {
+      next.delete('reserveForm');
+      shouldReplace = true;
+      if (status === 'authenticated') {
+        setFormModalOpen(true);
+      }
+    }
+
+    if (shouldReplace) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [propertySlug, searchParams, setSearchParams, status, guestCapacity]);
 
   useEffect(() => {
     const pickDates = searchParams.get('pickDates');
@@ -287,6 +348,11 @@ export function PropertyDetailPage() {
                 rating={showRatingInBooking ? propertyData.rating : undefined}
                 reviews={showRatingInBooking ? propertyData.reviews : undefined}
                 maxGuests={propertyData.guests}
+                maxAdults={propertyData.maxAdults}
+                maxChildren={propertyData.maxChildren}
+                adults={bookingGuests.adults}
+                childCount={bookingGuests.children}
+                onGuestsChange={setBookingGuests}
                 propertySlug={propertySlug}
                 propertyName={propertyData.name}
                 checkIn={checkIn}
@@ -294,11 +360,7 @@ export function PropertyDetailPage() {
                 onDatesChange={handleDatesChange}
                 calendarOpen={calendarOpen}
                 onCalendarOpenChange={setCalendarOpen}
-                cancellationShortLabel={
-                  propertyData.cancellationPolicy.showListingHighlight
-                    ? propertyData.cancellationPolicy.shortLabel
-                    : null
-                }
+                onReserve={reserve}
               />
             </div>
           </div>
@@ -342,6 +404,17 @@ export function PropertyDetailPage() {
           checkIn={checkIn}
           checkOut={checkOut}
           onDatesChange={handleDatesChange}
+        />
+
+        <GuestBookingFormModal
+          open={formModalOpen}
+          onOpenChange={setFormModalOpen}
+          propertySlug={propertySlug}
+          propertyName={propertyData.name}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          numberOfAdults={bookingGuests.adults}
+          numberOfChildren={bookingGuests.children}
         />
 
         <ContactHostSheet

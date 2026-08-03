@@ -31,8 +31,9 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+import { GuestDialogShell } from '@/features/guest/marketing/shared/components/GuestDialogShell';
+
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface PropertyAmenitiesProps {
   amenities: string[];
@@ -299,23 +300,17 @@ export function PropertyAmenities({ amenities }: PropertyAmenitiesProps) {
         ) : null}
       </motion.section>
 
-      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent
-          className="flex max-h-[min(90dvh,640px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(90vw,32rem)]"
-          aria-describedby={undefined}
-        >
-          <DialogHeader className="border-border shrink-0 border-b pb-4 text-left">
-            <DialogTitle>What this place offers</DialogTitle>
-          </DialogHeader>
-
-          <div className="min-h-0 flex-1 overflow-y-auto py-4">
-            <AmenitiesByCategory
-              categorizedAmenities={categorizedAmenities}
-              uncategorizedAmenities={uncategorizedAmenities}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GuestDialogShell
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        title="What this place offers"
+        sizeClassName="max-w-[min(calc(100vw-1.5rem),32rem)] sm:max-w-[min(90vw,32rem)]"
+      >
+        <AmenitiesByCategory
+          categorizedAmenities={categorizedAmenities}
+          uncategorizedAmenities={uncategorizedAmenities}
+        />
+      </GuestDialogShell>
     </>
   );
 }
