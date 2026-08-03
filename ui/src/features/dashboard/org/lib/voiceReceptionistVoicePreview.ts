@@ -69,9 +69,11 @@ export function playVoicePreviewAudio(preview: VoicePreviewAudio): () => void {
   const mime = preview.mimeType.toLowerCase();
   const isPcm = mime.includes('l16') || mime.includes('pcm') || mime.startsWith('audio/l16');
 
+  // Fresh ArrayBuffer-backed copy — DOM `BlobPart` rejects SharedArrayBuffer-backed views.
+  const audioBytes = Uint8Array.from(bytes);
   const blob = isPcm
-    ? pcmToWavBlob(bytes, preview.sampleRateHz || 24_000)
-    : new Blob([bytes], { type: preview.mimeType || 'audio/wav' });
+    ? pcmToWavBlob(audioBytes, preview.sampleRateHz || 24_000)
+    : new Blob([audioBytes], { type: preview.mimeType || 'audio/wav' });
 
   const url = URL.createObjectURL(blob);
   const audio = new Audio(url);

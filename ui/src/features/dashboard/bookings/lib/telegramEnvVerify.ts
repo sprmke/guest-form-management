@@ -6,5 +6,5 @@ export type TelegramEnvVerifyDto = {
     normalizeError?: string;
   };
   getMe: { ok: boolean; username?: string; error?: string };
-  getChat: { ok: boolean; type?: string; title?: string; error?: string };
+  getChat: { ok: boolean; type?: string; title?: string; username?: string; error?: string };
 };

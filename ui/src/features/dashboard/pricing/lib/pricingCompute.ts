@@ -17,10 +17,10 @@ import {
   DEFAULT_WEEKEND_NIGHTLY_RATE,
 } from '@/features/dashboard/pricing/lib/pricingDefaults';
 
-type StayPricingFields = Pick<
-  BookingRow,
-  'check_in_date' | 'check_out_date' | 'number_of_nights' | 'booking_rate'
->;
+type StayPricingFields = Pick<BookingRow, 'check_in_date' | 'check_out_date' | 'booking_rate'> & {
+  /** Calendar pricing rows may omit nights until stay dates are set. */
+  number_of_nights: number | null;
+};
 
 type NightlyRateOptions = {
   dateOverrides?: Record<string, number>;
@@ -109,7 +109,9 @@ export function resolveNightlyRateForDate(
 }
 
 export function computeDefaultBookingRate(
-  booking: Pick<BookingRow, 'check_in_date' | 'check_out_date' | 'number_of_nights'>,
+  booking: Pick<BookingRow, 'check_in_date' | 'check_out_date'> & {
+    number_of_nights: number | null;
+  },
   defaults: PropertyPricingDefaults = FALLBACK_PROPERTY_PRICING_DEFAULTS,
   dateOverrides?: Record<string, number>,
   holidayRules?: PricingHolidayRuleDto[] | null

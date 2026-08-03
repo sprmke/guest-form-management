@@ -1,5 +1,4 @@
 import dayjs from 'dayjs';
-import { type z } from 'zod';
 
 import {
   requiresValidId,
@@ -7,7 +6,7 @@ import {
   DEFAULT_GUEST_AGE,
   FIFTH_PARTY_GUEST_MAX_AGE,
 } from '@/features/guest/form/lib/guestCounts';
-import { type guestFormSchema } from '@/features/guest/form/schemas/guestFormSchema';
+import { type GuestFormData } from '@/features/guest/form/schemas/guestFormSchema';
 
 const firstNames = ['John', 'Jane', 'Mike', 'Sarah', 'David', 'Emma', 'Chris', 'Lisa', 'Juan'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis'];
@@ -186,7 +185,7 @@ export const setDummyFile = (
   fileInputRef.current.files = dataTransfer.files;
 };
 
-export const generateRandomData = async (): Promise<z.infer<typeof guestFormSchema>> => {
+export const generateRandomData = async (): Promise<GuestFormData> => {
   const fullName = generateRandomName();
 
   // Generate a date between today and next 30 days for check-in
