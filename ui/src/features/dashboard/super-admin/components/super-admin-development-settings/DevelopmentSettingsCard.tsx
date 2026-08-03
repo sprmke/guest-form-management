@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle,
   Building2,
+  FileCheck2,
+  Home,
   Image as ImageIcon,
   Info,
   Mail,
@@ -52,6 +54,8 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'basic', label: 'Basic Information', icon: Info },
   { id: 'media', label: 'Photos & Videos', icon: ImageIcon },
   { id: 'email', label: 'Email automations', icon: Mail },
+  { id: 'document-requirements', label: 'Document Requirements', icon: FileCheck2 },
+  { id: 'unit-types', label: 'Unit types', icon: Home },
   { id: 'amenities', label: 'Amenities', icon: Sparkles },
   { id: 'location', label: 'Location', icon: MapPin },
   { id: 'towers', label: 'Towers & Parking', icon: Building2 },
@@ -192,6 +196,7 @@ export function DevelopmentSettingsCard({ slug }: Props) {
   return (
     <>
       <AdminSectionNavLayout
+        className="min-h-0 flex-1"
         sections={SETTINGS_SECTIONS}
         header={
           <AdminPageHeader

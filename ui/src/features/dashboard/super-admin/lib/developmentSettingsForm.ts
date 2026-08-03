@@ -1,5 +1,15 @@
 import { AZURE_PMO_EMAIL } from '@/features/dashboard/org/lib/propertyEmailAutomationDefaults';
 import type { PropertyMediaItem } from '@/features/dashboard/org/lib/propertySettingsConstants';
+import { documentRequirementLabelFieldErrors } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
+import {
+  mergeDocumentRequirements,
+  type DocumentRequirement,
+} from '@/features/dashboard/bookings/lib/documentRequirements';
+import {
+  mergeUnitTypes,
+  validateUnitTypes,
+  type DevelopmentUnitType,
+} from '@/features/dashboard/bookings/lib/unitTypes';
 import {
   developmentMediaToLegacyFields,
   readDevelopmentMedia,
@@ -53,6 +63,8 @@ export type DevelopmentProfileDraft = {
   mapsUrl: string;
   placeId: string;
   pmoEmail: string;
+  documentRequirements: DocumentRequirement[];
+  unitTypes: DevelopmentUnitType[];
 };
 
 export function developmentProfileDraftFromDevelopment(
@@ -62,6 +74,10 @@ export function developmentProfileDraftFromDevelopment(
   const media = readDevelopmentMedia(development);
   const legacy = developmentMediaToLegacyFields(media);
   const storedParkingLevels = readStringArray(settings, 'parkingLevels').filter(Boolean);
+  const workflowDefaults =
+    settings.workflowDefaults && typeof settings.workflowDefaults === 'object'
+      ? (settings.workflowDefaults as Record<string, unknown>)
+      : null;
 
   return {
     name: development.name,
@@ -88,6 +104,8 @@ export function developmentProfileDraftFromDevelopment(
     mapsUrl: readString(settings, 'mapsUrl'),
     placeId: readString(settings, 'placeId'),
     pmoEmail: readString(settings, 'pmoEmail'),
+    documentRequirements: mergeDocumentRequirements(workflowDefaults?.documentRequirements),
+    unitTypes: mergeUnitTypes(settings.unitTypes, development.name),
   };
 }
 
@@ -125,6 +143,8 @@ export function buildDevelopmentUpdatePayload(draft: DevelopmentProfileDraft) {
     mapsUrl: draft.mapsUrl.trim() || null,
     placeId: draft.placeId.trim() || null,
     pmoEmail: draft.pmoEmail.trim() || null,
+    documentRequirements: draft.documentRequirements,
+    unitTypes: draft.unitTypes,
   };
 }
 
@@ -132,6 +152,11 @@ export function validateDevelopmentProfileDraft(draft: DevelopmentProfileDraft):
   const email = draft.pmoEmail.trim();
   if (!email) return 'PMO email is required';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Enter a valid PMO email';
+  const labelErrors = documentRequirementLabelFieldErrors(draft.documentRequirements);
+  const firstLabelError = Object.values(labelErrors)[0];
+  if (firstLabelError) return firstLabelError;
+  const unitTypeError = validateUnitTypes(draft.unitTypes);
+  if (unitTypeError) return unitTypeError;
   return null;
 }
 

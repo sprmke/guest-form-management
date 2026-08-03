@@ -142,9 +142,14 @@ The view is preserved in the URL alongside filters, so deep-linking and refreshe
 
 ### 5.1.1 Airbnb source differences
 
-When the guest form URL includes **`?source=airbnb`** (case-insensitive), the booking is treated as an Airbnb booking (`booking_source = 'Airbnb'`). Key differences from Facebook (default) bookings:
+When the guest form URL includes **`?source=airbnb`** (case-insensitive), the booking is treated as an Airbnb booking (`booking_source = 'Airbnb'`). **`?source=facebook`** sets `booking_source = 'Facebook'`. With **no `source` param**, bookings default to **`Direct`** (neutral name label on the form; no Payment step change).
 
-- **Guest form** is **4 steps** (Payment step hidden) — submit fires after Pets step. `paymentReceipt` is optional in the schema; `findUs` defaults to "Airbnb".
+Key differences from non-Airbnb bookings:
+
+- **Guest form** step list is filtered by property **`properties.settings`** toggles **`allowParking`**, **`allowPets`**, **`allowSurpriseDecor`** (resolved via **`get-guest-payment-info`**; default all `true`). When off, the step/checkbox is hidden and **`submit-form`** forces the field false.
+- **Guest form** Stay-step **check-in/out time defaults** and early/late warning thresholds come from the same **`get-guest-payment-info`** payload (`checkInTime` / `checkOutTime`, 24h `HH:mm`; property-settings defaults **`14:00`** / **`12:00`**). Existing **`?bookingId=`** loads keep stored submission times from **`get-form`**.
+- **Guest form** guest-list **capacity** (`maxAdults`, `maxChildren`) comes from the same payload (set by property **Unit type** under development **`unitTypes`** presets). Reminder banner + **`submit-form`** occupancy checks use building rule: age 4+ = adult, age 0–3 = child.
+- **Guest form** is **4 steps** for Airbnb (Payment step hidden). Non-Airbnb Direct/Facebook bookings include Payment unless parking/pets toggles remove middle steps. `paymentReceipt` is optional in the Airbnb schema; `findUs` defaults to "Airbnb" when `?source=airbnb`.
 - **Server (`submit-form`)** allows missing `paymentReceipt` file and skips the downpayment receipt AI validation for Airbnb submissions.
 - **Admin `ReviewPricingForm`** defaults down payment and security deposit to **₱0** (editable by admin if needed).
 - **Admin `BookingEditForm`** hides the Downpayment receipt row in the Documents section for Airbnb bookings.

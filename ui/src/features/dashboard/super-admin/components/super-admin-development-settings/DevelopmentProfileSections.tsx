@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
+import { DevelopmentDocumentRequirementsSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentDocumentRequirementsSection';
+import { DevelopmentUnitTypesSection } from '@/features/dashboard/super-admin/components/super-admin-development-settings/DevelopmentUnitTypesSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
 import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
@@ -282,6 +284,18 @@ export function DevelopmentProfileSections({
           />
         </SettingsField>
       </AdminSection>
+
+      <DevelopmentDocumentRequirementsSection
+        list={draft.documentRequirements}
+        disabled={disabled}
+        onChange={(next) => onChange('documentRequirements', next)}
+      />
+
+      <DevelopmentUnitTypesSection
+        list={draft.unitTypes}
+        disabled={disabled}
+        onChange={(next) => onChange('unitTypes', next)}
+      />
 
       <AdminSection id="amenities" title="Amenities" icon={Sparkles}>
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
