@@ -19,7 +19,12 @@ import {
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
 
-import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
+import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import { pickGuestBrandHeaderProps } from '@/features/guest/form/lib/guestFormBranding';
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -30,6 +35,8 @@ const GUEST_REVIEW_BRAND_TITLE = 'Guest Review';
 export function GuestReviewPage() {
   const [searchParams] = useSearchParams();
   const bookingId = (searchParams.get('bookingId') ?? '').trim();
+  const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
+  const brandHeader = pickGuestBrandHeaderProps(guestBrand);
   const [phase, setPhase] = useState<Phase>('review');
 
   const query = useQuery({
@@ -89,6 +96,7 @@ export function GuestReviewPage() {
       bookingId={bookingId}
       data={query.data}
       phase={phase}
+      brandHeader={brandHeader}
       existingVoucher={existingVoucher}
       isClaiming={claimMut.isPending}
       onClaim={() => claimMut.mutateAsync()}
@@ -102,6 +110,7 @@ function GuestReviewContent({
   bookingId,
   data,
   phase,
+  brandHeader,
   existingVoucher,
   isClaiming,
   onClaim,
@@ -111,6 +120,7 @@ function GuestReviewContent({
   bookingId: string;
   data: GuestReviewBootstrap;
   phase: Phase;
+  brandHeader: ReturnType<typeof pickGuestBrandHeaderProps>;
   existingVoucher: Voucher | null;
   isClaiming: boolean;
   onClaim: () => Promise<Voucher>;
@@ -118,8 +128,8 @@ function GuestReviewContent({
   onVoucherDone: () => void;
 }) {
   return (
-    <div className="guest-inner-enter mx-auto w-full max-w-xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <KameFormBrandHeader logoSrc={data.email_logo_url} title={GUEST_REVIEW_BRAND_TITLE} />
+    <div className="guest-inner-enter relative mx-auto w-full max-w-xl space-y-6 p-4 sm:p-6 lg:p-8">
+      <GuestFormBrandHeader {...brandHeader} title={GUEST_REVIEW_BRAND_TITLE} />
 
       {phase === 'review' ? (
         <>

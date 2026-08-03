@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Navigate, Route, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, Route, useLocation, useParams, useSearchParams } from 'react-router-dom';
 
 import { CalendarPage } from '@/features/guest/calendar/pages/CalendarPage';
 import { PropertyChatPage } from '@/features/guest/chat/pages/PropertyChatPage';
@@ -8,7 +8,12 @@ import { GuestForm } from '@/features/guest/form/components/GuestForm';
 import { GuestFormSuccess } from '@/features/guest/form/components/GuestFormSuccess';
 import { useGuestPaymentInfo } from '@/features/guest/form/hooks/useGuestPaymentInfo';
 import { stripLegacyFromQueryParam } from '@/features/guest/form/lib/bookingSourceFromSearchParams';
+import {
+  formatGuestFooterLabel,
+  pickGuestOperationalHeaderProps,
+} from '@/features/guest/form/lib/guestFormBranding';
 import { readGuestPropertySlug } from '@/features/guest/form/lib/guestPropertyScope';
+import { useGuestPropertySlug } from '@/features/guest/hooks/useGuestPropertySlug';
 import {
   guestCalendarPath,
   guestFormPath,
@@ -26,8 +31,27 @@ import { StayGuidePage } from '@/features/guest/stay-guide/pages/StayGuidePage';
 import { MainLayout } from '@/layouts/MainLayout';
 
 function GuestPublicLayout() {
+  const location = useLocation();
+  const propertySlug = useGuestPropertySlug();
   const { data: guestBrand } = useGuestPaymentInfo();
-  return <MainLayout animateOnNavigate brandColor={guestBrand?.brandColor} />;
+  const operationalHeader = pickGuestOperationalHeaderProps(guestBrand);
+  const isCalendarRoute = /\/calendar\/?$/.test(location.pathname);
+
+  return (
+    <MainLayout
+      animateOnNavigate
+      contentMaxWidth={isCalendarRoute ? 'max-w-2xl' : 'max-w-3xl'}
+      brandColor={guestBrand?.brandColor}
+      footerLabel={
+        guestBrand
+          ? formatGuestFooterLabel(guestBrand.organizationName, guestBrand.residenceName)
+          : null
+      }
+      propertySlug={propertySlug}
+      propertyImageSrc={operationalHeader.propertyImageSrc}
+      propertyName={operationalHeader.propertyName}
+    />
+  );
 }
 
 type LegacySegment = 'calendar' | 'form' | 'success' | 'sd-form' | 'guest-review';

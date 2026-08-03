@@ -28,7 +28,18 @@ import {
   type Voucher,
 } from '@/features/guest/sd-form/lib/voucher';
 
-import { KameFormBrandHeader } from '@/components/branding/KameFormBrandHeader';
+import {
+  DEFAULT_GUEST_PAYMENT_INFO,
+  useGuestPaymentInfo,
+} from '@/features/guest/form/hooks/useGuestPaymentInfo';
+import {
+  formatGuestFarewell,
+  formatGuestStayThanks,
+  pickGuestBrandHeaderProps,
+} from '@/features/guest/form/lib/guestFormBranding';
+import { GuestFormStepper } from '@/features/guest/form/components/GuestFormStepper';
+import { SD_FORM_STEPS } from '@/features/guest/sd-form/lib/sdFormSteps';
+import { GuestFormBrandHeader } from '@/components/branding/GuestFormBrandHeader';
 import { SdFormPageSkeleton } from '@/components/skeletons/GuestPageSkeletons';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -52,96 +63,11 @@ type Step2Phase = 'wait_balance' | 'voucher';
 
 const SD_FORM_BRAND_TITLE = 'SD Refund Form';
 
-function StepperConnector({ done }: { done: boolean }) {
-  return (
-    <li className="flex shrink-0 items-center self-center px-0.5 sm:px-1" aria-hidden>
-      <div className={cn('h-0.5 w-4 rounded-full sm:w-8', done ? 'bg-primary' : 'bg-border')} />
-    </li>
-  );
-}
-
-function StepperStepRow({
-  stepNum,
-  short,
-  label,
-  hint,
-  activeStep,
-}: {
-  stepNum: 1 | 2 | 3;
-  short: string;
-  label: string;
-  hint: string;
-  activeStep: 1 | 2 | 3;
-}) {
-  const done = activeStep > stepNum;
-  const current = activeStep === stepNum;
-  return (
-    <li className="flex min-w-0 flex-1 flex-col items-center gap-1.5 text-center sm:flex-row sm:items-center sm:gap-3 sm:text-left">
-      <span
-        className={cn(
-          'flex size-10 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold shadow-sm transition-colors',
-          done && 'border-primary gradient-primary text-primary-foreground shadow-primary/25',
-          current && !done && 'border-primary bg-primary/15 text-primary ring-primary/25 ring-2',
-          !current && !done && 'border-muted-foreground/25 bg-muted/40 text-muted-foreground'
-        )}
-        aria-current={current ? 'step' : undefined}
-      >
-        {done ? <Check className="size-5" strokeWidth={2.5} aria-hidden /> : stepNum}
-      </span>
-      <div className="min-w-0">
-        <p
-          className={cn(
-            'text-[10px] font-bold uppercase tracking-wider sm:text-xs',
-            current || done ? 'text-foreground' : 'text-muted-foreground'
-          )}
-        >
-          <span className="sm:hidden">{short}</span>
-          <span className="hidden sm:inline">{label}</span>
-        </p>
-        <p className="text-muted-foreground hidden text-xs sm:block">{hint}</p>
-      </div>
-    </li>
-  );
-}
-
-function SdFormStepper({ activeStep }: { activeStep: 1 | 2 | 3 }) {
-  return (
-    <nav
-      aria-label="Form steps"
-      className="border-primary/15 from-primary/5 via-card to-card rounded-xl border bg-gradient-to-br px-3 py-4 sm:px-5"
-    >
-      <ol className="flex w-full items-stretch gap-1 sm:gap-2">
-        <StepperStepRow
-          stepNum={1}
-          short="Review"
-          label="Leave a Review"
-          hint="Share your experience"
-          activeStep={activeStep}
-        />
-        <StepperConnector done={activeStep > 1} />
-        <StepperStepRow
-          stepNum={2}
-          short="Surprise"
-          label="Claim surprise"
-          hint="Spin for your next stay"
-          activeStep={activeStep}
-        />
-        <StepperConnector done={activeStep > 2} />
-        <StepperStepRow
-          stepNum={3}
-          short="Refund"
-          label="Refund details"
-          hint="Receive your deposit"
-          activeStep={activeStep}
-        />
-      </ol>
-    </nav>
-  );
-}
-
 export function SdFormPage() {
   const [searchParams] = useSearchParams();
   const bookingId = (searchParams.get('bookingId') ?? '').trim();
+  const { data: guestBrand = DEFAULT_GUEST_PAYMENT_INFO } = useGuestPaymentInfo();
+  const brandHeader = pickGuestBrandHeaderProps(guestBrand);
 
   const [step, setStep] = useState<Step>(1);
   const [step2Phase, setStep2Phase] = useState<Step2Phase>('voucher');
@@ -249,11 +175,10 @@ export function SdFormPage() {
   if (!bookingId) {
     return (
       <div className="relative space-y-6 p-4 text-center sm:p-6 lg:p-8">
-        <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} />
         <div className="space-y-3">
           <h1 className="text-foreground text-base font-bold">Missing booking link</h1>
           <p className="text-muted-foreground text-sm">
-            Use the link from your email, or contact us on Facebook for help.
+            Use the link from your email, or contact your host for help.
           </p>
           <Button asChild variant="outline" className="min-h-[44px]">
             <Link to="/">Back to home</Link>
@@ -270,12 +195,11 @@ export function SdFormPage() {
   if (query.isError || !query.data) {
     return (
       <div className="relative space-y-6 p-4 text-center sm:p-6 lg:p-8">
-        <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} />
         <div className="space-y-3">
           <h1 className="text-foreground text-base font-bold">Form not available</h1>
           <p className="text-muted-foreground text-sm">
             {(query.error as Error)?.message ??
-              "This form isn't available. Use your email link or contact us on Facebook."}
+              "This form isn't available. Use your email link or contact your host for help."}
           </p>
           <Button asChild variant="outline" className="min-h-[44px]">
             <Link to="/">Back to home</Link>
@@ -286,12 +210,10 @@ export function SdFormPage() {
   }
 
   const data = query.data;
-  const brandLogo = data.email_logo_url;
 
   if (step === 'done') {
     return (
       <div className="relative space-y-6 p-4 text-center sm:p-6 lg:p-8">
-        <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} logoSrc={brandLogo} />
         <div className="mx-auto flex max-w-md flex-col items-center gap-5">
           <div className="bg-primary/15 text-primary flex size-14 shrink-0 items-center justify-center rounded-full">
             <Check className="size-7" strokeWidth={2.5} aria-hidden />
@@ -303,7 +225,7 @@ export function SdFormPage() {
               in 1–2 hours using your details.
             </p>
             <p className="strong text-muted-foreground leading-relaxed">
-              We hope to host you again soon. See you, Ka-Homies!
+              {formatGuestFarewell(guestBrand.organizationName)}
             </p>
           </div>
           <Button asChild className="min-h-[44px] w-full min-w-[44px] sm:w-auto">
@@ -320,8 +242,8 @@ export function SdFormPage() {
 
   return (
     <div className="relative space-y-6 p-4 sm:p-6 lg:p-8">
-      <KameFormBrandHeader title={SD_FORM_BRAND_TITLE} logoSrc={brandLogo} />
-      <SdFormStepper activeStep={stepperActive} />
+      <GuestFormBrandHeader {...brandHeader} title={SD_FORM_BRAND_TITLE} />
+      <GuestFormStepper activeStep={stepperActive} steps={SD_FORM_STEPS} />
 
       {showGreeting && (
         <header className="border-separator space-y-4 border-b px-5 pb-5">
@@ -329,10 +251,7 @@ export function SdFormPage() {
             Hi {data.primary_guest_name},
           </h1>
           <div className="text-muted-foreground space-y-3 text-base leading-relaxed">
-            <p>
-              Thanks for staying at Kame Home! We hope you had a comfortable stay with great
-              memories.
-            </p>
+            <p>{formatGuestStayThanks(guestBrand.organizationName)}</p>
             <p>
               Before your SD refund, leave a quick review and share favorite moments from your stay.
             </p>
