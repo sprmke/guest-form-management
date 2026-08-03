@@ -8,10 +8,22 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
 const STORAGE_PREFIX = 'admin.workflowDevControls:v1:';
 
+export type PropertySyncToggles = {
+  syncCalendar: boolean;
+  syncSheets: boolean;
+};
+
+export const DEFAULT_PROPERTY_SYNC_TOGGLES: PropertySyncToggles = {
+  syncCalendar: true,
+  syncSheets: true,
+};
+
 export type WorkflowDevControlDef = {
   key: keyof DevControlFlags;
   label: string;
   description: string;
+  /** Property settings turned this integration off — show unchecked and non-interactive. */
+  disabled?: boolean;
 };
 
 const WORKFLOW_DEV_CONTROLS: WorkflowDevControlDef[] = [
@@ -183,20 +195,55 @@ function isWorkflowDevControlRelevant(
   }
 }
 
+function withPropertySyncDisabledState(
+  controls: WorkflowDevControlDef[],
+  syncToggles: PropertySyncToggles
+): WorkflowDevControlDef[] {
+  return controls.map((control) => {
+    if (control.key === 'updateGoogleCalendar' && !syncToggles.syncCalendar) {
+      return { ...control, disabled: true };
+    }
+    if (control.key === 'updateGoogleSheets' && !syncToggles.syncSheets) {
+      return { ...control, disabled: true };
+    }
+    return control;
+  });
+}
+
 export function workflowDevControlsForTransition(
   fromStatus: BookingStatus,
   toStatus: BookingStatus,
   booking: BookingRow,
-  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS
+  documentRequirements: DocumentRequirement[] = DEFAULT_DOCUMENT_REQUIREMENTS,
+  syncToggles: PropertySyncToggles = DEFAULT_PROPERTY_SYNC_TOGGLES
 ): WorkflowDevControlDef[] {
-  return WORKFLOW_DEV_CONTROLS.filter((c) =>
+  const controls = WORKFLOW_DEV_CONTROLS.filter((c) =>
     isWorkflowDevControlRelevant(c.key, fromStatus, toStatus, booking, documentRequirements)
   );
+  return withPropertySyncDisabledState(controls, syncToggles);
 }
 
 /** Cancel booking: integrations only (no outbound workflow emails). */
-export function workflowDevControlsForCancel(): WorkflowDevControlDef[] {
-  return WORKFLOW_DEV_CONTROLS.filter((c) =>
+export function workflowDevControlsForCancel(
+  syncToggles: PropertySyncToggles = DEFAULT_PROPERTY_SYNC_TOGGLES
+): WorkflowDevControlDef[] {
+  const controls = WORKFLOW_DEV_CONTROLS.filter((c) =>
     ['saveToDatabase', 'updateGoogleCalendar', 'updateGoogleSheets'].includes(c.key)
   );
+  return withPropertySyncDisabledState(controls, syncToggles);
+}
+
+/** Force integration flags off when the property has sync disabled (server gates too). */
+export function sanitizeDevControlsForPropertySync(
+  flags: DevControlFlags,
+  syncToggles: PropertySyncToggles
+): DevControlFlags {
+  const sanitized = { ...flags };
+  if (!syncToggles.syncCalendar) {
+    sanitized.updateGoogleCalendar = false;
+  }
+  if (!syncToggles.syncSheets) {
+    sanitized.updateGoogleSheets = false;
+  }
+  return sanitized;
 }

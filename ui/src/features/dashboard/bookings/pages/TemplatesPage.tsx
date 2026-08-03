@@ -115,6 +115,7 @@ export function TemplatesPage() {
 
   return (
     <AdminSectionNavLayout
+      className="min-h-0 flex-1"
       sectionGroups={sectionGroups}
       header={
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
