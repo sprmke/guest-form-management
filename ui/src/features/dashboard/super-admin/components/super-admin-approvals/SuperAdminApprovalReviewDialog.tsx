@@ -13,6 +13,7 @@ import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUn
 import { VerificationDocThumbnail } from '@/features/dashboard/super-admin/components/super-admin-approvals/VerificationDocThumbnail';
 import {
   useApproveOrgVerification,
+  useDecideContractConsideration,
   useOrgVerificationAssets,
   useRejectOrgVerification,
 } from '@/features/dashboard/super-admin/hooks/useApprovals';
@@ -121,9 +122,15 @@ function hostModesLabel(hostModes: string[]): string {
   return 'Property';
 }
 
-function formatSubmittedDate(value: string | null): string {
+function formatApprovalDate(value: string | null): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-US', {
+  const trimmed = value.trim();
+  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  const date = ymd
+    ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]))
+    : new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return trimmed;
+  return date.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -337,6 +344,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   const { data: detail, isLoading } = useOrgVerificationAssets(orgId);
   const approveMutation = useApproveOrgVerification();
   const rejectMutation = useRejectOrgVerification();
+  const decideConsideration = useDecideContractConsideration();
 
   const [panel, setPanel] = useState<Panel>('review');
   const [rejectReasonId, setRejectReasonId] = useState<HostRejectionReasonId | ''>('');
@@ -740,6 +748,69 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
               </div>
             ) : (
               <div className="space-y-6">
+                {approval.hasPendingConsideration ? (
+                  <section className="border-border space-y-3 rounded-xl border p-3">
+                    <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
+                      Consideration
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {(
+                        [
+                          ['property', approval.propertyConsiderationStatus],
+                          ['parking', approval.parkingConsiderationStatus],
+                        ] as const
+                      )
+                        .filter(([, status]) => status === 'pending')
+                        .map(([leg]) => (
+                          <div key={leg} className="flex flex-wrap gap-1.5">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="min-h-[44px]"
+                              disabled={decideConsideration.isPending}
+                              onClick={() => {
+                                void decideConsideration
+                                  .mutateAsync({
+                                    orgId: approval.organizationId,
+                                    leg,
+                                    decision: 'grant',
+                                  })
+                                  .then(() => {
+                                    toast.success(`${leg} consideration granted`);
+                                    onOpenChange(false);
+                                  })
+                                  .catch((err: Error) => toast.error(err.message));
+                              }}
+                            >
+                              Grant {leg}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="min-h-[44px]"
+                              disabled={decideConsideration.isPending}
+                              onClick={() => {
+                                void decideConsideration
+                                  .mutateAsync({
+                                    orgId: approval.organizationId,
+                                    leg,
+                                    decision: 'deny',
+                                  })
+                                  .then(() => {
+                                    toast.success(`${leg} consideration denied`);
+                                    onOpenChange(false);
+                                  })
+                                  .catch((err: Error) => toast.error(err.message));
+                              }}
+                            >
+                              Deny {leg}
+                            </Button>
+                          </div>
+                        ))}
+                    </div>
+                  </section>
+                ) : null}
                 <section className="space-y-3">
                   <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
                     Information
@@ -748,7 +819,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     <InfoRow label="Hosting" value={hostModesLabel(hostModes)} />
                     <InfoRow
                       label="Submitted"
-                      value={formatSubmittedDate(
+                      value={formatApprovalDate(
                         verification.baseSubmittedAt ?? approval.baseSubmittedAt
                       )}
                     />
@@ -761,7 +832,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                         {verification.propertyContractEndDate ? (
                           <InfoRow
                             label="Contract end"
-                            value={verification.propertyContractEndDate}
+                            value={formatApprovalDate(verification.propertyContractEndDate)}
                           />
                         ) : null}
                         <InfoRow
@@ -779,7 +850,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                         {verification.parkingContractEndDate ? (
                           <InfoRow
                             label="Parking end"
-                            value={verification.parkingContractEndDate}
+                            value={formatApprovalDate(verification.parkingContractEndDate)}
                           />
                         ) : null}
                       </>

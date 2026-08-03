@@ -106,6 +106,13 @@ serveAuthenticated('list-org-verifications', async (req) => {
         createdAt: row.created_at,
         unitConflicts,
         hasActiveUnitConflict,
+        propertyConsiderationStatus: verification.propertyLifecycle.consideration.status,
+        parkingConsiderationStatus: verification.parkingLifecycle.consideration.status,
+        hasPendingConsideration:
+          verification.propertyLifecycle.consideration.status === 'pending' ||
+          verification.parkingLifecycle.consideration.status === 'pending',
+        propertyAccessLocked: Boolean(verification.propertyLifecycle.accessLockedAt),
+        parkingAccessLocked: Boolean(verification.parkingLifecycle.accessLockedAt),
       };
     })
   );

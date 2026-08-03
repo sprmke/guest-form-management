@@ -5,6 +5,7 @@
  */
 
 import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
+import { emptyContractLegLifecycle } from '../_shared/contractLifecycle.ts';
 import {
   orgVerificationToSettingsValue,
   readOrgVerificationFromSettings,
@@ -62,6 +63,8 @@ serveAuthenticated('approve-org-verification', async (req) => {
       baseRejectionReason: null,
       baseRejectionKind: null,
       baseChangesRequestedDocs: [],
+      propertyLifecycle: emptyContractLegLifecycle(),
+      parkingLifecycle: emptyContractLegLifecycle(),
     };
   } else {
     if (verification.enhancedStatus !== 'pending') {

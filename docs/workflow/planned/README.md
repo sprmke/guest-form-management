@@ -24,10 +24,9 @@ Not yet shipped. See [`../done/`](../done/) for completed plans.
 | [`ai-opportunities-roadmap.md`](./ai-opportunities-roadmap.md)                 | not started | AI opportunity backlog across guest/host/admin/dev                    |
 | [`booking-workflow-multi-tenancy.md`](./booking-workflow-multi-tenancy.md)     | not started | Multi-property booking workflow audit, design & backlog               |
 | [`unit-handoff-active-uniqueness.md`](./unit-handoff-active-uniqueness.md)     | not started | [#120](https://github.com/sprmke/kame-homes/issues/120) → phase A + B |
-| [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md)                         | not started | One ACTIVE listing per tower+unit; SA approve/swap                    |
-| [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md)                         | not started | Sublessee contract expiry lifecycle (depends on phase A)              |
+| [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md)                         | shipped     | One ACTIVE listing per tower+unit; SA approve/swap                    |
 
-**In progress:** [`property-calendar-page.md`](../in-progress/property-calendar-page.md), [`booking-workflow-configurable-docs.md`](../in-progress/booking-workflow-configurable-docs.md) (v1 slice — tasks 1–7 shipped, pending human verify)
+**In progress:** [`property-calendar-page.md`](../in-progress/property-calendar-page.md), [`booking-workflow-configurable-docs.md`](../in-progress/booking-workflow-configurable-docs.md), [`unit-handoff-phase-b.md`](../in-progress/unit-handoff-phase-b.md)
 
 ## Naming
 

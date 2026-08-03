@@ -20,6 +20,14 @@ function SuccessionBadge() {
   );
 }
 
+function ConsiderationBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+      Consideration
+    </span>
+  );
+}
+
 function hostModesLabel(hostModes: string[]): string {
   const hasProperty = hostModes.includes('property');
   const hasParking = hostModes.includes('parking');
@@ -78,6 +86,7 @@ export function SuperAdminApprovalsTable({ approvals, onSelect }: Props) {
                     {approval.organizationName}
                   </p>
                   {approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
+                  {approval.hasPendingConsideration ? <ConsiderationBadge /> : null}
                 </div>
                 <p className={cn('truncate sm:hidden', adminTableBodyText.secondary)}>
                   {approval.ownerName}

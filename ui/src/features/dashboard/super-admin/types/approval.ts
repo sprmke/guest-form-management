@@ -4,6 +4,7 @@ import type {
   OrgSocialProofPlatform,
 } from '@/features/dashboard/org/lib/orgVerification';
 import type { OrgVerificationRejectionKind } from '@/features/dashboard/org/lib/orgVerificationTiers';
+import type { ConsiderationStatus } from '@/features/dashboard/org/lib/contractLifecycle';
 
 /** ACTIVE peer listing at the same tower+unit (other org) — from list-org-verifications. */
 export type OrgApprovalUnitConflict = {
@@ -29,6 +30,11 @@ export type OrgApprovalSummary = {
   createdAt: string;
   unitConflicts: OrgApprovalUnitConflict[];
   hasActiveUnitConflict: boolean;
+  propertyConsiderationStatus: ConsiderationStatus;
+  parkingConsiderationStatus: ConsiderationStatus;
+  hasPendingConsideration: boolean;
+  propertyAccessLocked: boolean;
+  parkingAccessLocked: boolean;
 };
 
 export type OrgVerificationAssetUrls = {

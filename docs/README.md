@@ -43,10 +43,11 @@ See epics #101–#119 in historical [`archive/todos/BACKLOG_DRAFT.md`](./archive
 
 ## Guides (live — per-route behavior)
 
-| Doc                                                    | Purpose               |
-| ------------------------------------------------------ | --------------------- |
-| [`guides/README.md`](./guides/README.md)               | Route guides overview |
-| [`guides/routes/README.md`](./guides/routes/README.md) | Route → file index    |
+| Doc                                                                                                | Purpose                            |
+| -------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| [`guides/README.md`](./guides/README.md)                                                           | Route guides overview              |
+| [`guides/routes/README.md`](./guides/routes/README.md)                                             | Route → file index                 |
+| [`guides/testing/unit-handoff-phase-b-manual.md`](./guides/testing/unit-handoff-phase-b-manual.md) | Phase B contract-expiry manual E2E |
 
 ## Archive
 

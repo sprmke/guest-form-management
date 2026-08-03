@@ -18,6 +18,17 @@ import { formatPublicUrl } from '../_shared/utils.ts';
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
+/** Upload-only proofs for contract consideration (not stored on verification.assets). */
+const CONSIDERATION_PROOF_ASSET_TYPES = [
+  'property_consideration_proof',
+  'parking_consideration_proof',
+] as const;
+type ConsiderationProofAssetType = (typeof CONSIDERATION_PROOF_ASSET_TYPES)[number];
+
+function isConsiderationProofType(value: string): value is ConsiderationProofAssetType {
+  return (CONSIDERATION_PROOF_ASSET_TYPES as readonly string[]).includes(value);
+}
+
 serveAuthenticated('upload-org-verification-asset', async (req) => {
   requireHttpMethod(req, 'POST');
 
@@ -29,10 +40,13 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
   const file = formData.get('file');
 
   if (!orgId) return jsonError(req, 'orgId is required');
-  if (!ORG_VERIFICATION_ASSET_TYPES.includes(assetTypeRaw as OrgVerificationAssetType)) {
+  const considerationProof = isConsiderationProofType(assetTypeRaw);
+  if (
+    !considerationProof &&
+    !ORG_VERIFICATION_ASSET_TYPES.includes(assetTypeRaw as OrgVerificationAssetType)
+  ) {
     return jsonError(req, 'Invalid assetType');
   }
-  const assetType = assetTypeRaw as OrgVerificationAssetType;
   if (!(file instanceof File)) return jsonError(req, 'file is required');
 
   const mime = (file.type || '').toLowerCase();
@@ -62,6 +76,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
       : {};
   const existingVerification = readOrgVerificationFromSettings(currentSettings);
   if (
+    !considerationProof &&
     existingVerification.baseStatus === 'rejected' &&
     existingVerification.baseRejectionKind === 'rejected'
   ) {
@@ -76,7 +91,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
         : mime === 'image/webp'
           ? '.webp'
           : '.jpg';
-  const storagePath = `org/${orgId}/${assetType}/${crypto.randomUUID()}${ext}`;
+  const storagePath = `org/${orgId}/${assetTypeRaw}/${crypto.randomUUID()}${ext}`;
 
   const { error: uploadError } = await supabase.storage
     .from(ORG_VERIFICATION_BUCKET)
@@ -87,6 +102,23 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
     return jsonError(req, 'Upload failed', 500);
   }
 
+  if (considerationProof) {
+    const { data: signed, error: signedError } = await supabase.storage
+      .from(ORG_VERIFICATION_BUCKET)
+      .createSignedUrl(storagePath, 60 * 60);
+
+    if (signedError) {
+      console.error('[upload-org-verification-asset] signed url', signedError.message);
+    }
+
+    return jsonSuccess(req, {
+      path: storagePath,
+      previewUrl: signed?.signedUrl ? formatPublicUrl(signed.signedUrl) : null,
+      assetType: assetTypeRaw,
+    });
+  }
+
+  const assetType = assetTypeRaw as OrgVerificationAssetType;
   const verification = applyAssetPath(existingVerification, assetType, storagePath);
 
   const { error: updateError } = await supabase

@@ -13,16 +13,18 @@ Route: `/admin/approvals`
 
 ## Progress overview
 
-| Section         | E2E save | Validation | Docs | Notes                                                        |
-| --------------- | -------- | ---------- | ---- | ------------------------------------------------------------ |
-| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification; Succession badge when unit taken |
-| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject; succession confirm       |
+| Section         | E2E save | Validation | Docs | Notes                                                                            |
+| --------------- | -------- | ---------- | ---- | -------------------------------------------------------------------------------- |
+| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification; Succession + Consideration badges                    |
+| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject; succession confirm; consideration Grant/Deny |
 
 ---
 
 ## Overview
 
 Platform super-admins review **Tier 1 host verification** submissions from `/onboarding` (and host resubmits after a request for changes or rejection). Rows come from orgs where `organizations.settings.verification.baseStatus` is not `none`. Default filter is **In review** (`pending`).
+
+**Consideration (Unit handoff Phase B):** when a sublessee / Auth Rep listing is in the post-contract grace window and the owner submitted **Request consideration** (note + date + proof file upload), the queue shows a **Consideration** badge. The review dialog offers **Grant** / **Deny** per property or parking leg (`decide-contract-consideration`). Grant is blocked if Phase A ACTIVE tower+unit peers exist. Daily lifecycle automation: **`contract-expiry-cron`** (see `supabase/snippets/contract-expiry-cron.sql`). **Manual E2E:** [`docs/guides/testing/unit-handoff-phase-b-manual.md`](../../testing/unit-handoff-phase-b-manual.md).
 
 **Access:** `RequireSuperAdmin` (`SUPER_ADMIN_EMAILS`).
 

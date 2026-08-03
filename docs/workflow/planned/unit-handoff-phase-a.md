@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use superpowers:subagent-driven-development or executing-plans. Checkboxes track progress.  
 > **Issue:** [#120](https://github.com/sprmke/kame-homes/issues/120)  
-> **Sister plan:** [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md) (execute after this file)  
+> **Sister plan:** [`../in-progress/unit-handoff-phase-b.md`](../in-progress/unit-handoff-phase-b.md) (execute after this file)  
 > **Approved:** 2026-08-02
 
 **Goal:** One public (`ACTIVE`) listing per Azure tower+unit; challengers as `INACTIVE`; SA approve / approve-swap; helpers via Team or guest booking link.

@@ -72,42 +72,43 @@ Unlimited extensions; booking transfer; parking slot handoff beyond parking-leg 
 
 **Files:** `_shared/orgVerification.ts`; create `_shared/contractLifecycle.ts`; optional UI types mirror.
 
-- [ ] Types + parse/serialize defaults for property/parking lifecycle
-- [ ] Manila date helpers; notice/grace/lock/consideration predicates; `CONSIDERATION_MAX_DAYS = 14`
-- [ ] Verify fixtures for T−15 / grace / T+5 / 14d rules
+- [x] Types + parse/serialize defaults for property/parking lifecycle
+- [x] Manila date helpers; notice/grace/lock/consideration predicates; `CONSIDERATION_MAX_DAYS = 14`
+- [x] Verify fixtures for T−15 / grace / T+5 / 14d rules (`contractLifecycle_test.ts`)
 
 ### Task 2 — Cron + notices
 
 **Files:** `contract-expiry-cron/index.ts`; `config.toml`; email template(s) + `static_files`; emailService helper.
 
-- [ ] Idempotent milestones via `noticesSent`
-- [ ] T+0 archive; T+5 lock; grant expiry revoke
-- [ ] Owner emails; cron secret optional
-- [ ] Re-run does not double-send
+- [x] Idempotent milestones via `noticesSent`
+- [x] T+0 archive; T+5 lock; grant expiry revoke
+- [x] Owner emails; cron secret optional
+- [x] Re-run does not double-send
 
 ### Task 3 — Host gate + consideration submit
 
 **Files:** `submit-contract-consideration`; host gate UI; property/parking route wiring; proof upload reuse.
 
-- [ ] Owner-only submit; anti-abuse server-side
-- [ ] Grace banners + consideration form; locked gate for all listing members
-- [ ] Manual E2E at 375px
+- [x] Owner-only submit; anti-abuse server-side
+- [x] Grace banners + consideration form (file proof upload); locked gate for all listing members
+- [ ] Manual E2E at 375px — run [`docs/guides/testing/unit-handoff-phase-b-manual.md`](../../guides/testing/unit-handoff-phase-b-manual.md)
 
 ### Task 4 — Approvals consideration
 
 **Files:** decide endpoint; `list-org-verifications` flag; Approvals table/dialog.
 
-- [ ] Grant with conflict check + clear lock + `grantedUntil`
-- [ ] Deny / request changes; history counts
-- [ ] Full renew approve clears consideration
+- [x] Grant with conflict check + clear lock + `grantedUntil`
+- [x] Deny / request changes; history counts
+- [x] Full renew approve clears consideration
 
 ### Task 5 — Docs
 
 **Files:** `PROJECT.md`; scheduled-jobs runbook; TODOS; approvals + host guides; `planned_modules` pointer only.
 
-- [ ] Document cron, consideration, lock; no duplicate checklist outside this file + Phase A file
+- [x] Document cron, consideration, lock; no duplicate checklist outside this file + Phase A file
 
 ### Done when
 
-- [ ] Cron milestones + consideration grant/deny/lock behave per design
-- [ ] Docs + runbook updated
+- [x] Cron smoke locally (`POST contract-expiry-cron` → `success:true`; full milestone matrix via manual guide)
+- [x] Docs + runbook + [manual test guide](../../guides/testing/unit-handoff-phase-b-manual.md)
+- [ ] Manual E2E at 375px (sign-off sheet in the test guide)
