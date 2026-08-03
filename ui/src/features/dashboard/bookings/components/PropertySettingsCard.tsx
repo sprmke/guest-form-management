@@ -244,7 +244,7 @@ export function PropertySettingsCard() {
 
   const nameCheck = useCheckPropertyName(profileDraft.name, property.id, nameChanged);
 
-  const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+  const nameUnavailable = nameChanged && nameCheck.isUnavailable;
 
   const { conflict: towerConflictDetail, hasActiveListing: towerUnitListed } = useTowerUnitConflict(
     profileDraft.tower,
@@ -633,7 +633,7 @@ export function PropertySettingsCard() {
             slugPreview={slugPreview}
             towerConflict={towerConflict}
             nameUnavailable={nameUnavailable}
-            nameChecking={nameChanged && nameCheck.isFetching}
+            nameChecking={nameChanged && nameCheck.showChecking}
             newCustomAmenityInputs={newCustomAmenityInputs}
             onNewCustomAmenityInputChange={(categoryId, value) =>
               setNewCustomAmenityInputs((current) => ({

@@ -251,8 +251,8 @@ export function OnboardingPage() {
   const hostModeReady = hostProperty || hostParking;
 
   const orgNameCheck = useCheckOrganizationName(orgName, undefined, orgNameReady);
-  const orgNameUnavailable = orgNameCheck.isFetched && orgNameCheck.data?.available === false;
-  const orgNameChecking = orgNameReady && orgNameCheck.isFetching;
+  const orgNameUnavailable = orgNameCheck.isUnavailable;
+  const orgNameChecking = orgNameCheck.isChecking;
 
   const propertyNameTrimmed = propertyName.trim();
   const propertyNameCheck = useCheckPropertyName(
@@ -260,10 +260,8 @@ export function OnboardingPage() {
     undefined,
     showPropertyBlock && propertyNameTrimmed.length >= 2
   );
-  const propertyNameUnavailable =
-    showPropertyBlock && propertyNameCheck.isFetched && propertyNameCheck.data?.available === false;
-  const propertyNameChecking =
-    showPropertyBlock && propertyNameTrimmed.length >= 2 && propertyNameCheck.isFetching;
+  const propertyNameUnavailable = propertyNameCheck.isUnavailable;
+  const propertyNameChecking = propertyNameCheck.isChecking;
 
   const propertyReady =
     !showPropertyBlock ||
@@ -604,7 +602,7 @@ export function OnboardingPage() {
                           <p role="alert" className="text-destructive text-xs">
                             An organization with this name already exists.
                           </p>
-                        ) : orgNameChecking ? (
+                        ) : orgNameCheck.showChecking ? (
                           <p className="text-muted-foreground text-xs">Checking availability…</p>
                         ) : null}
                       </div>
@@ -818,7 +816,7 @@ export function OnboardingPage() {
                               <p role="alert" className="text-destructive text-xs">
                                 Enter a property name
                               </p>
-                            ) : propertyNameChecking ? (
+                            ) : propertyNameCheck.showChecking ? (
                               <p className="text-muted-foreground text-xs">
                                 Checking availability…
                               </p>

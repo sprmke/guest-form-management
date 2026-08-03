@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Onboarding — operator guide
@@ -46,7 +46,7 @@ First-time hosts complete this wizard right after signing in with Google — org
 
 ## Steps
 
-1. **Organization** — organization name, contact **Name**, **Contact number**
+1. **Organization** — organization name, contact **Name**, **Contact number**. Organization name availability is checked after typing pauses.
 2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). At least one host type must be selected. Residence is currently Azure-only (field **?** help).
 3. **Verify** — unified step header → trust notice + **Let’s get verified**; upload fields after click. **Valid ID** + **Property verification** (Property Rights + contract end when applicable + proof of ownership + platform + access screenshot) and/or **Parking verification** (Parking Rights + contract end + proof upload).
 

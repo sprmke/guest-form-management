@@ -150,14 +150,14 @@ Save runs **`planOrgSettingsSave`** (client) before PATCH. Only **dirty** sectio
 
 **Nav indicators:** Incomplete required fields show a red dot on the matching section in the settings submenu and on **Settings** in the main sidebar. While editing on this page, dots reflect the draft; elsewhere they reflect the last saved snapshot via `OrgSettingsIssuesSync`.
 
-| Area                        | Client                                                   | Server                                            |
-| --------------------------- | -------------------------------------------------------- | ------------------------------------------------- |
-| Organization name           | Required; 2–120 chars; live uniqueness check             | `update-organization` + `check-organization-name` |
-| Tagline / description       | Optional; max length when filled                         | `update-organization`                             |
-| Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset | `update-organization`                             |
-| Facebook URL                | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
-| Main social platform        | Required when any social URL is set                      | `org-settings` PATCH                              |
-| Instagram / TikTok / Airbnb | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
+| Area                        | Client                                                        | Server                                            |
+| --------------------------- | ------------------------------------------------------------- | ------------------------------------------------- |
+| Organization name           | Required; 2–120 chars; uniqueness checked after typing pauses | `update-organization` + `check-organization-name` |
+| Tagline / description       | Optional; max length when filled                              | `update-organization`                             |
+| Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset      | `update-organization`                             |
+| Facebook URL                | Optional `http(s)` URL                                        | `org-settings` PATCH                              |
+| Main social platform        | Required when any social URL is set                           | `org-settings` PATCH                              |
+| Instagram / TikTok / Airbnb | Optional `http(s)` URL                                        | `org-settings` PATCH                              |
 
 Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]**.
 
