@@ -6,7 +6,5 @@
 # Entries here are skipped by scripts/dev/check-ai-tooling-sync.sh so
 # pre-commit does not block on known, already-tracked gaps.
 
-# NOTE (not a check exception): lint-staged's git stash step can fail when
-# staged paths are symlinks (e.g. .cursor/skills/*, .claude/skills/*,
-# .cursor/mcp.json) — see .husky/pre-commit. Revisit .lintstagedrc.js glob
-# scoping if this trips on a real commit; out of scope for Task 11.
+# NOTE (not a check exception): lint-staged uses --no-stash in .husky/pre-commit
+# because git stash fails when staged skill paths are symlinks into .agent/skills.

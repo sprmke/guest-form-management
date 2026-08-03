@@ -246,14 +246,18 @@ export function PropertySettingsCard() {
 
   const nameCheck = useCheckPropertyName(profileDraft.name, property.id, nameChanged);
 
-  const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+  const nameUnavailable = nameChanged && nameCheck.isUnavailable;
   const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
 
-  const { conflict: towerConflictDetail, hasDuplicate: towerUnitDuplicate } = useTowerUnitConflict(
+  const { conflict: towerConflictDetail, hasActiveListing: towerUnitListed } = useTowerUnitConflict(
     profileDraft.tower,
     profileDraft.unitNumber,
     property.id
   );
+
+  // Only treat ACTIVE peer as a save blocker when this listing is (or would stay) ACTIVE.
+  const towerUnitBlocksSave =
+    towerUnitListed && (profileDraft.status === 'ACTIVE' || property.status === 'ACTIVE');
 
   const { completion: draftCompletion } = usePropertySettingsCompletionForDraft({
     profile: profileDraft,
@@ -261,7 +265,7 @@ export function PropertySettingsCard() {
     propertyId: property.id,
     orgSlug,
     nameUnavailable,
-    towerUnitConflict: towerUnitDuplicate,
+    towerUnitConflict: towerUnitBlocksSave,
   });
 
   const { completion: savedCompletion } = usePropertySettingsCompletionForDraft({
@@ -273,7 +277,7 @@ export function PropertySettingsCard() {
     towerUnitConflict: false,
   });
 
-  const towerConflict = towerUnitDuplicate ? towerConflictDetail : null;
+  const towerConflict = towerUnitBlocksSave ? towerConflictDetail : null;
 
   const settingsCompletion = draftCompletion;
 
@@ -515,25 +519,35 @@ export function PropertySettingsCard() {
   };
 
   const handleArchiveProperty = async () => {
-    const result = await updateProperty.mutateAsync({
-      propertyId: property.id,
-      status: 'INACTIVE',
-    });
-    const savedProfile = propertyProfileDraftFromProperty(result.property);
-    setProfileDraft(savedProfile);
-    setProfileBaseline(savedProfile);
-    toast.success('Property archived');
+    try {
+      const result = await updateProperty.mutateAsync({
+        propertyId: property.id,
+        status: 'INACTIVE',
+      });
+      const savedProfile = propertyProfileDraftFromProperty(result.property);
+      setProfileDraft(savedProfile);
+      setProfileBaseline(savedProfile);
+      toast.success('Property archived');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not archive property'));
+      throw error;
+    }
   };
 
   const handleRestoreProperty = async () => {
-    const result = await updateProperty.mutateAsync({
-      propertyId: property.id,
-      status: 'ACTIVE',
-    });
-    const savedProfile = propertyProfileDraftFromProperty(result.property);
-    setProfileDraft(savedProfile);
-    setProfileBaseline(savedProfile);
-    toast.success('Property restored');
+    try {
+      const result = await updateProperty.mutateAsync({
+        propertyId: property.id,
+        status: 'ACTIVE',
+      });
+      const savedProfile = propertyProfileDraftFromProperty(result.property);
+      setProfileDraft(savedProfile);
+      setProfileBaseline(savedProfile);
+      toast.success('Property restored');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not restore property'));
+      throw error;
+    }
   };
 
   const handleDeleteProperty = async () => {
@@ -627,7 +641,7 @@ export function PropertySettingsCard() {
             towerConflict={towerConflict}
             nameUnavailable={nameUnavailable}
             nameConflictMessage={nameConflictMessage}
-            nameChecking={nameChanged && nameCheck.isFetching}
+            nameChecking={nameChanged && nameCheck.showChecking}
             newCustomAmenityInputs={newCustomAmenityInputs}
             onNewCustomAmenityInputChange={(categoryId, value) =>
               setNewCustomAmenityInputs((current) => ({

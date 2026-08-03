@@ -131,7 +131,7 @@ export function OrgSettingsPage() {
     Boolean(profileDraft && nameChanged)
   );
 
-  const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+  const nameUnavailable = nameChanged && nameCheck.isUnavailable;
   const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
 
   const busy =
@@ -361,7 +361,7 @@ export function OrgSettingsPage() {
               logoUrl={operatorData.emailLogoUrl}
               nameUnavailable={nameUnavailable}
               nameConflictMessage={nameConflictMessage}
-              nameChecking={nameChanged && nameCheck.isFetching}
+              nameChecking={nameChanged && nameCheck.showChecking}
               resolveFieldError={resolveFieldError}
               markFieldInteracted={markFieldInteracted}
               onChange={setProfileField}

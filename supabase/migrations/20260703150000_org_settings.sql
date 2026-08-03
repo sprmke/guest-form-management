@@ -76,43 +76,55 @@ CREATE POLICY "Org owner can update own org_settings"
 GRANT SELECT, INSERT, UPDATE ON public.org_settings TO authenticated;
 GRANT ALL ON public.org_settings TO service_role;
 
--- Backfill one row per org from the earliest property app_settings row (if any).
-INSERT INTO public.org_settings (
-  organization_id,
-  email_to,
-  email_reply_to,
-  parking_owner_emails,
-  sd_refund_cron_email_lead_minutes,
-  sd_refund_cron_max_checkout_age_days,
-  public_guest_app_origin,
-  facebook_reviews_url,
-  email_logo_url,
-  default_parking_rate_guest
-)
-SELECT
-  o.id,
-  src.email_to,
-  src.email_reply_to,
-  src.parking_owner_emails,
-  src.sd_refund_cron_email_lead_minutes,
-  src.sd_refund_cron_max_checkout_age_days,
-  src.public_guest_app_origin,
-  src.facebook_reviews_url,
-  src.email_logo_url,
-  src.default_parking_rate_guest
-FROM public.organizations o
-LEFT JOIN LATERAL (
-  SELECT a.*
-  FROM public.properties p
-  INNER JOIN public.app_settings a ON a.property_id = p.id
-  WHERE p.organization_id = o.id
-  ORDER BY p.created_at ASC
-  LIMIT 1
-) src ON TRUE
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.org_settings os WHERE os.organization_id = o.id
-)
-ON CONFLICT (organization_id) DO NOTHING;
+-- Backfill from property-scoped app_settings when property_id already exists
+-- (added later in 20260821120000 on fresh resets).
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'app_settings'
+      AND column_name = 'property_id'
+  ) THEN
+    INSERT INTO public.org_settings (
+      organization_id,
+      email_to,
+      email_reply_to,
+      parking_owner_emails,
+      sd_refund_cron_email_lead_minutes,
+      sd_refund_cron_max_checkout_age_days,
+      public_guest_app_origin,
+      facebook_reviews_url,
+      email_logo_url,
+      default_parking_rate_guest
+    )
+    SELECT
+      o.id,
+      src.email_to,
+      src.email_reply_to,
+      src.parking_owner_emails,
+      src.sd_refund_cron_email_lead_minutes,
+      src.sd_refund_cron_max_checkout_age_days,
+      src.public_guest_app_origin,
+      src.facebook_reviews_url,
+      src.email_logo_url,
+      src.default_parking_rate_guest
+    FROM public.organizations o
+    LEFT JOIN LATERAL (
+      SELECT a.*
+      FROM public.properties p
+      INNER JOIN public.app_settings a ON a.property_id = p.id
+      WHERE p.organization_id = o.id
+      ORDER BY p.created_at ASC
+      LIMIT 1
+    ) src ON TRUE
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.org_settings os WHERE os.organization_id = o.id
+    )
+    ON CONFLICT (organization_id) DO NOTHING;
+  END IF;
+END $$;
 
 -- Legacy singleton row → default org when property rows had no org-level copy yet.
 INSERT INTO public.org_settings (

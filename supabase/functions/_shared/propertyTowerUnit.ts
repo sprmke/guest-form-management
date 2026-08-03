@@ -100,6 +100,24 @@ export function parsePropertyTowerUnitFromBody(
   };
 }
 
+export type PropertyTowerUnitPeer = {
+  id: string;
+  name: string;
+  status: string;
+  organizationId: string | null;
+  orgName: string | null;
+};
+
+function orgNameFromJoin(
+  organizations: { name?: string } | { name?: string }[] | null | undefined
+): string | null {
+  if (!organizations) return null;
+  return Array.isArray(organizations)
+    ? (organizations[0]?.name ?? null)
+    : (organizations.name ?? null);
+}
+
+/** ACTIVE peer only — at most one public listing per tower+unit. */
 export async function lookupPropertyTowerUnitConflict(
   supabase: SupabaseClient,
   tower: string,
@@ -111,6 +129,7 @@ export async function lookupPropertyTowerUnitConflict(
     .select('id, name, organizations(name)')
     .eq('tower', tower)
     .eq('unit_number', unitNumber)
+    .eq('status', 'ACTIVE')
     .limit(1);
 
   if (excludePropertyId) {
@@ -126,15 +145,10 @@ export async function lookupPropertyTowerUnitConflict(
   const row = data?.[0];
   if (!row) return null;
 
-  const orgRecord = row.organizations as { name?: string } | { name?: string }[] | null;
-  const orgName = Array.isArray(orgRecord)
-    ? (orgRecord[0]?.name ?? null)
-    : (orgRecord?.name ?? null);
-
   return {
     id: row.id as string,
     name: row.name as string,
-    orgName,
+    orgName: orgNameFromJoin(row.organizations as { name?: string } | { name?: string }[] | null),
   };
 }
 
@@ -153,4 +167,201 @@ export async function findPropertyTowerUnitConflict(
   return conflict !== null;
 }
 
-export const DUPLICATE_TOWER_UNIT_MESSAGE = 'A property with this tower and unit already exists';
+/** All properties sharing tower+unit (any status), for Approvals succession peers. */
+export async function listPropertyTowerUnitPeers(
+  supabase: SupabaseClient,
+  tower: string,
+  unitNumber: string,
+  excludePropertyId?: string
+): Promise<PropertyTowerUnitPeer[]> {
+  let query = supabase
+    .from('properties')
+    .select('id, name, status, organization_id, organizations(name)')
+    .eq('tower', tower)
+    .eq('unit_number', unitNumber)
+    .order('status', { ascending: true });
+
+  if (excludePropertyId) {
+    query = query.neq('id', excludePropertyId);
+  }
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('[propertyTowerUnit] peer list:', error.message);
+    throw new Error('Failed to list tower and unit peers');
+  }
+
+  return (data ?? []).map((row) => ({
+    id: row.id as string,
+    name: row.name as string,
+    status: String(row.status ?? ''),
+    organizationId: (row.organization_id as string | null) ?? null,
+    orgName: orgNameFromJoin(row.organizations as { name?: string } | { name?: string }[] | null),
+  }));
+}
+
+/** ACTIVE listing at the same tower+unit owned by another organization (Approvals succession). */
+export type UnitConflict = {
+  propertyId: string;
+  organizationId: string;
+  orgName: string;
+  status: string;
+  tower: string;
+  unitNumber: string;
+};
+
+function peerToUnitConflict(
+  peer: PropertyTowerUnitPeer,
+  tower: string,
+  unitNumber: string,
+  statusOverride?: string
+): UnitConflict | null {
+  if (!peer.organizationId) return null;
+  return {
+    propertyId: peer.id,
+    organizationId: peer.organizationId,
+    orgName: peer.orgName ?? '',
+    status: statusOverride ?? peer.status,
+    tower,
+    unitNumber,
+  };
+}
+
+/**
+ * ACTIVE peers for an org's tower+unit properties (other orgs only).
+ * Dedupes by propertyId across the org's listings.
+ */
+export async function collectUnitConflictsForOrgProperties(
+  supabase: SupabaseClient,
+  organizationId: string,
+  properties: Array<{ id: string; tower: string | null; unit_number: string | null }>,
+  peersByPair?: Map<string, PropertyTowerUnitPeer[]>
+): Promise<{ unitConflicts: UnitConflict[]; hasActiveUnitConflict: boolean }> {
+  const unitConflicts: UnitConflict[] = [];
+  const seen = new Set<string>();
+
+  for (const prop of properties) {
+    const tower = typeof prop.tower === 'string' ? prop.tower.trim() : '';
+    const unitNumber = typeof prop.unit_number === 'string' ? prop.unit_number.trim() : '';
+    if (!tower || !unitNumber) continue;
+
+    const pairKey = `${tower}\0${unitNumber}`;
+    const peers =
+      peersByPair?.get(pairKey) ??
+      (await listPropertyTowerUnitPeers(supabase, tower, unitNumber, prop.id));
+
+    for (const peer of peers) {
+      if (peer.id === prop.id) continue;
+      if (peer.status !== 'ACTIVE') continue;
+      if (peer.organizationId === organizationId) continue;
+      if (seen.has(peer.id)) continue;
+      const conflict = peerToUnitConflict(peer, tower, unitNumber);
+      if (!conflict) continue;
+      seen.add(peer.id);
+      unitConflicts.push(conflict);
+    }
+  }
+
+  return {
+    unitConflicts,
+    hasActiveUnitConflict: unitConflicts.length > 0,
+  };
+}
+
+export type ActivateOrgPropertiesResult = {
+  activatedPropertyIds: string[];
+  archivedPeers: UnitConflict[];
+};
+
+/**
+ * Base-tier approve handoff: archive other ACTIVE listings for each tower+unit,
+ * then set this org's matching property ACTIVE. Ordering satisfies the partial unique index.
+ */
+export async function activateOrgPropertiesAfterBaseVerification(
+  supabase: SupabaseClient,
+  organizationId: string
+): Promise<ActivateOrgPropertiesResult> {
+  const { data, error } = await supabase
+    .from('properties')
+    .select('id, tower, unit_number, status')
+    .eq('organization_id', organizationId);
+
+  if (error) {
+    console.error('[propertyTowerUnit] load org properties:', error.message);
+    throw new Error('Failed to load organization properties');
+  }
+
+  type PropRow = { id: string; tower: string; unit_number: string; status: string };
+  const withUnit: PropRow[] = [];
+  for (const row of data ?? []) {
+    const tower = typeof row.tower === 'string' ? row.tower.trim() : '';
+    const unitNumber = typeof row.unit_number === 'string' ? row.unit_number.trim() : '';
+    if (!tower || !unitNumber) continue;
+    withUnit.push({
+      id: row.id as string,
+      tower,
+      unit_number: unitNumber,
+      status: String(row.status ?? ''),
+    });
+  }
+
+  const groups = new Map<string, PropRow[]>();
+  for (const prop of withUnit) {
+    const key = `${prop.tower}\0${prop.unit_number}`;
+    const list = groups.get(key) ?? [];
+    list.push(prop);
+    groups.set(key, list);
+  }
+
+  const activatedPropertyIds: string[] = [];
+  const archivedPeers: UnitConflict[] = [];
+  const archivedIds = new Set<string>();
+
+  for (const props of groups.values()) {
+    const primary = props.find((p) => p.status === 'ACTIVE') ?? props[0]!;
+    const { tower, unit_number: unitNumber } = primary;
+
+    const peers = await listPropertyTowerUnitPeers(supabase, tower, unitNumber, primary.id);
+    for (const peer of peers) {
+      if (peer.status !== 'ACTIVE') continue;
+      if (archivedIds.has(peer.id)) continue;
+
+      const { error: archiveError } = await supabase
+        .from('properties')
+        .update({ status: 'INACTIVE' })
+        .eq('id', peer.id)
+        .eq('status', 'ACTIVE');
+
+      if (archiveError) {
+        console.error('[propertyTowerUnit] archive peer:', archiveError.message);
+        throw new Error('Failed to archive peer property for unit handoff');
+      }
+
+      archivedIds.add(peer.id);
+      const archived = peerToUnitConflict(peer, tower, unitNumber, 'INACTIVE');
+      if (archived) archivedPeers.push(archived);
+    }
+
+    if (primary.status !== 'ACTIVE') {
+      const { error: activateError } = await supabase
+        .from('properties')
+        .update({ status: 'ACTIVE' })
+        .eq('id', primary.id);
+
+      if (activateError) {
+        if (activateError.code === '23505') {
+          throw new Error(DUPLICATE_TOWER_UNIT_MESSAGE);
+        }
+        console.error('[propertyTowerUnit] activate property:', activateError.message);
+        throw new Error('Failed to activate property after verification approve');
+      }
+    }
+
+    activatedPropertyIds.push(primary.id);
+  }
+
+  return { activatedPropertyIds, archivedPeers };
+}
+
+export const DUPLICATE_TOWER_UNIT_MESSAGE =
+  'Another organization already has an active listing for this tower and unit';

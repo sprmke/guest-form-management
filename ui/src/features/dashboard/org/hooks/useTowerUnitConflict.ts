@@ -13,6 +13,7 @@ import type { Property } from '@/features/dashboard/org/types';
 
 type CheckTowerUnitResponse = {
   available: boolean;
+  hasActiveListing?: boolean;
   message: string | null;
   conflict: {
     propertyId: string;
@@ -27,8 +28,12 @@ export function useTowerUnitConflict(
   excludePropertyId?: string
 ): {
   conflict: PropertyTowerUnitConflict | null;
+  /** ACTIVE peer already lists this tower+unit — warning only, not a create block. */
+  hasActiveListing: boolean;
+  /** Alias of hasActiveListing (legacy call sites). */
   hasDuplicate: boolean;
   isChecking: boolean;
+  message: string | null;
 } {
   const ready =
     isPropertyTowerForResidence(tower, DEFAULT_RESIDENCE_NAME) && isValidUnitNumber(unitNumber);
@@ -49,25 +54,27 @@ export function useTowerUnitConflict(
     },
   });
 
+  const hasActiveListing = Boolean(query.data?.hasActiveListing && query.data.conflict);
+
   const conflict = useMemo((): PropertyTowerUnitConflict | null => {
     const row = query.data?.conflict;
-    if (!row || query.data?.available !== false) return null;
-
-    const property = {
-      id: row.propertyId,
-      name: row.propertyName,
-    } as Property;
+    if (!hasActiveListing || !row) return null;
 
     return {
-      property,
+      property: {
+        id: row.propertyId,
+        name: row.propertyName,
+      } as Property,
       orgName: row.orgName ?? '',
       orgSlug: '',
     };
-  }, [query.data]);
+  }, [hasActiveListing, query.data?.conflict]);
 
   return {
     conflict,
-    hasDuplicate: conflict !== null,
+    hasActiveListing,
+    hasDuplicate: hasActiveListing,
     isChecking: ready && query.isFetching,
+    message: query.data?.message ?? null,
   };
 }

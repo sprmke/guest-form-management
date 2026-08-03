@@ -20,7 +20,6 @@ import {
 } from '../_shared/propertyLocationDefaults.ts';
 import {
   DUPLICATE_TOWER_UNIT_MESSAGE,
-  findPropertyTowerUnitConflict,
   parsePropertyTowerUnitFromBody,
 } from '../_shared/propertyTowerUnit.ts';
 import {
@@ -80,16 +79,6 @@ serveAuthenticated('create-property', async (req) => {
     tower = parsed.tower;
     unitNumber = parsed.unitNumber;
     towerAndUnit = parsed.towerAndUnit;
-
-    try {
-      const conflict = await findPropertyTowerUnitConflict(supabase, tower, unitNumber);
-      if (conflict) {
-        return jsonError(req, DUPLICATE_TOWER_UNIT_MESSAGE, 409);
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Validation failed';
-      return jsonError(req, msg, 500);
-    }
   }
 
   try {
@@ -113,6 +102,7 @@ serveAuthenticated('create-property', async (req) => {
       organization_id: orgId,
       name,
       slug,
+      status: 'INACTIVE',
       tower,
       unit_number: unitNumber,
       tower_and_unit: towerAndUnit,

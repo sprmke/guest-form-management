@@ -8,6 +8,13 @@ import {
   type OrgVerificationRights,
   type OrgVerificationStatus,
 } from '@/features/dashboard/org/lib/orgVerification';
+import {
+  emptyContractLegLifecycle,
+  parseContractLegLifecycle,
+  type ContractLegLifecycle,
+} from '@/features/dashboard/org/lib/contractLifecycle';
+
+export type { ContractLegLifecycle } from '@/features/dashboard/org/lib/contractLifecycle';
 
 export type OrgVerificationRejectionKind = 'changes' | 'rejected';
 
@@ -38,6 +45,8 @@ export type OrgVerificationDetail = {
   /** When kind=changes, which docs must be re-uploaded. Empty = show all (legacy). */
   baseChangesRequestedDocs: OrgVerificationChangeDocId[];
   assets: OrgVerificationAssets;
+  propertyLifecycle: ContractLegLifecycle;
+  parkingLifecycle: ContractLegLifecycle;
   verifiedBadge: boolean;
 };
 
@@ -156,6 +165,8 @@ export function readOrgVerificationDetail(
       enhancedRejectionKind: null,
       baseChangesRequestedDocs: [],
       assets: { ...EMPTY_ASSETS, pmoEmailPaths: [] },
+      propertyLifecycle: emptyContractLegLifecycle(),
+      parkingLifecycle: emptyContractLegLifecycle(),
       verifiedBadge: false,
     };
   }
@@ -206,6 +217,8 @@ export function readOrgVerificationDetail(
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
       pmoEmailPaths,
     },
+    propertyLifecycle: parseContractLegLifecycle(v.propertyLifecycle),
+    parkingLifecycle: parseContractLegLifecycle(v.parkingLifecycle),
     verifiedBadge: enhancedStatus === 'approved',
   };
 }

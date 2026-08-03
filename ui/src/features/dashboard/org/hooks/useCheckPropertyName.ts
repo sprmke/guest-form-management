@@ -1,7 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
+
+const NAME_CHECK_DEBOUNCE_MS = 400;
 
 export function useCheckPropertyName(
   name: string,
@@ -9,13 +12,16 @@ export function useCheckPropertyName(
   enabled: boolean
 ) {
   const trimmed = name.trim();
+  const debouncedName = useDebouncedValue(trimmed, NAME_CHECK_DEBOUNCE_MS);
+  const isDebouncing = trimmed !== debouncedName;
+  const canCheck = enabled && debouncedName.length >= 2 && !isDebouncing;
 
-  return useQuery({
-    queryKey: ['check-property-name', trimmed, excludePropertyId] as const,
-    enabled: enabled && trimmed.length >= 2,
+  const query = useQuery({
+    queryKey: ['check-property-name', debouncedName, excludePropertyId] as const,
+    enabled: canCheck,
     staleTime: 30_000,
     queryFn: () => {
-      const reservedMessage = getReservedDisplayNameViolation(trimmed);
+      const reservedMessage = getReservedDisplayNameViolation(debouncedName);
       if (reservedMessage) {
         return Promise.resolve({
           available: false,
@@ -24,7 +30,7 @@ export function useCheckPropertyName(
         });
       }
 
-      const params = new URLSearchParams({ name: trimmed });
+      const params = new URLSearchParams({ name: debouncedName });
       if (excludePropertyId) {
         params.set('excludePropertyId', excludePropertyId);
       }
@@ -33,4 +39,15 @@ export function useCheckPropertyName(
       );
     },
   });
+
+  const nameReady = enabled && trimmed.length >= 2;
+
+  return {
+    ...query,
+    isChecking: Boolean(nameReady && (isDebouncing || query.isFetching)),
+    showChecking: Boolean(nameReady && !isDebouncing && query.isFetching),
+    isUnavailable: Boolean(
+      nameReady && !isDebouncing && query.isFetched && query.data?.available === false
+    ),
+  };
 }

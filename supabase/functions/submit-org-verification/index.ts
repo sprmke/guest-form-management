@@ -16,6 +16,7 @@ import {
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
 } from '../_shared/orgVerification.ts';
+import { resetLifecycleForNewContractCycle } from '../_shared/contractLifecycle.ts';
 import {
   jsonError,
   jsonSuccess,
@@ -77,7 +78,18 @@ serveAuthenticated('submit-org-verification', async (req) => {
             : '';
         const endError = validateVerificationContractEndDate(endRaw);
         if (endError) return jsonError(req, endError);
-        verification = { ...verification, propertyContractEndDate: endRaw };
+        const prevEnd = verification.propertyContractEndDate;
+        verification = {
+          ...verification,
+          propertyContractEndDate: endRaw,
+          ...(prevEnd && prevEnd !== endRaw
+            ? {
+                propertyLifecycle: resetLifecycleForNewContractCycle(
+                  verification.propertyLifecycle
+                ),
+              }
+            : {}),
+        };
       } else {
         verification = { ...verification, propertyContractEndDate: null };
       }
@@ -101,7 +113,14 @@ serveAuthenticated('submit-org-verification', async (req) => {
           typeof body.parkingContractEndDate === 'string' ? body.parkingContractEndDate.trim() : '';
         const endError = validateVerificationContractEndDate(endRaw);
         if (endError) return jsonError(req, endError);
-        verification = { ...verification, parkingContractEndDate: endRaw };
+        const prevEnd = verification.parkingContractEndDate;
+        verification = {
+          ...verification,
+          parkingContractEndDate: endRaw,
+          ...(prevEnd && prevEnd !== endRaw
+            ? { parkingLifecycle: resetLifecycleForNewContractCycle(verification.parkingLifecycle) }
+            : {}),
+        };
       } else {
         verification = { ...verification, parkingContractEndDate: null };
       }

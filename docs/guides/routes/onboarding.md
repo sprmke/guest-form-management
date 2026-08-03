@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Onboarding — operator guide
@@ -46,7 +46,7 @@ First-time hosts complete this wizard right after signing in with Google — org
 
 ## Steps
 
-1. **Organization** — organization name, contact **Name**, **Contact number** (reserved-name rules below)
+1. **Organization** — organization name, contact **Name**, **Contact number**. Organization name availability is checked after typing pauses (reserved-name rules below).
 2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). Property names follow the same reserved-name rules as org names. At least one host type must be selected. Residence is currently Azure-only (field **?** help).
 3. **Verify** — unified step header → trust notice + **Let’s get verified**; upload fields after click. **Valid ID** + **Property verification** (Property Rights + contract end when applicable + proof of ownership + platform + access screenshot) and/or **Parking verification** (Parking Rights + contract end + proof upload).
 
@@ -64,9 +64,9 @@ Enforced on onboarding, org settings, property settings, and **Add property** (`
 
 ### Unit uniqueness (sublease handoff) — planned
 
-**Today:** tower + unit is unique across **all** properties (ACTIVE and INACTIVE), so a new host cannot claim a unit another org already registered.
+**Tower+unit:** new properties are created **`INACTIVE`**. If another org already has an **`ACTIVE`** listing for the same tower+unit, onboarding shows a non-blocking **succession warning** (org name only) — Continue is allowed. Super-admin **Approve** on `/admin/approvals` activates this listing and archives the peer ACTIVE listing. Helpers who only need dashboard access should use **Team invite** instead of creating a second org; marketing-only helpers can forward the managing host’s guest booking link.
 
-**Target ([#120](https://github.com/sprmke/kame-homes/issues/120)):** same residence / tower / unit (and the same display name across different orgs) is allowed for successive hosts — e.g. after a sublease ends — but **only one property may be `ACTIVE`** for that tower+unit at a time. Archived (`INACTIVE`) rows keep history; public listings and booking only use the active host.
+**Property name** uniqueness is **per organization** (not a cross-host lock).
 
 Pair with lease/contract end + reverification so the previous listing is archived before (or when) the next host goes live.
 

@@ -29,6 +29,7 @@ import {
 } from '@/features/dashboard/org/hooks/useOrganizations';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
 import { useTowerUnitConflict } from '@/features/dashboard/org/hooks/useTowerUnitConflict';
+import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
 import { callEdgeFunction, getSessionJwt } from '@/features/dashboard/org/lib/edgeClient';
 import { resolveOrgLandingPath } from '@/features/dashboard/org/lib/orgLanding';
 import {
@@ -67,7 +68,6 @@ import {
   sanitizeUnitNumberInput,
   type PropertyTower,
 } from '@/features/dashboard/org/lib/propertyTowerUnit';
-import { duplicateTowerUnitMessage } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
 import {
   orgDashboardPath,
   parkingSectionPath,
@@ -252,11 +252,11 @@ export function OnboardingPage() {
   const hostModeReady = hostProperty || hostParking;
 
   const orgNameCheck = useCheckOrganizationName(orgName, undefined, orgNameReady);
-  const orgNameUnavailable = orgNameCheck.isFetched && orgNameCheck.data?.available === false;
+  const orgNameUnavailable = orgNameCheck.isUnavailable;
   const orgNameBlockMessage = orgNameUnavailable
     ? (orgNameCheck.data?.message ?? DUPLICATE_ORGANIZATION_NAME_MESSAGE)
     : null;
-  const orgNameChecking = orgNameReady && orgNameCheck.isFetching;
+  const orgNameChecking = orgNameCheck.isChecking;
 
   const propertyNameTrimmed = propertyName.trim();
   const propertyNameCheck = useCheckPropertyName(
@@ -264,13 +264,11 @@ export function OnboardingPage() {
     undefined,
     showPropertyBlock && propertyNameTrimmed.length >= 2
   );
-  const propertyNameUnavailable =
-    showPropertyBlock && propertyNameCheck.isFetched && propertyNameCheck.data?.available === false;
+  const propertyNameUnavailable = propertyNameCheck.isUnavailable;
   const propertyNameBlockMessage = propertyNameUnavailable
     ? (propertyNameCheck.data?.message ?? 'A property with this name already exists.')
     : null;
-  const propertyNameChecking =
-    showPropertyBlock && propertyNameTrimmed.length >= 2 && propertyNameCheck.isFetching;
+  const propertyNameChecking = propertyNameCheck.isChecking;
 
   const propertyReady =
     !showPropertyBlock ||
@@ -278,16 +276,12 @@ export function OnboardingPage() {
       isValidUnitNumber(unitNumber) &&
       propertyNameTrimmed.length >= 2);
   const unitInvalid = unitTouched && !isValidUnitNumber(unitNumber);
-  const { hasDuplicate: towerUnitDuplicate, isChecking: towerUnitChecking } = useTowerUnitConflict(
-    tower,
-    unitNumber
-  );
-  const unitDuplicate = unitTouched && towerUnitDuplicate;
-  const unitFieldError = unitInvalid
-    ? 'Enter a 4-digit unit number'
-    : unitDuplicate
-      ? duplicateTowerUnitMessage(tower, unitNumber)
-      : null;
+  const {
+    conflict: towerUnitConflict,
+    hasActiveListing: towerUnitListed,
+    isChecking: towerUnitChecking,
+  } = useTowerUnitConflict(tower, unitNumber);
+  const unitFieldError = unitInvalid ? 'Enter a 4-digit unit number' : null;
   const towerMissing = unitTouched && !isPropertyTowerForResidence(tower, DEFAULT_RESIDENCE_NAME);
   const propertyNameMissing = showPropertyBlock && unitTouched && propertyNameTrimmed.length < 2;
 
@@ -306,7 +300,6 @@ export function OnboardingPage() {
   const canAdvanceStep2 =
     hostModeReady &&
     propertyReady &&
-    !towerUnitDuplicate &&
     !propertyNameUnavailable &&
     parkingSlotReady &&
     !parkingSlotDuplicate &&
@@ -616,7 +609,7 @@ export function OnboardingPage() {
                           <p role="alert" className="text-destructive text-xs">
                             {orgNameBlockMessage}
                           </p>
-                        ) : orgNameChecking ? (
+                        ) : orgNameCheck.showChecking ? (
                           <p className="text-muted-foreground text-xs">Checking availability…</p>
                         ) : null}
                       </div>
@@ -788,6 +781,13 @@ export function OnboardingPage() {
                               ) : null}
                             </div>
                           </div>
+                          {towerUnitListed && towerUnitConflict ? (
+                            <TowerUnitConflictAlert
+                              tower={tower}
+                              unitNumber={unitNumber}
+                              conflict={towerUnitConflict}
+                            />
+                          ) : null}
                           <div className="space-y-1.5">
                             <Label htmlFor="property-name">
                               Property name
@@ -825,7 +825,7 @@ export function OnboardingPage() {
                               <p role="alert" className="text-destructive text-xs">
                                 Enter a property name
                               </p>
-                            ) : propertyNameChecking ? (
+                            ) : propertyNameCheck.showChecking ? (
                               <p className="text-muted-foreground text-xs">
                                 Checking availability…
                               </p>

@@ -1,4 +1,5 @@
-npx lint-staged
+# --no-stash: git stash fails when staged skill paths are symlinks into .agent/skills
+npx lint-staged --no-stash
 bash scripts/dev/touch-in-progress-docs.sh
 bash scripts/dev/check-retired-docs-paths.sh
 bun run check:ai-tooling-sync

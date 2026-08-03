@@ -3,6 +3,15 @@
  * Asset files live in private bucket org-verification-assets (paths only in settings).
  */
 
+import {
+  contractLegLifecycleToSettingsValue,
+  emptyContractLegLifecycle,
+  parseContractLegLifecycle,
+  type ContractLegLifecycle,
+} from './contractLifecycle.ts';
+
+export type { ContractLegLifecycle } from './contractLifecycle.ts';
+
 export const ORG_VERIFICATION_BUCKET = 'org-verification-assets';
 
 export const ORG_VERIFICATION_STATUSES = ['none', 'pending', 'approved', 'rejected'] as const;
@@ -136,6 +145,10 @@ export type OrgVerificationState = {
   /** When kind=changes, which Tier 1 docs the host must re-upload. Empty = all (legacy). */
   baseChangesRequestedDocs: OrgVerificationChangeDocId[];
   assets: OrgVerificationAssets;
+  /** Unit handoff Phase B — property-leg contract expiry lifecycle. */
+  propertyLifecycle: ContractLegLifecycle;
+  /** Unit handoff Phase B — parking-leg contract expiry lifecycle. */
+  parkingLifecycle: ContractLegLifecycle;
 };
 
 const EMPTY_ASSETS: OrgVerificationAssets = {
@@ -166,6 +179,8 @@ export function emptyOrgVerificationState(): OrgVerificationState {
     enhancedRejectionKind: null,
     baseChangesRequestedDocs: [],
     assets: { ...EMPTY_ASSETS, pmoEmailPaths: [] },
+    propertyLifecycle: emptyContractLegLifecycle(),
+    parkingLifecycle: emptyContractLegLifecycle(),
   };
 }
 
@@ -265,6 +280,8 @@ export function readOrgVerificationFromSettings(
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
       pmoEmailPaths,
     },
+    propertyLifecycle: parseContractLegLifecycle(v.propertyLifecycle),
+    parkingLifecycle: parseContractLegLifecycle(v.parkingLifecycle),
   };
 }
 
@@ -296,6 +313,8 @@ export function orgVerificationToSettingsValue(
       ownershipProofPath: state.assets.ownershipProofPath,
       pmoEmailPaths: state.assets.pmoEmailPaths,
     },
+    propertyLifecycle: contractLegLifecycleToSettingsValue(state.propertyLifecycle),
+    parkingLifecycle: contractLegLifecycleToSettingsValue(state.parkingLifecycle),
   };
 }
 

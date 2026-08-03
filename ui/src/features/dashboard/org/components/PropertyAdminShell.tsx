@@ -1,5 +1,6 @@
 import { AdminLayoutOutlet } from '@/features/dashboard/bookings/components/AdminLayout';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
+import { ListingContractAccessGate } from '@/features/dashboard/org/components/ListingContractAccessGate';
 import { PropertySettingsIssuesSync } from '@/features/dashboard/org/components/PropertySettingsIssuesSync';
 import { RequireOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { RequireOrgNotHardRejected } from '@/features/dashboard/org/components/RequireOrgNotHardRejected';
@@ -10,8 +11,10 @@ export function PropertyAdminShell() {
     <RequireAdmin>
       <RequireOrgNotHardRejected>
         <RequireOrgContext>
-          <PropertySettingsIssuesSync />
-          <AdminLayoutOutlet />
+          <ListingContractAccessGate leg="property">
+            <PropertySettingsIssuesSync />
+            <AdminLayoutOutlet />
+          </ListingContractAccessGate>
         </RequireOrgContext>
       </RequireOrgNotHardRejected>
     </RequireAdmin>

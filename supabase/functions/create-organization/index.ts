@@ -28,7 +28,6 @@ import {
 import { readOrgVerificationFromSettings } from '../_shared/orgVerification.ts';
 import {
   DUPLICATE_TOWER_UNIT_MESSAGE,
-  findPropertyTowerUnitConflict,
   parsePropertyTowerUnitFromBody,
 } from '../_shared/propertyTowerUnit.ts';
 import {
@@ -224,18 +223,6 @@ serveAuthenticated('create-organization', async (req, user) => {
       tower = towerUnitParsed.tower;
       unitNumber = towerUnitParsed.unitNumber;
       towerAndUnit = towerUnitParsed.towerAndUnit;
-
-      try {
-        const conflict = await findPropertyTowerUnitConflict(supabase, tower, unitNumber);
-        if (conflict) {
-          await rollbackOrg();
-          return jsonError(req, DUPLICATE_TOWER_UNIT_MESSAGE, 409);
-        }
-      } catch (e) {
-        await rollbackOrg();
-        const msg = e instanceof Error ? e.message : 'Validation failed';
-        return jsonError(req, msg, 500);
-      }
     }
 
     const resolvedPropertyName =
@@ -267,6 +254,7 @@ serveAuthenticated('create-organization', async (req, user) => {
         organization_id: org.id,
         name: resolvedPropertyName,
         slug: propSlug,
+        status: 'INACTIVE',
         tower,
         unit_number: unitNumber,
         tower_and_unit: towerAndUnit,

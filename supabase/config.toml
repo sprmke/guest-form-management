@@ -379,6 +379,21 @@ static_files = [
   "./functions/_shared/email-templates/fragments/*.html",
 ]
 
+[functions.contract-expiry-cron]
+verify_jwt = false
+static_files = [
+  "./functions/_shared/email-templates/*.html",
+  "./functions/_shared/email-templates/fragments/*.html",
+]
+# Cloud-only schedule (Manila ~09:00 → 01:00 UTC):
+# schedule = "0 1 * * *"   ← set via pg_cron snippet, NOT here
+
+[functions.submit-contract-consideration]
+verify_jwt = false
+
+[functions.decide-contract-consideration]
+verify_jwt = false
+
 [functions.list-organizations]
 verify_jwt = false
 

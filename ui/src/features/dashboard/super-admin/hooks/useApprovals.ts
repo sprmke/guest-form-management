@@ -16,8 +16,17 @@ export function useApprovals() {
   return useQuery({
     queryKey: APPROVALS_QUERY_KEY,
     queryFn: () =>
-      callEdgeFunction<{ approvals: OrgApprovalSummary[] }>('list-org-verifications').then(
-        (data) => data.approvals
+      callEdgeFunction<{ approvals: OrgApprovalSummary[] }>('list-org-verifications').then((data) =>
+        data.approvals.map((row) => ({
+          ...row,
+          unitConflicts: Array.isArray(row.unitConflicts) ? row.unitConflicts : [],
+          hasActiveUnitConflict: row.hasActiveUnitConflict === true,
+          propertyConsiderationStatus: row.propertyConsiderationStatus ?? 'none',
+          parkingConsiderationStatus: row.parkingConsiderationStatus ?? 'none',
+          hasPendingConsideration: row.hasPendingConsideration === true,
+          propertyAccessLocked: row.propertyAccessLocked === true,
+          parkingAccessLocked: row.parkingAccessLocked === true,
+        }))
       ),
   });
 }
@@ -70,6 +79,27 @@ export function useRejectOrgVerification() {
             ? { changesRequestedDocs: input.changesRequestedDocs }
             : {}),
         }),
+      }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: APPROVALS_QUERY_KEY });
+    },
+  });
+}
+
+export function useDecideContractConsideration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      orgId: string;
+      leg: 'property' | 'parking';
+      decision: 'grant' | 'deny' | 'changes';
+      note?: string;
+      grantedUntil?: string;
+      allowConsiderationOverride?: boolean;
+    }) =>
+      callEdgeFunction('decide-contract-consideration', {
+        method: 'POST',
+        body: JSON.stringify(input),
       }),
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: APPROVALS_QUERY_KEY });

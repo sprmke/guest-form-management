@@ -94,6 +94,7 @@ Part of the [`docs/PROJECT.md`](../PROJECT.md) architecture split.
 - `GMAIL_OAUTH_TOKEN_JSON` — Legacy: token JSON containing `refresh_token`; set by `npm run gmail-auth` after browser sign-in
 - **`TELEGRAM_BOT_TOKEN`**, **`TELEGRAM_CHAT_ID`** _(optional)_ — Telegram Bot API: group or channel id for marketing sends (`telegram-marketing-cron`, `submit-form` new row, `cancel-booking`). When either is unset, sends are skipped (logged).
 - **`TELEGRAM_CRON_SECRET`** _(optional)_ — When set, `telegram-marketing-cron` requires request header **`X-Telegram-Cron-Secret`** with the same value (use in `pg_net` from Vault; see **[[telegram-marketing-reminders|Telegram marketing reminders]]**).
+- **`CONTRACT_EXPIRY_CRON_SECRET`** _(optional)_ — When set, `contract-expiry-cron` requires header **`X-Contract-Expiry-Cron-Secret`** (see `supabase/snippets/contract-expiry-cron.sql`).
 - **`TELEGRAM_STAFF_BOT_TOKEN`** _(optional)_ — Bot token for the staff/cleaner Telegram group. Falls back to `TELEGRAM_BOT_TOKEN` if unset (same bot, different group).
 - **`TELEGRAM_STAFF_CHAT_ID`** — Numeric Telegram chat id for the staff/cleaner group (often negative for supergroups). Required for staff notifications.
 - **`TELEGRAM_STAFF_CRON_SECRET`** _(optional)_ — When set, `telegram-staff-cron` requires header `X-Telegram-Cron-Secret` with the same value.

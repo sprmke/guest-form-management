@@ -12,6 +12,22 @@ import type { OrgApprovalSummary } from '@/features/dashboard/super-admin/types/
 
 import { cn } from '@/lib/utils';
 
+function SuccessionBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-md bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-800">
+      Succession
+    </span>
+  );
+}
+
+function ConsiderationBadge() {
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-md bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-800">
+      Consideration
+    </span>
+  );
+}
+
 function hostModesLabel(hostModes: string[]): string {
   const hasProperty = hostModes.includes('property');
   const hasParking = hostModes.includes('parking');
@@ -65,9 +81,13 @@ export function SuperAdminApprovalsTable({ approvals, onSelect }: Props) {
           >
             <td className={adminTableCell.body}>
               <div className="min-w-0">
-                <p className={cn('truncate', adminTableBodyText.primary)}>
-                  {approval.organizationName}
-                </p>
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <p className={cn('truncate', adminTableBodyText.primary)}>
+                    {approval.organizationName}
+                  </p>
+                  {approval.hasActiveUnitConflict ? <SuccessionBadge /> : null}
+                  {approval.hasPendingConsideration ? <ConsiderationBadge /> : null}
+                </div>
                 <p className={cn('truncate sm:hidden', adminTableBodyText.secondary)}>
                   {approval.ownerName}
                 </p>

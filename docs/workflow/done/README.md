@@ -29,5 +29,6 @@ kind: reference
 | [`booking-workflow-configurable-docs.md`](./booking-workflow-configurable-docs.md) | Configurable document requirements + per-property Calendar/Sheets sync (v1)                           |
 | [`guest-form-configurable-sections.md`](./guest-form-configurable-sections.md)     | Per-property pet/parking/decor toggles, Direct source default, check-in/out + unit-type capacity (v1) |
 | [`property-calendar-page.md`](./property-calendar-page.md)                         | Unified property Calendar — rates, booking pills, date blocks, guest availability                     |
+| [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md)                             | Sublessee / Auth Rep contract expiry ([#120](https://github.com/sprmke/kame-homes/issues/120))        |
 
 Back to [workflow index](../README.md).
