@@ -26,5 +26,6 @@ kind: reference
 | [`docs-workflow-vault.md`](./docs-workflow-vault.md)                               | Workflow lifecycle + archive consolidation   |
 | [`docs-workflow-vault-design.md`](./docs-workflow-vault-design.md)                 | Design spec for workflow vault               |
 | [`notifications-shared-bot-token.md`](./notifications-shared-bot-token.md)         | Shared Telegram bot token + module overrides |
+| [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md)                             | Sublessee / Auth Rep contract expiry (#120)  |
 
 Back to [workflow index](../README.md).

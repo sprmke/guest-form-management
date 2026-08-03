@@ -27,9 +27,9 @@ docs/guides/
 
 ## Manual testing (feature flows)
 
-| Doc                                                                                  | Purpose                                                                                       |
-| ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| [`testing/unit-handoff-phase-b-manual.md`](./testing/unit-handoff-phase-b-manual.md) | Unit handoff Phase B — notices, grace, consideration, SA grant/deny, lock, parking leg, 375px |
+| Doc                                                                                            | Purpose                                                                                  |
+| ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| [`testing/contract-expiry-lifecycle-manual.md`](./testing/contract-expiry-lifecycle-manual.md) | Contract expiry — notices, grace, consideration, SA grant/deny, lock, parking leg, 375px |
 
 ## When to update
 

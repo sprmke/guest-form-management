@@ -13,6 +13,5 @@ kind: reference
 | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | [`property-calendar-page.md`](./property-calendar-page.md)                         | Unified property calendar — pricing grid + booking pills shipped; dual tab shell pending                               |
 | [`booking-workflow-configurable-docs.md`](./booking-workflow-configurable-docs.md) | Configurable document requirements + Calendar/Sheets sync — tasks 1–7 shipped; Task 8 docs sweep; pending human verify |
-| [`unit-handoff-phase-b.md`](./unit-handoff-phase-b.md)                             | Sublessee / Auth Rep contract expiry — notices, grace, consideration, lock (#120)                                      |
 
 Back to [workflow index](../README.md).

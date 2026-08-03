@@ -2,7 +2,7 @@
 
 > **For agentic workers:** Use superpowers:subagent-driven-development or executing-plans. Checkboxes track progress.  
 > **Issue:** [#120](https://github.com/sprmke/kame-homes/issues/120)  
-> **Depends on:** [`unit-handoff-phase-a.md`](./unit-handoff-phase-a.md) shipped  
+> **Depends on:** [`unit-handoff-phase-a.md`](../planned/unit-handoff-phase-a.md) shipped  
 > **Approved:** 2026-08-02
 
 **Goal:** Sublessee / Auth Rep contract end → notices, T+0 offline + grace, Request consideration or full renew, T+5 listing lock; SA grant/deny with anti-abuse — without breaking Phase A uniqueness.
@@ -91,7 +91,7 @@ Unlimited extensions; booking transfer; parking slot handoff beyond parking-leg 
 
 - [x] Owner-only submit; anti-abuse server-side
 - [x] Grace banners + consideration form (file proof upload); locked gate for all listing members
-- [ ] Manual E2E at 375px — run [`docs/guides/testing/unit-handoff-phase-b-manual.md`](../../guides/testing/unit-handoff-phase-b-manual.md)
+- [x] Manual E2E at 375px — [`docs/guides/testing/contract-expiry-lifecycle-manual.md`](../../guides/testing/contract-expiry-lifecycle-manual.md)
 
 ### Task 4 — Approvals consideration
 
@@ -110,5 +110,5 @@ Unlimited extensions; booking transfer; parking slot handoff beyond parking-leg 
 ### Done when
 
 - [x] Cron smoke locally (`POST contract-expiry-cron` → `success:true`; full milestone matrix via manual guide)
-- [x] Docs + runbook + [manual test guide](../../guides/testing/unit-handoff-phase-b-manual.md)
-- [ ] Manual E2E at 375px (sign-off sheet in the test guide)
+- [x] Docs + runbook + [manual test guide](../../guides/testing/contract-expiry-lifecycle-manual.md)
+- [x] Manual E2E at 375px (sign-off sheet in the test guide) — confirmed 2026-08-03

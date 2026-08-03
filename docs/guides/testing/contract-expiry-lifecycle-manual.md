@@ -1,16 +1,16 @@
 ---
-title: 'Unit handoff Phase B — manual test flows'
+title: 'Contract expiry lifecycle — manual test flows'
 status: active
-tags: [guides, testing, unit-handoff]
+tags: [guides, testing, contract-expiry]
 updated: 2026-08-03
 ---
 
-# Unit handoff Phase B — step-by-step manual testing
+# Contract expiry lifecycle — step-by-step manual testing
 
-Manual E2E for **sublessee / Auth Rep contract expiry lifecycle** (GitHub [#120](https://github.com/sprmke/kame-homes/issues/120)).
+Manual E2E for **sublessee / Auth Rep contract end** (notices, grace, consideration, lock, Super Admin grant/deny). Issue: GitHub [#120](https://github.com/sprmke/kame-homes/issues/120).
 
-**Plan:** [`docs/workflow/in-progress/unit-handoff-phase-b.md`](../../workflow/in-progress/unit-handoff-phase-b.md)  
-**Depends on:** Phase A ACTIVE tower+unit uniqueness already working.  
+**Implementation plan:** [`docs/workflow/done/unit-handoff-phase-b.md`](../../workflow/done/unit-handoff-phase-b.md)  
+**Depends on:** ACTIVE tower+unit uniqueness already working.  
 **Timezone:** all day math is **Asia/Manila**. Use calendar dates as `YYYY-MM-DD`.
 
 ---
@@ -293,7 +293,7 @@ At 375px: lock screen centered, readable, no overflow.
 
 1. From grace or lock, owner submits **full verification renew** with a **new** future `propertyContractEndDate` (and proofs as required).
 2. SA **Approve** base verification (normal Approvals approve — not consideration grant).
-3. **Expect:** consideration reset (`none`), notice markers cleared for new cycle; listing ACTIVE when Phase A allows; Phase B cron starts fresh against the new end date.
+3. **Expect:** consideration reset (`none`), notice markers cleared for new cycle; listing ACTIVE when uniqueness allows; contract-expiry cron starts fresh against the new end date.
 
 ---
 
@@ -400,7 +400,7 @@ curl -sS -X POST "http://127.0.0.1:54321/functions/v1/upload-org-verification-as
 Copy into the issue or PR when done:
 
 ```text
-Phase B manual E2E — date: ____  tester: ____  env: local / staging
+Contract expiry lifecycle E2E — date: ____  tester: ____  env: local / staging
 
 [ ] A Notices T−15/T−7/T−1 + idempotent re-run
 [ ] B T+0 archive + grace banner
