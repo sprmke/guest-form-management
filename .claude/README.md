@@ -2,6 +2,27 @@
 
 Agent context for **Claude Code** in this repo. Mirrors `.cursor/rules/README.md` (the Cursor-side index) — read that too; `.mdc` rule files aren't auto-loaded by Claude Code, so `CLAUDE.md` points here and at `.cursor/rules/*.mdc` directly.
 
+## New developer setup
+
+```bash
+bun install
+bun run setup:ai-tooling
+```
+
+See **`.cursor/rules/README.md` → New developer setup (AI tooling)** for MCP env vars, `markitdown-mcp`, and ponytail plugin (manual once per machine).
+
+| Item                          | Location                                                             |
+| ----------------------------- | -------------------------------------------------------------------- |
+| One-shot setup                | `bun run setup:ai-tooling`                                           |
+| Team hooks + MCP enable list  | `.claude/settings.json` (committed)                                  |
+| Personal permission overrides | `.claude/settings.local.json` (gitignored — created by setup script) |
+| Shared skills                 | `.agent/skills/<name>/` via symlinks in `.claude/skills/`            |
+| Impeccable                    | `.agents/skills/impeccable/` — installed/wired by setup script       |
+| Claude-only verify skill      | `.claude/skills/verify/` (real directory, not symlinked)             |
+| Drift check                   | `bun run check:ai-tooling-sync`                                      |
+
+Install the **ponytail** marketplace once per machine if you want the plugin commands; the same guidance is always-on in `.cursor/rules/ponytail.mdc`.
+
 ## Always loaded
 
 | File        | Purpose                                                                     |
@@ -40,10 +61,11 @@ Ported from `.cursor/agents/`. Claude Code subagents use `tools:` (allowlist) in
 
 Same as Cursor's `.cursor/commands/`; Claude Code commands and skills both create `/name` — these stay as plain commands since they're short, fixed prompts, not multi-file skill packages.
 
-| Command                | Purpose                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------- |
-| `/fix-merge-conflicts` | Resolve merge conflicts without breaking either side's changes                                     |
-| `/github-issue`        | View / create / update / ship issues on `sprmke/kame-homes` (backed by `scripts/dev/gh-issue.mjs`) |
+| Command                 | Purpose                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
+| `/fix-merge-conflicts`  | Resolve merge conflicts without breaking either side's changes                                     |
+| `/fix-migration-issues` | Apply pending **local** migrations (`bun run db:migrate`) — no reset/deploy by default             |
+| `/github-issue`         | View / create / update / ship issues on `sprmke/kame-homes` (backed by `scripts/dev/gh-issue.mjs`) |
 
 ## Display (`~/.claude/settings.json` — user scope, not committed)
 

@@ -77,4 +77,7 @@ docs/.obsidian/graph.json
 .impeccable/
 .fallow/
 
+# Personal Claude Code overrides (team config is .claude/settings.json)
+.claude/settings.local.json
+
 cli-develop

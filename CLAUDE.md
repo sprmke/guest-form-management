@@ -28,9 +28,11 @@ See **`.cursor/rules/ai-usage.mdc`** (always-on in Cursor; follow here too):
 bun install
 ./dev.sh                 # full stack: Docker + local Supabase + UI
 ./dev.sh --ui-only       # UI only, hosted Supabase, no Docker
+bun run setup:ai-tooling # once after clone: Cursor/Claude rules, skills, hooks, MCP symlinks
 
 bun run lint / lint:fix / type-check / build / check:filenames / format:check
 bun run start:supabase / stop:supabase / status:supabase / db:reset
+bun run db:migrate   # local only: migration up --local --include-all — see /fix-migration-issues
 bun run dev:api            # functions serve — for curl-testing edge functions locally
 bun run deploy:supabase    # add --db-only / --functions-only for partial deploys
 ```
