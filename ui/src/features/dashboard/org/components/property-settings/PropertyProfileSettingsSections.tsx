@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { PropertyCancellationPolicySection } from '@/features/dashboard/org/components/property-settings/PropertyCancellationPolicySection';
+import { PropertyGuestFormSettingsSection } from '@/features/dashboard/org/components/property-settings/PropertyGuestFormSettingsSection';
 import { PropertyLocationPicker } from '@/features/dashboard/org/components/property-settings/PropertyLocationPicker';
 import { PropertyMediaUpload } from '@/features/dashboard/org/components/property-settings/PropertyMediaUpload';
 import {
@@ -29,6 +30,8 @@ import {
 } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { BrandColorField } from '@/features/dashboard/org/components/settings/BrandColorField';
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
+import { useResidenceUnitTypes } from '@/features/dashboard/org/hooks/useResidenceUnitTypes';
+import { findUnitTypeById } from '@/features/dashboard/bookings/lib/unitTypes';
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import {
   HOUSE_RULE_CATEGORIES,
@@ -36,17 +39,13 @@ import {
   MUTUALLY_EXCLUSIVE_HOUSE_RULES,
   type CustomHouseRule,
 } from '@/features/dashboard/org/lib/propertyHouseRulesConstants';
-import { applyResidenceLocationDefaultsToDraft } from '@/features/dashboard/org/lib/propertyLocation';
 import {
-  applyResidenceDefaultsToDraft,
   clampToRange,
   getResidencePropertyDefaults,
 } from '@/features/dashboard/org/lib/propertyResidenceDefaults';
 import {
   getPropertyResidenceNames,
-  getTowersForResidence,
   isCondoPropertyType,
-  isKnownResidence,
   isTowerInResidence,
 } from '@/features/dashboard/org/lib/propertyResidences';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
@@ -62,11 +61,7 @@ import {
   propertyGuestCapacityTotal,
   type PropertyProfileDraft,
 } from '@/features/dashboard/org/lib/propertySettingsForm';
-import {
-  isValidUnitNumber,
-  sanitizeUnitNumberInput,
-  type PropertyTower,
-} from '@/features/dashboard/org/lib/propertyTowerUnit';
+import { isValidUnitNumber } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import type { PropertyTowerUnitConflict } from '@/features/dashboard/org/lib/propertyTowerUnitConflict';
 
 import { Button } from '@/components/ui/button';
@@ -89,7 +84,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { cn } from '@/lib/utils';
 
 function FieldGrid({ children }: { children: React.ReactNode }) {
@@ -104,6 +98,7 @@ type ProfileSectionsProps = {
   slugPreview: string;
   towerConflict: PropertyTowerUnitConflict | null;
   nameUnavailable?: boolean;
+  nameConflictMessage?: string | null;
   nameChecking?: boolean;
   newCustomAmenityInputs: Record<string, string>;
   onNewCustomAmenityInputChange: (categoryId: string, value: string) => void;
@@ -128,6 +123,7 @@ export function PropertyProfileMainSections({
   slugPreview,
   towerConflict,
   nameUnavailable = false,
+  nameConflictMessage = null,
   nameChecking = false,
   newCustomAmenityInputs,
   onNewCustomAmenityInputChange,
@@ -156,66 +152,24 @@ export function PropertyProfileMainSections({
   const isCondo = isCondoPropertyType(draft.type);
   const effectiveResidence = draft.residenceName.trim() || DEFAULT_RESIDENCE_NAME;
   const residenceOptions = getPropertyResidenceNames();
-  const towerOptions = isCondo ? getTowersForResidence(effectiveResidence) : [];
   const towerValid =
     isCondo && Boolean(draft.tower) && isTowerInResidence(draft.tower, effectiveResidence);
   const towerUnitReady = towerValid && isValidUnitNumber(draft.unitNumber);
   const hasDuplicate = towerUnitReady && towerConflict !== null;
+  const propertyTypeLabel =
+    PROPERTY_TYPES.find((type) => type.value === draft.type)?.label ?? draft.type;
+  const readOnlyFieldClass = 'bg-muted/40';
+  const { data: unitTypes = [] } = useResidenceUnitTypes(effectiveResidence);
 
-  const handleTypeChange = (value: string) => {
-    markFieldInteracted('property-type');
-    onChange('type', value);
-    if (isCondoPropertyType(value) && !draft.residenceName.trim()) {
-      onChange('residenceName', DEFAULT_RESIDENCE_NAME);
-      const locationDefaults = applyResidenceLocationDefaultsToDraft(DEFAULT_RESIDENCE_NAME, draft);
-      (
-        Object.entries(locationDefaults) as [
-          keyof PropertyProfileDraft,
-          PropertyProfileDraft[keyof PropertyProfileDraft],
-        ][]
-      ).forEach(([key, fieldValue]) => onChange(key, fieldValue));
-    }
+  const handleUnitTypeChange = (unitTypeId: string) => {
+    markFieldInteracted('property-unit-type');
+    const selected = findUnitTypeById(unitTypes, unitTypeId);
+    if (!selected) return;
+    onChange('unitTypeId', selected.id);
+    onChange('maxAdults', selected.maxAdults);
+    onChange('maxChildren', selected.maxChildren);
+    onChange('maxGuests', propertyGuestCapacityTotal(selected.maxAdults, selected.maxChildren));
   };
-
-  const handleResidenceChange = (value: string) => {
-    markFieldInteracted('property-residence');
-    if (draft.tower && !isTowerInResidence(draft.tower, value)) {
-      onChange('tower', '');
-    }
-    onChange('residenceName', value);
-    if (isKnownResidence(value)) {
-      const defaults = applyResidenceDefaultsToDraft(value);
-      (
-        Object.entries(defaults) as [
-          keyof PropertyProfileDraft,
-          PropertyProfileDraft[keyof PropertyProfileDraft],
-        ][]
-      ).forEach(([key, fieldValue]) => onChange(key, fieldValue));
-    }
-    const locationDefaults = applyResidenceLocationDefaultsToDraft(value, draft);
-    (
-      Object.entries(locationDefaults) as [
-        keyof PropertyProfileDraft,
-        PropertyProfileDraft[keyof PropertyProfileDraft],
-      ][]
-    ).forEach(([key, fieldValue]) => onChange(key, fieldValue));
-  };
-
-  const handleMaxAdultsChange = (value: number) => {
-    markFieldInteracted('property-max-adults');
-    const maxAdults = Math.max(0, value);
-    onChange('maxAdults', maxAdults);
-    onChange('maxGuests', propertyGuestCapacityTotal(maxAdults, draft.maxChildren));
-  };
-
-  const handleMaxChildrenChange = (value: number) => {
-    markFieldInteracted('property-max-children');
-    const maxChildren = Math.max(0, value);
-    onChange('maxChildren', maxChildren);
-    onChange('maxGuests', propertyGuestCapacityTotal(draft.maxAdults, maxChildren));
-  };
-
-  const totalGuests = propertyGuestCapacityTotal(draft.maxAdults, draft.maxChildren);
 
   const residenceDefaults = getResidencePropertyDefaults(effectiveResidence);
 
@@ -308,7 +262,7 @@ export function PropertyProfileMainSections({
         id="basic"
         title="Basic Information"
         icon={Info}
-        description="Update your property's fundamental details."
+        description="Name, contact details, and brand color."
       >
         <SettingsField
           id="property-name"
@@ -316,7 +270,9 @@ export function PropertyProfileMainSections({
           required
           error={
             fieldError('property-name') ??
-            (nameUnavailable ? 'A property with this name already exists' : null)
+            (nameUnavailable
+              ? (nameConflictMessage ?? 'A property with this name already exists')
+              : null)
           }
           hintBelow={
             !fieldError('property-name') && !nameUnavailable && !nameChecking
@@ -376,22 +332,19 @@ export function PropertyProfileMainSections({
             required
             error={fieldError('property-type')}
           >
-            <Select value={draft.type} onValueChange={handleTypeChange} disabled={disabled}>
-              <SelectTrigger
-                id="property-type"
-                aria-invalid={Boolean(fieldError('property-type'))}
-                className={cn(fieldError('property-type') && 'border-destructive')}
-              >
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent position="popper">
-                {PROPERTY_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Input
+              id="property-type"
+              value={propertyTypeLabel}
+              readOnly
+              disabled={disabled}
+              tabIndex={-1}
+              aria-readonly="true"
+              aria-invalid={Boolean(fieldError('property-type'))}
+              className={cn(
+                readOnlyFieldClass,
+                fieldError('property-type') && 'border-destructive'
+              )}
+            />
           </SettingsField>
 
           {isCondo ? (
@@ -401,26 +354,19 @@ export function PropertyProfileMainSections({
               required
               error={fieldError('property-residence')}
             >
-              <Select
-                value={draft.residenceName.trim() || residenceOptions[0] || undefined}
-                onValueChange={handleResidenceChange}
+              <Input
+                id="property-residence"
+                value={draft.residenceName.trim() || residenceOptions[0] || ''}
+                readOnly
                 disabled={disabled}
-              >
-                <SelectTrigger
-                  id="property-residence"
-                  aria-invalid={Boolean(fieldError('property-residence'))}
-                  className={cn(fieldError('property-residence') && 'border-destructive')}
-                >
-                  <SelectValue placeholder="Select residence" />
-                </SelectTrigger>
-                <SelectContent position="popper">
-                  {residenceOptions.map((residence) => (
-                    <SelectItem key={residence} value={residence}>
-                      {residence}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                tabIndex={-1}
+                aria-readonly="true"
+                aria-invalid={Boolean(fieldError('property-residence'))}
+                className={cn(
+                  readOnlyFieldClass,
+                  fieldError('property-residence') && 'border-destructive'
+                )}
+              />
             </SettingsField>
           ) : null}
 
@@ -432,30 +378,19 @@ export function PropertyProfileMainSections({
                 required
                 error={fieldError('property-tower')}
               >
-                <Select
-                  value={draft.tower || undefined}
-                  onValueChange={(value) =>
-                    setField('tower', value as PropertyTower, 'property-tower')
-                  }
-                  disabled={disabled || towerOptions.length === 0}
-                >
-                  <SelectTrigger
-                    id="property-tower"
-                    aria-invalid={Boolean(fieldError('property-tower') || hasDuplicate)}
-                    className={cn(
-                      (fieldError('property-tower') || hasDuplicate) && 'border-destructive'
-                    )}
-                  >
-                    <SelectValue placeholder="Select tower" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {towerOptions.map((tower) => (
-                      <SelectItem key={tower} value={tower}>
-                        {tower}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="property-tower"
+                  value={draft.tower || ''}
+                  readOnly
+                  disabled={disabled}
+                  tabIndex={-1}
+                  aria-readonly="true"
+                  aria-invalid={Boolean(fieldError('property-tower') || hasDuplicate)}
+                  className={cn(
+                    readOnlyFieldClass,
+                    (fieldError('property-tower') || hasDuplicate) && 'border-destructive'
+                  )}
+                />
               </SettingsField>
 
               <SettingsField
@@ -466,21 +401,14 @@ export function PropertyProfileMainSections({
               >
                 <Input
                   id="property-unit"
-                  inputMode="numeric"
-                  autoComplete="off"
                   value={draft.unitNumber}
-                  onChange={(event) =>
-                    setField(
-                      'unitNumber',
-                      sanitizeUnitNumberInput(event.target.value),
-                      'property-unit'
-                    )
-                  }
+                  readOnly
                   disabled={disabled}
-                  placeholder={FORM_PLACEHOLDERS.unitNumber}
-                  maxLength={4}
+                  tabIndex={-1}
+                  aria-readonly="true"
                   aria-invalid={Boolean(fieldError('property-unit') || hasDuplicate)}
                   className={cn(
+                    readOnlyFieldClass,
                     'tabular-nums',
                     (fieldError('property-unit') || hasDuplicate) && 'border-destructive'
                   )}
@@ -518,7 +446,7 @@ export function PropertyProfileMainSections({
         id="media"
         title="Photos & Videos"
         icon={ImageIcon}
-        description="Showcase your property with high-quality images and videos."
+        description="Listing photos and videos."
       >
         {propertySettingsSectionBanner('media', sectionMessages) ? (
           <PropertySettingsSectionAlert
@@ -538,7 +466,7 @@ export function PropertyProfileMainSections({
         id="details"
         title="Property Details"
         icon={Home}
-        description="Specify the capacity and features of your property."
+        description="Bedrooms, bathrooms, floor, and max guests."
       >
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
           <SettingsField
@@ -630,6 +558,34 @@ export function PropertyProfileMainSections({
           </SettingsField>
 
           <SettingsField
+            id="property-unit-type"
+            label="Unit type"
+            required
+            error={fieldError('property-unit-type')}
+          >
+            <Select
+              value={draft.unitTypeId || undefined}
+              onValueChange={handleUnitTypeChange}
+              disabled={disabled || unitTypes.length === 0}
+            >
+              <SelectTrigger
+                id="property-unit-type"
+                aria-invalid={Boolean(fieldError('property-unit-type'))}
+                className={cn(fieldError('property-unit-type') && 'border-destructive')}
+              >
+                <SelectValue placeholder="Select unit type" />
+              </SelectTrigger>
+              <SelectContent>
+                {unitTypes.map((entry) => (
+                  <SelectItem key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </SettingsField>
+
+          <SettingsField
             id="property-max-adults"
             label="Max Adults"
             required
@@ -643,17 +599,15 @@ export function PropertyProfileMainSections({
               <Input
                 id="property-max-adults"
                 type="number"
-                min={residenceDefaults.maxAdults.min}
-                max={residenceDefaults.maxAdults.max}
                 value={draft.maxAdults}
-                onChange={(event) =>
-                  handleMaxAdultsChange(
-                    clampToRange(Number(event.target.value), residenceDefaults.maxAdults)
-                  )
-                }
+                readOnly
                 disabled={disabled}
-                aria-invalid={Boolean(fieldError('property-max-adults'))}
-                className={cn('pl-9', fieldError('property-max-adults') && 'border-destructive')}
+                tabIndex={-1}
+                aria-readonly="true"
+                className={cn(
+                  'bg-muted/40 pl-9 tabular-nums',
+                  fieldError('property-max-adults') && 'border-destructive'
+                )}
               />
             </div>
           </SettingsField>
@@ -672,32 +626,17 @@ export function PropertyProfileMainSections({
               <Input
                 id="property-max-children"
                 type="number"
-                min={residenceDefaults.maxChildren.min}
-                max={residenceDefaults.maxChildren.max}
                 value={draft.maxChildren}
-                onChange={(event) =>
-                  handleMaxChildrenChange(
-                    clampToRange(Number(event.target.value), residenceDefaults.maxChildren)
-                  )
-                }
+                readOnly
                 disabled={disabled}
-                aria-invalid={Boolean(fieldError('property-max-children'))}
-                className={cn('pl-9', fieldError('property-max-children') && 'border-destructive')}
+                tabIndex={-1}
+                aria-readonly="true"
+                className={cn(
+                  'bg-muted/40 pl-9 tabular-nums',
+                  fieldError('property-max-children') && 'border-destructive'
+                )}
               />
             </div>
-          </SettingsField>
-
-          <SettingsField id="property-total-guests" label="Total Guests">
-            <Input
-              id="property-total-guests"
-              type="number"
-              value={totalGuests}
-              readOnly
-              disabled={disabled}
-              tabIndex={-1}
-              aria-readonly="true"
-              className="bg-muted/40 tabular-nums"
-            />
           </SettingsField>
         </div>
 
@@ -759,7 +698,7 @@ export function PropertyProfileMainSections({
         id="amenities"
         title="Amenities"
         icon={Sparkles}
-        description="Select the amenities available at your property. This helps guests find what they're looking for."
+        description="What's included with the stay."
       >
         {propertySettingsSectionBanner('amenities', sectionMessages) ? (
           <PropertySettingsSectionAlert
@@ -893,7 +832,12 @@ export function PropertyProfileMainSections({
         </div>
       </AdminSection>
 
-      <AdminSection id="house-rules" title="House Rules" icon={ListChecks}>
+      <AdminSection
+        id="house-rules"
+        title="House Rules"
+        icon={ListChecks}
+        description="Rules guests see before they book."
+      >
         <div className="bg-muted/40 rounded-lg border px-4 py-3">
           <p className="text-sm font-medium">
             {draft.enabledHouseRules.length} rules selected
@@ -1020,6 +964,8 @@ export function PropertyProfileMainSections({
         </div>
       </AdminSection>
 
+      <PropertyGuestFormSettingsSection draft={draft} disabled={disabled} onChange={onChange} />
+
       <PropertyCancellationPolicySection
         policy={draft.cancellationPolicy}
         disabled={disabled}
@@ -1028,12 +974,7 @@ export function PropertyProfileMainSections({
         onChange={(policy) => onChange('cancellationPolicy', policy)}
       />
 
-      <AdminSection
-        id="location"
-        title="Location"
-        icon={MapPin}
-        description="Provide accurate location details to help guests find your property."
-      >
+      <AdminSection id="location" title="Location" icon={MapPin} description="Address and map pin.">
         <PropertyLocationPicker
           disabled={disabled}
           addressError={fieldError('property-address')}
@@ -1123,7 +1064,7 @@ export function PropertyDangerZoneSection({
       id="danger"
       title="Danger Zone"
       icon={AlertTriangle}
-      description="Irreversible actions that permanently affect this property."
+      description="Archive or permanently delete this property."
       className="border-destructive/50"
     >
       <div className="space-y-4">

@@ -88,7 +88,12 @@ export function PropertyOperationalSettingsSections({
 
   return (
     <>
-      <AdminSection id="payment" title="Payment" icon={Wallet}>
+      <AdminSection
+        id="payment"
+        title="Payment"
+        icon={Wallet}
+        description="How guests pay down payment and balance."
+      >
         <PropertyPaymentMethodsSection
           data={data}
           methods={draft.paymentMethods}
@@ -105,7 +110,7 @@ export function PropertyOperationalSettingsSections({
         id="building-forms"
         title="Building Forms"
         icon={ClipboardList}
-        description="Shared owner, unit, and signature details for the Guest Advisory Form and pet registration PDF."
+        description="Owner and signature details for GAF and pet PDFs."
       >
         <BuildingFormsSettingsSection
           values={{
@@ -143,20 +148,13 @@ export function PropertyOperationalSettingsSections({
         onAutomationToggleChange={onAutomationToggleChange}
       />
 
-      <PropertyWorkflowDocumentsSection
-        data={data}
-        draft={draft}
-        disabled={disabled}
-        resolveFieldError={resolveFieldError}
-        markFieldInteracted={markFieldInteracted}
-        onChange={onChange}
-      />
+      <PropertyWorkflowDocumentsSection draft={draft} disabled={disabled} onChange={onChange} />
 
       <AdminSection
         id="integrations"
         title="Integrations"
         icon={Globe}
-        description="Connect your property to external platforms and services."
+        description="Gmail, Calendar, Sheets, and AI key status."
       >
         {propertySettingsSectionBanner('integrations', sectionMessages) ? (
           <PropertySettingsSectionAlert

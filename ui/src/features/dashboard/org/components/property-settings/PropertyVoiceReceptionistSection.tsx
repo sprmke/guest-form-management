@@ -127,7 +127,7 @@ export function PropertyVoiceReceptionistSection({
       id="voice-receptionist"
       title="Voice Receptionist"
       icon={Mic}
-      description="Guests can talk to an AI assistant about check-in, wifi, parking, and other stay questions."
+      description="AI assistant for check-in and stay questions."
     >
       {isError ? (
         <p className="text-destructive text-sm">

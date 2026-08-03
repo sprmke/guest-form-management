@@ -79,7 +79,12 @@ export function PropertySocialsSection({
   };
 
   return (
-    <AdminSection id="branding" title="Socials" icon={Share2}>
+    <AdminSection
+      id="branding"
+      title="Socials"
+      icon={Share2}
+      description="Social links, guest reviews, and Superhost proof."
+    >
       {propertySettingsSectionBanner('branding', sectionMessages) ? (
         <PropertySettingsSectionAlert
           message={propertySettingsSectionBanner('branding', sectionMessages)!}

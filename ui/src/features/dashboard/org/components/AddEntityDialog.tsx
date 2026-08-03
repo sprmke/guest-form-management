@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Car, Home, Loader2 } from 'lucide-react';
 
 import { TowerUnitConflictAlert } from '@/features/dashboard/org/components/TowerUnitConflictAlert';
+import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
 import { useCreateParking } from '@/features/dashboard/org/hooks/useCreateParking';
 import { useCreateProperty } from '@/features/dashboard/org/hooks/useCreateProperty';
 import { useParkingSlotConflict } from '@/features/dashboard/org/hooks/useParkingSlotConflict';
@@ -149,7 +150,20 @@ export function AddEntityDialog({
   const unitInvalid = unitTouched && unitNumber.length > 0 && !isValidUnitNumber(unitNumber);
   const towerUnitReady =
     isPropertyTowerForResidence(tower, developmentName) && isValidUnitNumber(unitNumber);
-  const propertyCanSubmit = towerUnitReady && !propertyDuplicate;
+  const resolvedPropertyName =
+    propertyDisplayName.trim() || (towerUnitReady ? formatTowerAndUnit(tower, unitNumber) : '');
+  const propertyNameReady = towerUnitReady && resolvedPropertyName.trim().length >= 2;
+  const propertyNameCheck = useCheckPropertyName(
+    resolvedPropertyName,
+    undefined,
+    propertyNameReady
+  );
+  const propertyNameBlocked =
+    propertyNameReady && propertyNameCheck.isFetched && propertyNameCheck.data?.available === false;
+  const propertyNameBlockMessage = propertyNameBlocked
+    ? (propertyNameCheck.data?.message ?? 'A property with this name already exists.')
+    : null;
+  const propertyCanSubmit = towerUnitReady && !propertyDuplicate && !propertyNameBlocked;
 
   const [parkingTower, setParkingTower] = useState(DEFAULT_PARKING_TOWER);
   const [level, setLevel] = useState(DEFAULT_PARKING_LEVEL);
@@ -229,6 +243,10 @@ export function AddEntityDialog({
       const resolvedName = propertyDisplayName.trim() || formatTowerAndUnit(tower, unitNumber);
       if (resolvedName.length < 2) {
         setError('Display name must be at least 2 characters');
+        return;
+      }
+      if (propertyNameBlocked) {
+        setError(propertyNameBlockMessage ?? 'This name is reserved and cannot be used');
         return;
       }
 
@@ -354,8 +372,16 @@ export function AddEntityDialog({
                   }
                   maxLength={120}
                   autoComplete="off"
-                  className="h-10"
+                  aria-invalid={Boolean(propertyNameBlockMessage)}
+                  className={cn('h-10', propertyNameBlockMessage && 'border-destructive')}
                 />
+                {propertyNameBlockMessage ? (
+                  <p role="alert" className="text-destructive text-xs">
+                    {propertyNameBlockMessage}
+                  </p>
+                ) : propertyNameReady && propertyNameCheck.isFetching ? (
+                  <p className="text-muted-foreground text-xs">Checking availability…</p>
+                ) : null}
               </div>
             </>
           ) : (

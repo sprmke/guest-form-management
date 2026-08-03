@@ -32,6 +32,7 @@ export function OrgBasicInformationSection({
   logoSource,
   logoUrl,
   nameUnavailable,
+  nameConflictMessage,
   nameChecking,
   resolveFieldError,
   markFieldInteracted,
@@ -44,6 +45,7 @@ export function OrgBasicInformationSection({
   logoSource?: OrgSettingsFieldSource;
   logoUrl: string;
   nameUnavailable?: boolean;
+  nameConflictMessage?: string | null;
   nameChecking?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
   markFieldInteracted: (fieldId: string) => void;
@@ -98,12 +100,12 @@ export function OrgBasicInformationSection({
               maxLength={120}
               aria-invalid={Boolean(nameUnavailable || nameError)}
             />
-            {nameUnavailable ? (
-              <p className="text-destructive text-xs">
-                An organization with this name already exists.
-              </p>
-            ) : nameError ? (
+            {nameError ? (
               <p className="text-destructive text-xs">{nameError}</p>
+            ) : nameUnavailable ? (
+              <p className="text-destructive text-xs">
+                {nameConflictMessage ?? 'An organization with this name already exists.'}
+              </p>
             ) : nameChecking ? (
               <p className="text-muted-foreground text-xs">Checking availability…</p>
             ) : (

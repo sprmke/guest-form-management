@@ -118,7 +118,12 @@ export function PropertyCancellationPolicySection({
   const customDescriptionError = resolveFieldError('cancellation-custom-description');
 
   return (
-    <AdminSection id="cancellation" title="Cancellation policy" icon={Shield}>
+    <AdminSection
+      id="cancellation"
+      title="Cancellation policy"
+      icon={Shield}
+      description="Refund rules when a guest cancels."
+    >
       <RadioGroup
         value={normalized.type}
         onValueChange={(value) => setType(value as CancellationPolicyType)}

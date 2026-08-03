@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
+import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
 
 export function useCheckOrganizationName(
   name: string,
@@ -14,6 +15,15 @@ export function useCheckOrganizationName(
     enabled: enabled && trimmed.length >= 2,
     staleTime: 30_000,
     queryFn: () => {
+      const reservedMessage = getReservedDisplayNameViolation(trimmed);
+      if (reservedMessage) {
+        return Promise.resolve({
+          available: false,
+          message: reservedMessage,
+          reason: 'reserved' as const,
+        });
+      }
+
       const params = new URLSearchParams({ name: trimmed });
       if (excludeOrgId) {
         params.set('excludeOrgId', excludeOrgId);

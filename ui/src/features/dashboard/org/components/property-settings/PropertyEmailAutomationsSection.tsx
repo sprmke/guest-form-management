@@ -93,12 +93,12 @@ export function PropertyEmailAutomationsSection({
       id="email-automations"
       title="Email automations"
       icon={Mail}
-      description="Recipients, check-out timing, and on/off switches for automated emails on this property."
+      description="Workflow email recipients and send timing."
     >
       <div className="space-y-6">
         <SettingsSubsection
           title="Recipients"
-          description="Who receives team and partner workflow emails. Guest emails use the address on each booking."
+          description="Team inbox for workflow mail. Guest mail uses each booking."
         >
           <FieldGrid>
             <SettingsField
@@ -147,7 +147,7 @@ export function PropertyEmailAutomationsSection({
 
         <SettingsSubsection
           title="Check-out timing & defaults"
-          description="Controls when the guest check-out email sends and the default parking rate for new bookings."
+          description="Check-out email timing and default parking rate."
         >
           <FieldGrid>
             <SettingsField
@@ -206,7 +206,10 @@ export function PropertyEmailAutomationsSection({
 
         <SettingsDivider />
 
-        <SettingsSubsection title="Automated sends">
+        <SettingsSubsection
+          title="Automated sends"
+          description="Turn each workflow email on or off."
+        >
           <PropertyEmailAutomationTogglePanel
             draft={draft}
             disabled={disabled}
