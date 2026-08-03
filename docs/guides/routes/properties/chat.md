@@ -47,7 +47,7 @@ Guests message you from a property listing before they book — first through a 
 3. **Return visit:** existing thread loads via **`guest-web-chat-resume`** — dates optional; chat history shows immediately.
 4. Guest composes message → **Send** → thread stays in modal.
 
-**Reserve** remains separate: dates → auth → **`/properties/:slug/form`** (never chat).
+**Reserve** remains separate: dates → **`requireGuestAuth`** when anonymous → **`GuestBookingFormModal`** (`GuestForm` embed) — never chat.
 
 ## Full-screen route (return visits)
 
