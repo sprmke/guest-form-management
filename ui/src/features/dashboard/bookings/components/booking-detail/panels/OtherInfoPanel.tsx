@@ -10,7 +10,7 @@ import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 import { cn } from '@/lib/utils';
 
 export function OtherInfoPanel({ booking }: { booking: BookingRow }) {
-  const source = booking.booking_source || 'Facebook';
+  const source = booking.booking_source || 'Direct';
   const isAirbnb = source === 'Airbnb';
 
   return (

@@ -25,17 +25,20 @@ export function WorkflowDevControlsChecklist({
         Side effects
       </p>
       <div className="space-y-0.5 p-1.5">
-        {controls.map(({ key, label, description }) => {
-          const checked = values[key] !== false;
+        {controls.map(({ key, label, description, disabled: controlDisabled }) => {
+          const rowDisabled = disabled || controlDisabled;
+          const checked = !rowDisabled && values[key] !== false;
           return (
             <button
               key={key}
               type="button"
-              disabled={disabled}
-              onClick={() => onToggle(key)}
+              disabled={rowDisabled}
+              onClick={() => {
+                if (!rowDisabled) onToggle(key);
+              }}
               className={cn(
                 'flex min-h-[44px] w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left transition-colors',
-                disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-card'
+                rowDisabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-card'
               )}
             >
               <CheckboxDisplay checked={checked} className="mt-0.5" />

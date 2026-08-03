@@ -315,7 +315,9 @@ export function operationalFormIsDirty(
     draft.tiktokUrl.trim() !== baseline.tiktokUrl.trim() ||
     draft.mainSocialPlatform.trim() !== baseline.mainSocialPlatform.trim() ||
     !externalReviewsEqual(draft.externalReviews, baseline.externalReviews) ||
-    draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim()
+    draft.superhostVerificationUrl.trim() !== baseline.superhostVerificationUrl.trim() ||
+    draft.syncCalendar !== baseline.syncCalendar ||
+    draft.syncSheets !== baseline.syncSheets
   );
 }
 

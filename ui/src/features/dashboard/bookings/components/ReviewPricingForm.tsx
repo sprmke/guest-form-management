@@ -92,7 +92,7 @@ export function ReviewPricingForm({
   editMode = false,
   variant = 'workflow',
 }: Props) {
-  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
+  const isAirbnb = (booking.booking_source || 'Direct') === 'Airbnb';
   const surpriseDecorRequested = !!booking.guest_requests_surprise_decor;
   const needParking = booking.need_parking === true;
   const hasPets = booking.has_pets === true;
@@ -353,7 +353,7 @@ function buildPricingDefaultValues(
   surpriseDecorRequested: boolean,
   propertyDefaults: PropertyPricingDefaults
 ): DefaultValues<ReviewPricingFormValues> {
-  const isAirbnb = (booking.booking_source || 'Facebook') === 'Airbnb';
+  const isAirbnb = (booking.booking_source || 'Direct') === 'Airbnb';
   const hasPets = booking.has_pets === true;
   const needParking = booking.need_parking === true;
   const storedAdditional = toNullableNumber(booking.guest_additional_fee);

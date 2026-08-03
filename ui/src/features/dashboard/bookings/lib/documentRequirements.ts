@@ -6,7 +6,7 @@
  * ⚠️  Keep in sync with the server file when either changes.
  */
 
-export type DocumentApprovalSource = 'manual' | 'email-listener' | 'none';
+export type DocumentApprovalSource = 'manual' | 'email-listener';
 export type DocumentTriggerCondition = 'always' | 'has_pets' | 'need_parking';
 
 export type DocumentRequirement = {
@@ -28,7 +28,7 @@ export type DocumentRequirementCompletion = {
 export const DEFAULT_DOCUMENT_REQUIREMENTS: DocumentRequirement[] = [
   {
     id: 'gaf',
-    label: 'GAF Request',
+    label: 'GAF Approval',
     order: 1,
     pdfTemplateId: 'gaf',
     approvalSource: 'email-listener',
@@ -64,4 +64,72 @@ export function requirementApplies(
     default:
       return false;
   }
+}
+
+const APPROVAL_SOURCES: DocumentApprovalSource[] = ['manual', 'email-listener'];
+const TRIGGER_CONDITIONS: DocumentTriggerCondition[] = ['always', 'has_pets', 'need_parking'];
+
+function isApprovalSource(value: unknown): value is DocumentApprovalSource {
+  return typeof value === 'string' && APPROVAL_SOURCES.includes(value as DocumentApprovalSource);
+}
+
+function isTriggerCondition(value: unknown): value is DocumentTriggerCondition {
+  return (
+    typeof value === 'string' && TRIGGER_CONDITIONS.includes(value as DocumentTriggerCondition)
+  );
+}
+
+function parseOptionalStringOrNull(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return typeof value === 'string' ? value : null;
+}
+
+function parseRequirementEntry(raw: unknown): DocumentRequirement | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const entry = raw as Record<string, unknown>;
+
+  const id = typeof entry.id === 'string' ? entry.id.trim() : '';
+  if (!id) return null;
+
+  const label = typeof entry.label === 'string' ? entry.label.trim() : '';
+  if (!label) return null;
+
+  const order =
+    typeof entry.order === 'number' && Number.isFinite(entry.order) ? entry.order : null;
+  if (order === null) return null;
+
+  if (!isTriggerCondition(entry.triggerCondition)) return null;
+
+  const rawApproval = entry.approvalSource;
+  const approvalSource = rawApproval === 'none' ? 'manual' : rawApproval;
+  if (!isApprovalSource(approvalSource)) return null;
+
+  return {
+    id,
+    label,
+    order,
+    pdfTemplateId: parseOptionalStringOrNull(entry.pdfTemplateId),
+    approvalSource,
+    triggerCondition: entry.triggerCondition,
+    calendarIcon: parseOptionalStringOrNull(entry.calendarIcon),
+  };
+}
+
+export function parseDocumentRequirements(raw: unknown): DocumentRequirement[] | null {
+  if (!Array.isArray(raw)) return null;
+  return raw
+    .map(parseRequirementEntry)
+    .filter((req): req is DocumentRequirement => req !== null)
+    .sort((a, b) => a.order - b.order);
+}
+
+export function mergeDocumentRequirements(raw: unknown): DocumentRequirement[] {
+  if (raw === null || raw === undefined) {
+    return DEFAULT_DOCUMENT_REQUIREMENTS.map((req) => ({ ...req }));
+  }
+  const parsed = parseDocumentRequirements(raw);
+  if (parsed === null) {
+    return DEFAULT_DOCUMENT_REQUIREMENTS.map((req) => ({ ...req }));
+  }
+  return parsed;
 }

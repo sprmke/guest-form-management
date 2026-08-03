@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,18 +59,71 @@ function useSectionNavStore(): SectionNavStore {
   return store;
 }
 
+const SCROLL_MARKER_OFFSET_PX = 24;
+/** Only treat the scrollport as "at bottom" when essentially flush with the end. */
+const SCROLL_BOTTOM_SLACK_PX = 12;
+const MIN_VISIBLE_SECTION_PX = 32;
+/** At true bottom, last section wins when it holds this share of the prior section's visible area. */
+const BOTTOM_LAST_SECTION_VISIBLE_RATIO = 0.4;
+
+function sectionVisibleHeight(rect: DOMRect, containerRect: DOMRect): number {
+  const top = Math.max(rect.top, containerRect.top);
+  const bottom = Math.min(rect.bottom, containerRect.bottom);
+  return Math.max(0, bottom - top);
+}
+
+function isScrollAtBottom(container: HTMLElement, slackPx: number): boolean {
+  return container.scrollTop + container.clientHeight >= container.scrollHeight - slackPx;
+}
+
 function findActiveSectionIdInContainer(
   container: HTMLElement,
   sectionIds: string[],
-  markerOffsetPx: number
+  markerOffsetPx: number = SCROLL_MARKER_OFFSET_PX
 ): string {
   if (sectionIds.length === 0) return '';
-  const marker = container.getBoundingClientRect().top + markerOffsetPx;
-  let active = sectionIds[0]!;
-  for (const id of sectionIds) {
-    const el = document.getElementById(`section-${id}`);
-    if (!el) continue;
-    if (el.getBoundingClientRect().top <= marker) active = id;
+
+  const containerRect = container.getBoundingClientRect();
+  const markerY = containerRect.top + markerOffsetPx;
+
+  const entries = sectionIds
+    .map((id) => {
+      const el = document.getElementById(`section-${id}`);
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      return { id, rect, visible: sectionVisibleHeight(rect, containerRect) };
+    })
+    .filter((entry): entry is { id: string; rect: DOMRect; visible: number } => entry !== null);
+
+  if (entries.length === 0) return sectionIds[0] ?? '';
+
+  if (isScrollAtBottom(container, SCROLL_BOTTOM_SLACK_PX)) {
+    const last = entries[entries.length - 1]!;
+    if (last.visible >= MIN_VISIBLE_SECTION_PX) {
+      const previous = entries[entries.length - 2];
+      if (!previous || last.visible >= previous.visible * BOTTOM_LAST_SECTION_VISIBLE_RATIO) {
+        return last.id;
+      }
+    }
+  }
+
+  let bestIndex = 0;
+  let bestVisible = entries[0]!.visible;
+
+  for (let i = 1; i < entries.length; i++) {
+    if (entries[i]!.visible > bestVisible) {
+      bestVisible = entries[i]!.visible;
+      bestIndex = i;
+    }
+  }
+
+  if (bestVisible > 0) {
+    return entries[bestIndex]!.id;
+  }
+
+  let active = entries[0]!.id;
+  for (const entry of entries) {
+    if (entry.rect.top <= markerY) active = entry.id;
   }
   return active;
 }
@@ -103,33 +157,60 @@ function createSectionNavStore(
     notify();
   };
 
+  let programmaticTarget: string | null = null;
+  let detachScrollEnd: (() => void) | null = null;
+
+  const clearProgrammaticScroll = (targetSectionId: string) => {
+    if (programmaticTarget !== targetSectionId) return;
+    programmaticTarget = null;
+    isProgrammaticScroll = false;
+    detachScrollEnd?.();
+    detachScrollEnd = null;
+    if (programmaticScrollTimer) {
+      clearTimeout(programmaticScrollTimer);
+      programmaticScrollTimer = null;
+    }
+    setActiveSection(targetSectionId);
+  };
+
   const scrollToSection = (sectionId: string) => {
     setActiveSection(sectionId);
+    programmaticTarget = sectionId;
     isProgrammaticScroll = true;
+
+    detachScrollEnd?.();
+    if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
 
     const element = document.getElementById(`section-${sectionId}`);
     const container = scrollRef.current;
 
+    const finish = () => clearProgrammaticScroll(sectionId);
+
     if (container && element) {
+      const onScrollEnd = () => finish();
+      container.addEventListener('scrollend', onScrollEnd, { once: true });
+      detachScrollEnd = () => container.removeEventListener('scrollend', onScrollEnd);
+
       const containerTop = container.getBoundingClientRect().top;
       const elementTop = element.getBoundingClientRect().top;
       const top = elementTop - containerTop + container.scrollTop - 8;
       container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+
+      // Fallback when scrollend is unsupported or smooth scroll is interrupted.
+      programmaticScrollTimer = setTimeout(finish, 2500);
     } else if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      programmaticScrollTimer = setTimeout(finish, 2500);
+    } else {
+      finish();
     }
-
-    if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
-    programmaticScrollTimer = setTimeout(() => {
-      isProgrammaticScroll = false;
-    }, 600);
   };
 
   const syncActiveFromScroll = () => {
     if (isProgrammaticScroll) return;
     const container = scrollRef.current;
     if (!container) return;
-    setActiveSection(findActiveSectionIdInContainer(container, sectionIds, 16));
+    setActiveSection(findActiveSectionIdInContainer(container, sectionIds));
   };
 
   const onScroll = () => {
@@ -138,7 +219,7 @@ function createSectionNavStore(
     scrollThrottleTimer = setTimeout(() => {
       scrollThrottleTimer = null;
       syncActiveFromScroll();
-    }, 100);
+    }, 50);
   };
 
   const attachScroll = () => {
@@ -150,10 +231,20 @@ function createSectionNavStore(
     container.addEventListener('scroll', onScroll, { passive: true });
     syncActiveFromScroll();
 
+    const resizeObserver = new ResizeObserver(() => {
+      syncActiveFromScroll();
+    });
+    resizeObserver.observe(container);
+
     detachScroll = () => {
       container.removeEventListener('scroll', onScroll);
+      resizeObserver.disconnect();
+      detachScrollEnd?.();
+      detachScrollEnd = null;
       if (scrollThrottleTimer) clearTimeout(scrollThrottleTimer);
       if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
+      programmaticTarget = null;
+      isProgrammaticScroll = false;
     };
   };
 
@@ -176,6 +267,7 @@ function createSectionNavStore(
       if (!sectionIds.includes(activeSection)) {
         setActiveSection(sectionIds[0] ?? '');
       }
+      syncActiveFromScroll();
     },
   });
 }
@@ -287,6 +379,7 @@ const SectionNavList = React.memo(function SectionNavList({ className }: { class
   const sectionGroups = React.useContext(SectionNavGroupsContext);
   const activeSection = React.useSyncExternalStore(store.subscribe, store.getActiveSection);
   const sections = React.useSyncExternalStore(store.subscribe, store.getSections);
+  const navItemRefs = React.useRef<Record<string, HTMLElement | null>>({});
   const sectionIdsKey = React.useMemo(
     () => sections.map((section) => section.id).join('\0'),
     [sections]
@@ -302,6 +395,26 @@ const SectionNavList = React.memo(function SectionNavList({ className }: { class
     sectionIdsKey,
     groupStructureKey,
   ]);
+
+  const setNavItemRef = React.useCallback(
+    (id: string) => (node: HTMLElement | null) => {
+      navItemRefs.current[id] = node;
+      setItemRef(id)(node);
+    },
+    [setItemRef]
+  );
+
+  React.useEffect(() => {
+    if (!activeSection) return;
+    const navItem = navItemRefs.current[activeSection];
+    const navScrollParent = navItem?.closest('[data-section-nav-scroll]');
+    if (!navItem || !navScrollParent) return;
+    const navRect = navItem.getBoundingClientRect();
+    const parentRect = navScrollParent.getBoundingClientRect();
+    if (navRect.top < parentRect.top || navRect.bottom > parentRect.bottom) {
+      navItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeSection, sectionIdsKey, groupStructureKey]);
 
   if (sectionGroups?.length) {
     return (
@@ -320,7 +433,7 @@ const SectionNavList = React.memo(function SectionNavList({ className }: { class
             {group.sections.map((section) => (
               <SectionNavButton
                 key={section.id}
-                ref={setItemRef(section.id)}
+                ref={setNavItemRef(section.id)}
                 section={section}
                 active={activeSection === section.id}
                 onSelect={store.scrollToSection}
@@ -344,7 +457,7 @@ const SectionNavList = React.memo(function SectionNavList({ className }: { class
       {sections.map((section) => (
         <SectionNavButton
           key={section.id}
-          ref={setItemRef(section.id)}
+          ref={setNavItemRef(section.id)}
           section={section}
           active={activeSection === section.id}
           onSelect={store.scrollToSection}
@@ -362,6 +475,8 @@ export function AdminSectionNavLayout({
   header,
   footer,
 }: AdminSectionNavLayoutProps) {
+  useAdminLayoutFillMain(true);
+
   const resolvedSections = React.useMemo(
     () => (sectionGroups?.length ? flattenSectionGroups(sectionGroups) : (sections ?? [])),
     [sectionGroups, sections]
@@ -390,21 +505,18 @@ export function AdminSectionNavLayout({
   return (
     <SectionNavStoreContext.Provider value={store}>
       <SectionNavGroupsContext.Provider value={sectionGroups ?? null}>
-        <div
-          className={cn(
-            'flex min-h-0 flex-col',
-            'lg:h-[calc(100dvh-2.5rem)] lg:overflow-hidden',
-            className
-          )}
-        >
+        <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
           {header ? (
             <div className="bg-background relative z-20 hidden shrink-0 lg:block">{header}</div>
           ) : null}
 
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-8 lg:overflow-hidden xl:gap-10">
-            <aside className="bg-background relative z-10 hidden w-56 shrink-0 lg:flex lg:min-h-0 lg:flex-col lg:self-stretch">
-              <Card className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                <CardContent className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row lg:gap-8 xl:gap-10">
+            <aside className="bg-background relative z-10 hidden w-56 shrink-0 lg:block lg:self-start">
+              <Card>
+                <CardContent
+                  data-section-nav-scroll
+                  className="max-h-[calc(100dvh-10rem)] overflow-y-auto overscroll-contain p-2"
+                >
                   <SectionNavList />
                 </CardContent>
               </Card>
@@ -412,7 +524,7 @@ export function AdminSectionNavLayout({
 
             <div
               ref={contentScrollRef}
-              className="min-h-0 flex-1 lg:overflow-y-auto lg:overflow-x-hidden lg:overscroll-contain"
+              className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
             >
               {header ? <div className="pb-3 lg:hidden">{header}</div> : null}
               <SectionNavMobileStrip />
@@ -481,14 +593,7 @@ export const AdminSection = React.memo(function AdminSection({
   className,
 }: AdminSectionProps) {
   return (
-    <Card
-      id={`section-${id}`}
-      className={cn(
-        'scroll-mt-2',
-        '[contain-intrinsic-size:auto_28rem] [content-visibility:auto]',
-        className
-      )}
-    >
+    <Card id={`section-${id}`} className={cn('scroll-mt-2', className)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-lg">
           {Icon ? <Icon className="size-5 shrink-0" aria-hidden /> : null}

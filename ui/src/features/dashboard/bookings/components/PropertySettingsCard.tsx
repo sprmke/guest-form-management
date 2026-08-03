@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ClipboardList,
   FileCheck2,
+  FormInput,
   Globe,
   Home,
   Image as ImageIcon,
@@ -103,13 +104,14 @@ const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
   { id: 'details', label: 'Property Details', icon: Home },
   { id: 'amenities', label: 'Amenities', icon: Sparkles },
   { id: 'house-rules', label: 'House Rules', icon: ListChecks },
+  { id: 'guest-form', label: 'Guest Form', icon: FormInput },
   { id: 'cancellation', label: 'Cancellation', icon: Shield },
   { id: 'location', label: 'Location', icon: MapPin },
   { id: 'branding', label: 'Socials', icon: Share2 },
   { id: 'payment', label: 'Payment', icon: Wallet },
   { id: 'building-forms', label: 'Building Forms', icon: ClipboardList },
-  { id: 'email-automations', label: 'Email automations', icon: Mail },
-  { id: 'workflow-documents', label: 'Workflow documents', icon: FileCheck2 },
+  { id: 'email-automations', label: 'Email Automations', icon: Mail },
+  { id: 'workflow-documents', label: 'Booking Workflow', icon: FileCheck2 },
   { id: 'integrations', label: 'Integrations', icon: Globe },
   { id: 'voice-receptionist', label: 'Voice Receptionist', icon: Mic },
   { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
@@ -245,6 +247,7 @@ export function PropertySettingsCard() {
   const nameCheck = useCheckPropertyName(profileDraft.name, property.id, nameChanged);
 
   const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+  const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
 
   const { conflict: towerConflictDetail, hasDuplicate: towerUnitDuplicate } = useTowerUnitConflict(
     profileDraft.tower,
@@ -544,7 +547,10 @@ export function PropertySettingsCard() {
   }
 
   return (
-    <div className="space-y-3 sm:space-y-4" aria-labelledby="property-settings-heading">
+    <div
+      className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4"
+      aria-labelledby="property-settings-heading"
+    >
       <PaymentSettingsSaveConfirmDialog
         open={paymentConfirmOpen}
         onOpenChange={setPaymentConfirmOpen}
@@ -565,13 +571,14 @@ export function PropertySettingsCard() {
 
       {appSettings && operationalDraft ? (
         <AdminSectionNavLayout
+          className="min-h-0 flex-1"
           sections={navSections}
           header={
             <AdminPageHeader
               id="property-settings-heading"
               variant="compact"
               title="Settings"
-              subtitle="Manage your property's profile, amenities, and configurations."
+              subtitle="Profile, operations, and integrations for this listing."
               actions={
                 isDirty ? (
                   <Button
@@ -619,6 +626,7 @@ export function PropertySettingsCard() {
             slugPreview={slugPreview}
             towerConflict={towerConflict}
             nameUnavailable={nameUnavailable}
+            nameConflictMessage={nameConflictMessage}
             nameChecking={nameChanged && nameCheck.isFetching}
             newCustomAmenityInputs={newCustomAmenityInputs}
             onNewCustomAmenityInputChange={(categoryId, value) =>

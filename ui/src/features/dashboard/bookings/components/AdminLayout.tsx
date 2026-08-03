@@ -391,7 +391,7 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
             >
               <div
                 className={cn(
-                  'mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-6 lg:p-8',
+                  'mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-6 lg:px-8 lg:py-5',
                   fillMain && 'flex min-h-0 flex-1 flex-col'
                 )}
               >
@@ -662,7 +662,7 @@ function AdminProfileFooter({
           className={cn(
             'border-border/50 bg-card shadow-elevated-lg absolute z-50 overflow-hidden rounded-xl border',
             collapsed
-              ? 'bottom-0 left-full ml-2 w-[min(16rem,calc(100vw-1.5rem))]'
+              ? 'bottom-0 left-full ml-2 w-[min(18rem,calc(100vw-1.5rem))]'
               : 'bottom-full left-3 right-3 mb-2'
           )}
           role="menu"

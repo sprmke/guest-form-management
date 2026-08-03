@@ -1,7 +1,7 @@
 import { Calendar, Edit2, Users } from 'lucide-react';
 
-import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { BookingDetailFlagChips } from '@/features/dashboard/bookings/components/BookingDetailFlagChips';
+import { occupiedNightsFromStay } from '@/features/dashboard/bookings/components/calendar/calendarStayAmounts';
 import { PayParkingHeaderButton } from '@/features/dashboard/bookings/components/PayParkingModal';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
@@ -33,7 +33,7 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
   const primary = booking.primary_guest_name?.trim() ?? '';
   const heading = fb || primary || 'Booking';
   const showPrimarySubtitle = Boolean(fb && primary && fb.toLowerCase() !== primary.toLowerCase());
-  const source = booking.booking_source?.trim() || 'Facebook';
+  const source = booking.booking_source?.trim() || 'Direct';
   const isAirbnb = source === 'Airbnb';
 
   return (
@@ -51,9 +51,6 @@ export function BookingDetailHeader({ booking, onEdit, onPayParking, className }
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0 space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground font-mono text-[11px] font-medium tracking-tight">
-              #{booking.id.slice(0, 8)}
-            </span>
             <StatusBadge status={booking.status} />
             <span
               className={cn(

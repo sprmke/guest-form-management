@@ -19,7 +19,7 @@
  * Auth: admin-auth.mdc §5 (Dev controls panel)
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -68,9 +68,11 @@ import {
   type ViewedWorkflowStep,
 } from '@/features/dashboard/bookings/lib/workflow';
 import {
+  DEFAULT_PROPERTY_SYNC_TOGGLES,
   loadPersistedWorkflowDevControls,
   mergeWorkflowDevControlsWithDefaults,
   persistWorkflowDevControls,
+  sanitizeDevControlsForPropertySync,
   workflowDevControlsForCancel,
   workflowDevControlsForTransition,
 } from '@/features/dashboard/bookings/lib/workflowDevControls';
@@ -123,6 +125,13 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const { data: appSettings } = useAppSettings();
   const documentRequirements =
     appSettings?.resolvedDocumentRequirements ?? DEFAULT_DOCUMENT_REQUIREMENTS;
+  const propertySyncToggles = useMemo(
+    () => ({
+      syncCalendar: appSettings?.syncCalendar ?? DEFAULT_PROPERTY_SYNC_TOGGLES.syncCalendar,
+      syncSheets: appSettings?.syncSheets ?? DEFAULT_PROPERTY_SYNC_TOGGLES.syncSheets,
+    }),
+    [appSettings?.syncCalendar, appSettings?.syncSheets]
+  );
 
   const [automationHelpOpen, setAutomationHelpOpen] = useState(false);
 
@@ -141,8 +150,8 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   const commitModalDevControls = useCallback((): DevControlFlags => {
     persistWorkflowDevControls(booking.id, modalDevControls);
     setSessionDevControls(modalDevControls);
-    return modalDevControls;
-  }, [booking.id, modalDevControls]);
+    return sanitizeDevControlsForPropertySync(modalDevControls, propertySyncToggles);
+  }, [booking.id, modalDevControls, propertySyncToggles]);
 
   const toggleModalDevControl = useCallback((key: keyof DevControlFlags) => {
     setModalDevControls((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -366,9 +375,15 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
   }
 
   const transitionConfirmDevControls = confirm
-    ? workflowDevControlsForTransition(status, confirm.toStatus, booking, documentRequirements)
+    ? workflowDevControlsForTransition(
+        status,
+        confirm.toStatus,
+        booking,
+        documentRequirements,
+        propertySyncToggles
+      )
     : [];
-  const cancelConfirmDevControls = workflowDevControlsForCancel();
+  const cancelConfirmDevControls = workflowDevControlsForCancel(propertySyncToggles);
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
@@ -426,7 +441,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         bookingId: booking.id,
         toStatus: workflowActions.inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload,
-        devControls: sessionDevControls,
+        devControls: sanitizeDevControlsForPropertySync(sessionDevControls, propertySyncToggles),
         manual: true,
       });
       toast.success(`Marked ${label} as complete`);
@@ -445,7 +460,7 @@ export function WorkflowPanel({ booking, variant = 'rail' }: Props) {
         bookingId: booking.id,
         toStatus: workflowActions.inPendingDocuments ? 'PENDING_DOCUMENTS' : status,
         payload: { document_completion_clear_target: subStatus },
-        devControls: sessionDevControls,
+        devControls: sanitizeDevControlsForPropertySync(sessionDevControls, propertySyncToggles),
         manual: true,
       });
       toast.success(`Marked ${label} as incomplete`);
