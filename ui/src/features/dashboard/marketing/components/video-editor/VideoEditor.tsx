@@ -702,7 +702,7 @@ export function VideoEditor({ onPublish }: Props) {
   const compositionKey = useMemo(
     () =>
       project
-        ? `${format}-${durationInFrames}-${project.music?.url ?? 'no-music'}-${project.scenes.map((scene) => scene.id).join('-')}`
+        ? `${format}-${durationInFrames}-${project.scenes.map((scene) => scene.id).join('-')}`
         : 'empty',
     [project, format, durationInFrames]
   );

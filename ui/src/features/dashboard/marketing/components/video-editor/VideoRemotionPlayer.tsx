@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo } from 'react';
 
 import { Player, type PlayerRef } from '@remotion/player';
 
@@ -16,6 +16,7 @@ type Props = {
   height: number;
   inputProps: VideoCompositionProps;
   previewMuted: boolean;
+  onPlayerInstance?: (player: PlayerRef | null) => void;
 };
 
 export const VideoRemotionPlayer = memo(function VideoRemotionPlayer({
@@ -27,15 +28,29 @@ export const VideoRemotionPlayer = memo(function VideoRemotionPlayer({
   height,
   inputProps,
   previewMuted,
+  onPlayerInstance,
 }: Props) {
   const playerInputProps = useMemo(
     () => ({ ...inputProps, previewMuted }),
     [inputProps, previewMuted]
   );
 
+  const handlePlayerRef = useCallback(
+    (instance: PlayerRef | null) => {
+      playerRef.current = instance;
+      onPlayerInstance?.(instance);
+    },
+    [playerRef, onPlayerInstance]
+  );
+
+  useLayoutEffect(() => {
+    onPlayerInstance?.(playerRef.current);
+    return () => onPlayerInstance?.(null);
+  }, [compositionKey, onPlayerInstance, playerRef]);
+
   return (
     <Player
-      ref={playerRef}
+      ref={handlePlayerRef}
       key={compositionKey}
       component={CampaignVideoComposition}
       durationInFrames={durationInFrames}

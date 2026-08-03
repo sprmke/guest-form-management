@@ -30,6 +30,7 @@ export type VideoPreviewMode = 'all' | 'clip';
 
 type Options = {
   playerRef: React.RefObject<PlayerRef | null>;
+  playerInstance: PlayerRef | null;
   project: VideoProject | null;
   selectedSceneIndex: number;
   previewMode: VideoPreviewMode;
@@ -38,6 +39,7 @@ type Options = {
 
 export function useVideoPlayerTransport({
   playerRef,
+  playerInstance,
   project,
   selectedSceneIndex,
   previewMode,
@@ -48,6 +50,8 @@ export function useVideoPlayerTransport({
   const [isMuted, setIsMuted] = useState(false);
   const loopGuardRef = useRef(false);
   const isPlayingRef = useRef(false);
+  const projectRef = useRef(project);
+  projectRef.current = project;
 
   const durationInFrames = project ? videoProjectDurationInFrames(project) : 1;
   const fps = project?.fps ?? 30;
@@ -77,21 +81,22 @@ export function useVideoPlayerTransport({
   }, [playerRef]);
 
   useEffect(() => {
-    const player = playerRef.current;
+    const player = playerInstance;
     if (!player) return;
 
     const syncFrame = () => {
       const frame = player.getCurrentFrame();
       setCurrentFrame(frame);
 
-      if (!project || previewMode !== 'clip' || !isPlayingRef.current) return;
+      const currentProject = projectRef.current;
+      if (!currentProject || previewMode !== 'clip' || !isPlayingRef.current) return;
       if (loopGuardRef.current) return;
       if (isPageHidden()) {
         player.pause();
         return;
       }
 
-      const { start, end } = sceneFrameRange(project, selectedSceneIndex);
+      const { start, end } = sceneFrameRange(currentProject, selectedSceneIndex);
       const lastFrame = Math.max(start, end - 1);
       if (frame >= lastFrame) {
         loopGuardRef.current = true;
@@ -116,7 +121,8 @@ export function useVideoPlayerTransport({
       setIsPlaying(false);
     };
     const onEnded = () => {
-      if (!project || previewMode !== 'clip') {
+      const currentProject = projectRef.current;
+      if (!currentProject || previewMode !== 'clip') {
         setIsPlaying(false);
         return;
       }
@@ -124,7 +130,7 @@ export function useVideoPlayerTransport({
         setIsPlaying(false);
         return;
       }
-      const { start } = sceneFrameRange(project, selectedSceneIndex);
+      const { start } = sceneFrameRange(currentProject, selectedSceneIndex);
       player.seekTo(start);
       void player.play();
     };
@@ -140,10 +146,8 @@ export function useVideoPlayerTransport({
       player.removeEventListener('play', onPlay);
       player.removeEventListener('pause', onPause);
       player.removeEventListener('ended', onEnded);
-      player.pause();
-      isPlayingRef.current = false;
     };
-  }, [playerRef, compositionKey, project, previewMode, selectedSceneIndex]);
+  }, [playerInstance, compositionKey, previewMode, selectedSceneIndex]);
 
   const seekToFrame = useCallback(
     (frame: number) => {

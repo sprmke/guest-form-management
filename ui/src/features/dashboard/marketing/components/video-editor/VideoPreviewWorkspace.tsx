@@ -102,6 +102,7 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [previewPlaying, setPreviewPlaying] = useState(false);
     const [previewMuted, setPreviewMuted] = useState(false);
+    const [playerInstance, setPlayerInstance] = useState<PlayerRef | null>(null);
     const [isPanning, setIsPanning] = useState(false);
     /** Fit size at 100% zoom — zoom is applied with CSS transform, not by resizing. */
     const [fitSize, setFitSize] = useState<{ width: number; height: number } | null>(null);
@@ -119,6 +120,10 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
         resolveVideoTypographyContext(project.templateId, inputProps.brandColor),
       [inputProps.typography, inputProps.brandColor, project.templateId]
     );
+
+    const handlePlayerInstance = useCallback((instance: PlayerRef | null) => {
+      setPlayerInstance(instance);
+    }, []);
 
     const measurePreviewFrame = useCallback(() => {
       const node = previewAreaRef.current;
@@ -344,6 +349,7 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
                       height={dimensions.height}
                       inputProps={inputProps}
                       previewMuted={previewMuted}
+                      onPlayerInstance={handlePlayerInstance}
                     />
                   </div>
                   {editingScene ? (
@@ -386,6 +392,7 @@ export const VideoPreviewWorkspace = forwardRef<VideoPreviewWorkspaceHandle, Pro
 
         <VideoPlaybackControls
           playerRef={playerRef}
+          playerInstance={playerInstance}
           project={project}
           selectedSceneIndex={selectedSceneIndex}
           previewMode={previewMode}

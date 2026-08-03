@@ -16,6 +16,7 @@ import type { PlayerRef } from '@remotion/player';
 
 type Props = {
   playerRef: React.RefObject<PlayerRef | null>;
+  playerInstance: PlayerRef | null;
   project: VideoProject;
   selectedSceneIndex: number;
   previewMode: VideoPreviewMode;
@@ -36,6 +37,7 @@ type Props = {
 
 export function VideoPlaybackControls({
   playerRef,
+  playerInstance,
   project,
   selectedSceneIndex,
   previewMode,
@@ -50,6 +52,7 @@ export function VideoPlaybackControls({
 }: Props) {
   const transport = useVideoPlayerTransport({
     playerRef,
+    playerInstance,
     project,
     selectedSceneIndex,
     previewMode,
