@@ -8,7 +8,8 @@ import {
   shouldRevertGuestFieldEditsToPendingReview,
 } from './statusMachine.ts';
 import { UploadService } from './uploadService.ts';
-import { assertAzureGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
+import { assertPropertyGuestPartyRules, guestPartySlotsFromFormData } from './guestCounts.ts';
+import { resolveGuestFormSettings } from './guestFormSettings.ts';
 import {
   formatDate,
   formatTime,
@@ -137,7 +138,7 @@ export class DatabaseService {
         guestSpecialRequests: data.guest_special_requests || '',
         findUs: data.find_us || 'Facebook',
         findUsDetails: data.find_us_details || '',
-        bookingSource: data.booking_source || 'Facebook',
+        bookingSource: data.booking_source || 'Direct',
         guestRequestsSurpriseDecor: !!data.guest_requests_surprise_decor,
         needParking: data.need_parking || false,
         parkingSameAsBookingDuration,
@@ -341,7 +342,11 @@ export class DatabaseService {
       const guest5Name = (formData.get('guest5Name') as string)?.trim() || '';
 
       const partySlots = guestPartySlotsFromFormData(formData);
-      assertAzureGuestPartyRules(partySlots);
+      const guestFormSettings = await resolveGuestFormSettings(propertyId);
+      assertPropertyGuestPartyRules(partySlots, {
+        maxAdults: guestFormSettings.maxAdults,
+        maxChildren: guestFormSettings.maxChildren,
+      });
 
       const uploadValidIdIfPresent = async (
         field: string,

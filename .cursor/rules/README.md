@@ -17,6 +17,34 @@ Keep this list **small**. Heavy domain specs use globs.
 | `no-prod-deploy.mdc`            | Block prod Supabase/DB deploys (unlock: **kamewave**) |
 | `markitdown-mcp.mdc`            | Convert PDF/Office attachments via MarkItDown MCP     |
 | `route-guides.mdc`              | Page behavior docs must stay in sync                  |
+| `ponytail.mdc`                  | Lazy senior dev mode — minimal diffs, reuse first     |
+
+## New developer setup (AI tooling)
+
+After `git clone` and `bun install`, run **`bun run setup:ai-tooling`** once — symlinks, Impeccable hooks, Claude local settings template, and sync verification. Rules/commands/agents/hooks load from the repo automatically; no copy from `~/.cursor` or `~/.claude` is required.
+
+| Step | Action                                                                                                                                               |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | **`bun run setup:ai-tooling`** — one-shot project AI tooling setup (re-run after broken symlinks)                                                    |
+| 1    | Open the repo root in **Cursor** or **Claude Code**                                                                                                  |
+| 2    | Export **`SUPABASE_ACCESS_TOKEN`** and **`SUPABASE_PROJECT_REF`** in your shell (read-only Supabase MCP)                                             |
+| 3    | Install **`markitdown-mcp`** on `PATH`: `uv tool install markitdown-mcp`                                                                             |
+| 4    | **Claude Code only:** install the **ponytail** plugin once (`/plugin marketplace add DietrichGebert/ponytail`) — team rule is also in `ponytail.mdc` |
+
+Flags: `bun run setup:ai-tooling -- --skip-impeccable` · `--skip-local-settings` · `--help`
+
+**Two skill roots (both valid):**
+
+| Path                        | Owner                               | Use                                                                                                              |
+| --------------------------- | ----------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `.agent/skills/` (singular) | GFM repo                            | Team domain skills — edit here; symlinked to `.cursor/skills/` and `.claude/skills/`                             |
+| `.agents/skills/` (plural)  | [skills.sh](https://skills.sh/) CLI | Ecosystem installs (e.g. Impeccable) — do not move into `.agent/`; Impeccable scripts hard-code `.agents/` paths |
+
+**Intentionally user-scoped (do not commit):** `~/.cursor/mcp.json` (e.g. claude-mem), `~/.cursor/hooks.json` (claude-mem session hooks), `~/.claude/settings.json` (model, status line, extra plugins), Cursor built-in `~/.cursor/skills-cursor/*`, marketplace plugins (Notion, Figma, Vercel) unless a task needs them.
+
+**Personal skill copies in `~/.claude/skills/`** (design, brand, ui-styling, …) are superseded by this repo's `.agent/skills/` — do not edit the home-directory copies when working here.
+
+Run **`bun run check:ai-tooling-sync`** after changing hooks, commands, agents, or skill symlinks (also runs in pre-commit).
 
 ## Conditional rules (by file glob — loaded when relevant)
 
@@ -46,13 +74,14 @@ Keep this list **small**. Heavy domain specs use globs.
 
 ### Platform & data
 
-| Skill            | Use for                          |
-| ---------------- | -------------------------------- |
-| `docs-first`     | Read docs before implementing    |
-| `supabase-stack` | Postgres, Storage, edge platform |
-| `supabase-auth`  | OAuth, JWT, RBAC                 |
-| `tanstack-query` | Admin hooks, cache, mutations    |
-| `multi-tenancy`  | Org/property scoping             |
+| Skill                  | Use for                                                               |
+| ---------------------- | --------------------------------------------------------------------- |
+| `docs-first`           | Read docs before implementing                                         |
+| `supabase-stack`       | Postgres, Storage, edge platform                                      |
+| `fix-migration-issues` | Local `db:migrate` when schema drifts — never default to reset/deploy |
+| `supabase-auth`        | OAuth, JWT, RBAC                                                      |
+| `tanstack-query`       | Admin hooks, cache, mutations                                         |
+| `multi-tenancy`        | Org/property scoping                                                  |
 
 ### Product domains
 

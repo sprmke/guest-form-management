@@ -298,7 +298,7 @@ export const transformFormToSubmission = (
     guest_special_requests: formData.guestSpecialRequests,
     find_us: formData.findUs,
     find_us_details: formData.findUsDetails,
-    booking_source: formData.bookingSource || 'Facebook',
+    booking_source: formData.bookingSource || 'Direct',
     guest_requests_surprise_decor: toBoolean(formData.guestRequestsSurpriseDecor) ?? false,
     need_parking: toBoolean(formData.needParking),
     car_plate_number: formData.carPlateNumber,
