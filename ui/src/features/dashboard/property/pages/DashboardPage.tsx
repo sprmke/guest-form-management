@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
-import { ExternalLink } from 'lucide-react';
-
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import {
@@ -12,8 +10,8 @@ import {
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyGoogleAttentionItem } from '@/features/dashboard/org/hooks/usePropertyGoogleAttentionItem';
-import { absoluteGuestPropertyUrl } from '@/features/dashboard/org/lib/guestPublicPaths';
 import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
+import { PropertyGuestPagesMenu } from '@/features/dashboard/property/components/PropertyGuestPagesMenu';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
 import { DashboardStatCards } from '@/features/dashboard/property/components/DashboardStatCards';
 import { useDashboardStats } from '@/features/dashboard/property/hooks/useDashboardStats';
@@ -26,14 +24,12 @@ import {
 import { DashboardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
-import { cn } from '@/lib/utils';
 
 export function DashboardPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const isBelowMd = useIsBelowMd();
-  const { propertySlug } = useOrgContext();
+  const { propertySlug, property } = useOrgContext();
   const { data, isLoading, error, refetch } = useDashboardStats();
-  const publicPropertyHref = absoluteGuestPropertyUrl(propertySlug);
 
   const period = useMemo(() => resolveDashboardPeriod(searchParams), [searchParams]);
 
@@ -86,19 +82,7 @@ export function DashboardPage() {
         onClear={handleClearDate}
         fullWidth={isBelowMd}
       />
-      <a
-        href={publicPropertyHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(
-          'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
-          'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-          'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-        )}
-      >
-        <ExternalLink className="size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">View Property</span>
-      </a>
+      <PropertyGuestPagesMenu propertySlug={propertySlug} propertyId={property.id} />
     </div>
   );
 

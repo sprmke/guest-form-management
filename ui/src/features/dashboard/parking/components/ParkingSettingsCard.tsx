@@ -402,6 +402,7 @@ export function ParkingSettingsCard() {
 
   return (
     <AdminSectionNavLayout
+      className="min-h-0 flex-1"
       sections={SECTIONS}
       header={
         <AdminPageHeader
