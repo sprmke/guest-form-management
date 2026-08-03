@@ -56,7 +56,7 @@ Organization settings control your brand identity and public presence: logo, nam
 | Field             | Storage                                                 | Validation                                                                                                                                                                                                                                                                         |
 | ----------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Organization logo | `org_settings.email_logo_url`, `organizations.logo_url` | JPEG/PNG/WebP upload                                                                                                                                                                                                                                                               |
-| Organization name | `organizations.name`                                    | 2–120 chars; globally unique (case-insensitive)                                                                                                                                                                                                                                    |
+| Organization name | `organizations.name`                                    | 2–120 chars; globally unique (case-insensitive); **reserved names blocked** (see [onboarding.md](../onboarding.md) § Reserved organization / property names)                                                                                                                       |
 | URL slug          | `organizations.slug`                                    | Read-only preview; re-allocated on name change                                                                                                                                                                                                                                     |
 | Brand color       | `organizations.settings.brandColor`                     | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset. Tints **org-scoped admin pages** only (org hub redirect, org dashboard, org settings, org properties). Property guest pages and property admin use per-property `app_settings.brand_color` (falls back here when unset). |
 | Tagline           | `organizations.settings.tagline`                        | Max 60 chars                                                                                                                                                                                                                                                                       |
@@ -150,14 +150,14 @@ Save runs **`planOrgSettingsSave`** (client) before PATCH. Only **dirty** sectio
 
 **Nav indicators:** Incomplete required fields show a red dot on the matching section in the settings submenu and on **Settings** in the main sidebar. While editing on this page, dots reflect the draft; elsewhere they reflect the last saved snapshot via `OrgSettingsIssuesSync`.
 
-| Area                        | Client                                                   | Server                                            |
-| --------------------------- | -------------------------------------------------------- | ------------------------------------------------- |
-| Organization name           | Required; 2–120 chars; live uniqueness check             | `update-organization` + `check-organization-name` |
-| Tagline / description       | Optional; max length when filled                         | `update-organization`                             |
-| Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset | `update-organization`                             |
-| Facebook URL                | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
-| Main social platform        | Required when any social URL is set                      | `org-settings` PATCH                              |
-| Instagram / TikTok / Airbnb | Optional `http(s)` URL                                   | `org-settings` PATCH                              |
+| Area                        | Client                                                               | Server                                            |
+| --------------------------- | -------------------------------------------------------------------- | ------------------------------------------------- |
+| Organization name           | Required; 2–120 chars; live uniqueness check; reserved names blocked | `update-organization` + `check-organization-name` |
+| Tagline / description       | Optional; max length when filled                                     | `update-organization`                             |
+| Brand color                 | Optional hex `#RRGGBB`; defaults to `#24a88e` when unset             | `update-organization`                             |
+| Facebook URL                | Optional `http(s)` URL                                               | `org-settings` PATCH                              |
+| Main social platform        | Required when any social URL is set                                  | `org-settings` PATCH                              |
+| Instagram / TikTok / Airbnb | Optional `http(s)` URL                                               | `org-settings` PATCH                              |
 
 Per-property operator settings (email routing, parking defaults, SD cron, automations) are validated on **property settings** — see **[[guides/routes/org/property/settings|Property Settings — operator guide]]**.
 

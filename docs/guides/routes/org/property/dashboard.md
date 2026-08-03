@@ -19,13 +19,13 @@ Route: `/org/:orgSlug/property/:propertySlug`
 | Needs attention    | —        | —          | Documented | Booking/finance alerts + Connect Google chip |
 | Stat cards         | —        | —          | Documented | Period KPIs                                  |
 | Finance + calendar | —        | —          | Documented | Period-scoped widgets                        |
-| View Property      | —        | —          | Documented | Opens the public listing in a new tab        |
+| Guest pages        | —        | —          | Documented | Dropdown of public guest URLs (new tab)      |
 
 ---
 
 ## Overview
 
-Single-property home page: date-range filter, **View Property**, **Needs attention** strip, KPI stat cards, and a combined finance + calendar section — all scoped to one property and the selected period.
+Single-property home page: date-range filter, **Guest pages** menu, **Needs attention** strip, KPI stat cards, and a combined finance + calendar section — all scoped to one property and the selected period.
 
 ---
 
@@ -44,9 +44,19 @@ URL params: **`?from=YYYY-MM-DD&to=YYYY-MM-DD`** — written back on any range c
 
 ---
 
-## View Property
+## Guest pages
 
-Header action next to the date filter — opens the property's public guest-facing listing (`absoluteGuestPropertyUrl(propertySlug)`) in a new tab. Icon-only on mobile widths, labelled on `sm:`+.
+Header action next to the date filter — **Guest pages** dropdown opens property-scoped public guest URLs in a new tab:
+
+| Item       | Path                                                                                                         |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| Property   | `/properties/:propertySlug`                                                                                  |
+| Calendar   | `…/calendar`                                                                                                 |
+| Form       | `…/form`                                                                                                     |
+| Messages   | `…/messages?checkInDate=<today>&checkOutDate=<tomorrow>` (Manila; preview dates so the full chat page loads) |
+| Stay Guide | `…/stay-guide?preview=1&property_id=` (admin preview)                                                        |
+
+Icon + chevron on mobile; labelled **Guest pages** on `sm:`+.
 
 ---
 
@@ -99,7 +109,7 @@ This is the home page for a single property — a quick-glance summary of money 
   - Q: What does the "Total Bookings" number mean?
     A: It shows how many nights you had booked out of the days in the selected period (for example, 18 out of 30 nights) — not a simple count of bookings.
 - Q: Can guests see this page?
-  A: No, this is only visible to you and your team. Use **View Property** to see exactly what guests see on your public listing.
+  A: No, this is only visible to you and your team. Use **Guest pages** to open what guests see on your public site.
 - Q: Does changing the date range affect my actual bookings?
   A: No, changing the date range here only changes which period the numbers and calendar reflect — it doesn't modify anything.
 
@@ -121,6 +131,8 @@ This is the home page for a single property — a quick-glance summary of money 
 | Concern               | Path                                                                                |
 | --------------------- | ----------------------------------------------------------------------------------- |
 | Page                  | `ui/src/features/dashboard/property/pages/DashboardPage.tsx`                        |
+| Guest pages menu      | `ui/src/features/dashboard/property/components/PropertyGuestPagesMenu.tsx`          |
+| Guest page paths      | `ui/src/features/dashboard/property/lib/propertyGuestPublicPages.ts`                |
 | Needs attention       | `ui/src/features/dashboard/property/components/DashboardAttentionStrip.tsx`         |
 | Connect Google chip   | `ui/src/features/dashboard/org/hooks/usePropertyGoogleAttentionItem.ts`             |
 | Stat cards            | `ui/src/features/dashboard/property/components/DashboardStatCards.tsx`              |

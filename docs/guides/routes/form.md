@@ -2,7 +2,7 @@
 title: 'Guest Form — operator guide'
 status: active
 tags: [guides, routes]
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Guest Form — operator guide
@@ -25,7 +25,7 @@ Route: `/properties/:propertySlug/form` (legacy `/form?property=<slug>` redirect
 
 ## Overview
 
-The guest booking form, scoped to **`/properties/:propertySlug/form`**. Admin **New booking** on the property bookings list links here via `guestFormPath(propertySlug)`. Guests can also reopen an existing submission with **`?bookingId=`** (e.g. from the [Stays](./account/stays.md) tab) to edit it while it's still `PENDING_REVIEW`.
+The guest booking form, scoped to **`/properties/:propertySlug/form`**. Full-page renders use **`MainLayout`** (brand-color band + **`GuestOperationalHeader`**, overlapping logo via **`GuestFormBrandHeader`**, and **`GuestStayContextBar`** when `checkInDate` / `checkOutDate` are in the URL). The same **`GuestForm`** component also embeds in **`GuestBookingFormModal`** on the property detail page when guests tap **Reserve** (seeded dates via `embed` props — no navigation to `/form`, no shell chrome). Admin **New booking** on the property bookings list links here via `guestFormPath(propertySlug)`. Guests can also reopen an existing submission with **`?bookingId=`** (e.g. from the [Stays](./account/stays.md) tab) to edit it while it's still `PENDING_REVIEW`.
 
 Legacy **`/form?property=<slug>`** redirects to the scoped route. Deprecated query keys (`dev`, `testing`, submit-form control flags, `from`) are stripped on load; `from=airbnb` migrates to `?source=airbnb`.
 
@@ -48,13 +48,13 @@ The booking form walks a guest through their info, stay dates and guest list, op
 
 ## Steps
 
-| #   | Step    | Content                                                                                                                             | Airbnb     |
-| --- | ------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | Guest   | Facebook/Airbnb name, email, phone, address                                                                                         | ✅         |
-| 2   | Stay    | Check-in/out dates + times, nationality, guest list (names/ages/valid ID), special requests, how they found us, surprise decor flag | ✅         |
-| 3   | Parking | Optional paid parking (plate, brand/model, color, optional custom parking dates)                                                    | ✅         |
-| 4   | Pets    | Optional pet details (name, type, breed, age, vaccination date, vaccination record + pet photo)                                     | ✅         |
-| 5   | Payment | Downpayment breakdown (GCash/bank) + receipt upload                                                                                 | ❌ skipped |
+| #   | Step    | Content                                                                                                                                                                                                                    | Airbnb     |
+| --- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | Guest   | Facebook/Airbnb name, email, phone, address                                                                                                                                                                                | ✅         |
+| 2   | Stay    | Check-in/out dates + times (defaults from property **`checkInTime`/`checkOutTime`** via `get-guest-payment-info`), nationality, guest list (names/ages/valid ID), special requests, how they found us, surprise decor flag | ✅         |
+| 3   | Parking | Optional paid parking (plate, brand/model, color, optional custom parking dates)                                                                                                                                           | ✅         |
+| 4   | Pets    | Optional pet details (name, type, breed, age, vaccination date, vaccination record + pet photo)                                                                                                                            | ✅         |
+| 5   | Payment | Downpayment breakdown (GCash/bank) + receipt upload                                                                                                                                                                        | ❌ skipped |
 
 Airbnb bookings (`?source=airbnb`, or a booking with `booking_source = 'Airbnb'`) get **4 steps** — Payment is omitted entirely and `paymentReceipt` is not required. See `.cursor/rules/booking-workflow.mdc` § Airbnb source behavior for the full list of Airbnb-specific differences downstream of submission.
 
@@ -67,7 +67,7 @@ Each step validates its own fields (via `getFieldsForGuestFormStep`) before **Ne
 ### Save path
 
 1. Guest completes all steps → taps **Submit** on the last step.
-2. If not already signed in, the **checkout auth modal** opens (`requireGuestAuth`) — the guest can fill the entire form anonymously; authentication is only required at submit time. On success, submission resumes automatically.
+2. If not already signed in, the **checkout auth modal** opens (`requireGuestAuth`). On the standalone `/form` page, guests can fill every step anonymously and auth runs only here at submit. On the property-detail **Reserve modal**, auth runs before the modal opens (see [[properties|Property detail]]). On success, submission resumes automatically.
 3. `GuestForm` builds `FormData` (files kept as files, everything else stringified) and POSTs to **`submit-form`** (property scope via `?property=<slug>` in the query string; side-effect flags via FormData in non-prod only — never in the URL).
 4. `submit-form`:
    - Checks for overlapping bookings on the property for the given dates (skipped if the booking is unchanged).
@@ -86,6 +86,9 @@ Each step validates its own fields (via `getFieldsForGuestFormStep`) before **Ne
 - **No workflow email/PDF here:** `submit-form` never sends GAF/acknowledgement/pet/parking email or generates PDFs — those only happen on admin workflow transitions (see `.cursor/rules/booking-workflow.mdc`). The only email `submit-form` can send is the internal **New Booking Request** notify.
 - **Same-page reopen for edits:** loading `?bookingId=` pre-fills every field (including re-fetching uploaded images as `File` objects for preview) via **`get-form`**.
 - **Booked-dates check:** on mount, fetches the property's occupied date ranges via `get-booked-dates` to disable those days in the date pickers.
+- **Property check-in/out times:** on mount, `get-guest-payment-info` returns the property's `checkInTime` / `checkOutTime` (24h `HH:mm` from `properties.settings`; defaults `14:00` / `12:00`). New submissions pre-fill those fields once the fetch completes. Early check-in and late check-out banners compare the guest's selected time against the property values. Reopening `?bookingId=` keeps the stored submission times from `get-form`.
+- **Property guest capacity:** same payload includes `maxAdults` / `maxChildren` from the property's unit type. The guest list shows a **Maximum Guests Reminder** when occupancy exceeds those limits (building rule: age 4+ = adult, age 0–3 = child). `submit-form` enforces the same limits server-side.
+- **Property branding (header + shell):** eyebrow line = `tower_and_unit · residence` (short residence name); logo = org `emailLogoUrl` with fallback to primary property gallery image; top band = org **brand color** gradient via `MainLayout`; footer = org name + residence. Parking/pet copy uses `defaultParkingRateGuest`, `petFee`, and `residenceName` from the same payload. GAF owner/unit fields pre-fill from `gaf*` columns on load (not hardcoded defaults).
 
 ---
 
@@ -97,31 +100,35 @@ Shown on the last step, never gated by `?dev=true`. Checkboxes (all on by defaul
 
 ## API reference
 
-| Action                    | Endpoint                     |
-| ------------------------- | ---------------------------- |
-| Submit / update booking   | `POST submit-form`           |
-| Load existing submission  | `GET get-form/:bookingId`    |
-| Booked date ranges        | `GET get-booked-dates`       |
-| Payment / branding info   | `GET get-guest-payment-info` |
-| Cancel booking (dev only) | `POST cancel-booking`        |
+| Action                                   | Endpoint                                                                                                                                                                                                                                                                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Submit / update booking                  | `POST submit-form`                                                                                                                                                                                                                                                                                                                 |
+| Load existing submission                 | `GET get-form/:bookingId`                                                                                                                                                                                                                                                                                                          |
+| Booked date ranges                       | `GET get-booked-dates`                                                                                                                                                                                                                                                                                                             |
+| Payment / branding / guest-form settings | `GET get-guest-payment-info` — includes section toggles, check-in/out times, guest capacity, **property display** (`propertyName`, `propertyEyebrow`, `propertyCoverImageUrl`, `residenceName`, `organizationName`), pricing hints (`defaultParkingRateGuest`, `petFee`), GAF defaults, org logo (`emailLogoUrl`), and brand color |
+| Development unit types (by residence)    | `GET get-residence-unit-types?residenceName=`                                                                                                                                                                                                                                                                                      |
+| Cancel booking (dev only)                | `POST cancel-booking`                                                                                                                                                                                                                                                                                                              |
 
 ---
 
 ## Implementation map
 
-| Concern               | Path                                                                                              |
-| --------------------- | ------------------------------------------------------------------------------------------------- |
-| Page                  | `ui/src/features/guest/form/components/GuestForm.tsx`                                             |
-| Schema                | `ui/src/features/guest/form/schemas/guestFormSchema.ts`                                           |
-| Steps config          | `ui/src/features/guest/form/lib/guestFormSteps.ts`                                                |
-| Strip legacy URL keys | `ui/src/features/guest/form/lib/bookingSourceFromSearchParams.ts`                                 |
-| Payment info hook     | `ui/src/features/guest/form/hooks/useGuestPaymentInfo.ts`                                         |
-| Routes (wired)        | `ui/src/features/guest/property/routes/index.tsx` (`propertyGuestRoutes`, `legacyGuestRedirects`) |
-| Paths                 | `ui/src/features/guest/lib/guestPublicPaths.ts`                                                   |
-| Auth-on-submit        | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                                         |
-| Submit                | `supabase/functions/submit-form/index.ts`                                                         |
-| Form data fetch       | `supabase/functions/get-form/index.ts`                                                            |
-| Shared services       | `supabase/functions/_shared/{databaseService,receiptValidationService,statusMachine}.ts`          |
+| Concern                      | Path                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------------------- |
+| Page                         | `ui/src/features/guest/form/components/GuestForm.tsx`                                             |
+| Listing Reserve modal        | `ui/src/features/guest/marketing/properties/components/property-detail/GuestBookingFormModal.tsx` |
+| Schema                       | `ui/src/features/guest/form/schemas/guestFormSchema.ts`                                           |
+| Steps config                 | `ui/src/features/guest/form/lib/guestFormSteps.ts`                                                |
+| Strip legacy URL keys        | `ui/src/features/guest/form/lib/bookingSourceFromSearchParams.ts`                                 |
+| Payment info hook            | `ui/src/features/guest/form/hooks/useGuestPaymentInfo.ts`                                         |
+| Property time defaults       | `ui/src/features/guest/form/lib/guestFormPropertyDefaults.ts`                                     |
+| Guest form settings resolver | `supabase/functions/_shared/guestFormSettings.ts`                                                 |
+| Routes (wired)               | `ui/src/features/guest/property/routes/index.tsx` (`propertyGuestRoutes`, `legacyGuestRedirects`) |
+| Paths                        | `ui/src/features/guest/lib/guestPublicPaths.ts`                                                   |
+| Auth-on-submit               | `ui/src/features/guest/auth/context/GuestAuthContext.tsx`                                         |
+| Submit                       | `supabase/functions/submit-form/index.ts`                                                         |
+| Form data fetch              | `supabase/functions/get-form/index.ts`                                                            |
+| Shared services              | `supabase/functions/_shared/{databaseService,receiptValidationService,statusMachine}.ts`          |
 
 ---
 

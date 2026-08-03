@@ -2,7 +2,7 @@
 title: 'Property Settings — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Property Settings — operator guide
@@ -13,23 +13,24 @@ Route: `/org/:orgSlug/property/:propertySlug/settings`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs | Notes                                                                                |
-| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------------------ |
-| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                           |
-| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                                      |
-| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                              |
-| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                                    |
-| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                                      |
-| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                             |
-| Location           | Done     | Done       | Done | Address + map pin required                                                           |
-| Socials            | Done     | Done       | Done | Per-property social links                                                            |
-| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                                  |
-| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                                          |
-| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                             |
-| Workflow documents | Done     | Done       | Done | Doc requirements override (or residence-type default) + Calendar/Sheets sync toggles |
-| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional                        |
-| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes            |
-| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                                  |
+| Section            | E2E save | Validation | Docs | Notes                                                                     |
+| ------------------ | -------- | ---------- | ---- | ------------------------------------------------------------------------- |
+| Basic Information  | Done     | Done       | Done | Required fields marked with *; save blocked until complete                |
+| Photos & Videos    | Done     | Done       | Done | Min 3 photos; section banner when below minimum                           |
+| Property Details   | Done     | Done       | Done | Azure North residence defaults + limits                                   |
+| Amenities          | Done     | Done       | Done | Min 5 selected; section banner when below minimum                         |
+| House Rules        | Done     | Done       | Done | Presets + custom rules; shown on public listing                           |
+| Guest Form         | Done     | Done       | Done | Pet / parking / decor toggles; optional section                           |
+| Cancellation       | Done     | Done       | Done | Presets + custom; shown on public listing + booking card                  |
+| Location           | Done     | Done       | Done | Address + map pin required                                                |
+| Socials            | Done     | Done       | Done | Per-property social links                                                 |
+| Payment            | Done     | Done       | Done | Server-enforced; QR via upload only                                       |
+| Building Forms     | Done     | Done       | Done | Shared GAF + pet PDF fields                                               |
+| Email automations  | Done     | Done       | Done | Recipients, timing, toggles per property                                  |
+| Booking Workflow   | Done     | Done       | Done | Calendar/Sheets sync toggles per property                                 |
+| Integrations       | Done     | Done       | Done | Google (Gmail + Calendar + Sheet) required; Telegram optional             |
+| Voice Receptionist | Done     | Done       | Done | Opt-in AI voice assistant; own settings row; saves with page Save Changes |
+| Danger Zone        | Done     | Done       | Done | Archive + delete with confirmations                                       |
 
 ---
 
@@ -51,8 +52,8 @@ Property Settings is where you complete your listing and day-to-day setup — ba
   A: Archive hides the property from active use but keeps all bookings and history. Delete permanently removes an empty property and is blocked if any bookings exist — use Archive for units with past stays.
 - Q: Where do guests see my cancellation policy and house rules?
   A: House rules and cancellation policy appear on your public property listing. Automated email wording is edited separately on the Templates page.
-- Q: What does "Use residence-type default" mean under Workflow documents?
-  A: Your booking's required documents (e.g. GAF request, pet approval) follow the shared default for your residence unless you switch to **Custom list** and build your own. An empty custom list is valid — bookings then skip straight to Ready for check-in.
+- Q: Where do I configure which documents guests must submit (GAF, pet approval, etc.)?
+  A: Document requirements are set at the **development** level by the platform team (Super Admin → Developments → Document Requirements). All properties in that development inherit the same list.
 
 ---
 
@@ -103,20 +104,20 @@ Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
 
 ### Fields
 
-| Field         | Storage                            | Validation                                                                                                                                                                                                                                                                              |
-| ------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Property name | `properties.name`                  | 2–120 chars; **unique per organization** (case-insensitive)                                                                                                                                                                                                                             |
-| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                                                                                                                                                                                                         |
-| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; UI shows **inherited** org color when unset; **Reset** clears property override back to org / `#24a88e`                                                                                                                                                         |
-| Property type | `properties.type`                  | Condo enables residence / tower / unit                                                                                                                                                                                                                                                  |
-| Residence     | `properties.residence_name`        | Known residences apply defaults (see below)                                                                                                                                                                                                                                             |
-| Tower         | `properties.tower`                 | Options from residence config (Azure North: Monaco, Bali, Barbados)                                                                                                                                                                                                                     |
-| Unit          | `properties.unit_number`           | 4-digit. **Today:** unique per tower globally (all statuses). **Planned ([#120](https://github.com/sprmke/kame-homes/issues/120)):** unique per tower among **`ACTIVE`** properties only — same unit may exist for successive hosts after prior rows are `INACTIVE` (sublease handoff). |
-| Description   | `properties.settings.description`  | Max 1000 chars                                                                                                                                                                                                                                                                          |
-| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                                                                                                                                                                                                                |
-| Contact role  | `properties.settings.contactRole`  | Required                                                                                                                                                                                                                                                                                |
-| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                                                                                                                                                                                       |
-| Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                                                                                                                                                                                   |
+| Field         | Storage                            | Validation                                                                                                                                                                                                                                                                                                         |
+| ------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Property name | `properties.name`                  | 2–120 chars; **globally unique** (case-insensitive); **reserved names blocked** (see [onboarding.md](../../onboarding.md) § Reserved organization / property names)                                                                                                                                                |
+| URL slug      | `properties.slug`                  | Auto-derived from name on save; globally unique                                                                                                                                                                                                                                                                    |
+| Brand color   | `app_settings.brand_color`         | Optional hex `#RRGGBB`; UI shows **inherited** org color when unset; **Reset** clears property override back to org / `#24a88e`                                                                                                                                                                                    |
+| Property type | `properties.type`                  | **Read-only** in settings (set at property creation). Condo enables residence / tower / unit display                                                                                                                                                                                                               |
+| Residence     | `properties.residence_name`        | **Read-only** in settings. Known residences apply defaults at creation (see below)                                                                                                                                                                                                                                 |
+| Tower         | `properties.tower`                 | **Read-only** in settings. Options from residence config (Azure North: Monaco, Bali, Barbados)                                                                                                                                                                                                                     |
+| Unit          | `properties.unit_number`           | **Read-only** in settings. 4-digit. **Today:** unique per tower globally (all statuses). **Planned ([#120](https://github.com/sprmke/kame-homes/issues/120)):** unique per tower among **`ACTIVE`** properties only — same unit may exist for successive hosts after prior rows are `INACTIVE` (sublease handoff). |
+| Description   | `properties.settings.description`  | Max 1000 chars                                                                                                                                                                                                                                                                                                     |
+| Contact name  | `properties.settings.contactName`  | Required; full name when non-empty; inline error on blur                                                                                                                                                                                                                                                           |
+| Contact role  | `properties.settings.contactRole`  | Required                                                                                                                                                                                                                                                                                                           |
+| Phone         | `properties.settings.contactPhone` | Required; PH mobile `09XXXXXXXXX`                                                                                                                                                                                                                                                                                  |
+| Email         | `properties.settings.contactEmail` | Required; valid email                                                                                                                                                                                                                                                                                              |
 
 ### Save path
 
@@ -127,18 +128,19 @@ Both use the same column: `properties.status` (`ACTIVE` | `INACTIVE`).
 
 When residence is **Azure North Residences**, the app applies:
 
-| Field         | Default                | Allowed range          |
-| ------------- | ---------------------- | ---------------------- |
-| Tower options | Monaco, Bali, Barbados | From residence catalog |
-| Bedrooms      | 1                      | 1–2                    |
-| Bathrooms     | 1                      | 1                      |
-| Floor         | 1                      | 1–29                   |
-| Max adults    | 4                      | 1–6                    |
-| Max children  | 0                      | 0–4                    |
-| Check-in      | 2:00 PM (`14:00`)      | —                      |
-| Check-out     | 12:00 PM (`12:00`)     | —                      |
+| Field         | Default                | Allowed range              |
+| ------------- | ---------------------- | -------------------------- |
+| Tower options | Monaco, Bali, Barbados | From residence catalog     |
+| Bedrooms      | 1                      | 1–2                        |
+| Bathrooms     | 1                      | 1                          |
+| Floor         | 1                      | 1–29                       |
+| Max adults    | 4 (Studio unit type)   | From development unit type |
+| Max children  | 1 (Studio unit type)   | From development unit type |
+| Unit type     | `studio`               | Dropdown from development  |
+| Check-in      | 2:00 PM (`14:00`)      | —                          |
+| Check-out     | 12:00 PM (`12:00`)     | —                          |
 
-Defaults apply when selecting the residence in settings and when creating a new property with that residence.
+Defaults apply when creating a new property with that residence (not when editing an existing property — location fields are read-only after creation). New Azure North properties default to **Studio** unit type.
 
 ---
 
@@ -164,6 +166,19 @@ Defaults apply when selecting the residence in settings and when creating a new 
 ## Property Details
 
 Stored in `properties.settings` (+ `properties.max_guests` derived from adults + children).
+
+| Field         | Key            | Default                | Guest-facing use                                      |
+| ------------- | -------------- | ---------------------- | ----------------------------------------------------- |
+| Unit type     | `unitTypeId`   | `studio` (Azure North) | Sets max adults/children from development unit types  |
+| Check-in      | `checkInTime`  | `14:00`                | Guest form default + early-arrival warning threshold  |
+| Check-out     | `checkOutTime` | `12:00`                | Guest form default + late-departure warning threshold |
+| Max adults    | `maxAdults`    | from unit type         | Read-only; guest form occupancy limit                 |
+| Max children  | `maxChildren`  | from unit type         | Read-only; guest form occupancy limit                 |
+| Self check-in | `selfCheckIn`  | `false`                | Public listing + stay guide                           |
+
+**Unit type** options come from the property's development/residence via **`GET get-residence-unit-types`**. Changing unit type updates `maxAdults`, `maxChildren`, and `max_guests` (computed sum) on save. The **Total guests** field was removed from the UI — capacity is always adults + children from the selected type.
+
+Check-in/out times are saved as 24-hour **`HH:mm`** strings. They appear on the public property page, house-rule presets, and — after save — pre-fill the guest booking form Stay step via **`get-guest-payment-info`** → `useGuestPaymentInfo()`.
 
 Validated on save against residence limits (see Azure North table above).
 
@@ -192,6 +207,30 @@ Saved via **Save Changes** → `update-property` settings merge.
 Preset catalog mirrors `ui/src/features/dashboard/org/lib/propertyHouseRulesConstants.ts` (check-in/out, restrictions, guests & pets, property). Custom rule names max **50** characters; add-field shows an inline `current/50` counter inside the input. Check-in/out presets use property detail times on the public listing.
 
 Templates → **House Rules** is for email copy only — not shown on `/properties/:slug`.
+
+---
+
+## Guest Form
+
+Per-property toggles for which sections appear on the public booking form (`/form?property=<slug>`). Stored in **`properties.settings`** (profile save — not `app_settings`).
+
+| Toggle               | Key                  | Default | Effect when off                                                                  |
+| -------------------- | -------------------- | ------- | -------------------------------------------------------------------------------- |
+| Allow Pets           | `allowPets`          | `true`  | Pets step hidden; `has_pets` forced `false` on submit (server + client clamp)    |
+| Allow Parking        | `allowParking`       | `true`  | Parking step hidden; `need_parking` forced `false` on submit                     |
+| Allow Surprise Decor | `allowSurpriseDecor` | `true`  | Decor checkbox hidden on Stay step; `guest_requests_surprise_decor` forced false |
+
+Section nav: **Guest Form** (after House Rules). UI: `PropertyGuestFormSettingsSection.tsx`.
+
+Save path: **Save Changes** → dirty `guest-form` section → `update-property` settings merge (`propertyProfileSettingsPatch`).
+
+Public exposure: resolved via **`get-guest-payment-info`** (same request as payment/GAF defaults) → `useGuestPaymentInfo()` on the guest form. Missing/invalid keys default to **`true`** (preserves legacy always-on behavior).
+
+**Check-in / check-out times** (configured under **Property Details**, not this section): also resolved via **`get-guest-payment-info`** as **`checkInTime`** / **`checkOutTime`** (24h `HH:mm`; defaults **`14:00`** / **`12:00`**). New guest submissions pre-fill those fields; early/late warnings on the Stay step compare against the property values. Existing **`?bookingId=`** edits keep stored submission times from **`get-form`**.
+
+**Guest capacity** (`maxAdults`, `maxChildren`) is also exposed on **`get-guest-payment-info`**. The Stay step guest list uses these for the maximum-guests reminder and server-side validation on **`submit-form`** (occupancy rule: ages 4+ = adult, ages 0–3 = child for capacity checks).
+
+**Booking source** (separate from these toggles): guest form uses **`?source=facebook`** / **`?source=airbnb`** for platform-specific name labels; omitting `source` stores **`Direct`** (`booking_source` column default **`Direct`** after migration `20261003140000_booking_source_default_direct.sql`).
 
 ---
 
@@ -376,31 +415,18 @@ Master switches in `app_settings.automation_toggles` (JSONB). Missing keys defau
 
 ---
 
-## Workflow documents
+## Booking Workflow
 
-Per-property document requirements for `PENDING_DOCUMENTS` and Calendar/Sheets sync switches — both in `app_settings`.
+Per-property Calendar/Sheets sync switches in `app_settings` (document requirements are configured on the development — see [`/admin/developments/:slug`](../../admin/development-detail.md) § Document Requirements).
 
-| Field                 | Column                           | Notes                                                                                                                                                                                                                                                     |
-| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Document requirements | `document_requirements_override` | `null` inherits the residence-type default (`developments.settings.workflowDefaults.documentRequirements` → `DEFAULT_DOCUMENT_REQUIREMENTS`); `[]` is a valid explicit override (D2) — booking skips straight to Ready for check-in with no docs required |
-| Sync Google Calendar  | `sync_calendar`                  | Off skips Calendar event writes on workflow transitions for this property                                                                                                                                                                                 |
-| Sync Google Sheets    | `sync_sheets`                    | Off skips Sheet row writes on workflow transitions for this property                                                                                                                                                                                      |
-
-### Document requirements editor
-
-- **Use residence-type default** — read-only ordered list showing the **development default** requirements (`residenceDefaultDocumentRequirements` — development default chain, ignoring any property override; label, trigger, approval source).
-- **Custom list** — add / remove / reorder rows; each sets **label**, **trigger** (Always required / Guest has pets / Guest needs parking), and **approval source** (Manual / Email listener / None). New rows default `pdfTemplateId` and `calendarIcon` to `null` — no UI field for those yet, keeping the editor a practical checklist rather than a PDF-template CMS.
-- Empty custom list is valid — the pipeline skips `PENDING_DOCUMENTS` entirely for that property.
-
-### Competitive UX note
-
-- **Airbnb** host tools have no direct equivalent — cohost task lists live in messaging, not settings.
-- **Guesty / Hostaway** model this as a per-listing task checklist (ordered items + trigger + approver) alongside separate calendar/channel sync toggles — closest match adopted here.
-- **Adopted:** ordered checklist rows + sync toggles, same toggle language as Email automations. **Skipped:** PMS-style "connect an app" marketplace onboarding — Calendar/Sheets are already connected per property (see Integrations below); these are just per-property kill switches.
+| Field                | Column          | Notes                                                                     |
+| -------------------- | --------------- | ------------------------------------------------------------------------- |
+| Sync Google Calendar | `sync_calendar` | Off skips Calendar event writes on workflow transitions for this property |
+| Sync Google Sheets   | `sync_sheets`   | Off skips Sheet row writes on workflow transitions for this property      |
 
 Save path: **Save Changes** → `app-settings` PATCH (dirty `workflow-documents` section).
 
-Logic: `ui/src/features/dashboard/org/lib/propertyDocumentRequirements.ts`, `PropertyWorkflowDocumentsSection.tsx`; edge resolution: `supabase/functions/_shared/documentRequirements.ts`.
+Implementation: `PropertyWorkflowDocumentsSection.tsx`; edge gating: `supabase/functions/_shared/propertySyncToggles.ts`.
 
 ---
 

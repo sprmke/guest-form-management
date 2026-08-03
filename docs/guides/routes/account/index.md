@@ -64,5 +64,5 @@ Guests who tap their account avatar and land on the account area always see thei
 Verified during the 2026-07-30 route-guides refresh — these are confirmed dead/unrouted, not gaps to document:
 
 - [x] `GuestAccountSettingsPage` exists in the repo (`ui/src/features/guest/account/pages/GuestAccountSettingsPage.tsx`) but is **not routed** — `/account/settings` redirects to `/account/profile` instead of rendering it.
-- [x] `PropertyCalendarPage` (`ui/src/features/guest/marketing/pages/PropertyCalendarPage.tsx`) is **not routed** anywhere in `ui/src/routes/`.
+- [x] Guest marketing **`PropertyCalendarPage`** removed — public calendar is **`CalendarPage`** + shared **`PublicPropertyCalendar`**
 - [x] The exported `orgInboxRoute` helper in `ui/src/features/dashboard/inbox/routes/index.tsx` is **unused** — the org inbox route is wired inline in the parent router instead of calling this helper.

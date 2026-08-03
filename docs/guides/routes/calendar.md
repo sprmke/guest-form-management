@@ -2,7 +2,7 @@
 title: 'Calendar (booking picker) — operator guide'
 status: active
 tags: [guides, routes, calendar]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Calendar (booking picker) — operator guide
@@ -24,9 +24,13 @@ Route: `/properties/:propertySlug/calendar`
 
 ## Overview
 
-Operational **check-in / check-out picker** before the guest booking form (`CalendarPage`). Guests browse and select dates freely without signing in; authentication is only requested when they commit to book.
+Operational **check-in / check-out picker** before the guest booking form (`CalendarPage`). Renders inside **`MainLayout`**: org **brand-color band** at the top with **`GuestOperationalHeader`**, overlapping **`GuestFormBrandHeader`**, **`PublicPropertyCalendar`** (shared with the property detail booking modal), then **`GuestStayContextBar`** once both dates are selected (below the grid, above **Proceed**), then the proceed button.
 
-**Date selection:** single `Calendar` component in range mode — first tap sets check-in, second tap sets check-out. Past dates and any date that would overlap an existing non-cancelled booking are disabled (`get-booked-dates` + `createDisabledDateMatcher`). Selecting a date on/before the current check-in restarts the selection.
+Guests browse and select dates freely without signing in; authentication is only requested when they commit to book.
+
+**Date selection:** **`PublicPropertyCalendar`** — first tap sets check-in, second tap sets check-out. Past dates and overlapping non-cancelled bookings / owner blocks are disabled via **`get-booked-dates`** and **`guestCalendarAvailability.ts`** (same rules as the property detail modal). Selecting a date on/before the current check-in restarts the selection. **Same-day turnover:** when picking check-out, a day that is blocked for new check-ins (another guest arrives that morning) remains selectable as your check-out date.
+
+**Layout:** Calendar route uses a narrower **`MainLayout`** card (**`max-w-xl`**, vs **`max-w-3xl`** on form/success). Calendar, date summary, and proceed button share a centered **`max-w-[33rem]`** column so the grid size stays fixed while the outer card loses excess horizontal whitespace.
 
 **Proceed to Booking Form:** enabled once both dates are picked. Calls **`requireGuestAuth`** first — if the guest doesn't have an active session, `GuestAuthModal` opens (email OTP or Google/Facebook); once authenticated, navigation resumes automatically via the stored `resume` intent. Navigates to **`/properties/:propertySlug/form`** with **`checkInDate`** / **`checkOutDate`** query params, preserving legitimate params (e.g. `source`). Deprecated keys (`dev`, `testing`, submit-form control flags) are stripped on load and on navigate.
 
@@ -72,13 +76,17 @@ This is the guest-facing date picker guests see before filling out a booking for
 
 ## Implementation map
 
-| Concern          | Path                                                                           |
-| ---------------- | ------------------------------------------------------------------------------ |
-| Page             | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                        |
-| Routes           | `ui/src/features/guest/property/routes/index.tsx`                              |
-| Guest-auth gate  | `ui/src/features/guest/auth/context/GuestAuthContext.tsx` (`requireGuestAuth`) |
-| Paths            | `ui/src/features/guest/lib/guestPublicPaths.ts`                                |
-| Landing redirect | `ui/src/features/guest/marketing/pages/GuestLandingPage.tsx`                   |
+| Concern          | Path                                                                             |
+| ---------------- | -------------------------------------------------------------------------------- |
+| Page             | `ui/src/features/guest/calendar/pages/CalendarPage.tsx`                          |
+| Calendar grid    | `ui/src/features/guest/property/components/PublicPropertyCalendar.tsx`           |
+| Availability lib | `ui/src/features/guest/calendar/lib/guestCalendarAvailability.ts`                |
+| Booked dates     | `ui/src/features/guest/form/hooks/useGuestBookedDates.ts`                        |
+| Shell layout     | `ui/src/layouts/MainLayout.tsx`, `GuestOperationalHeader`, `GuestStayContextBar` |
+| Routes           | `ui/src/features/guest/property/routes/index.tsx`                                |
+| Guest-auth gate  | `ui/src/features/guest/auth/context/GuestAuthContext.tsx` (`requireGuestAuth`)   |
+| Paths            | `ui/src/features/guest/lib/guestPublicPaths.ts`                                  |
+| Landing redirect | `ui/src/features/guest/marketing/pages/GuestLandingPage.tsx`                     |
 
 ---
 

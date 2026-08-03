@@ -21,13 +21,13 @@ Routes:
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs       | Notes                               |
-| ----------------- | -------- | ---------- | ---------- | ----------------------------------- |
-| List + filters    | —        | —          | Documented | Location-grouped carousels (grid)   |
-| Location browse   | —        | —          | Documented | `/properties/in/:location`          |
-| Detail page       | —        | —          | Documented | Live API + mock fallback; see below |
-| Property calendar | —        | —          | Documented | Not wired to `get-booked-dates` yet |
-| Public form       | —        | —          | Documented | `PublicFormRenderer`; mock submit   |
+| Section           | E2E save | Validation | Docs       | Notes                                                |
+| ----------------- | -------- | ---------- | ---------- | ---------------------------------------------------- |
+| List + filters    | —        | —          | Documented | Location-grouped carousels (grid)                    |
+| Location browse   | —        | —          | Documented | `/properties/in/:location`                           |
+| Detail page       | —        | —          | Documented | Live API + mock fallback; see below                  |
+| Property calendar | —        | —          | Documented | Live `get-booked-dates` via `PublicPropertyCalendar` |
+| Public form       | —        | —          | Documented | `PublicFormRenderer`; mock submit                    |
 
 ---
 
@@ -35,7 +35,7 @@ Routes:
 
 Browse and view rental listings. Ported from PMA `features/marketing/properties/**`. Uses **`MarketingLayoutShell`**.
 
-**Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** then navigates to **`/properties/:propertySlug/form?checkInDate=&checkOutDate=`**. Without dates, opens the booking calendar modal on the listing (desktop + mobile).
+**Reserve / booking:** `BookingCard` and mobile sticky **Reserve** call **`usePropertyReserve`**. With check-in and check-out selected, **Reserve** runs **`requireGuestAuth`** when anonymous (same as Contact host), then opens **`GuestBookingFormModal`** on the listing — the same reusable **`GuestForm`** as `/properties/:propertySlug/form`, seeded with the selected dates (no page navigation). OAuth return uses `?reserveForm=open` (+ dates/guests). Without dates, opens the booking calendar modal first (desktop + mobile). Listing modals (calendar, guest form, house rules, amenities) share **`GuestDialogShell`** (header + optional action footer with separators). Direct `/form` links and calendar **Book Now** can still navigate to the standalone form page.
 
 **Contact host:** **`ListingHostCard`** → auth if needed → **`ContactHostSheet`** centered modal. See **[chat.md](./properties/chat.md)**.
 
@@ -117,7 +117,7 @@ Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public pr
 | Location    | `PropertyLocation` + `PropertyMapEmbed`                                               | Google/OSM iframe when pinned; decorative fallback if no pin                                                                                             |
 | Rules       | `PropertyRules`                                                                       | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                     |
 | Reviews     | `PropertyReviews`                                                                     | Mock only (hidden for live API)                                                                                                                          |
-| Booking     | `BookingCard`                                                                         | API pricing; cancellation trust badge when highlight; Reserve → guest auth → `/form`                                                                     |
+| Booking     | `BookingCard` + `GuestBookingFormModal`                                               | API pricing; cancellation trust badge when highlight; Reserve → in-page `GuestForm` modal                                                                |
 | Similar     | `SimilarProperties`                                                                   | other mock listings (unchanged)                                                                                                                          |
 | Parking CTA | Link when `getParkingFormForProperty` returns a form → development parking form route |
 
@@ -125,7 +125,7 @@ Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public pr
 
 ## Property calendar (`/properties/:propertySlug/calendar`)
 
-Standalone calendar page (PMA pattern). **`PropertyCalendarPage`** — mock availability; does **not** call **`get-booked-dates`** yet.
+Same route and component as the operational booking picker — see **[calendar.md](./calendar.md)**. **`CalendarPage`** embeds **`PublicPropertyCalendar`** (`embedded`, no duplicate date summary). The property detail **`BookingCalendarModal`** uses the same grid in **`compact`** mode.
 
 ---
 
@@ -139,12 +139,12 @@ Operational guest booking form remains **`/form`** (see [form.md](./form.md)).
 
 ## API reference
 
-| Action          | Endpoint / edge function                      |
-| --------------- | --------------------------------------------- |
-| Property detail | **`get-public-property?property=`** (shipped) |
-| List properties | Public catalog (planned)                      |
-| Booked dates    | Existing `get-booked-dates?property=`         |
-| Form submit     | Property-scoped form submission API           |
+| Action          | Endpoint / edge function                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------- |
+| Property detail | **`get-public-property?property=`** (shipped)                                                               |
+| List properties | Public catalog (planned)                                                                                    |
+| Booked dates    | **`get-booked-dates?property=`** — `useGuestBookedDates` → `PublicPropertyCalendar`, `BookingCalendarModal` |
+| Form submit     | Property-scoped form submission API                                                                         |
 
 Full field map + dashboard gaps: **[[public-property-catalog|Public property catalog — reference]]**.
 
@@ -156,7 +156,10 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 | ------------- | ----------------------------------------------------------------------------- |
 | Pages         | `ui/src/features/guest/marketing/pages/PropertiesListPage.tsx`                |
 |               | `PropertiesLocationPage.tsx`                                                  |
-|               | `PropertyDetailPage.tsx`, `PropertyCalendarPage.tsx`, `PropertyFormPage.tsx`  |
+|               | `PropertyDetailPage.tsx`, `PropertyFormPage.tsx`                              |
+| Calendar      | `property/components/PublicPropertyCalendar.tsx` (shared with `CalendarPage`) |
+| Reserve modal | `properties/components/property-detail/GuestBookingFormModal.tsx`             |
+|               | `properties/hooks/usePropertyReserve.ts` (`onOpenForm`)                       |
 | Components    | `ui/src/features/guest/marketing/properties/components/**`                    |
 |               | `PropertiesByLocation.tsx`, `PropertiesLocationRow.tsx`                       |
 | Grouping      | `properties/lib/groupPropertiesByLocation.ts`                                 |
@@ -164,6 +167,8 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 | Forms UI      | `ui/src/features/guest/marketing/forms/components/**`                         |
 | Mock data     | `properties/data/mockProperties.ts`, `mockPropertyDetail.ts`                  |
 | Live detail   | `properties/hooks/usePublicPropertyDetail.ts`, `types/publicProperty.ts`      |
+| Booked dates  | `form/hooks/useGuestBookedDates.ts`, `form/lib/fetchGuestBookedDates.ts`      |
+|               | `calendar/lib/guestCalendarAvailability.ts`                                   |
 |               | `properties/lib/mapPublicPropertyDetail.ts`                                   |
 |               | `forms/data/mockForms.ts`                                                     |
 | Image helper  | `marketing/shared/components/MarketingImage.tsx` (Vite `img` wrapper)         |
@@ -185,6 +190,6 @@ Full field map + dashboard gaps: **[[public-property-catalog|Public property cat
 
 - [ ] Connect list/browse to published properties in DB
 - [x] Wire property detail → `get-public-property` with mock fallback + query cache
-- [x] Wire `BookingCard` Reserve → `/form?property=<slug>&checkInDate=&checkOutDate=` (via `usePropertyReserve` + `requireGuestAuth`)
-- [ ] Property calendar → `get-booked-dates`
+- [x] Wire `BookingCard` Reserve → in-page `GuestBookingFormModal` (`GuestForm` embed; `usePropertyReserve` `onOpenForm`)
+- [x] Property calendar + booking modal → `get-booked-dates`
 - [ ] Replace `MarketingImage` placeholders with Supabase Storage URLs

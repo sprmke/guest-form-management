@@ -33,11 +33,12 @@ Routes:
 
 Guests browse dates and fill the booking form **without signing in**. Auth appears only when they commit to book:
 
-1. **Property detail → Reserve** (desktop `BookingCard`, mobile sticky bar) — `usePropertyReserve` → `GuestAuthModal` when dates are set
+1. **Property detail → Reserve** (desktop `BookingCard`, mobile sticky bar) — `usePropertyReserve` with `onOpenForm` opens **`GuestAuthModal`** first when anonymous, then **`GuestBookingFormModal`** (same pattern as Contact host)
 2. **Calendar → Proceed** — `GuestAuthModal` (Airbnb-style)
-3. **Property calendar → Book Now** — same modal via `usePropertyReserve`
-4. **Form → Submit** (final step) — same modal if session expired
-5. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
+3. **Property calendar → Book Now** — `usePropertyReserve` without `onOpenForm` navigates to `/form` and gates with `GuestAuthModal` first
+4. **Property detail → Contact host** — `GuestAuthModal` first when anonymous, then **`ContactHostSheet`**
+5. **Form → Submit** (final step) — same modal if session expired
+6. **Save property (heart)** — any listing card, list row, or detail gallery Save button → `GuestAuthModal` when anonymous; persists to `guest_saved_properties` after login (OAuth resume via `save_property` intent)
 
 Marketing **Become a host?** on explore pages runs the global mode-switch curtain to **`/for-hosts`**. On `/for-hosts`, the pill CTA is **Explore** (back to guest mode); signed-in hosts use the avatar menu for **Dashboard**, signed-out hosts see **Sign In** → **`/for-hosts/login`**.
 
@@ -50,7 +51,7 @@ When a guest session exists on **explore** pages, a **rounded avatar** appears b
 - No phone sign-in
 - No dedicated `/for-guests/login` page — the modal is the only guest entry point
 
-Resume after OAuth: `sessionStorage` (`guestAuthResume.ts`) restores navigation to the form, contact-host sheet, or auto-submits after social/email auth. After a full-page OAuth redirect, `GuestAuthContext` reads the stored resume when the session becomes active (in-memory pending callbacks are lost on reload).
+Resume after OAuth: `sessionStorage` (`guestAuthResume.ts`) restores navigation to the form, contact-host sheet, booking-form modal, or auto-submits after social/email auth. After a full-page OAuth redirect, `GuestAuthContext` reads the stored resume when the session becomes active (in-memory pending callbacks are lost on reload).
 
 ### Host sign-in
 

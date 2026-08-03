@@ -46,11 +46,21 @@ First-time hosts complete this wizard right after signing in with Google — org
 
 ## Steps
 
-1. **Organization** — organization name, contact **Name**, **Contact number**
-2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). At least one host type must be selected. Residence is currently Azure-only (field **?** help).
+1. **Organization** — organization name, contact **Name**, **Contact number** (reserved-name rules below)
+2. **Hosting** — choose **Property** and/or **Parking** (multi-select toggles); fill tower/unit and/or parking slot in the same step. **Property name** is required when Property is selected (tower + unit alone do not enable Continue). Property names follow the same reserved-name rules as org names. At least one host type must be selected. Residence is currently Azure-only (field **?** help).
 3. **Verify** — unified step header → trust notice + **Let’s get verified**; upload fields after click. **Valid ID** + **Property verification** (Property Rights + contract end when applicable + proof of ownership + platform + access screenshot) and/or **Parking verification** (Parking Rights + contract end + proof upload).
 
 Contact name pre-fills from the Google account display name when available.
+
+### Reserved organization / property names
+
+Hosts cannot use display names that impersonate the development or claim to be “official”, including evasion with extra punctuation or spacing (e.g. `Az.u.r.e North`). Blocked patterns (case-insensitive, punctuation ignored):
+
+- **Azure North** and **Azure North Residence(s)**
+- **Azure Official**, **Azure North Official**, **Azure North Residence Official**
+- Any name containing the word **Official** as its own token (e.g. `My Official Host` — not `Unofficial`)
+
+Enforced on onboarding, org settings, property settings, and **Add property** (`create-organization`, `update-organization`, `create-property`, `update-property`, `check-organization-name`, `check-property-name`). Shared logic: `reservedDisplayNames.ts` (UI + edge).
 
 ### Unit uniqueness (sublease handoff) — planned
 

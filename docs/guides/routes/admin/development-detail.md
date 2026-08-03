@@ -2,7 +2,7 @@
 title: 'Development Settings — operator guide'
 status: active
 tags: [guides, routes, admin, developments]
-updated: 2026-08-02
+updated: 2026-08-03
 ---
 
 # Development Settings — operator guide
@@ -13,15 +13,17 @@ Route: `/admin/developments/:developmentSlug`
 
 ## Progress overview
 
-| Section           | E2E save | Validation | Docs | Notes                                                             |
-| ----------------- | -------- | ---------- | ---- | ----------------------------------------------------------------- |
-| Basic Information | Done     | Done       | Done | Name, slug, developer, type, status, description                  |
-| Photos & Videos   | Done     | Done       | Done | Shared `PropertyMediaUpload`; saves immediately on reorder/upload |
-| Email automations | Done     | Done       | Done | PMO email (optional)                                              |
-| Amenities         | Done     | —          | Done | Suggested chips + free-text add                                   |
-| Location          | Done     | Done       | Done | Location line + `PropertyLocationPicker`                          |
-| Towers & Parking  | Done     | —          | Done | Free-text tag lists                                               |
-| Danger Zone       | Done     | Done       | Done | Delete blocked (409) while linked                                 |
+| Section               | E2E save | Validation | Docs | Notes                                                             |
+| --------------------- | -------- | ---------- | ---- | ----------------------------------------------------------------- |
+| Basic Information     | Done     | Done       | Done | Name, slug, developer, type, status, description                  |
+| Photos & Videos       | Done     | Done       | Done | Shared `PropertyMediaUpload`; saves immediately on reorder/upload |
+| Email automations     | Done     | Done       | Done | PMO email (optional)                                              |
+| Document Requirements | Done     | Done       | Done | Ordered checklist for PENDING_DOCUMENTS (all properties in dev)   |
+| Unit types            | Done     | Done       | Done | Per-type max adults/children capacity presets                     |
+| Amenities             | Done     | —          | Done | Suggested chips + free-text add                                   |
+| Location              | Done     | Done       | Done | Location line + `PropertyLocationPicker`                          |
+| Towers & Parking      | Done     | —          | Done | Free-text tag lists                                               |
+| Danger Zone           | Done     | Done       | Done | Delete blocked (409) while linked                                 |
 
 ---
 
@@ -79,6 +81,43 @@ Reuses the property media-upload component (`PropertyMediaUpload`), scoped by `d
 | PMO email | `developments.settings.pmoEmail` | Optional; must be a valid email if set |
 
 Receives GAF and pet approval requests for **all** properties inside this development (see `.cursor/rules/booking-workflow.mdc` for the request-email flow itself; this field only configures the recipient).
+
+---
+
+## Document Requirements
+
+Ordered checklist of documents required before a booking reaches **Ready for check-in** — applies to every property whose `residence_name` matches this development.
+
+| Field         | Storage                                                       | Notes                                                           |
+| ------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| Document list | `developments.settings.workflowDefaults.documentRequirements` | JSON array; empty list → bookings skip `PENDING_DOCUMENTS` (D2) |
+
+Each row: **label**, **trigger** (Always required / Guest has pets / Guest needs parking), **approval source** (Manual / Email listener).
+
+Save path: batched **Save Changes** → **`PATCH update-development`** with `documentRequirements`.
+
+Edge resolution for bookings: `documentRequirements.ts#resolveDocumentRequirements` (property override column deprecated; development default → `DEFAULT_DOCUMENT_REQUIREMENTS` fallback).
+
+---
+
+## Unit types
+
+Per-unit capacity presets for properties in this development. Stored in **`developments.settings.unitTypes`** (JSON array).
+
+| Field per row | Notes                                                              |
+| ------------- | ------------------------------------------------------------------ |
+| `id`          | Stable slug (e.g. `studio`, `1br`, `2br`)                          |
+| `label`       | Host-facing name (e.g. `Studio`, `1 bedroom`)                      |
+| `maxAdults`   | Maximum adults allowed in the unit                                 |
+| `maxChildren` | Maximum children allowed (occupancy rule: age ≤ 3 counts as child) |
+
+**Azure North defaults** (when unset): Studio — 4 adults / 1 child; 1 bedroom — 6 / 2; 2 bedroom — 8 / 3.
+
+Save path: batched **Save Changes** → **`PATCH update-development`** with `unitTypes`.
+
+Public read: **`GET get-residence-unit-types?residenceName=`** (used by property settings + guest form capacity).
+
+Properties pick one type under **Property Details → Unit type**; max adults/children are derived from the selection.
 
 ---
 
