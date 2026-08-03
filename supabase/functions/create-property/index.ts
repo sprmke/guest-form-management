@@ -12,6 +12,7 @@ import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
   findPropertyNameConflict,
 } from '../_shared/propertyNameConflict.ts';
+import { getReservedDisplayNameViolation } from '../_shared/reservedDisplayNames.ts';
 import { defaultPropertySettingsForResidence } from '../_shared/propertyResidenceDefaults.ts';
 import {
   azureNorthLocationSeed,
@@ -47,6 +48,11 @@ serveAuthenticated('create-property', async (req) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (name.length < 2 || name.length > 120) {
     return jsonError(req, 'Property name must be 2–120 characters');
+  }
+
+  const nameReserved = getReservedDisplayNameViolation(name);
+  if (nameReserved) {
+    return jsonError(req, nameReserved, 409);
   }
 
   const residenceName =

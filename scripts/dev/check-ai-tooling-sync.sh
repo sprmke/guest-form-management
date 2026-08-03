@@ -70,6 +70,15 @@ for side in cursor claude; do
       continue
     fi
 
+    # skills.sh CLI installs live under .agents/skills/ (plural), not .agent/skills/.
+    if [[ -L "$entry" ]]; then
+      link_real="$(cd "$entry" && pwd -P)"
+      agents_target="$(cd ".agents/skills/${name}" 2>/dev/null && pwd -P || true)"
+      if [[ -n "$agents_target" && "$link_real" == "$agents_target" ]]; then
+        continue
+      fi
+    fi
+
     if [[ ! -e ".agent/skills/${name}" ]]; then
       fail "$entry has no .agent/skills/${name} counterpart"
     fi
@@ -151,6 +160,26 @@ else
   elif [[ "$resolved_real" != "$ROOT/.mcp.json" ]]; then
     fail ".cursor/mcp.json symlink resolves to '${resolved_real}', expected '${ROOT}/.mcp.json'"
   fi
+fi
+
+# --- 5. Impeccable (skills.sh) — when present, symlinks + hook scripts ------
+
+if [[ -d .agents/skills/impeccable ]]; then
+  for script in scripts/hook.mjs scripts/hook-before-edit.mjs; do
+    [[ -f ".agents/skills/impeccable/${script}" ]] \
+      || fail ".agents/skills/impeccable/${script} missing"
+  done
+  for side in cursor claude; do
+    link=".${side}/skills/impeccable"
+    if [[ ! -L "$link" ]]; then
+      fail "$link missing — run 'bun run setup:impeccable'"
+    fi
+    link_real="$(cd "$link" && pwd -P)"
+    target_real="$(cd .agents/skills/impeccable && pwd -P)"
+    if [[ "$link_real" != "$target_real" ]]; then
+      fail "$link resolves to $link_real, expected $target_real"
+    fi
+  done
 fi
 
 # --- Result ------------------------------------------------------------------

@@ -1,7 +1,7 @@
 # Intentional Cursor/Claude AI-tooling asymmetries.
 #
 # One entry per line, format: <check-kind>:<name>  # note
-# check-kind is one of: hook
+# check-kind is one of: hook, skill
 #
 # Entries here are skipped by scripts/dev/check-ai-tooling-sync.sh so
 # pre-commit does not block on known, already-tracked gaps.

@@ -30,6 +30,9 @@ Requires `pip3 install --user edge-tts`. Flags: `--voice` (default `en-US-AriaNe
 | `build-local-functions-env.sh`         | `dev.sh`, `bun run dev:api`                   | Merge `.env.local` + local API keys for `functions serve`                                                           |
 | `export-local-supabase-runtime-env.sh` | `build-local-functions-env.sh`                | Export `SUPABASE_URL` / service role from `supabase status`                                                         |
 | `check-ui-filename-conventions.sh`     | `bun run check:filenames`                     | Verify `ui/src` filenames match naming rules                                                                        |
+| `check-ai-tooling-sync.sh`             | `bun run check:ai-tooling-sync`               | Cursor/Claude skills, commands, agents, hooks, MCP parity                                                           |
+| `setup-ai-tooling.sh`                  | `bun run setup:ai-tooling`                    | One-shot team AI tooling setup (symlinks, Impeccable, verify)                                                       |
+| `setup-impeccable.sh`                  | `bun run setup:impeccable`                    | Impeccable only (also run by setup-ai-tooling)                                                                      |
 | `port-pma-public-ui.sh`                | (manual)                                      | Rsync PMA `features/marketing` → `ui/src/features/guest/marketing` (excludes GFM pages/routes)                      |
 | `migrate-shared-imports.sh`            | (one-shot reference)                          | Bulk `@/lib/*` + `@/utils/*` path rewrites                                                                          |
 | `gh-issue.mjs`                         | (manual)                                      | View / create / update / **ship** GitHub issues → `docs/archive/todos/shipped/` (see `/github-issue`)               |

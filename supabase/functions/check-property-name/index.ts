@@ -8,6 +8,7 @@ import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
   findPropertyNameConflict,
 } from '../_shared/propertyNameConflict.ts';
+import { getReservedDisplayNameViolation } from '../_shared/reservedDisplayNames.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -20,6 +21,15 @@ serveAuthenticated('check-property-name', async (req) => {
 
   if (name.length < 2) {
     return jsonSuccess(req, { available: false, reason: 'too_short' });
+  }
+
+  const reservedMessage = getReservedDisplayNameViolation(name);
+  if (reservedMessage) {
+    return jsonSuccess(req, {
+      available: false,
+      reason: 'reserved',
+      message: reservedMessage,
+    });
   }
 
   const supabase = createServiceClient();

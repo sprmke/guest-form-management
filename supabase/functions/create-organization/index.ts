@@ -20,6 +20,7 @@ import {
   DUPLICATE_PROPERTY_NAME_MESSAGE,
   findPropertyNameConflict,
 } from '../_shared/propertyNameConflict.ts';
+import { getReservedDisplayNameViolation } from '../_shared/reservedDisplayNames.ts';
 import {
   validateOrgContactSettingsFields,
   validateOrgDescription,
@@ -63,6 +64,11 @@ serveAuthenticated('create-organization', async (req, user) => {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (name.length < 2 || name.length > 120) {
     return jsonError(req, 'Organization name must be 2–120 characters');
+  }
+
+  const orgNameReserved = getReservedDisplayNameViolation(name);
+  if (orgNameReserved) {
+    return jsonError(req, orgNameReserved, 409);
   }
 
   const description = typeof body.description === 'string' ? body.description.trim() || null : null;
@@ -234,6 +240,12 @@ serveAuthenticated('create-organization', async (req, user) => {
 
     const resolvedPropertyName =
       propertyName.length >= 2 ? propertyName : (towerAndUnit ?? residenceName ?? 'Property 1');
+
+    const propertyNameReserved = getReservedDisplayNameViolation(resolvedPropertyName);
+    if (propertyNameReserved) {
+      await rollbackOrg();
+      return jsonError(req, propertyNameReserved, 409);
+    }
 
     try {
       const propertyNameConflict = await findPropertyNameConflict(supabase, resolvedPropertyName);

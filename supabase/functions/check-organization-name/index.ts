@@ -8,6 +8,7 @@ import {
   DUPLICATE_ORGANIZATION_NAME_MESSAGE,
   findOrganizationNameConflict,
 } from '../_shared/orgNameConflict.ts';
+import { getReservedDisplayNameViolation } from '../_shared/reservedDisplayNames.ts';
 import { jsonSuccess, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
@@ -20,6 +21,15 @@ serveAuthenticated('check-organization-name', async (req) => {
 
   if (name.length < 2) {
     return jsonSuccess(req, { available: false, reason: 'too_short' });
+  }
+
+  const reservedMessage = getReservedDisplayNameViolation(name);
+  if (reservedMessage) {
+    return jsonSuccess(req, {
+      available: false,
+      reason: 'reserved',
+      message: reservedMessage,
+    });
   }
 
   const supabase = createServiceClient();
