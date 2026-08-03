@@ -1,12 +1,10 @@
 import type { AppSettingsFormValues } from '@/features/dashboard/bookings/hooks/useAppSettings';
-import type { DocumentRequirement } from '@/features/dashboard/bookings/lib/documentRequirements';
 import {
   paymentMethodsEqual,
   syncLegacyPaymentFieldsFromMethods,
   type PropertyPaymentMethod,
 } from '@/features/dashboard/org/lib/paymentMethods';
 import { cancellationPolicySettingsEqual } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
-import { documentRequirementsOverrideEqual } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
 import {
   automationTogglesEqual,
   type PropertyAutomationToggles,
@@ -52,6 +50,7 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'property-floors': 'details',
   'property-max-adults': 'details',
   'property-max-children': 'details',
+  'property-unit-type': 'details',
   'property-check-in': 'details',
   'property-check-out': 'details',
   'property-address': 'location',
@@ -73,9 +72,11 @@ const FIELD_SECTIONS: Record<string, PropertySettingsSectionId> = {
   'parking-owner-emails': 'email-automations',
   'sd-lead-hours': 'email-automations',
   'sd-max-age': 'email-automations',
-  'document-requirements-override': 'workflow-documents',
   'sync-calendar': 'workflow-documents',
   'sync-sheets': 'workflow-documents',
+  'guest-form-allow-pets': 'guest-form',
+  'guest-form-allow-parking': 'guest-form',
+  'guest-form-allow-surprise-decor': 'guest-form',
   'cancellation-custom-title': 'cancellation',
   'cancellation-custom-description': 'cancellation',
 };
@@ -86,6 +87,7 @@ const PROFILE_SECTIONS: PropertySettingsSectionId[] = [
   'details',
   'amenities',
   'house-rules',
+  'guest-form',
   'cancellation',
   'location',
 ];
@@ -94,7 +96,7 @@ function fieldSectionId(fieldId: string): PropertySettingsSectionId | undefined 
   const direct = FIELD_SECTIONS[fieldId];
   if (direct) return direct;
   if (fieldId.startsWith('payment-method-')) return 'payment';
-  if (fieldId.startsWith('document-requirement-')) return 'workflow-documents';
+  if (fieldId.startsWith('sync-')) return 'workflow-documents';
   return undefined;
 }
 
@@ -136,6 +138,7 @@ function detailsFieldsDirty(draft: PropertyProfileDraft, baseline: PropertyProfi
     draft.bathrooms !== baseline.bathrooms ||
     draft.maxAdults !== baseline.maxAdults ||
     draft.maxChildren !== baseline.maxChildren ||
+    draft.unitTypeId !== baseline.unitTypeId ||
     draft.floors !== baseline.floors ||
     draft.checkInTime !== baseline.checkInTime ||
     draft.checkOutTime !== baseline.checkOutTime ||
@@ -197,6 +200,12 @@ export function propertySettingsSectionDirty(
           JSON.stringify(profileBaseline.enabledHouseRules) ||
         JSON.stringify(profileDraft.customHouseRules) !==
           JSON.stringify(profileBaseline.customHouseRules)
+      );
+    case 'guest-form':
+      return (
+        profileDraft.allowPets !== profileBaseline.allowPets ||
+        profileDraft.allowParking !== profileBaseline.allowParking ||
+        profileDraft.allowSurpriseDecor !== profileBaseline.allowSurpriseDecor
       );
     case 'cancellation':
       return !cancellationPolicySettingsEqual(
@@ -263,11 +272,7 @@ export function propertySettingsSectionDirty(
       return Boolean(
         operationalDraft &&
         operationalBaseline &&
-        (!documentRequirementsOverrideEqual(
-          operationalDraft.documentRequirementsOverride,
-          operationalBaseline.documentRequirementsOverride
-        ) ||
-          operationalDraft.syncCalendar !== operationalBaseline.syncCalendar ||
+        (operationalDraft.syncCalendar !== operationalBaseline.syncCalendar ||
           operationalDraft.syncSheets !== operationalBaseline.syncSheets)
       );
     default:
@@ -377,6 +382,9 @@ function dirtyFieldIdsInSection(
       if (profileDraft.maxAdults !== profileBaseline.maxAdults) ids.push('property-max-adults');
       if (profileDraft.maxChildren !== profileBaseline.maxChildren) {
         ids.push('property-max-children');
+      }
+      if (profileDraft.unitTypeId !== profileBaseline.unitTypeId) {
+        ids.push('property-unit-type');
       }
       if (profileDraft.checkInTime !== profileBaseline.checkInTime) ids.push('property-check-in');
       if (profileDraft.checkOutTime !== profileBaseline.checkOutTime) {
@@ -494,16 +502,6 @@ function dirtyFieldIdsInSection(
       if (
         operationalDraft &&
         operationalBaseline &&
-        !documentRequirementsOverrideEqual(
-          operationalDraft.documentRequirementsOverride,
-          operationalBaseline.documentRequirementsOverride
-        )
-      ) {
-        ids.push('document-requirements-override');
-      }
-      if (
-        operationalDraft &&
-        operationalBaseline &&
         operationalDraft.syncCalendar !== operationalBaseline.syncCalendar
       ) {
         ids.push('sync-calendar');
@@ -579,6 +577,7 @@ export function planPropertySettingsSave(input: {
       'details',
       'amenities',
       'house-rules',
+      'guest-form',
       'cancellation',
       'location',
       'branding',
@@ -691,6 +690,7 @@ export function buildProfilePatchForSections(
     settings.maxAdults = fullSettings.maxAdults;
     settings.maxChildren = fullSettings.maxChildren;
     settings.maxGuests = fullSettings.maxGuests;
+    settings.unitTypeId = fullSettings.unitTypeId;
     settings.floors = fullSettings.floors;
     settings.checkInTime = fullSettings.checkInTime;
     settings.checkOutTime = fullSettings.checkOutTime;
@@ -705,6 +705,12 @@ export function buildProfilePatchForSections(
   if (sectionSet.has('house-rules')) {
     settings.enabledHouseRules = fullSettings.enabledHouseRules;
     settings.customHouseRules = fullSettings.customHouseRules;
+    hasSettings = true;
+  }
+  if (sectionSet.has('guest-form')) {
+    settings.allowPets = fullSettings.allowPets;
+    settings.allowParking = fullSettings.allowParking;
+    settings.allowSurpriseDecor = fullSettings.allowSurpriseDecor;
     hasSettings = true;
   }
   if (sectionSet.has('cancellation')) {
@@ -760,8 +766,6 @@ export type AppSettingsPatchBody = {
   externalReviews?: PropertyExternalReview[];
   superhostVerificationUrl?: string;
   superhostProofImageUrl?: string;
-  /** `null` clears the override (inherit residence default). Wired by Task 6 UI. */
-  documentRequirementsOverride?: DocumentRequirement[] | null;
   syncCalendar?: boolean;
   syncSheets?: boolean;
 };
@@ -804,7 +808,6 @@ export function buildAppSettingsPatchForSections(
     patch.automationToggles = draft.automationToggles;
   }
   if (sectionSet.has('workflow-documents')) {
-    patch.documentRequirementsOverride = draft.documentRequirementsOverride;
     patch.syncCalendar = draft.syncCalendar;
     patch.syncSheets = draft.syncSheets;
   }
@@ -865,6 +868,14 @@ export function applySavedProfileSections(
       ...next,
       enabledHouseRules: saved.enabledHouseRules,
       customHouseRules: saved.customHouseRules,
+    };
+  }
+  if (sectionSet.has('guest-form')) {
+    next = {
+      ...next,
+      allowPets: saved.allowPets,
+      allowParking: saved.allowParking,
+      allowSurpriseDecor: saved.allowSurpriseDecor,
     };
   }
   if (sectionSet.has('cancellation')) {
@@ -942,7 +953,6 @@ export function applySavedOperationalSections(
   if (sectionSet.has('workflow-documents')) {
     next = {
       ...next,
-      documentRequirementsOverride: saved.documentRequirementsOverride,
       syncCalendar: saved.syncCalendar,
       syncSheets: saved.syncSheets,
     };

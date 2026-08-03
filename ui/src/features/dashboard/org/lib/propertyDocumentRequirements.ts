@@ -10,11 +10,7 @@ export const DOCUMENT_TRIGGER_CONDITIONS: DocumentTriggerCondition[] = [
   'need_parking',
 ];
 
-export const DOCUMENT_APPROVAL_SOURCES: DocumentApprovalSource[] = [
-  'manual',
-  'email-listener',
-  'none',
-];
+export const DOCUMENT_APPROVAL_SOURCES: DocumentApprovalSource[] = ['manual', 'email-listener'];
 
 export const DOCUMENT_TRIGGER_CONDITION_LABELS: Record<DocumentTriggerCondition, string> = {
   always: 'Always required',
@@ -25,7 +21,6 @@ export const DOCUMENT_TRIGGER_CONDITION_LABELS: Record<DocumentTriggerCondition,
 export const DOCUMENT_APPROVAL_SOURCE_LABELS: Record<DocumentApprovalSource, string> = {
   manual: 'Manual — admin marks complete',
   'email-listener': 'Email listener — auto-approve',
-  none: 'No approval needed',
 };
 
 export function documentRequirementsOverrideEqual(

@@ -7,6 +7,7 @@ import {
 } from '@/features/dashboard/org/lib/orgSettingsValidation';
 
 import { validateOptionalAdminUrl } from '@/lib/validation/adminSettings';
+import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
 import {
   countFilledSocialUrls,
   socialUrlMapFromLinks,
@@ -53,6 +54,9 @@ export function computeOrgSettingsCompletion(
       `Organization name must be ${ORG_NAME_MAX_LENGTH} characters or fewer`,
       'basic'
     );
+  } else {
+    const reservedErr = getReservedDisplayNameViolation(name);
+    if (reservedErr) addIssue('org-name', reservedErr, 'basic');
   }
   if (nameUnavailable) {
     addIssue('org-name', 'An organization with this name already exists', 'basic');

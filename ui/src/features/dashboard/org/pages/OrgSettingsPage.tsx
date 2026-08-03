@@ -132,6 +132,7 @@ export function OrgSettingsPage() {
   );
 
   const nameUnavailable = nameChanged && nameCheck.isFetched && nameCheck.data?.available === false;
+  const nameConflictMessage = nameUnavailable ? (nameCheck.data?.message ?? null) : null;
 
   const busy =
     updateOrganization.isPending || updateOrgSettings.isPending || deleteOrganization.isPending;
@@ -292,16 +293,19 @@ export function OrgSettingsPage() {
 
   return (
     <RequireAdmin>
-      {profileDraft ? <OrgSettingsBrandColorPreview brandColor={profileDraft.brandColor} /> : null}
-      {isLoading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-        </div>
-      ) : !org || !profileDraft || !operatorDraft || !operatorData ? (
-        <p className="text-muted-foreground text-sm">Organization not found.</p>
-      ) : (
-        <div className="space-y-3 sm:space-y-4" aria-labelledby="org-settings-heading">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+        {profileDraft ? (
+          <OrgSettingsBrandColorPreview brandColor={profileDraft.brandColor} />
+        ) : null}
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+          </div>
+        ) : !org || !profileDraft || !operatorDraft || !operatorData ? (
+          <p className="text-muted-foreground text-sm">Organization not found.</p>
+        ) : (
           <AdminSectionNavLayout
+            className="min-h-0 flex-1"
             sections={navSections}
             header={
               <AdminPageHeader
@@ -356,6 +360,7 @@ export function OrgSettingsPage() {
               logoSource={operatorSources?.emailLogoUrl}
               logoUrl={operatorData.emailLogoUrl}
               nameUnavailable={nameUnavailable}
+              nameConflictMessage={nameConflictMessage}
               nameChecking={nameChanged && nameCheck.isFetching}
               resolveFieldError={resolveFieldError}
               markFieldInteracted={markFieldInteracted}
@@ -378,8 +383,8 @@ export function OrgSettingsPage() {
               onDelete={handleDeleteOrganization}
             />
           </AdminSectionNavLayout>
-        </div>
-      )}
+        )}
+      </div>
     </RequireAdmin>
   );
 }

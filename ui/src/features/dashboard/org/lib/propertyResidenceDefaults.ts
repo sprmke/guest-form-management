@@ -64,6 +64,7 @@ export function applyResidenceDefaultsToDraft(
     maxAdults,
     maxChildren,
     maxGuests: maxAdults + maxChildren,
+    unitTypeId: 'studio',
     checkInTime: defaults.checkInTime,
     checkOutTime: defaults.checkOutTime,
   };

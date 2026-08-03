@@ -16,6 +16,10 @@ import {
 import { normalizePropertyMediaDraft } from '@/features/dashboard/org/lib/propertyMedia';
 import { isCondoPropertyType } from '@/features/dashboard/org/lib/propertyResidences';
 import {
+  defaultUnitTypesForResidence,
+  resolveUnitTypeIdFromCapacity,
+} from '@/features/dashboard/bookings/lib/unitTypes';
+import {
   PROPERTY_CONTACT_ROLE_VALUES,
   type CustomAmenity,
   type PropertyContactRole,
@@ -54,6 +58,7 @@ export type PropertyProfileDraft = {
   maxAdults: number;
   maxChildren: number;
   maxGuests: number;
+  unitTypeId: string;
   floors: number;
   checkInTime: string;
   checkOutTime: string;
@@ -64,6 +69,9 @@ export type PropertyProfileDraft = {
   enabledHouseRules: string[];
   customHouseRules: CustomHouseRule[];
   cancellationPolicy: CancellationPolicySettings;
+  allowPets: boolean;
+  allowParking: boolean;
+  allowSurpriseDecor: boolean;
 };
 
 function readSettingsString(settings: Record<string, unknown>, key: string): string {
@@ -186,6 +194,10 @@ export function propertyProfileDraftFromProperty(property: Property): PropertyPr
     return Math.max(total, 1);
   })();
   const maxChildren = Math.max(readSettingsNumber(settings, 'maxChildren', 0), 0);
+  const unitTypes = defaultUnitTypesForResidence(residenceName);
+  const unitTypeIdFromSettings = readSettingsString(settings, 'unitTypeId');
+  const unitTypeId =
+    unitTypeIdFromSettings || resolveUnitTypeIdFromCapacity(unitTypes, maxAdults, maxChildren);
 
   return withAzureNorthLocationDefaultsIfEmpty(residenceName, {
     name: property.name,
@@ -216,6 +228,7 @@ export function propertyProfileDraftFromProperty(property: Property): PropertyPr
       propertyGuestCapacityTotal(maxAdults, maxChildren) ||
       property.maxGuests ||
       readSettingsNumber(settings, 'maxGuests', 4),
+    unitTypeId,
     floors: readSettingsNumber(settings, 'floors', 1),
     checkInTime: readSettingsString(settings, 'checkInTime') || '14:00',
     checkOutTime: readSettingsString(settings, 'checkOutTime') || '12:00',
@@ -230,6 +243,9 @@ export function propertyProfileDraftFromProperty(property: Property): PropertyPr
     ),
     customHouseRules: readCustomHouseRules(settings),
     cancellationPolicy: readCancellationPolicyFromSettings(settings),
+    allowPets: readSettingsBoolean(settings, 'allowPets', true),
+    allowParking: readSettingsBoolean(settings, 'allowParking', true),
+    allowSurpriseDecor: readSettingsBoolean(settings, 'allowSurpriseDecor', true),
   });
 }
 
@@ -271,6 +287,7 @@ export function propertyProfileExtendedDirty(
     draft.bathrooms !== baseline.bathrooms ||
     draft.maxAdults !== baseline.maxAdults ||
     draft.maxChildren !== baseline.maxChildren ||
+    draft.unitTypeId !== baseline.unitTypeId ||
     draft.floors !== baseline.floors ||
     draft.checkInTime !== baseline.checkInTime ||
     draft.checkOutTime !== baseline.checkOutTime ||
@@ -280,7 +297,10 @@ export function propertyProfileExtendedDirty(
     JSON.stringify(draft.customAmenities) !== JSON.stringify(baseline.customAmenities) ||
     JSON.stringify(draft.enabledHouseRules) !== JSON.stringify(baseline.enabledHouseRules) ||
     JSON.stringify(draft.customHouseRules) !== JSON.stringify(baseline.customHouseRules) ||
-    JSON.stringify(draft.cancellationPolicy) !== JSON.stringify(baseline.cancellationPolicy)
+    JSON.stringify(draft.cancellationPolicy) !== JSON.stringify(baseline.cancellationPolicy) ||
+    draft.allowPets !== baseline.allowPets ||
+    draft.allowParking !== baseline.allowParking ||
+    draft.allowSurpriseDecor !== baseline.allowSurpriseDecor
   );
 }
 
@@ -325,6 +345,7 @@ export function propertyProfileSettingsPatch(draft: PropertyProfileDraft): Recor
     maxAdults: draft.maxAdults,
     maxChildren: draft.maxChildren,
     maxGuests: draft.maxGuests,
+    unitTypeId: draft.unitTypeId.trim(),
     floors: draft.floors,
     checkInTime: draft.checkInTime,
     checkOutTime: draft.checkOutTime,
@@ -335,6 +356,9 @@ export function propertyProfileSettingsPatch(draft: PropertyProfileDraft): Recor
     enabledHouseRules: draft.enabledHouseRules,
     customHouseRules: draft.customHouseRules,
     cancellationPolicy: draft.cancellationPolicy,
+    allowPets: draft.allowPets,
+    allowParking: draft.allowParking,
+    allowSurpriseDecor: draft.allowSurpriseDecor,
   };
 }
 

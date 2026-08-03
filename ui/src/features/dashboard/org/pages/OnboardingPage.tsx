@@ -19,6 +19,7 @@ import {
 import { OnboardingStepHeader } from '@/features/dashboard/org/components/onboarding/OnboardingStepHeader';
 import { OnboardingTrustNotice } from '@/features/dashboard/org/components/onboarding/OnboardingTrustNotice';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
+import { DUPLICATE_ORGANIZATION_NAME_MESSAGE } from '@/features/dashboard/org/lib/orgSettingsValidation';
 import { RequiredMark } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import { useCheckOrganizationName } from '@/features/dashboard/org/hooks/useCheckOrganizationName';
 import { useCheckPropertyName } from '@/features/dashboard/org/hooks/useCheckPropertyName';
@@ -252,6 +253,9 @@ export function OnboardingPage() {
 
   const orgNameCheck = useCheckOrganizationName(orgName, undefined, orgNameReady);
   const orgNameUnavailable = orgNameCheck.isFetched && orgNameCheck.data?.available === false;
+  const orgNameBlockMessage = orgNameUnavailable
+    ? (orgNameCheck.data?.message ?? DUPLICATE_ORGANIZATION_NAME_MESSAGE)
+    : null;
   const orgNameChecking = orgNameReady && orgNameCheck.isFetching;
 
   const propertyNameTrimmed = propertyName.trim();
@@ -262,6 +266,9 @@ export function OnboardingPage() {
   );
   const propertyNameUnavailable =
     showPropertyBlock && propertyNameCheck.isFetched && propertyNameCheck.data?.available === false;
+  const propertyNameBlockMessage = propertyNameUnavailable
+    ? (propertyNameCheck.data?.message ?? 'A property with this name already exists.')
+    : null;
   const propertyNameChecking =
     showPropertyBlock && propertyNameTrimmed.length >= 2 && propertyNameCheck.isFetching;
 
@@ -602,12 +609,12 @@ export function OnboardingPage() {
                           minLength={2}
                           maxLength={120}
                           autoComplete="organization"
-                          className={cn('h-10', orgNameUnavailable && 'border-destructive')}
-                          aria-invalid={Boolean(orgNameUnavailable)}
+                          className={cn('h-10', orgNameBlockMessage && 'border-destructive')}
+                          aria-invalid={Boolean(orgNameBlockMessage)}
                         />
-                        {orgNameUnavailable ? (
+                        {orgNameBlockMessage ? (
                           <p role="alert" className="text-destructive text-xs">
-                            An organization with this name already exists.
+                            {orgNameBlockMessage}
                           </p>
                         ) : orgNameChecking ? (
                           <p className="text-muted-foreground text-xs">Checking availability…</p>
@@ -801,16 +808,18 @@ export function OnboardingPage() {
                               }
                               maxLength={120}
                               required
-                              aria-invalid={Boolean(propertyNameUnavailable || propertyNameMissing)}
+                              aria-invalid={Boolean(
+                                propertyNameBlockMessage || propertyNameMissing
+                              )}
                               className={cn(
                                 'h-10',
-                                (propertyNameUnavailable || propertyNameMissing) &&
+                                (propertyNameBlockMessage || propertyNameMissing) &&
                                   'border-destructive'
                               )}
                             />
-                            {propertyNameUnavailable ? (
+                            {propertyNameBlockMessage ? (
                               <p role="alert" className="text-destructive text-xs">
-                                A property with this name already exists.
+                                {propertyNameBlockMessage}
                               </p>
                             ) : propertyNameMissing ? (
                               <p role="alert" className="text-destructive text-xs">

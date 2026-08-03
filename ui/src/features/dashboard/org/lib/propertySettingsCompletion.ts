@@ -20,7 +20,6 @@ import { validateCancellationPolicySettings } from '@/features/dashboard/org/lib
 import { DEFAULT_RESIDENCE_NAME } from '@/features/dashboard/org/lib/propertyDisplay';
 import { SD_REFUND_CRON_EMAIL_LEAD_MAX_HOURS } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { validateExternalReviewsDraft } from '@/features/dashboard/org/lib/propertyExternalReviews';
-import { documentRequirementLabelFieldErrors } from '@/features/dashboard/org/lib/propertyDocumentRequirements';
 import { countPropertyMedia } from '@/features/dashboard/org/lib/propertyMedia';
 import {
   getResidencePropertyDefaults,
@@ -44,6 +43,7 @@ import {
   validateFullPersonName,
   validatePhilippineMobilePhone,
 } from '@/lib/validation/fieldValidation';
+import { getReservedDisplayNameViolation } from '@/lib/validation/reservedDisplayNames';
 
 function requireText(value: string, message: string): string | null {
   return value.trim() ? null : message;
@@ -85,6 +85,7 @@ export type PropertySettingsSectionId =
   | 'details'
   | 'amenities'
   | 'house-rules'
+  | 'guest-form'
   | 'cancellation'
   | 'location'
   | 'branding'
@@ -162,8 +163,13 @@ export function computePropertySettingsCompletion(
   // ── Basic ──
   if (profile.name.trim().length < 2) {
     addFieldError('property-name', 'Enter a property name', 'basic');
-  } else if (input.nameConflict) {
-    addFieldError('property-name', 'A property with this name already exists', 'basic');
+  } else {
+    const reservedErr = getReservedDisplayNameViolation(profile.name);
+    if (reservedErr) {
+      addFieldError('property-name', reservedErr, 'basic');
+    } else if (input.nameConflict) {
+      addFieldError('property-name', 'A property with this name already exists', 'basic');
+    }
   }
 
   if (!profile.type.trim()) {
@@ -339,6 +345,9 @@ export function computePropertySettingsCompletion(
   if (!profile.checkOutTime.trim()) {
     addFieldError('property-check-out', 'Set a check-out time', 'details');
   }
+  if (!profile.unitTypeId.trim()) {
+    addFieldError('property-unit-type', 'Select a unit type', 'details');
+  }
 
   // ── Amenities ──
   const amenityCount = profile.enabledAmenities.length;
@@ -483,15 +492,6 @@ export function computePropertySettingsCompletion(
     const maxAgeDays = operational.sdRefundCronMaxCheckoutAgeDays;
     if (!Number.isFinite(maxAgeDays) || maxAgeDays < 0 || maxAgeDays > 365) {
       addFieldError('sd-max-age', 'Days after checkout must be 0–365', 'email-automations');
-    }
-  }
-
-  // ── Workflow documents ──
-  if (operational && operational.documentRequirementsOverride !== null) {
-    for (const [fieldId, message] of Object.entries(
-      documentRequirementLabelFieldErrors(operational.documentRequirementsOverride)
-    )) {
-      addFieldError(fieldId, message, 'workflow-documents');
     }
   }
 
