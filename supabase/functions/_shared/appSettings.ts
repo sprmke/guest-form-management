@@ -97,6 +97,20 @@ export type GuestPaymentInfoDto = {
   paymentMethods: PropertyPaymentMethod[];
   emailLogoUrl: string;
   brandColor: string;
+  allowPets: boolean;
+  allowParking: boolean;
+  allowSurpriseDecor: boolean;
+  checkInTime: string;
+  checkOutTime: string;
+  maxAdults: number;
+  maxChildren: number;
+  propertyName: string;
+  propertyEyebrow: string;
+  propertyCoverImageUrl: string | null;
+  residenceName: string | null;
+  organizationName: string;
+  defaultParkingRateGuest: number;
+  petFee: number;
 } & GafDetailsResolved;
 
 export type AppSettingsFieldSource = 'db' | 'default';
@@ -136,7 +150,9 @@ import {
 import { getEmailAutomationDefaults } from './propertyEmailAutomationDefaults.ts';
 import { DEFAULT_RESIDENCE_NAME } from './propertyResidenceDefaults.ts';
 import { loadDevelopmentPmoEmailByName } from './developmentSerialize.ts';
+import { resolveGuestFormSettings } from './guestFormSettings.ts';
 import { getDefaultPropertyId } from './propertyScope.ts';
+import { loadPropertyPricing } from './propertyPricing.ts';
 import { resolvePublicGuestAppOrigin } from './publicAppOrigin.ts';
 import {
   DEFAULT_PAYMENT_PROVIDER,
@@ -545,7 +561,13 @@ export async function resolveAppSettings(propertyId?: string | null): Promise<Ap
 export async function serializeGuestPaymentInfo(
   propertyId?: string | null
 ): Promise<GuestPaymentInfoDto> {
-  const s = await resolveAppSettings(propertyId);
+  const resolvedPropertyId = propertyId ?? (await getDefaultPropertyId());
+  const [s, guestForm, pricing] = await Promise.all([
+    resolveAppSettings(resolvedPropertyId),
+    resolveGuestFormSettings(resolvedPropertyId),
+    loadPropertyPricing(resolvedPropertyId),
+  ]);
+
   return {
     gcashName: s.gcashName,
     gcashNumber: s.gcashNumber,
@@ -558,6 +580,20 @@ export async function serializeGuestPaymentInfo(
     gafOwnerContactNumber: s.gafOwnerContactNumber,
     emailLogoUrl: s.emailLogoUrl,
     brandColor: s.brandColor,
+    allowPets: guestForm.allowPets,
+    allowParking: guestForm.allowParking,
+    allowSurpriseDecor: guestForm.allowSurpriseDecor,
+    checkInTime: guestForm.checkInTime,
+    checkOutTime: guestForm.checkOutTime,
+    maxAdults: guestForm.maxAdults,
+    maxChildren: guestForm.maxChildren,
+    propertyName: guestForm.propertyName,
+    propertyEyebrow: guestForm.propertyEyebrow,
+    propertyCoverImageUrl: guestForm.propertyCoverImageUrl,
+    residenceName: guestForm.residenceName,
+    organizationName: guestForm.organizationName,
+    defaultParkingRateGuest: s.defaultParkingRateGuest,
+    petFee: pricing.petFee,
   };
 }
 

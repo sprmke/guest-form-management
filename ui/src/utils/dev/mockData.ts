@@ -5,7 +5,7 @@ import {
   requiresValidId,
   computeGuestCounts,
   DEFAULT_GUEST_AGE,
-  DEFAULT_FIFTH_GUEST_AGE,
+  FIFTH_PARTY_GUEST_MAX_AGE,
 } from '@/features/guest/form/lib/guestCounts';
 import { type guestFormSchema } from '@/features/guest/form/schemas/guestFormSchema';
 
@@ -204,7 +204,7 @@ export const generateRandomData = async (): Promise<z.infer<typeof guestFormSche
   const guest2Age = guestCount >= 2 ? DEFAULT_GUEST_AGE : undefined;
   const guest3Age = guestCount >= 3 ? DEFAULT_GUEST_AGE : undefined;
   const guest4Age = guestCount >= 4 ? DEFAULT_GUEST_AGE : undefined;
-  const guest5Age = guestCount >= 5 ? DEFAULT_FIFTH_GUEST_AGE : undefined;
+  const guest5Age = guestCount >= 5 ? FIFTH_PARTY_GUEST_MAX_AGE : undefined;
   const guest2Name = guestCount >= 2 ? generateRandomName() : undefined;
   const guest3Name = guestCount >= 3 ? generateRandomName() : undefined;
   const guest4Name = guestCount >= 4 ? generateRandomName() : undefined;

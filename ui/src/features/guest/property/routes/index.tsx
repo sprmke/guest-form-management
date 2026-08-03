@@ -40,7 +40,7 @@ function GuestPublicLayout() {
   return (
     <MainLayout
       animateOnNavigate
-      contentMaxWidth={isCalendarRoute ? 'max-w-2xl' : 'max-w-3xl'}
+      contentMaxWidth={isCalendarRoute ? 'max-w-xl' : 'max-w-3xl'}
       brandColor={guestBrand?.brandColor}
       footerLabel={
         guestBrand
