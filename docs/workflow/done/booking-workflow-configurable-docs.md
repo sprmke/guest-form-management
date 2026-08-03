@@ -1,13 +1,15 @@
 ---
 title: 'Booking workflow configurable document requirements — Implementation Plan'
-status: in-progress
-tags: [workflow, in-progress, booking-workflow, multi-tenancy]
+status: done
+tags: [workflow, done, booking-workflow, multi-tenancy]
 updated: 2026-08-03
-stage: in-progress
+stage: done
 kind: plan
 ---
 
 # Booking workflow configurable document requirements — Implementation Plan
+
+> **Shipped delta (2026-08-03):** v1 tasks 1–8 complete. Post-ship refinements in the same module: document requirements editor moved to **Super Admin → Developments** (`developments.settings.workflowDefaults.documentRequirements`); property-level override UI and `app-settings` PATCH retired (`document_requirements_override` cleared via migration); property settings section renamed **Workflow sync** (Calendar/Sheets toggles only); transition modal hides/disables sync side effects when toggles off; approval source `"none"` removed; default label **GAF Approval** (not Request). Parking nested step remains hardcoded (v1 scope).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

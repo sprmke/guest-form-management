@@ -92,3 +92,61 @@ Guide: `docs/guides/routes/org/property/calendar.md`
 ===
 
 Improve dashboard UI at org & property level
+
+===
+
+Display animated popup party when hosts open calendar and we have 20+ bookings this month
+
+===
+
+Make sure all media uploader default image is empty (ex. org logo). Please analyze all our dashboard image uploader and make sure we don't have static or default images that's tied to Kame Home (2604)
+
+===
+
+Redesign hosts page to be similar UI with developments page.
+
+Maybe add org photos/banner from org settings?
+
+- http://localhost:5173/hosts/kame-homes
+- http://localhost:5173/developments/azure-north-residences
+
+===
+
+Do not allow the following names for org and property name.
+
+- Azure North
+- Azure North Residence / s (this should be regex)
+- Azure North Residence Official
+- Azure North Official
+- Azure Official
+- or contains "Official"
+
+Again, our detector should be smart and use detector, adding pre, post and between characters should not also be allowed. PLease be very smart. We are doing this so that hosts cannot register general names or use the any residence name and disguise as the official or main host/org/property
+
+Make sure we apply this validation on onboarding, settings and all other locations
+
+===
+
+Can you please give me a step by step guide to have a branch deployment for our app in UI and backend since we already have production where users currently use our app.
+
+Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
+
+Same for supabase, but instead of having branch deployment with Suapabase which is not free. I want to create new supabase project with different account to intialize and setup everything.
+
+The goal in the end is for us to deploy and see fully working application with our new changes.
+
+Also, another important setup I'd like to have is to point or use supabase deployed dev in our local so that we don't need to run docker from our local to test and work locally. Meaning, when we have any supabase related changes locally, and test our app, I still want to see our changes and fully working on it with our local frontend. Meaning, when we are working locally, we can still work on it without running docker and without deploying our backend/supabase related changes to dev. Then, once good, we can deploy our changes to dev. I'm not sure how is this possible but this is how we do it on other projects and I'd like to implement in our app
+
+===
+
+Redesign property public pages layout/container
+
+I'd like to redesign our property public layout pages to display a header where it contains minimal information like logo, dark mode toggle, and user icon. Reuse existing public header that we have make it minimal to our property public pages (form, calendar, sd refund, etc)
+
+Let's also please cleanup our redirect to dashboard icon button and dark toggle mode that we have on existing pages.
+
+Also, another thing that we need to improve is that we should display or redesign the property info, booking info.
+
+===
+
+Refine all property public pages

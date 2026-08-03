@@ -2,16 +2,17 @@
 title: 'In progress'
 status: active
 tags: [workflow, in-progress]
-updated: 2026-08-02
+updated: 2026-08-04
 stage: in-progress
 kind: reference
 ---
 
 # In progress
 
-| Plan                                                                               | Summary                                                                                                                |
-| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| [`property-calendar-page.md`](./property-calendar-page.md)                         | Unified property calendar — pricing grid + booking pills shipped; dual tab shell pending                               |
-| [`booking-workflow-configurable-docs.md`](./booking-workflow-configurable-docs.md) | Configurable document requirements + Calendar/Sheets sync — tasks 1–7 shipped; Task 8 docs sweep; pending human verify |
+| Doc                                                                                                  | Summary                                                           |
+| ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [`public-operational-guest-pages-multi-tenant.md`](./public-operational-guest-pages-multi-tenant.md) | De-hardcode Kame/Monaco/Azure from operational guest shell + copy |
+
+See [`../done/`](../done/) for completed work.
 
 Back to [workflow index](../README.md).

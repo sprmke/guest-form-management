@@ -1,12 +1,52 @@
 ---
-stage: in-progress
+stage: done
 title: 'Property Calendar Page Implementation Plan'
-status: in-progress
+status: done
 tags: [superpowers, calendar, properties]
 updated: 2026-08-03
+kind: plan
 ---
 
-# Property Calendar Page Implementation Plan
+# Property Calendar Page — Shipped
+
+**Status: Done (2026-08-03)**
+
+### Final product (supersedes dual-view plan)
+
+Property **Calendar** at `/org/:orgSlug/property/:propertySlug/calendar` is a **single unified page** (not Occupancy/Pricing tabs). It combines:
+
+- Nightly rate management (weekday/weekend, overrides, fees sidebar)
+- **Booked stays** as primary-colored spanning pills (Airbnb-style), click → guest modal → booking detail
+- **Block / unblock** owner-closed nights
+- Guest availability enforcement via `get-booked-dates` + overlap checks
+
+Legacy `/pricing` redirects to `/calendar`. Permission gate: **`pricing:view`** (edit: **`pricing:edit`**).
+
+### Design pivot (accepted)
+
+Mid-ship, dual **Occupancy | Pricing** tabs were removed in favor of one pricing grid with booking pills — better UX alignment with Airbnb host calendar. Occupancy-only components (`PropertyCalendarPage`, `PropertyOccupancyCalendarPanel`, `PropertyCalendarViewToggle`) were deleted.
+
+### Task checklist
+
+| Task                             | Status     | Notes                                                                |
+| -------------------------------- | ---------- | -------------------------------------------------------------------- |
+| 1 Route / nav / permissions      | Done       | Calendar nav + route; `pricing:view` gate (not dual `bookings:view`) |
+| 2 Page shell                     | Superseded | `PropertyPricingPage` is the page; no dual-view shell                |
+| 3 `property_blocked_dates` + API | Done       | Migration + `propertyBlockedDates.ts` + PATCH                        |
+| 4 Guest availability             | Done       | `get-booked-dates` union; submit overlap                             |
+| 5 Block/unblock UI               | Done       | Grid legend + modal                                                  |
+| 6 Documentation                  | Done       | `docs/guides/routes/org/property/calendar.md`, PROJECT.md            |
+
+### Post-ship polish (same module)
+
+- Overlay spanning pills vertically centered on week rows
+- Primary color for all booked pills/cells (status-agnostic)
+- Night count derived from stay dates in calendar UI (fixes stale `number_of_nights`)
+- `calendarBookings` on `property-pricing` GET for pill/modal data
+
+---
+
+# Property Calendar Page Implementation Plan (original spec)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

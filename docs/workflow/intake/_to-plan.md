@@ -300,7 +300,7 @@ Example:
 
 ===
 
-Document, refine, finalize booking detail & workflow
+✅ Document, refine, finalize booking detail & workflow
 
 I want you to carefully review our booking detail page, booking edit and booking workflow and see how we can improve, refine, make other flow, logic and settings to be configurable from our property settings and make the whole flow to be multi users and multi property. What we have in prod, we are focused and only support Kame Home 2604. Now we are building our system to be used with different tenant, users, multi-properties, multi residence or property type and I want every little things to be configurable and refined for production used.
 
@@ -317,3 +317,9 @@ Also, for parking request step, skip this for now. The whole flow for this will 
 Also, another important thing I'd like to improve is to automate everything as much as possible. Right now, there's still some step or transition that require manual admin transition. Analyze and check how we can automate everything.
 
 The end goal is after this, our booking detail, edit and workflow is refined & finalize and production ready.
+
+===
+
+Review each dashboard pages, section & actions based on user role
+
+After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
