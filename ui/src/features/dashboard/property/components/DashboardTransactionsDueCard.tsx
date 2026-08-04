@@ -12,6 +12,7 @@ import {
   dashboardTransactionMaxRows,
 } from '@/features/dashboard/property/lib/dashboardFinanceTransactions';
 
+import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { DatePreset } from '@/lib/date/navigation';
 import { cn } from '@/lib/utils';
@@ -60,17 +61,12 @@ export function DashboardTransactionsDueCard({
       )}
       style={syncedHeight ? { height: syncedHeight } : undefined}
     >
-      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-start gap-2">
-          <div className="icon-well-sm bg-muted/80 shrink-0">
-            <Receipt className="text-muted-foreground size-5" aria-hidden />
-          </div>
-          <div className="min-w-0">
-            <p className="text-foreground text-lg font-semibold tracking-tight">Transactions</p>
-            <p className="text-muted-foreground text-xs">Due dates & recurring · {rangeLabel}</p>
-          </div>
-        </div>
-      </div>
+      <AdminSurfaceCardHeader
+        icon={Receipt}
+        title="Transactions"
+        description={`Due dates & recurring · ${rangeLabel}`}
+        iconClassName="bg-muted/80"
+      />
 
       {!isLoading ? (
         <div className="mb-3 flex flex-wrap gap-2">
