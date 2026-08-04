@@ -152,7 +152,7 @@ serveAuthenticated('import-ai-map-columns', async (req) => {
     mappings: aiResult.mappings,
   };
 
-  const { error: updateError } = await supabase
+  const { data: persisted, error: updateError } = await supabase
     .from('import_batches')
     .update({
       column_mapping: columnMapping,
@@ -160,11 +160,16 @@ serveAuthenticated('import-ai-map-columns', async (req) => {
       updated_at: new Date().toISOString(),
     })
     .eq('id', batchId)
-    .in('status', ['mapping', 'mapped']);
+    .in('status', ['mapping', 'mapped'])
+    .select('id')
+    .maybeSingle();
 
   if (updateError) {
     console.error('[import-ai-map-columns] persist failed:', updateError.message);
     return jsonError(req, 'Failed to save column mapping');
+  }
+  if (!persisted) {
+    return jsonError(req, 'Import batch status changed — retry mapping');
   }
 
   const matchedCount = aiResult.mappings.filter((entry) => entry.status === 'matched').length;
