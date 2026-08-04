@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -12,7 +13,7 @@ import type { ReactNode } from 'react';
 
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 
-import { ChevronUp, ChevronLeft, ChevronRight, LogOut, Menu, X } from 'lucide-react';
+import { ChevronUp, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
 
 import { hostLoginPath } from '@/features/guest/auth/lib/hostAuthPaths';
 import { ModeSwitcher } from '@/features/guest/marketing/shared/components/ModeSwitcher';
@@ -21,8 +22,13 @@ import {
   AdminBrandTheme,
   useAdminBrandThemeStyle,
 } from '@/features/dashboard/bookings/components/AdminBrandTheme';
+import { AdminMoreSheet } from '@/features/dashboard/bookings/components/AdminMoreSheet';
 import { GmailReconnectProvider } from '@/features/dashboard/bookings/components/GmailReconnectProvider';
 import { useAdminSession } from '@/features/dashboard/bookings/hooks/useAdminSession';
+import {
+  resolveBottomTabActiveKey,
+  splitAdminBottomNav,
+} from '@/features/dashboard/bookings/lib/adminBottomNav';
 import {
   buildOrgNavSections,
   buildParkingNavSections,
@@ -64,6 +70,14 @@ import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermiss
 import { useParkingPermissions } from '@/features/dashboard/team/hooks/useParkingPermissions';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 
+import { BottomBarSlotProvider } from '@/components/mobile/BottomBarSlot';
+import { BottomTabBar } from '@/components/mobile/BottomTabBar';
+import { MobileAppShell } from '@/components/mobile/ContextualActionBar';
+import {
+  AdminMobileHeroProvider,
+  useAdminMobileHeroOwned,
+} from '@/components/mobile/AdminMobileHeroContext';
+import { PageTransition } from '@/components/mobile/PageTransition';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
@@ -97,27 +111,42 @@ export function AdminLayout({ children, fillMain }: Props) {
 }
 
 const AdminLayoutFillMainContext = createContext<((fill: boolean) => void) | null>(null);
+const AdminLayoutFillMainActiveContext = createContext(false);
 
-/** Opt into full-height main column (e.g. inbox) when AdminLayout wraps the route shell. */
+/** Opt into full-height main column (e.g. inbox) when AdminLayout wraps the route shell.
+ *  Multiple callers are ref-counted so cleanup from one page does not clear another's claim.
+ */
 export function useAdminLayoutFillMain(enabled: boolean) {
   const setFillMain = useContext(AdminLayoutFillMainContext);
 
-  useEffect(() => {
-    setFillMain?.(enabled);
-    return () => setFillMain?.(false);
+  useLayoutEffect(() => {
+    if (!enabled || !setFillMain) return;
+    setFillMain(true);
+    return () => setFillMain(false);
   }, [enabled, setFillMain]);
+}
+
+/** True when a descendant has opted into fill-main (Settings / Notifications / Inbox). */
+export function useAdminLayoutIsFillMain(): boolean {
+  return useContext(AdminLayoutFillMainActiveContext);
 }
 
 /** Persistent admin chrome for React Router layout routes — keeps sidebar mounted across navigations. */
 export function AdminLayoutOutlet() {
   const [fillMain, setFillMain] = useState(false);
-  const setFill = useCallback((fill: boolean) => setFillMain(fill), []);
+  const fillCountRef = useRef(0);
+  const setFill = useCallback((fill: boolean) => {
+    fillCountRef.current = Math.max(0, fillCountRef.current + (fill ? 1 : -1));
+    setFillMain(fillCountRef.current > 0);
+  }, []);
 
   return (
     <AdminLayoutFillMainContext.Provider value={setFill}>
-      <AdminLayout fillMain={fillMain}>
-        <Outlet />
-      </AdminLayout>
+      <AdminLayoutFillMainActiveContext.Provider value={fillMain}>
+        <AdminLayout fillMain={fillMain}>
+          <Outlet />
+        </AdminLayout>
+      </AdminLayoutFillMainActiveContext.Provider>
     </AdminLayoutFillMainContext.Provider>
   );
 }
@@ -125,6 +154,7 @@ export function AdminLayoutOutlet() {
 function AdminLayoutShell({ children, fillMain = false }: Props) {
   const brandStyle = useAdminBrandThemeStyle();
   const location = useLocation();
+  const navigate = useNavigate();
   const {
     orgSlug: routeOrgSlug,
     propertySlug: routePropertySlug,
@@ -225,37 +255,40 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
     hasOrgSettingsIssues,
     () => false
   );
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(readSidebarCollapsed);
-  const mobileDrawerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setMobileMenuOpen(false);
+    setMoreSheetOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    if (mobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    const drawer = mobileDrawerRef.current;
-    if (!drawer) return;
-    if (mobileMenuOpen) {
-      drawer.removeAttribute('inert');
-    } else {
-      drawer.setAttribute('inert', '');
-    }
-  }, [mobileMenuOpen]);
 
   const displayName = name ?? email?.split('@')[0] ?? 'Admin';
   const initial = displayName[0]?.toUpperCase() ?? 'A';
+  const superAdmin = isSuperAdminPath(location.pathname);
+
+  const openMoreSheet = useCallback(() => setMoreSheetOpen(true), []);
+
+  const { tabItems, moreItems, primaryHrefs } = useMemo(
+    () => splitAdminBottomNav(navSections, openMoreSheet),
+    [navSections, openMoreSheet]
+  );
+
+  const tabActiveKey = resolveBottomTabActiveKey(activeNavHref, primaryHrefs, moreSheetOpen);
+
+  const settingsIssueOnTabs =
+    (propertySettingsHasIssues && isPropertyAdminPath(location.pathname)) ||
+    (orgSettingsHasIssues && isOrgAdminPath(location.pathname));
+
+  const tabItemsWithBadges = useMemo(() => {
+    if (!settingsIssueOnTabs) return tabItems;
+    return tabItems.map((item) => {
+      if (item.key === 'more' && moreItems.some((m) => m.label === 'Settings')) {
+        return { ...item, badge: true };
+      }
+      if (item.label === 'Settings') return { ...item, badge: true };
+      return item;
+    });
+  }, [tabItems, moreItems, settingsIssueOnTabs]);
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -267,149 +300,155 @@ function AdminLayoutShell({ children, fillMain = false }: Props) {
 
   const sidebarWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH;
 
+  const mobileTabBar = (
+    <BottomTabBar items={tabItemsWithBadges} activeKey={tabActiveKey} aria-label="Admin" />
+  );
+
   return (
     <GmailReconnectProvider>
       {isOrgAdminPath(location.pathname) ? <OrgSettingsIssuesSync /> : null}
-      {!isSuperAdminPath(location.pathname) ? <HostVerificationChangesGate /> : null}
-      <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
-        {/* Mobile drawer — slide + backdrop fade (panel stays mounted for exit animation) */}
-        <div className="lg:hidden" aria-hidden={!mobileMenuOpen}>
-          <div
-            className={cn(
-              'bg-background/80 fixed inset-0 z-40 backdrop-blur-sm transition-opacity duration-300 ease-out motion-reduce:transition-none',
-              mobileMenuOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'
-            )}
-            onClick={() => setMobileMenuOpen(false)}
-            aria-hidden={!mobileMenuOpen}
-          />
-          <aside
-            ref={mobileDrawerRef}
-            className={cn(
-              'border-sidebar-border bg-sidebar fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r transition-transform duration-300 ease-out motion-reduce:transition-none',
-              mobileMenuOpen ? 'translate-x-0' : 'pointer-events-none -translate-x-full'
-            )}
-            aria-label="Admin navigation"
-            aria-hidden={!mobileMenuOpen}
-          >
-            <AdminSidebarContent
-              navSections={navSections}
-              activeNavHref={activeNavHref}
-              navHrefsKey={navHrefsKey}
-              pathname={location.pathname}
-              propertySettingsHasIssues={propertySettingsHasIssues}
-              orgSettingsHasIssues={orgSettingsHasIssues}
-              displayName={displayName}
-              initial={initial}
-              email={email}
-              signOut={signOut}
-              menuOpen={mobileMenuOpen}
-              onClose={() => setMobileMenuOpen(false)}
-              superAdmin={isSuperAdminPath(location.pathname)}
-            />
-          </aside>
-        </div>
-
-        <div className="relative flex min-w-0 flex-1">
-          {/* Desktop sidebar */}
-          <aside
-            className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
-            style={{ width: sidebarWidth }}
-            aria-label="Admin navigation"
-            aria-expanded={!sidebarCollapsed}
-          >
-            <AdminSidebarContent
-              navSections={navSections}
-              activeNavHref={activeNavHref}
-              navHrefsKey={navHrefsKey}
-              pathname={location.pathname}
-              propertySettingsHasIssues={propertySettingsHasIssues}
-              orgSettingsHasIssues={orgSettingsHasIssues}
-              displayName={displayName}
-              initial={initial}
-              email={email}
-              signOut={signOut}
-              collapsed={sidebarCollapsed}
-              superAdmin={isSuperAdminPath(location.pathname)}
-            />
-          </aside>
-
-          <button
-            type="button"
-            onClick={toggleSidebarCollapsed}
-            style={{
-              left: sidebarWidth,
-              top: sidebarCollapsed ? SIDEBAR_TOGGLE_TOP_COLLAPSED : SIDEBAR_TOGGLE_TOP_EXPANDED,
-            }}
-            className={cn(
-              'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
-              'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
-              'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
-            )}
-            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-3 w-3" aria-hidden />
-            ) : (
-              <ChevronLeft className="h-3 w-3" aria-hidden />
-            )}
-          </button>
-
-          <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-            {!isSuperAdminPath(location.pathname) ? (
-              <header className="border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b px-4 backdrop-blur lg:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <ThemeToggle />
-                </div>
-              </header>
-            ) : (
-              <header className="border-border bg-background sticky top-0 z-20 flex h-14 shrink-0 items-center border-b px-3 lg:hidden">
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="text-muted-foreground hover:bg-accent hover:text-accent-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-xl transition-colors"
-                  aria-label="Open menu"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              </header>
-            )}
-
-            <main
-              className={cn(
-                'min-h-0 flex-1',
-                fillMain ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
-              )}
-            >
-              <div
-                className={cn(
-                  'mx-auto w-full max-w-7xl p-3 sm:p-4 md:p-6 lg:px-8 lg:py-5',
-                  fillMain && 'flex min-h-0 flex-1 flex-col'
-                )}
+      {!superAdmin ? <HostVerificationChangesGate /> : null}
+      <AdminMobileHeroProvider>
+        <BottomBarSlotProvider tabBar={mobileTabBar}>
+          <div className="bg-background flex h-screen overflow-hidden" style={brandStyle}>
+            <div className="relative flex min-w-0 flex-1">
+              {/* Desktop sidebar */}
+              <aside
+                className="border-sidebar-border bg-sidebar hidden h-screen shrink-0 flex-col border-r transition-[width] duration-300 ease-out lg:flex"
+                style={{ width: sidebarWidth }}
+                aria-label="Admin navigation"
+                aria-expanded={!sidebarCollapsed}
               >
-                <div
-                  className={cn(
-                    fillMain
-                      ? 'flex min-h-0 flex-1 flex-col'
-                      : 'space-y-3 sm:space-y-4 lg:space-y-6'
-                  )}
-                >
+                <AdminSidebarContent
+                  navSections={navSections}
+                  activeNavHref={activeNavHref}
+                  navHrefsKey={navHrefsKey}
+                  pathname={location.pathname}
+                  propertySettingsHasIssues={propertySettingsHasIssues}
+                  orgSettingsHasIssues={orgSettingsHasIssues}
+                  displayName={displayName}
+                  initial={initial}
+                  email={email}
+                  signOut={signOut}
+                  collapsed={sidebarCollapsed}
+                  superAdmin={superAdmin}
+                />
+              </aside>
+
+              <button
+                type="button"
+                onClick={toggleSidebarCollapsed}
+                style={{
+                  left: sidebarWidth,
+                  top: sidebarCollapsed
+                    ? SIDEBAR_TOGGLE_TOP_COLLAPSED
+                    : SIDEBAR_TOGGLE_TOP_EXPANDED,
+                }}
+                className={cn(
+                  'border-border bg-card text-muted-foreground hover:bg-accent hover:text-foreground shadow-elevated',
+                  'absolute z-30 hidden min-h-[28px] min-w-[28px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border transition-all duration-300 ease-out lg:flex',
+                  'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2'
+                )}
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              >
+                {sidebarCollapsed ? (
+                  <ChevronRight className="h-3 w-3" aria-hidden />
+                ) : (
+                  <ChevronLeft className="h-3 w-3" aria-hidden />
+                )}
+              </button>
+
+              <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+                <AdminMobileTopBar superAdmin={superAdmin} />
+
+                <AdminMainColumn fillMain={fillMain} pathname={location.pathname}>
                   {children}
-                </div>
+                </AdminMainColumn>
               </div>
-            </main>
+            </div>
           </div>
-        </div>
-      </div>
+
+          <AdminMoreSheet
+            open={moreSheetOpen}
+            onOpenChange={setMoreSheetOpen}
+            moreItems={moreItems}
+            activeNavHref={activeNavHref}
+            pathname={location.pathname}
+            propertySettingsHasIssues={propertySettingsHasIssues}
+            orgSettingsHasIssues={orgSettingsHasIssues}
+            displayName={displayName}
+            initial={initial}
+            email={email}
+            signOut={signOut}
+            onSignOutNavigate={() => navigate(hostLoginPath(), { replace: true })}
+            superAdmin={superAdmin}
+          />
+        </BottomBarSlotProvider>
+      </AdminMobileHeroProvider>
     </GmailReconnectProvider>
+  );
+}
+
+function AdminMobileTopBar({ superAdmin }: { superAdmin: boolean }) {
+  const heroOwned = useAdminMobileHeroOwned();
+  if (heroOwned) return null;
+
+  return (
+    <header className="border-border/50 bg-background/80 supports-[backdrop-filter]:bg-background/65 sticky top-0 z-20 flex min-h-14 shrink-0 items-center gap-2 border-b px-3 py-2 backdrop-blur-xl lg:hidden">
+      <div className="min-w-0 flex-1">
+        {superAdmin ? (
+          <SuperAdminSidebarScope collapsed={false} />
+        ) : (
+          <SidebarTenantScope collapsed={false} />
+        )}
+      </div>
+    </header>
+  );
+}
+
+function AdminMainColumn({
+  children,
+  fillMain,
+  pathname,
+}: {
+  children: ReactNode;
+  fillMain: boolean;
+  pathname: string;
+}) {
+  const heroOwned = useAdminMobileHeroOwned();
+
+  return (
+    <main
+      className={cn(
+        'min-h-0 flex-1',
+        fillMain ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'
+      )}
+    >
+      <MobileAppShell
+        /* Fill-main pages clear the tab bar on their inner scrollport — shell `pb` here
+         * would shrink the flex area into a dead white gap and clip mid-card. */
+        withTabBarOffset={!fillMain}
+        className={cn(
+          /* Prefer px/pt over `p-*` so MobileAppShell tab-bar `pb` is not twMerged away. */
+          'native-page-canvas mx-auto w-full max-w-7xl',
+          /* Brand hero owns the top edge — no shell gutter that shows as a white frame. */
+          heroOwned
+            ? 'max-lg:bg-transparent max-lg:px-0 max-lg:pt-0 max-lg:[background-image:none] lg:px-8 lg:py-5'
+            : 'px-3.5 pt-3.5 sm:px-4 sm:pt-4 md:px-6 md:pt-6 lg:px-8 lg:py-5',
+          fillMain && 'flex min-h-0 flex-1 flex-col'
+        )}
+      >
+        <PageTransition
+          transitionKey={pathname}
+          className={cn(
+            fillMain ? 'flex min-h-0 flex-1 flex-col' : 'space-y-3 sm:space-y-4 lg:space-y-6'
+          )}
+        >
+          {children}
+        </PageTransition>
+      </MobileAppShell>
+    </main>
   );
 }
 
@@ -463,18 +502,6 @@ function AdminSidebarContent({
           onClose && 'pt-3'
         )}
       >
-        {onClose ? (
-          <div className="mb-2 flex justify-end lg:hidden">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-muted-foreground hover:bg-muted/70 hover:text-foreground flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors"
-              aria-label="Close menu"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null}
         {superAdmin ? (
           <SuperAdminSidebarScope collapsed={collapsed} />
         ) : (

@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 
+import { ChevronRight } from 'lucide-react';
+
 import { AdminTableFlagsCell } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { BookingResourceLabel } from '@/features/dashboard/bookings/components/BookingResourceLabel';
 import { GuestAvatar } from '@/features/dashboard/bookings/components/GuestAvatar';
@@ -10,6 +12,7 @@ import {
 } from '@/features/dashboard/bookings/lib/bookingFlags';
 import type { BookingRow } from '@/features/dashboard/bookings/lib/types';
 
+import { AdminCardGrid, AdminCardState } from '@/components/mobile/AdminCardGrid';
 import { BookingsCardGridSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { cn } from '@/lib/utils';
 import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
@@ -25,8 +28,8 @@ type Props = {
 };
 
 /**
- * Card grid view for the bookings dashboard.
- * Uses a 2×2 grid on mobile (native dashboard density), scaling up on larger breakpoints.
+ * Card / list view for the bookings dashboard.
+ * Phone = single-column native list rows; tablet+ = multi-column cards.
  */
 export function BookingCardGrid({
   rows,
@@ -43,43 +46,22 @@ export function BookingCardGrid({
   };
 
   if (error) {
-    return (
-      <div className="bg-card border-border/50 flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-12 text-center sm:py-20">
-        <div className="flex size-9 items-center justify-center rounded-full bg-red-50 dark:bg-red-500/15">
-          <span className="text-base font-black leading-none text-red-500">!</span>
-        </div>
-        <div>
-          <p className="text-section-title text-foreground font-bold">Could not load bookings</p>
-          <p className="text-caption mt-1 max-w-xs">{error}</p>
-        </div>
-      </div>
-    );
+    return <AdminCardState variant="error" title="Could not load bookings" description={error} />;
   }
 
   if (isLoading) return <BookingsCardGridSkeleton />;
 
   if (rows.length === 0) {
     return (
-      <div className="bg-card border-border/50 flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-12 text-center sm:py-20">
-        <div className="bg-muted flex size-9 items-center justify-center rounded-full">
-          <span className="text-muted-foreground text-lg leading-none">∅</span>
-        </div>
-        <div>
-          <p className="text-section-title text-foreground font-bold">No bookings found</p>
-          <p className="text-caption mt-1">Adjust your filters or clear the search.</p>
-        </div>
-      </div>
+      <AdminCardState
+        title="No bookings found"
+        description="Adjust your filters or clear the search."
+      />
     );
   }
 
   return (
-    <div
-      className={cn(
-        'grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4',
-        'transition-opacity duration-300',
-        isRefreshing && 'opacity-60'
-      )}
-    >
+    <AdminCardGrid isRefreshing={isRefreshing}>
       {rows.map((row) => (
         <BookingCard
           key={row.id}
@@ -88,7 +70,7 @@ export function BookingCardGrid({
           onOpen={() => openRow(row)}
         />
       ))}
-    </div>
+    </AdminCardGrid>
   );
 }
 
@@ -125,22 +107,71 @@ function BookingCard({
       onKeyDown={handleKey}
       aria-label={`Open booking for ${name}`}
       className={cn(
-        'bg-card group relative cursor-pointer overflow-hidden rounded-xl transition-all duration-200',
-        'border-border/50 border shadow-sm dark:shadow-none',
-        'outline-none hover:-translate-y-0.5',
+        'surface-card-interactive group relative cursor-pointer overflow-hidden',
+        'outline-none',
         'focus-visible:ring-sidebar-primary/40 focus-visible:ring-2'
       )}
     >
-      {/* Top: mobile = status beside guest; sm+ = status above avatar + name */}
-      <div className="space-y-3 p-3 pb-2.5 sm:space-y-4 sm:p-4 sm:pb-3">
-        <StatusBadge status={row.status} className="w-fit max-w-full" />
-        <div className="flex items-start justify-between gap-2 sm:justify-start">
-          <div className="flex min-w-0 flex-1 items-center gap-3 sm:flex-initial">
-            <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="lg" className="shrink-0" />
+      {/* Phone: horizontal list row */}
+      <div className="flex items-start gap-3.5 p-4 sm:hidden">
+        <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="lg" className="shrink-0" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-foreground truncate text-xs font-bold leading-tight sm:text-sm">
+              <p className="text-foreground truncate text-[15px] font-semibold leading-snug">
                 {name}
               </p>
+              <p className="text-muted-foreground mt-1 truncate text-xs leading-snug">
+                {row.guest_email}
+              </p>
+            </div>
+            <ChevronRight className="text-muted-foreground/60 mt-0.5 size-4 shrink-0" aria-hidden />
+          </div>
+          <StatusBadge status={row.status} className="w-fit max-w-full" />
+          {showProperty ? (
+            <BookingResourceLabel row={row} showKindBadge className="font-medium" />
+          ) : null}
+          <p className="text-foreground text-[13px] font-semibold tabular-nums leading-snug">
+            {formatBookingDateShort(row.check_in_date)}
+            <span className="text-muted-foreground/50 mx-1 font-light">→</span>
+            {formatBookingDate(row.check_out_date)}
+          </p>
+          <div className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] leading-snug">
+            <span>
+              {row.number_of_nights} {row.number_of_nights === 1 ? 'night' : 'nights'}
+            </span>
+            <span aria-hidden>·</span>
+            <span>
+              {pax} {pax === 1 ? 'guest' : 'guests'}
+            </span>
+            {row.booking_rate != null ? (
+              <>
+                <span aria-hidden>·</span>
+                <span className="text-foreground font-semibold tabular-nums">
+                  {formatMoney(row.booking_rate)}
+                </span>
+              </>
+            ) : null}
+          </div>
+          {hasAnyFlags ? (
+            <AdminTableFlagsCell
+              need_parking={row.need_parking}
+              has_pets={row.has_pets}
+              guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+              has_invalid_receipt_ai={hasInvalidReceiptAi}
+            />
+          ) : null}
+        </div>
+      </div>
+
+      {/* sm+: stacked card (unchanged hierarchy, more room) */}
+      <div className="hidden sm:block">
+        <div className="space-y-4 p-4 pb-3">
+          <StatusBadge status={row.status} className="w-fit max-w-full" />
+          <div className="flex items-center gap-3">
+            <GuestAvatar name={name} validIdUrl={row.valid_id_url} size="lg" className="shrink-0" />
+            <div className="min-w-0">
+              <p className="text-foreground truncate text-sm font-bold leading-tight">{name}</p>
               <p className="text-data-secondary mt-0.5 truncate">{row.guest_email}</p>
               {showProperty ? (
                 <BookingResourceLabel row={row} showKindBadge className="mt-0.5 font-medium" />
@@ -148,11 +179,8 @@ function BookingCard({
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Body: stay */}
-      <div className="px-3 pb-2.5 sm:px-4 sm:pb-3">
-        <div>
+        <div className="px-4 pb-3">
           <p className="text-overline">Stay</p>
           <p className="text-data-primary mt-0.5 whitespace-nowrap">
             {formatBookingDateShort(row.check_in_date)}
@@ -165,26 +193,24 @@ function BookingCard({
             {pax} {pax === 1 ? 'guest' : 'guests'}
           </p>
         </div>
-      </div>
 
-      {/* Footer: flags + amount */}
-      <div className="border-separator bg-muted/20 dark:bg-muted/30 flex items-center justify-between gap-2 border-t px-4 py-3">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {hasAnyFlags ? (
-            <AdminTableFlagsCell
-              need_parking={row.need_parking}
-              has_pets={row.has_pets}
-              guest_requests_surprise_decor={row.guest_requests_surprise_decor}
-              has_invalid_receipt_ai={hasInvalidReceiptAi}
-            />
-          ) : (
-            <span className="text-caption text-muted-foreground/50">No flags</span>
+        <div className="border-separator bg-muted/20 dark:bg-muted/30 flex items-center justify-between gap-2 border-t px-4 py-3">
+          <div className="flex min-w-0 items-center gap-1.5">
+            {hasAnyFlags ? (
+              <AdminTableFlagsCell
+                need_parking={row.need_parking}
+                has_pets={row.has_pets}
+                guest_requests_surprise_decor={row.guest_requests_surprise_decor}
+                has_invalid_receipt_ai={hasInvalidReceiptAi}
+              />
+            ) : (
+              <span className="text-caption text-muted-foreground/50">No flags</span>
+            )}
+          </div>
+          {row.booking_rate != null && (
+            <span className="text-table-amount shrink-0">{formatMoney(row.booking_rate)}</span>
           )}
         </div>
-
-        {row.booking_rate != null && (
-          <span className="text-table-amount shrink-0">{formatMoney(row.booking_rate)}</span>
-        )}
       </div>
     </div>
   );

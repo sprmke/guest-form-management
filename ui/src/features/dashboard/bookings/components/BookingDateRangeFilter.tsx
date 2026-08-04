@@ -10,9 +10,10 @@ import {
   ChevronRight,
 } from 'lucide-react';
 
+import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { ButtonGroup, ButtonGroupItem } from '@/components/ui/button-group';
 import { Calendar } from '@/components/ui/calendar';
-import { useIsBelowMd } from '@/hooks/useMediaQuery';
+import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import {
   type DateNavigationState,
   type DatePreset,
@@ -45,15 +46,9 @@ const PRESET_OPTIONS: {
 ];
 
 /**
- * Date range filter — reuses the UX of property-management-app's
- * `DateRangeSelector` (presets + ←/→ navigation + custom calendar) but
- * styled with the same `FilterBtn` / `DropdownPanel` look as the rest of
- * BookingFilters.tsx so it visually fits this app's design language.
- *
- * Layout differs between modes:
- * - Preset modes (week/month/year): trigger button shows the formatted range,
- *   and is flanked by ← / → buttons that call `navigatePeriod`.
- * - Custom mode: trigger button opens a calendar to pick start/end.
+ * Date range filter — presets + ←/→ navigation + custom calendar.
+ * On `max-lg`, presets and custom calendar open as bottom sheets (native app pattern).
+ * Desktop keeps compact anchored popovers.
  */
 export function BookingDateRangeFilter({
   dateRange,
@@ -70,11 +65,12 @@ export function BookingDateRangeFilter({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [localRange, setLocalRange] = useState<DayPickerDateRange | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isMobileLayout = useIsBelowLg();
   const isBelowMd = useIsBelowMd();
 
   const isCurrent = isCurrentPeriod(dateRange.from, datePreset);
   const popoverAlign = fullWidth ? 'start' : 'end';
-  const calendarMonths = fullWidth && !isBelowMd ? 2 : 1;
+  const calendarMonths = fullWidth && !isBelowMd && !isMobileLayout ? 2 : 1;
   const canNavigate = datePreset !== 'custom' && isActive;
   const isCustomMode = datePreset === 'custom';
 
@@ -85,6 +81,7 @@ export function BookingDateRangeFilter({
   }, [calendarOpen, dateRange.from, dateRange.to]);
 
   useEffect(() => {
+    if (isMobileLayout) return;
     if (!open && !calendarOpen) return;
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -97,7 +94,7 @@ export function BookingDateRangeFilter({
       clearTimeout(t);
       document.removeEventListener('mousedown', handler);
     };
-  }, [open, calendarOpen]);
+  }, [open, calendarOpen, isMobileLayout]);
 
   const handlePresetChange = (preset: DatePreset) => {
     setDatePreset(preset);
@@ -122,6 +119,149 @@ export function BookingDateRangeFilter({
 
   const triggerActive = isActive || open || calendarOpen;
   const showNav = canNavigate;
+
+  const desktopPresetList = (
+    <div className="py-1">
+      {PRESET_OPTIONS.map((opt) => {
+        const isSelected = opt.value === datePreset && isActive;
+        const Icon = opt.value === 'custom' ? CalendarDays : CalendarIcon;
+        return (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => handlePresetChange(opt.value)}
+            className={cn(
+              'flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
+              isSelected ? 'bg-muted/50' : 'hover:bg-muted/50'
+            )}
+          >
+            <Icon
+              className={cn(
+                'size-3.5 shrink-0',
+                isSelected ? 'text-sidebar-primary' : 'text-muted-foreground'
+              )}
+              aria-hidden
+            />
+            <div className="min-w-0 flex-1">
+              <p
+                className={cn(
+                  'text-[13px] leading-tight',
+                  isSelected ? 'text-foreground font-semibold' : 'text-foreground/75 font-medium'
+                )}
+              >
+                {opt.label}
+              </p>
+              <p className="text-muted-foreground mt-[2px] text-[11px] leading-tight">
+                {opt.description}
+              </p>
+            </div>
+            {isSelected ? (
+              <Check className="text-sidebar-primary ml-auto size-3.5 shrink-0" aria-hidden />
+            ) : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const mobilePresetList = (
+    <div role="listbox" aria-label="View by">
+      {PRESET_OPTIONS.map((opt) => {
+        const isSelected = opt.value === datePreset && isActive;
+        const Icon = opt.value === 'custom' ? CalendarDays : CalendarIcon;
+        return (
+          <MobileChoiceItem
+            key={opt.value}
+            selected={isSelected}
+            label={opt.label}
+            description={opt.description}
+            icon={
+              <Icon
+                className={cn('size-5', isSelected ? 'text-primary' : 'text-muted-foreground')}
+                aria-hidden
+              />
+            }
+            onSelect={() => handlePresetChange(opt.value)}
+          />
+        );
+      })}
+    </div>
+  );
+
+  const calendarBody = (
+    <>
+      <div className={cn('p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}>
+        <Calendar
+          mode="range"
+          defaultMonth={dateRange.from}
+          selected={localRange}
+          onSelect={setLocalRange}
+          numberOfMonths={calendarMonths}
+          weekStartsOn={0}
+          classNames={calendarMonths === 2 ? CALENDAR_CLASSNAMES_TWO_MONTHS : CALENDAR_CLASSNAMES}
+        />
+      </div>
+      <div
+        className={cn(
+          'border-separator flex items-center justify-between gap-2 border-t px-3.5 py-2.5',
+          isMobileLayout && 'flex-col items-stretch gap-3 px-4 pb-1 pt-3'
+        )}
+      >
+        <div className="text-muted-foreground min-w-0 text-[12px] sm:text-sm">
+          {localRange?.from ? (
+            <>
+              <span className="text-foreground font-semibold">
+                {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
+              </span>
+              {localRange.to ? (
+                <>
+                  <span className="text-muted-foreground/50 mx-1.5">→</span>
+                  <span className="text-foreground font-semibold">
+                    {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-muted-foreground"> · select end date</span>
+              )}
+            </>
+          ) : (
+            <span className="text-muted-foreground">Select start date</span>
+          )}
+        </div>
+        <div className={cn('flex shrink-0 gap-1.5', isMobileLayout && 'w-full gap-2')}>
+          <button
+            type="button"
+            onClick={() => {
+              setDatePreset('month');
+              setCalendarOpen(false);
+            }}
+            className={cn(
+              'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
+              'bg-card text-sidebar-muted border-sidebar-border border',
+              'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100',
+              isMobileLayout && 'min-h-[48px] flex-1 rounded-xl text-sm'
+            )}
+          >
+            {isMobileLayout ? 'Presets' : 'Back to presets'}
+          </button>
+          <button
+            type="button"
+            onClick={handleApplyRange}
+            disabled={!localRange?.from || !localRange?.to}
+            className={cn(
+              'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
+              'bg-primary text-primary-foreground shadow-sm transition-all duration-100',
+              'disabled:pointer-events-none disabled:opacity-40',
+              'hover:brightness-[1.03] active:scale-[0.98]',
+              isMobileLayout && 'min-h-[48px] flex-1 rounded-xl text-sm'
+            )}
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </>
+  );
 
   const triggerButton = (
     <ButtonGroupItem
@@ -187,182 +327,127 @@ export function BookingDateRangeFilter({
         ) : null}
       </ButtonGroup>
 
-      {/* Preset dropdown */}
-      {open && (
-        <div
-          className={cn(
-            'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border',
-            'max-w-[calc(100vw-24px)]',
-            popoverAlign === 'end' ? 'right-0' : 'left-0'
-          )}
-        >
-          <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
-            <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-              View by
-            </span>
-            {isActive && !isCurrent && datePreset !== 'custom' && (
-              <button
-                type="button"
-                onClick={() => {
-                  goToToday();
-                  setOpen(false);
-                }}
-                className="text-sidebar-primary text-[12px] font-semibold transition-opacity hover:opacity-80"
-              >
-                Today
-              </button>
-            )}
-          </div>
-          <div className="py-1">
-            {PRESET_OPTIONS.map((opt) => {
-              const isSelected = opt.value === datePreset && isActive;
-              const Icon = opt.value === 'custom' ? CalendarDays : CalendarIcon;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => handlePresetChange(opt.value)}
-                  className={cn(
-                    'flex w-full items-center gap-2.5 px-3.5 py-2 text-left transition-colors',
-                    isSelected ? 'bg-muted/50' : 'hover:bg-muted/50'
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      'size-3.5 shrink-0',
-                      isSelected ? 'text-sidebar-primary' : 'text-muted-foreground'
-                    )}
-                    aria-hidden
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p
-                      className={cn(
-                        'text-[13px] leading-tight',
-                        isSelected
-                          ? 'text-foreground font-semibold'
-                          : 'text-foreground/75 font-medium'
-                      )}
+      {isMobileLayout ? (
+        <>
+          <MobileChoiceSheet
+            open={open}
+            onOpenChange={setOpen}
+            title="View by"
+            footer={
+              isActive ? (
+                <div className="flex gap-2">
+                  {!isCurrent && datePreset !== 'custom' ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        goToToday();
+                        setOpen(false);
+                      }}
+                      className="border-border bg-card text-foreground flex min-h-[48px] flex-1 items-center justify-center rounded-xl border text-sm font-semibold"
                     >
-                      {opt.label}
-                    </p>
-                    <p className="text-muted-foreground mt-[2px] text-[11px] leading-tight">
-                      {opt.description}
-                    </p>
-                  </div>
-                  {isSelected && (
-                    <Check className="text-sidebar-primary ml-auto size-3.5 shrink-0" aria-hidden />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {isActive && (
-            <div className="border-separator flex justify-end border-t px-3.5 py-2">
-              <button
-                type="button"
-                onClick={() => {
-                  onClear();
-                  setOpen(false);
-                }}
-                className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
-              >
-                Clear date filter
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                      Today
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClear();
+                      setOpen(false);
+                    }}
+                    className="text-muted-foreground hover:text-foreground flex min-h-[48px] flex-1 items-center justify-center rounded-xl text-sm font-semibold"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null
+            }
+          >
+            {mobilePresetList}
+          </MobileChoiceSheet>
 
-      {/* Custom range calendar popover */}
-      {calendarOpen && (
-        <div
-          className={cn(
-            'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 rounded-xl border',
-            'max-w-[calc(100vw-24px)]',
-            popoverAlign === 'end' ? 'right-0' : 'left-0',
-            calendarMonths === 2
-              ? 'w-[min(calc(100vw-24px),34rem)]'
-              : 'w-[min(calc(100vw-24px),18.5rem)]'
-          )}
-        >
-          <div className="border-separator flex items-center justify-between gap-4 border-b px-3.5 py-2.5">
-            <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-              Select date range
-            </span>
-            <button
-              type="button"
-              onClick={() => {
-                setDatePreset('month');
-                setCalendarOpen(false);
-              }}
-              className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
-            >
-              Back to presets
-            </button>
-          </div>
-          <div className={cn('p-2 sm:p-3', calendarMonths === 2 && 'overflow-x-auto')}>
-            <Calendar
-              mode="range"
-              defaultMonth={dateRange.from}
-              selected={localRange}
-              onSelect={setLocalRange}
-              numberOfMonths={calendarMonths}
-              weekStartsOn={0}
-              classNames={
-                calendarMonths === 2 ? CALENDAR_CLASSNAMES_TWO_MONTHS : CALENDAR_CLASSNAMES
-              }
-            />
-          </div>
-          <div className="border-separator flex items-center justify-between gap-2 border-t px-3.5 py-2.5">
-            <div className="text-muted-foreground min-w-0 text-[12px]">
-              {localRange?.from ? (
-                <>
-                  <span className="text-foreground font-semibold">
-                    {format(localRange.from, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-                  </span>
-                  {localRange.to ? (
-                    <>
-                      <span className="text-muted-foreground/50 mx-1.5">→</span>
-                      <span className="text-foreground font-semibold">
-                        {format(localRange.to, DATE_FNS_PICKER_DISPLAY_FORMAT)}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-muted-foreground"> · select end date</span>
-                  )}
-                </>
-              ) : (
-                <span className="text-muted-foreground">Select start date</span>
+          <MobileChoiceSheet
+            open={calendarOpen}
+            onOpenChange={setCalendarOpen}
+            title="Select dates"
+          >
+            {calendarBody}
+          </MobileChoiceSheet>
+        </>
+      ) : (
+        <>
+          {open ? (
+            <div
+              className={cn(
+                'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 w-72 overflow-hidden rounded-xl border',
+                'max-w-[calc(100vw-24px)]',
+                popoverAlign === 'end' ? 'right-0' : 'left-0'
               )}
+            >
+              <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
+                <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  View by
+                </span>
+                {isActive && !isCurrent && datePreset !== 'custom' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      goToToday();
+                      setOpen(false);
+                    }}
+                    className="text-sidebar-primary text-[12px] font-semibold transition-opacity hover:opacity-80"
+                  >
+                    Today
+                  </button>
+                ) : null}
+              </div>
+              {desktopPresetList}
+              {isActive ? (
+                <div className="border-separator flex justify-end border-t px-3.5 py-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClear();
+                      setOpen(false);
+                    }}
+                    className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
+                  >
+                    Clear date filter
+                  </button>
+                </div>
+              ) : null}
             </div>
-            <div className="flex shrink-0 gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCalendarOpen(false)}
-                className={cn(
-                  'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-                  'bg-card text-sidebar-muted border-sidebar-border border',
-                  'hover:border-sidebar-primary/40 hover:bg-sidebar-accent/50 transition-all duration-100'
-                )}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleApplyRange}
-                disabled={!localRange?.from || !localRange?.to}
-                className={cn(
-                  'inline-flex items-center justify-center rounded-lg px-3 py-1.5 text-[12px] font-semibold',
-                  'bg-primary text-primary-foreground shadow-sm transition-all duration-100',
-                  'disabled:pointer-events-none disabled:opacity-40',
-                  'hover:brightness-[1.03] active:scale-[0.98]'
-                )}
-              >
-                Apply
-              </button>
+          ) : null}
+
+          {calendarOpen ? (
+            <div
+              className={cn(
+                'border-border/50 dark:border-border/20 bg-popover shadow-elevated-lg absolute top-full z-50 mt-1.5 rounded-xl border',
+                'max-w-[calc(100vw-24px)]',
+                popoverAlign === 'end' ? 'right-0' : 'left-0',
+                calendarMonths === 2
+                  ? 'w-[min(calc(100vw-24px),34rem)]'
+                  : 'w-[min(calc(100vw-24px),18.5rem)]'
+              )}
+            >
+              <div className="border-separator flex items-center justify-between gap-4 border-b px-3.5 py-2.5">
+                <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                  Select date range
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDatePreset('month');
+                    setCalendarOpen(false);
+                  }}
+                  className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
+                >
+                  Back to presets
+                </button>
+              </div>
+              {calendarBody}
             </div>
-          </div>
-        </div>
+          ) : null}
+        </>
       )}
     </div>
   );

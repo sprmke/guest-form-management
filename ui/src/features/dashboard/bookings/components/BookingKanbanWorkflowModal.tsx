@@ -12,7 +12,12 @@ import { useOptionalOrgContext } from '@/features/dashboard/org/components/Requi
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 import { formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
@@ -47,19 +52,20 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
       : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
         className={cn(
-          'flex max-h-[min(90dvh,36rem)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0',
+          'flex max-h-[min(92dvh,36rem)] w-full max-w-[min(calc(100vw-1.5rem),32rem)] flex-col gap-0 overflow-hidden p-0',
           'sm:max-w-lg'
         )}
       >
-        <DialogHeader className="border-border shrink-0 space-y-0 border-b pb-5 text-left">
+        <ResponsiveModalHeader className="border-border shrink-0 space-y-0 border-b px-4 pb-4 pt-1 text-left sm:px-5 sm:pb-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <DialogTitle className="truncate text-base font-semibold leading-tight sm:text-lg">
+              <ResponsiveModalTitle className="truncate text-base font-semibold leading-tight sm:text-lg">
                 {displayRow ? modalGuestName(displayRow) : 'Booking'}
-              </DialogTitle>
+              </ResponsiveModalTitle>
               {displayRow ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-muted-foreground truncate text-xs">
@@ -80,7 +86,7 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
               </Button>
             ) : null}
           </div>
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {isLoading && !displayRow ? (
@@ -102,7 +108,7 @@ export function BookingKanbanWorkflowModal({ bookingId, open, onOpenChange, prev
             </PendingReviewWorkflowGate>
           ) : null}
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

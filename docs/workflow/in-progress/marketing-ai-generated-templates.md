@@ -1,14 +1,20 @@
 ---
-stage: planned
+stage: in-progress
 title: 'Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan'
-status: planned
+status: in-progress
 tags: [planning, planned-modules, marketing, templates]
-updated: 2026-08-01
+updated: 2026-08-05
 ---
 
 # Marketing 4: AI-Generated Marketing Calendar, Design & Video Templates — Implementation Plan
 
-**Status:** Planned (not started). Follows Marketing 1 (`marketing-calendar-templates.md`), Marketing 2 (`marketing-design-templates.md`), Marketing 3 (`marketing-video-templates.md`), all implemented. Precedes Marketing 5 (`docs/planning/CLAUDE_TO_PLAN.md:109-113` — performance + social publish, not yet planned).
+**Status:** In progress — **calendar tab shipped** (edge + compiler + Generate with AI sheet + fan-out save for 3 orientations). Design/Video compilers and entry points still pending.
+
+## Calendar MVP decisions (session 2026-08-04)
+
+- **UX:** Sheet from **Generate with AI** in Custom — prompt + vibe chips + removable context → Generate → custom templates (not a 3-variation picker).
+- **Orientations without 3× AI cost:** one Gemini/Groq call returns design tokens; client compiles once and saves **three** `marketing_templates` rows (square / portrait / landscape) with format-specific `canvasFrame` defaults.
+- **Persistence:** `sourcePresetId: custom` + `aiGenerated` / `aiTokens` in `designJson`; loads into store and autosaves like other custom calendars.
 
 ## Context
 
