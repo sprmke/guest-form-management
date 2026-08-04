@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Ban, Expand, ExternalLink, FileText, Loader2, RefreshCw, X } from 'lucide-react';
+import { Ban, FileText, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { normalizeStoragePublicUrl } from '@/features/dashboard/bookings/lib/storageUrls';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
 import {
-  ORG_SOCIAL_PROOF_PLATFORMS,
-  ORG_VERIFICATION_RIGHTS,
-} from '@/features/dashboard/org/lib/orgVerification';
-import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
-import { VerificationDocThumbnail } from '@/features/dashboard/super-admin/components/super-admin-approvals/VerificationDocThumbnail';
+  VerificationDocFullViewDialog,
+  VerificationDocPreviewCard,
+  browserVerificationAssetUrl,
+  getVerificationDocType,
+  type VerificationPreviewAsset,
+} from '@/features/dashboard/org/components/verification/VerificationDocPreview';
+import { VerificationDocThumbnail } from '@/features/dashboard/org/components/verification/VerificationDocThumbnail';
 import {
   useApproveOrgVerification,
   useDecideContractConsideration,
   useOrgVerificationAssets,
   useRejectOrgVerification,
 } from '@/features/dashboard/super-admin/hooks/useApprovals';
+import {
+  ORG_SOCIAL_PROOF_PLATFORMS,
+  ORG_VERIFICATION_RIGHTS,
+} from '@/features/dashboard/org/lib/orgVerification';
+import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
 import {
   buildChangeDocOptions,
   buildRequestChangesMessage,
@@ -72,37 +78,6 @@ const reasonSelectContentClass =
   'w-[var(--radix-select-trigger-width)] max-w-[min(calc(100vw-1.5rem),40rem)]';
 const reasonSelectItemClass =
   'items-start whitespace-normal py-2.5 pl-9 pr-3 leading-snug [&>span:last-child]:whitespace-normal [&>span:last-child]:break-words';
-
-function browserAssetUrl(url: string | null | undefined): string | null {
-  if (!url?.trim()) return null;
-  let normalized = normalizeStoragePublicUrl(url.trim()) ?? url.trim();
-
-  // Keep storage object URLs on the project origin (ngrok/tunnel rewrites break media embeds).
-  const projectBase = (import.meta.env.VITE_SUPABASE_PROJECT_URL as string | undefined)?.replace(
-    /\/+$/,
-    ''
-  );
-  if (projectBase && /\/storage\/v1\/object\//.test(normalized)) {
-    try {
-      const parsed = new URL(normalized);
-      const project = new URL(projectBase);
-      if (parsed.origin !== project.origin) {
-        normalized = `${project.origin}${parsed.pathname}${parsed.search}`;
-      }
-    } catch {
-      /* keep normalized */
-    }
-  }
-
-  return normalized;
-}
-
-function getDocType(url: string): 'image' | 'pdf' | 'file' {
-  const path = decodeURIComponent(url.split('?')[0] ?? '').toLowerCase();
-  if (/\.(jpg|jpeg|png|webp|gif|heic|heif)$/.test(path)) return 'image';
-  if (/\.pdf$/.test(path)) return 'pdf';
-  return 'file';
-}
 
 function rightsLabel(value: string | null): string | null {
   if (!value) return null;
@@ -182,154 +157,12 @@ function UnitConflictList({ conflicts }: { conflicts: OrgApprovalUnitConflict[] 
   );
 }
 
-type PreviewAsset = {
-  label: string;
-  url: string;
-  type: 'image' | 'pdf' | 'file';
-};
-
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
       <dt className="text-muted-foreground w-[7.5rem] shrink-0 text-xs font-medium">{label}</dt>
       <dd className="text-foreground min-w-0 text-sm">{value}</dd>
     </div>
-  );
-}
-
-function DocPreviewCard({
-  label,
-  url,
-  onFullView,
-}: {
-  label: string;
-  url: string | null;
-  onFullView: (asset: PreviewAsset) => void;
-}) {
-  const displayUrl = browserAssetUrl(url);
-
-  if (!displayUrl) {
-    return (
-      <div className="border-border bg-muted/30 flex flex-col overflow-hidden rounded-xl border border-dashed">
-        <div className="bg-muted flex aspect-[4/3] items-center justify-center px-3 text-center">
-          <p className="text-muted-foreground text-xs">Not provided</p>
-        </div>
-        <div className="px-3 py-2">
-          <p className="text-muted-foreground truncate text-xs font-medium">{label}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const type = getDocType(displayUrl);
-  const openFull = () => onFullView({ label, url: displayUrl, type });
-
-  return (
-    <div className="border-border bg-card flex flex-col overflow-hidden rounded-xl border">
-      <button
-        type="button"
-        onClick={openFull}
-        className="bg-muted relative aspect-[4/3] w-full overflow-hidden text-left"
-        aria-label={`Full view ${label}`}
-      >
-        <VerificationDocThumbnail url={displayUrl} type={type} label={label} />
-      </button>
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <p className="text-foreground min-w-0 truncate text-xs font-medium">{label}</p>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={openFull}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-9 items-center justify-center rounded-lg transition-colors"
-            aria-label={`Full view ${label}`}
-            title="Full view"
-          >
-            <Expand className="size-3.5" aria-hidden />
-          </button>
-          <a
-            href={displayUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-muted-foreground hover:bg-muted hover:text-foreground flex size-9 items-center justify-center rounded-lg transition-colors"
-            aria-label={`Open ${label} in new tab`}
-            title="Open in new tab"
-          >
-            <ExternalLink className="size-3.5" aria-hidden />
-          </a>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FullViewDialog({ asset, onClose }: { asset: PreviewAsset | null; onClose: () => void }) {
-  return (
-    <Dialog open={Boolean(asset)} onOpenChange={(next) => (!next ? onClose() : null)}>
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          'flex h-[min(90dvh,calc(100dvh-1.5rem))] max-h-[min(90dvh,calc(100dvh-1.5rem))] w-[min(calc(100vw-1.5rem),56rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-          'sm:w-[min(94vw,56rem)] sm:max-w-[56rem] sm:p-0'
-        )}
-      >
-        {asset ? (
-          <>
-            <div className="border-border flex min-h-[52px] shrink-0 items-center justify-between gap-2 border-b px-2.5 sm:min-h-[56px] sm:px-4">
-              <DialogHeader className="min-w-0 flex-1 space-y-0 p-0 pr-0 text-left">
-                <DialogTitle className="truncate text-xs font-semibold sm:text-sm">
-                  {asset.label}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="flex items-center gap-2">
-                <a
-                  href={asset.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="border-border hover:bg-muted/50 inline-flex min-h-[44px] items-center justify-center rounded-lg border px-3 text-xs font-medium"
-                >
-                  Open in new tab
-                </a>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="border-border text-muted-foreground hover:bg-muted/50 inline-flex size-11 items-center justify-center rounded-lg border"
-                  aria-label="Close preview"
-                >
-                  <X className="size-4" aria-hidden />
-                </button>
-              </div>
-            </div>
-            <div className="bg-muted flex min-h-0 flex-1 items-center justify-center overflow-y-auto overscroll-contain p-2 sm:p-3">
-              {asset.type === 'image' ? (
-                <img
-                  src={browserAssetUrl(asset.url) ?? asset.url}
-                  alt={asset.label}
-                  className="max-h-full max-w-full object-contain"
-                />
-              ) : asset.type === 'pdf' ? (
-                <iframe
-                  title={asset.label}
-                  src={browserAssetUrl(asset.url) ?? asset.url}
-                  className="bg-card h-full min-h-[min(50dvh,20rem)] w-full rounded-lg border-0"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-3 px-4 text-center">
-                  <FileText className="text-muted-foreground size-10" aria-hidden />
-                  <a
-                    href={browserAssetUrl(asset.url) ?? asset.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-                  >
-                    Open file
-                  </a>
-                </div>
-              )}
-            </div>
-          </>
-        ) : null}
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -354,7 +187,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   >(() => new Set());
   const [changeNote, setChangeNote] = useState('');
   const [selectedDocs, setSelectedDocs] = useState<Set<ChangeDocId>>(() => new Set());
-  const [fullView, setFullView] = useState<PreviewAsset | null>(null);
+  const [fullView, setFullView] = useState<VerificationPreviewAsset | null>(null);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
 
   const hostModes = detail?.organization.hostModes ?? approval?.hostModes ?? [];
@@ -614,7 +447,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                           />
                           <span className="bg-muted relative size-10 shrink-0 overflow-hidden rounded-lg">
                             {(() => {
-                              const thumbUrl = browserAssetUrl(option.url);
+                              const thumbUrl = browserVerificationAssetUrl(option.url);
                               if (!thumbUrl) {
                                 return (
                                   <span className="text-muted-foreground flex size-full items-center justify-center">
@@ -625,7 +458,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                               return (
                                 <VerificationDocThumbnail
                                   url={thumbUrl}
-                                  type={getDocType(thumbUrl)}
+                                  type={getVerificationDocType(thumbUrl)}
                                   label={option.label}
                                 />
                               );
@@ -865,14 +698,14 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     Documents
                   </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <DocPreviewCard
+                    <VerificationDocPreviewCard
                       label="Valid ID"
                       url={detail.assetUrls.validIdUrl}
                       onFullView={setFullView}
                     />
                     {needsProperty ? (
                       <>
-                        <DocPreviewCard
+                        <VerificationDocPreviewCard
                           label={
                             platformLabel(verification.socialPlatform)
                               ? `${platformLabel(verification.socialPlatform)} access`
@@ -881,7 +714,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                           url={detail.assetUrls.socialProofUrl}
                           onFullView={setFullView}
                         />
-                        <DocPreviewCard
+                        <VerificationDocPreviewCard
                           label="Ownership / management"
                           url={detail.assetUrls.propertyOwnershipProofUrl}
                           onFullView={setFullView}
@@ -889,7 +722,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                       </>
                     ) : null}
                     {needsParking ? (
-                      <DocPreviewCard
+                      <VerificationDocPreviewCard
                         label="Parking ownership / management"
                         url={detail.assetUrls.parkingSocialProofUrl}
                         onFullView={setFullView}
@@ -1035,7 +868,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
         </AlertDialogContent>
       </AlertDialog>
 
-      {fullView ? <FullViewDialog asset={fullView} onClose={() => setFullView(null)} /> : null}
+      {fullView ? (
+        <VerificationDocFullViewDialog asset={fullView} onClose={() => setFullView(null)} />
+      ) : null}
     </>
   );
 }

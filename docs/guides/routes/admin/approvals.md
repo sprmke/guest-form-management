@@ -70,12 +70,12 @@ The platform team uses this page to approve host identity documents, **request c
 
 ## API reference
 
-| Function                      | Method | Auth            | Notes                                                                                                                            |
-| ----------------------------- | ------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `list-org-verifications`      | GET    | super admin JWT | Orgs with `baseStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`                   |
-| `get-org-verification-assets` | GET    | super admin JWT | `?orgId=` — verification state + signed asset URLs                                                                               |
-| `approve-org-verification`    | POST   | super admin JWT | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs; archives ACTIVE peers then activates this org’s property |
-| `reject-org-verification`     | POST   | super admin JWT | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }`                                          |
+| Function                      | Method | Auth                         | Notes                                                                                                                            |
+| ----------------------------- | ------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `list-org-verifications`      | GET    | super admin JWT              | Orgs with `baseStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`                   |
+| `get-org-verification-assets` | GET    | super admin JWT or org owner | `?orgId=` — verification state + signed asset URLs (host Get Verified modal + approvals review)                                  |
+| `approve-org-verification`    | POST   | super admin JWT              | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs; archives ACTIVE peers then activates this org’s property |
+| `reject-org-verification`     | POST   | super admin JWT              | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }`                                          |
 
 Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `baseSubmittedAt`, `baseRejectionReason`, `baseRejectionKind` = `changes` \| `rejected`, `baseChangesRequestedDocs`, assets paths). No dedicated approvals table.
 

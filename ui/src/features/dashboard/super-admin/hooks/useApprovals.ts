@@ -1,16 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  orgVerificationAssetsQueryKey,
+  useOrgVerificationAssets,
+} from '@/features/dashboard/org/hooks/useOrgVerificationAssets';
 import { callEdgeFunction } from '@/features/dashboard/org/lib/edgeClient';
-import type {
-  OrgApprovalDetail,
-  OrgApprovalSummary,
-} from '@/features/dashboard/super-admin/types/approval';
+import type { OrgApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
 
 export const APPROVALS_QUERY_KEY = ['super-admin', 'approvals'] as const;
 
 export function approvalAssetsQueryKey(orgId: string) {
-  return ['super-admin', 'approval-assets', orgId] as const;
+  return orgVerificationAssetsQueryKey(orgId);
 }
+
+export { useOrgVerificationAssets };
 
 export function useApprovals() {
   return useQuery({
@@ -27,17 +30,6 @@ export function useApprovals() {
           propertyAccessLocked: row.propertyAccessLocked === true,
           parkingAccessLocked: row.parkingAccessLocked === true,
         }))
-      ),
-  });
-}
-
-export function useOrgVerificationAssets(orgId: string | undefined) {
-  return useQuery({
-    queryKey: approvalAssetsQueryKey(orgId ?? ''),
-    enabled: Boolean(orgId),
-    queryFn: () =>
-      callEdgeFunction<OrgApprovalDetail>(
-        `get-org-verification-assets?orgId=${encodeURIComponent(orgId!)}`
       ),
   });
 }

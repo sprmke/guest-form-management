@@ -2,7 +2,7 @@
 title: 'Onboarding — operator guide'
 status: active
 tags: [guides, routes, onboarding]
-updated: 2026-08-03
+updated: 2026-08-04
 ---
 
 # Onboarding — operator guide
@@ -18,6 +18,7 @@ Route: `/onboarding`
 | Organization | ✅       | ✅         | Documented | Name + contact phone (no role on this step)              |
 | Hosting      | ✅       | ✅         | Documented | Property and/or Parking toggles + details                |
 | Verify       | ✅       | ✅         | Documented | Valid ID + property/parking proof; rights + contract end |
+| Get Verified | ✅       | ✅         | Documented | Tier 2 persuasion + public Recommended badge (Phase 1)   |
 
 ---
 
@@ -106,18 +107,36 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 
 Two-tier model (see **Get Verified** sidebar modal):
 
-| Tier | Name         | Unlock                                     | Documents                                                                 |
-| ---- | ------------ | ------------------------------------------ | ------------------------------------------------------------------------- |
-| 1    | **Host**     | Required to host (onboarding)              | Valid ID + property/parking verification per **`host_modes`**             |
-| 2    | **Verified** | **Verified** badge on host page + listings | Selfie with ID, ownership/sublease proof, 1–2 Azure PMO email screenshots |
+| Tier | Name            | Unlock                                        | Documents                                                                   |
+| ---- | --------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
+| 1    | **Verified**    | Required to host (onboarding)                 | Valid ID + property/parking verification per **`host_modes`**               |
+| 2    | **Recommended** | **Recommended** badge on host page + listings | Selfie with ID, supporting ownership proof, 1–2 Azure PMO email screenshots |
 
-- Modal shows **Tier 1 status** from onboarding (read-only checklist when pending/approved).
-- When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Only the documents the admin asked to re-upload are shown; the host must replace those and tap **Resubmit**. After resubmit, status returns to pending and the modal closes.
+Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
+
+### Phase 1 UX (shipped)
+
+- Modal persuasion when Tier 2 is editable: benefit bullets + compact **Recommended badge preview** live **inside** the Tier 2 card (above documents), not above Tier 1. Hidden on Tier 1 changes-requested and when Tier 2 is pending/approved.
+- **Tier rank cards** in the modal header: clickable Verified / Recommended cards with status badges; one tier panel visible at a time. Opens on the most relevant step (e.g. Recommended when Tier 1 is approved).
+- Modal title follows the active step: **Get Verified** / **Get Recommended**; **Changes requested** in forced resubmit (stepper hidden).
+- Sidebar CTA uses a soft primary wash and “Earn your Recommended badge.” when Tier 2 is not yet approved.
+- Public **Recommended** badge (`ListingRecommendedBadge`) has tooltip: identity, ownership, and Azure records checked by Kame Homes; **Recommended host** line on host page, property/parking overview, and listing host card.
+- Copy constants: `ui/.../lib/verificationCopy.ts`.
+
+### Phase 2–3 roadmap
+
+- **Phase 2:** Tighten Tier 2 docs (keep selfie; clarify rights proof; one ops proof instead of dual PMO).
+- **Phase 3:** Trust strip near Reserve; search boost; optional approvals-queue priority. No skip Tier 1 / instant go-live.
+
+### Behavior
+
+- Modal shows **Tier 1 status** from onboarding as a document checklist (uploads only — not property/parking rights or contract dates); each row has a **View** button that opens a full preview (signed URLs via `get-org-verification-assets`).
+- When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Only the documents the admin asked to re-upload are shown; previously submitted files remain visible below the upload fields. The host must replace those and tap **Resubmit**. After resubmit, status returns to pending and the modal closes. Tier 2 persuasion is hidden in this mode.
 - When **Tier 1 is hard-rejected**, the host is blocked from the dashboard (`/verification-rejected`) and must **Start a new application** (new org). In-app resubmit is not allowed.
 - **Tier 2 can be submitted anytime** — does not require Tier 1 approval first; each tier is reviewed independently.
 - Platform review queue: **`/admin/approvals`** (super admin) — see [admin/approvals.md](./admin/approvals.md).
 - `submit-org-verification` `{ tier: 'enhanced' }` → `enhancedStatus = pending`
-- When **Tier 2 approved**: public **`/hosts/:orgSlug`**, property detail, and parking detail show **Verified** badge (`verifiedBadge` from org enhanced verification)
+- When **Tier 2 approved**: public **`/hosts/:orgSlug`**, property detail, and parking detail show **Recommended** badge (`verifiedBadge` from org enhanced verification)
 
 ---
 
@@ -133,17 +152,19 @@ Two-tier model (see **Get Verified** sidebar modal):
 
 ## Implementation map
 
-| Concern         | Path                                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------------ |
-| Page            | `ui/src/features/dashboard/org/pages/OnboardingPage.tsx`                                               |
-| Rights fields   | `ui/.../components/onboarding/OnboardingVerificationRightsFields.tsx`                                  |
-| Step header     | `ui/.../components/onboarding/OnboardingStepHeader.tsx`                                                |
-| Account menu    | `ui/.../components/onboarding/OnboardingProfileHeader.tsx` — Switch account · Sign out                 |
-| Proof upload UI | `ui/.../components/onboarding/OnboardingProofUpload.tsx`                                               |
-| Host verify     | `ui/.../components/onboarding/OnboardingHostVerificationSection.tsx`                                   |
-| Property verify | `ui/.../components/onboarding/OnboardingHostAccessVerificationSection.tsx`                             |
-| Parking verify  | `ui/.../components/onboarding/OnboardingParkingVerificationSection.tsx`                                |
-| Get Verified    | `ui/.../components/verification/GetVerifiedModal.tsx` (`HostVerificationChangesGate` in `AdminLayout`) |
-| Shared types    | `ui/.../lib/orgVerification.ts` + `supabase/functions/_shared/orgVerification.ts`                      |
-| Edge            | `create-organization`, `upload-org-verification-asset`, `submit-org-verification`                      |
-| Storage         | migration `20260922120000_org_verification_assets.sql`                                                 |
+| Concern           | Path                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------ |
+| Page              | `ui/src/features/dashboard/org/pages/OnboardingPage.tsx`                                               |
+| Rights fields     | `ui/.../components/onboarding/OnboardingVerificationRightsFields.tsx`                                  |
+| Step header       | `ui/.../components/onboarding/OnboardingStepHeader.tsx`                                                |
+| Account menu      | `ui/.../components/onboarding/OnboardingProfileHeader.tsx` — Switch account · Sign out                 |
+| Proof upload UI   | `ui/.../components/onboarding/OnboardingProofUpload.tsx`                                               |
+| Host verify       | `ui/.../components/onboarding/OnboardingHostVerificationSection.tsx`                                   |
+| Property verify   | `ui/.../components/onboarding/OnboardingHostAccessVerificationSection.tsx`                             |
+| Parking verify    | `ui/.../components/onboarding/OnboardingParkingVerificationSection.tsx`                                |
+| Get Verified      | `ui/.../components/verification/GetVerifiedModal.tsx` (`HostVerificationChangesGate` in `AdminLayout`) |
+| Badge preview     | `ui/.../components/verification/RecommendedBadgePreview.tsx`                                           |
+| Verification copy | `ui/.../lib/verificationCopy.ts`                                                                       |
+| Shared types      | `ui/.../lib/orgVerification.ts` + `supabase/functions/_shared/orgVerification.ts`                      |
+| Edge              | `create-organization`, `upload-org-verification-asset`, `submit-org-verification`                      |
+| Storage           | migration `20260922120000_org_verification_assets.sql`                                                 |
