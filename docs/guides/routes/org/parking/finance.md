@@ -13,7 +13,7 @@ Route: `/org/:orgSlug/parking/:parkingSlug/finance`
 
 ## Overview
 
-Same finance dashboard as property **`FinancePage`**: month/date filter, summary cards, cash-flow chart, ledger toolbar (table / card / calendar), **Add Transaction**, and **Export report**. Operating income and expense lines are scoped to the parking slot via `parking_id` on `finance_line_items`. There is no stays ledger for parking (no `guest_submissions` link); summary cards and charts reflect operating transactions only.
+Same finance dashboard as property **`FinancePage`**, including the **brand hero** shell on phone/tablet (`AdminMobilePage` — one ··· menu for Add transaction + PDF export; date range in overlapping toolbar). Month/date filter, summary cards, cash-flow chart, ledger toolbar (table / card / calendar), **Add Transaction**, and **Export report**. Operating income and expense lines are scoped to the parking slot via `parking_id` on `finance_line_items`. There is no stays ledger for parking (no `guest_submissions` link); summary cards and charts reflect operating transactions only.
 
 ---
 

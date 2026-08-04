@@ -112,6 +112,7 @@ Two-tier model (see **Get Verified** sidebar modal):
 | 2    | **Verified** | **Verified** badge on host page + listings | Selfie with ID, ownership/sublease proof, 1–2 Azure PMO email screenshots |
 
 - Modal shows **Tier 1 status** from onboarding (read-only checklist when pending/approved).
+- On phone/tablet the modal is a **bottom sheet** (`ResponsiveModal` `sheetLayout="split"`): sticky header + footer, middle section scrolls so long Verified uploads are not clipped.
 - When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Only the documents the admin asked to re-upload are shown; the host must replace those and tap **Resubmit**. After resubmit, status returns to pending and the modal closes.
 - When **Tier 1 is hard-rejected**, the host is blocked from the dashboard (`/verification-rejected`) and must **Start a new application** (new org). In-app resubmit is not allowed.
 - **Tier 2 can be submitted anytime** — does not require Tier 1 approval first; each tier is reviewed independently.
