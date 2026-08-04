@@ -4,6 +4,7 @@ import { ClipboardCheck, Filter, Loader2, Search } from 'lucide-react';
 
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalReviewDialog';
+import { SuperAdminApprovalsCardGrid } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsCardGrid';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
 import { useApprovals } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
@@ -22,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 
 function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
   return (
@@ -38,6 +40,7 @@ export function SuperAdminApprovalsPage() {
   const { data: approvals = [], isLoading, error } = useApprovals();
   const [filters, setFilters] = useState<SuperAdminApprovalsFilters>(DEFAULT_APPROVALS_FILTERS);
   const [selected, setSelected] = useState<OrgApprovalSummary | null>(null);
+  const isMobileLayout = useIsBelowLg();
 
   const filteredApprovals = useMemo(
     () => filterSuperAdminApprovals(approvals, filters),
@@ -55,7 +58,7 @@ export function SuperAdminApprovalsPage() {
         <p className="text-destructive text-sm">Could not load approvals.</p>
       ) : (
         <>
-          <AdminPageHeader title="Approvals" />
+          <AdminPageHeader title="Approvals" subtitle="Review host verification requests." />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 flex-1 gap-2">
@@ -100,7 +103,11 @@ export function SuperAdminApprovalsPage() {
           </div>
 
           {filteredApprovals.length > 0 ? (
-            <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={setSelected} />
+            isMobileLayout ? (
+              <SuperAdminApprovalsCardGrid approvals={filteredApprovals} onSelect={setSelected} />
+            ) : (
+              <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={setSelected} />
+            )
           ) : (
             <ApprovalsEmptyState filtered={hasActiveFilters} />
           )}

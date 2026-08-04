@@ -27,6 +27,8 @@ import {
 import { superAdminPaths } from '@/features/dashboard/super-admin/lib/superAdminPaths';
 
 import { Button } from '@/components/ui/button';
+import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 
 export function SuperAdminDevelopmentsPage() {
   const navigate = useNavigate();
@@ -38,6 +40,8 @@ export function SuperAdminDevelopmentsPage() {
     status: 'all',
     type: 'all',
   });
+  const isMobileLayout = useIsBelowLg();
+  useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
   const filteredDevelopments = useMemo(
     () => filterSuperAdminDevelopments(developments, filters),
@@ -45,13 +49,14 @@ export function SuperAdminDevelopmentsPage() {
   );
 
   const hasActiveFilters = superAdminDevelopmentsHasActiveFilters(filters);
+  const showTableView = viewMode === 'table' && !isMobileLayout;
 
   return (
     <div className="space-y-3 sm:space-y-4">
       {isLoading ? (
         <div className="space-y-3 sm:space-y-4">
           <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <AdminMetricCardSkeleton key={index} />
             ))}
@@ -66,6 +71,7 @@ export function SuperAdminDevelopmentsPage() {
         <>
           <AdminPageHeader
             title="Developments"
+            subtitle="Buildings and developments on the platform."
             actions={
               <Button
                 type="button"
@@ -83,6 +89,7 @@ export function SuperAdminDevelopmentsPage() {
           <SuperAdminDevelopmentsToolbar
             filters={filters}
             viewMode={viewMode}
+            hideTableView={isMobileLayout}
             onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
             onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
             onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
@@ -90,14 +97,14 @@ export function SuperAdminDevelopmentsPage() {
           />
 
           {filteredDevelopments.length > 0 ? (
-            viewMode === 'grid' ? (
+            showTableView ? (
+              <SuperAdminDevelopmentsTable developments={filteredDevelopments} />
+            ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredDevelopments.map((development) => (
                   <SuperAdminDevelopmentCard key={development.id} development={development} />
                 ))}
               </div>
-            ) : (
-              <SuperAdminDevelopmentsTable developments={filteredDevelopments} />
             )
           ) : (
             <SuperAdminDevelopmentsEmptyState

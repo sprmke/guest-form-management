@@ -23,6 +23,9 @@ import {
 } from '@/features/dashboard/super-admin/lib/superAdminPlatformPropertiesFilters';
 import type { PlatformProperty } from '@/features/dashboard/super-admin/types/platformProperty';
 
+import { useAdminMobileGridViewGuard } from '@/hooks/useAdminMobileGridViewGuard';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
+
 function platformPropertyCardProps(property: PlatformProperty) {
   return {
     property: platformPropertyToProperty(property),
@@ -45,6 +48,8 @@ export function SuperAdminPlatformPropertiesPage() {
     type: 'all',
     development: 'all',
   });
+  const isMobileLayout = useIsBelowLg();
+  useAdminMobileGridViewGuard(isMobileLayout, viewMode, setViewMode);
 
   const filteredPlatformProperties = useMemo(
     () => filterSuperAdminPlatformProperties(platformProperties, filters),
@@ -52,6 +57,7 @@ export function SuperAdminPlatformPropertiesPage() {
   );
 
   const hasActiveFilters = superAdminPlatformPropertiesHasActiveFilters(filters);
+  const showTableView = viewMode === 'table' && !isMobileLayout;
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -63,11 +69,12 @@ export function SuperAdminPlatformPropertiesPage() {
         <p className="text-destructive text-sm">Could not load properties.</p>
       ) : (
         <>
-          <AdminPageHeader title="Properties" />
+          <AdminPageHeader title="Properties" subtitle="All properties across the platform." />
 
           <SuperAdminPlatformPropertiesToolbar
             filters={filters}
             viewMode={viewMode}
+            hideTableView={isMobileLayout}
             onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
             onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
             onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
@@ -78,14 +85,14 @@ export function SuperAdminPlatformPropertiesPage() {
           />
 
           {filteredPlatformProperties.length > 0 ? (
-            viewMode === 'grid' ? (
+            showTableView ? (
+              <SuperAdminPlatformPropertiesTable properties={filteredPlatformProperties} />
+            ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredPlatformProperties.map((property) => (
                   <OrgPropertyCard key={property.id} {...platformPropertyCardProps(property)} />
                 ))}
               </div>
-            ) : (
-              <SuperAdminPlatformPropertiesTable properties={filteredPlatformProperties} />
             )
           ) : (
             <OrgPropertiesEmptyState filtered={hasActiveFilters} canAdd={false} onAdd={() => {}} />
