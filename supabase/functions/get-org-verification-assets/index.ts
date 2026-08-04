@@ -1,9 +1,15 @@
 /**
- * get-org-verification-assets — GET signed preview URLs for a submitted org's verification docs (super admin).
- * Signed URLs are only returned at upload time otherwise, so review needs to re-sign stored paths.
+ * get-org-verification-assets — GET signed preview URLs for a submitted org's verification docs.
+ * Auth: super admin OR org owner (platform admin). Signed URLs are only returned at upload time
+ * otherwise, so review and the host Get Verified modal re-sign stored paths.
  */
 
-import { createServiceClient, serializeOrganization, type OrgRow } from '../_shared/orgAuth.ts';
+import {
+  createServiceClient,
+  serializeOrganization,
+  verifyOrgOwner,
+  type OrgRow,
+} from '../_shared/orgAuth.ts';
 import {
   ORG_VERIFICATION_BUCKET,
   readOrgVerificationFromSettings,
@@ -32,14 +38,7 @@ async function signPath(
   return formatPublicUrl(data.signedUrl);
 }
 
-serveAuthenticated('get-org-verification-assets', async (req) => {
-  requireHttpMethod(req, 'GET');
-  await verifySuperAdminJwt(req);
-
-  const url = new URL(req.url);
-  const orgId = url.searchParams.get('orgId')?.trim() ?? '';
-  if (!orgId) return jsonError(req, 'orgId is required');
-
+async function loadOrganization(orgId: string): Promise<OrgRow> {
   const supabase = createServiceClient();
   const { data: orgRow, error } = await supabase
     .from('organizations')
@@ -52,10 +51,36 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
     throw new Error('Failed to load organization');
   }
   if (!orgRow) {
-    return jsonError(req, 'Organization not found', 404);
+    throw new Response(JSON.stringify({ success: false, error: 'Organization not found' }), {
+      status: 404,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 
-  const org = orgRow as OrgRow;
+  return orgRow as OrgRow;
+}
+
+async function authorizeVerificationAssets(req: Request, orgId: string): Promise<OrgRow> {
+  try {
+    await verifySuperAdminJwt(req);
+    return await loadOrganization(orgId);
+  } catch (error) {
+    if (error instanceof Response && error.status === 403) {
+      return (await verifyOrgOwner(req, orgId)).org;
+    }
+    throw error;
+  }
+}
+
+serveAuthenticated('get-org-verification-assets', async (req) => {
+  requireHttpMethod(req, 'GET');
+
+  const url = new URL(req.url);
+  const orgId = url.searchParams.get('orgId')?.trim() ?? '';
+  if (!orgId) return jsonError(req, 'orgId is required');
+
+  const org = await authorizeVerificationAssets(req, orgId);
+  const supabase = createServiceClient();
   const verification = readOrgVerificationFromSettings(org.settings);
 
   const [
