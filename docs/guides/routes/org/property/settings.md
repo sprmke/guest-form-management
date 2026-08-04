@@ -335,14 +335,14 @@ Per-property operational settings in `app_settings`. Empty link / main-platform 
 **UI:** Link rows use **Customize link** / **Use org link**. **Guest review link** picker sits below the link fields and lists only platforms with a filled effective URL. **External reviews** and **Superhost** remain property-local.
 
 **Validation:** at least one effective social URL + a main platform whose effective URL is filled.
-| External reviews | `external_reviews` (JSONB) | Up to **5**; source `facebook` \| `airbnb`; screenshot + optional proof URL; moderation `pending` until super-admin approval |
+| External reviews | `external_reviews` (JSONB) | Up to **5**; source `facebook` \| `airbnb`; review text max **2000** characters; **screenshot** (platform proof) + optional **0–3 stay photos** (guest in unit — shown on public listing when approved) + optional proof URL; moderation `pending` until super-admin approval |
 | Superhost URL | `superhost_verification_url` | Optional Airbnb profile URL |
 | Superhost proof | `superhost_proof_image_url` | Upload via `upload-app-settings-asset` (`superhost_proof`); sets `superhost_status = pending` |
 | Superhost status | `superhost_status` | `none` \| `pending` \| `approved` \| `rejected`; public page uses `isSuperhost` when `approved` |
 
-**Uploads:** Review screenshots use `upload-app-settings-asset` with `assetType=external_review_image` + `reviewId` (URL returned; persisted on Save via `externalReviews` PATCH).
+**Uploads:** Review screenshots use `upload-app-settings-asset` with `assetType=external_review_image` + `reviewId`. Stay photos use `assetType=external_review_stay_photo` + `reviewId` + `photoIndex` (0–2). Uploads go to storage immediately; URLs persist in JSONB on **Save** (dialog header **Save** or page **Save Changes**). Any edit to an **approved** or **rejected** review (text, photos, screenshot, proof URL) resets `moderationStatus` to **`pending`** and removes it from the public listing until super-admin approves again; photo/screenshot uploads to an already-saved review also reset pending in JSONB immediately.
 
-**Public API:** `get-public-property` merges approved external reviews with Kame guest reviews; each review includes optional `source` (`kame` \| `facebook` \| `airbnb`).
+**Public API:** `get-public-property` merges **approved** external reviews with Kame guest reviews; pending/rejected never publish. Super-admin approves/rejects at **`/admin/approvals`** (Type = Reviews). On **reject**, the property **Dashboard** shows a **Needs attention** chip linking here (no email); the review row shows a **Rejected** badge until the host edits and resubmits (returns to **pending**).
 
 **Admin theme:** Property admin routes use the **resolved** property brand color (property → org → default). Org admin routes use org brand color only (set under **Basic information**).
 
