@@ -399,7 +399,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
 
   const invalidatePreviewCache = React.useCallback(
     (batchId: string) => {
-      clearImportPreviewCache(queryClient, propertyId, batchId);
+      clearImportPreviewCache(queryClient, propertyId ?? undefined, batchId);
       previewMutation.reset();
       setPreviewRunKey((key) => key + 1);
     },

@@ -57,7 +57,7 @@ export function useSaveImportMapping() {
       return json.data;
     },
     onSuccess: (_data, { batchId }) => {
-      clearImportPreviewCache(queryClient, propertyId, batchId);
+      clearImportPreviewCache(queryClient, propertyId ?? undefined, batchId);
     },
   });
 }

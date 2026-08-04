@@ -58,7 +58,7 @@ export function useImportBatchRows(batchId: string | null) {
     summary,
     status: preview?.status ?? null,
     isReady: Boolean(preview?.rows.length),
-    clearPreviewCache: () => clearImportPreviewCache(queryClient, propertyId, batchId),
+    clearPreviewCache: () => clearImportPreviewCache(queryClient, propertyId ?? undefined, batchId),
     updatePreviewCache: (next: ImportPreviewResult) => {
       if (!propertyId || !batchId) return;
       queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), next);
