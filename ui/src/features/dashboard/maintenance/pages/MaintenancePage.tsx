@@ -5,14 +5,16 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { Plus, Wrench } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import { MaintenanceByCategoryCard } from '@/features/dashboard/maintenance/components/MaintenanceByCategoryCard';
-import { MaintenanceExportMenu } from '@/features/dashboard/maintenance/components/MaintenanceExportMenu';
+import {
+  MaintenanceExportMenu,
+  maintenanceAddReminderAction,
+} from '@/features/dashboard/maintenance/components/MaintenanceExportMenu';
 import { MaintenanceRemindersTab } from '@/features/dashboard/maintenance/components/MaintenanceRemindersTab';
 import { MaintenanceRemindersToolbar } from '@/features/dashboard/maintenance/components/MaintenanceRemindersToolbar';
 import { MaintenanceSummaryCards } from '@/features/dashboard/maintenance/components/MaintenanceSummaryCards';
@@ -29,11 +31,12 @@ import type { MaintenanceQuery } from '@/features/dashboard/maintenance/lib/type
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPaths';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { FinanceOverviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useAdminMobileCardViewGuard } from '@/hooks/useAdminMobileCardViewGuard';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
-import { cn } from '@/lib/utils';
 
 export function MaintenancePage() {
   const navigate = useNavigate();
@@ -123,45 +126,58 @@ export function MaintenancePage() {
     [itemsQuery.data]
   );
 
-  return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-5">
-      <AdminPageHeader
-        id="maintenance-heading"
-        variant="compact"
-        card={false}
-        title="Maintenance"
-        subtitle="Set maintenance items and reminders."
-        actions={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <BookingDateRangeFilter
-              {...dateNav}
-              isActive={!!(query.from || query.to)}
-              onClear={handleClearDate}
-              fullWidth={isBelowMd}
-            />
-            <MaintenanceExportMenu
-              query={query}
-              summary={summaryQuery.data}
-              items={itemsQuery.data}
-            />
-            <button
-              type="button"
-              className={cn(
-                'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2',
-                'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-                'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-              )}
-              onClick={() => setCreateOpen(true)}
-            >
-              <Plus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Add reminder</span>
-              <span className="sm:hidden">Add</span>
-            </button>
-          </div>
-        }
-        actionsClassName="w-full sm:w-auto"
+  const desktopActions = (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive={!!(query.from || query.to)}
+        onClear={handleClearDate}
+        fullWidth={isBelowMd}
       />
+      <MaintenanceExportMenu query={query} summary={summaryQuery.data} items={itemsQuery.data} />
+      <button
+        type="button"
+        className="native-cta sm:w-auto sm:px-3.5"
+        onClick={() => setCreateOpen(true)}
+      >
+        <Plus className="size-4" aria-hidden />
+        <span className="hidden sm:inline">Add reminder</span>
+        <span className="sm:hidden">Add</span>
+      </button>
+    </div>
+  );
 
+  const overlapControls = (
+    <FloatingToolbar>
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive={!!(query.from || query.to)}
+        onClear={handleClearDate}
+        fullWidth
+      />
+    </FloatingToolbar>
+  );
+
+  const heroActions = (
+    <MaintenanceExportMenu
+      variant="hero"
+      query={query}
+      summary={summaryQuery.data}
+      items={itemsQuery.data}
+      leadingActions={[maintenanceAddReminderAction(() => setCreateOpen(true))]}
+    />
+  );
+
+  return (
+    <AdminMobilePage
+      title="Maintenance"
+      subtitle="Set maintenance items and reminders."
+      titleId="maintenance-heading"
+      heroTrailing={heroActions}
+      overlap={overlapControls}
+      desktopActions={desktopActions}
+      desktopActionsClassName="w-full sm:w-auto"
+    >
       {summaryQuery.isLoading && !summary ? (
         <FinanceOverviewSkeleton />
       ) : summary ? (
@@ -173,7 +189,7 @@ export function MaintenancePage() {
         />
       ) : (
         <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-12 text-center sm:py-20">
-          <div className="icon-well-sm bg-muted/80">
+          <div className="icon-well-sm bg-muted/80 inline-flex items-center justify-center">
             <Wrench className="text-muted-foreground size-[18px]" aria-hidden />
           </div>
           <p className="text-section-title text-foreground font-bold">No data for this period</p>
@@ -182,13 +198,15 @@ export function MaintenancePage() {
 
       {summary ? <MaintenanceByCategoryCard rows={summary.byCategory} /> : null}
 
-      <MaintenanceRemindersToolbar
-        query={query}
-        categories={categories}
-        onChange={setQuery}
-        hideTableView={isMobileLayout}
-        showPerPage={!showCalendarView}
-      />
+      <FloatingToolbar>
+        <MaintenanceRemindersToolbar
+          query={query}
+          categories={categories}
+          onChange={setQuery}
+          hideTableView={isMobileLayout}
+          showPerPage={!showCalendarView}
+        />
+      </FloatingToolbar>
 
       <MaintenanceRemindersTab
         query={query}
@@ -198,6 +216,6 @@ export function MaintenancePage() {
         calendarInitialMonth={dateNav.dateRange.from ?? undefined}
         onCalendarMonthChange={handleCalendarMonthChange}
       />
-    </div>
+    </AdminMobilePage>
   );
 }

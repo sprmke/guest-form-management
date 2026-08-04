@@ -43,7 +43,12 @@ import { MAINTENANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/dashboard/main
 import type { MaintenanceItem, MaintenanceQuery } from '@/features/dashboard/maintenance/lib/types';
 
 import { FinanceOperatingTabSkeleton } from '@/components/skeletons/AdminSkeletons';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { buildPageItems } from '@/lib/table/pagination';
 import { cn } from '@/lib/utils';
@@ -253,7 +258,7 @@ export function MaintenanceRemindersTab({
               <tr>
                 <td colSpan={tableColumnCount}>
                   <div className="flex flex-col items-center justify-center gap-3 px-4 py-20 text-center">
-                    <div className="icon-well-sm bg-muted/80">
+                    <div className="icon-well-sm bg-muted/80 inline-flex items-center justify-center">
                       <Wrench className="text-muted-foreground size-[18px]" aria-hidden />
                     </div>
                     <p className="text-section-title text-foreground font-bold">
@@ -382,7 +387,7 @@ export function MaintenanceRemindersTab({
       {showCardView ? (
         displayItems.length === 0 ? (
           <div className="border-border/50 bg-card flex flex-col items-center justify-center gap-3 rounded-xl border py-20 text-center">
-            <div className="icon-well-sm bg-muted/80">
+            <div className="icon-well-sm bg-muted/80 inline-flex items-center justify-center">
               <Wrench className="text-muted-foreground size-[18px]" aria-hidden />
             </div>
             <p className="text-section-title text-foreground font-bold">
@@ -425,13 +430,13 @@ export function MaintenanceRemindersTab({
         />
       ) : null}
 
-      <Dialog
+      <ResponsiveModal
         open={modalOpen}
         onOpenChange={(open) => {
           if (!open) closeModal();
         }}
       >
-        <DialogContent
+        <ResponsiveModalContent
           className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
@@ -445,9 +450,11 @@ export function MaintenanceRemindersTab({
             if (create.isPending || update.isPending) e.preventDefault();
           }}
         >
-          <DialogHeader className="text-left">
-            <DialogTitle>{editing ? 'Edit reminder' : 'New reminder'}</DialogTitle>
-          </DialogHeader>
+          <ResponsiveModalHeader className="text-left">
+            <ResponsiveModalTitle>
+              {editing ? 'Edit reminder' : 'New reminder'}
+            </ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <MaintenanceItemForm
             key={
               editing
@@ -460,8 +467,8 @@ export function MaintenanceRemindersTab({
             onCancel={closeModal}
             isPending={create.isPending || update.isPending}
           />
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <RecurringSeriesModal
         anchor={seriesAnchor}
