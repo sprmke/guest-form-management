@@ -1,15 +1,19 @@
 /**
  * import-revert — Cancel imported guest_submissions by reverting a committed batch.
  *
- * POST { batchId, includeMoved?: boolean }
+ * POST { batchId, dryRun?: boolean, includeMoved?: boolean }
  * Auth: resolveImportAccess.
  *
- * Default: cancels rows still at IMPORTED status; rows moved to other statuses
- * (admin pulled them into the live workflow) are skipped and returned in `moved[]`.
- * Pass `includeMoved: true` to also cancel those rows.
+ * dryRun=true (default false): loads and analyses submissions, returns counts/warnings
+ * WITHOUT changing any status. Safe to call before showing the confirm dialog.
  *
- * Transitions use WorkflowOrchestrator with manual=true and calendar/sheets
- * disabled — IMPORTED bookings have no calendar events (bypassed at commit time).
+ * Default (dryRun=false): cancels rows still at IMPORTED status; rows moved to other
+ * statuses are skipped and returned in `moved[]`.
+ * Pass `includeMoved: true` to also cancel those moved rows.
+ *
+ * Transitions use WorkflowOrchestrator with manual=true and ALL side-effect flags
+ * explicitly set to false — IMPORTED bookings have no calendar events, no email
+ * history, and no sheets rows (all bypassed at commit time).
  */
 
 import { resolveImportAccess } from '../_shared/importAccess.ts';
@@ -17,7 +21,7 @@ import {
   isImportBatchStatus,
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
-import { WorkflowOrchestrator } from '../_shared/workflowOrchestrator.ts';
+import { WorkflowOrchestrator, type DevControlFlags } from '../_shared/workflowOrchestrator.ts';
 import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
@@ -35,6 +39,23 @@ type RevertFailure = {
   reason: string;
 };
 
+/**
+ * All side-effect flags explicitly false — do not rely on flag() defaults.
+ * IMPORTED bookings bypassed the orchestrator at commit time; no calendar events,
+ * sheets rows, PDFs, or emails were created, so none should fire on cancel.
+ */
+const REVERT_DEV_CONTROLS: DevControlFlags = {
+  updateGoogleCalendar: false,
+  updateGoogleSheets: false,
+  generatePdf: false,
+  sendGafRequestEmail: false,
+  sendBookingAcknowledgementEmail: false,
+  sendPetRequestEmail: false,
+  sendParkingBroadcastEmail: false,
+  sendReadyForCheckinEmail: false,
+  sendSdRefundFormEmail: false,
+};
+
 serveAuthenticated('import-revert', async (req) => {
   requireHttpMethod(req, 'POST');
 
@@ -44,6 +65,7 @@ serveAuthenticated('import-revert', async (req) => {
   const batchId = typeof body.batchId === 'string' ? body.batchId.trim() : '';
   if (!batchId) return jsonError(req, 'batchId is required');
 
+  const dryRun = body.dryRun === true;
   const includeMoved = body.includeMoved === true;
 
   const supabase = createServiceClient();
@@ -72,12 +94,56 @@ serveAuthenticated('import-revert', async (req) => {
 
   const committedAt = typeof batch.committed_at === 'string' ? batch.committed_at : null;
 
-  // Transition → reverting.
+  // ── dryRun path ──────────────────────────────────────────────────────────────
+  // Read-only: compute summary without touching any status.
+  if (dryRun) {
+    const { data: submissions, error: submissionsError } = await supabase
+      .from('guest_submissions')
+      .select('id, status, updated_at')
+      .eq('imported_from_batch_id', batchId);
+
+    if (submissionsError) {
+      console.error('[import-revert] dryRun load failed:', submissionsError.message);
+      return jsonError(req, 'Failed to load committed submissions');
+    }
+
+    const all = submissions ?? [];
+    const importedRows = all.filter((s) => s.status === 'IMPORTED');
+    const movedRows = all.filter((s) => s.status !== 'IMPORTED');
+    const modifiedCount = all.filter(
+      (s) =>
+        committedAt != null &&
+        typeof s.updated_at === 'string' &&
+        s.updated_at > committedAt
+    ).length;
+
+    const movedDetails: MovedRow[] = movedRows.map((s) => ({
+      bookingId: s.id,
+      status: s.status,
+      modifiedSinceImport:
+        committedAt != null &&
+        typeof s.updated_at === 'string' &&
+        s.updated_at > committedAt,
+    }));
+
+    return jsonSuccess(req, {
+      batchId,
+      dryRun: true,
+      importedCount: importedRows.length,
+      movedCount: movedRows.length,
+      modifiedCount,
+      moved: movedDetails,
+    });
+  }
+
+  // ── live revert path ──────────────────────────────────────────────────────────
+
+  // Transition → reverting (idempotent: allow already-reverting to continue).
   const { error: revertStartError } = await supabase
     .from('import_batches')
     .update({ status: 'reverting', updated_at: new Date().toISOString() })
     .eq('id', batchId)
-    .eq('status', 'committed');
+    .in('status', ['committed', 'reverting']);
 
   if (revertStartError) {
     console.error('[import-revert] failed to start revert:', revertStartError.message);
@@ -109,8 +175,6 @@ serveAuthenticated('import-revert', async (req) => {
   const importedRows = allSubmissions.filter((s) => s.status === 'IMPORTED');
   const movedRows = allSubmissions.filter((s) => s.status !== 'IMPORTED');
 
-  // Surface modified-since-import flag: a submission updated after commit is a
-  // signal that an admin manually edited it (e.g. fixed a date or pricing field).
   const movedDetails: MovedRow[] = movedRows.map((s) => ({
     bookingId: s.id,
     status: s.status,
@@ -122,27 +186,19 @@ serveAuthenticated('import-revert', async (req) => {
 
   const toCancel = includeMoved ? allSubmissions : importedRows;
 
-  // DevControlFlags that disable side effects irrelevant to IMPORTED bookings:
-  // – no calendar events were created at commit time, so no update needed on cancel;
-  // – no Google Sheets rows to remove;
-  // – no emails were sent on import, so no cancellation notification needed.
-  const devControls = {
-    updateGoogleCalendar: false,
-    updateGoogleSheets: false,
-  };
-
   let cancelled = 0;
   const revertFailed: RevertFailure[] = [];
 
   for (const submission of toCancel) {
     try {
-      // Use WorkflowOrchestrator with manual=true — same path admin manual cancel uses.
+      // WorkflowOrchestrator with manual=true — same path admin manual cancel uses.
       // IMPORTED → CANCELLED is in the manual-override graph (statusMachine.ts).
+      // All side-effect flags are explicitly false (see REVERT_DEV_CONTROLS above).
       await WorkflowOrchestrator.transition(
         submission.id,
         'CANCELLED',
         {},
-        devControls,
+        REVERT_DEV_CONTROLS,
         true // manual override
       );
       cancelled += 1;
@@ -158,11 +214,7 @@ serveAuthenticated('import-revert', async (req) => {
   // Finalize batch → reverted.
   const { error: finalizeError } = await supabase
     .from('import_batches')
-    .update({
-      status: 'reverted',
-      reverted_at: now,
-      updated_at: now,
-    })
+    .update({ status: 'reverted', reverted_at: now, updated_at: now })
     .eq('id', batchId);
 
   if (finalizeError) {
@@ -176,6 +228,7 @@ serveAuthenticated('import-revert', async (req) => {
 
   return jsonSuccess(req, {
     batchId,
+    dryRun: false,
     status: 'reverted',
     cancelled,
     // Rows that were moved out of IMPORTED before revert ran (not cancelled unless includeMoved=true).

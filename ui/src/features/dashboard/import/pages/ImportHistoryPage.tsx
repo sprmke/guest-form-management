@@ -1,18 +1,23 @@
 import * as React from 'react';
 
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, FileSpreadsheet, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, FileSpreadsheet, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 
 import { useImportBatches, IMPORT_BATCHES_KEY } from '@/features/dashboard/import/hooks/useImportBatches';
-import { useRevertImportBatch } from '@/features/dashboard/import/hooks/useRevertImportBatch';
+import {
+  useRevertImportBatch,
+  useRevertDryRun,
+  type RevertDryRunResult,
+} from '@/features/dashboard/import/hooks/useRevertImportBatch';
 import type { ImportBatch } from '@/features/dashboard/import/types/importBatch';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,34 +55,94 @@ function statusLabel(status: ImportBatch['status']): string {
   return labels[status] ?? status;
 }
 
+// ── Revert confirm dialog ──────────────────────────────────────────────────────
+
 type RevertDialogProps = {
   batch: ImportBatch;
   open: boolean;
+  dryRunResult: RevertDryRunResult | null;
+  isDryRunLoading: boolean;
+  includeMoved: boolean;
+  onIncludeMovedChange: (checked: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
   isReverting: boolean;
   revertError: string | null;
 };
 
-function RevertDialog({ batch, open, onConfirm, onCancel, isReverting, revertError }: RevertDialogProps) {
+function RevertDialog({
+  batch,
+  open,
+  dryRunResult,
+  isDryRunLoading,
+  includeMoved,
+  onIncludeMovedChange,
+  onConfirm,
+  onCancel,
+  isReverting,
+  revertError,
+}: RevertDialogProps) {
+  const hasMoved = (dryRunResult?.movedCount ?? 0) > 0;
+  const hasModified = (dryRunResult?.modifiedCount ?? 0) > 0;
+  const importedCount = dryRunResult?.importedCount ?? 0;
+
   return (
     <AlertDialog open={open}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Revert import?</AlertDialogTitle>
           <AlertDialogDescription asChild>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <p>
-                All bookings imported from <span className="font-medium text-foreground">{batch.original_file_name}</span> that
-                are still at <span className="font-medium text-foreground">Imported</span> status will be cancelled.
-              </p>
-              <p>
-                Bookings you have already moved into the workflow (e.g. Pending Review) will not be affected and will be
-                reported after revert completes.
-              </p>
-              {revertError && (
-                <p className="text-destructive">{revertError}</p>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              {isDryRunLoading ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  <span>Checking import status…</span>
+                </div>
+              ) : dryRunResult ? (
+                <>
+                  <p>
+                    <span className="font-medium text-foreground">{importedCount.toLocaleString()}</span>{' '}
+                    booking{importedCount !== 1 ? 's' : ''} from{' '}
+                    <span className="font-medium text-foreground">{batch.original_file_name}</span>{' '}
+                    will be cancelled.
+                  </p>
+
+                  {hasModified && (
+                    <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                      <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                      <span>
+                        {dryRunResult.modifiedCount} booking{dryRunResult.modifiedCount !== 1 ? 's were' : ' was'} edited after this import was committed.
+                      </span>
+                    </div>
+                  )}
+
+                  {hasMoved && (
+                    <div className="space-y-2">
+                      <p>
+                        <span className="font-medium text-foreground">{dryRunResult.movedCount}</span>{' '}
+                        booking{dryRunResult.movedCount !== 1 ? 's have' : ' has'} already been moved into the workflow (e.g. Pending Review) and will be skipped unless you include them below.
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="include-moved"
+                          checked={includeMoved}
+                          onCheckedChange={(v) => onIncludeMovedChange(v === true)}
+                        />
+                        <label htmlFor="include-moved" className="cursor-pointer text-foreground">
+                          Also cancel moved bookings
+                        </label>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <p>
+                  Cancel all <span className="font-medium text-foreground">Imported</span> bookings from{' '}
+                  <span className="font-medium text-foreground">{batch.original_file_name}</span>?
+                </p>
               )}
+
+              {revertError && <p className="text-destructive">{revertError}</p>}
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -87,7 +152,7 @@ function RevertDialog({ batch, open, onConfirm, onCancel, isReverting, revertErr
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            disabled={isReverting}
+            disabled={isReverting || isDryRunLoading || importedCount === 0}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isReverting ? (
@@ -104,6 +169,8 @@ function RevertDialog({ batch, open, onConfirm, onCancel, isReverting, revertErr
     </AlertDialog>
   );
 }
+
+// ── Batch row ──────────────────────────────────────────────────────────────────
 
 function ImportBatchRow({
   batch,
@@ -143,6 +210,8 @@ function ImportBatchRow({
   );
 }
 
+// ── Page ───────────────────────────────────────────────────────────────────────
+
 export function ImportHistoryPage() {
   const orgContext = useOptionalOrgContext();
   const orgSlug = useOrgSlugParam();
@@ -152,9 +221,12 @@ export function ImportHistoryPage() {
 
   const { data, isLoading, isError, refetch, isFetching } = useImportBatches();
   const revertMutation = useRevertImportBatch();
+  const dryRunMutation = useRevertDryRun();
 
   const [revertTarget, setRevertTarget] = React.useState<ImportBatch | null>(null);
   const [revertError, setRevertError] = React.useState<string | null>(null);
+  const [dryRunResult, setDryRunResult] = React.useState<RevertDryRunResult | null>(null);
+  const [includeMoved, setIncludeMoved] = React.useState(false);
 
   const backPath =
     orgSlug && propertySlug
@@ -164,13 +236,20 @@ export function ImportHistoryPage() {
   const handleRevertClick = (batch: ImportBatch) => {
     setRevertTarget(batch);
     setRevertError(null);
+    setDryRunResult(null);
+    setIncludeMoved(false);
+    // Fire dry-run immediately so counts/warnings are ready when dialog opens.
+    dryRunMutation.mutate(batch.id, {
+      onSuccess: (result) => setDryRunResult(result),
+      onError: () => setDryRunResult(null), // dialog still shows without counts
+    });
   };
 
   const handleRevertConfirm = async () => {
     if (!revertTarget) return;
     setRevertError(null);
     try {
-      await revertMutation.mutateAsync({ batchId: revertTarget.id });
+      await revertMutation.mutateAsync({ batchId: revertTarget.id, includeMoved });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: [...IMPORT_BATCHES_KEY] }),
         queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }),
@@ -185,7 +264,10 @@ export function ImportHistoryPage() {
     if (revertMutation.isPending) return;
     setRevertTarget(null);
     setRevertError(null);
+    setDryRunResult(null);
+    setIncludeMoved(false);
     revertMutation.reset();
+    dryRunMutation.reset();
   };
 
   return (
@@ -238,6 +320,10 @@ export function ImportHistoryPage() {
         <RevertDialog
           batch={revertTarget}
           open={Boolean(revertTarget)}
+          dryRunResult={dryRunResult}
+          isDryRunLoading={dryRunMutation.isPending}
+          includeMoved={includeMoved}
+          onIncludeMovedChange={setIncludeMoved}
           onConfirm={() => void handleRevertConfirm()}
           onCancel={handleRevertCancel}
           isReverting={revertMutation.isPending}

@@ -13,14 +13,10 @@
 
 import { resolveImportAccess } from '../_shared/importAccess.ts';
 import {
-  canImportBatchTransition,
   isImportBatchStatus,
   type ImportBatchStatus,
 } from '../_shared/importBatchStatusMachine.ts';
-import {
-  BOOKING_IMPORT_TARGET_FIELDS,
-  getBookingImportTargetField,
-} from '../_shared/importTargetSchemas.ts';
+import { BOOKING_IMPORT_TARGET_FIELDS } from '../_shared/importTargetSchemas.ts';
 import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_shared/httpResponse.ts';
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
