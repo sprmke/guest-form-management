@@ -14,7 +14,7 @@ type Props = {
 };
 
 /**
- * Inline document thumbnail for the approvals review grid.
+ * Inline document thumbnail for verification review grids.
  * Images use `<img>`; PDFs render page 1 via pdf.js (tiny iframes show unreadable text).
  */
 export function VerificationDocThumbnail({ url, type, label, className }: Props) {
@@ -112,12 +112,14 @@ export function VerificationDocThumbnail({ url, type, label, className }: Props)
     return (
       <div
         className={cn(
-          'flex h-full w-full flex-col items-center justify-center gap-2 bg-rose-100 px-3',
+          'flex h-full w-full flex-col items-center justify-center gap-2 bg-rose-100 px-3 dark:bg-rose-950/40',
           className
         )}
       >
         <FileText className="size-10 text-rose-500" aria-hidden />
-        <p className="text-xs font-medium uppercase tracking-wide text-rose-700/80">PDF</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-rose-700/80 dark:text-rose-300/80">
+          PDF
+        </p>
       </div>
     );
   }

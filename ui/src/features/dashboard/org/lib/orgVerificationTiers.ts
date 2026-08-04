@@ -1,4 +1,9 @@
 import {
+  emptyContractLegLifecycle,
+  parseContractLegLifecycle,
+  type ContractLegLifecycle,
+} from '@/features/dashboard/org/lib/contractLifecycle';
+import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
   ORG_VERIFICATION_STATUSES,
@@ -8,11 +13,7 @@ import {
   type OrgVerificationRights,
   type OrgVerificationStatus,
 } from '@/features/dashboard/org/lib/orgVerification';
-import {
-  emptyContractLegLifecycle,
-  parseContractLegLifecycle,
-  type ContractLegLifecycle,
-} from '@/features/dashboard/org/lib/contractLifecycle';
+import { VERIFICATION_TIER2_SUBTITLE } from '@/features/dashboard/org/lib/verificationCopy';
 
 export type { ContractLegLifecycle } from '@/features/dashboard/org/lib/contractLifecycle';
 
@@ -81,6 +82,20 @@ export type VerificationChecklistItem = {
   complete: boolean;
   optional?: boolean;
 };
+
+/** Host Tier 1 checklist rows backed by an uploaded file (submitted-docs list + count). */
+const HOST_TIER_DOCUMENT_ITEM_IDS = new Set([
+  'valid-id',
+  'property-ownership',
+  'property-access',
+  'parking-proof',
+]);
+
+export function hostTierDocumentChecklistItems(
+  items: VerificationChecklistItem[]
+): VerificationChecklistItem[] {
+  return items.filter((item) => HOST_TIER_DOCUMENT_ITEM_IDS.has(item.id));
+}
 
 export type VerificationTierDefinition = {
   id: 'host' | 'verified';
@@ -319,7 +334,7 @@ export function buildVerifiedTierChecklist(
     },
     {
       id: 'ownership',
-      label: 'Ownership or sublease proof',
+      label: 'Supporting ownership proof',
       complete: Boolean(detail.assets.ownershipProofPath),
     },
     {
@@ -343,15 +358,15 @@ export function buildVerificationTiers(
     {
       id: 'host',
       level: 1,
-      title: 'Host',
+      title: 'Verified',
       benefit: 'Required to host on Kame Homes',
       status: detail.baseStatus,
     },
     {
       id: 'verified',
       level: 2,
-      title: 'Verified',
-      benefit: 'Verified badge on your host page and listings',
+      title: 'Recommended',
+      benefit: VERIFICATION_TIER2_SUBTITLE,
       status: detail.enhancedStatus,
     },
   ];
@@ -365,14 +380,14 @@ export function countApprovedTiers(detail: OrgVerificationDetail): number {
 }
 
 export function verificationSidebarLabel(detail: OrgVerificationDetail): string {
-  if (detail.enhancedStatus === 'approved') return 'Verified';
+  if (detail.enhancedStatus === 'approved') return 'Recommended';
   if (detail.enhancedStatus === 'pending') return 'Badge in review';
   if (detail.enhancedStatus === 'rejected') return 'Resubmit badge';
   if (detail.baseStatus === 'pending') return 'Verification in review';
   if (detail.baseStatus === 'rejected') {
     return detail.baseRejectionKind === 'changes' ? 'Changes requested' : 'Verification declined';
   }
-  if (detail.enhancedStatus === 'none') return 'Get Verified badge';
+  if (detail.enhancedStatus === 'none') return 'Get Recommended badge';
   return 'Get Verified';
 }
 

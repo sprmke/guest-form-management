@@ -3,7 +3,7 @@ import { useEffect, useState, type Dispatch, type ReactNode, type SetStateAction
 import { useParams } from 'react-router-dom';
 
 import { useQueryClient } from '@tanstack/react-query';
-import { BadgeCheck, Check, ChevronDown, Loader2, Shield } from 'lucide-react';
+import { AlertCircle, BadgeCheck, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { OnboardingHostAccessVerificationSection } from '@/features/dashboard/org/components/onboarding/OnboardingHostAccessVerificationSection';
@@ -12,9 +12,13 @@ import { OnboardingParkingVerificationSection } from '@/features/dashboard/org/c
 import { OnboardingProofUpload } from '@/features/dashboard/org/components/onboarding/OnboardingProofUpload';
 import { VerificationFieldLabel } from '@/features/dashboard/org/components/onboarding/VerificationFieldLabel';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
+import { RecommendedBadgePreview } from '@/features/dashboard/org/components/verification/RecommendedBadgePreview';
 import { VerificationChecklist } from '@/features/dashboard/org/components/verification/VerificationChecklist';
-import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
-import { VerificationTierProgress } from '@/features/dashboard/org/components/verification/VerificationTierProgress';
+import { VerificationTier1SubmittedDocs } from '@/features/dashboard/org/components/verification/VerificationTier1SubmittedDocs';
+import {
+  defaultVerificationStepIndex,
+  VerificationTierProgress,
+} from '@/features/dashboard/org/components/verification/VerificationTierProgress';
 import {
   ORGANIZATIONS_QUERY_KEY,
   useOrganizations,
@@ -31,10 +35,12 @@ import {
   shouldShowGetVerifiedCta,
   type OrgSocialProofPlatform,
   type OrgVerificationRights,
+  type OrgVerificationStatus,
   type VerificationSectionKind,
 } from '@/features/dashboard/org/lib/orgVerification';
 import {
   buildHostTierChecklist,
+  hostTierDocumentChecklistItems,
   buildVerificationTiers,
   canSubmitHostTier,
   canSubmitVerifiedTier,
@@ -46,10 +52,16 @@ import {
   type OrgVerificationChangeDocId,
   type VerificationTierDefinition,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
+import {
+  VERIFICATION_BENEFIT_BULLETS,
+  VERIFICATION_REVIEW_TIMELINE,
+  VERIFICATION_SIDEBAR_SUBLABEL,
+  VERIFICATION_TIER2_APPROVED,
+  VERIFICATION_UPLOAD_HELP,
+} from '@/features/dashboard/org/lib/verificationCopy';
 import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Dialog,
   DialogContent,
@@ -152,13 +164,65 @@ function handleVerificationRightsChange(
   }
 }
 
-function HostTierSummary({
+function VerificationPendingNote() {
+  return (
+    <p className="text-muted-foreground text-xs leading-relaxed">{VERIFICATION_REVIEW_TIMELINE}</p>
+  );
+}
+
+function VerificationFeedbackAlert({
+  kind,
+  title,
+  message,
+}: {
+  kind: 'changes' | 'rejected';
+  title: string;
+  message: string;
+}) {
+  const isChanges = kind === 'changes';
+
+  return (
+    <div
+      role="alert"
+      className={cn(
+        'flex gap-3 rounded-xl border px-4 py-3.5',
+        isChanges
+          ? 'border-amber-500/40 bg-amber-500/10'
+          : 'border-destructive/40 bg-destructive/10'
+      )}
+    >
+      <AlertCircle
+        className={cn(
+          'mt-0.5 size-5 shrink-0',
+          isChanges ? 'text-amber-600 dark:text-amber-400' : 'text-destructive'
+        )}
+        aria-hidden
+      />
+      <div className="min-w-0 space-y-1">
+        <p
+          className={cn(
+            'text-sm font-semibold leading-snug',
+            isChanges ? 'text-amber-900 dark:text-amber-100' : 'text-destructive dark:text-red-200'
+          )}
+        >
+          {title}
+        </p>
+        <p className="text-foreground whitespace-pre-wrap text-sm leading-relaxed">{message}</p>
+      </div>
+    </div>
+  );
+}
+
+function VerifiedTierStepPanel({
   tier,
   checklist,
   pendingNote,
   rejectionReason,
   rejectionKind,
-  forceExpanded = false,
+  changesResubmit = false,
+  orgId,
+  modalOpen,
+  showSubmittedDocs,
   children,
 }: {
   tier: VerificationTierDefinition;
@@ -166,97 +230,267 @@ function HostTierSummary({
   pendingNote: boolean;
   rejectionReason: string | null;
   rejectionKind: 'changes' | 'rejected' | null;
-  forceExpanded?: boolean;
+  /** Streamlined layout for forced Tier 1 changes-requested resubmit. */
+  changesResubmit?: boolean;
+  orgId?: string;
+  modalOpen?: boolean;
+  showSubmittedDocs?: boolean;
   children?: ReactNode;
 }) {
-  const [open, setOpen] = useState(tier.status === 'rejected' || forceExpanded);
-  const doneCount = checklist.filter((item) => item.complete).length;
+  const documentChecklist = hostTierDocumentChecklistItems(checklist);
+  const doneCount = documentChecklist.filter((item) => item.complete).length;
   const isResubmit = Boolean(children);
-  const expanded = forceExpanded || open;
+  const approved = tier.status === 'approved';
+  const rejected = tier.status === 'rejected';
+  const isChangesResubmit = changesResubmit && rejectionKind === 'changes';
+  const submittedDocsSection =
+    showSubmittedDocs && orgId ? (
+      <VerificationTier1SubmittedDocs
+        orgId={orgId}
+        enabled={Boolean(modalOpen)}
+        items={checklist}
+        tierStatus={tier.status}
+      />
+    ) : null;
+
+  if (isChangesResubmit) {
+    return (
+      <section aria-labelledby="verification-resubmit-title" className="space-y-4">
+        <h3 id="verification-resubmit-title" className="sr-only">
+          Resubmit verification documents
+        </h3>
+        {rejectionReason ? (
+          <VerificationFeedbackAlert
+            kind="changes"
+            title="What to update"
+            message={rejectionReason}
+          />
+        ) : null}
+        {children}
+        {submittedDocsSection ? (
+          <div className="space-y-2">
+            <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+              Previously submitted
+            </p>
+            {submittedDocsSection}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
+  if (isResubmit) {
+    return (
+      <section aria-labelledby="verification-resubmit-title" className="space-y-4">
+        <h3 id="verification-resubmit-title" className="sr-only">
+          Resubmit verification documents
+        </h3>
+        {rejectionReason ? (
+          <VerificationFeedbackAlert
+            kind={rejectionKind === 'changes' ? 'changes' : 'rejected'}
+            title={rejectionKind === 'changes' ? 'What to update' : 'Rejection reason'}
+            message={rejectionReason}
+          />
+        ) : null}
+        {children}
+        {submittedDocsSection}
+      </section>
+    );
+  }
 
   return (
-    <Collapsible open={expanded} onOpenChange={forceExpanded ? () => {} : setOpen}>
-      <div className="border-border bg-muted/30 rounded-xl border">
-        <CollapsibleTrigger asChild disabled={forceExpanded}>
-          <button
-            type="button"
-            disabled={forceExpanded}
-            className={cn(
-              'flex min-h-[52px] w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors',
-              forceExpanded ? 'cursor-default' : 'hover:bg-muted/50'
-            )}
+    <section aria-labelledby="verification-tier-verified-panel-title" className="space-y-4">
+      <div className="min-w-0 space-y-1">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3
+            id="verification-tier-verified-panel-title"
+            className="text-foreground text-sm font-semibold leading-tight"
           >
-            <span
-              className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                tier.status === 'approved'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-background text-muted-foreground border-border border'
-              )}
-              aria-hidden
-            >
-              {tier.status === 'approved' ? (
-                <Check className="size-3.5" strokeWidth={2.5} />
-              ) : (
-                tier.level
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="text-foreground flex flex-wrap items-center gap-2 text-sm font-semibold">
-                {tier.title}
-                <VerificationStatusBadge status={tier.status} kind={rejectionKind} />
-              </span>
-              <span className="text-muted-foreground mt-0.5 block text-xs">
-                {tier.status === 'approved'
-                  ? 'Required to host — complete'
-                  : `${doneCount}/${checklist.length} docs · Required to host`}
-              </span>
-            </span>
-            <ChevronDown
-              className={cn(
-                'text-muted-foreground size-4 shrink-0 transition-transform',
-                expanded && 'rotate-180',
-                forceExpanded && 'invisible'
-              )}
-              aria-hidden
-            />
-          </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <div className="border-border space-y-3 border-t px-4 py-3">
-            {isResubmit ? (
-              <>
-                {rejectionReason ? (
-                  <div
-                    className={cn(
-                      'rounded-lg border px-3 py-2.5 text-xs leading-relaxed',
-                      rejectionKind === 'changes'
-                        ? 'border-orange-500/25 bg-orange-500/5 text-orange-950'
-                        : 'border-destructive/25 bg-destructive/5 text-destructive'
-                    )}
-                  >
-                    <p className="font-semibold">
-                      {rejectionKind === 'changes' ? 'Changes requested' : 'Rejection reason'}
-                    </p>
-                    <p className="mt-1 whitespace-pre-wrap">{rejectionReason}</p>
-                  </div>
-                ) : null}
-                {children}
-              </>
-            ) : (
-              <>
-                <VerificationChecklist items={checklist} compact />
-                {pendingNote ? (
-                  <p className="text-muted-foreground text-xs leading-relaxed">
-                    Submitted during onboarding. Review usually takes a few hours up to 3 days.
-                  </p>
-                ) : null}
-              </>
-            )}
-          </div>
-        </CollapsibleContent>
+            Submitted documents
+          </h3>
+          <span className="text-muted-foreground text-xs leading-none">
+            {doneCount}/{documentChecklist.length} docs
+          </span>
+        </div>
+        {pendingNote ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {VERIFICATION_REVIEW_TIMELINE}
+          </p>
+        ) : null}
       </div>
-    </Collapsible>
+
+      {showSubmittedDocs && orgId ? (
+        submittedDocsSection
+      ) : (
+        <VerificationChecklist items={checklist} compact />
+      )}
+
+      {approved ? (
+        <p className="text-muted-foreground text-xs leading-relaxed">You can host on Kame Homes.</p>
+      ) : null}
+
+      {rejected && rejectionReason ? (
+        <VerificationFeedbackAlert
+          kind={rejectionKind === 'changes' ? 'changes' : 'rejected'}
+          title={rejectionKind === 'changes' ? 'What to update' : 'Rejection reason'}
+          message={rejectionReason}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function RecommendedTierStepPanel({
+  tier,
+  orgName,
+  verifiedApproved,
+  verifiedPending,
+  enhancedStatus,
+  enhancedRejectionKind,
+  enhancedRejectionReason,
+  selfie,
+  ownership,
+  pmo1,
+  pmo2,
+  verifiedTouched,
+  onSelfieChange,
+  onOwnershipChange,
+  onPmo1Change,
+  onPmo2Change,
+}: {
+  tier: VerificationTierDefinition;
+  orgName?: string | null;
+  verifiedApproved: boolean;
+  verifiedPending: boolean;
+  enhancedStatus: OrgVerificationStatus;
+  enhancedRejectionKind: 'changes' | 'rejected' | null;
+  enhancedRejectionReason: string | null;
+  selfie: ProofSlot;
+  ownership: ProofSlot;
+  pmo1: ProofSlot;
+  pmo2: ProofSlot;
+  verifiedTouched: boolean;
+  onSelfieChange: (file: File | null, previewUrl: string | null) => void;
+  onOwnershipChange: (file: File | null, previewUrl: string | null) => void;
+  onPmo1Change: (file: File | null, previewUrl: string | null) => void;
+  onPmo2Change: (file: File | null, previewUrl: string | null) => void;
+}) {
+  if (verifiedApproved) {
+    return (
+      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-3">
+        <h3
+          id="verification-tier-recommended-panel-title"
+          className="text-foreground text-sm font-semibold leading-tight"
+        >
+          Recommended
+        </h3>
+        <p className="text-foreground text-sm leading-relaxed">{VERIFICATION_TIER2_APPROVED}</p>
+      </section>
+    );
+  }
+
+  if (verifiedPending) {
+    return (
+      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-3">
+        <h3
+          id="verification-tier-recommended-panel-title"
+          className="text-foreground text-sm font-semibold leading-tight"
+        >
+          Recommended
+        </h3>
+        <VerificationPendingNote />
+      </section>
+    );
+  }
+
+  return (
+    <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-5">
+      <div className="space-y-1">
+        <h3
+          id="verification-tier-recommended-panel-title"
+          className="text-foreground text-sm font-semibold leading-tight"
+        >
+          Recommended
+        </h3>
+        <p className="text-muted-foreground text-xs leading-relaxed">{tier.benefit}</p>
+      </div>
+
+      <div className="border-border bg-card overflow-hidden rounded-xl border">
+        <div className="border-border border-b px-4 py-2.5 sm:px-4">
+          <h4 className="text-foreground text-xs font-semibold">Perks &amp; benefits</h4>
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(11rem,14rem)] sm:items-start sm:gap-4">
+          <ul className="space-y-2">
+            {VERIFICATION_BENEFIT_BULLETS.map((bullet) => (
+              <li
+                key={bullet}
+                className="text-foreground flex items-start gap-2 text-xs leading-snug sm:text-sm"
+              >
+                <Check
+                  className="text-primary mt-0.5 size-3.5 shrink-0"
+                  strokeWidth={2.5}
+                  aria-hidden
+                />
+                <span>{bullet}</span>
+              </li>
+            ))}
+          </ul>
+          <RecommendedBadgePreview hostName={orgName} />
+        </div>
+      </div>
+
+      {enhancedStatus === 'rejected' ? (
+        <VerificationFeedbackAlert
+          kind={enhancedRejectionKind === 'changes' ? 'changes' : 'rejected'}
+          title={enhancedRejectionKind === 'changes' ? 'What to update' : 'Rejection reason'}
+          message={enhancedRejectionReason ?? 'Replace the documents below and submit again.'}
+        />
+      ) : null}
+
+      <div className="border-border bg-card overflow-hidden rounded-xl border">
+        <div className="border-border border-b px-4 py-2.5 sm:px-4">
+          <h4 className="text-foreground text-xs font-semibold">Docs required</h4>
+        </div>
+        <div className="space-y-4 p-4">
+          <OnboardingProofUpload
+            id="enhanced-selfie"
+            label="Selfie with valid ID"
+            help={VERIFICATION_UPLOAD_HELP.selfie}
+            file={selfie.file}
+            previewUrl={selfie.previewUrl}
+            error={verifiedTouched && !slotReady(selfie) ? 'Required' : null}
+            onFileChange={onSelfieChange}
+          />
+          <OnboardingProofUpload
+            id="enhanced-ownership"
+            label="Supporting ownership proof"
+            help={VERIFICATION_UPLOAD_HELP.ownership}
+            file={ownership.file}
+            previewUrl={ownership.previewUrl}
+            error={verifiedTouched && !slotReady(ownership) ? 'Required' : null}
+            onFileChange={onOwnershipChange}
+          />
+          <OnboardingProofUpload
+            id="enhanced-pmo-1"
+            label="Azure PMO email screenshot"
+            help={VERIFICATION_UPLOAD_HELP.pmo1}
+            file={pmo1.file}
+            previewUrl={pmo1.previewUrl}
+            error={verifiedTouched && !slotReady(pmo1) ? 'Required' : null}
+            onFileChange={onPmo1Change}
+          />
+          <OnboardingProofUpload
+            id="enhanced-pmo-2"
+            label="Second PMO screenshot"
+            help={VERIFICATION_UPLOAD_HELP.pmo2}
+            required={false}
+            file={pmo2.file}
+            previewUrl={pmo2.previewUrl}
+            onFileChange={onPmo2Change}
+          />
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -299,6 +533,8 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const showFullPropertyResubmit = showAllChangeDocs || (fixSocialProof && fixPropertyOwnership);
   const showFullParkingResubmit = showAllChangeDocs && fixParkingProof;
 
+  const showTier1SubmittedDocs = detail.baseStatus !== 'none';
+
   const handleOpenChange = (next: boolean) => {
     if (blockDismiss && !next) return;
     onOpenChange(next);
@@ -319,6 +555,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const [pmo1, setPmo1] = useState<ProofSlot>(emptySlot);
   const [pmo2, setPmo2] = useState<ProofSlot>(emptySlot);
   const [submitting, setSubmitting] = useState<'base' | 'enhanced' | null>(null);
+  const [activeStep, setActiveStep] = useState(0);
   const [hostTouched, setHostTouched] = useState(false);
   const [verifiedTouched, setVerifiedTouched] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -380,6 +617,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setHostTouched(false);
     setVerifiedTouched(false);
     setUploadError(null);
+    setActiveStep(defaultVerificationStepIndex(buildVerificationTiers(next)));
   }, [open, org]);
 
   const hostTier = tiers[0]!;
@@ -492,7 +730,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
-      toast.success('Host verification resubmitted');
+      toast.success('Verification resubmitted');
       onOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Submission failed');
@@ -528,7 +766,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         body: JSON.stringify({ orgId: org.id, tier: 'enhanced' }),
       });
       await queryClient.invalidateQueries({ queryKey: ORGANIZATIONS_QUERY_KEY });
-      toast.success('Verified tier submitted');
+      toast.success('Recommended tier submitted');
       handleOpenChange(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Submission failed');
@@ -557,151 +795,147 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
       >
         <DialogHeader
           className={cn(
-            'border-border shrink-0 space-y-4 border-b px-5 pb-4 pt-5 text-left sm:px-6',
+            'border-border shrink-0 space-y-3 border-b px-5 pb-3.5 pt-5 text-left sm:px-6',
             blockDismiss && 'pr-5 sm:pr-6'
           )}
         >
           <DialogTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
-            <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
-              <BadgeCheck className="size-5" aria-hidden />
+            <span
+              className={cn(
+                'flex size-9 shrink-0 items-center justify-center rounded-full',
+                hostChangesRequested
+                  ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                  : 'bg-primary/10 text-primary'
+              )}
+            >
+              {hostChangesRequested ? (
+                <AlertCircle className="size-5" aria-hidden />
+              ) : (
+                <BadgeCheck className="size-5" aria-hidden />
+              )}
             </span>
-            {hostChangesRequested ? 'Changes requested' : 'Get Verified'}
+            {hostChangesRequested
+              ? 'Changes requested'
+              : activeStep === 1
+                ? 'Get Recommended'
+                : 'Get Verified'}
           </DialogTitle>
-          {!blockDismiss ? <VerificationTierProgress tiers={tiers} /> : null}
+          {!blockDismiss ? (
+            <VerificationTierProgress
+              tiers={tiers}
+              activeStep={activeStep}
+              onStepChange={setActiveStep}
+              hostRejectionKind={detail.baseRejectionKind}
+              verifiedRejectionKind={detail.enhancedRejectionKind}
+            />
+          ) : null}
         </DialogHeader>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
-          <div className="space-y-4 pb-1">
-            <HostTierSummary
-              tier={hostTier}
-              checklist={hostChecklist}
-              pendingNote={detail.baseStatus === 'pending'}
-              rejectionReason={hostRejected ? detail.baseRejectionReason : null}
-              rejectionKind={hostRejected ? detail.baseRejectionKind : null}
-              forceExpanded={hostChangesRequested}
-            >
-              {hostChangesRequested ? (
-                <div className="space-y-4">
-                  {fixValidId ? (
-                    <OnboardingHostVerificationSection
-                      file={validId.file}
-                      previewUrl={validId.previewUrl}
-                      error={slotRequiredError(hostTouched, submitting !== null, validId)}
-                      onFileChange={(file, preview) => {
-                        setValidId({ file, previewUrl: preview, path: file ? null : validId.path });
-                      }}
-                      onUploadError={(message) => {
-                        setUploadError(message);
-                        if (message) toast.error(message);
-                      }}
-                    />
-                  ) : null}
-                  {showFullPropertyResubmit ? (
-                    <OnboardingHostAccessVerificationSection
-                      sectionId="host-resubmit-property"
-                      title="Property verification"
-                      subtitle="Update the docs that need fixing."
-                      rights={propertyRights}
-                      onRightsChange={(value) =>
-                        handleVerificationRightsChange(
-                          value,
-                          setPropertyRights,
-                          setPropertyContractEndDate
-                        )
-                      }
-                      rightsError={
-                        hostTouched ? verificationRightsError(propertyRights, 'property') : null
-                      }
-                      contractEndDate={propertyContractEndDate}
-                      onContractEndDateChange={setPropertyContractEndDate}
-                      contractEndDateError={propertyContractEndError}
-                      proofFile={propertyOwnership.file}
-                      proofPreview={propertyOwnership.previewUrl}
-                      proofError={slotRequiredError(
-                        hostTouched,
-                        submitting !== null,
-                        propertyOwnership
-                      )}
-                      onProofChange={(file, preview) => {
-                        setPropertyOwnership({
-                          file,
-                          previewUrl: preview,
-                          path: file ? null : propertyOwnership.path,
-                        });
-                      }}
-                      platformLabel="Property platform"
-                      platformHelp="Choose where you market your property."
-                      platformValue={socialPlatform}
-                      onPlatformChange={setSocialPlatform}
-                      platformError={hostTouched && !socialPlatform ? 'Select a platform' : null}
-                      screenshotFile={socialProof.file}
-                      screenshotPreview={socialProof.previewUrl}
-                      screenshotError={slotRequiredError(
-                        hostTouched,
-                        submitting !== null,
-                        socialProof
-                      )}
-                      onScreenshotChange={(file, preview) => {
-                        setSocialProof({
-                          file,
-                          previewUrl: preview,
-                          path: file ? null : socialProof.path,
-                        });
-                      }}
-                      onUploadError={(message) => {
-                        setUploadError(message);
-                        if (message) toast.error(message);
-                      }}
-                    />
-                  ) : (
-                    <>
-                      {fixPropertyOwnership ? (
-                        <OnboardingProofUpload
-                          id="host-resubmit-property-ownership"
-                          label="Ownership / management"
-                          help={verificationRightsProofHelp(propertyRights || '', 'property')}
-                          file={propertyOwnership.file}
-                          previewUrl={propertyOwnership.previewUrl}
-                          error={slotRequiredError(
-                            hostTouched,
-                            submitting !== null,
-                            propertyOwnership
-                          )}
-                          onFileChange={(file, preview) => {
-                            if (file) {
-                              const err = validateVerificationFile(file);
-                              if (err) {
-                                setUploadError(err);
-                                toast.error(err);
-                                return;
-                              }
-                            }
-                            setUploadError(null);
-                            setPropertyOwnership({
-                              file,
-                              previewUrl: preview,
-                              path: file ? null : propertyOwnership.path,
-                            });
-                          }}
-                        />
-                      ) : null}
-                      {fixSocialProof ? (
-                        <div className="space-y-4">
-                          <SocialPlatformSelect
-                            id="host-resubmit-platform"
-                            label="Property platform"
-                            help="Choose where you market your property."
-                            value={socialPlatform}
-                            onChange={setSocialPlatform}
-                            error={hostTouched && !socialPlatform ? 'Select a platform' : null}
-                          />
+          <div className="pb-1">
+            {hostChangesRequested || activeStep === 0 ? (
+              <VerifiedTierStepPanel
+                tier={hostTier}
+                checklist={hostChecklist}
+                pendingNote={detail.baseStatus === 'pending'}
+                rejectionReason={hostRejected ? detail.baseRejectionReason : null}
+                rejectionKind={hostRejected ? detail.baseRejectionKind : null}
+                changesResubmit={hostChangesRequested}
+                orgId={org?.id}
+                modalOpen={open}
+                showSubmittedDocs={showTier1SubmittedDocs}
+              >
+                {hostChangesRequested ? (
+                  <div className="space-y-4">
+                    {fixValidId ? (
+                      <OnboardingHostVerificationSection
+                        file={validId.file}
+                        previewUrl={validId.previewUrl}
+                        error={slotRequiredError(hostTouched, submitting !== null, validId)}
+                        onFileChange={(file, preview) => {
+                          setValidId({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : validId.path,
+                          });
+                        }}
+                        onUploadError={(message) => {
+                          setUploadError(message);
+                          if (message) toast.error(message);
+                        }}
+                      />
+                    ) : null}
+                    {showFullPropertyResubmit ? (
+                      <OnboardingHostAccessVerificationSection
+                        sectionId="host-resubmit-property"
+                        title="Property verification"
+                        subtitle="Update the docs that need fixing."
+                        rights={propertyRights}
+                        onRightsChange={(value) =>
+                          handleVerificationRightsChange(
+                            value,
+                            setPropertyRights,
+                            setPropertyContractEndDate
+                          )
+                        }
+                        rightsError={
+                          hostTouched ? verificationRightsError(propertyRights, 'property') : null
+                        }
+                        contractEndDate={propertyContractEndDate}
+                        onContractEndDateChange={setPropertyContractEndDate}
+                        contractEndDateError={propertyContractEndError}
+                        proofFile={propertyOwnership.file}
+                        proofPreview={propertyOwnership.previewUrl}
+                        proofError={slotRequiredError(
+                          hostTouched,
+                          submitting !== null,
+                          propertyOwnership
+                        )}
+                        onProofChange={(file, preview) => {
+                          setPropertyOwnership({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : propertyOwnership.path,
+                          });
+                        }}
+                        platformLabel="Property platform"
+                        platformHelp="Choose where you market your property."
+                        platformValue={socialPlatform}
+                        onPlatformChange={setSocialPlatform}
+                        platformError={hostTouched && !socialPlatform ? 'Select a platform' : null}
+                        screenshotFile={socialProof.file}
+                        screenshotPreview={socialProof.previewUrl}
+                        screenshotError={slotRequiredError(
+                          hostTouched,
+                          submitting !== null,
+                          socialProof
+                        )}
+                        onScreenshotChange={(file, preview) => {
+                          setSocialProof({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : socialProof.path,
+                          });
+                        }}
+                        onUploadError={(message) => {
+                          setUploadError(message);
+                          if (message) toast.error(message);
+                        }}
+                      />
+                    ) : (
+                      <>
+                        {fixPropertyOwnership ? (
                           <OnboardingProofUpload
-                            id="host-resubmit-social-proof"
-                            label="Listing access"
-                            help={propertyAccessScreenshotHelp(socialPlatform, 'property')}
-                            file={socialProof.file}
-                            previewUrl={socialProof.previewUrl}
-                            error={slotRequiredError(hostTouched, submitting !== null, socialProof)}
+                            id="host-resubmit-property-ownership"
+                            label="Ownership / management"
+                            help={verificationRightsProofHelp(propertyRights || '', 'property')}
+                            file={propertyOwnership.file}
+                            previewUrl={propertyOwnership.previewUrl}
+                            error={slotRequiredError(
+                              hostTouched,
+                              submitting !== null,
+                              propertyOwnership
+                            )}
                             onFileChange={(file, preview) => {
                               if (file) {
                                 const err = validateVerificationFile(file);
@@ -712,203 +946,150 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                                 }
                               }
                               setUploadError(null);
-                              setSocialProof({
+                              setPropertyOwnership({
                                 file,
                                 previewUrl: preview,
-                                path: file ? null : socialProof.path,
+                                path: file ? null : propertyOwnership.path,
                               });
                             }}
                           />
-                        </div>
-                      ) : null}
-                    </>
-                  )}
-                  {showFullParkingResubmit ? (
-                    <OnboardingParkingVerificationSection
-                      rights={parkingRights}
-                      onRightsChange={(value) =>
-                        handleVerificationRightsChange(
-                          value,
-                          setParkingRights,
-                          setParkingContractEndDate
-                        )
-                      }
-                      rightsError={
-                        hostTouched ? verificationRightsError(parkingRights, 'parking') : null
-                      }
-                      contractEndDate={parkingContractEndDate}
-                      onContractEndDateChange={setParkingContractEndDate}
-                      contractEndDateError={parkingContractEndError}
-                      proofFile={parkingProof.file}
-                      proofPreview={parkingProof.previewUrl}
-                      proofError={slotRequiredError(hostTouched, submitting !== null, parkingProof)}
-                      onProofChange={(file, preview) => {
-                        setParkingProof({
-                          file,
-                          previewUrl: preview,
-                          path: file ? null : parkingProof.path,
-                        });
-                      }}
-                      onUploadError={(message) => {
-                        setUploadError(message);
-                        if (message) toast.error(message);
-                      }}
-                    />
-                  ) : fixParkingProof ? (
-                    <OnboardingProofUpload
-                      id="host-resubmit-parking-proof"
-                      label="Parking ownership / management"
-                      help={verificationRightsProofHelp(parkingRights || '', 'parking')}
-                      file={parkingProof.file}
-                      previewUrl={parkingProof.previewUrl}
-                      error={slotRequiredError(hostTouched, submitting !== null, parkingProof)}
-                      onFileChange={(file, preview) => {
-                        if (file) {
-                          const err = validateVerificationFile(file);
-                          if (err) {
-                            setUploadError(err);
-                            toast.error(err);
-                            return;
-                          }
+                        ) : null}
+                        {fixSocialProof ? (
+                          <div className="space-y-4">
+                            <SocialPlatformSelect
+                              id="host-resubmit-platform"
+                              label="Property platform"
+                              help="Choose where you market your property."
+                              value={socialPlatform}
+                              onChange={setSocialPlatform}
+                              error={hostTouched && !socialPlatform ? 'Select a platform' : null}
+                            />
+                            <OnboardingProofUpload
+                              id="host-resubmit-social-proof"
+                              label="Listing access"
+                              help={propertyAccessScreenshotHelp(socialPlatform, 'property')}
+                              file={socialProof.file}
+                              previewUrl={socialProof.previewUrl}
+                              error={slotRequiredError(
+                                hostTouched,
+                                submitting !== null,
+                                socialProof
+                              )}
+                              onFileChange={(file, preview) => {
+                                if (file) {
+                                  const err = validateVerificationFile(file);
+                                  if (err) {
+                                    setUploadError(err);
+                                    toast.error(err);
+                                    return;
+                                  }
+                                }
+                                setUploadError(null);
+                                setSocialProof({
+                                  file,
+                                  previewUrl: preview,
+                                  path: file ? null : socialProof.path,
+                                });
+                              }}
+                            />
+                          </div>
+                        ) : null}
+                      </>
+                    )}
+                    {showFullParkingResubmit ? (
+                      <OnboardingParkingVerificationSection
+                        rights={parkingRights}
+                        onRightsChange={(value) =>
+                          handleVerificationRightsChange(
+                            value,
+                            setParkingRights,
+                            setParkingContractEndDate
+                          )
                         }
-                        setUploadError(null);
-                        setParkingProof({
-                          file,
-                          previewUrl: preview,
-                          path: file ? null : parkingProof.path,
-                        });
-                      }}
-                    />
-                  ) : null}
-                  {uploadError ? (
-                    <p role="alert" className="text-destructive text-xs">
-                      {uploadError}
-                    </p>
-                  ) : null}
-                </div>
-              ) : hostHardRejected ? (
-                <p className="text-muted-foreground text-sm leading-relaxed">
-                  This verification was declined. Start a new application to try again with updated
-                  documents.
-                </p>
-              ) : null}
-            </HostTierSummary>
-
-            {!hostChangesRequested ? (
-              <section
-                className={cn(
-                  'bg-card rounded-xl border p-4 sm:p-5',
-                  verifiedEditable ? 'border-primary/35 shadow-sm' : 'border-border'
-                )}
-                aria-labelledby="verification-tier-verified-title"
-              >
-                <header className="mb-4 flex items-start gap-3">
-                  <span
-                    className={cn(
-                      'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
-                      verifiedApproved
-                        ? 'bg-emerald-600 text-white'
-                        : verifiedPending
-                          ? 'border-2 border-amber-500 bg-amber-50 text-amber-700'
-                          : 'bg-primary text-primary-foreground'
-                    )}
-                    aria-hidden
-                  >
-                    {verifiedApproved ? (
-                      <Check className="size-3.5" strokeWidth={2.5} />
-                    ) : (
-                      verifiedTier.level
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3
-                        id="verification-tier-verified-title"
-                        className="text-foreground text-[15px] font-semibold leading-tight"
-                      >
-                        {verifiedTier.title}
-                      </h3>
-                      <VerificationStatusBadge
-                        status={verifiedTier.status}
-                        kind={detail.enhancedRejectionKind}
-                      />
-                    </div>
-                    <p className="text-muted-foreground text-xs leading-relaxed">
-                      {verifiedTier.benefit}
-                    </p>
-                  </div>
-                </header>
-
-                {verifiedApproved ? (
-                  <p className="text-foreground text-sm font-medium">
-                    Verified badge is live on your host page and listings.
-                  </p>
-                ) : verifiedPending ? (
-                  <p className="text-muted-foreground text-xs leading-relaxed">
-                    Tier 2 is in review. You can submit without waiting for Tier 1.
-                  </p>
-                ) : (
-                  <div className="space-y-5">
-                    {detail.enhancedStatus === 'rejected' ? (
-                      <div
-                        className={cn(
-                          'rounded-lg border px-3 py-2.5 text-xs leading-relaxed',
-                          detail.enhancedRejectionKind === 'changes'
-                            ? 'border-orange-500/25 bg-orange-500/5 text-orange-950'
-                            : 'border-destructive/25 bg-destructive/5 text-destructive'
+                        rightsError={
+                          hostTouched ? verificationRightsError(parkingRights, 'parking') : null
+                        }
+                        contractEndDate={parkingContractEndDate}
+                        onContractEndDateChange={setParkingContractEndDate}
+                        contractEndDateError={parkingContractEndError}
+                        proofFile={parkingProof.file}
+                        proofPreview={parkingProof.previewUrl}
+                        proofError={slotRequiredError(
+                          hostTouched,
+                          submitting !== null,
+                          parkingProof
                         )}
-                      >
-                        <p className="font-semibold">
-                          {detail.enhancedRejectionKind === 'changes'
-                            ? 'Changes requested'
-                            : 'Rejection reason'}
-                        </p>
-                        <p className="mt-1 whitespace-pre-wrap">
-                          {detail.enhancedRejectionReason ??
-                            'Replace the documents below and submit again.'}
-                        </p>
-                      </div>
+                        onProofChange={(file, preview) => {
+                          setParkingProof({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : parkingProof.path,
+                          });
+                        }}
+                        onUploadError={(message) => {
+                          setUploadError(message);
+                          if (message) toast.error(message);
+                        }}
+                      />
+                    ) : fixParkingProof ? (
+                      <OnboardingProofUpload
+                        id="host-resubmit-parking-proof"
+                        label="Parking ownership / management"
+                        help={verificationRightsProofHelp(parkingRights || '', 'parking')}
+                        file={parkingProof.file}
+                        previewUrl={parkingProof.previewUrl}
+                        error={slotRequiredError(hostTouched, submitting !== null, parkingProof)}
+                        onFileChange={(file, preview) => {
+                          if (file) {
+                            const err = validateVerificationFile(file);
+                            if (err) {
+                              setUploadError(err);
+                              toast.error(err);
+                              return;
+                            }
+                          }
+                          setUploadError(null);
+                          setParkingProof({
+                            file,
+                            previewUrl: preview,
+                            path: file ? null : parkingProof.path,
+                          });
+                        }}
+                      />
                     ) : null}
-                    <OnboardingProofUpload
-                      id="enhanced-selfie"
-                      label="Selfie with valid ID"
-                      help="Hold your valid ID next to your face in one photo so we can match you to the ID."
-                      file={selfie.file}
-                      previewUrl={selfie.previewUrl}
-                      error={verifiedTouched && !slotReady(selfie) ? 'Required' : null}
-                      onFileChange={setSlot(setSelfie)}
-                    />
-                    <OnboardingProofUpload
-                      id="enhanced-ownership"
-                      label="Ownership or sublease proof"
-                      help="Upload a unit ownership certificate, or an email from Azure acknowledging your sublease."
-                      file={ownership.file}
-                      previewUrl={ownership.previewUrl}
-                      error={verifiedTouched && !slotReady(ownership) ? 'Required' : null}
-                      onFileChange={setSlot(setOwnership)}
-                    />
-                    <OnboardingProofUpload
-                      id="enhanced-pmo-1"
-                      label="Azure PMO email screenshot"
-                      help="Screenshot of a past email thread with Azure PMO about your unit (dates and address visible)."
-                      file={pmo1.file}
-                      previewUrl={pmo1.previewUrl}
-                      error={verifiedTouched && !slotReady(pmo1) ? 'Required' : null}
-                      onFileChange={setSlot(setPmo1)}
-                    />
-                    <OnboardingProofUpload
-                      id="enhanced-pmo-2"
-                      label="Second PMO screenshot"
-                      help="Optional second email screenshot if you have another PMO thread."
-                      required={false}
-                      file={pmo2.file}
-                      previewUrl={pmo2.previewUrl}
-                      onFileChange={setSlot(setPmo2)}
-                    />
+                    {uploadError ? (
+                      <p role="alert" className="text-destructive text-xs">
+                        {uploadError}
+                      </p>
+                    ) : null}
                   </div>
-                )}
-              </section>
-            ) : null}
+                ) : hostHardRejected ? (
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    This verification was declined. Start a new application to try again with
+                    updated documents.
+                  </p>
+                ) : null}
+              </VerifiedTierStepPanel>
+            ) : (
+              <RecommendedTierStepPanel
+                tier={verifiedTier}
+                orgName={org?.name}
+                verifiedApproved={verifiedApproved}
+                verifiedPending={verifiedPending}
+                enhancedStatus={detail.enhancedStatus}
+                enhancedRejectionKind={detail.enhancedRejectionKind}
+                enhancedRejectionReason={detail.enhancedRejectionReason}
+                selfie={selfie}
+                ownership={ownership}
+                pmo1={pmo1}
+                pmo2={pmo2}
+                verifiedTouched={verifiedTouched}
+                onSelfieChange={setSlot(setSelfie)}
+                onOwnershipChange={setSlot(setOwnership)}
+                onPmo1Change={setSlot(setPmo1)}
+                onPmo2Change={setSlot(setPmo2)}
+              />
+            )}
           </div>
         </div>
 
@@ -940,7 +1121,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               )}
             </Button>
           ) : null}
-          {!hostChangesRequested && verifiedEditable ? (
+          {!hostChangesRequested && activeStep === 1 && verifiedEditable ? (
             <Button
               type="button"
               disabled={submitting !== null || !canSubmitVerified}
@@ -983,13 +1164,22 @@ export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
           onClick={() => setOpen(true)}
           title={collapsed ? label : undefined}
           className={cn(
-            'border-primary/20 bg-primary/[0.06] text-primary hover:bg-primary/10 flex min-h-[44px] w-full items-center rounded-xl border transition-colors',
+            'border-primary/25 from-primary/[0.12] to-primary/[0.04] text-primary hover:from-primary/15 hover:to-primary/[0.08] flex min-h-[44px] w-full items-center rounded-xl border bg-gradient-to-br shadow-sm transition-colors',
             collapsed ? 'justify-center px-2 py-2.5' : 'gap-2.5 px-3 py-2.5'
           )}
         >
-          <Shield className="size-4 shrink-0" aria-hidden />
+          <span className="bg-primary/15 flex size-8 shrink-0 items-center justify-center rounded-full">
+            <BadgeCheck className="size-4 shrink-0" aria-hidden />
+          </span>
           {!collapsed ? (
-            <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold">{label}</span>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-semibold leading-tight">{label}</span>
+              {detail.enhancedStatus === 'none' || detail.enhancedStatus === 'rejected' ? (
+                <span className="text-primary/80 mt-0.5 block truncate text-[11px] font-medium leading-tight">
+                  {VERIFICATION_SIDEBAR_SUBLABEL}
+                </span>
+              ) : null}
+            </span>
           ) : null}
         </button>
       </div>
