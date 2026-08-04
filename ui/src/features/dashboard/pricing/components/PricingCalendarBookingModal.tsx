@@ -5,7 +5,12 @@ import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgCon
 import { bookingDetailPath } from '@/features/dashboard/org/lib/tenantPaths';
 import type { PropertyPricingCalendarBooking } from '@/features/dashboard/pricing/lib/propertyPricingApi';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 type Props = {
   booking: PropertyPricingCalendarBooking | null;
@@ -22,13 +27,16 @@ export function PricingCalendarBookingModal({ booking, open, onOpenChange, displ
   if (!booking) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),24rem)] gap-0 overflow-hidden !p-0">
-        <DialogHeader className="border-border/60 space-y-0 border-b px-4 py-3 pr-14 text-left sm:px-5">
-          <DialogTitle className="flex min-h-[44px] items-center text-base font-semibold leading-none sm:text-lg">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="max-w-[min(calc(100vw-1.5rem),24rem)] gap-0 overflow-hidden !p-0"
+      >
+        <ResponsiveModalHeader className="border-border/60 space-y-0 border-b px-4 py-3 pr-14 text-left sm:px-5">
+          <ResponsiveModalTitle className="flex min-h-[44px] items-center text-base font-semibold leading-none sm:text-lg">
             Booking Details
-          </DialogTitle>
-        </DialogHeader>
+          </ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="p-2 sm:p-3">
           <CalendarDayBookingCard
             row={booking}
@@ -42,7 +50,7 @@ export function PricingCalendarBookingModal({ booking, open, onOpenChange, displ
             }}
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

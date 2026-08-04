@@ -5,12 +5,12 @@ import { Ban, CalendarRange, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -87,9 +87,12 @@ export function PricingDateModal({
   }, [open, mode, selectedDates]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)] gap-0 overflow-hidden !p-0">
-        <DialogHeader className="border-border/60 space-y-4 border-b px-4 pb-4 pt-5 text-left sm:px-5">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="max-w-[min(calc(100vw-1.5rem),28rem)] gap-0 overflow-hidden !p-0"
+      >
+        <ResponsiveModalHeader className="border-border/60 space-y-4 border-b px-4 pb-4 pt-5 text-left sm:px-5">
           <div className="flex items-center gap-3">
             <div
               className={cn(
@@ -104,9 +107,9 @@ export function PricingDateModal({
               )}
             </div>
             <div className="min-w-0 pt-0.5">
-              <DialogTitle className="text-base font-semibold leading-snug sm:text-lg">
+              <ResponsiveModalTitle className="text-base font-semibold leading-snug sm:text-lg">
                 {mode === 'blocked' ? 'Blocked dates' : 'Set nightly rate'}
-              </DialogTitle>
+              </ResponsiveModalTitle>
             </div>
           </div>
 
@@ -118,7 +121,7 @@ export function PricingDateModal({
               </span>
             </div>
           ) : null}
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
         {mode === 'available' ? (
           <div className="space-y-3 px-4 py-4 sm:px-5 sm:py-5">
@@ -166,7 +169,7 @@ export function PricingDateModal({
           </div>
         ) : null}
 
-        <DialogFooter className="border-border/60 bg-muted/20 flex-col gap-2 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+        <ResponsiveModalFooter className="border-border/60 bg-muted/20 flex-col gap-2 border-t px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           {mode === 'blocked' && onUnblock ? (
             <Button
               type="button"
@@ -215,8 +218,8 @@ export function PricingDateModal({
               </div>
             </>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

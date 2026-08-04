@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Car, DollarSign } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
   AdminSection,
   AdminSectionGroupHeading,
@@ -17,6 +16,8 @@ import { TelegramHelpDialog } from '@/features/dashboard/bookings/components/tel
 import { TelegramNotificationsGlobalBotProvider } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramNotificationsGlobalBotContext';
 import { TelegramFinanceSettingsCard } from '@/features/dashboard/bookings/components/TelegramFinanceSettingsCard';
 import { TelegramParkingSettingsCard } from '@/features/dashboard/parking/components/TelegramParkingSettingsCard';
+
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 
 const PARKING_NOTIFICATION_MODULES = ['parking', 'finance'] as const;
 
@@ -61,46 +62,45 @@ export function ParkingNotificationsPage() {
 
   return (
     <TelegramNotificationsGlobalBotProvider>
-      <AdminSectionNavLayout
-        className="min-h-0 flex-1"
-        sectionGroups={NOTIFICATION_SECTION_GROUPS}
-        header={
-          <AdminPageHeader
-            id="parking-notifications-heading"
-            variant="compact"
-            title="Notifications"
-            subtitle="Configure Telegram notifications for this parking slot."
-          />
-        }
+      <AdminMobilePage
+        title="Notifications"
+        subtitle="Telegram alerts for this parking slot."
+        titleId="parking-notifications-heading"
+        className="flex min-h-0 flex-1 flex-col"
       >
-        <div className="space-y-3 sm:space-y-4">
-          <AdminSectionGroupHeading
-            title="Telegram notifications"
-            count={MODULE_SECTIONS.length}
-            action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
-          />
+        <AdminSectionNavLayout
+          className="min-h-0 flex-1"
+          sectionGroups={NOTIFICATION_SECTION_GROUPS}
+        >
+          <div className="space-y-3 sm:space-y-4">
+            <AdminSectionGroupHeading
+              title="Telegram notifications"
+              count={MODULE_SECTIONS.length}
+              action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
+            />
 
-          <TelegramGlobalBotTokenCard />
+            <TelegramGlobalBotTokenCard />
 
-          <AdminSection
-            id="parking"
-            title="Parking"
-            icon={Car}
-            description={MODULE_DESCRIPTIONS.parking}
-          >
-            <TelegramParkingSettingsCard />
-          </AdminSection>
+            <AdminSection
+              id="parking"
+              title="Parking"
+              icon={Car}
+              description={MODULE_DESCRIPTIONS.parking}
+            >
+              <TelegramParkingSettingsCard />
+            </AdminSection>
 
-          <AdminSection
-            id="finance"
-            title="Finance"
-            icon={DollarSign}
-            description={MODULE_DESCRIPTIONS.finance}
-          >
-            <TelegramFinanceSettingsCard embedded />
-          </AdminSection>
-        </div>
-      </AdminSectionNavLayout>
+            <AdminSection
+              id="finance"
+              title="Finance"
+              icon={DollarSign}
+              description={MODULE_DESCRIPTIONS.finance}
+            >
+              <TelegramFinanceSettingsCard embedded />
+            </AdminSection>
+          </div>
+        </AdminSectionNavLayout>
+      </AdminMobilePage>
     </TelegramNotificationsGlobalBotProvider>
   );
 }

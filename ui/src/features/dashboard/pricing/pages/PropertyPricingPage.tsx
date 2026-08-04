@@ -4,7 +4,7 @@ import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'da
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { buildOccupancyByDay } from '@/features/dashboard/bookings/components/calendar/calendarDateUtils';
 import { PricingCalendarBookingModal } from '@/features/dashboard/pricing/components/PricingCalendarBookingModal';
 import { PricingCalendarGrid } from '@/features/dashboard/pricing/components/PricingCalendarGrid';
@@ -490,9 +490,11 @@ export function PropertyPricingPage() {
 
   return (
     <>
-      <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader id="calendar-heading" title="Calendar" variant="compact" />
-
+      <AdminMobilePage
+        title="Calendar"
+        subtitle="Set rates and see booked stays."
+        titleId="calendar-heading"
+      >
         <PricingStatsRow
           weekdayRate={weekdayRate}
           weekendRate={weekendRate}
@@ -536,7 +538,7 @@ export function PropertyPricingPage() {
             />
           </div>
         </div>
-      </div>
+      </AdminMobilePage>
 
       <PricingDateModal
         open={dateModalOpen && selectedDates.length > 0 && canEdit}
