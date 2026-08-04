@@ -1,4 +1,5 @@
 import { slugifyOrgName } from '@/features/dashboard/org/lib/orgSettingsForm';
+import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
 import {
   DEFAULT_PARKING_RESIDENCE_NAME,
   normalizeParkingLevel,
@@ -116,15 +117,18 @@ export function parkingProfileDraftFromParking(
 export function parkingOperationalDraftFromSettings(
   settings: ParkingSettingsPayload
 ): ParkingOperationalDraft {
-  const legacy = {
-    paymentProvider: settings.paymentProvider ?? 'gcash',
-    gcashName: settings.gcashName ?? '',
-    gcashNumber: settings.gcashNumber ?? '',
-    gcashQrImageUrl: settings.gcashQrImageUrl ?? '',
-  };
+  const legacyGcashQr = legacyGcashQrForPaymentMethods(
+    settings.gcashQrImageUrl ?? '',
+    settings.gcashQrImageUrl?.trim() ? 'db' : 'default'
+  );
   const paymentMethods = normalizePaymentMethodsDraft(
     settings.paymentMethods as PropertyPaymentMethod[] | undefined,
-    legacy
+    {
+      paymentProvider: settings.paymentProvider ?? 'gcash',
+      gcashName: settings.gcashName ?? '',
+      gcashNumber: settings.gcashNumber ?? '',
+      gcashQrImageUrl: legacyGcashQr,
+    }
   );
   const synced = syncLegacyPaymentFieldsFromMethods(paymentMethods);
   return {

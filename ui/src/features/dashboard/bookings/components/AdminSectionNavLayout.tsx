@@ -3,6 +3,7 @@ import * as React from 'react';
 import { useAdminLayoutFillMain } from '@/features/dashboard/bookings/components/AdminLayout';
 import { SectionNavIssueDot } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 
+import { bottomTabBarOffsetClassName } from '@/components/mobile/BottomTabBar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { SlidingActivePill } from '@/components/ui/SlidingActivePill';
 import { useSlidingActivePill } from '@/hooks/useSlidingActivePill';
@@ -272,20 +273,12 @@ function createSectionNavStore(
   });
 }
 
-function sectionNavItemClass(active: boolean, compact = false) {
+function sectionNavItemClass(active: boolean) {
   return cn(
-    'flex items-center text-sm font-medium transition-colors duration-200',
-    compact ? 'gap-2' : 'relative z-[1] gap-3',
-    compact
-      ? 'min-h-[44px] shrink-0 rounded-full px-4 py-2'
-      : 'min-h-[44px] w-full rounded-lg px-3 py-2.5',
+    'relative z-[1] flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200',
     active
-      ? compact
-        ? 'bg-primary text-primary-foreground'
-        : 'text-primary-foreground'
-      : compact
-        ? 'bg-muted text-muted-foreground hover:text-foreground'
-        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+      ? 'text-primary-foreground'
+      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
   );
 }
 
@@ -294,21 +287,20 @@ const SectionNavButton = React.forwardRef<
   {
     section: AdminSectionNavItem;
     active: boolean;
-    compact?: boolean;
     onSelect: (id: string) => void;
   }
->(function SectionNavButton({ section, active, compact = false, onSelect }, ref) {
+>(function SectionNavButton({ section, active, onSelect }, ref) {
   const Icon = section.icon;
   return (
     <button
       ref={ref}
       type="button"
       onClick={() => onSelect(section.id)}
-      className={sectionNavItemClass(active, compact)}
+      className={sectionNavItemClass(active)}
     >
       <Icon className="size-4 shrink-0" aria-hidden />
-      <span className={compact ? 'whitespace-nowrap' : 'truncate'}>{section.label}</span>
-      {section.hasIssue ? <SectionNavIssueDot className={compact ? 'ml-0.5' : 'ml-auto'} /> : null}
+      <span className="truncate">{section.label}</span>
+      {section.hasIssue ? <SectionNavIssueDot className="ml-auto" /> : null}
     </button>
   );
 });
@@ -324,55 +316,6 @@ function SectionNavGroupLabel({ label }: { label: string }) {
 function SectionNavSeparator() {
   return <div className="border-border/60 my-2 border-t" role="separator" />;
 }
-
-const SectionNavMobileStrip = React.memo(function SectionNavMobileStrip() {
-  const store = useSectionNavStore();
-  const sectionGroups = React.useContext(SectionNavGroupsContext);
-  const activeSection = React.useSyncExternalStore(store.subscribe, store.getActiveSection);
-  const sections = React.useSyncExternalStore(store.subscribe, store.getSections);
-
-  if (sectionGroups?.length) {
-    return (
-      <div className="space-y-2 pb-2 lg:hidden">
-        {sectionGroups.map((group, groupIndex) => (
-          <div key={group.label}>
-            {groupIndex > 0 ? <SectionNavSeparator /> : null}
-            <SectionNavGroupLabel label={group.label} />
-            <div className="overflow-x-auto">
-              <div className="flex w-max min-w-0 gap-2">
-                {group.sections.map((section) => (
-                  <SectionNavButton
-                    key={section.id}
-                    section={section}
-                    active={activeSection === section.id}
-                    compact
-                    onSelect={store.scrollToSection}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto pb-2 lg:hidden">
-      <div className="flex w-max min-w-0 gap-2">
-        {sections.map((section) => (
-          <SectionNavButton
-            key={section.id}
-            section={section}
-            active={activeSection === section.id}
-            compact
-            onSelect={store.scrollToSection}
-          />
-        ))}
-      </div>
-    </div>
-  );
-});
 
 const SectionNavList = React.memo(function SectionNavList({ className }: { className?: string }) {
   const store = useSectionNavStore();
@@ -524,10 +467,14 @@ export function AdminSectionNavLayout({
 
             <div
               ref={contentScrollRef}
-              className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain"
+              data-admin-content-scroll
+              className={cn(
+                'min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain',
+                /* Scrollable tab clearance — scrollport fills height; last cards clear the dock. */
+                bottomTabBarOffsetClassName()
+              )}
             >
               {header ? <div className="pb-3 lg:hidden">{header}</div> : null}
-              <SectionNavMobileStrip />
               <div className="mx-auto w-full max-w-4xl space-y-6">{children}</div>
               {footer ? (
                 <div className="border-separator mt-3 border-t pt-3 lg:hidden">{footer}</div>

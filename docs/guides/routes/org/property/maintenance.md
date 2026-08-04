@@ -26,7 +26,7 @@ Route: `/org/:orgSlug/property/:propertySlug/maintenance`
 
 Single-page maintenance view (no tabs), structured like Finance.
 
-**Header (top right):** date range filter, **Export report**, **Add reminder**.
+**Header (top right):** date range filter, **Export report**, **Add reminder**. On **phone/tablet**, Add + export options live in one hero ··· menu; the overlap toolbar is date range only.
 
 **Summary cards:** Total, Telegram enabled, Completed, Pending — `AdminMetricCard` styling (matches Finance/Bookings).
 
@@ -34,8 +34,8 @@ Single-page maintenance view (no tabs), structured like Finance.
 
 **Reminders toolbar** (`MaintenanceRemindersToolbar`):
 
-- Row 1: search (debounced → `?q=`) | **Status** (pending/completed multi-select, `?status=`) | **Category** (multi-select from loaded items, `?categories=`) | **Telegram** (all / on / off, `?telegram=`) | **Clear filters** when any filter is active
-- Row 2: **Sort** (`?sort=date:desc|date:asc|label:asc|label:desc`, default `date:desc`) + per-page (left; hidden in calendar view) | table / card / calendar view toggle (right)
+- **Mobile (`max-lg`):** search + refine icon (sheet: status / category / telegram / sort / per-page) + view toggle.
+- **Desktop (`lg+`):** Row 1: search | Status | Category | Telegram | Clear; Row 2: Sort + per-page | view toggle
 
 Status, category, and Telegram filters apply **client-side** on items already loaded for the date range; search still uses the API `q` param. List/card views paginate filtered results; calendar shows all matching rows for the period.
 

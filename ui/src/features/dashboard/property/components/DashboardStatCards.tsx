@@ -30,8 +30,8 @@ export function DashboardStatCards({ stats, periodLabel }: Props) {
 
   return (
     <section aria-label="Key metrics">
-      <p className="section-eyebrow mb-2 px-0.5 sm:mb-3">{periodLabel}</p>
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4">
+      <p className="section-eyebrow mb-2 hidden px-0.5 sm:mb-3 lg:block">{periodLabel}</p>
+      <div className="native-stagger grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4">
         <DashboardTrendStatCard
           title="Total Revenue"
           value={formatMoney(kpis.netProfit.value)}

@@ -30,13 +30,19 @@ import {
   type TeamInvitePreview,
 } from '@/features/dashboard/team/lib/acceptInviteApi';
 
+import { isPlatformSeedMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
+
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { ThemeToggle } from '@/components/theme/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { supabase } from '@/lib/supabase/client';
 
-const DEFAULT_LOGO_SRC = '/images/logo.png';
+function resolveInviteLogoUrl(logoUrl: string): string | null {
+  const trimmed = logoUrl.trim();
+  if (!trimmed || isPlatformSeedMediaUrl(trimmed)) return null;
+  return trimmed;
+}
 
 function acceptInvitePath(token: string, scope?: string | null) {
   const params = new URLSearchParams({ token });
@@ -47,17 +53,27 @@ function acceptInvitePath(token: string, scope?: string | null) {
 }
 
 function AcceptInviteBrandHeader({ preview }: { preview: TeamInvitePreview }) {
-  const logoUrl = preview.logoUrl.trim() || DEFAULT_LOGO_SRC;
+  const logoUrl = resolveInviteLogoUrl(preview.logoUrl);
+  const initial = preview.orgName.trim().charAt(0).toUpperCase() || '?';
 
   return (
     <div className="relative mb-6 pt-12 text-center">
       <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
         <div className="bg-card shadow-elevated ring-card rounded-full p-1 ring-4">
-          <img
-            src={logoUrl}
-            alt={preview.orgName}
-            className="size-20 rounded-full object-cover sm:size-[88px]"
-          />
+          {logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={preview.orgName}
+              className="size-20 rounded-full object-cover sm:size-[88px]"
+            />
+          ) : (
+            <div
+              aria-hidden
+              className="bg-muted text-foreground flex size-20 items-center justify-center rounded-full text-2xl font-bold sm:size-[88px]"
+            >
+              {initial}
+            </div>
+          )}
         </div>
       </div>
       <p className="section-eyebrow mb-2">Team invitation</p>

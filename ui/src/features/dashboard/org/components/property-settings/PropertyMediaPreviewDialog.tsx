@@ -44,7 +44,7 @@ export function PropertyMediaPreviewDialog({ item, items, open, onOpenChange, on
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPortal>
-        <DialogOverlay className="bg-black/95 backdrop-blur-none" />
+        <DialogOverlay className="modal-scrim-lightbox" />
         <DialogPrimitive.Content
           className={cn(
             'fixed inset-0 z-[101] flex items-center justify-center p-3 outline-none sm:p-6',

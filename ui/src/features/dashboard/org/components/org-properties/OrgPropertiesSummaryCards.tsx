@@ -15,7 +15,7 @@ export function OrgPropertiesSummaryCards({ properties }: Props) {
   return (
     <section
       aria-label="Property summary"
-      className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4"
+      className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4 lg:gap-4"
     >
       <AdminMetricCard
         title="Total properties"

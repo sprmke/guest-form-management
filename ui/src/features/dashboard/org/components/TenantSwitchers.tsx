@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -32,14 +32,62 @@ import type { Organization, Parking, Property } from '@/features/dashboard/org/t
 import { TeamLogoMark } from '@/components/branding/TeamLogoMark';
 import { Button } from '@/components/ui/button';
 import {
+  BottomSheet,
+  BottomSheetContent,
+  BottomSheetDescription,
+  BottomSheetHeader,
+  BottomSheetTitle,
+  BottomSheetTrigger,
+} from '@/components/ui/bottom-sheet';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
+import { cn } from '@/lib/utils';
 
 type AddEntityTarget = { id: string; slug: string };
+
+/** Menu row — a Radix `DropdownMenuItem` in the desktop dropdown, a plain tappable row in the mobile sheet. */
+function SwitcherRow({
+  variant,
+  onClick,
+  className,
+  children,
+}: {
+  variant: 'menu' | 'sheet';
+  onClick: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
+  if (variant === 'sheet') {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          'focus-visible:bg-accent active:bg-accent/70 [&>svg]:text-muted-foreground flex w-full cursor-pointer select-none items-center gap-2.5 rounded-xl px-2.5 py-3 text-left text-sm outline-none transition-colors [&>svg]:size-4 [&>svg]:shrink-0',
+          className
+        )}
+      >
+        {children}
+      </button>
+    );
+  }
+  return (
+    <DropdownMenuItem onClick={onClick} className={className}>
+      {children}
+    </DropdownMenuItem>
+  );
+}
+
+function SwitcherSeparator({ variant }: { variant: 'menu' | 'sheet' }) {
+  if (variant === 'sheet') return <div className="border-border/60 my-1.5 border-t" aria-hidden />;
+  return <DropdownMenuSeparator />;
+}
 
 function ContextSwitcherMenu({
   organizations,
@@ -53,6 +101,7 @@ function ContextSwitcherMenu({
   onSelectProperty,
   onSelectParking,
   onAddEntity,
+  variant = 'menu',
 }: {
   organizations: Organization[];
   byOrgSlug: Map<string, Property[]>;
@@ -65,6 +114,7 @@ function ContextSwitcherMenu({
   onSelectProperty: (org: Organization, property: Property) => void;
   onSelectParking: (org: Organization, parking: Parking) => void;
   onAddEntity: (org: Organization) => void;
+  variant?: 'menu' | 'sheet';
 }) {
   if (isLoading) {
     return (
@@ -75,7 +125,12 @@ function ContextSwitcherMenu({
   }
 
   return (
-    <div className="max-h-80 min-w-0 overflow-y-auto overflow-x-hidden">
+    <div
+      className={cn(
+        'min-w-0 overflow-y-auto overflow-x-hidden',
+        variant === 'sheet' ? 'max-h-[65vh]' : 'max-h-80'
+      )}
+    >
       {organizations.map((org, orgIndex) => {
         const properties = byOrgSlug.get(org.slug) ?? [];
         const parkings = byParkingOrgSlug.get(org.slug) ?? [];
@@ -86,20 +141,21 @@ function ContextSwitcherMenu({
 
         return (
           <div key={org.id}>
-            {orgIndex > 0 ? <DropdownMenuSeparator /> : null}
+            {orgIndex > 0 ? <SwitcherSeparator variant={variant} /> : null}
 
             <div className="flex min-w-0 items-center gap-1 pr-1">
               {canSelectOrg ? (
-                <DropdownMenuItem
+                <SwitcherRow
+                  variant={variant}
                   onClick={() => onSelectOrg(org)}
-                  className="flex min-w-0 flex-1 items-center gap-2 py-2"
+                  className="min-w-0 flex-1"
                 >
                   <Building2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
                   <span className="min-w-0 flex-1 truncate font-medium">{org.name}</span>
                   {!currentPropertyId && !currentParkingId && currentOrgId === org.id ? (
                     <Check className="text-primary size-4 shrink-0" aria-hidden />
                   ) : null}
-                </DropdownMenuItem>
+                </SwitcherRow>
               ) : (
                 <div className="flex min-w-0 flex-1 items-center gap-2 px-2 py-2 text-sm">
                   <Building2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
@@ -125,24 +181,26 @@ function ContextSwitcherMenu({
             </div>
 
             {properties.map((property) => (
-              <DropdownMenuItem
+              <SwitcherRow
                 key={property.id}
+                variant={variant}
                 onClick={() => onSelectProperty(org, property)}
-                className="flex items-center gap-2 py-2 pl-8"
+                className="pl-8"
               >
                 <Home className="text-muted-foreground size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1 truncate">{property.name}</span>
                 {currentPropertyId === property.id ? (
                   <Check className="text-primary size-4 shrink-0" aria-hidden />
                 ) : null}
-              </DropdownMenuItem>
+              </SwitcherRow>
             ))}
 
             {parkings.map((parking) => (
-              <DropdownMenuItem
+              <SwitcherRow
                 key={parking.id}
+                variant={variant}
                 onClick={() => onSelectParking(org, parking)}
-                className="flex items-center gap-2 py-2 pl-8"
+                className="pl-8"
               >
                 <Car className="text-muted-foreground size-4 shrink-0" aria-hidden />
                 <span className="min-w-0 flex-1 truncate" title={parking.name}>
@@ -151,7 +209,7 @@ function ContextSwitcherMenu({
                 {currentParkingId === parking.id ? (
                   <Check className="text-primary size-4 shrink-0" aria-hidden />
                 ) : null}
-              </DropdownMenuItem>
+              </SwitcherRow>
             ))}
           </div>
         );
@@ -160,7 +218,16 @@ function ContextSwitcherMenu({
   );
 }
 
-export function SidebarTenantScope({ collapsed = false }: { collapsed?: boolean }) {
+type TenantScopeVariant = 'default' | 'onPrimary';
+
+export function SidebarTenantScope({
+  collapsed = false,
+  variant = 'default',
+}: {
+  collapsed?: boolean;
+  variant?: TenantScopeVariant;
+}) {
+  const onPrimary = variant === 'onPrimary';
   const navigate = useNavigate();
   const { orgSlug: routeOrgSlug } = useParams<{ orgSlug?: string }>();
   const tenant = useOptionalOrgContext();
@@ -171,6 +238,7 @@ export function SidebarTenantScope({ collapsed = false }: { collapsed?: boolean 
   const { byOrgSlug, isLoading: propsLoading } = useAllOrgProperties(organizations);
   const { byOrgSlug: byParkingOrgSlug, isLoading: parkingsLoading } =
     useAllOrgParkings(organizations);
+  const isMobileLayout = useIsBelowLg();
 
   const [isOpen, setIsOpen] = useState(false);
   const [addEntityTarget, setAddEntityTarget] = useState<AddEntityTarget | null>(null);
@@ -271,7 +339,12 @@ export function SidebarTenantScope({ collapsed = false }: { collapsed?: boolean 
     <TeamLogoMark
       src={contextLogoUrl}
       alt={display.primary}
-      className="ring-border/50 h-9 w-9 rounded-lg shadow-none"
+      className={cn(
+        'shrink-0 shadow-none',
+        onPrimary
+          ? 'ring-primary-foreground/25 size-11 rounded-full ring-1'
+          : 'ring-border/50 size-9 rounded-lg ring-1'
+      )}
       imageClassName="object-cover"
     />
   );
@@ -280,10 +353,23 @@ export function SidebarTenantScope({ collapsed = false }: { collapsed?: boolean 
     <div className="flex min-w-0 items-center gap-3">
       {contextLogo}
       <div className="flex min-w-0 flex-col items-start text-left">
-        <span className="w-full truncate text-sm font-semibold" title={display.primaryTitle}>
+        <span
+          className={cn(
+            'w-full truncate text-sm font-semibold',
+            onPrimary ? 'text-primary-foreground' : undefined
+          )}
+          title={display.primaryTitle}
+        >
           {display.primary}
         </span>
-        <span className="text-muted-foreground w-full truncate text-xs">{display.secondary}</span>
+        <span
+          className={cn(
+            'w-full truncate text-xs',
+            onPrimary ? 'text-primary-foreground/70' : 'text-muted-foreground'
+          )}
+        >
+          {display.secondary}
+        </span>
       </div>
     </div>
   );
@@ -341,19 +427,51 @@ export function SidebarTenantScope({ collapsed = false }: { collapsed?: boolean 
     );
   }
 
+  const switcherTrigger = (
+    <Button
+      variant="ghost"
+      className={cn(
+        'h-auto w-full justify-between px-3 py-3',
+        onPrimary &&
+          'text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground'
+      )}
+      aria-label="Switch workspace"
+    >
+      {scopeReadout}
+      <ChevronDown
+        className={cn(
+          'size-4 shrink-0',
+          onPrimary ? 'text-primary-foreground/80' : 'text-muted-foreground'
+        )}
+        aria-hidden
+      />
+    </Button>
+  );
+
+  if (isMobileLayout) {
+    return (
+      <>
+        <BottomSheet open={isOpen} onOpenChange={setIsOpen}>
+          <BottomSheetTrigger asChild>{switcherTrigger}</BottomSheetTrigger>
+          <BottomSheetContent className="gap-0">
+            <BottomSheetHeader className="sr-only">
+              <BottomSheetTitle>Switch workspace</BottomSheetTitle>
+              <BottomSheetDescription>
+                Choose an organization, property, or parking
+              </BottomSheetDescription>
+            </BottomSheetHeader>
+            <ContextSwitcherMenu {...menuProps} variant="sheet" />
+          </BottomSheetContent>
+        </BottomSheet>
+        {addDialogs}
+      </>
+    );
+  }
+
   return (
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="h-auto w-full justify-between px-3 py-3"
-            aria-label="Switch workspace"
-          >
-            {scopeReadout}
-            <ChevronDown className="text-muted-foreground size-4 shrink-0" aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger asChild>{switcherTrigger}</DropdownMenuTrigger>
 
         <DropdownMenuContent
           className="w-[var(--radix-dropdown-menu-trigger-width)] overflow-hidden"

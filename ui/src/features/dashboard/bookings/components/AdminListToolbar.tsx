@@ -75,11 +75,11 @@ export function AdminListPerPageSelect({ limit, onChange }: PerPageProps) {
       <SelectTrigger
         aria-label="Items per page"
         className={cn(
-          'border-border bg-card h-10 min-h-[44px] w-auto min-w-[3.5rem] shrink-0 gap-1 rounded-lg py-2 pl-2.5 pr-1.5',
+          'border-border bg-card h-10 min-h-[44px] w-auto min-w-[3.5rem] shrink-0 gap-1 rounded-xl py-2 pl-2.5 pr-1.5',
           'text-foreground text-[13px] font-semibold shadow-none',
           'hover:border-primary/40 hover:bg-muted/60',
           'focus-visible:border-primary/40 focus-visible:bg-background focus-visible:ring-ring/30 focus-visible:ring-2',
-          'lg:h-9 lg:min-h-0'
+          'lg:h-9 lg:min-h-0 lg:rounded-lg'
         )}
       >
         <SelectValue className="min-w-[1.25rem] tabular-nums" />

@@ -36,8 +36,8 @@ export function BookingCard({ booking, className }: BookingCardProps) {
 
 ## Admin shell
 
-- `AdminLayout` / `PropertyAdminShell` — sidebar `lg+`, topbar on mobile.
-- Page padding: `p-3 sm:p-4 lg:p-6`.
+- `AdminLayout` — sidebar `lg+`, bottom tabs + More sheet on mobile (`ui/src/components/mobile/`).
+- Page padding: `p-3 sm:p-4 lg:p-6` (+ bottom tab inset on `<lg`).
 
 ## Tables
 

@@ -47,7 +47,7 @@ export function OrgPendingActionsCard({
   return (
     <section className="surface-card min-w-0 p-3 sm:p-4">
       <div className="mb-3 flex items-center gap-2">
-        <p className="text-section-title text-foreground font-bold">Pending Actions</p>
+        <p className="text-section-title">Pending Actions</p>
         {criticalCount > 0 ? (
           <span className="bg-destructive text-destructive-foreground inline-flex min-h-[20px] min-w-[20px] items-center justify-center rounded-full px-1.5 text-xs font-bold">
             {criticalCount}
@@ -73,13 +73,14 @@ export function OrgPendingActionsCard({
               >
                 <div
                   className={cn(
-                    'flex size-9 shrink-0 items-center justify-center rounded-lg',
+                    'hidden size-9 shrink-0 items-center justify-center rounded-lg lg:flex',
                     style.iconWrap
                   )}
                 >
                   <Icon className="size-4" aria-hidden />
                 </div>
-                <div className="flex min-w-0 flex-1 items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <Icon className="text-muted-foreground size-4 shrink-0 lg:hidden" aria-hidden />
                   <p className="text-foreground text-sm font-semibold">
                     {item.count} {item.label.toLowerCase()}
                   </p>

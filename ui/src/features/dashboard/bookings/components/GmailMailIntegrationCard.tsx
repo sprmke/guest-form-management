@@ -13,13 +13,13 @@ import { GoogleMark } from '@/components/branding/GoogleMark';
 import { GmailMailIntegrationCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
@@ -140,16 +140,16 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
   );
 
   const disconnectDialog = (
-    <Dialog open={disconnectOpen} onOpenChange={setDisconnectOpen}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Disconnect Google?</DialogTitle>
-          <DialogDescription>
+    <ResponsiveModal open={disconnectOpen} onOpenChange={setDisconnectOpen}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Disconnect Google?</ResponsiveModalTitle>
+          <ResponsiveModalDescription>
             Gmail, Calendar, and Spreadsheet sync will stop for this property until you connect
             again.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="flex-col gap-2 sm:flex-row">
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
+        <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
           <Button
             type="button"
             variant="outline"
@@ -168,9 +168,9 @@ export function GmailMailIntegrationCard({ variant = 'card' }: Props) {
           >
             {disconnect.isPending ? 'Disconnecting…' : 'Disconnect'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 
   if (nested) {

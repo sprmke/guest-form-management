@@ -1,0 +1,91 @@
+/**
+ * generate-marketing-template — AI design tokens for Marketing Content Studio.
+ * Calendar MVP: returns schema-constrained tokens; UI compiles into CalendarStyles.
+ */
+
+import { generateMarketingTemplateTokens } from '../_shared/marketingTemplateGenerationAi.ts';
+import { jsonError, jsonSuccess, readJsonBody } from '../_shared/httpResponse.ts';
+import { resolveAdminPropertyId } from '../_shared/propertyScope.ts';
+import { serveAdmin } from '../_shared/serveEdge.ts';
+import { createServiceClient } from '../_shared/orgAuth.ts';
+
+serveAdmin('generate-marketing-template', async (req, admin) => {
+  if (req.method !== 'POST') {
+    return jsonError(req, 'Method not allowed', 405);
+  }
+
+  const propertyId = await resolveAdminPropertyId(req, admin.id);
+  const body = await readJsonBody(req);
+
+  const contentType =
+    body.contentType === 'design' || body.contentType === 'video' || body.contentType === 'calendar'
+      ? body.contentType
+      : 'calendar';
+
+  const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
+  const includeContext =
+    body.includeContext && typeof body.includeContext === 'object'
+      ? (body.includeContext as Record<string, unknown>)
+      : {};
+
+  const includeAmenities = includeContext.amenities !== false;
+  const includeAvailability = includeContext.availability !== false;
+  const includePropertyPhoto = includeContext.propertyPhoto !== false;
+
+  const amenitiesText =
+    includeAmenities && typeof body.amenitiesText === 'string'
+      ? body.amenitiesText.trim()
+      : undefined;
+  const availabilityText =
+    includeAvailability && typeof body.availabilityText === 'string'
+      ? body.availabilityText.trim()
+      : undefined;
+
+  const sb = createServiceClient();
+  const { data: propertyRow, error } = await sb
+    .from('properties')
+    .select('name, residence_name, address, settings')
+    .eq('id', propertyId)
+    .maybeSingle();
+
+  if (error) return jsonError(req, error.message, 500);
+  if (!propertyRow?.name) return jsonError(req, 'Property not found', 404);
+
+  const settings = (propertyRow.settings ?? {}) as Record<string, unknown>;
+  const media = Array.isArray(settings.media) ? settings.media : [];
+  const hasPropertyPhoto =
+    includePropertyPhoto &&
+    media.some((item) => {
+      if (!item || typeof item !== 'object') return false;
+      const row = item as Record<string, unknown>;
+      const url = typeof row.url === 'string' ? row.url.trim() : '';
+      const type = typeof row.type === 'string' ? row.type : 'image';
+      return Boolean(url) && type !== 'video';
+    });
+
+  const settingsAmenities = Array.isArray(settings.amenities)
+    ? settings.amenities.filter((item): item is string => typeof item === 'string').slice(0, 8)
+    : [];
+  const resolvedAmenities =
+    amenitiesText ||
+    (includeAmenities && settingsAmenities.length > 0 ? settingsAmenities.join(', ') : undefined);
+
+  const propertyLabel = [propertyRow.name, propertyRow.residence_name, propertyRow.address]
+    .filter((part): part is string => typeof part === 'string' && part.trim().length > 0)
+    .join(' · ');
+
+  try {
+    const result = await generateMarketingTemplateTokens({
+      contentType,
+      prompt,
+      propertyName: propertyLabel || String(propertyRow.name),
+      amenitiesText: resolvedAmenities,
+      availabilityText,
+      hasPropertyPhoto,
+    });
+
+    return jsonSuccess(req, result);
+  } catch (err) {
+    return jsonError(req, (err as Error).message, 503);
+  }
+});

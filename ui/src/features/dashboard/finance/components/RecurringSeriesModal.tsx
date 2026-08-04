@@ -42,7 +42,12 @@ import {
 } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { IsoDateInput } from '@/components/ui/iso-date-input';
 import { cn } from '@/lib/utils';
 import { formatIsoDate } from '@/utils/format/bookingDisplay';
@@ -134,14 +139,15 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
 
   return (
     <>
-      <Dialog
+      <ResponsiveModal
         open={open}
         onOpenChange={(next) => {
           if (!next && !busy) onClose();
         }}
       >
-        <DialogContent
-          className="lg:max-w-[min(calc(100vw-3rem),56rem)])] flex max-h-[min(90dvh,44rem)] w-full max-w-[min(calc(100vw-1.5rem),36rem)] flex-col gap-0 overflow-hidden p-0 pb-0 pt-0 sm:max-w-[min(90vw,42rem)] sm:p-0 md:max-w-[min(90vw,48rem)] lg:max-h-[min(90dvh,52rem)]"
+        <ResponsiveModalContent
+          sheetLayout="split"
+          className="flex max-h-[min(92dvh,44rem)] w-full max-w-[min(calc(100vw-1.5rem),36rem)] flex-col gap-0 overflow-hidden p-0 pb-0 pt-0 sm:max-w-[min(90vw,42rem)] sm:p-0 md:max-w-[min(90vw,48rem)] lg:max-h-[min(90dvh,52rem)] lg:max-w-[min(calc(100vw-3rem),56rem)]"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
@@ -155,8 +161,8 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
           }}
         >
           <div className="border-border/60 shrink-0 space-y-3.5 border-b px-4 pb-3.5 pt-[max(env(safe-area-inset-top,0px),0.875rem)] sm:px-5 sm:pb-4">
-            <DialogHeader className="space-y-2.5 pr-0 text-left">
-              <DialogTitle className="flex flex-wrap items-center gap-2 pr-12 sm:pr-14">
+            <ResponsiveModalHeader className="space-y-2.5 pr-0 text-left">
+              <ResponsiveModalTitle className="flex flex-wrap items-center gap-2 pr-12 sm:pr-14">
                 <span>{summary?.label ?? anchor.label}</span>
                 {interval ? (
                   <span className="bg-primary/10 text-primary ring-primary/20 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ring-1">
@@ -164,7 +170,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
                     {recurrenceIntervalLabel(interval)}
                   </span>
                 ) : null}
-              </DialogTitle>
+              </ResponsiveModalTitle>
 
               {summary && seriesStart && seriesEnd ? (
                 <SeriesSummaryGrid
@@ -180,7 +186,7 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
               ) : isLoading ? (
                 <div className="bg-muted/50 h-24 animate-pulse rounded-xl" />
               ) : null}
-            </DialogHeader>
+            </ResponsiveModalHeader>
 
             {interval && seriesStart && seriesEnd ? (
               <div className="space-y-2">
@@ -320,16 +326,16 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
               </AdminDataTable>
             )}
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Dialog
+      <ResponsiveModal
         open={editing != null}
         onOpenChange={(next) => {
           if (!next && !update.isPending) setEditing(null);
         }}
       >
-        <DialogContent
+        <ResponsiveModalContent
           className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
@@ -340,9 +346,9 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
             if (update.isPending) e.preventDefault();
           }}
         >
-          <DialogHeader className="text-left">
-            <DialogTitle>Edit occurrence</DialogTitle>
-          </DialogHeader>
+          <ResponsiveModalHeader className="text-left">
+            <ResponsiveModalTitle>Edit occurrence</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           {editing ? (
             <OperatingLineItemForm
               key={`${editing.id}:${editing.telegram_reminder_interval}`}
@@ -353,8 +359,8 @@ export function RecurringSeriesModal({ anchor, open, onClose, query }: Props) {
               isPending={update.isPending}
             />
           ) : null}
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <RecurringDeleteDialog
         item={deleting}

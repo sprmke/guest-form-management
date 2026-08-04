@@ -4,7 +4,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
 import { Loader2, Plus } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import {
@@ -36,10 +35,12 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
-import { cn } from '@/lib/utils';
 
 export function OrgDashboardPage() {
   const navigate = useNavigate();
@@ -94,49 +95,61 @@ export function OrgDashboardPage() {
 
   const trendLabel = data?.trendWindow.label ?? '';
 
+  const desktopActions = (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive
+        onClear={handleClearDate}
+        fullWidth={isBelowMd}
+      />
+      {canAddAsset ? (
+        <Button
+          type="button"
+          onClick={() => setAddAssetOpen(true)}
+          className="min-h-[44px] gap-1.5"
+        >
+          <Plus className="size-4" aria-hidden />
+          Add asset
+        </Button>
+      ) : null}
+    </div>
+  );
+
+  const overlapControls = (
+    <FloatingToolbar>
+      <BookingDateRangeFilter {...dateNav} isActive onClear={handleClearDate} fullWidth />
+    </FloatingToolbar>
+  );
+
+  const heroAddAction = canAddAsset ? (
+    <MobileHeroActionButton aria-label="Add asset" onClick={() => setAddAssetOpen(true)}>
+      <Plus className="size-5" aria-hidden />
+    </MobileHeroActionButton>
+  ) : undefined;
+
   return (
     <RequireAdmin>
-      <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-        <section className="mb-3 w-full min-w-0">
-          <AdminPageHeader
-            id="org-dashboard-heading"
-            title="Dashboard"
-            subtitle="Performance overview across all properties in your organization."
-            actions={
-              <div
-                className={cn(
-                  'flex flex-wrap items-center gap-2',
-                  isBelowMd && 'w-full justify-end'
-                )}
-              >
-                <BookingDateRangeFilter
-                  {...dateNav}
-                  isActive
-                  onClear={handleClearDate}
-                  fullWidth={isBelowMd}
-                />
-                {canAddAsset ? (
-                  <Button
-                    type="button"
-                    onClick={() => setAddAssetOpen(true)}
-                    className="min-h-[44px] gap-1.5"
-                  >
-                    <Plus className="size-4" aria-hidden />
-                    Add asset
-                  </Button>
-                ) : null}
-              </div>
-            }
-            actionsClassName={isBelowMd ? 'w-full justify-end' : 'self-center'}
-          />
-        </section>
-
+      <AdminMobilePage
+        title="Dashboard"
+        subtitle="Performance across all properties."
+        titleId="org-dashboard-heading"
+        heroTrailing={heroAddAction}
+        overlap={overlapControls}
+        desktopActions={desktopActions}
+        desktopActionsClassName="w-full sm:w-auto"
+        dense
+        className="min-w-0 max-w-full"
+      >
         {isLoading && !data ? (
           <div className="flex justify-center py-16">
             <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
           </div>
         ) : error ? (
-          <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
+          <FloatingPanel
+            padding="lg"
+            className="flex flex-col items-center gap-3 py-16 text-center"
+          >
             <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
             <p className="text-caption max-w-sm">
               {error instanceof Error ? error.message : 'Please try again.'}
@@ -144,11 +157,11 @@ export function OrgDashboardPage() {
             <button
               type="button"
               onClick={() => refetch()}
-              className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
+              className="native-cta max-w-xs sm:w-auto sm:px-4"
             >
               Retry
             </button>
-          </div>
+          </FloatingPanel>
         ) : data && orgSlug ? (
           <>
             <OrgDashboardStatCards stats={data} periodLabel={trendLabel} />
@@ -172,27 +185,27 @@ export function OrgDashboardPage() {
         ) : !org ? (
           <p className="text-muted-foreground text-sm">Organization not found.</p>
         ) : null}
+      </AdminMobilePage>
 
-        {org && orgSlug ? (
-          <AddEntityDialog
-            open={addAssetOpen}
-            onOpenChange={setAddAssetOpen}
-            orgId={org.id}
-            orgSlug={orgSlug}
-            orgName={org.name}
-            canAddProperty={canAddProperty}
-            canAddParking={canAddParking}
-            onPropertyCreated={(property) => {
-              setLastTenantContext(orgSlug, property.slug);
-              navigate(propertySectionPath(orgSlug, property.slug, 'dashboard'));
-            }}
-            onParkingCreated={(parking) => {
-              setLastParkingContext(orgSlug, parking.slug);
-              navigate(parkingSectionPath(orgSlug, parking.slug, 'dashboard'));
-            }}
-          />
-        ) : null}
-      </div>
+      {org && orgSlug ? (
+        <AddEntityDialog
+          open={addAssetOpen}
+          onOpenChange={setAddAssetOpen}
+          orgId={org.id}
+          orgSlug={orgSlug}
+          orgName={org.name}
+          canAddProperty={canAddProperty}
+          canAddParking={canAddParking}
+          onPropertyCreated={(property) => {
+            setLastTenantContext(orgSlug, property.slug);
+            navigate(propertySectionPath(orgSlug, property.slug, 'dashboard'));
+          }}
+          onParkingCreated={(parking) => {
+            setLastParkingContext(orgSlug, parking.slug);
+            navigate(parkingSectionPath(orgSlug, parking.slug, 'dashboard'));
+          }}
+        />
+      ) : null}
     </RequireAdmin>
   );
 }

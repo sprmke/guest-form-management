@@ -18,7 +18,7 @@ import { propertyNotificationsPath } from '@/features/dashboard/org/lib/tenantPa
 
 import { GoogleMark } from '@/components/branding/GoogleMark';
 import { TelegramMark } from '@/components/branding/TelegramMark';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type TelegramChannel = {
@@ -210,11 +210,11 @@ function TelegramIntegrationBlock({
         </div>
       </div>
 
-      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-h-[min(90dvh,820px)] max-w-[min(calc(100vw-1.5rem),48rem)] gap-5 overflow-y-auto sm:max-w-[min(90vw,48rem)] sm:p-8">
-          <DialogHeader>
-            <DialogTitle>Telegram</DialogTitle>
-          </DialogHeader>
+      <ResponsiveModal open={manageOpen} onOpenChange={setManageOpen}>
+        <ResponsiveModalContent className="max-h-[min(90dvh,820px)] max-w-[min(calc(100vw-1.5rem),48rem)] gap-5 overflow-y-auto sm:max-w-[min(90vw,48rem)] sm:p-8">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Telegram</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {channels.map((channel) => (
               <TelegramChannelCard
@@ -225,8 +225,8 @@ function TelegramIntegrationBlock({
               />
             ))}
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

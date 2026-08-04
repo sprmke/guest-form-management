@@ -22,7 +22,7 @@ Route: `/org/:orgSlug/inbox`
 
 ## Overview
 
-Org operators view and reply to guest messages from Facebook Messenger, on-site **Web** chat, and (planned) Instagram DMs in one inbox. Page header: **Guest Inbox** with subtitle _View and reply to guest messages from connected channels._ TikTok and Airbnb appear as **Coming soon** until partner APIs are available.
+Org operators view and reply to guest messages from Facebook Messenger, on-site **Web** chat, and (planned) Instagram DMs in one inbox. Page title **Guest Inbox** with subtitle _View and reply to guest messages from connected channels._ On **phone/tablet**, manage actions (Channels / Quick replies / Automation) collapse into a **single hero ··· menu** (`MobileHeroActionMenu`); desktop uses one **Manage** dropdown. TikTok and Airbnb appear as **Coming soon** until partner APIs are available.
 
 **Route:** `/org/:orgSlug/inbox` (also property `/…/property/…/inbox` and parking `/…/parking/…/inbox` — see sibling guides)
 

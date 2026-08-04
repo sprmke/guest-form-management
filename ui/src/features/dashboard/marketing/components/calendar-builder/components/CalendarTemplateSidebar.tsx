@@ -1,5 +1,7 @@
 import { memo, useState } from 'react';
 
+import { Sparkles } from 'lucide-react';
+
 import { useCalendarThumbnails } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
 import type { SavedCalendarTemplate } from '@/features/dashboard/marketing/components/calendar-builder/hooks/use-calendar-templates';
 import { MARKETING_SIDEBAR_GRID } from '@/features/dashboard/marketing/components/shared/marketingSidebarLayout';
@@ -21,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 export type CalendarPresetCategory = {
   label: string;
@@ -45,6 +48,7 @@ type Props = {
   onSelectCustom: (id: string) => void;
   onCustomizeCustom: (id: string) => void;
   onRemoveCustom: (id: string) => void | Promise<void>;
+  onOpenAiGenerate?: () => void;
 };
 
 export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
@@ -59,6 +63,7 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
   onSelectCustom,
   onCustomizeCustom,
   onRemoveCustom,
+  onOpenAiGenerate,
 }: Props) {
   const { getThumbnailUrl, isThumbnailLoading, requestThumbnail } = useCalendarThumbnails();
   const [removeTarget, setRemoveTarget] = useState<SavedCalendarTemplate | null>(null);
@@ -112,6 +117,17 @@ export const CalendarTemplateSidebar = memo(function CalendarTemplateSidebar({
   return (
     <>
       <MarketingSidebarSection title="Custom" collapsible={false}>
+        {onOpenAiGenerate ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="mb-3 min-h-[44px] w-full gap-2"
+            onClick={onOpenAiGenerate}
+          >
+            <Sparkles className="size-4" aria-hidden />
+            Generate with AI
+          </Button>
+        ) : null}
         <ul className={MARKETING_SIDEBAR_GRID}>
           <li className="min-w-0">
             <MarketingTemplateCard

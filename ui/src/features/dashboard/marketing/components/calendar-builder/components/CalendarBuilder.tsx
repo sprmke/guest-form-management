@@ -19,6 +19,7 @@ import { usePublicPropertyDetail } from '@/features/guest/marketing/properties/h
 import { useAppSettings } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { CalendarPropertyMediaProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarPropertyMediaProvider';
 import { CalendarThumbnailsProvider } from '@/features/dashboard/marketing/components/calendar-builder/components/CalendarThumbnailsProvider';
+import { MarketingAiGeneratePanel } from '@/features/dashboard/marketing/components/shared/MarketingAiGeneratePanel';
 import { MarketingAutoSaveStatus } from '@/features/dashboard/marketing/components/shared/MarketingAutoSaveStatus';
 import { MarketingEditorHistoryControls } from '@/features/dashboard/marketing/components/shared/MarketingEditorHistoryControls';
 import { MarketingEditorSidebar } from '@/features/dashboard/marketing/components/shared/MarketingEditorSidebar';
@@ -26,8 +27,11 @@ import { MarketingPreviewHeader } from '@/features/dashboard/marketing/component
 import { useMarketingStudioHeaderActions } from '@/features/dashboard/marketing/components/shared/marketingStudioHeaderActions';
 import { SaveMarketingTemplateButton } from '@/features/dashboard/marketing/components/shared/SaveMarketingTemplateButton';
 import { useCalendarTemplateDedupe } from '@/features/dashboard/marketing/hooks/useCalendarTemplateDedupe';
+import { useGenerateMarketingTemplate } from '@/features/dashboard/marketing/hooks/useGenerateMarketingTemplate';
 import { useMarketingAutoSave } from '@/features/dashboard/marketing/hooks/useMarketingAutoSave';
 import { useMarketingAutoSaveSuspension } from '@/features/dashboard/marketing/hooks/useMarketingAutoSaveSuspension';
+import { useMarketingBookedDates } from '@/features/dashboard/marketing/hooks/useMarketingBookedDates';
+import { saveMarketingTemplate } from '@/features/dashboard/marketing/hooks/useMarketingTemplates';
 import {
   aspectPresetForCalendarFormat,
   calendarTemplateMatchesAspectPreset,
@@ -37,6 +41,7 @@ import {
   isCalendarPresetAutosave,
   CALENDAR_CUSTOM_PRESET_ID,
 } from '@/features/dashboard/marketing/lib/calendarAutosave';
+import { resolveAiGeneratedCalendarStylesForAllFormats } from '@/features/dashboard/marketing/lib/calendarAiTokens';
 import { applyBrandAccentToCalendarStyles } from '@/features/dashboard/marketing/lib/calendarBrandColors';
 import {
   CALENDAR_MIN_RELATIVE_ZOOM,
@@ -57,7 +62,8 @@ import {
   propertyMediaItems,
 } from '@/features/dashboard/marketing/lib/polotno/propertyMedia';
 import { useOrgBrandColor } from '@/features/dashboard/org/hooks/useOrgBrandColor';
-
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { resolveOrgBrandHex } from '@/lib/theme/brandColor';
@@ -171,6 +177,12 @@ export function CalendarBuilder({
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const [activeAutosaveTemplateId, setActiveAutosaveTemplateId] = useState<string | null>(null);
   const [activeCustomTemplateId, setActiveCustomTemplateId] = useState<string | null>(null);
+  const [aiGenerateOpen, setAiGenerateOpen] = useState(false);
+
+  const propertyId = usePropertyIdParam();
+  const queryClient = useQueryClient();
+  const generateTemplate = useGenerateMarketingTemplate();
+  const { data: bookedDates = [] } = useMarketingBookedDates();
 
   const { apiTemplates, savedTemplates, deleteTemplate } = useCalendarTemplates(propertySlug);
   useCalendarTemplateDedupe(true);
@@ -746,6 +758,101 @@ export function CalendarBuilder({
     [activeCustomTemplateId, deleteTemplate, loadPresetEditorState, selectedTemplateKey]
   );
 
+  const availabilityText = useMemo(() => {
+    if (bookedDates.length === 0) return 'Open nights this month';
+    return `${bookedDates.length} booked range${bookedDates.length === 1 ? '' : 's'} on file`;
+  }, [bookedDates.length]);
+
+  const amenitiesText = useMemo(() => {
+    const amenities = publicProperty?.amenities ?? [];
+    return amenities.slice(0, 8).join(', ') || undefined;
+  }, [publicProperty?.amenities]);
+
+  const handleAiGenerate = useCallback(
+    async (input: {
+      prompt: string;
+      includeContext: {
+        propertyPhoto: boolean;
+        amenities: boolean;
+        availability: boolean;
+      };
+    }) => {
+      const result = await generateTemplate.mutateAsync({
+        contentType: 'calendar',
+        prompt: input.prompt,
+        includeContext: input.includeContext,
+        amenitiesText: input.includeContext.amenities ? amenitiesText : undefined,
+        availabilityText: input.includeContext.availability ? availabilityText : undefined,
+      });
+
+      const photoUrl = input.includeContext.propertyPhoto ? propertyPhotoUrl : undefined;
+      const variants = resolveAiGeneratedCalendarStylesForAllFormats(result.tokens, {
+        brandColor,
+        propertyPhotoUrl: photoUrl,
+      });
+
+      beginAutoSaveSuspension();
+      try {
+        const savedRecords = await Promise.all(
+          variants.map((variant) =>
+            saveMarketingTemplate(propertyId, {
+              name: result.tokens.label,
+              contentType: 'calendar',
+              aspectPreset: variant.aspectPreset,
+              designJson: {
+                styles: JSON.parse(JSON.stringify(variant.styles)),
+                sourcePresetId: CALENDAR_CUSTOM_PRESET_ID,
+                aiGenerated: true,
+                aiTokens: result.tokens,
+              },
+            })
+          )
+        );
+
+        void queryClient.invalidateQueries({ queryKey: ['marketing-templates', propertyId] });
+
+        const currentAspect = aspectPresetForCalendarFormat(canvasFrame.format);
+        const preferred =
+          savedRecords.find((record) => record.aspectPreset === currentAspect) ?? savedRecords[0];
+        const preferredStyles =
+          variants.find((variant) => variant.aspectPreset === preferred?.aspectPreset)?.styles ??
+          variants[0]?.styles;
+
+        if (preferred && preferredStyles) {
+          setStyles(preferredStyles, { markDirty: false });
+          setActiveCustomTemplateId(preferred.id);
+          setActiveAutosaveTemplateId(preferred.id);
+          setSelectedTemplateKey(`custom:${preferred.id}`);
+          setShowAdvancedSettings(false);
+          setIsDirty(false);
+          saveToHistory();
+          markBaseline();
+        }
+
+        setAiGenerateOpen(false);
+        toast.success('Custom templates added for Square, Portrait, and Landscape');
+      } finally {
+        endAutoSaveSuspension();
+      }
+    },
+    [
+      amenitiesText,
+      availabilityText,
+      beginAutoSaveSuspension,
+      brandColor,
+      canvasFrame.format,
+      endAutoSaveSuspension,
+      generateTemplate,
+      markBaseline,
+      propertyId,
+      propertyPhotoUrl,
+      queryClient,
+      saveToHistory,
+      setIsDirty,
+      setStyles,
+    ]
+  );
+
   const headerActions = useMemo(
     () => (
       <>
@@ -866,6 +973,7 @@ export function CalendarBuilder({
                     onSelectCustom={handleSelectCustom}
                     onCustomizeCustom={handleCustomizeCustom}
                     onRemoveCustom={handleRemoveCustom}
+                    onOpenAiGenerate={() => setAiGenerateOpen(true)}
                   />
                 </div>
               )}
@@ -1149,6 +1257,31 @@ export function CalendarBuilder({
           )}
         </CalendarThumbnailsProvider>
       </CalendarPropertyMediaProvider>
+
+      <MarketingAiGeneratePanel
+        open={aiGenerateOpen}
+        onOpenChange={setAiGenerateOpen}
+        contentType="calendar"
+        generating={generateTemplate.isPending}
+        contextOptions={[
+          {
+            key: 'propertyPhoto',
+            label: 'Property photo',
+            available: Boolean(propertyPhotoUrl),
+          },
+          {
+            key: 'amenities',
+            label: 'Amenities',
+            available: Boolean(amenitiesText),
+          },
+          {
+            key: 'availability',
+            label: 'Availability',
+            available: true,
+          },
+        ]}
+        onGenerate={handleAiGenerate}
+      />
     </TooltipProvider>
   );
 }

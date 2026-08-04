@@ -20,6 +20,11 @@ import type {
   BookingKind,
 } from '@/features/dashboard/bookings/lib/types';
 
+import {
+  AdminListRefineSection,
+  AdminListRefineSheet,
+  AdminMobileSearchFilterRow,
+} from '@/components/mobile/AdminListRefineSheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroupDisplay } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
@@ -48,12 +53,14 @@ function FilterBtn({
   isOpen,
   onClick,
   icon: Icon,
+  className,
 }: {
   label: string;
   count?: number;
   isOpen: boolean;
   onClick: () => void;
   icon?: typeof SlidersHorizontal;
+  className?: string;
 }) {
   const active = count > 0;
   return (
@@ -63,15 +70,17 @@ function FilterBtn({
       aria-expanded={isOpen}
       aria-haspopup="listbox"
       className={cn(
-        'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
-        'select-none whitespace-nowrap transition-all duration-100 lg:min-h-0',
+        'inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-[13px] font-semibold',
+        'select-none whitespace-nowrap transition-all duration-100 lg:min-h-0 lg:rounded-lg',
+        'native-press',
         active || isOpen
           ? 'interactive-primary border-border'
-          : 'border-border bg-card text-foreground hover:bg-muted/60'
+          : 'border-border bg-card text-foreground hover:bg-muted/60',
+        className
       )}
     >
       {Icon ? <Icon className="size-3.5 shrink-0" aria-hidden /> : null}
-      {label}
+      <span className="truncate">{label}</span>
       {active ? (
         <span className="bg-muted text-foreground inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[11px] font-bold">
           {count}
@@ -127,6 +136,7 @@ export function BookingFilters({
 }: Props) {
   const [draft, setDraft] = useState(query.q);
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [refineOpen, setRefineOpen] = useState(false);
   const statusFilterRef = useRef<HTMLDivElement>(null);
   const moreFilterRef = useRef<HTMLDivElement>(null);
   const firstMount = useRef(true);
@@ -175,6 +185,7 @@ export function BookingFilters({
       ? 0
       : (query.hasPets !== null ? 1 : 0) + (query.needParking !== null ? 1 : 0));
 
+  const refineCount = query.status.length + moreFiltersCount;
   const isDirty =
     Boolean(query.q) ||
     query.status.length > 0 ||
@@ -182,176 +193,257 @@ export function BookingFilters({
     (!hideGuestStayFilters && query.hasPets !== null) ||
     (!hideGuestStayFilters && query.needParking !== null);
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="relative w-full min-w-0 lg:max-w-sm">
-          <Search
-            className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
-            aria-hidden
-          />
-          <input
-            type="search"
-            role="searchbox"
-            inputMode="search"
-            enterKeyHint="search"
-            placeholder={searchPlaceholder}
-            aria-label="Search bookings"
-            className={cn(
-              'border-border bg-muted/50 text-foreground h-10 min-h-[44px] w-full rounded-lg border py-2 pl-9 text-[13px]',
-              draft ? 'pr-11' : 'pr-3',
-              'placeholder:text-muted-foreground',
-              'focus:border-primary/40 focus:bg-card focus:ring-primary/20 focus:outline-none focus:ring-2'
-            )}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-          {draft ? (
-            <button
-              type="button"
-              onClick={() => setDraft('')}
-              className="text-muted-foreground hover:text-foreground absolute right-1 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-lg"
-              aria-label="Clear search"
-            >
-              <X className="size-4" aria-hidden />
-            </button>
-          ) : null}
-        </div>
+  const searchField = (
+    <BookingsSearchField
+      value={draft}
+      onChange={setDraft}
+      placeholder={searchPlaceholder}
+      className="lg:max-w-sm"
+    />
+  );
 
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
-          <div ref={statusFilterRef} className="relative min-w-0">
-            <FilterBtn
-              label="Status"
-              count={query.status.length}
-              isOpen={openKey === 'status'}
-              onClick={() => toggle('status')}
+  const statusList = (
+    <>
+      {bookingsStatusFilterRows().map((row) =>
+        row.type === 'group' ? (
+          <PendingDocumentsStatusGroup
+            key={row.parent}
+            parent={row.parent}
+            children={row.children}
+            activeStatuses={activeStatuses}
+            onToggle={toggleStatus}
+          />
+        ) : (
+          <StatusFilterOption
+            key={row.value}
+            value={row.value}
+            isChecked={activeStatuses.has(row.value)}
+            onToggle={() => toggleStatus(row.value)}
+          />
+        )
+      )}
+    </>
+  );
+
+  const moreFilterBody =
+    hideGuestStayFilters && !showBookingKindFilter ? null : (
+      <>
+        {showBookingKindFilter ? (
+          <KindOptions
+            value={query.bookingKind}
+            onChange={(v) => onChange({ bookingKind: v, page: 1 })}
+          />
+        ) : null}
+        {!hideGuestStayFilters ? (
+          <>
+            <TriOptions
+              label="Has pets"
+              value={query.hasPets}
+              options={[
+                { label: 'Any', value: null },
+                { label: 'With pets', value: true },
+                { label: 'No pets', value: false },
+              ]}
+              onChange={(v) => onChange({ hasPets: v, page: 1 })}
             />
-            {openKey === 'status' ? (
-              <DropdownPanel width="w-72" align="right">
-                <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
-                  <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                    Filter by status
-                  </span>
-                  {activeStatuses.size > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => onChange({ status: [], page: 1 })}
-                      className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
-                    >
-                      Clear
-                    </button>
-                  ) : null}
-                </div>
-                <div className="max-h-[min(60vh,320px)] overflow-y-auto py-1">
-                  {bookingsStatusFilterRows().map((row) =>
-                    row.type === 'group' ? (
-                      <PendingDocumentsStatusGroup
-                        key={row.parent}
-                        parent={row.parent}
-                        children={row.children}
-                        activeStatuses={activeStatuses}
-                        onToggle={toggleStatus}
-                      />
-                    ) : (
-                      <StatusFilterOption
-                        key={row.value}
-                        value={row.value}
-                        isChecked={activeStatuses.has(row.value)}
-                        onToggle={() => toggleStatus(row.value)}
-                      />
-                    )
-                  )}
-                </div>
-              </DropdownPanel>
-            ) : null}
-          </div>
+            <TriOptions
+              label="Needs parking"
+              value={query.needParking}
+              options={[
+                { label: 'Any', value: null },
+                { label: 'Needs parking', value: true },
+                { label: 'No parking needed', value: false },
+              ]}
+              onChange={(v) => onChange({ needParking: v, page: 1 })}
+            />
+          </>
+        ) : null}
+      </>
+    );
 
-          {hideGuestStayFilters && !showBookingKindFilter ? null : (
-            <div ref={moreFilterRef} className="relative min-w-0">
-              <FilterBtn
-                label="More filters"
-                count={moreFiltersCount}
-                isOpen={openKey === 'more'}
-                onClick={() => toggle('more')}
-                icon={SlidersHorizontal}
+  const viewToggle = (
+    <BookingViewToggle
+      value={view}
+      onChange={onViewChange}
+      hideTableView={hideTableView}
+      hideKanbanView={hideKanbanView}
+    />
+  );
+
+  return (
+    <>
+      {/* Mobile — search + refine sheet + view (progressive disclosure) */}
+      <div className="space-y-2.5 lg:hidden">
+        <AdminMobileSearchFilterRow
+          search={searchField}
+          filterCount={refineCount}
+          filtersOpen={refineOpen}
+          onFiltersOpenChange={setRefineOpen}
+          filterAriaLabel="Refine bookings"
+        />
+        {viewToggle}
+        <AdminListRefineSheet
+          open={refineOpen}
+          onOpenChange={setRefineOpen}
+          title="Refine"
+          activeCount={refineCount}
+          onClear={() => {
+            onReset();
+            setDraft('');
+          }}
+        >
+          <AdminListRefineSection title="Status">
+            <div className="border-border/60 overflow-hidden rounded-xl border">{statusList}</div>
+          </AdminListRefineSection>
+          {moreFilterBody ? (
+            <AdminListRefineSection title="More">{moreFilterBody}</AdminListRefineSection>
+          ) : null}
+          <AdminListRefineSection title="Sort">
+            <BookingsSortMenu sort={sort} onChange={onSortChange} fullWidth />
+          </AdminListRefineSection>
+          {showPerPage ? (
+            <AdminListRefineSection title="Per page">
+              <AdminListPerPageSelect
+                limit={query.limit}
+                onChange={(limit) => onChange({ limit, page: 1 })}
               />
-              {openKey === 'more' ? (
-                <DropdownPanel width="w-80" align="right">
-                  <div className="border-separator border-b px-3.5 py-2.5">
+            </AdminListRefineSection>
+          ) : null}
+        </AdminListRefineSheet>
+      </div>
+
+      {/* Desktop — full inline toolbar */}
+      <div className="hidden space-y-2.5 lg:block">
+        <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+          {searchField}
+
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 lg:w-auto lg:justify-end">
+            <div ref={statusFilterRef} className="relative min-w-0 sm:flex-none">
+              <FilterBtn
+                label="Status"
+                count={query.status.length}
+                isOpen={openKey === 'status'}
+                onClick={() => toggle('status')}
+              />
+              {openKey === 'status' ? (
+                <DropdownPanel width="w-72" align="left">
+                  <div className="border-separator flex items-center justify-between border-b px-3.5 py-2.5">
                     <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
-                      More filters
+                      Filter by status
                     </span>
-                  </div>
-                  <div className="max-h-[min(60vh,320px)] overflow-y-auto">
-                    {showBookingKindFilter ? (
-                      <KindOptions
-                        value={query.bookingKind}
-                        onChange={(v) => onChange({ bookingKind: v, page: 1 })}
-                      />
-                    ) : null}
-                    {!hideGuestStayFilters ? (
-                      <>
-                        <TriOptions
-                          label="Has pets"
-                          value={query.hasPets}
-                          options={[
-                            { label: 'Any', value: null },
-                            { label: 'With pets', value: true },
-                            { label: 'No pets', value: false },
-                          ]}
-                          onChange={(v) => onChange({ hasPets: v, page: 1 })}
-                        />
-                        <TriOptions
-                          label="Needs parking"
-                          value={query.needParking}
-                          options={[
-                            { label: 'Any', value: null },
-                            { label: 'Needs parking', value: true },
-                            { label: 'No parking needed', value: false },
-                          ]}
-                          onChange={(v) => onChange({ needParking: v, page: 1 })}
-                        />
-                      </>
+                    {activeStatuses.size > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => onChange({ status: [], page: 1 })}
+                        className="text-muted-foreground hover:text-foreground text-[12px] font-semibold transition-colors"
+                      >
+                        Clear
+                      </button>
                     ) : null}
                   </div>
+                  <div className="max-h-[min(60vh,320px)] overflow-y-auto py-1">{statusList}</div>
                 </DropdownPanel>
               ) : null}
             </div>
-          )}
 
-          {isDirty ? (
-            <button
-              type="button"
-              onClick={onReset}
-              className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center gap-1 rounded-lg px-2.5 text-xs font-semibold lg:min-h-0"
-            >
-              <Filter className="size-3.5" aria-hidden />
-              Clear filters
-            </button>
-          ) : null}
+            {hideGuestStayFilters && !showBookingKindFilter ? null : (
+              <div ref={moreFilterRef} className="relative min-w-0 sm:flex-none">
+                <FilterBtn
+                  label="Filters"
+                  count={moreFiltersCount}
+                  isOpen={openKey === 'more'}
+                  onClick={() => toggle('more')}
+                  icon={SlidersHorizontal}
+                />
+                {openKey === 'more' ? (
+                  <DropdownPanel width="w-80" align="left">
+                    <div className="border-separator border-b px-3.5 py-2.5">
+                      <span className="text-muted-foreground text-[11px] font-bold uppercase tracking-wider">
+                        More filters
+                      </span>
+                    </div>
+                    <div className="max-h-[min(60vh,320px)] overflow-y-auto">{moreFilterBody}</div>
+                  </DropdownPanel>
+                ) : null}
+              </div>
+            )}
+
+            {isDirty ? (
+              <button
+                type="button"
+                onClick={onReset}
+                className="text-muted-foreground hover:text-foreground inline-flex min-h-[44px] items-center justify-center gap-1 rounded-xl px-2.5 text-xs font-semibold lg:min-h-0"
+              >
+                <Filter className="size-3.5" aria-hidden />
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-2">
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <div className="min-w-0 flex-1 sm:flex-none">
+              <BookingsSortMenu sort={sort} onChange={onSortChange} fullWidth />
+            </div>
+            {showPerPage ? (
+              <AdminListPerPageSelect
+                limit={query.limit}
+                onChange={(limit) => onChange({ limit, page: 1 })}
+              />
+            ) : null}
+          </div>
+          {viewToggle}
         </div>
       </div>
+    </>
+  );
+}
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <BookingsSortMenu sort={sort} onChange={onSortChange} />
-          {showPerPage ? (
-            <AdminListPerPageSelect
-              limit={query.limit}
-              onChange={(limit) => onChange({ limit, page: 1 })}
-            />
-          ) : null}
-        </div>
-
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <BookingViewToggle
-            value={view}
-            onChange={onViewChange}
-            hideTableView={hideTableView}
-            hideKanbanView={hideKanbanView}
-          />
-        </div>
-      </div>
+function BookingsSearchField({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn('relative w-full min-w-0', className)}>
+      <Search
+        className="text-muted-foreground pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2"
+        aria-hidden
+      />
+      <input
+        type="search"
+        role="searchbox"
+        inputMode="search"
+        enterKeyHint="search"
+        placeholder={placeholder}
+        aria-label="Search bookings"
+        className={cn(
+          'border-border bg-card text-foreground shadow-soft h-12 min-h-[48px] w-full rounded-2xl border py-2.5 pl-10 text-[15px] sm:h-10 sm:min-h-[44px] sm:rounded-xl sm:pl-9 sm:text-[13px] sm:shadow-none',
+          'bg-muted/40 sm:bg-muted/50',
+          value ? 'pr-11' : 'pr-3.5',
+          'placeholder:text-muted-foreground',
+          'focus:border-primary/40 focus:bg-card focus:ring-primary/20 focus:outline-none focus:ring-2'
+        )}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="text-muted-foreground hover:text-foreground absolute right-1 top-1/2 flex min-h-[44px] min-w-[44px] -translate-y-1/2 items-center justify-center rounded-xl"
+          aria-label="Clear search"
+        >
+          <X className="size-4" aria-hidden />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -498,7 +590,7 @@ function PendingDocumentsStatusGroup({
         onToggle={() => onToggle(parent)}
       />
       <div
-        className="ml-5 mr-2 border-l-2 border-amber-200/70 dark:border-amber-500/35"
+        className="ml-5 mr-2 border-l border-amber-200/80 pl-1 dark:border-amber-500/40"
         role="group"
         aria-label="Pending Documents sub-stages"
       >

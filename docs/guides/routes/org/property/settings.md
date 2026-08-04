@@ -61,7 +61,7 @@ Property Settings is where you complete your listing and day-to-day setup — ba
 
 **Save Changes** saves **only dirty sections that pass validation** — you do not need every section complete first. Within a section, only **changed fields** are validated for that save (e.g. contact information can save even when other basic fields are still incomplete). Valid filled sections persist; invalid dirty sections are skipped and highlighted. If some sections save and others do not, you get a toast: _New changes has been saved._
 
-Incomplete sections still show a **red dot** on the in-page section nav and on the sidebar **Settings** link (for setup tracking).
+Incomplete sections still show a **red dot** on the in-page section nav (**desktop `lg+` sidebar only** — the mobile horizontal chip strip is hidden) and on the sidebar **Settings** link (for setup tracking). On phone/tablet, Settings uses the same **brand hero** shell as other admin pages (`AdminMobilePage`); Save appears as a hero icon when there are unsaved changes.
 
 | Rule                                                           | Required?                                                    |
 | -------------------------------------------------------------- | ------------------------------------------------------------ |

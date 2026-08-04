@@ -66,12 +66,12 @@ import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admi
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -853,8 +853,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
         showCloseButton={!blockDismiss}
         onPointerDownOutside={(event) => {
           if (blockDismiss) event.preventDefault();
@@ -870,13 +871,13 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           'sm:h-[min(90dvh,42rem)] sm:max-h-[min(90dvh,42rem)] sm:w-[min(92vw,40rem)] sm:max-w-[40rem] sm:p-0'
         )}
       >
-        <DialogHeader
+        <ResponsiveModalHeader
           className={cn(
             'border-border shrink-0 space-y-3 border-b px-5 pb-3.5 pt-5 text-left sm:px-6',
             blockDismiss && 'pr-5 sm:pr-6'
           )}
         >
-          <DialogTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
+          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
             <span
               className={cn(
                 'flex size-9 shrink-0 items-center justify-center rounded-full',
@@ -896,7 +897,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               : activeStep === 1
                 ? 'Get Recommended'
                 : 'Get Verified'}
-          </DialogTitle>
+          </ResponsiveModalTitle>
           {!blockDismiss ? (
             <VerificationTierProgress
               tiers={tiers}
@@ -906,9 +907,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               verifiedRejectionKind={detail.enhancedRejectionKind}
             />
           ) : null}
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] sm:px-6">
           <div className="pb-1">
             {hostChangesRequested || activeStep === 0 ? (
               <VerifiedTierStepPanel
@@ -1172,7 +1173,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           </div>
         </div>
 
-        <DialogFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+        <ResponsiveModalFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           {!blockDismiss ? (
             <Button
               type="button"
@@ -1217,9 +1218,9 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               )}
             </Button>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 

@@ -2,7 +2,12 @@ import * as React from 'react';
 
 import { TelegramPlaceholdersReference } from '@/features/dashboard/bookings/components/TelegramPlaceholdersReference';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -37,21 +42,25 @@ export function PropertyTemplatePlaceholdersDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className={cn('max-h-[min(92dvh,780px)] gap-0 overflow-hidden p-0 sm:p-0', widthClass)}
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className={cn(
+          'flex max-h-[min(92dvh,780px)] flex-col gap-0 overflow-hidden p-0 sm:p-0',
+          widthClass
+        )}
       >
-        <DialogHeader className="border-border/60 border-b px-4 py-3 sm:px-5 sm:py-4">
-          <DialogTitle className="text-base sm:text-lg">Placeholders</DialogTitle>
-        </DialogHeader>
-        <div className="max-h-[min(calc(92dvh-8rem),680px)] overflow-y-auto px-4 py-4 sm:px-5">
+        <ResponsiveModalHeader className="border-border/60 shrink-0 border-b px-4 py-3 sm:px-5 sm:py-4">
+          <ResponsiveModalTitle className="text-base sm:text-lg">Placeholders</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
           <TelegramPlaceholdersReference
             lines={[...lines]}
             sampleVars={sampleVars}
             onInsertToken={handleInsertToken}
           />
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

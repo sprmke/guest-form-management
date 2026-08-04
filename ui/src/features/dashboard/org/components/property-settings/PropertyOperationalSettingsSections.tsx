@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 
 import { AdminSection } from '@/features/dashboard/bookings/components/AdminSectionNavLayout';
 import { BuildingFormsSettingsSection } from '@/features/dashboard/bookings/components/BuildingFormsSettingsSection';
+import { storedAppSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { PropertyIntegrationsPanel } from '@/features/dashboard/bookings/components/PropertyIntegrationsPanel';
 import {
   operationalFormIsDirty,
@@ -120,7 +121,10 @@ export function PropertyOperationalSettingsSections({
             gafOwnerContactNumber: draft.gafOwnerContactNumber,
           }}
           towerUnitLabel={towerUnitLabel}
-          signatureImageUrl={data.gafUnitOwnerSignatureUrl || null}
+          signatureImageUrl={storedAppSettingsMediaUrl(
+            data.gafUnitOwnerSignatureUrl,
+            data.fieldSources?.gafUnitOwnerSignatureUrl
+          )}
           disabled={disabled}
           onChange={(key, value) => {
             const fieldIds: Partial<Record<keyof AppSettingsFormValues, string>> = {

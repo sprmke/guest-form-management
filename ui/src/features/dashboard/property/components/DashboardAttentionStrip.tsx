@@ -37,8 +37,11 @@ export function DashboardAttentionStrip({ items }: Props) {
   }
 
   return (
-    <section className="surface-card min-w-0 px-3 py-3 sm:px-4" aria-label="Needs attention">
-      <p className="section-eyebrow mb-2.5 px-0.5">Needs attention</p>
+    <section
+      className="lg:surface-card min-w-0 max-lg:px-0 max-lg:py-0 lg:px-4 lg:py-3"
+      aria-label="Needs attention"
+    >
+      <p className="section-eyebrow mb-2.5 hidden px-0.5 lg:block">Needs attention</p>
       <div className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden">
         {items.map((item) => {
           const style = SEVERITY_STYLES[item.severity];
@@ -67,7 +70,7 @@ export function DashboardAttentionStrip({ items }: Props) {
                 </span>
               ) : null}
               <ArrowRight
-                className="text-muted-foreground ml-auto size-3.5 shrink-0 opacity-70 motion-reduce:opacity-70 sm:ml-0 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                className="text-muted-foreground ml-auto hidden size-3.5 shrink-0 opacity-70 motion-reduce:opacity-70 lg:ml-0 lg:block lg:opacity-0 lg:transition-opacity lg:group-hover:opacity-100"
                 aria-hidden
               />
             </Link>

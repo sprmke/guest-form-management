@@ -23,7 +23,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
   AdminSectionNavLayout,
   type AdminSectionNavItem,
@@ -96,6 +95,8 @@ import { normalizePropertySocialLinksForSave } from '@/features/dashboard/org/li
 import { orgPropertiesPath, propertySectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { usePropertyTeam } from '@/features/dashboard/team/hooks/usePropertyTeam';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -616,9 +617,35 @@ export function PropertySettingsCard() {
   }
 
   return (
-    <div
-      className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4"
-      aria-labelledby="property-settings-heading"
+    <AdminMobilePage
+      title="Settings"
+      subtitle="Profile, operations, and integrations for this listing."
+      titleId="property-settings-heading"
+      className="flex min-h-0 flex-1 flex-col"
+      heroTrailing={
+        isDirty ? (
+          <MobileHeroActionButton
+            aria-label={busy ? 'Saving' : 'Save changes'}
+            disabled={busy || Boolean(towerConflict) || nameUnavailable}
+            onClick={() => void handleSave()}
+          >
+            <Save className="size-5" aria-hidden />
+          </MobileHeroActionButton>
+        ) : undefined
+      }
+      desktopActions={
+        isDirty ? (
+          <Button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={busy || Boolean(towerConflict) || nameUnavailable}
+            className="min-h-[44px] gap-1.5"
+          >
+            <Save className="size-4" aria-hidden />
+            {busy ? 'Saving...' : 'Save Changes'}
+          </Button>
+        ) : undefined
+      }
     >
       <PaymentSettingsSaveConfirmDialog
         open={paymentConfirmOpen}
@@ -642,27 +669,6 @@ export function PropertySettingsCard() {
         <AdminSectionNavLayout
           className="min-h-0 flex-1"
           sections={navSections}
-          header={
-            <AdminPageHeader
-              id="property-settings-heading"
-              variant="compact"
-              title="Settings"
-              subtitle="Profile, operations, and integrations for this listing."
-              actions={
-                isDirty ? (
-                  <Button
-                    type="button"
-                    onClick={() => void handleSave()}
-                    disabled={busy || Boolean(towerConflict) || nameUnavailable}
-                    className="min-h-[44px] gap-1.5 lg:hidden"
-                  >
-                    <Save className="size-4" aria-hidden />
-                    {busy ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                ) : null
-              }
-            />
-          }
           footer={
             isDirty ? (
               <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
@@ -770,6 +776,6 @@ export function PropertySettingsCard() {
           />
         </AdminSectionNavLayout>
       ) : null}
-    </div>
+    </AdminMobilePage>
   );
 }

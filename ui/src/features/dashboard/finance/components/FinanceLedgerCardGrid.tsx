@@ -39,7 +39,7 @@ export function FinanceLedgerCardGrid({
     <>
       <div
         className={cn(
-          'grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
+          'native-stagger grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4',
           'transition-opacity duration-300',
           isRefreshing && 'opacity-60'
         )}
@@ -61,7 +61,7 @@ export function FinanceLedgerCardGrid({
               key={entry.id}
               role="button"
               tabIndex={0}
-              className="surface-card hover:border-primary/30 flex min-h-[148px] cursor-pointer flex-col p-3.5 transition-colors sm:p-4"
+              className="surface-card-interactive flex min-h-[148px] cursor-pointer flex-col p-3.5 sm:p-4"
               onClick={handleOpen}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {

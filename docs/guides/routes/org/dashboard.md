@@ -2,7 +2,7 @@
 title: 'Organization Dashboard — operator guide'
 status: active
 tags: [guides, routes, org]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Organization Dashboard — operator guide
@@ -28,9 +28,9 @@ Route: `/org/:orgSlug/dashboard`
 
 ## Overview
 
-Org-level performance overview across **all properties** in the organization. Page header: **Dashboard** with subtitle _Performance overview across all properties in your organization._ The selected **`?from` / `?to`** range (Asia/Manila calendar days) drives KPIs, charts, recent bookings, and property performance rows.
+Org-level performance overview across **all properties** in the organization. Page title **Dashboard** with subtitle _Performance across all properties._ On **phone/tablet** (`max-lg`), the page uses the shared **brand hero** shell (`AdminMobilePage`): teal hero + title/subtitle, date range in an overlapping floating toolbar, and **Add asset** as a hero icon when permitted. Desktop (`lg+`) keeps the compact header with date filter + Add asset. The selected **`?from` / `?to`** range (Asia/Manila calendar days) drives KPIs, charts, recent bookings, and property performance rows.
 
-**Add asset** (visible when the signed-in user can create at least one property or parking in the org): header button opens the same unified modal as the workspace switcher **+** — property or parking, with development → tower → slot fields. Creating an asset navigates straight to its new dashboard.
+**Add asset** (visible when the signed-in user can create at least one property or parking in the org): opens the same unified modal as the workspace switcher **+** — property or parking, with development → tower → slot fields. Creating an asset navigates straight to its new dashboard.
 
 There is **no** New Booking button on this page.
 

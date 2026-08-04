@@ -20,12 +20,12 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -72,11 +72,11 @@ export function InviteMemberDialog({
   const canSubmit = canSubmitTeamInvite({ email, contactPhone }, submitPending);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Invite Team Member</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Invite Team Member</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
             <Label htmlFor="invite-email">Email</Label>
@@ -141,7 +141,7 @@ export function InviteMemberDialog({
             </Select>
           </div>
         </div>
-        <DialogFooter className="gap-1">
+        <ResponsiveModalFooter className="gap-1">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -149,9 +149,9 @@ export function InviteMemberDialog({
             <Mail className="mr-2 size-4" aria-hidden />
             Send Invitation
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 

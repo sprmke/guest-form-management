@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, Plus } from 'lucide-react';
 
 import { AdminMetricCardSkeleton } from '@/features/dashboard/bookings/components/AdminMetricCard';
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { RequireAdmin } from '@/features/dashboard/bookings/components/RequireAdmin';
 import { AddParkingDialog } from '@/features/dashboard/org/components/AddParkingDialog';
 import {
@@ -33,6 +32,9 @@ import {
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 
 export function OrgParkingsPage() {
@@ -59,80 +61,85 @@ export function OrgParkingsPage() {
   const hasActiveFilters = orgParkingsHasActiveFilters(filters);
   const isLoading = orgsLoading || parkingsLoading;
 
+  const heroAddAction = canCreateParkings ? (
+    <MobileHeroActionButton aria-label="Add parking" onClick={() => setAddOpen(true)}>
+      <Plus className="size-5" aria-hidden />
+    </MobileHeroActionButton>
+  ) : undefined;
+
+  const desktopAddAction = canCreateParkings ? (
+    <Button type="button" onClick={() => setAddOpen(true)} className="min-h-[44px] gap-1.5">
+      <Plus className="size-4" aria-hidden />
+      Add parking
+    </Button>
+  ) : undefined;
+
   return (
     <RequireAdmin>
-      {isLoading ? (
-        <div className="space-y-3 sm:space-y-4">
-          <div className="bg-muted/60 h-14 animate-pulse rounded-xl" />
-          <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <AdminMetricCardSkeleton key={index} />
-            ))}
+      <AdminMobilePage
+        title="Parkings"
+        subtitle="All parking slots in your organization."
+        titleId="org-parkings-heading"
+        heroTrailing={heroAddAction}
+        desktopActions={desktopAddAction}
+      >
+        {isLoading ? (
+          <div className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <AdminMetricCardSkeleton key={index} />
+              ))}
+            </div>
+            <div className="flex justify-center py-12">
+              <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
+            </div>
           </div>
-          <div className="flex justify-center py-12">
-            <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
-          </div>
-        </div>
-      ) : !org ? (
-        <p className="text-muted-foreground text-sm">Organization not found.</p>
-      ) : (
-        <div className="space-y-3 sm:space-y-4">
-          <AdminPageHeader
-            title="Parkings"
-            subtitle="Manage all parking slots in your organization."
-            actions={
-              canCreateParkings ? (
-                <Button
-                  type="button"
-                  onClick={() => setAddOpen(true)}
-                  className="min-h-[44px] gap-1.5"
-                >
-                  <Plus className="size-4" aria-hidden />
-                  Add parking
-                </Button>
-              ) : undefined
-            }
-          />
+        ) : !org ? (
+          <p className="text-muted-foreground text-sm">Organization not found.</p>
+        ) : (
+          <>
+            <OrgParkingsSummaryCards parkings={parkings} />
 
-          <OrgParkingsSummaryCards parkings={parkings} />
+            <FloatingToolbar>
+              <OrgParkingsToolbar
+                filters={filters}
+                viewMode={viewMode}
+                onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
+                onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
+                onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
+                onViewModeChange={setViewMode}
+              />
+            </FloatingToolbar>
 
-          <OrgParkingsToolbar
-            filters={filters}
-            viewMode={viewMode}
-            onSearchChange={(search) => setFilters((current) => ({ ...current, search }))}
-            onStatusChange={(status) => setFilters((current) => ({ ...current, status }))}
-            onTypeChange={(type) => setFilters((current) => ({ ...current, type }))}
-            onViewModeChange={setViewMode}
-          />
-
-          {filteredParkings.length > 0 ? (
-            viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
-                {filteredParkings.map((parking) => (
-                  <OrgParkingCard key={parking.id} parking={parking} orgSlug={org.slug} />
-                ))}
-              </div>
+            {filteredParkings.length > 0 ? (
+              viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
+                  {filteredParkings.map((parking) => (
+                    <OrgParkingCard key={parking.id} parking={parking} orgSlug={org.slug} />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredParkings.map((parking) => (
+                    <OrgParkingListRow key={parking.id} parking={parking} orgSlug={org.slug} />
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="space-y-4">
-                {filteredParkings.map((parking) => (
-                  <OrgParkingListRow key={parking.id} parking={parking} orgSlug={org.slug} />
-                ))}
-              </div>
-            )
-          ) : (
-            <OrgParkingsEmptyState
-              filtered={hasActiveFilters}
-              canAdd={canCreateParkings}
-              onAdd={() => setAddOpen(true)}
-            />
-          )}
+              <OrgParkingsEmptyState
+                filtered={hasActiveFilters}
+                canAdd={canCreateParkings}
+                onAdd={() => setAddOpen(true)}
+              />
+            )}
 
-          <OrgParkingsResultsMeta
-            visibleCount={filteredParkings.length}
-            totalCount={parkings.length}
-          />
-        </div>
-      )}
+            <OrgParkingsResultsMeta
+              visibleCount={filteredParkings.length}
+              totalCount={parkings.length}
+            />
+          </>
+        )}
+      </AdminMobilePage>
 
       {org && orgSlug ? (
         <AddParkingDialog

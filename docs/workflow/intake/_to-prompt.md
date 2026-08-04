@@ -48,9 +48,7 @@ Or maybe it's better if we have individual toggle per field? Or support both? Pr
 
 ===
 
-Refine Notifications module
-
-✅ **Shipped** — see [`docs/workflow/done/notifications-shared-bot-token.md`](../done/notifications-shared-bot-token.md).
+✅ Refine Notifications module
 
 - Shared bot token card (one token for all modules; pre-fills module fields; editable per module)
 - Help dialogs (BotFather + chat ID)
@@ -72,7 +70,7 @@ Lastly, let's provide card description for each section, for what each module is
 
 ===
 
-Add main header in dashboard
+❌ Add main header in dashboard
 
 Implement header in our dashboard and move the user, notification, light dark mode toggle, etc
 Then, the toggle between explore and host mode should be on sidebar
@@ -99,7 +97,7 @@ Display animated popup party when hosts open calendar and we have 20+ bookings t
 
 ===
 
-Make sure all media uploader default image is empty (ex. org logo). Please analyze all our dashboard image uploader and make sure we don't have static or default images that's tied to Kame Home (2604)
+✅ Make sure all media uploader default image is empty (ex. org logo). Please analyze all our dashboard image uploader and make sure we don't have static or default images that's tied to Kame Home (2604)
 
 ===
 
@@ -112,7 +110,7 @@ Maybe add org photos/banner from org settings?
 
 ===
 
-Do not allow the following names for org and property name.
+✅ Do not allow the following names for org and property name.
 
 - Azure North
 - Azure North Residence / s (this should be regex)
@@ -127,7 +125,7 @@ Make sure we apply this validation on onboarding, settings and all other locatio
 
 ===
 
-Can you please give me a step by step guide to have a branch deployment for our app in UI and backend since we already have production where users currently use our app.
+✅ Can you please give me a step by step guide to have a branch deployment for our app in UI and backend since we already have production where users currently use our app.
 
 Meaning, I want to deploy our app in vercel with ou current branch with our new changes.
 
@@ -139,7 +137,7 @@ Also, another important setup I'd like to have is to point or use supabase deplo
 
 ===
 
-Redesign property public pages layout/container
+✅ Redesign property public pages layout/container
 
 I'd like to redesign our property public layout pages to display a header where it contains minimal information like logo, dark mode toggle, and user icon. Reuse existing public header that we have make it minimal to our property public pages (form, calendar, sd refund, etc)
 
@@ -150,3 +148,11 @@ Also, another thing that we need to improve is that we should display or redesig
 ===
 
 Refine all property public pages
+
+===
+
+Update for hosts landing page animation section section with updated features and more refined text/voice
+
+===
+
+Improve avatar video animation

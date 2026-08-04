@@ -432,7 +432,7 @@ export function OrgPropertiesEmptyState({
 }) {
   return (
     <div className="surface-card flex flex-col items-center justify-center gap-3 px-4 py-14 text-center sm:py-16">
-      <div className="icon-well-sm">
+      <div className="icon-well-sm inline-flex items-center justify-center">
         <Building2 className="text-muted-foreground size-5" aria-hidden />
       </div>
       <p className="text-foreground text-sm font-semibold">

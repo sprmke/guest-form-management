@@ -87,6 +87,7 @@ export function ThemeToggle({ className, variant = 'icon' }: Props) {
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Light mode' : 'Dark mode'}
     >
+      {/* Show the target mode’s icon (tap to switch). */}
       {isDark ? <Sun className="size-4" aria-hidden /> : <Moon className="size-4" aria-hidden />}
     </button>
   );

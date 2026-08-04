@@ -3,7 +3,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { Mail, Shield, UserPlus, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { CustomRoleFormDialog } from '@/features/dashboard/team/components/CustomRoleFormDialog';
 import { EditMemberContactDialog } from '@/features/dashboard/team/components/EditMemberContactDialog';
 import {
@@ -38,6 +37,8 @@ import type {
 } from '@/features/dashboard/team/types/propertyTeam';
 import type { EditMemberContactSaveInput } from '@/features/dashboard/team/types/teamContact';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,7 +49,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 function ParkingTeamPageSkeleton() {
   return (
     <div className="space-y-3 sm:space-y-4">
-      <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-[4.5rem] w-full rounded-xl sm:h-24" />
         ))}
@@ -299,29 +300,37 @@ export function ParkingTeamPage() {
 
   const customRoleCount = useMemo(() => customRoles.length, [customRoles]);
 
+  const inviteAction = canInvite ? (
+    <Button
+      variant="outline"
+      className="min-h-[44px] w-full sm:w-auto"
+      onClick={openInviteDialog}
+      disabled={isLoading || Boolean(error)}
+    >
+      <UserPlus className="mr-2 size-4" aria-hidden />
+      Invite Member
+    </Button>
+  ) : undefined;
+
+  const heroInviteAction = canInvite ? (
+    <MobileHeroActionButton
+      aria-label="Invite member"
+      onClick={openInviteDialog}
+      disabled={isLoading || Boolean(error)}
+    >
+      <UserPlus className="size-5" aria-hidden />
+    </MobileHeroActionButton>
+  ) : undefined;
+
   return (
     <TooltipProvider>
-      <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          title="Team"
-          subtitle={teamScopeConfig.subtitle}
-          variant="compact"
-          actions={
-            canInvite ? (
-              <Button
-                variant="outline"
-                className="min-h-[44px] w-full sm:w-auto"
-                onClick={openInviteDialog}
-                disabled={isLoading || Boolean(error)}
-              >
-                <UserPlus className="mr-2 size-4" aria-hidden />
-                Invite Member
-              </Button>
-            ) : undefined
-          }
-          actionsClassName="w-full sm:w-auto"
-        />
-
+      <AdminMobilePage
+        title="Team"
+        subtitle={teamScopeConfig.subtitle}
+        heroTrailing={heroInviteAction}
+        desktopActions={inviteAction}
+        desktopActionsClassName="w-full sm:w-auto"
+      >
         {isLoading ? <ParkingTeamPageSkeleton /> : null}
 
         {error ? (
@@ -512,7 +521,7 @@ export function ParkingTeamPage() {
           onSubmit={handleSaveCustomRole}
           submitPending={createCustomRole.isPending || updateCustomRole.isPending}
         />
-      </div>
+      </AdminMobilePage>
     </TooltipProvider>
   );
 }

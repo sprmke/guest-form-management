@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 
-
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -39,7 +38,7 @@ export function BookingDetailCard({
         )}
       >
         {Icon ? (
-          <span className="icon-well-sm size-8 shrink-0 sm:size-9">
+          <span className="icon-well-sm inline-flex !size-8 shrink-0 items-center justify-center sm:!size-9">
             <Icon className="text-primary size-4" />
           </span>
         ) : null}

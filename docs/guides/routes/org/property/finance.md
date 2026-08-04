@@ -2,7 +2,7 @@
 title: 'Finance — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Finance — operator guide
@@ -22,12 +22,15 @@ Route: `/org/:orgSlug/property/:propertySlug/finance` (also used, minus stays, a
 | Telegram reminders | ✅       | —          | Documented | Per-transaction due-date reminders       |
 | Export report      | ✅       | —          | Documented | Client-side PDF; per-section or combined |
 | Settings tab       | —        | —          | Documented | Redirects to Notifications → Finance     |
+| Mobile shell       | —        | —          | Documented | Brand hero + overlap controls (`max-lg`) |
 
 ---
 
 ## Overview
 
 Single-page finance view — no tabs. A **date range** picker in the page header (alongside **Export report** and **Add Transaction**) controls the reporting period; there's no separate period-basis dropdown, stays are always attributed by check-in date.
+
+**Mobile (`max-lg`):** teal brand hero (tenant switcher + title); **one** hero ··· menu with **Add transaction** and PDF export options (Full report / Overview / Stays / Transactions); overlapping floating card with date range only; summary metrics, charts, and ledger toolbar stack on the soft canvas. Layout frosted header is hidden on this route. **Desktop (`lg+`)** keeps the compact header with date filter, **Export report**, and **Add Transaction**.
 
 **Summary cards:** Total Income, Total Expenses, Net Profit, Pending Payments, each with a vs-previous-period delta when a bounded date range is selected.
 
@@ -85,8 +88,8 @@ Charts (`FinanceTransactionsChart`) plot the same underlying data as cash-flow (
 
 ### Toolbar (`FinanceLedgerToolbar`)
 
-- Row 1: search (left) + Type filter (income/expense/all) / Status filter / Category filter + Clear filters (right).
-- Row 2: sort (date/amount, asc/desc) + per-page (hidden in calendar view) on the left; view toggle (table/card/calendar) on the right.
+- **Mobile (`max-lg`):** search + refine icon (sheet: type / status / category / sort / per-page) + view toggle.
+- **Desktop (`lg+`):** Row 1: search + Type / Status / Category + Clear; Row 2: sort + per-page | view toggle.
 
 ### Behavior / edge cases
 
@@ -170,6 +173,7 @@ A separate **`finance-export`** edge function exists for server-generated CSV do
 | Transaction form    | `ui/src/features/dashboard/finance/components/OperatingLineItemForm.tsx`                                                                                                                                                                                      |
 | Recurrence modals   | `ui/src/features/dashboard/finance/components/RecurringSeriesModal.tsx`, `ui/src/features/dashboard/finance/components/RecurringDeleteDialog.tsx`                                                                                                             |
 | Export menu + PDF   | `ui/src/features/dashboard/finance/components/FinanceExportMenu.tsx`, `ui/src/features/dashboard/finance/lib/exportPdf.ts`                                                                                                                                    |
+| Mobile page shell   | `ui/src/components/mobile/MobileBrandHero.tsx` (`AdminMobilePage`)                                                                                                                                                                                            |
 | Hooks               | `ui/src/features/dashboard/finance/hooks/useFinanceSummary.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceBookings.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceLineItems.ts`, `ui/src/features/dashboard/finance/hooks/useFinanceApi.ts` |
 | Edge                | `supabase/functions/finance-summary/`, `supabase/functions/finance-bookings/`, `supabase/functions/finance-line-items/`, `supabase/functions/finance-export/`                                                                                                 |
 | Shared services     | `supabase/functions/_shared/{financeService,financeAssetScope,financeHttp,telegramFinance}.ts`                                                                                                                                                                |

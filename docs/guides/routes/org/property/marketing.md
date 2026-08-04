@@ -31,6 +31,8 @@ Marketing Content Studio is where you create promotional content for this proper
   A: Yes — connect your Facebook Page and Instagram through Guest Inbox first. Without that, you can still design and download assets but not publish from here.
 - Q: Will my edits save automatically?
   A: Design and video editors autosave as you work. Blank calendars need you to save manually the first time; designer presets remember your changes per template.
+- Q: Can AI create a calendar template for me?
+  A: Yes — on the Calendar tab, use **Generate with AI**, describe the look you want, then Generate. It adds matching custom templates for Square, Portrait, and Landscape so you can switch formats without regenerating.
 - Q: Where do I set up marketing Telegram alerts?
   A: Those live on the **Notifications** page under the Marketing module, not on this Content Studio page.
 
@@ -117,6 +119,8 @@ Or use **`platform`** + **`postType`** (`post` | `story`) instead of **`publishT
 
 **AI captions:** `generate-marketing-caption` POST — `{ platform, postType, contentHint?, nightlyRate?, availabilityText? }`.
 
+**AI calendar templates:** Calendar sidebar **Generate with AI** opens a sheet (prompt + vibe chips + removable context chips). `generate-marketing-template` POST — `{ contentType: 'calendar', prompt, includeContext?, amenitiesText?, availabilityText? }` → schema-constrained tokens. The client compiles tokens into `CalendarStyles` once, then saves **three** custom `marketing_templates` rows (Square / Portrait / Landscape) sharing the same design — one AI call, no per-orientation token cost. Results appear under **Custom**, load as editable drafts, and autosave like other custom calendars. Design/Video AI generate is not wired yet.
+
 - Resolves **`social_channel_connections`** for the property org (Meta inbox connect flow).
 - **Facebook:** `POST /{page-id}/photos` with `url` + `message`; future **`scheduledAt`** uses `scheduled_publish_time`.
 - **Instagram:** media container + `media_publish` (`STORIES` for stories, `IMAGE` for feed).
@@ -172,6 +176,7 @@ See [notifications.md](./notifications.md) for the unified page layout and save 
 | Templates edge                   | `supabase/functions/marketing-templates/`                                                                                                                                                                                                                                                                                                 |
 | Publish edge                     | `supabase/functions/publish-to-meta/`                                                                                                                                                                                                                                                                                                     |
 | AI captions                      | `supabase/functions/generate-marketing-caption/`                                                                                                                                                                                                                                                                                          |
+| AI template tokens               | `supabase/functions/generate-marketing-template/` + `_shared/marketingTemplateGenerationAi.ts`; calendar compiler `lib/calendarAiTokens.ts`; prompt UI `components/shared/MarketingAiGeneratePanel.tsx`                                                                                                                                   |
 | Meta Graph helpers               | `supabase/functions/_shared/metaPublishing.ts`                                                                                                                                                                                                                                                                                            |
 | Media upload                     | `supabase/functions/_shared/marketingMediaUpload.ts`                                                                                                                                                                                                                                                                                      |
 | OAuth scopes                     | `supabase/functions/_shared/metaInboxConfig.ts` (`META_PUBLISHING_SCOPES`)                                                                                                                                                                                                                                                                |
@@ -179,9 +184,11 @@ See [notifications.md](./notifications.md) for the unified page layout and save 
 
 ## Progress overview
 
-| Section                    | Status     |
-| -------------------------- | ---------- |
-| DB tables + grants         | Documented |
-| `marketing-templates` CRUD | Documented |
-| `publish-to-meta`          | Documented |
-| Content Studio UI          | Documented |
+| Section                                  | Status     |
+| ---------------------------------------- | ---------- |
+| DB tables + grants                       | Documented |
+| `marketing-templates` CRUD               | Documented |
+| `generate-marketing-caption`             | Documented |
+| `generate-marketing-template` (calendar) | Documented |
+| `publish-to-meta`                        | Documented |
+| Content Studio UI                        | Documented |

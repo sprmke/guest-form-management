@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, type ComponentType } from 'react';
 
-import { ChevronDown, FileText, Loader2 } from 'lucide-react';
+import { FileText, Loader2, MoreHorizontal, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import {
@@ -17,6 +17,14 @@ import type {
 } from '@/features/dashboard/finance/lib/types';
 import { useAdminAssetScope } from '@/features/dashboard/org/lib/adminAssetScope';
 
+import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 import { cn } from '@/lib/utils';
 
@@ -28,35 +36,46 @@ const SECTION_OPTIONS: { type: FinanceExportType; label: string }[] = [
   { type: 'operating', label: 'Transactions' },
 ];
 
-const menuItemClass =
-  'flex w-full min-h-[44px] items-center px-3.5 py-2 text-left text-[13px] font-medium text-foreground/80 transition-colors hover:bg-muted/50 disabled:opacity-60';
-
-/** Matches BookingFilters FilterBtn density (rounded-lg, 13px, 44px touch). */
 const outlineBtnClass =
-  'inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border bg-card px-2.5 py-2 text-[13px] font-semibold text-foreground transition-all duration-100 hover:border-primary/40 hover:bg-muted/60 disabled:opacity-60';
+  'inline-flex min-h-[44px] items-center justify-center rounded-lg border border-border bg-card px-2.5 py-2 text-[13px] font-semibold text-foreground transition-all duration-100 hover:border-primary/40 hover:bg-muted/60 disabled:opacity-60 max-sm:rounded-2xl max-sm:px-3 max-sm:shadow-native-float';
+
+export type FinanceExportLeadingAction = {
+  key: string;
+  label: string;
+  Icon: ComponentType<{ className?: string }>;
+  onSelect: () => void;
+};
 
 type Props = {
   query: FinanceQuery;
   summary?: FinanceSummary;
   operating?: FinanceLineItem[];
+  /**
+   * `hero` — single top-right brand-hero control (Add + PDF options in one menu).
+   * `default` — outline “Export report” control for desktop headers / toolbars.
+   */
+  variant?: 'default' | 'hero';
+  /** Shown above export options when `variant="hero"` (e.g. Add transaction). */
+  leadingActions?: FinanceExportLeadingAction[];
 };
 
 export function FinanceExportMenu({
   query,
   summary: cachedSummary,
   operating: cachedOperating,
+  variant = 'default',
+  leadingActions = [],
 }: Props) {
   const scope = useAdminAssetScope();
   const isParkingScope = Boolean(scope.parkingId);
   const sectionOptions = isParkingScope
     ? SECTION_OPTIONS.filter((opt) => opt.type !== 'stays')
     : SECTION_OPTIONS;
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState<FinanceExportType | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   async function handlePdfExport(type: FinanceExportType) {
     setLoading(type);
-    setMenuOpen(false);
     try {
       const needsStays = !isParkingScope && (type === 'stays' || type === 'combined');
       const needsOperating = type === 'operating' || type === 'combined';
@@ -79,79 +98,96 @@ export function FinanceExportMenu({
   }
 
   const busy = loading !== null;
+  const exportItems = [FULL_REPORT, ...sectionOptions];
+
+  if (variant === 'hero') {
+    const hasLeading = leadingActions.length > 0;
+    const TriggerIcon = busy ? Loader2 : hasLeading ? MoreHorizontal : FileText;
+    const sheetTitle = hasLeading ? 'Finance actions' : 'Export report';
+
+    return (
+      <>
+        <MobileHeroActionButton
+          aria-label={sheetTitle}
+          aria-expanded={sheetOpen}
+          aria-haspopup="dialog"
+          disabled={busy}
+          onClick={() => setSheetOpen(true)}
+        >
+          <TriggerIcon className={cn('size-5', busy && 'animate-spin')} aria-hidden />
+        </MobileHeroActionButton>
+        <MobileChoiceSheet open={sheetOpen} onOpenChange={setSheetOpen} title={sheetTitle}>
+          <div role="listbox" aria-label={sheetTitle}>
+            {leadingActions.map((action) => {
+              const Icon = action.Icon;
+              return (
+                <MobileChoiceItem
+                  key={action.key}
+                  label={action.label}
+                  disabled={busy}
+                  icon={<Icon className="size-5" aria-hidden />}
+                  onSelect={() => {
+                    action.onSelect();
+                    setSheetOpen(false);
+                  }}
+                />
+              );
+            })}
+            {hasLeading ? <div className="border-border/60 my-1.5 border-t" aria-hidden /> : null}
+            {exportItems.map((opt) => (
+              <MobileChoiceItem
+                key={opt.type}
+                label={loading === opt.type ? 'Preparing…' : opt.label}
+                disabled={busy}
+                icon={<FileText className="size-5" aria-hidden />}
+                onSelect={() => {
+                  void handlePdfExport(opt.type);
+                  setSheetOpen(false);
+                }}
+              />
+            ))}
+          </div>
+        </MobileChoiceSheet>
+      </>
+    );
+  }
 
   return (
-    <div className="relative shrink-0">
-      <button
-        type="button"
-        disabled={busy}
-        className={cn(
-          outlineBtnClass,
-          'gap-1.5 px-3',
-          menuOpen && 'interactive-primary border-border'
-        )}
-        onClick={() => setMenuOpen((v) => !v)}
-        aria-expanded={menuOpen}
-        aria-haspopup="menu"
-        aria-label="Export report"
-      >
-        {busy ? (
-          <Loader2 className="text-muted-foreground size-4 shrink-0 animate-spin" aria-hidden />
-        ) : (
-          <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
-        )}
-        <span className="hidden sm:inline">Export report</span>
-        <span className="sm:hidden">Report</span>
-        <ChevronDown
-          className={cn(
-            'text-muted-foreground size-3.5 shrink-0 transition-transform duration-150',
-            menuOpen && 'rotate-180'
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          disabled={busy}
+          className={cn(outlineBtnClass, 'gap-1.5 px-3')}
+          aria-label="Export report"
+        >
+          {busy ? (
+            <Loader2 className="text-muted-foreground size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <FileText className="text-muted-foreground size-4 shrink-0" aria-hidden />
           )}
-          aria-hidden
-        />
-      </button>
-
-      {menuOpen ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-40 cursor-default"
-            aria-label="Close export menu"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div
-            role="menu"
-            className="border-border/50 bg-popover shadow-elevated-lg dark:border-border/20 absolute right-0 z-50 mt-1.5 w-max min-w-[11.5rem] max-w-[min(calc(100vw-24px),13rem)] overflow-hidden rounded-xl border"
+          <span className="hidden sm:inline">Export report</span>
+          <span className="sm:hidden">Report</span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {exportItems.map((opt) => (
+          <DropdownMenuItem
+            key={opt.type}
+            disabled={busy}
+            onSelect={() => void handlePdfExport(opt.type)}
+            className="min-h-[44px] gap-2"
           >
-            <button
-              type="button"
-              role="menuitem"
-              disabled={busy}
-              className={cn(menuItemClass, loading === FULL_REPORT.type && 'bg-muted/50')}
-              onClick={() => void handlePdfExport(FULL_REPORT.type)}
-            >
-              {FULL_REPORT.label}
-            </button>
-
-            <div className="border-separator border-b" role="separator" />
-
-            <div className="py-0.5">
-              {sectionOptions.map((opt) => (
-                <button
-                  key={opt.type}
-                  type="button"
-                  role="menuitem"
-                  disabled={busy}
-                  className={cn(menuItemClass, loading === opt.type && 'bg-muted/50')}
-                  onClick={() => void handlePdfExport(opt.type)}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </>
-      ) : null}
-    </div>
+            <FileText className="size-4 shrink-0" aria-hidden />
+            {loading === opt.type ? 'Preparing…' : opt.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
+}
+
+/** Convenience leading action for Add transaction on finance hero menus. */
+export function financeAddTransactionAction(onSelect: () => void): FinanceExportLeadingAction {
+  return { key: 'add', label: 'Add transaction', Icon: Plus, onSelect };
 }

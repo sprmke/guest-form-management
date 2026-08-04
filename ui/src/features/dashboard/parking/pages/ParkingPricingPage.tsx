@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { format, eachDayOfInterval, isSameDay, isBefore, startOfToday } from 'date-fns';
 import { Loader2 } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { ParkingPricingRatesFormCard } from '@/features/dashboard/parking/components/ParkingPricingRatesFormCard';
 import { ParkingPricingStatsRow } from '@/features/dashboard/parking/components/ParkingPricingStatsRow';
 import {
@@ -33,6 +32,9 @@ import { PricingSaveDialog } from '@/features/dashboard/pricing/components/Prici
 import { mergeDateRateOverrides } from '@/features/dashboard/pricing/lib/pricingCalendarUtils';
 import { useOrgPermissions } from '@/features/dashboard/team/hooks/useOrgPermissions';
 import { hasOrgPermission } from '@/features/dashboard/team/lib/orgPermissions';
+
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 
 export function ParkingPricingPage() {
   const { data: orgAccess } = useOrgPermissions();
@@ -261,30 +263,42 @@ export function ParkingPricingPage() {
 
   if (isLoading && !hydratedRef.current) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
-      </div>
+      <AdminMobilePage
+        title="Pricing"
+        subtitle="Nightly rates for this parking slot."
+        titleId="parking-pricing-heading"
+      >
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Loader2 className="text-muted-foreground h-8 w-8 animate-spin" />
+        </div>
+      </AdminMobilePage>
     );
   }
 
   if (isError) {
     return (
-      <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-xl border p-4 text-sm">
-        {(error as Error)?.message ?? 'Failed to load pricing'}
-      </div>
+      <AdminMobilePage
+        title="Pricing"
+        subtitle="Nightly rates for this parking slot."
+        titleId="parking-pricing-heading"
+      >
+        <FloatingPanel
+          padding="lg"
+          className="border-destructive/30 bg-destructive/5 text-destructive text-sm"
+        >
+          {(error as Error)?.message ?? 'Failed to load pricing'}
+        </FloatingPanel>
+      </AdminMobilePage>
     );
   }
 
   return (
     <>
-      <div className="space-y-3 sm:space-y-4">
-        <AdminPageHeader
-          id="parking-pricing-heading"
-          title="Pricing"
-          subtitle="Manage nightly rates for this parking slot."
-          variant="compact"
-        />
-
+      <AdminMobilePage
+        title="Pricing"
+        subtitle="Nightly rates for this parking slot."
+        titleId="parking-pricing-heading"
+      >
         <ParkingPricingStatsRow
           weekdayRate={weekdayRate}
           weekendRate={weekendRate}
@@ -324,7 +338,7 @@ export function ParkingPricingPage() {
             />
           </div>
         </div>
-      </div>
+      </AdminMobilePage>
 
       <PricingDateModal
         open={dateModalOpen && selectedDates.length > 0 && canEdit}

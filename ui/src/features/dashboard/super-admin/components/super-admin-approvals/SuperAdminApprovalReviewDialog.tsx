@@ -70,12 +70,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -402,9 +402,13 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => (!next ? close() : null)}>
-        <DialogContent showCloseButton className={superAdminApprovalDialogContentClass}>
-          <DialogHeader
+      <ResponsiveModal open={open} onOpenChange={(next) => (!next ? close() : null)}>
+        <ResponsiveModalContent
+          sheetLayout="split"
+          showCloseButton
+          className={superAdminApprovalDialogContentClass}
+        >
+          <ResponsiveModalHeader
             className={cn(
               superAdminApprovalDialogHeaderClass,
               panel === 'changes' && 'bg-orange-500/[0.04]',
@@ -417,7 +421,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <RefreshCw className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="text-lg font-semibold">Request changes</DialogTitle>
+                  <ResponsiveModalTitle className="text-lg font-semibold">
+                    Request changes
+                  </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
                     {approval.organizationName}
                     {approval.ownerName ? ` · ${approval.ownerName}` : ''}
@@ -430,7 +436,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <Ban className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="text-lg font-semibold">Reject</DialogTitle>
+                  <ResponsiveModalTitle className="text-lg font-semibold">
+                    Reject
+                  </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
                     {approval.organizationName}
                     {approval.ownerName ? ` · ${approval.ownerName}` : ''}
@@ -440,9 +448,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-lg font-semibold">
                     {approval.organizationName}
-                  </DialogTitle>
+                  </ResponsiveModalTitle>
                   {!dualTierQueue ? (
                     <span className="text-muted-foreground text-xs font-medium">
                       {reviewTier === 'enhanced' ? 'Recommended' : 'Verified'}
@@ -458,7 +466,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 </p>
               </>
             )}
-          </DialogHeader>
+          </ResponsiveModalHeader>
 
           <div className={superAdminApprovalDialogBodyClass}>
             {isLoading || !detail || !verification ? (
@@ -855,7 +863,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             )}
           </div>
 
-          <DialogFooter className={superAdminApprovalDialogFooterClass}>
+          <ResponsiveModalFooter className={superAdminApprovalDialogFooterClass}>
             {decided ? (
               <Button
                 type="button"
@@ -963,9 +971,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 </Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
         <AlertDialogContent

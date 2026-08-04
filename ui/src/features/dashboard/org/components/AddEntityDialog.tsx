@@ -37,13 +37,13 @@ import type { Parking, Property } from '@/features/dashboard/org/types';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -291,12 +291,12 @@ export function AddEntityDialog({
     towerUnitReady && propertyListed ? 'border-amber-500/40' : undefined;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),26rem)] sm:max-w-[min(90vw,28rem)]">
-        <DialogHeader className="text-left">
-          <DialogTitle>New asset</DialogTitle>
-          <DialogDescription>Add to {orgName}</DialogDescription>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),26rem)] sm:max-w-[min(90vw,28rem)]">
+        <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalTitle>New asset</ResponsiveModalTitle>
+          <ResponsiveModalDescription>Add to {orgName}</ResponsiveModalDescription>
+        </ResponsiveModalHeader>
 
         {showKindToggle ? <KindToggle kind={kind} onKindChange={setKind} /> : null}
 
@@ -480,7 +480,7 @@ export function AddEntityDialog({
           </div>
         ) : null}
 
-        <DialogFooter className="gap-2">
+        <ResponsiveModalFooter className="gap-2">
           <Button
             type="button"
             variant="outline"
@@ -504,8 +504,8 @@ export function AddEntityDialog({
               'Add parking'
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

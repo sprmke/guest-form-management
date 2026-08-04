@@ -8,7 +8,6 @@ import { CalendarPlus } from 'lucide-react';
 import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
 import { BookingCardGrid } from '@/features/dashboard/bookings/components/BookingCardGrid';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
@@ -41,10 +40,12 @@ import {
 } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
-import { cn } from '@/lib/utils';
 
 const BOARD_BOOKINGS_LIMIT = 100;
 const VIEWS: ReadonlyArray<BookingView> = ['table', 'card', 'calendar', 'kanban'];
@@ -358,46 +359,86 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         />
         <Link
           to={propertySlug ? guestFormPath(propertySlug) : '#'}
-          className={cn(
-            'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2 sm:px-3.5',
-            'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-            'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-          )}
+          className="native-cta sm:w-auto sm:px-3.5"
         >
           <CalendarPlus className="size-4" aria-hidden />
+          <span className="sm:hidden">New</span>
           <span className="hidden sm:inline">New booking</span>
         </Link>
       </div>
     );
 
+  const bookingsSubtitle = showProperty
+    ? 'Property stays and parking reservations across your organization.'
+    : 'Manage and track all bookings for this property.';
+
+  const heroNewBooking =
+    scope === 'org' ? undefined : (
+      <MobileHeroActionLink
+        to={propertySlug ? guestFormPath(propertySlug) : '#'}
+        aria-label="New booking"
+      >
+        <CalendarPlus className="size-5" aria-hidden />
+      </MobileHeroActionLink>
+    );
+
+  const dateFilter =
+    scope !== 'org' ? (
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive={Boolean(query.from || query.to)}
+        onClear={handleClearDate}
+        fullWidth
+      />
+    ) : null;
+
+  const filterControls = (
+    <BookingFilters
+      query={query}
+      onChange={patch}
+      onReset={resetFilters}
+      sort={query.sort}
+      onSortChange={handleStaySortChange}
+      view={view}
+      onViewChange={setView}
+      hideTableView={isMobileLayout}
+      hideKanbanView={hideKanban}
+      showBookingKindFilter={scope === 'org'}
+      showPerPage={view !== 'calendar' && view !== 'kanban'}
+    />
+  );
+
+  const moreFiltersCount =
+    (scope === 'org' && query.bookingKind ? 1 : 0) +
+    (query.hasPets !== null ? 1 : 0) +
+    (query.needParking !== null ? 1 : 0);
+  const stickyMoreActiveCount = query.status.length + moreFiltersCount;
+
+  const overlapControls = (
+    <FloatingToolbar>
+      <div className="flex w-full flex-col gap-2.5">
+        {dateFilter}
+        {filterControls}
+      </div>
+    </FloatingToolbar>
+  );
+
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <AdminPageHeader
-        id="bookings-heading"
-        variant="compact"
-        title="Bookings"
-        subtitle={
-          showProperty
-            ? 'Property stays and parking reservations across your organization.'
-            : 'Manage and track all bookings for this property.'
-        }
-        actions={bookingActions}
-        actionsClassName="w-full sm:w-auto"
-      />
+    <AdminMobilePage
+      title="Bookings"
+      subtitle={bookingsSubtitle}
+      titleId="bookings-heading"
+      heroTrailing={heroNewBooking}
+      overlap={overlapControls}
+      stickyPrimary={dateFilter ?? undefined}
+      stickyMore={filterControls}
+      stickyMoreActiveCount={stickyMoreActiveCount}
+      stickyMoreAriaLabel="Refine bookings"
+      desktopActions={bookingActions}
+      desktopActionsClassName="w-full sm:w-auto"
+      dense
+    >
       <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
-      <BookingFilters
-        query={query}
-        onChange={patch}
-        onReset={resetFilters}
-        sort={query.sort}
-        onSortChange={handleStaySortChange}
-        view={view}
-        onViewChange={setView}
-        hideTableView={isMobileLayout}
-        hideKanbanView={hideKanban}
-        showBookingKindFilter={scope === 'org'}
-        showPerPage={view !== 'calendar' && view !== 'kanban'}
-      />
       {/* Active view */}
       {showTableView && (
         <BookingTable
@@ -431,21 +472,23 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           documentRequirements={documentRequirements}
         />
       ) : null}
-      {view === 'calendar' && (
-        <BookingCalendarView
-          rows={rows}
-          isLoading={isLoading}
-          error={error ? (error as Error).message : null}
-          isRefreshing={isFetching}
-          initialMonth={dateNav.dateRange.from}
-          onMonthChange={handleCalendarMonthChange}
-          showProperty={showProperty}
-          resolveBookingHref={resolveBookingHref}
-        />
-      )}
+      {view === 'calendar' ? (
+        <FloatingPanel padding="md" className="overflow-hidden">
+          <BookingCalendarView
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+            initialMonth={dateNav.dateRange.from}
+            onMonthChange={handleCalendarMonthChange}
+            showProperty={showProperty}
+            resolveBookingHref={resolveBookingHref}
+          />
+        </FloatingPanel>
+      ) : null}
 
       {/* Pagination — hidden in calendar view (range already filters scope) */}
-      {showPagination && (
+      {showPagination ? (
         <AdminListPagination
           ariaLabel="Bookings pagination"
           page={query.page}
@@ -454,7 +497,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           isLoading={isLoading}
           onPageChange={(page) => patch({ page })}
         />
-      )}
-    </div>
+      ) : null}
+    </AdminMobilePage>
   );
 }

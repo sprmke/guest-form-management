@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { useSearchParams } from 'react-router-dom';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import {
   useDateNavigation,
@@ -23,6 +22,8 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { DashboardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
@@ -91,21 +92,36 @@ export function DashboardPage() {
     </div>
   );
 
-  return (
-    <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-      <AdminPageHeader
-        id="dashboard-heading"
-        variant="compact"
-        title="Dashboard"
-        subtitle="Overview of your property's performance and activity."
-        actions={dashboardActions}
-        actionsClassName="w-full sm:w-auto"
-      />
+  const overlapControls = (
+    <FloatingToolbar>
+      <BookingDateRangeFilter {...dateNav} isActive onClear={handleClearDate} fullWidth />
+    </FloatingToolbar>
+  );
 
+  const heroGuestPages = (
+    <PropertyGuestPagesMenu
+      propertySlug={propertySlug}
+      propertyId={property.id}
+      variant="heroIcon"
+    />
+  );
+
+  return (
+    <AdminMobilePage
+      title="Dashboard"
+      subtitle="Overview of your property's performance and activity."
+      titleId="dashboard-heading"
+      heroTrailing={heroGuestPages}
+      overlap={overlapControls}
+      desktopActions={dashboardActions}
+      desktopActionsClassName="w-full sm:w-auto"
+      dense
+      className="min-w-0 max-w-full"
+    >
       {isLoading && !data ? (
         <DashboardSkeleton />
       ) : error ? (
-        <div className="surface-card flex flex-col items-center gap-3 px-4 py-16 text-center">
+        <FloatingPanel padding="lg" className="flex flex-col items-center gap-3 py-16 text-center">
           <p className="text-foreground text-sm font-semibold">Could not load dashboard</p>
           <p className="text-caption max-w-sm">
             {error instanceof Error ? error.message : 'Please try again.'}
@@ -113,11 +129,11 @@ export function DashboardPage() {
           <button
             type="button"
             onClick={() => refetch()}
-            className="gradient-primary text-primary-foreground shadow-soft inline-flex min-h-[44px] items-center justify-center rounded-xl px-4 text-sm font-semibold hover:brightness-[1.03]"
+            className="native-cta max-w-xs sm:w-auto sm:px-4"
           >
             Retry
           </button>
-        </div>
+        </FloatingPanel>
       ) : data ? (
         <>
           <DashboardAttentionStrip items={attentionItems} />
@@ -133,6 +149,6 @@ export function DashboardPage() {
           ) : null}
         </>
       ) : null}
-    </div>
+    </AdminMobilePage>
   );
 }

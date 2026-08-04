@@ -25,7 +25,7 @@ Route: `/org/:orgSlug/properties`
 
 ## Overview
 
-Org-level inventory of all properties. Cards surface profile data from `properties` + `properties.settings` and booking KPIs for the **current Manila calendar month** (not all-time).
+Org-level inventory of all properties. On **phone/tablet**, uses the shared **brand hero** shell (`AdminMobilePage`) with **Add property** as a hero icon when permitted; filters sit in a floating toolbar. Cards surface profile data from `properties` + `properties.settings` and booking KPIs for the **current Manila calendar month** (not all-time).
 
 **Access:** Requires **`org:properties:view`** (org owner, org ADMIN, platform admin). **Property-only members** (`accessKind: property_member`) cannot open org routes — `RequireOrgPermission` redirects them to an assigned property dashboard.
 

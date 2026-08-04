@@ -4,7 +4,6 @@ import { useSearchParams } from 'react-router-dom';
 
 import { ExternalLink } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import {
   useDateNavigation,
@@ -23,6 +22,9 @@ import {
   writeDashboardPeriodParams,
 } from '@/features/dashboard/property/lib/dashboardPeriod';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { mobileHeroActionClassName } from '@/components/mobile/MobileHeroActionButton';
 import { useIsBelowMd } from '@/hooks/useMediaQuery';
 import { detectPresetFromRange, fromIsoDate } from '@/lib/date/navigation';
 import { cn } from '@/lib/utils';
@@ -74,7 +76,7 @@ export function ParkingDashboardPage() {
 
   const reservationsHref = `${parkingSectionPath(orgSlug, parkingSlug, 'bookings')}?from=${period.from}&to=${period.to}`;
 
-  const dashboardActions = (
+  const desktopActions = (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       <BookingDateRangeFilter
         {...dateNav}
@@ -99,17 +101,36 @@ export function ParkingDashboardPage() {
     </div>
   );
 
-  return (
-    <div className="min-w-0 max-w-full space-y-3 sm:space-y-4">
-      <AdminPageHeader
-        id="dashboard-heading"
-        variant="compact"
-        title="Dashboard"
-        subtitle={`Overview for ${parking.name}.`}
-        actions={dashboardActions}
-        actionsClassName="w-full sm:w-auto"
-      />
+  const overlapControls = (
+    <FloatingToolbar>
+      <BookingDateRangeFilter {...dateNav} isActive onClear={handleClearDate} fullWidth />
+    </FloatingToolbar>
+  );
 
+  const heroViewParking = (
+    <a
+      href={publicParkingHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View parking"
+      className={mobileHeroActionClassName}
+    >
+      <ExternalLink className="size-5" aria-hidden />
+    </a>
+  );
+
+  return (
+    <AdminMobilePage
+      title="Dashboard"
+      subtitle={`Overview for ${parking.name}.`}
+      titleId="dashboard-heading"
+      heroTrailing={heroViewParking}
+      overlap={overlapControls}
+      desktopActions={desktopActions}
+      desktopActionsClassName="w-full sm:w-auto"
+      dense
+      className="min-w-0 max-w-full"
+    >
       <DashboardAttentionStrip items={stats.attention} />
 
       <ParkingDashboardStatCards
@@ -125,6 +146,6 @@ export function ParkingDashboardPage() {
           datePreset={dateNav.datePreset}
         />
       ) : null}
-    </div>
+    </AdminMobilePage>
   );
 }

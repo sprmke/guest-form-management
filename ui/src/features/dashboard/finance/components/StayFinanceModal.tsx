@@ -10,7 +10,12 @@ import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadg
 import { bookingListDisplayName } from '@/features/dashboard/bookings/lib/bookingListDisplay';
 import type { FinanceBookingLedgerRow } from '@/features/dashboard/finance/lib/types';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 import { formatBookingDate, formatBookingDateShort } from '@/utils/format/bookingDisplay';
 
@@ -61,29 +66,30 @@ export function StayFinanceModal({ row, onClose }: Props) {
   const guestLabel = row ? bookingListDisplayName(row) : '';
 
   return (
-    <Dialog
+    <ResponsiveModal
       open={row != null}
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
-      <DialogContent
+      <ResponsiveModalContent
+        sheetLayout="split"
         className={cn(
-          '!flex !h-auto !w-full !max-w-[min(calc(100vw-1.5rem),36rem)] !flex-col !gap-0 !overflow-hidden !p-0',
-          '!max-h-[90dvh] sm:!max-w-[36rem]'
+          'flex w-full max-w-[min(calc(100vw-1.5rem),36rem)] flex-col gap-0 overflow-hidden p-0',
+          'max-h-[min(92dvh,100%)] max-lg:h-[min(92dvh,max-content)] sm:max-w-[36rem]'
         )}
         aria-describedby={undefined}
       >
         {row ? (
           <>
-            <DialogHeader className="border-separator shrink-0 gap-2 border-b px-4 pb-4 pr-14 pt-4 sm:gap-2.5 sm:px-5 sm:pt-5">
-              <DialogTitle className="text-foreground truncate text-lg font-bold leading-snug tracking-tight sm:text-xl">
+            <ResponsiveModalHeader className="border-separator shrink-0 gap-2 border-b px-4 pb-4 pr-14 pt-4 sm:gap-2.5 sm:px-5 sm:pt-5">
+              <ResponsiveModalTitle className="text-foreground truncate text-lg font-bold leading-snug tracking-tight sm:text-xl">
                 {guestLabel}
-              </DialogTitle>
+              </ResponsiveModalTitle>
               <StayFinanceModalMeta row={row} />
-            </DialogHeader>
+            </ResponsiveModalHeader>
 
-            <div className="max-h-[calc(90dvh-13.5rem)] overflow-y-auto overscroll-contain px-4 py-4 sm:px-5">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5">
               <BookingPricingSummary
                 booking={toPricingSource(row)}
                 layout="modal"
@@ -106,7 +112,7 @@ export function StayFinanceModal({ row, onClose }: Props) {
             </div>
           </>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

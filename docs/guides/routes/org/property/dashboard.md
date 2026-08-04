@@ -2,7 +2,7 @@
 title: 'Property Dashboard — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Property Dashboard — operator guide
@@ -19,13 +19,21 @@ Route: `/org/:orgSlug/property/:propertySlug`
 | Needs attention    | —        | —          | Documented | Booking/finance alerts + Connect Google + rejected review chips |
 | Stat cards         | —        | —          | Documented | Period KPIs                                                     |
 | Finance + calendar | —        | —          | Documented | Period-scoped widgets                                           |
-| Guest pages        | —        | —          | Documented | Dropdown of public guest URLs (new tab)                         |
+| Guest pages        | —        | —          | Documented | Public guest URLs (sheet on mobile; menu on desktop)            |
+| Mobile shell       | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)               |
 
 ---
 
 ## Overview
 
 Single-property home page: date-range filter, **Guest pages** menu, **Needs attention** strip, KPI stat cards, and a combined finance + calendar section — all scoped to one property and the selected period.
+
+### Mobile layout (`max-lg`)
+
+- **Brand hero** — teal band with tenant/property switcher (light-on-primary) and page title. Subtitle is `lg+` only. On scroll the hero **sticks**; title compresses/fades and the arc flattens while switcher + guest-pages action stay visible (`useMobileHeroCollapseProgress`).
+- **Overlap toolbar** — first floating white card pulled up over the hero lower edge: date range + **Guest pages**.
+- **Canvas** — compact attention chips (no card chrome), denser KPI cards (no icon tiles / “vs last period” text), chart/calendar headers use a compact icon + centered title (`AdminSurfaceCardHeader`; descriptions `lg+` only). Period eyebrow above KPIs is `lg+` only. Section/card gaps stay comfortable (`gap-2.5`–`3.5`, `p-3`+), not cramped.
+- **Desktop (`lg+`)** — unchanged: standard `AdminPageHeader` with inline date filter and Guest pages actions.
 
 ---
 
@@ -46,7 +54,7 @@ URL params: **`?from=YYYY-MM-DD&to=YYYY-MM-DD`** — written back on any range c
 
 ## Guest pages
 
-Header action next to the date filter — **Guest pages** dropdown opens property-scoped public guest URLs in a new tab:
+Header / hero action — opens property-scoped public guest URLs in a new tab. On **`max-lg`**, the list is a bottom sheet (`MobileChoiceSheet`); on **`lg+`**, a compact dropdown menu.
 
 | Item       | Path                                                                                                         |
 | ---------- | ------------------------------------------------------------------------------------------------------------ |
@@ -56,7 +64,9 @@ Header action next to the date filter — **Guest pages** dropdown opens propert
 | Messages   | `…/messages?checkInDate=<today>&checkOutDate=<tomorrow>` (Manila; preview dates so the full chat page loads) |
 | Stay Guide | `…/stay-guide?preview=1&property_id=` (admin preview)                                                        |
 
-Icon + chevron on mobile; labelled **Guest pages** on `sm:`+.
+Mobile hero: icon-only trigger beside the tenant switcher. Desktop: labelled **Guest pages** with chevron.
+
+**Date range:** presets (“View by”) and custom calendar also use a bottom sheet on `max-lg`; desktop keeps anchored popovers.
 
 ---
 
@@ -145,6 +155,7 @@ This is the home page for a single property — a quick-glance summary of money 
 | Stats API             | `dashboard-stats` → `supabase/functions/_shared/dashboardService.ts`                |
 | Finance chart         | `ui/src/features/dashboard/finance/components/FinanceTransactionsChart.tsx`         |
 | Mini calendar         | `ui/src/features/dashboard/bookings/components/BookingCalendarView.tsx`             |
+| Mobile page shell     | `ui/src/components/mobile/MobileBrandHero.tsx` (`AdminMobilePage`)                  |
 
 ---
 

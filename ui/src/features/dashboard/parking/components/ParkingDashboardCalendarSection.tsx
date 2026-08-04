@@ -11,6 +11,7 @@ import { FinanceTransactionsChart } from '@/features/dashboard/finance/component
 import { buildFinanceChartData } from '@/features/dashboard/finance/lib/financeChartData';
 import { DashboardTransactionsDueCard } from '@/features/dashboard/property/components/DashboardTransactionsDueCard';
 
+import { AdminSurfaceCardHeader } from '@/components/shared/AdminSurfaceCardHeader';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { formatDateRangeDisplay, fromIsoDate, type DatePreset } from '@/lib/date/navigation';
 
@@ -80,25 +81,17 @@ export function ParkingDashboardCalendarSection({ from, to, datePreset }: Props)
           ref={calendarCardRef}
           className="surface-card flex min-w-0 flex-col overflow-hidden p-3 sm:p-4 lg:col-span-3 lg:col-start-1 lg:row-start-2"
         >
-          <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-2">
-              <div className="icon-well-sm shrink-0">
-                <CalendarDays className="text-muted-foreground size-5" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <p className="text-foreground text-lg font-semibold tracking-tight">Calendar</p>
-                <p className="text-muted-foreground text-xs">
-                  Tap a date to open reservation details · {rangeLabel}
-                </p>
-              </div>
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-2 self-start">
+          <AdminSurfaceCardHeader
+            icon={CalendarDays}
+            title="Calendar"
+            description={`Tap a date to open reservation details · ${rangeLabel}`}
+            action={
               <BookingCalendarPillLabelToggle
                 value={calendarPillLabelMode}
                 onChange={setCalendarPillLabelMode}
               />
-            </div>
-          </div>
+            }
+          />
 
           <BookingCalendarView
             rows={[]}

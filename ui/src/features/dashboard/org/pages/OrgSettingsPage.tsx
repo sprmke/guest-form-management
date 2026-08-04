@@ -5,7 +5,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle, Info, Loader2, Save, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
   AdminSectionNavLayout,
   type AdminSectionNavItem,
@@ -45,6 +44,8 @@ import {
 import { setOrgSettingsIssueSections } from '@/features/dashboard/org/lib/orgSettingsIssuesStore';
 import { planOrgSettingsSave } from '@/features/dashboard/org/lib/orgSettingsSave';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
@@ -293,7 +294,36 @@ export function OrgSettingsPage() {
 
   return (
     <RequireAdmin>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+      <AdminMobilePage
+        title="Settings"
+        subtitle="Manage your organization's profile, billing, and preferences."
+        titleId="org-settings-heading"
+        className="flex min-h-0 flex-1 flex-col"
+        heroTrailing={
+          isDirty && profileDraft ? (
+            <MobileHeroActionButton
+              aria-label={busy ? 'Saving' : 'Save changes'}
+              disabled={busy || nameUnavailable}
+              onClick={() => void handleSave()}
+            >
+              <Save className="size-5" aria-hidden />
+            </MobileHeroActionButton>
+          ) : undefined
+        }
+        desktopActions={
+          isDirty && profileDraft ? (
+            <Button
+              type="button"
+              onClick={() => void handleSave()}
+              disabled={busy || nameUnavailable}
+              className="min-h-[44px] gap-1.5"
+            >
+              <Save className="size-4" aria-hidden />
+              {busy ? 'Saving…' : 'Save'}
+            </Button>
+          ) : undefined
+        }
+      >
         {profileDraft ? (
           <OrgSettingsBrandColorPreview brandColor={profileDraft.brandColor} />
         ) : null}
@@ -307,27 +337,6 @@ export function OrgSettingsPage() {
           <AdminSectionNavLayout
             className="min-h-0 flex-1"
             sections={navSections}
-            header={
-              <AdminPageHeader
-                id="org-settings-heading"
-                variant="compact"
-                title="Settings"
-                subtitle="Manage your organization's profile, billing, and preferences."
-                actions={
-                  isDirty ? (
-                    <Button
-                      type="button"
-                      onClick={() => void handleSave()}
-                      disabled={busy || nameUnavailable}
-                      className="min-h-[44px] gap-1.5 lg:hidden"
-                    >
-                      <Save className="size-4" aria-hidden />
-                      {busy ? 'Saving…' : 'Save'}
-                    </Button>
-                  ) : null
-                }
-              />
-            }
             footer={
               isDirty ? (
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -384,7 +393,7 @@ export function OrgSettingsPage() {
             />
           </AdminSectionNavLayout>
         )}
-      </div>
+      </AdminMobilePage>
     </RequireAdmin>
   );
 }

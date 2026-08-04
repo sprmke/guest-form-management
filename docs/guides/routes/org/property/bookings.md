@@ -2,7 +2,7 @@
 title: 'Bookings List — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Bookings List — operator guide
@@ -16,9 +16,10 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings`
 | Section                       | E2E save  | Validation | Docs | Notes                                                             |
 | ----------------------------- | --------- | ---------- | ---- | ----------------------------------------------------------------- |
 | Summary stage cards           | —         | —          | Done | Finance-style cards; status hints inline; click toggles `?stage=` |
-| Filter bar                    | —         | —          | Done | Row 1: search + filters; row 2: sort + per-page + view            |
+| Filter bar                    | —         | —          | Done | Mobile: search + refine sheet + view; desktop: inline filters     |
 | Table / card / calendar views | —         | —          | Done | Existing behavior                                                 |
 | Kanban view                   | via modal | —          | Done | Reuses `WorkflowPanel` from detail page                           |
+| Mobile shell                  | —         | —          | Done | Brand hero + overlap filters (`max-lg` only)                      |
 
 ---
 
@@ -28,12 +29,13 @@ Paginated booking list with PMA-style **stage summary cards** and four view mode
 
 Layout (top → bottom):
 
-1. Page header — **date range** (top right) + **New booking** → `/properties/:propertySlug/form` (current property from route context)
-2. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
-3. **Toolbar** (`BookingFilters`, same layout as Finance ledger toolbar):
-   - Row 1: search (left) + Status + **More filters** (pets, parking) + Clear filters (right)
-   - Row 2: sort + per-page (left; per-page hidden in calendar/kanban) | view toggle (right)
-4. Active view content + pagination (table/card only)
+1. **Mobile (`max-lg`):** brand hero with tenant switcher + **New booking** icon (property scope); overlapping floating toolbar with date range (property scope) + filters; layout frosted header hidden on this route.
+2. **Desktop (`lg+`):** page header — **date range** (top right) + **New booking** → `/properties/:propertySlug/form`
+3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
+4. **Toolbar** (`BookingFilters`):
+   - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle. Date range stays above when shown.
+   - **Desktop (`lg+`):** Row 1: search + Status + More filters + Clear; Row 2: sort + per-page | view toggle
+5. Active view content + pagination (table/card only)
 
 ---
 
@@ -119,6 +121,7 @@ New: `stage` (see above).
 | Kanban workflow modal | `ui/src/features/dashboard/bookings/components/BookingKanbanWorkflowModal.tsx` |
 | Workflow (reused)     | `ui/src/features/dashboard/bookings/components/WorkflowPanel.tsx`              |
 | Filters               | `ui/src/features/dashboard/bookings/components/BookingFilters.tsx`             |
+| Mobile page shell     | `ui/src/components/mobile/MobileBrandHero.tsx` (`AdminMobilePage`)             |
 | Routes                | `ui/src/features/dashboard/routes/index.tsx`                                   |
 
 ---

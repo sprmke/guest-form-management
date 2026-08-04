@@ -14,7 +14,7 @@ Detail: `/org/:orgSlug/parking/:parkingSlug/bookings/:bookingId`
 
 ## Overview
 
-Parking-slot **reservations** for one slot — separate from stay `need_parking` on property bookings.
+Parking-slot **reservations** for one slot — separate from stay `need_parking` on property bookings. On **phone/tablet**, uses the shared **brand hero** shell (`AdminMobilePage`) with **New booking** as a hero icon and filters in an overlapping toolbar.
 
 - Summary stage cards (Needs action · Pending · Active · Completed labels)
 - Search, status filters, table / card / calendar (no kanban)

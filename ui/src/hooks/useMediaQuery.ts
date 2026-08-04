@@ -21,6 +21,11 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
+/** Matches Tailwind `sm` — phone-tier (below 640px). */
+export function useIsMobile(): boolean {
+  return useMediaQuery('(max-width: 639px)');
+}
+
 /** Matches Tailwind `md` — below 768px uses compact mobile booking detail layout. */
 export function useIsBelowMd(): boolean {
   return useMediaQuery('(max-width: 767px)');

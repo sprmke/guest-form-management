@@ -14,7 +14,7 @@ import { FINANCE_DEFAULT_REMINDER_TEMPLATE } from '@/features/dashboard/finance/
 import { recurrenceScheduleUpdateFields } from '@/features/dashboard/finance/lib/recurrence';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 
 type Props = {
   query: FinanceQuery;
@@ -133,13 +133,13 @@ export function FinanceTransactionModals({
 
   return (
     <>
-      <Dialog
+      <ResponsiveModal
         open={modalOpen}
         onOpenChange={(open) => {
           if (!open) closeModal();
         }}
       >
-        <DialogContent
+        <ResponsiveModalContent
           className="max-h-[min(90dvh,44rem)] max-w-[min(calc(100vw-1.5rem),34rem)] overflow-y-auto sm:max-w-[min(calc(100vw-2rem),36rem)] sm:p-5"
           onPointerDownOutside={(e) => {
             const target = e.target as Element | null;
@@ -153,9 +153,9 @@ export function FinanceTransactionModals({
             if (create.isPending || update.isPending) e.preventDefault();
           }}
         >
-          <DialogHeader className="text-left">
-            <DialogTitle>{editingItem ? 'Edit transaction' : 'New transaction'}</DialogTitle>
-          </DialogHeader>
+          <ResponsiveModalHeader className="text-left">
+            <ResponsiveModalTitle>{editingItem ? 'Edit transaction' : 'New transaction'}</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <OperatingLineItemForm
             key={
               editingItem
@@ -168,8 +168,8 @@ export function FinanceTransactionModals({
             onCancel={closeModal}
             isPending={create.isPending || update.isPending}
           />
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <RecurringSeriesModal
         anchor={seriesAnchor}

@@ -9,9 +9,20 @@ type Props = {
   viewMode: SuperAdminListViewMode;
   onViewModeChange: (mode: SuperAdminListViewMode) => void;
   className?: string;
+  /** Hide table option on mobile layouts that force grid. */
+  hideTableView?: boolean;
 };
 
-export function SuperAdminListViewToggle({ viewMode, onViewModeChange, className }: Props) {
+export function SuperAdminListViewToggle({
+  viewMode,
+  onViewModeChange,
+  className,
+  hideTableView = false,
+}: Props) {
+  if (hideTableView) {
+    return null;
+  }
+
   return (
     <div
       className={cn(

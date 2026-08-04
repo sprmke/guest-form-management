@@ -13,12 +13,12 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -80,11 +80,11 @@ export function EditMemberContactDialog({
           : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Host details</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Host details</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         {member ? (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -174,7 +174,7 @@ export function EditMemberContactDialog({
             ) : null}
           </div>
         ) : null}
-        <DialogFooter className="gap-2">
+        <ResponsiveModalFooter className="gap-2">
           <Button
             type="button"
             variant="outline"
@@ -191,8 +191,8 @@ export function EditMemberContactDialog({
           >
             {savePending ? 'Saving…' : 'Save'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

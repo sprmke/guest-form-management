@@ -10,12 +10,12 @@ import {
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -103,11 +103,11 @@ export function SaveMarketingTemplateButton({
         {existingTemplateId ? updateLabel : buttonLabel}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-          <DialogHeader>
-            <DialogTitle>Save template</DialogTitle>
-          </DialogHeader>
+      <ResponsiveModal open={open} onOpenChange={setOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Save template</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <div className="space-y-2">
             <Label htmlFor="template-name">Name</Label>
             <Input
@@ -117,16 +117,16 @@ export function SaveMarketingTemplateButton({
               className="h-10"
             />
           </div>
-          <DialogFooter className="gap-2">
+          <ResponsiveModalFooter className="gap-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button type="button" disabled={isPending} onClick={() => void handleSave()}>
               Save
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

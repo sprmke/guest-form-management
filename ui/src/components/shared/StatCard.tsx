@@ -51,7 +51,8 @@ export function StatCard({
   const interactive = onClick !== undefined;
 
   const shellClassName = cn(
-    'surface-card group relative w-full overflow-hidden p-2.5 transition-all duration-300 sm:p-3.5 md:p-5',
+    'surface-card group relative w-full overflow-hidden p-3 transition-all duration-300 sm:p-3.5 md:p-5',
+    interactive && 'native-press',
     'sm:hover:shadow-elevated-lg sm:hover:-translate-y-0.5',
     interactive &&
       'focus-visible:ring-primary/40 text-left focus-visible:outline-none focus-visible:ring-2',
@@ -61,11 +62,11 @@ export function StatCard({
 
   const body = (
     <>
-      <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-      <div className={cn('relative', footer && 'space-y-1.5 sm:space-y-2')}>
-        <div className="flex items-start justify-between gap-2 sm:gap-3">
-          <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1.5">
-            <p className="text-muted-foreground line-clamp-2 text-[11px] font-medium leading-tight sm:line-clamp-none sm:text-sm">
+      <div className="from-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity group-hover:opacity-100 max-lg:hidden" />
+      <div className={cn('relative', footer && 'space-y-2 sm:space-y-2.5')}>
+        <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+          <div className="min-w-0 flex-1 space-y-1 sm:space-y-1.5">
+            <p className="text-muted-foreground line-clamp-2 text-xs font-medium leading-snug sm:line-clamp-none sm:text-sm">
               {title}
             </p>
             <p
@@ -77,14 +78,15 @@ export function StatCard({
               {value}
             </p>
             {hasChange ? (
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                 <span
                   className={cn(
-                    'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-medium',
+                    'inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:text-xs sm:font-medium',
                     isPositive
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                       : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
                   )}
+                  title={changeLabel}
                 >
                   {isPositive ? (
                     <TrendingUp className="size-3" aria-hidden />
@@ -93,14 +95,16 @@ export function StatCard({
                   )}
                   {formatChange(change, changeIsPoints)}
                 </span>
-                <span className="text-muted-foreground text-xs">{changeLabel}</span>
+                <span className="text-muted-foreground hidden text-xs lg:inline">
+                  {changeLabel}
+                </span>
               </div>
             ) : null}
           </div>
           {Icon && iconBgClassName ? (
             <div
               className={cn(
-                'flex size-8 shrink-0 items-center justify-center rounded-lg transition-transform sm:size-10 sm:rounded-xl sm:group-hover:scale-110',
+                'native-icon-tile hidden transition-transform sm:group-hover:scale-110 lg:flex',
                 iconBgClassName
               )}
             >
@@ -132,19 +136,19 @@ type StatCardSkeletonProps = {
 
 export function StatCardSkeleton({ showTrend = false, className, style }: StatCardSkeletonProps) {
   return (
-    <div className={cn('surface-card p-2.5 sm:p-3.5 md:p-4', className)} style={style}>
-      <div className="flex items-start justify-between gap-2 sm:gap-3">
-        <div className="min-w-0 flex-1 space-y-1 sm:space-y-2">
+    <div className={cn('surface-card p-3 sm:p-3.5 md:p-4', className)} style={style}>
+      <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+        <div className="min-w-0 flex-1 space-y-1.5 sm:space-y-2">
           <Skeleton className="h-3 w-20 sm:h-4 sm:w-24" />
-          <Skeleton className="h-6 w-16 sm:h-8 sm:w-32" />
+          <Skeleton className="h-6 w-20 sm:h-8 sm:w-32" />
           {showTrend ? (
-            <div className="flex flex-wrap items-center gap-1 pt-0.5">
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
               <Skeleton className="h-6 w-14 rounded-full" />
-              <Skeleton className="h-3 w-20" />
+              <Skeleton className="hidden h-3 w-20 lg:block" />
             </div>
           ) : null}
         </div>
-        <Skeleton className="size-8 shrink-0 rounded-lg sm:size-10 sm:rounded-xl" />
+        <Skeleton className="hidden size-8 shrink-0 rounded-lg sm:size-10 sm:rounded-xl lg:block" />
       </div>
     </div>
   );
@@ -162,7 +166,12 @@ export function MoneyStatCard({ value, ...props }: MoneyStatCardProps) {
 /** Responsive 4-column grid used by dashboard KPI rows. */
 export function StatCardGrid({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4', className)}>
+    <div
+      className={cn(
+        'native-stagger grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4 lg:gap-4',
+        className
+      )}
+    >
       {children}
     </div>
   );

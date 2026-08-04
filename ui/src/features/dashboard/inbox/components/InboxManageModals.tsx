@@ -1,4 +1,4 @@
-import { Plug, Sparkles, Zap } from 'lucide-react';
+import { MoreHorizontal, Plug, Sparkles, Zap } from 'lucide-react';
 
 import { InboxAutomationTab } from '@/features/dashboard/inbox/components/InboxAutomationTab';
 import { InboxChannelsTab } from '@/features/dashboard/inbox/components/InboxChannelsTab';
@@ -11,8 +11,23 @@ import type {
   SaveInboxTemplatePayload,
 } from '@/features/dashboard/inbox/types/inbox';
 
+import {
+  MobileHeroActionMenu,
+  type MobileHeroActionMenuItem,
+} from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 
 export type InboxManageModal = 'channels' | 'quick-replies' | 'automation' | null;
 
@@ -41,54 +56,103 @@ type Props = {
   onSaveAutomation: (patch: Partial<InboxAutomationSettings>) => Promise<void>;
 };
 
+function buildInboxManageItems(
+  showOrgManageTabs: boolean,
+  onOpen: (modal: InboxManageModal) => void
+): MobileHeroActionMenuItem[] {
+  const items: MobileHeroActionMenuItem[] = [
+    {
+      key: 'channels',
+      label: 'Channels',
+      Icon: Plug,
+      onSelect: () => onOpen('channels'),
+    },
+  ];
+  if (showOrgManageTabs) {
+    items.push(
+      {
+        key: 'quick-replies',
+        label: 'Quick replies',
+        Icon: Zap,
+        onSelect: () => onOpen('quick-replies'),
+      },
+      {
+        key: 'automation',
+        label: 'Automation',
+        Icon: Sparkles,
+        onSelect: () => onOpen('automation'),
+      }
+    );
+  }
+  return items;
+}
+
 export function InboxManageToolbar({
   canManage,
   showOrgManageTabs = true,
   onOpen,
+  variant = 'default',
 }: {
   canManage: boolean;
   showOrgManageTabs?: boolean;
   onOpen: (modal: InboxManageModal) => void;
+  variant?: 'default' | 'hero';
 }) {
   if (!canManage) return null;
 
-  return (
-    <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+  const items = buildInboxManageItems(showOrgManageTabs, onOpen);
+
+  if (variant === 'hero') {
+    return <MobileHeroActionMenu items={items} label="Inbox actions" />;
+  }
+
+  if (items.length === 1) {
+    const only = items[0]!;
+    const Icon = only.Icon;
+    return (
       <Button
         type="button"
         variant="outline"
         size="sm"
         className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-        onClick={() => onOpen('channels')}
+        onClick={only.onSelect}
       >
-        <Plug className="size-4 shrink-0" aria-hidden />
-        <span className="hidden sm:inline">Channels</span>
+        <Icon className="size-4 shrink-0" aria-hidden />
+        <span className="hidden sm:inline">{only.label}</span>
       </Button>
-      {showOrgManageTabs ? (
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-            onClick={() => onOpen('quick-replies')}
-          >
-            <Zap className="size-4 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Quick replies</span>
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
-            onClick={() => onOpen('automation')}
-          >
-            <Sparkles className="size-4 shrink-0" aria-hidden />
-            <span className="hidden sm:inline">Automation</span>
-          </Button>
-        </>
-      ) : null}
-    </div>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 min-h-[44px] gap-1.5 px-2.5 sm:min-h-9 sm:px-3"
+          aria-label="Inbox actions"
+        >
+          <MoreHorizontal className="size-4 shrink-0" aria-hidden />
+          <span className="hidden sm:inline">Manage</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        {items.map((item) => {
+          const Icon = item.Icon;
+          return (
+            <DropdownMenuItem
+              key={item.key}
+              onSelect={() => item.onSelect()}
+              className="min-h-[44px] gap-2"
+            >
+              <Icon className="size-4 shrink-0" aria-hidden />
+              {item.label}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -120,14 +184,14 @@ export function InboxManageModals({
 
   return (
     <>
-      <Dialog
+      <ResponsiveModal
         open={open === 'channels'}
         onOpenChange={(next) => onOpenChange(next ? 'channels' : null)}
       >
-        <DialogContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
-          <DialogHeader>
-            <DialogTitle>Channels</DialogTitle>
-          </DialogHeader>
+        <ResponsiveModalContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Channels</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <InboxChannelsTab
             connections={connections}
             comingSoon={comingSoon}
@@ -140,19 +204,22 @@ export function InboxManageModals({
             onConnectMeta={onConnectMeta}
             onDisconnectMeta={onDisconnectMeta}
           />
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       {showOrgManageTabs ? (
         <>
-          <Dialog
+          <ResponsiveModal
             open={open === 'quick-replies'}
             onOpenChange={(next) => onOpenChange(next ? 'quick-replies' : null)}
           >
-            <DialogContent className="flex max-h-[min(92dvh,760px)] min-h-[min(80dvh,560px)] max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)]">
-              <DialogHeader className="shrink-0">
-                <DialogTitle>Quick replies</DialogTitle>
-              </DialogHeader>
+            <ResponsiveModalContent
+              sheetLayout="split"
+              className="flex max-h-[min(92dvh,760px)] min-h-0 max-w-[min(calc(100vw-1.5rem),52rem)] flex-col overflow-hidden sm:max-w-[min(92vw,52rem)] lg:min-h-[min(80dvh,560px)]"
+            >
+              <ResponsiveModalHeader className="shrink-0">
+                <ResponsiveModalTitle>Quick replies</ResponsiveModalTitle>
+              </ResponsiveModalHeader>
               <div className="flex min-h-0 flex-1 flex-col">
                 <InboxQuickRepliesTab
                   templates={templates}
@@ -162,25 +229,25 @@ export function InboxManageModals({
                   onDelete={onDeleteTemplate}
                 />
               </div>
-            </DialogContent>
-          </Dialog>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
 
-          <Dialog
+          <ResponsiveModal
             open={open === 'automation'}
             onOpenChange={(next) => onOpenChange(next ? 'automation' : null)}
           >
-            <DialogContent className="max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
-              <DialogHeader>
-                <DialogTitle>Automation</DialogTitle>
-              </DialogHeader>
+            <ResponsiveModalContent className="max-h-[min(92dvh,720px)] max-w-[min(calc(100vw-1.5rem),44rem)] overflow-y-auto sm:max-w-[min(92vw,44rem)]">
+              <ResponsiveModalHeader>
+                <ResponsiveModalTitle>Automation</ResponsiveModalTitle>
+              </ResponsiveModalHeader>
               <InboxAutomationTab
                 settings={automationSettings}
                 isLoading={automationLoading}
                 saving={automationSaving}
                 onSave={onSaveAutomation}
               />
-            </DialogContent>
-          </Dialog>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
         </>
       ) : null}
     </>

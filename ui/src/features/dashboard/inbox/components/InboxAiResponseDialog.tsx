@@ -5,12 +5,12 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -53,16 +53,17 @@ export function InboxAiResponseDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="z-[103] flex max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),36rem)] flex-col overflow-hidden sm:max-w-[min(90vw,36rem)]"
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className="z-[103] flex max-h-[min(92dvh,640px)] max-w-[min(calc(100vw-1.5rem),36rem)] flex-col overflow-hidden sm:max-w-[min(90vw,36rem)]"
         overlayClassName="z-[102]"
       >
-        <DialogHeader className="shrink-0">
-          <DialogTitle>Manage AI response</DialogTitle>
-        </DialogHeader>
+        <ResponsiveModalHeader className="shrink-0 max-lg:px-4">
+          <ResponsiveModalTitle>Manage AI response</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto py-1">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain py-1 max-lg:px-4">
           <p className="text-muted-foreground text-xs leading-relaxed">
             Property details, rates, availability, booking info, and your Quick replies are already
             used automatically — no need to repeat them here. Use this box for tone or extra
@@ -97,7 +98,7 @@ export function InboxAiResponseDialog({
           </div>
         </div>
 
-        <DialogFooter className="shrink-0 gap-2 sm:gap-2">
+        <ResponsiveModalFooter className="shrink-0 gap-2 max-lg:px-4 sm:gap-2">
           <Button
             type="button"
             variant="outline"
@@ -115,8 +116,8 @@ export function InboxAiResponseDialog({
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : 'Save'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

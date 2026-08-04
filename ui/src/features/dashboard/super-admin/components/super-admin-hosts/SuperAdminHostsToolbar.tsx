@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 type Props = {
   filters: SuperAdminHostsFilters;
   viewMode: SuperAdminHostsViewMode;
+  hideTableView?: boolean;
   onSearchChange: (value: string) => void;
   onViewModeChange: (mode: SuperAdminHostsViewMode) => void;
 };
@@ -19,6 +20,7 @@ type Props = {
 export function SuperAdminHostsToolbar({
   filters,
   viewMode,
+  hideTableView = false,
   onSearchChange,
   onViewModeChange,
 }: Props) {
@@ -41,6 +43,7 @@ export function SuperAdminHostsToolbar({
       <SuperAdminListViewToggle
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
+        hideTableView={hideTableView}
         className="self-end sm:self-auto"
       />
     </div>

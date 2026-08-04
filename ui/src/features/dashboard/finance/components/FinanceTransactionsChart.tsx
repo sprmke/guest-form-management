@@ -277,7 +277,7 @@ export function FinanceTransactionsChart({
                 </AreaChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-4 flex items-center justify-center gap-6">
+            <div className="mt-4 hidden items-center justify-center gap-6 lg:flex">
               <div className="flex items-center gap-2">
                 <span className="size-3 rounded-full bg-emerald-500" />
                 <span className="text-muted-foreground text-sm">Income</span>

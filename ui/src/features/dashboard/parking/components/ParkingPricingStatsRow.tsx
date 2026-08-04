@@ -17,7 +17,7 @@ export function ParkingPricingStatsRow({ weekdayRate, weekendRate, customDatesCo
   return (
     <section
       aria-label="Pricing summary"
-      className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4"
+      className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3 lg:gap-4"
     >
       <AdminMetricCard
         title="Base Rate"
