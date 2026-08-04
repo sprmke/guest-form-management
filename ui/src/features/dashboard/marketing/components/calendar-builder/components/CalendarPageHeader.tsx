@@ -13,6 +13,7 @@ export function CalendarPageHeader() {
   return (
     <AdminPageHeader
       title="Calendar Builder"
+      subtitle="Design printable calendars for this property."
       actions={
         orgSlug && propertySlug ? (
           <Button variant="outline" size="sm" asChild className="min-h-[44px]">

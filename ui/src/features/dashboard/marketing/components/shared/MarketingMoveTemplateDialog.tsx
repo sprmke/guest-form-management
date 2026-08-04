@@ -1,7 +1,7 @@
 import type { MarketingCategoryItem } from '@/features/dashboard/marketing/hooks/useMarketingCatalog';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 
 type Props = {
   open: boolean;
@@ -23,11 +23,11 @@ export function MarketingMoveTemplateDialog({
   const targets = categories.filter((item) => item.id !== currentCategoryId);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
-        <DialogHeader>
-          <DialogTitle>Move template</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Move template</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <ul className="space-y-1.5">
           {targets.map((item) => (
             <li key={item.id}>
@@ -49,7 +49,7 @@ export function MarketingMoveTemplateDialog({
           <p className="text-muted-foreground text-sm">No other categories.</p>
         ) : null}
         <p className="text-muted-foreground truncate text-xs">{templateName}</p>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

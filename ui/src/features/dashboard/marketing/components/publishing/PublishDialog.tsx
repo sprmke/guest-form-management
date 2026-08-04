@@ -28,12 +28,12 @@ import { orgInboxPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import {
@@ -186,11 +186,11 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Publish</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Publish</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         {connectionsQuery.isLoading ? (
           <div className="flex min-h-[120px] items-center justify-center" role="status">
@@ -326,7 +326,7 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
           </div>
         )}
 
-        <DialogFooter className="gap-2">
+        <ResponsiveModalFooter className="gap-2">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -349,8 +349,8 @@ export function PublishDialog({ open, onOpenChange, media }: Props) {
             )}
             Publish
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

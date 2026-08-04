@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { MarketingCalendarSection } from '@/features/dashboard/marketing/components/calendar-builder/MarketingCalendarSection';
 import { DesignEditor } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
 import type { DesignExportPayload } from '@/features/dashboard/marketing/components/design-editor/DesignEditor';
@@ -44,12 +44,11 @@ export function MarketingStudioPage() {
     <>
       <SlidingTabs value={tab} onValueChange={setTab}>
         <MarketingStudioHeaderActionsProvider>
-          <div className="space-y-3 sm:space-y-4">
-            <AdminPageHeader
-              title="Marketing"
-              subtitle="Create marketing materials, social designs, and promo videos."
-            />
-
+          <AdminMobilePage
+            title="Marketing"
+            subtitle="Build calendars, designs, and promo videos."
+            titleId="marketing-heading"
+          >
             <MarketingStudioShell tabs={<MarketingStudioModeTabs />}>
               <SlidingTabsContent value="calendar" className="mt-0 flex min-h-0 flex-1 flex-col">
                 <MarketingCalendarSection onPublish={handleCalendarPublish} />
@@ -65,7 +64,7 @@ export function MarketingStudioPage() {
             </MarketingStudioShell>
 
             <PublishHistory />
-          </div>
+          </AdminMobilePage>
         </MarketingStudioHeaderActionsProvider>
       </SlidingTabs>
 
