@@ -35,25 +35,35 @@ The admin shell (`AdminLayout`) follows this pattern:
 ```
 Mobile (<lg):
   ┌────────────────────────────────────┐
-  │ Topbar (56px sticky)               │
-  │  [K] Bookings      [refresh] [+]   │
+  │ Topbar (tenant switcher)           │
   ├────────────────────────────────────┤
   │ Page content (scrolls)             │
-  │  p-3 sm:p-4 lg:p-6                 │
+  │  p-3 sm:p-4 + bottom tab inset     │
+  ├────────────────────────────────────┤
+  │ BottomTabBar (primary + More)      │
+  │  or ContextualActionBar (edit)     │
   └────────────────────────────────────┘
 
 Desktop (lg+):
   ┌──────────┬─────────────────────────┐
-  │ Sidebar  │ Topbar (56px sticky)    │
-  │ (fixed,  ├─────────────────────────┤
-  │  220px)  │ Page content            │
-  │          │  p-5 lg:p-6             │
+  │ Sidebar  │ Page content            │
+  │ (flex,   │  p-5 lg:p-6             │
+  │  collapsible) │                    │
   └──────────┴─────────────────────────┘
 ```
 
-- Sidebar is `hidden lg:flex` + `position: fixed`.
-- Main area uses `lg:pl-[220px]` to offset from the fixed sidebar.
-- On mobile, the **topbar** is the sole navigation surface.
+- Desktop sidebar is `hidden lg:flex` (collapsible width); main column fills the rest.
+- On mobile, **bottom tabs** are the primary navigation (first 3 permission-filtered items + More sheet). The hamburger drawer is retired.
+- Screens with a dominant primary action (e.g. booking edit Save/Cancel) mount `ContextualActionBar`, which hides the tab bar for that route.
+- Shared primitives: `ui/src/components/mobile/` (`BottomTabBar`, `BottomBarSlot`, `ContextualActionBar`, `MobileAppShell`, `PageTransition`, `MobileHeroActionMenu`, `AdminListRefineSheet`).
+- **Hero trailing:** never render multiple icon buttons. Use `MobileHeroActionMenu` (1 item = direct icon; 2+ = one ··· dropdown).
+- **List toolbars (`max-lg`):** search + refine icon (`AdminListRefineSheet` for filters/sort/per-page) + view toggle — do not stack Status/Filters/Sort/Per-page as full-width rows. Desktop (`lg+`) keeps inline toolbars.
+- **Dashboard density (`max-lg`):** hide hero subtitles, KPI decorative icons, repeated “vs last period” labels, chart icon wells/descriptions, and period eyebrows when the date filter already conveys the range. Prefer title-only section headers. Keep comfortable card/section gaps (≈10–14px gutters, `p-3`+ padding) — dense chrome, not cramped type.
+- **Choice pickers (`max-lg`):** do not use tiny floating `DropdownMenu` / absolute popovers for option lists — use `MobileChoiceSheet` (≥48px rows). Applies to date presets, Guest pages, hero ··· menus, `AdminSortMenu`, `AdminSingleSelectFilter`, and similar. Desktop (`lg+`) keeps anchored menus.
+- **Floating pill tab bar** — solid brand active pill; ~18px icons (stroke 1.75), 10px labels, 48px row; shared `mobileFloatingDockClassName`; tab clearance `bottomTabBarOffsetClassName()` on `MobileAppShell` for document-scroll pages, or on the **inner scrollport** for fill-main (shell `pb` there creates a dead gap and clips content). Do not use shell `p-*` shorthand or twMerge drops the clearance.
+- **Sticky chrome (`max-lg`):** hero title/arc parallax on scroll; floating toolbar morphs to fixed `MobileStickyChrome` when it reaches the top (`useMobileStickyChrome`). Heavy lists: compact sticky row + More sheet. No nested scrollports. Desktop `lg+` unchanged.
+- Content language: `surface-card` floats on mobile (`shadow-native`, borderless); use `native-cta`, `native-page-canvas`, `native-stagger`, `native-press` for mockup-aligned density.
+- Hybrid modals: short confirms stay `Dialog`; longer forms use `ResponsiveModal` / bottom sheet (`ui/src/components/ui/responsive-modal.tsx`). Sticky header/footer + body scroll → `sheetLayout="split"` (never `overflow-hidden` alone without a `min-h-0 flex-1 overflow-y-auto` body). Sheets size with `h-[min(92dvh,max-content)]` so tall content scrolls instead of clipping.
 
 ## 3. Touch targets
 
@@ -136,9 +146,9 @@ Never use `px-6` or larger without a mobile fallback like `px-4`.
 
 ## 9. Modals and dropdowns
 
-- Modals: centered card at all breakpoints (`max-w-[min(calc(100vw-1.5rem),28rem)]`, `max-h-[min(90dvh,…)]`, rounded, scrollable). Avoid `fixed inset-0` full-screen sheets unless the modal is intentionally a full-page flow.
+- **Hybrid rule:** short confirms/alerts stay centered `Dialog`. Longer forms, pickers, and detail panels use `ResponsiveModal` (Dialog on `lg+`, bottom sheet below). Sticky chrome → `sheetLayout="split"` + `min-h-0 flex-1 overflow-y-auto` body. Avoid full-screen `fixed inset-0` sheets unless intentionally a full-page flow.
 - Dropdowns: on mobile, dropdown panels must never overflow the viewport. Apply `max-w-[calc(100vw-24px)]` as a safety net.
-- Use `z-50` for overlays, `z-40` for sticky headers.
+- Use `z-50` for overlays, `z-40` for sticky headers and the bottom tab / contextual bar.
 
 ## 10. Don'ts
 
