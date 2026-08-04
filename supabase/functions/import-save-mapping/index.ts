@@ -1,7 +1,8 @@
 /**
  * import-save-mapping — Persist user-confirmed column mapping for an import batch.
  * POST { batchId, columnMapping: { [rawHeader]: targetFieldId | null } }
- * Auth: resolveImportAccess. Batch must be in mapped/uploaded/mapping status.
+ * Auth: resolveImportAccess. Batch must be in mapped/uploaded/mapping/previewed status.
+ * Saving from previewed resets to mapped so preview must re-run.
  */
 
 import { resolveImportAccess } from '../_shared/importAccess.ts';
@@ -19,6 +20,7 @@ const ALLOWED_STATUSES: ReadonlyArray<ImportBatchStatus> = [
   'uploaded',
   'mapping',
   'mapped',
+  'previewed',
 ];
 
 type ColumnMappingInput = Record<string, string | null>;

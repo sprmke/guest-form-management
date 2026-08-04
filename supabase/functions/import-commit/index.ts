@@ -21,7 +21,8 @@ import { jsonError, jsonSuccess, readJsonBody, requireHttpMethod } from '../_sha
 import { createServiceClient } from '../_shared/orgAuth.ts';
 import { serveAuthenticated } from '../_shared/serveEdge.ts';
 
-const COMMIT_ALLOWED_STATUSES: ReadonlyArray<ImportBatchStatus> = ['previewed'];
+/** previewed = normal path; failed = retry after a prior commit attempt inserted nothing. */
+const COMMIT_ALLOWED_STATUSES: ReadonlyArray<ImportBatchStatus> = ['previewed', 'failed'];
 
 /** Known boolean columns — 'Yes'/'No' strings → true/false for Postgres. */
 const BOOLEAN_FIELD_IDS = new Set(
@@ -118,7 +119,7 @@ serveAuthenticated('import-commit', async (req) => {
     .from('import_batches')
     .update({ status: 'committing', updated_at: new Date().toISOString() })
     .eq('id', batchId)
-    .in('status', ['previewed', 'committing']);
+    .in('status', ['previewed', 'committing', 'failed']);
 
   if (commitStartError) {
     console.error('[import-commit] failed to start commit:', commitStartError.message);
@@ -199,28 +200,51 @@ serveAuthenticated('import-commit', async (req) => {
 
   skipped = alreadyCommittedCount ?? 0;
 
-  // Finalize batch → committed (or stay committed if all rows were already done).
+  const attemptedCount = (rows ?? []).length;
+
+  // Finalize: committed only when rows were inserted this run, or all valid rows were
+  // already committed from a prior partial run. Do not mark committed when nothing new
+  // was inserted and attempts failed — that would block retry incorrectly.
+  let finalStatus: ImportBatchStatus;
+  let committedAt: string | null = null;
+  let batchError: string | null = null;
+
+  if (inserted > 0 || (inserted === 0 && skipped > 0 && failed.length === 0)) {
+    finalStatus = 'committed';
+    committedAt = now;
+  } else if (inserted === 0 && failed.length > 0) {
+    finalStatus = 'failed';
+    batchError = `${failed.length} row(s) failed to insert`;
+  } else if (attemptedCount === 0 && skipped === 0) {
+    // No valid uncommitted rows and none already committed — nothing to commit; keep preview open.
+    finalStatus = 'previewed';
+  } else {
+    finalStatus = 'failed';
+    batchError = 'Commit produced no inserts';
+  }
+
   const { error: finalizeError } = await supabase
     .from('import_batches')
     .update({
-      status: 'committed',
-      committed_at: now,
+      status: finalStatus,
+      committed_at: committedAt,
+      error: batchError,
       updated_at: now,
     })
     .eq('id', batchId);
 
   if (finalizeError) {
     console.error('[import-commit] batch finalize failed:', finalizeError.message);
-    // Don't return an error — rows were inserted; partial commit is committed.
+    // Don't return an error — row inserts may have succeeded; caller inspects finalStatus.
   }
 
   console.log(
-    `[import-commit] batch ${batchId} — inserted=${inserted}, skipped=${skipped}, failed=${failed.length}`
+    `[import-commit] batch ${batchId} — status=${finalStatus}, inserted=${inserted}, skipped=${skipped}, failed=${failed.length}`
   );
 
   return jsonSuccess(req, {
     batchId,
-    status: 'committed',
+    status: finalStatus,
     inserted,
     skipped,
     failed,

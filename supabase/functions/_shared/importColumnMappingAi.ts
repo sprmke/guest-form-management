@@ -79,6 +79,59 @@ function normalizeMappingStatus(raw: unknown): ImportColumnMappingStatus {
   return 'unmatched';
 }
 
+const MAPPING_STATUS_RANK: Record<ImportColumnMappingStatus, number> = {
+  matched: 3,
+  likely_matched: 2,
+  ambiguous: 1,
+  unmatched: 0,
+};
+
+/**
+ * When AI maps two headers to the same target field, keep the higher-confidence
+ * mapping (matched > likely_matched > ambiguous) and downgrade the other to
+ * ambiguous with no suggested target so the user resolves the conflict manually.
+ */
+function resolveDuplicateSuggestedTargets(
+  mappings: ImportColumnMappingEntry[]
+): ImportColumnMappingEntry[] {
+  const winnerByTarget = new Map<string, number>();
+
+  for (let index = 0; index < mappings.length; index++) {
+    const entry = mappings[index]!;
+    const target = entry.suggestedTarget;
+    if (!target) continue;
+
+    const existingIndex = winnerByTarget.get(target);
+    if (existingIndex === undefined) {
+      winnerByTarget.set(target, index);
+      continue;
+    }
+
+    const existing = mappings[existingIndex]!;
+    const existingRank = MAPPING_STATUS_RANK[existing.status];
+    const candidateRank = MAPPING_STATUS_RANK[entry.status];
+
+    if (candidateRank > existingRank) {
+      winnerByTarget.set(target, index);
+    }
+  }
+
+  return mappings.map((entry, index) => {
+    const target = entry.suggestedTarget;
+    if (!target) return entry;
+
+    const winnerIndex = winnerByTarget.get(target);
+    if (winnerIndex === index) return entry;
+
+    return {
+      ...entry,
+      suggestedTarget: null,
+      status: 'ambiguous' as const,
+      reason: `Duplicate target — resolve manually (${target})`,
+    };
+  });
+}
+
 function sanitizeMappingEntry(
   entry: Record<string, unknown>,
   rawHeader: string
@@ -190,9 +243,10 @@ function parseMappingsPayload(
       if (header) byHeader.set(header, record);
     }
 
-    return headers.map((header) =>
+    const sanitized = headers.map((header) =>
       sanitizeMappingEntry(byHeader.get(header) ?? { rawHeader: header }, header)
     );
+    return resolveDuplicateSuggestedTargets(sanitized);
   } catch {
     return null;
   }
