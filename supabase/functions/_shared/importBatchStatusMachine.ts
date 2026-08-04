@@ -53,3 +53,14 @@ export function availableImportBatchTransitions(
 ): ImportBatchStatus[] {
   return [...(TRANSITION_GRAPH[from] ?? [])];
 }
+
+/** Statuses where AI column mapping may run or re-run. */
+export const IMPORT_AI_MAP_ALLOWED_STATUSES: ReadonlyArray<ImportBatchStatus> = [
+  'uploaded',
+  'mapping',
+  'mapped',
+];
+
+export function canRunImportAiColumnMapping(status: ImportBatchStatus): boolean {
+  return IMPORT_AI_MAP_ALLOWED_STATUSES.includes(status);
+}

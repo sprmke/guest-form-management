@@ -354,6 +354,9 @@ verify_jwt = false
 [functions.import-parse-file]
 verify_jwt = false
 
+[functions.import-ai-map-columns]
+verify_jwt = false
+
 [functions.upload-development-media]
 verify_jwt = false
 
