@@ -1,4 +1,5 @@
 import { SegmentedControl } from '@/components/ui/sliding-tabs';
+import { cn } from '@/lib/utils';
 
 import type { LucideIcon } from 'lucide-react';
 
@@ -35,9 +36,9 @@ export function AdminViewToggle<T extends string>({
         icon: Icon,
       }))}
       hideValues={hideValues}
-      className={className}
-      listClassName="lg:p-0.5"
-      triggerClassName="min-w-[36px] px-2 lg:min-w-0 lg:px-2.5"
+      className={cn('w-full sm:w-auto', className)}
+      listClassName="!w-full max-w-none justify-between sm:!w-fit sm:justify-start lg:p-0.5"
+      triggerClassName="min-w-0 flex-1 px-2 sm:min-w-[36px] sm:flex-initial lg:min-w-0 lg:px-2.5"
       aria-label={ariaLabel}
     />
   );

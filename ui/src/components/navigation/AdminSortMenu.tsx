@@ -2,7 +2,9 @@ import { useRef, useState } from 'react';
 
 import { ArrowUpDown, Check, ChevronDown } from 'lucide-react';
 
+import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 export type AdminSortOption<T extends string> = {
@@ -32,39 +34,69 @@ export function AdminSortMenu<T extends string>({
 }: Props<T>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isMobileLayout = useIsBelowLg();
   const label =
     resolveLabel?.(sort, options) ??
     options.find((option) => option.value === sort)?.label ??
     'Sort';
 
-  useDismissOnOutsideClick(ref, open, () => setOpen(false));
+  useDismissOnOutsideClick(ref, open && !isMobileLayout, () => setOpen(false));
+
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      aria-haspopup={isMobileLayout ? 'dialog' : 'listbox'}
+      className={cn(
+        'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3 py-2.5 text-[13px] font-semibold',
+        'select-none whitespace-nowrap border transition-all duration-100 lg:min-h-0 lg:rounded-lg',
+        'native-press',
+        fullWidth && 'w-full justify-center sm:w-auto sm:justify-start',
+        open
+          ? 'interactive-primary border-border'
+          : 'border-border bg-card text-foreground hover:bg-muted/60'
+      )}
+    >
+      <ArrowUpDown className="size-3.5 shrink-0" aria-hidden />
+      <span className="truncate">{label}</span>
+      <ChevronDown
+        className={cn('size-3.5 shrink-0 transition-transform duration-150', open && 'rotate-180')}
+        aria-hidden
+      />
+    </button>
+  );
+
+  if (isMobileLayout) {
+    return (
+      <div className={cn('relative min-w-0', fullWidth && 'w-full sm:w-auto')}>
+        {trigger}
+        <MobileChoiceSheet open={open} onOpenChange={setOpen} title={ariaLabel}>
+          <div role="listbox" aria-label={ariaLabel}>
+            {options.map((option) => {
+              const selected = sort === option.value;
+              return (
+                <MobileChoiceItem
+                  key={option.value}
+                  selected={selected}
+                  label={option.label}
+                  description={option.description}
+                  onSelect={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                />
+              );
+            })}
+          </div>
+        </MobileChoiceSheet>
+      </div>
+    );
+  }
 
   return (
-    <div ref={ref} className={cn('relative min-w-0', fullWidth && 'w-full')}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        className={cn(
-          'inline-flex min-h-[44px] items-center gap-1.5 rounded-lg px-3 py-2.5 text-[13px] font-semibold',
-          'select-none whitespace-nowrap border transition-all duration-100 lg:min-h-0',
-          fullWidth && 'w-full justify-center',
-          open
-            ? 'interactive-primary border-border'
-            : 'border-border bg-card text-foreground hover:bg-muted/60'
-        )}
-      >
-        <ArrowUpDown className="size-3.5 shrink-0" aria-hidden />
-        <span className="truncate">{label}</span>
-        <ChevronDown
-          className={cn(
-            'size-3.5 shrink-0 transition-transform duration-150',
-            open && 'rotate-180'
-          )}
-          aria-hidden
-        />
-      </button>
+    <div ref={ref} className={cn('relative min-w-0', fullWidth && 'w-full sm:w-auto')}>
+      {trigger}
       {open ? (
         <div
           role="listbox"

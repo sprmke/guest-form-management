@@ -259,36 +259,43 @@ export function BookingsTableSkeleton() {
 export function BookingsCardGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4"
+      className="native-stagger grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-3 lg:gap-4 xl:grid-cols-4"
       aria-busy="true"
       aria-label="Loading bookings"
     >
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="border-border/50 bg-card overflow-hidden rounded-xl border"
-          style={{ opacity: 1 - i * 0.06 }}
-        >
-          <div className="space-y-3 p-3 pb-2.5 sm:space-y-4 sm:p-4">
-            <Skeleton className="h-6 w-28 rounded-full" />
-            <div className="flex items-center gap-3">
-              <Skeleton className="size-12 shrink-0 rounded-full" />
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <Skeleton className="h-3.5 w-2/3" />
-                <Skeleton className="h-3 w-3/4" />
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="surface-card overflow-hidden" style={{ opacity: 1 - i * 0.06 }}>
+          {/* Phone list skeleton */}
+          <div className="flex items-start gap-3 p-3.5 sm:hidden">
+            <Skeleton className="size-12 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <Skeleton className="h-3.5 w-2/3" />
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-5 w-28 rounded-full" />
+              <Skeleton className="h-3.5 w-full" />
+            </div>
+          </div>
+          {/* sm+ card skeleton */}
+          <div className="hidden sm:block">
+            <div className="space-y-4 p-4 pb-3">
+              <Skeleton className="h-6 w-28 rounded-full" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="size-12 shrink-0 rounded-full" />
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <Skeleton className="h-3.5 w-2/3" />
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
               </div>
             </div>
-          </div>
-          <div className="space-y-2 px-4 pb-3">
-            <Skeleton className="h-2.5 w-10" />
-            <Skeleton className="h-3.5 w-full" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-          <div className="border-separator bg-muted/20 dark:bg-muted/30 flex items-center justify-between gap-2 border-t px-4 py-3">
-            <div className="flex gap-1.5">
-              <Skeleton className="size-7 rounded-md" />
+            <div className="space-y-2 px-4 pb-3">
+              <Skeleton className="h-2.5 w-10" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3 w-1/2" />
             </div>
-            <Skeleton className="h-3 w-16" />
+            <div className="border-separator bg-muted/20 dark:bg-muted/30 flex items-center justify-between gap-2 border-t px-4 py-3">
+              <Skeleton className="size-7 rounded-md" />
+              <Skeleton className="h-3 w-16" />
+            </div>
           </div>
         </div>
       ))}
@@ -531,12 +538,12 @@ export function BookingsCalendarSkeleton({
 
 function DashboardChartCardHeaderSkeleton({ showAction = false }: { showAction?: boolean }) {
   return (
-    <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex min-w-0 items-start gap-2">
-        <Skeleton className="icon-well-sm shrink-0 rounded-lg" />
+    <div className="mb-2.5 flex flex-col gap-2 sm:mb-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Skeleton className="icon-well-sm size-8 shrink-0 rounded-lg lg:size-10 lg:rounded-xl" />
         <div className="min-w-0 space-y-1">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-4 w-40 max-w-full" />
+          <Skeleton className="h-4 w-28 lg:h-5 lg:w-32" />
+          <Skeleton className="hidden h-3.5 w-40 max-w-full lg:block" />
         </div>
       </div>
       {showAction ? (

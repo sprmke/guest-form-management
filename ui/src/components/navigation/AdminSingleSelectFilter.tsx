@@ -2,7 +2,9 @@ import { useRef, useState } from 'react';
 
 import { Check, ChevronDown } from 'lucide-react';
 
+import { MobileChoiceItem, MobileChoiceSheet } from '@/components/mobile/MobileChoiceSheet';
 import { useDismissOnOutsideClick } from '@/hooks/useDismissOnOutsideClick';
+import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 export type AdminSingleSelectOption<T extends string = string> = {
@@ -33,35 +35,63 @@ export function AdminSingleSelectFilter<T extends string>({
 }: Props<T>) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const isMobileLayout = useIsBelowLg();
   const close = () => setOpen(false);
-  useDismissOnOutsideClick(ref, open, close);
+  useDismissOnOutsideClick(ref, open && !isMobileLayout, close);
 
   const label = options.find((option) => option.value === value)?.label ?? options[0]?.label ?? '';
 
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      aria-haspopup={isMobileLayout ? 'dialog' : 'listbox'}
+      className={cn(
+        'inline-flex min-h-[44px] w-full items-center justify-between gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
+        triggerWidthClassName,
+        open || isActive(value)
+          ? 'border-primary bg-primary/10 text-primary'
+          : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60'
+      )}
+    >
+      <span className="truncate">{label}</span>
+      <ChevronDown
+        className={cn('size-3.5 shrink-0 transition-transform duration-150', open && 'rotate-180')}
+        aria-hidden
+      />
+    </button>
+  );
+
+  if (isMobileLayout) {
+    return (
+      <div className="relative min-w-0">
+        {trigger}
+        <MobileChoiceSheet open={open} onOpenChange={setOpen} title={ariaLabel}>
+          <div role="listbox" aria-label={ariaLabel}>
+            {options.map((option) => {
+              const selected = value === option.value;
+              return (
+                <MobileChoiceItem
+                  key={option.value}
+                  selected={selected}
+                  label={option.label}
+                  onSelect={() => {
+                    onChange(option.value);
+                    close();
+                  }}
+                />
+              );
+            })}
+          </div>
+        </MobileChoiceSheet>
+      </div>
+    );
+  }
+
   return (
     <div ref={ref} className="relative min-w-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="listbox"
-        className={cn(
-          'inline-flex min-h-[44px] w-full items-center justify-between gap-1.5 rounded-lg border px-3 py-2.5 text-[13px] font-semibold',
-          triggerWidthClassName,
-          open || isActive(value)
-            ? 'border-primary bg-primary/10 text-primary'
-            : 'border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/60'
-        )}
-      >
-        <span className="truncate">{label}</span>
-        <ChevronDown
-          className={cn(
-            'size-3.5 shrink-0 transition-transform duration-150',
-            open && 'rotate-180'
-          )}
-          aria-hidden
-        />
-      </button>
+      {trigger}
       {open ? (
         <div
           role="listbox"

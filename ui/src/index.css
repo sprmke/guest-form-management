@@ -239,6 +239,33 @@
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+    width: 0;
+    height: 0;
+  }
+
+  /**
+   * Phone/tablet: hide scrollbars (keep scroll) for a native-app feel.
+   * Desktop/large keeps visible scroll affordances.
+   */
+  @media (max-width: 1023px) {
+    .overflow-x-auto,
+    .overflow-y-auto,
+    .overflow-auto,
+    .overflow-x-scroll,
+    .overflow-y-scroll {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .overflow-x-auto::-webkit-scrollbar,
+    .overflow-y-auto::-webkit-scrollbar,
+    .overflow-auto::-webkit-scrollbar,
+    .overflow-x-scroll::-webkit-scrollbar,
+    .overflow-y-scroll::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
+    }
   }
 
   @keyframes fadeIn {
@@ -424,12 +451,13 @@
     @apply from-card to-muted/30 bg-gradient-to-br;
   }
 
+  /** Solid brand emphasis — prefer weight/size over decorative fill. */
   .text-gradient {
-    @apply from-primary to-primary/70 bg-gradient-to-r bg-clip-text text-transparent;
+    @apply text-primary font-semibold;
   }
 
   .text-gradient-light {
-    @apply from-primary/80 to-primary/60 bg-gradient-to-r bg-clip-text text-transparent;
+    @apply text-primary/80 font-medium;
   }
 
   .glow-sm {
@@ -487,10 +515,52 @@
       0 10px 15px -3px hsl(var(--shadow-color) / 0.07);
   }
 
+  /** Deeper float for mobile native surfaces (metric cards, sheets). Phone/tablet only. */
+  .shadow-native {
+    box-shadow:
+      0 2px 8px 0 hsl(var(--shadow-color) / 0.04),
+      0 12px 32px -8px hsl(var(--shadow-color) / 0.1);
+  }
+
+  .shadow-native-primary {
+    box-shadow:
+      0 4px 14px 0 hsl(var(--primary) / 0.28),
+      0 10px 28px -8px hsl(var(--primary) / 0.22);
+  }
+
   .shadow-elevated {
     box-shadow:
       0 10px 25px -5px hsl(var(--shadow-color) / 0.1),
       0 20px 50px -10px hsl(var(--shadow-color) / 0.1);
+  }
+
+  /**
+   * Shared Dialog / Sheet scrim — frost first, light tint second.
+   * Without backdrop-filter support, fall back to a slightly stronger tint.
+   */
+  .modal-scrim {
+    @apply bg-black/40 backdrop-blur-md;
+  }
+
+  @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+    .modal-scrim {
+      @apply bg-black/25;
+    }
+  }
+
+  /**
+   * Media lightbox / image preview — dark immersive scrim (not the frosted sheet tint).
+   * Defined as a class so it wins over `.modal-scrim` regardless of utility order.
+   */
+  .modal-scrim-lightbox {
+    @apply bg-black/95 backdrop-blur-none;
+  }
+
+  @supports (backdrop-filter: blur(0)) or (-webkit-backdrop-filter: blur(0)) {
+    .modal-scrim-lightbox {
+      /* Keep nearly opaque so the photo pops; tiny blur only if the engine insists. */
+      @apply bg-black/90 backdrop-blur-[2px];
+    }
   }
 
   .interactive {
@@ -539,16 +609,13 @@
     overflow: hidden;
   }
 
-  .bg-grid {
-    background-image:
-      linear-gradient(hsl(var(--border) / 0.5) 1px, transparent 1px),
-      linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px);
-    background-size: 24px 24px;
-  }
-
-  .bg-dots {
-    background-image: radial-gradient(hsl(var(--border)) 1px, transparent 1px);
-    background-size: 16px 16px;
+  /** Soft ambient wash — marketing sections; not a decorative grid field. */
+  .bg-mesh-wash {
+    background-image: radial-gradient(
+      ellipse 80% 60% at 50% 0%,
+      hsl(var(--primary) / 0.06),
+      transparent 70%
+    );
   }
 
   /** Toolbar / filter selected state — neutral (matches PMA tabs / outline controls) */
@@ -614,8 +681,12 @@
       );
   }
 
+  /**
+   * Card surface — desktop/large unchanged (border + shadow-card + rounded-xl).
+   * Phone/tablet (`max-lg`) get borderless soft-float for native mockups.
+   */
   .surface-card {
-    @apply bg-card text-card-foreground shadow-card rounded-xl border;
+    @apply bg-card text-card-foreground shadow-card max-lg:shadow-native-float rounded-xl border max-lg:rounded-[1.35rem] max-lg:border-0;
   }
 
   /** Clip table corners — use on admin list shells, not general cards. */
@@ -624,15 +695,15 @@
   }
 
   .dark .surface-card {
-    @apply border-[hsl(0_0%_100%_/_0.06)];
+    @apply border border-[hsl(0_0%_100%_/_0.06)];
   }
 
   .surface-card-interactive {
-    @apply bg-card text-card-foreground shadow-card rounded-xl border transition-all duration-200;
+    @apply bg-card text-card-foreground shadow-card max-lg:shadow-native-float max-lg:native-press rounded-xl border transition-all duration-200 max-lg:rounded-[1.35rem] max-lg:border-0;
   }
 
   .dark .surface-card-interactive {
-    @apply border-[hsl(0_0%_100%_/_0.06)];
+    @apply border border-[hsl(0_0%_100%_/_0.06)];
   }
 
   .surface-card-interactive:hover {
@@ -643,8 +714,243 @@
     @apply border-[hsl(0_0%_100%_/_0.08)];
   }
 
+  /** Soft press feedback for tappable admin chrome (respects reduced motion). */
+  .native-press {
+    @apply touch-manipulation transition-transform duration-150 ease-out motion-safe:active:scale-[0.97];
+  }
+
+  /** Full-width brand CTA on phone; compact primary button from `sm` (matches desktop CTAs). */
+  .native-cta {
+    @apply gradient-primary text-primary-foreground native-press max-lg:shadow-native-primary sm:shadow-soft inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-semibold tracking-tight sm:min-h-[44px] sm:w-auto sm:rounded-xl;
+  }
+
+  /** Soft brand-tinted page canvas — phone/tablet only; desktop uses plain shell. */
+  .native-page-canvas {
+    @apply max-lg:from-muted max-lg:via-muted/40 max-lg:to-background dark:max-lg:from-primary/[0.1] dark:max-lg:via-background max-lg:bg-gradient-to-b;
+  }
+
+  /** Teal brand hero band — native mobile shell (max-lg only). */
+  @media (max-width: 1023px) {
+    .mobile-brand-hero {
+      @apply bg-primary text-primary-foreground relative z-0 overflow-visible;
+      @apply pt-[max(0.75rem,env(safe-area-inset-top))];
+      @apply px-3 sm:px-4 md:px-6;
+      /* Collapse progress 0→1: tighten bottom pad + flatten the arc (parallax). */
+      --hero-collapse: 0;
+      padding-bottom: calc(2.5rem - (var(--hero-collapse) * 1.65rem));
+      border-bottom-left-radius: 50% calc(2rem * (1 - (var(--hero-collapse) * 0.72)));
+      border-bottom-right-radius: 50% calc(2rem * (1 - (var(--hero-collapse) * 0.72)));
+      background-image: linear-gradient(
+        185deg,
+        hsl(var(--primary)) 0%,
+        hsl(var(--primary)) 62%,
+        hsl(var(--primary) / 0.93) 100%
+      );
+      box-shadow:
+        0 10px 28px -14px hsl(var(--primary) / calc(0.4 * (1 - (var(--hero-collapse) * 0.35)))),
+        0 4px 14px -10px hsl(var(--primary) / calc(0.28 * (1 - (var(--hero-collapse) * 0.25))));
+      /* Scroll-linked — no CSS transition on pad/radius (tracks finger 1:1). */
+    }
+
+    /**
+     * Soft primary glow under the arc — fades as the hero collapses so it
+     * doesn’t sit under scrolled content.
+     */
+    .mobile-brand-hero::after {
+      content: '';
+      @apply pointer-events-none absolute -bottom-2 left-[12%] right-[12%] z-0 h-6;
+      border-radius: 50%;
+      opacity: calc(1 - var(--hero-collapse));
+      background: radial-gradient(
+        ellipse at center,
+        hsl(var(--primary) / 0.28) 0%,
+        hsl(var(--primary) / 0.1) 50%,
+        transparent 72%
+      );
+      filter: blur(8px);
+    }
+
+    .mobile-brand-hero--compact {
+      /* Compact sticky chrome — denser edge so the bar reads as pinned app chrome. */
+      box-shadow:
+        0 10px 24px -12px hsl(var(--primary) / 0.5),
+        0 1px 0 0 hsl(var(--primary) / 0.22);
+    }
+
+    .mobile-hero-action {
+      @apply motion-reduce:transition-none;
+    }
+
+    /**
+     * Pinned sticky chrome — brand teal band + compact floating toolbar.
+     * Keeps switcher/actions on-primary; white float pill carries the date/filters.
+     */
+    .mobile-sticky-chrome {
+      @apply text-primary-foreground;
+      /* Match floating toolbar roundness (~1.1rem) on the bottom edge. */
+      border-bottom-left-radius: 1.1rem;
+      border-bottom-right-radius: 1.1rem;
+      background-image: linear-gradient(
+        185deg,
+        hsl(var(--primary)) 0%,
+        hsl(var(--primary)) 70%,
+        hsl(var(--primary) / 0.96) 100%
+      );
+      box-shadow:
+        0 10px 24px -14px hsl(var(--primary) / 0.45),
+        0 1px 0 0 hsl(var(--primary) / 0.2);
+    }
+
+    /* Densify hero action + switcher avatar in the sticky band. */
+    .mobile-sticky-chrome .mobile-hero-action {
+      @apply size-9 shadow-[0_2px_8px_-2px_hsl(var(--shadow-color)/0.2)];
+    }
+
+    .mobile-sticky-chrome .mobile-hero-action svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    .mobile-sticky-chrome-scope .size-11 {
+      width: 2.25rem;
+      height: 2.25rem;
+    }
+
+    .mobile-sticky-chrome-scope .gap-3 {
+      gap: 0.5rem;
+    }
+
+    .mobile-sticky-chrome-scope .text-sm {
+      font-size: 0.8125rem;
+      line-height: 1.15;
+    }
+
+    .mobile-sticky-chrome-scope .text-xs {
+      font-size: 0.6875rem;
+      line-height: 1.1;
+    }
+
+    /* Strip bulky switcher button padding in sticky band. */
+    .mobile-sticky-chrome-scope button.h-auto {
+      padding-top: 0.2rem;
+      padding-bottom: 0.2rem;
+      padding-left: 0.15rem;
+      padding-right: 0.15rem;
+    }
+
+    .mobile-sticky-chrome-scope button.h-auto svg.size-4 {
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+
+    /* Floating white pill — inset on brand, soft lift. */
+    .mobile-sticky-float {
+      @apply bg-card text-card-foreground rounded-[1.1rem] px-1.5 py-1;
+      box-shadow:
+        0 1px 2px 0 hsl(var(--shadow-color) / 0.04),
+        0 8px 22px -8px hsl(var(--shadow-color) / 0.14),
+        0 0 0 1px hsl(var(--shadow-color) / 0.04);
+    }
+
+    /*
+     * When pages pass a FloatingToolbar as stickyPrimary, strip its own
+     * padding/shadow so we don't stack two float shells.
+     */
+    .mobile-sticky-float-body > * {
+      background: transparent !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      /* Neutralize ring utilities on nested float shells */
+      --tw-ring-shadow: 0 0 #0000 !important;
+      --tw-ring-offset-shadow: 0 0 #0000 !important;
+    }
+
+    .mobile-sticky-float-body > * > * {
+      gap: 0 !important;
+    }
+
+    /* Compact date / button-group controls inside the sticky float. */
+    .mobile-sticky-float-body [role='group'] button {
+      min-height: 2.25rem;
+      padding-top: 0.35rem;
+      padding-bottom: 0.35rem;
+      font-size: 0.75rem;
+      line-height: 1rem;
+    }
+
+    .mobile-sticky-float-body [role='group'] button svg {
+      width: 0.875rem;
+      height: 0.875rem;
+    }
+  }
+
+  /** Stronger float used by FloatingPanel / metric cards on phone. */
+  .shadow-native-float {
+    box-shadow:
+      0 1px 2px 0 hsl(var(--shadow-color) / 0.04),
+      0 8px 24px -6px hsl(var(--shadow-color) / 0.1),
+      0 20px 48px -12px hsl(var(--shadow-color) / 0.08);
+  }
+
+  /** Floating bottom dock (tabs + contextual action bar) — soft lift + top sheen. */
+  .mobile-floating-dock {
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.65) inset,
+      0 1px 2px 0 hsl(var(--shadow-color) / 0.05),
+      0 10px 28px -8px hsl(var(--shadow-color) / 0.14),
+      0 24px 56px -16px hsl(var(--shadow-color) / 0.12);
+  }
+
+  .dark .mobile-floating-dock {
+    box-shadow:
+      0 1px 0 0 hsl(0 0% 100% / 0.06) inset,
+      0 1px 2px 0 hsl(var(--shadow-color) / 0.2),
+      0 10px 28px -8px hsl(var(--shadow-color) / 0.35),
+      0 24px 56px -16px hsl(var(--shadow-color) / 0.28);
+  }
+
+  /** Stagger entrance — phone/tablet only so desktop loads stay static. */
+  @media (max-width: 1023px) {
+    .native-stagger > * {
+      animation: slideUp 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .native-stagger > *:nth-child(1) {
+      animation-delay: 0ms;
+    }
+    .native-stagger > *:nth-child(2) {
+      animation-delay: 45ms;
+    }
+    .native-stagger > *:nth-child(3) {
+      animation-delay: 90ms;
+    }
+    .native-stagger > *:nth-child(4) {
+      animation-delay: 135ms;
+    }
+    .native-stagger > *:nth-child(5) {
+      animation-delay: 180ms;
+    }
+    .native-stagger > *:nth-child(6) {
+      animation-delay: 225ms;
+    }
+    .native-stagger > *:nth-child(n + 7) {
+      animation-delay: 260ms;
+    }
+  }
+
+  /** Colored icon tile for metric cards — matches prior desktop size from `sm`. */
+  .native-icon-tile {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-10 sm:rounded-xl;
+  }
+
+  /** Vertical section rhythm for admin pages (phone → desktop). */
+  .admin-page-stack {
+    @apply gap-4 sm:gap-4 lg:gap-5;
+  }
+
   .surface-muted {
-    @apply border-border/40 bg-muted/70 rounded-xl border;
+    @apply border-border/40 bg-muted/70 rounded-xl border max-lg:rounded-2xl;
   }
 
   .dark .surface-muted {
@@ -676,9 +982,9 @@
     @apply text-foreground text-2xl font-bold tracking-tight md:text-3xl;
   }
 
-  /** Admin shell page titles (Bookings, Finance, Settings, …). */
+  /** Admin shell page titles (Bookings, Finance, Settings, …). Larger only below `sm`. */
   .text-admin-page-title {
-    @apply text-foreground text-lg font-bold tracking-tight sm:text-xl md:text-2xl;
+    @apply text-foreground text-lg font-bold tracking-tight max-sm:text-[1.65rem] max-sm:leading-tight sm:text-xl md:text-2xl;
   }
 
   .text-admin-page-subtitle {
@@ -695,7 +1001,7 @@
   }
 
   .text-section-title {
-    @apply text-foreground text-sm font-semibold tracking-tight sm:text-base;
+    @apply text-foreground text-[15px] font-semibold leading-none tracking-tight sm:text-base;
   }
 
   /** Primary interactive / toolbar copy (filters, buttons, menu items). */
@@ -797,7 +1103,9 @@
     .guest-enter-success,
     .guest-inner-enter,
     .surface-card-interactive:hover,
-    .hover-lift:hover {
+    .hover-lift:hover,
+    .native-press:active,
+    .native-stagger > * {
       animation: none !important;
       transform: none !important;
       opacity: 1 !important;
@@ -910,8 +1218,6 @@
   background: hsl(var(--card)) !important;
   color: hsl(var(--foreground)) !important;
   border: 1px solid hsl(var(--border)) !important;
-  border-left-width: 4px !important;
-  border-left-color: hsl(var(--border)) !important;
   box-shadow:
     0 10px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
@@ -961,15 +1267,24 @@
 }
 
 [data-sonner-toast][data-type='success'] {
-  border-left-color: hsl(var(--success)) !important;
+  border-color: hsl(var(--success) / 0.45) !important;
+  box-shadow:
+    0 0 0 1px hsl(var(--success) / 0.12),
+    0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
 }
 
 [data-sonner-toast][data-type='error'] {
-  border-left-color: hsl(var(--destructive)) !important;
+  border-color: hsl(var(--destructive) / 0.45) !important;
+  box-shadow:
+    0 0 0 1px hsl(var(--destructive) / 0.12),
+    0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
 }
 
 [data-sonner-toast][data-type='warning'] {
-  border-left-color: hsl(var(--warning)) !important;
+  border-color: hsl(var(--warning) / 0.45) !important;
+  box-shadow:
+    0 0 0 1px hsl(var(--warning) / 0.12),
+    0 10px 25px -5px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Custom Gmail banner: inner card supplies border, shadow, and dismiss — strip outer chrome */
