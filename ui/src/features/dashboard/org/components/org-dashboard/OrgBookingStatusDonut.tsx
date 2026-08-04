@@ -55,7 +55,7 @@ export function OrgBookingStatusDonut({ slices }: Props) {
 
   return (
     <section className="surface-card min-w-0 p-3 sm:p-4">
-      <p className="text-section-title text-foreground mb-3 font-bold">Booking Status</p>
+      <p className="text-section-title mb-3">Booking Status</p>
 
       <div className="flex h-[140px] items-center justify-center sm:h-[180px]">
         {chartData.length > 0 ? (

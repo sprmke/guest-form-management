@@ -25,7 +25,7 @@ type Props = {
 export function OrgRecentBookingsList({ orgSlug, bookings }: Props) {
   return (
     <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
-      <p className="text-section-title text-foreground mb-3 font-bold">Recent Bookings</p>
+      <p className="text-section-title mb-3">Recent Bookings</p>
 
       {bookings.length === 0 ? (
         <p className="text-muted-foreground py-8 text-center text-sm">No bookings in this period</p>
@@ -37,9 +37,9 @@ export function OrgRecentBookingsList({ orgSlug, bookings }: Props) {
               : null;
 
             const row = (
-              <div className="border-border hover:bg-muted/40 flex min-w-0 items-center gap-3 rounded-xl border px-2.5 py-2.5 transition-colors sm:px-3 sm:py-3">
+              <div className="border-border hover:bg-muted/40 flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-colors sm:gap-3 sm:px-3 sm:py-3">
                 <div
-                  className="bg-primary/10 text-primary flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold"
+                  className="bg-primary/10 text-primary hidden size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold lg:flex"
                   aria-hidden
                 >
                   {booking.guestName
@@ -53,13 +53,15 @@ export function OrgRecentBookingsList({ orgSlug, bookings }: Props) {
                     <span className="text-foreground truncate text-xs font-semibold sm:text-sm">
                       {booking.guestName}
                     </span>
-                    <StatusBadge status={booking.status} className="hidden sm:inline-flex" />
+                    <StatusBadge status={booking.status} className="hidden lg:inline-flex" />
                   </div>
                   <p className="text-muted-foreground truncate text-[11px] sm:text-sm">
-                    {booking.propertyName} ·{' '}
-                    {formatStayRange(booking.checkInIso, booking.checkOutIso)}
+                    {booking.propertyName}
+                    <span className="hidden sm:inline">
+                      {' '}
+                      · {formatStayRange(booking.checkInIso, booking.checkOutIso)}
+                    </span>
                   </p>
-                  <StatusBadge status={booking.status} className="mt-1 w-fit sm:hidden" />
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-xs font-semibold tabular-nums sm:text-sm">

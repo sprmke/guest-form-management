@@ -15,7 +15,7 @@ export function OrgPropertiesPerformanceCard({ orgSlug, properties }: Props) {
   return (
     <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-section-title text-foreground font-bold">Properties Performance</p>
+        <p className="text-section-title">Properties Performance</p>
         <Link
           to={orgPropertiesPath(orgSlug)}
           className="text-primary inline-flex min-h-[44px] items-center text-xs font-semibold hover:underline"
@@ -34,7 +34,7 @@ export function OrgPropertiesPerformanceCard({ orgSlug, properties }: Props) {
               to={propertySectionPath(orgSlug, property.slug, 'dashboard')}
               className="border-border hover:bg-muted/40 flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2.5 transition-colors sm:gap-3 sm:px-3 sm:py-3"
             >
-              <div className="bg-primary/10 flex size-11 shrink-0 items-center justify-center rounded-lg">
+              <div className="bg-primary/10 hidden size-11 shrink-0 items-center justify-center rounded-lg lg:flex">
                 <Building2 className="text-primary size-5" aria-hidden />
               </div>
               <div className="min-w-0 flex-1">
@@ -43,7 +43,7 @@ export function OrgPropertiesPerformanceCard({ orgSlug, properties }: Props) {
                     {property.name}
                   </span>
                   {property.location ? (
-                    <span className="text-muted-foreground truncate text-xs">
+                    <span className="text-muted-foreground hidden truncate text-xs lg:inline">
                       · {property.location}
                     </span>
                   ) : null}
@@ -51,7 +51,8 @@ export function OrgPropertiesPerformanceCard({ orgSlug, properties }: Props) {
                 <div className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2 text-[11px] sm:mt-1 sm:gap-3 sm:text-sm">
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="size-3 sm:size-3.5" aria-hidden />
-                    {property.bookings} bookings
+                    {property.bookings}
+                    <span className="hidden sm:inline"> bookings</span>
                   </span>
                   <span className="inline-flex items-center gap-1">
                     <Home className="size-3 sm:size-3.5" aria-hidden />

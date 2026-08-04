@@ -72,7 +72,7 @@ export function OrgRevenueBookingsChart({ data, isLoading }: Props) {
   return (
     <section className="surface-card min-w-0 p-3 sm:p-4 lg:col-span-2">
       <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-section-title text-foreground font-bold">Revenue Overview</p>
+        <p className="text-section-title">Revenue Overview</p>
         <SegmentedControl
           value={metric}
           onChange={setMetric}
