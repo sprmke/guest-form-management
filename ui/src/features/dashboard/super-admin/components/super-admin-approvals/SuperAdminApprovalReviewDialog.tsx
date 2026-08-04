@@ -41,6 +41,16 @@ import {
   defaultApprovalReviewTier,
   type ApprovalReviewTier,
 } from '@/features/dashboard/super-admin/lib/approvalReviewTier';
+import {
+  formatSuperAdminApprovalDate,
+  superAdminApprovalDialogBodyClass,
+  superAdminApprovalDialogContentClass,
+  superAdminApprovalDialogFooterClass,
+  superAdminApprovalDialogHeaderClass,
+  superAdminApprovalFooterButtonClass,
+  superAdminApprovalSectionTitleClass,
+  SuperAdminApprovalInfoRow,
+} from '@/features/dashboard/super-admin/components/super-admin-approvals/superAdminApprovalDialogLayout';
 import type {
   OrgApprovalSummary,
   OrgApprovalUnitConflict,
@@ -104,23 +114,16 @@ function hostModesLabel(hostModes: string[]): string {
   return 'Property';
 }
 
-function formatApprovalDate(value: string | null): string {
-  if (!value) return '—';
-  const trimmed = value.trim();
-  const ymd = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-  const date = ymd
-    ? new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]))
-    : new Date(trimmed);
-  if (Number.isNaN(date.getTime())) return trimmed;
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 function unitConflictsOf(approval: OrgApprovalSummary): OrgApprovalUnitConflict[] {
   return Array.isArray(approval.unitConflicts) ? approval.unitConflicts : [];
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return <SuperAdminApprovalInfoRow label={label} value={value} />;
+}
+
+function formatApprovalDate(value: string | null): string {
+  return formatSuperAdminApprovalDate(value);
 }
 
 function ApprovalReviewTierSwitcher({
@@ -212,15 +215,6 @@ function UnitConflictList({ conflicts }: { conflicts: OrgApprovalUnitConflict[] 
         })}
       </ul>
     </section>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-      <dt className="text-muted-foreground w-[7.5rem] shrink-0 text-xs font-medium">{label}</dt>
-      <dd className="text-foreground min-w-0 text-sm">{value}</dd>
-    </div>
   );
 }
 
@@ -409,16 +403,10 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   return (
     <>
       <Dialog open={open} onOpenChange={(next) => (!next ? close() : null)}>
-        <DialogContent
-          showCloseButton
-          className={cn(
-            'flex h-[min(90dvh,44rem)] max-h-[min(90dvh,44rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-            'sm:w-[min(94vw,42rem)] sm:max-w-[42rem] sm:p-0'
-          )}
-        >
+        <DialogContent showCloseButton className={superAdminApprovalDialogContentClass}>
           <DialogHeader
             className={cn(
-              'border-border shrink-0 space-y-2 border-b px-5 pb-4 pt-5 text-left sm:px-6',
+              superAdminApprovalDialogHeaderClass,
               panel === 'changes' && 'bg-orange-500/[0.04]',
               panel === 'reject' && 'bg-destructive/[0.04]'
             )}
@@ -472,7 +460,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             )}
           </DialogHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+          <div className={superAdminApprovalDialogBodyClass}>
             {isLoading || !detail || !verification ? (
               <div className="flex justify-center py-10">
                 <Loader2 className="text-muted-foreground size-5 animate-spin" aria-hidden />
@@ -742,9 +730,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   </section>
                 ) : null}
                 <section className="space-y-3">
-                  <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
-                    Information
-                  </p>
+                  <p className={superAdminApprovalSectionTitleClass}>Information</p>
                   <dl className="space-y-2.5">
                     <InfoRow label="Hosting" value={hostModesLabel(hostModes)} />
                     <InfoRow
@@ -793,9 +779,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 {reviewTier === 'base' ? <UnitConflictList conflicts={unitConflicts} /> : null}
 
                 <section className="space-y-3">
-                  <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
-                    Documents
-                  </p>
+                  <p className={superAdminApprovalSectionTitleClass}>Documents</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {reviewTier === 'enhanced' ? (
                       <>
@@ -871,19 +855,33 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             )}
           </div>
 
-          <DialogFooter className="border-border bg-background shrink-0 flex-col gap-2 border-t px-5 py-3.5 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6 sm:py-4">
+          <DialogFooter className={superAdminApprovalDialogFooterClass}>
             {decided ? (
-              <Button type="button" variant="outline" onClick={close}>
+              <Button
+                type="button"
+                variant="outline"
+                className={superAdminApprovalFooterButtonClass}
+                onClick={close}
+              >
                 Close
               </Button>
             ) : panel === 'changes' ? (
               <>
-                <Button type="button" variant="outline" onClick={backToReview} disabled={busy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={superAdminApprovalFooterButtonClass}
+                  onClick={backToReview}
+                  disabled={busy}
+                >
                   Back
                 </Button>
                 <Button
                   type="button"
-                  className="bg-orange-600 text-white hover:bg-orange-700"
+                  className={cn(
+                    superAdminApprovalFooterButtonClass,
+                    'bg-orange-600 text-white hover:bg-orange-700'
+                  )}
                   disabled={busy || !changesMessage}
                   onClick={() => void handleRequestChanges()}
                 >
@@ -899,12 +897,19 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
               </>
             ) : panel === 'reject' ? (
               <>
-                <Button type="button" variant="outline" onClick={backToReview} disabled={busy}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={superAdminApprovalFooterButtonClass}
+                  onClick={backToReview}
+                  disabled={busy}
+                >
                   Back
                 </Button>
                 <Button
                   type="button"
                   variant="destructive"
+                  className={superAdminApprovalFooterButtonClass}
                   disabled={busy || !rejectMessage}
                   onClick={() => void handleReject()}
                 >
@@ -923,7 +928,10 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 <Button
                   type="button"
                   variant="outline"
-                  className="border-orange-500/35 text-orange-800 hover:bg-orange-500/10 hover:text-orange-900"
+                  className={cn(
+                    superAdminApprovalFooterButtonClass,
+                    'border-orange-500/35 text-orange-800 hover:bg-orange-500/10 hover:text-orange-900'
+                  )}
                   onClick={() => setPanel('changes')}
                   disabled={busy || isLoading || !detail}
                 >
@@ -932,6 +940,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 <Button
                   type="button"
                   variant="destructive"
+                  className={superAdminApprovalFooterButtonClass}
                   onClick={() => setPanel('reject')}
                   disabled={busy}
                 >
@@ -939,6 +948,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 </Button>
                 <Button
                   type="button"
+                  className={superAdminApprovalFooterButtonClass}
                   disabled={busy || isLoading}
                   onClick={() => void requestApprove()}
                 >
@@ -988,7 +998,12 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
       </AlertDialog>
 
       {fullView ? (
-        <VerificationDocFullViewDialog asset={fullView} onClose={() => setFullView(null)} />
+        <VerificationDocFullViewDialog
+          asset={fullView}
+          onClose={() => setFullView(null)}
+          overlayClassName="z-[110]"
+          contentClassName="z-[111]"
+        />
       ) : null}
     </>
   );

@@ -5,14 +5,21 @@ import { ClipboardCheck, Filter, Loader2, Search } from 'lucide-react';
 import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { SuperAdminApprovalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalReviewDialog';
 import { SuperAdminApprovalsTable } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminApprovalsTable';
+import { SuperAdminExternalReviewDialog } from '@/features/dashboard/super-admin/components/super-admin-approvals/SuperAdminExternalReviewDialog';
 import { useApprovals } from '@/features/dashboard/super-admin/hooks/useApprovals';
 import {
   DEFAULT_APPROVALS_FILTERS,
   filterSuperAdminApprovals,
+  isExternalReviewApprovalSummary,
+  isOrgApprovalSummary,
   superAdminApprovalsHasActiveFilters,
   type SuperAdminApprovalsFilters,
 } from '@/features/dashboard/super-admin/lib/superAdminApprovalsFilters';
-import type { OrgApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
+import type {
+  ApprovalQueueItem,
+  ExternalReviewApprovalSummary,
+  OrgApprovalSummary,
+} from '@/features/dashboard/super-admin/types/approval';
 
 import { Input } from '@/components/ui/input';
 import {
@@ -37,13 +44,26 @@ function ApprovalsEmptyState({ filtered }: { filtered: boolean }) {
 export function SuperAdminApprovalsPage() {
   const { data: approvals = [], isLoading, error } = useApprovals();
   const [filters, setFilters] = useState<SuperAdminApprovalsFilters>(DEFAULT_APPROVALS_FILTERS);
-  const [selected, setSelected] = useState<OrgApprovalSummary | null>(null);
+  const [selectedOrg, setSelectedOrg] = useState<OrgApprovalSummary | null>(null);
+  const [selectedReview, setSelectedReview] = useState<ExternalReviewApprovalSummary | null>(null);
 
   const filteredApprovals = useMemo(
     () => filterSuperAdminApprovals(approvals, filters),
     [approvals, filters]
   );
   const hasActiveFilters = superAdminApprovalsHasActiveFilters(filters);
+
+  function handleSelect(item: ApprovalQueueItem) {
+    if (isOrgApprovalSummary(item)) {
+      setSelectedReview(null);
+      setSelectedOrg(item);
+      return;
+    }
+    if (isExternalReviewApprovalSummary(item)) {
+      setSelectedOrg(null);
+      setSelectedReview(item);
+    }
+  }
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -58,7 +78,7 @@ export function SuperAdminApprovalsPage() {
           <AdminPageHeader title="Approvals" />
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 flex-1 gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap gap-2">
               <div className="relative min-w-0 flex-1 sm:max-w-xs">
                 <Search
                   className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2"
@@ -76,6 +96,26 @@ export function SuperAdminApprovalsPage() {
               </div>
 
               <Select
+                value={filters.type}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    type: value as SuperAdminApprovalsFilters['type'],
+                  }))
+                }
+              >
+                <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by type">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="property">Property</SelectItem>
+                  <SelectItem value="parking">Parking</SelectItem>
+                  <SelectItem value="reviews">Reviews</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
                 value={filters.status}
                 onValueChange={(value) =>
                   setFilters((prev) => ({
@@ -84,7 +124,7 @@ export function SuperAdminApprovalsPage() {
                   }))
                 }
               >
-                <SelectTrigger className="h-10 w-[9.5rem] shrink-0">
+                <SelectTrigger className="h-10 w-[9.5rem] shrink-0" aria-label="Filter by status">
                   <Filter className="size-4 shrink-0 opacity-70" aria-hidden />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
@@ -100,7 +140,7 @@ export function SuperAdminApprovalsPage() {
           </div>
 
           {filteredApprovals.length > 0 ? (
-            <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={setSelected} />
+            <SuperAdminApprovalsTable approvals={filteredApprovals} onSelect={handleSelect} />
           ) : (
             <ApprovalsEmptyState filtered={hasActiveFilters} />
           )}
@@ -108,9 +148,16 @@ export function SuperAdminApprovalsPage() {
       )}
 
       <SuperAdminApprovalReviewDialog
-        approval={selected}
+        approval={selectedOrg}
         onOpenChange={(open) => {
-          if (!open) setSelected(null);
+          if (!open) setSelectedOrg(null);
+        }}
+      />
+
+      <SuperAdminExternalReviewDialog
+        approval={selectedReview}
+        onOpenChange={(open) => {
+          if (!open) setSelectedReview(null);
         }}
       />
     </div>

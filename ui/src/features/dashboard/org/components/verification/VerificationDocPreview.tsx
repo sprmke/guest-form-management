@@ -110,17 +110,23 @@ export function VerificationDocPreviewCard({
 export function VerificationDocFullViewDialog({
   asset,
   onClose,
+  overlayClassName,
+  contentClassName,
 }: {
   asset: VerificationPreviewAsset | null;
   onClose: () => void;
+  overlayClassName?: string;
+  contentClassName?: string;
 }) {
   return (
     <Dialog open={Boolean(asset)} onOpenChange={(next) => (!next ? onClose() : null)}>
       <DialogContent
         showCloseButton={false}
+        overlayClassName={overlayClassName}
         className={cn(
           'flex h-[min(90dvh,calc(100dvh-1.5rem))] max-h-[min(90dvh,calc(100dvh-1.5rem))] w-[min(calc(100vw-1.5rem),56rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-          'sm:w-[min(94vw,56rem)] sm:max-w-[56rem] sm:p-0'
+          'sm:w-[min(94vw,56rem)] sm:max-w-[56rem] sm:p-0',
+          contentClassName
         )}
       >
         {asset ? (
