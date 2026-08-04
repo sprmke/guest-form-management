@@ -6,7 +6,7 @@ import { PlatformLogo } from '@/features/dashboard/inbox/components/PlatformLogo
 import type { MetaPagePickerOption } from '@/features/dashboard/inbox/types/inbox';
 
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { RadioGroupDisplay } from '@/components/ui/radio-group';
 import { cn } from '@/lib/utils';
 
@@ -42,11 +42,11 @@ export function MetaPagePickerDialog({
   }, [open, pages]);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Choose Facebook Page</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Choose Facebook Page</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         {loading ? (
           <div className="flex items-center justify-center py-10">
@@ -117,7 +117,7 @@ export function MetaPagePickerDialog({
             </Button>
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

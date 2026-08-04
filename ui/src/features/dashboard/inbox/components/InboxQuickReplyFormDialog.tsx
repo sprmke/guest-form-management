@@ -17,12 +17,12 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -76,14 +76,14 @@ export function InboxQuickReplyFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
         className="z-[103] max-w-[min(calc(100vw-1.5rem),28rem)] sm:max-w-[min(90vw,36rem)]"
         overlayClassName="z-[102]"
       >
-        <DialogHeader>
-          <DialogTitle>{template ? 'Edit reply' : 'New reply'}</DialogTitle>
-        </DialogHeader>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{template ? 'Edit reply' : 'New reply'}</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
 
         <div className="space-y-4 py-1">
           <div className="space-y-1.5">
@@ -137,7 +137,7 @@ export function InboxQuickReplyFormDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
+        <ResponsiveModalFooter className="gap-2 sm:gap-2">
           <Button
             type="button"
             variant="outline"
@@ -155,8 +155,8 @@ export function InboxQuickReplyFormDialog({
           >
             {saving ? <Loader2 className="size-4 animate-spin" aria-hidden /> : 'Save'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
