@@ -6,6 +6,7 @@ import {
   Inbox,
   Settings,
   Tags,
+  Upload,
   Users,
   Wrench,
 } from 'lucide-react';
@@ -185,6 +186,13 @@ export const TEAM_PERMISSIONS: TeamPermission[] = [
     description: 'Connect or disconnect Meta channels',
     category: 'Inbox',
     icon: Inbox,
+  },
+  {
+    id: 'import:manage',
+    name: 'Manage Imports',
+    description: 'Upload and commit CSV booking imports',
+    category: 'Bookings',
+    icon: Upload,
   },
 ];
 

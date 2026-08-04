@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Settings,
   Trash2,
+  Upload,
   Users,
 } from 'lucide-react';
 
@@ -150,6 +151,13 @@ export const ORG_TEAM_PERMISSIONS: TeamPermission[] = [
     category: 'Inbox',
     icon: Inbox,
   },
+  {
+    id: 'org:import:manage',
+    name: 'Manage Imports',
+    description: 'Upload and commit CSV booking imports',
+    category: 'Organization',
+    icon: Upload,
+  },
 ];
 
 /** Default permission presets per built-in org role. */
@@ -167,6 +175,7 @@ export const ORG_ROLE_PERMISSIONS: Record<BuiltinOrgRole, string[]> = {
     'org:team:manage',
     'org:inbox:view',
     'org:inbox:reply',
+    'org:import:manage',
   ],
 };
 
