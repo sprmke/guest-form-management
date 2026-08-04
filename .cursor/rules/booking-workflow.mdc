@@ -50,7 +50,10 @@ READY_FOR_CHECKOUT
 PENDING_SD_REFUND
 COMPLETED
 CANCELLED
+IMPORTED
 ```
+
+> **`IMPORTED`** — reached only by **`import-commit`** direct insert (Phase 6), not via `workflowOrchestrator.transition()` or the normal pipeline. Manual admin overrides: **`IMPORTED → CANCELLED`** (for import revert) or **`IMPORTED → PENDING_REVIEW`** (pull a row into the live pipeline). Not in `TERMINAL_STATUSES` — unlike `COMPLETED` / `CANCELLED`, it retains manual-outgoing edges.
 
 > Legacy DB rows have `status = 'booked'` (or `'canceled'`). The migration maps them per **`docs/archive/planning/NEW_FLOW_PLAN.md` §6.1 Q1.1**: check-in **before today (Asia/Manila)** → `COMPLETED`; check-in **today or future** → `PENDING_REVIEW`; canceled rows → `CANCELLED`.
 
@@ -69,6 +72,13 @@ READY_FOR_CHECKOUT          → PENDING_SD_REFUND | COMPLETED | CANCELLED
 PENDING_SD_REFUND           → COMPLETED | CANCELLED
 COMPLETED                   → (terminal)
 CANCELLED                   → (terminal)
+IMPORTED                    → (no automatic progression — import-insert only)
+```
+
+**Manual override from `IMPORTED`:**
+
+```
+IMPORTED                    → CANCELLED | PENDING_REVIEW   # admin-only; CANCELLED for import-revert
 ```
 
 ### 2.2 Admin-only exceptional transitions
@@ -200,6 +210,7 @@ Example (pet only): `🐶 PENDING REVIEW - 2pax 2nights - Kyle Soriano`
 | PENDING_SD_REFUND       | `6`       | `PENDING SD REFUND`                                                                                                                                                                                                                                                                                                                     |
 | COMPLETED               | `9`       | `COMPLETED`                                                                                                                                                                                                                                                                                                                             |
 | CANCELLED               | `3`       | `CANCELED`                                                                                                                                                                                                                                                                                                                              |
+| IMPORTED                | `8`       | `IMPORTED`                                                                                                                                                                                                                                                                                                                              |
 
 Canceled spelling **`CANCELED`** matches today’s cancel-booking UX copy; the **DB `status` literal** remains **`CANCELLED`** (calendar `summary` uses `CANCELED`).
 
@@ -226,6 +237,7 @@ When the task is…
 | Concern                                              | File / folder                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Status enum, transition graph, color/title map       | `supabase/functions/_shared/statusMachine.ts` (create) + mirror in `ui/src/features/dashboard/bookings/lib/workflow.ts`                                                                                                                                                                                  |
+| CSV import batches (status machine, edge functions)  | `supabase/functions/_shared/importBatchStatusMachine.ts` + mirror `ui/src/features/dashboard/import/lib/importBatchWorkflow.ts`; edge handlers `import-*` (Phase 2+)                                                                                                                                     |
 | Apply side effects for a transition                  | `supabase/functions/_shared/workflowOrchestrator.ts` (create)                                                                                                                                                                                                                                            |
 | Transition endpoint                                  | `supabase/functions/transition-booking/index.ts` (create)                                                                                                                                                                                                                                                |
 | Calendar + Sheet refresh after admin edit save       | `supabase/functions/sync-booking-integrations/index.ts` — invoked from `useUpdateBooking` onSuccess; `CalendarService.updateCalendarEventStatus` + `SheetsService.syncFullRowFromDbBooking` (no DB writes, no emails)                                                                                    |

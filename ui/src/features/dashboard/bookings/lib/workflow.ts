@@ -38,6 +38,7 @@ const TRANSITION_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_SD_REFUND: ['COMPLETED', 'CANCELLED'],
   COMPLETED: [],
   CANCELLED: [],
+  IMPORTED: [],
 };
 
 /**
@@ -65,6 +66,7 @@ const MANUAL_OVERRIDE_GRAPH: Record<string, ReadonlyArray<BookingStatus>> = {
   PENDING_SD_REFUND: ['READY_FOR_CHECKOUT'],
   COMPLETED: [],
   CANCELLED: [],
+  IMPORTED: ['CANCELLED', 'PENDING_REVIEW'],
 };
 
 export type WorkflowContext = {
@@ -561,7 +563,7 @@ export function bookingPipeline(
     return true;
   });
 
-  if (currentStatus && currentStatus !== 'CANCELLED' && !filtered.includes(currentStatus)) {
+  if (currentStatus && currentStatus !== 'CANCELLED' && currentStatus !== 'IMPORTED' && !filtered.includes(currentStatus)) {
     const targetIdx = PIPELINE_ORDER.indexOf(currentStatus);
     let insertAt = filtered.length;
     for (let i = 0; i < filtered.length; i++) {
@@ -635,6 +637,7 @@ const TRANSITION_ACTION_LABEL: Partial<Record<BookingStatus, string>> = {
   COMPLETED: 'Complete Booking',
   PENDING_REVIEW: 'Revert to Pending Review',
   CANCELLED: 'Cancel Booking',
+  IMPORTED: 'Imported',
 };
 
 export function transitionActionLabel(to: BookingStatus): string {
@@ -734,7 +737,7 @@ export function isLiveWorkflowView(
   currentStatus: BookingStatus,
   booking: ApplicabilityFlags
 ): boolean {
-  if (currentStatus === 'CANCELLED' || currentStatus === 'COMPLETED') {
+  if (currentStatus === 'CANCELLED' || currentStatus === 'COMPLETED' || currentStatus === 'IMPORTED') {
     return viewed.kind === 'pipeline' && viewed.status === currentStatus;
   }
   if (viewed.kind === 'pending-doc-sub') {
@@ -764,7 +767,7 @@ export const PROGRESS_EDIT_FORM_UNLOCK: Record<ProgressEditFormKind, BookingStat
 
 /** Map nested statuses onto the main pipeline for ordering. */
 function progressEditStatusRank(status: string): number {
-  if (status === 'CANCELLED') return -1;
+  if (status === 'CANCELLED' || status === 'IMPORTED') return -1;
   const direct = PIPELINE_ORDER.indexOf(status as BookingStatus);
   if (direct >= 0) return direct;
   if (
@@ -783,7 +786,7 @@ export function isProgressEditFormEnabled(
   form: ProgressEditFormKind
 ): boolean {
   const status = (booking.status ?? '').trim();
-  if (!status || status === 'CANCELLED') return false;
+  if (!status || status === 'CANCELLED' || status === 'IMPORTED') return false;
 
   const currentRank = progressEditStatusRank(status);
   const unlockRank = progressEditStatusRank(PROGRESS_EDIT_FORM_UNLOCK[form]);
