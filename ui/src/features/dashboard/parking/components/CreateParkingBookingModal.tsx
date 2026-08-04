@@ -11,12 +11,12 @@ import { useCreateParkingBooking } from '@/features/dashboard/parking/hooks/useP
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toGuestSubmissionDate } from '@/utils/format/dates';
@@ -104,11 +104,11 @@ export function CreateParkingBookingModal({ open, onOpenChange, fixedParkingId }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>New parking booking</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>New parking booking</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="space-y-4">
           {showParkingPicker ? (
             <div className="space-y-2">
@@ -200,15 +200,15 @@ export function CreateParkingBookingModal({ open, onOpenChange, fixedParkingId }
             </div>
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <ResponsiveModalFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button type="button" disabled={!canSubmit || create.isPending} onClick={handleSubmit}>
             Create
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

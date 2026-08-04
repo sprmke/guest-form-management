@@ -16,7 +16,6 @@ import {
 import { toast } from 'sonner';
 
 import { useAdminBrandColorPreview } from '@/features/dashboard/bookings/components/AdminBrandTheme';
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import {
   AdminSection,
   AdminSectionNavLayout,
@@ -90,17 +89,19 @@ import {
   type ParkingProfileDraft,
 } from '@/features/dashboard/parking/lib/parkingSettingsForm';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -126,8 +127,12 @@ const SECTIONS: AdminSectionNavItem[] = [
 function parkingPaymentSettingsDto(
   settings: NonNullable<ReturnType<typeof useParkingSettings>['data']>
 ): AppSettingsDto {
+  const gcashQrImageUrl = settings.gcashQrImageUrl?.trim() ?? '';
   return {
-    gcashQrImageUrl: settings.gcashQrImageUrl ?? '',
+    gcashQrImageUrl,
+    fieldSources: {
+      gcashQrImageUrl: gcashQrImageUrl ? 'db' : 'default',
+    },
   } as AppSettingsDto;
 }
 
@@ -401,361 +406,376 @@ export function ParkingSettingsCard() {
   }
 
   return (
-    <AdminSectionNavLayout
-      className="min-h-0 flex-1"
-      sections={SECTIONS}
-      header={
-        <AdminPageHeader
-          variant="compact"
-          title="Settings"
-          subtitle="Manage your parking slot's details, photos, and configurations."
-          actions={
-            isDirty ? (
-              <Button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={busy}
-                className="min-h-[44px] gap-1.5 lg:hidden"
-              >
-                <Save className="size-4" aria-hidden />
-                {busy ? 'Saving...' : 'Save Changes'}
-              </Button>
-            ) : null
-          }
-        />
-      }
-      footer={
+    <AdminMobilePage
+      title="Settings"
+      subtitle="Manage your parking slot's details, photos, and configurations."
+      titleId="parking-settings-heading"
+      className="flex min-h-0 flex-1 flex-col"
+      heroTrailing={
         isDirty ? (
-          <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
-            <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2">
-                <div className="size-2 animate-pulse rounded-full bg-amber-500" />
-                <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Unsaved changes
-                </p>
-              </div>
-              <Button
-                type="button"
-                onClick={() => void handleSave()}
-                disabled={busy}
-                className="min-h-[44px] w-full sm:w-auto"
-                size="sm"
-              >
-                {busy ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </CardContent>
-          </Card>
-        ) : null
+          <MobileHeroActionButton
+            aria-label={busy ? 'Saving' : 'Save changes'}
+            disabled={busy}
+            onClick={() => void handleSave()}
+          >
+            <Save className="size-5" aria-hidden />
+          </MobileHeroActionButton>
+        ) : undefined
       }
-    >
-      <AdminSection
-        id="basic"
-        title="Basic Information"
-        icon={Info}
-        description="Update this parking slot's fundamental details."
-      >
-        <SettingsField id="parking-code" label="Code">
-          <Input
-            id="parking-code"
-            value={parkingCode}
-            readOnly
-            aria-readonly="true"
-            placeholder="—"
-            className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
-          />
-        </SettingsField>
-
-        <SettingsField id="parking-slug" label="URL Slug">
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
-            <span className="text-muted-foreground truncate text-sm">{parkingSlugPrefix}</span>
-            <Input
-              id="parking-slug"
-              value={slugPreview}
-              readOnly
-              disabled={busy}
-              placeholder="parking-slug"
-              className="bg-muted/40 max-w-xs"
-              autoComplete="off"
-              spellCheck={false}
-              aria-readonly="true"
-            />
-          </div>
-        </SettingsField>
-
-        <BrandColorField
-          id="parking-brand-color"
-          value={profileDraft.brandColor}
-          resolvedColor={inheritedBrandColor}
-          resetValue={inheritedBrandColor}
-          disabled={busy}
-          hint="Tints this parking slot's admin pages, guest listing, and accents."
-          onChange={(value) => {
-            setProfileField('brandColor', value);
-            setBrandColorPreview(value.trim() || inheritedBrandColor);
-          }}
-        />
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">
-          <SettingsField id="settings-parking-type" label="Parking type">
-            <Select
-              value={profileDraft.parkingType}
-              onValueChange={(value) => setProfileField('parkingType', value as ParkingType)}
-              disabled={busy}
-            >
-              <SelectTrigger id="settings-parking-type" className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PARKING_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-
-          <SettingsField id="settings-residence" label="Residence">
-            <Select
-              value={profileDraft.residenceName.trim() || residenceOptions[0]}
-              onValueChange={(value) => {
-                setProfileField('residenceName', value);
-                const locationDefaults = applyResidenceLocationDefaultsToDraft(
-                  value,
-                  locationDraft
-                );
-                if (Object.keys(locationDefaults).length > 0) {
-                  setLocationDraft((current) => ({ ...current, ...locationDefaults }));
-                }
-              }}
-              disabled={busy}
-            >
-              <SelectTrigger id="settings-residence" className="h-10">
-                <SelectValue placeholder="Select residence" />
-              </SelectTrigger>
-              <SelectContent>
-                {residenceOptions.map((residence) => (
-                  <SelectItem key={residence} value={residence}>
-                    {residence}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-
-          <SettingsField id="settings-tower" label="Tower">
-            <Select
-              value={profileDraft.tower}
-              onValueChange={(value) => {
-                setProfileField('tower', value);
-                const levels = getParkingLevelsForTower(value);
-                if (profileDraft.level && !levels.includes(profileDraft.level)) {
-                  setProfileField('level', DEFAULT_PARKING_LEVEL);
-                }
-              }}
-              disabled={busy}
-            >
-              <SelectTrigger id="settings-tower" className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AZURE_NORTH_PARKING_TOWERS.map((tower) => (
-                  <SelectItem key={tower} value={tower}>
-                    {tower}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-
-          <SettingsField id="settings-level" label="Level">
-            <Select
-              value={profileDraft.level}
-              onValueChange={(value) => setProfileField('level', value)}
-              disabled={busy}
-            >
-              <SelectTrigger id="settings-level" className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {getParkingLevelsForTower(profileDraft.tower).map((level) => (
-                  <SelectItem key={level} value={level}>
-                    {level}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </SettingsField>
-        </div>
-
-        <SettingsField id="settings-slot" label="Slot number">
-          <Input
-            id="settings-slot"
-            inputMode="numeric"
-            autoComplete="off"
-            value={profileDraft.slotNumber}
-            onChange={(event) =>
-              setProfileField('slotNumber', sanitizeParkingSlotNumber(event.target.value))
-            }
-            maxLength={4}
-            disabled={busy}
-            className="h-10 tabular-nums"
-          />
-        </SettingsField>
-
-        <SettingsField id="parking-description" label="Description">
-          <Textarea
-            id="parking-description"
-            value={profileDraft.description}
-            onChange={(event) => setProfileField('description', event.target.value)}
-            disabled={busy}
-            rows={6}
-            maxLength={PARKING_DESCRIPTION_MAX}
-            className="min-h-[140px] resize-y"
-          />
-          <p className="text-muted-foreground mt-1.5 text-xs tabular-nums">
-            {profileDraft.description.length}/{PARKING_DESCRIPTION_MAX} characters
-          </p>
-        </SettingsField>
-      </AdminSection>
-
-      <AdminSection
-        id="media"
-        title="Photos"
-        icon={ImageIcon}
-        description="Upload one cover photo for this parking slot."
-      >
-        <ParkingMediaUpload coverImage={coverImage} onCoverChange={setCoverImage} disabled={busy} />
-      </AdminSection>
-
-      <ParkingDetailsSection draft={detailsDraft} onChange={setDetailsDraft} disabled={busy} />
-
-      <ParkingFeaturesSection
-        draft={featuresDraft}
-        onChange={setFeaturesDraft}
-        disabled={busy}
-        newCustomInput={newCustomFeatureInput}
-        onNewCustomInputChange={setNewCustomFeatureInput}
-      />
-
-      <AdminSection
-        id="location"
-        title="Location"
-        icon={MapPin}
-        description="Provide accurate location details to help guests find this parking slot."
-      >
-        <PropertyLocationPicker
-          disabled={busy}
-          value={locationDraft}
-          onChange={(patch) => setLocationDraft((current) => ({ ...current, ...patch }))}
-        />
-      </AdminSection>
-
-      <AdminSection id="payment" title="Payment" icon={Wallet}>
-        <PropertyPaymentMethodsSection
-          data={parkingPaymentSettingsDto(settings)}
-          methods={operationalDraft.paymentMethods}
-          disabled={busy}
-          resolveFieldError={() => null}
-          markFieldInteracted={() => {}}
-          onChange={setPaymentMethods}
-          onPrimaryQrFile={(file) => {
-            void uploadQr
-              .mutateAsync(file)
-              .then(() => {
-                toast.success('Payment QR updated');
-              })
-              .catch((err) => {
-                toast.error(friendlyToastError(err, 'Upload failed'));
-              });
-          }}
-          qrUploadBusy={uploadQr.isPending}
-        />
-      </AdminSection>
-
-      <AdminSection
-        id="integrations"
-        title="Integrations"
-        icon={Globe}
-        description="Connect this parking slot to external platforms and services."
-      >
-        {settings.parkingIntegrations ? (
-          <PropertyIntegrationsPanel
-            status={settings.parkingIntegrations}
-            aiKeys={{
-              primaryKeysConfigured: settings.platformSecrets?.geminiApiKeyConfigured ?? false,
-              fallbackKeyConfigured: settings.platformSecrets?.groqApiKeyConfigured ?? false,
-            }}
-            hideGoogleOAuth
-            telegramLayout="parking"
-            notificationsPath={(module) =>
-              parkingNotificationsPath(
-                orgSlug,
-                parking.slug,
-                module === 'finance' ? 'finance' : undefined
-              )
-            }
-          />
-        ) : null}
-      </AdminSection>
-
-      <AdminSection
-        id="danger"
-        title="Danger Zone"
-        icon={AlertTriangle}
-        description="Irreversible actions that permanently affect this parking slot."
-        className="border-destructive/50"
-      >
-        <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="space-y-1">
-            <p className="text-destructive text-sm font-medium">Delete parking</p>
-            <p className="text-muted-foreground text-sm">
-              Permanently removes this parking slot and its settings. This cannot be undone.
-            </p>
-          </div>
+      desktopActions={
+        isDirty ? (
           <Button
             type="button"
-            variant="destructive"
-            disabled={busy || deleteParking.isPending}
-            className="min-h-[44px] shrink-0"
-            onClick={() => setDeleteOpen(true)}
+            onClick={() => void handleSave()}
+            disabled={busy}
+            className="min-h-[44px] gap-1.5"
           >
-            {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
+            <Save className="size-4" aria-hidden />
+            {busy ? 'Saving...' : 'Save Changes'}
           </Button>
-        </div>
+        ) : undefined
+      }
+    >
+      <AdminSectionNavLayout
+        className="min-h-0 flex-1"
+        sections={SECTIONS}
+        footer={
+          isDirty ? (
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="size-2 animate-pulse rounded-full bg-amber-500" />
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                    Unsaved changes
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  disabled={busy}
+                  className="min-h-[44px] w-full sm:w-auto"
+                  size="sm"
+                >
+                  {busy ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </CardContent>
+            </Card>
+          ) : null
+        }
+      >
+        <AdminSection
+          id="basic"
+          title="Basic Information"
+          icon={Info}
+          description="Update this parking slot's fundamental details."
+        >
+          <SettingsField id="parking-code" label="Code">
+            <Input
+              id="parking-code"
+              value={parkingCode}
+              readOnly
+              aria-readonly="true"
+              placeholder="—"
+              className="bg-muted/40 text-muted-foreground h-10 cursor-default font-mono tabular-nums"
+            />
+          </SettingsField>
 
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-            <DialogHeader>
-              <DialogTitle>Delete {displayName || parking.name}?</DialogTitle>
-              <DialogDescription>
-                This parking slot and its settings will be permanently removed. This cannot be
-                undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-[44px] w-full sm:w-auto"
-                disabled={deleteParking.isPending}
-                onClick={() => setDeleteOpen(false)}
+          <SettingsField id="parking-slug" label="URL Slug">
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+              <span className="text-muted-foreground truncate text-sm">{parkingSlugPrefix}</span>
+              <Input
+                id="parking-slug"
+                value={slugPreview}
+                readOnly
+                disabled={busy}
+                placeholder="parking-slug"
+                className="bg-muted/40 max-w-xs"
+                autoComplete="off"
+                spellCheck={false}
+                aria-readonly="true"
+              />
+            </div>
+          </SettingsField>
+
+          <BrandColorField
+            id="parking-brand-color"
+            value={profileDraft.brandColor}
+            resolvedColor={inheritedBrandColor}
+            resetValue={inheritedBrandColor}
+            disabled={busy}
+            hint="Tints this parking slot's admin pages, guest listing, and accents."
+            onChange={(value) => {
+              setProfileField('brandColor', value);
+              setBrandColorPreview(value.trim() || inheritedBrandColor);
+            }}
+          />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-x-5">
+            <SettingsField id="settings-parking-type" label="Parking type">
+              <Select
+                value={profileDraft.parkingType}
+                onValueChange={(value) => setProfileField('parkingType', value as ParkingType)}
+                disabled={busy}
               >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                className="min-h-[44px] w-full sm:w-auto"
-                disabled={deleteParking.isPending}
-                onClick={() => void handleDelete()}
+                <SelectTrigger id="settings-parking-type" className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PARKING_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+
+            <SettingsField id="settings-residence" label="Residence">
+              <Select
+                value={profileDraft.residenceName.trim() || residenceOptions[0]}
+                onValueChange={(value) => {
+                  setProfileField('residenceName', value);
+                  const locationDefaults = applyResidenceLocationDefaultsToDraft(
+                    value,
+                    locationDraft
+                  );
+                  if (Object.keys(locationDefaults).length > 0) {
+                    setLocationDraft((current) => ({ ...current, ...locationDefaults }));
+                  }
+                }}
+                disabled={busy}
               >
-                {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </AdminSection>
-    </AdminSectionNavLayout>
+                <SelectTrigger id="settings-residence" className="h-10">
+                  <SelectValue placeholder="Select residence" />
+                </SelectTrigger>
+                <SelectContent>
+                  {residenceOptions.map((residence) => (
+                    <SelectItem key={residence} value={residence}>
+                      {residence}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+
+            <SettingsField id="settings-tower" label="Tower">
+              <Select
+                value={profileDraft.tower}
+                onValueChange={(value) => {
+                  setProfileField('tower', value);
+                  const levels = getParkingLevelsForTower(value);
+                  if (profileDraft.level && !levels.includes(profileDraft.level)) {
+                    setProfileField('level', DEFAULT_PARKING_LEVEL);
+                  }
+                }}
+                disabled={busy}
+              >
+                <SelectTrigger id="settings-tower" className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {AZURE_NORTH_PARKING_TOWERS.map((tower) => (
+                    <SelectItem key={tower} value={tower}>
+                      {tower}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+
+            <SettingsField id="settings-level" label="Level">
+              <Select
+                value={profileDraft.level}
+                onValueChange={(value) => setProfileField('level', value)}
+                disabled={busy}
+              >
+                <SelectTrigger id="settings-level" className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {getParkingLevelsForTower(profileDraft.tower).map((level) => (
+                    <SelectItem key={level} value={level}>
+                      {level}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsField>
+          </div>
+
+          <SettingsField id="settings-slot" label="Slot number">
+            <Input
+              id="settings-slot"
+              inputMode="numeric"
+              autoComplete="off"
+              value={profileDraft.slotNumber}
+              onChange={(event) =>
+                setProfileField('slotNumber', sanitizeParkingSlotNumber(event.target.value))
+              }
+              maxLength={4}
+              disabled={busy}
+              className="h-10 tabular-nums"
+            />
+          </SettingsField>
+
+          <SettingsField id="parking-description" label="Description">
+            <Textarea
+              id="parking-description"
+              value={profileDraft.description}
+              onChange={(event) => setProfileField('description', event.target.value)}
+              disabled={busy}
+              rows={6}
+              maxLength={PARKING_DESCRIPTION_MAX}
+              className="min-h-[140px] resize-y"
+            />
+            <p className="text-muted-foreground mt-1.5 text-xs tabular-nums">
+              {profileDraft.description.length}/{PARKING_DESCRIPTION_MAX} characters
+            </p>
+          </SettingsField>
+        </AdminSection>
+
+        <AdminSection
+          id="media"
+          title="Photos"
+          icon={ImageIcon}
+          description="Upload one cover photo for this parking slot."
+        >
+          <ParkingMediaUpload
+            coverImage={coverImage}
+            onCoverChange={setCoverImage}
+            disabled={busy}
+          />
+        </AdminSection>
+
+        <ParkingDetailsSection draft={detailsDraft} onChange={setDetailsDraft} disabled={busy} />
+
+        <ParkingFeaturesSection
+          draft={featuresDraft}
+          onChange={setFeaturesDraft}
+          disabled={busy}
+          newCustomInput={newCustomFeatureInput}
+          onNewCustomInputChange={setNewCustomFeatureInput}
+        />
+
+        <AdminSection
+          id="location"
+          title="Location"
+          icon={MapPin}
+          description="Provide accurate location details to help guests find this parking slot."
+        >
+          <PropertyLocationPicker
+            disabled={busy}
+            value={locationDraft}
+            onChange={(patch) => setLocationDraft((current) => ({ ...current, ...patch }))}
+          />
+        </AdminSection>
+
+        <AdminSection id="payment" title="Payment" icon={Wallet}>
+          <PropertyPaymentMethodsSection
+            data={parkingPaymentSettingsDto(settings)}
+            methods={operationalDraft.paymentMethods}
+            disabled={busy}
+            resolveFieldError={() => null}
+            markFieldInteracted={() => {}}
+            onChange={setPaymentMethods}
+            onPrimaryQrFile={(file) => {
+              void uploadQr
+                .mutateAsync(file)
+                .then(() => {
+                  toast.success('Payment QR updated');
+                })
+                .catch((err) => {
+                  toast.error(friendlyToastError(err, 'Upload failed'));
+                });
+            }}
+            qrUploadBusy={uploadQr.isPending}
+          />
+        </AdminSection>
+
+        <AdminSection
+          id="integrations"
+          title="Integrations"
+          icon={Globe}
+          description="Connect this parking slot to external platforms and services."
+        >
+          {settings.parkingIntegrations ? (
+            <PropertyIntegrationsPanel
+              status={settings.parkingIntegrations}
+              aiKeys={{
+                primaryKeysConfigured: settings.platformSecrets?.geminiApiKeyConfigured ?? false,
+                fallbackKeyConfigured: settings.platformSecrets?.groqApiKeyConfigured ?? false,
+              }}
+              hideGoogleOAuth
+              telegramLayout="parking"
+              notificationsPath={(module) =>
+                parkingNotificationsPath(
+                  orgSlug,
+                  parking.slug,
+                  module === 'finance' ? 'finance' : undefined
+                )
+              }
+            />
+          ) : null}
+        </AdminSection>
+
+        <AdminSection
+          id="danger"
+          title="Danger Zone"
+          icon={AlertTriangle}
+          description="Irreversible actions that permanently affect this parking slot."
+          className="border-destructive/50"
+        >
+          <div className="border-destructive/50 flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-destructive text-sm font-medium">Delete parking</p>
+              <p className="text-muted-foreground text-sm">
+                Permanently removes this parking slot and its settings. This cannot be undone.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={busy || deleteParking.isPending}
+              className="min-h-[44px] shrink-0"
+              onClick={() => setDeleteOpen(true)}
+            >
+              {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
+            </Button>
+          </div>
+
+          <ResponsiveModal open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+              <ResponsiveModalHeader>
+                <ResponsiveModalTitle>Delete {displayName || parking.name}?</ResponsiveModalTitle>
+                <ResponsiveModalDescription>
+                  This parking slot and its settings will be permanently removed. This cannot be
+                  undone.
+                </ResponsiveModalDescription>
+              </ResponsiveModalHeader>
+              <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={deleteParking.isPending}
+                  onClick={() => setDeleteOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="min-h-[44px] w-full sm:w-auto"
+                  disabled={deleteParking.isPending}
+                  onClick={() => void handleDelete()}
+                >
+                  {deleteParking.isPending ? 'Deleting…' : 'Delete parking'}
+                </Button>
+              </ResponsiveModalFooter>
+            </ResponsiveModalContent>
+          </ResponsiveModal>
+        </AdminSection>
+      </AdminSectionNavLayout>
+    </AdminMobilePage>
   );
 }

@@ -8,7 +8,6 @@ import { CalendarPlus } from 'lucide-react';
 import { guestParkingFormPath } from '@/features/guest/lib/guestPublicPaths';
 
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingCalendarView } from '@/features/dashboard/bookings/components/BookingCalendarView';
 import { BookingCardGrid } from '@/features/dashboard/bookings/components/BookingCardGrid';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
@@ -36,6 +35,9 @@ import {
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { CreateParkingBookingModal } from '@/features/dashboard/parking/components/CreateParkingBookingModal';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
+import { MobileHeroActionButton } from '@/components/mobile/MobileHeroActionButton';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
@@ -273,7 +275,7 @@ export function ParkingBookingsPage() {
 
   const publicParkingFormHref = guestParkingFormPath(parking.slug);
 
-  const headerActions = (
+  const desktopActions = (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
       <BookingDateRangeFilter
         {...dateNav}
@@ -308,16 +310,64 @@ export function ParkingBookingsPage() {
     </div>
   );
 
+  const dateFilter = (
+    <BookingDateRangeFilter
+      {...dateNav}
+      isActive={Boolean(query.from || query.to)}
+      onClear={handleClearDate}
+      fullWidth
+    />
+  );
+
+  const filterControls = (
+    <BookingFilters
+      query={query}
+      onChange={patch}
+      onReset={resetFilters}
+      sort={query.sort}
+      onSortChange={handleStaySortChange}
+      view={view}
+      onViewChange={setView}
+      hideTableView={isMobileLayout}
+      hideKanbanView
+      showPerPage={view !== 'calendar'}
+      hideGuestStayFilters
+      searchPlaceholder="Search guest, email, phone, plate…"
+    />
+  );
+
+  const stickyMoreActiveCount = query.status.length;
+
+  const overlapControls = (
+    <FloatingToolbar>
+      <div className="space-y-2.5">
+        {dateFilter}
+        {filterControls}
+      </div>
+    </FloatingToolbar>
+  );
+
+  const heroNewBooking = (
+    <MobileHeroActionButton aria-label="New booking" onClick={() => setCreateOpen(true)}>
+      <CalendarPlus className="size-5" aria-hidden />
+    </MobileHeroActionButton>
+  );
+
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <AdminPageHeader
-        id="bookings-heading"
-        variant="compact"
-        title="Bookings"
-        subtitle="Manage and track reservations for this parking slot."
-        actions={headerActions}
-        actionsClassName="w-full sm:w-auto"
-      />
+    <AdminMobilePage
+      title="Bookings"
+      subtitle="Reservations for this parking slot."
+      titleId="bookings-heading"
+      heroTrailing={heroNewBooking}
+      overlap={overlapControls}
+      stickyPrimary={dateFilter}
+      stickyMore={filterControls}
+      stickyMoreActiveCount={stickyMoreActiveCount}
+      stickyMoreAriaLabel="Refine bookings"
+      desktopActions={desktopActions}
+      desktopActionsClassName="w-full sm:w-auto"
+      dense
+    >
       <BookingsSummaryCards
         counts={stageCounts}
         activeStage={stage}
@@ -325,20 +375,7 @@ export function ParkingBookingsPage() {
         stageLabels={PARKING_STAGE_LABELS}
         hideStatusFooter
       />
-      <BookingFilters
-        query={query}
-        onChange={patch}
-        onReset={resetFilters}
-        sort={query.sort}
-        onSortChange={handleStaySortChange}
-        view={view}
-        onViewChange={setView}
-        hideTableView={isMobileLayout}
-        hideKanbanView
-        showPerPage={view !== 'calendar'}
-        hideGuestStayFilters
-        searchPlaceholder="Search guest, email, phone, plate…"
-      />
+      <div className="hidden lg:block">{filterControls}</div>
 
       {showTableView && (
         <BookingTable
@@ -361,15 +398,17 @@ export function ParkingBookingsPage() {
         />
       )}
       {view === 'calendar' && (
-        <BookingCalendarView
-          rows={rows}
-          isLoading={isLoading}
-          error={errorMessage}
-          isRefreshing={isFetching}
-          initialMonth={dateNav.dateRange.from}
-          onMonthChange={handleCalendarMonthChange}
-          resolveBookingHref={resolveBookingHref}
-        />
+        <FloatingPanel padding="md" className="overflow-hidden">
+          <BookingCalendarView
+            rows={rows}
+            isLoading={isLoading}
+            error={errorMessage}
+            isRefreshing={isFetching}
+            initialMonth={dateNav.dateRange.from}
+            onMonthChange={handleCalendarMonthChange}
+            resolveBookingHref={resolveBookingHref}
+          />
+        </FloatingPanel>
       )}
 
       <CreateParkingBookingModal
@@ -388,6 +427,6 @@ export function ParkingBookingsPage() {
           onPageChange={(page) => patch({ page })}
         />
       )}
-    </div>
+    </AdminMobilePage>
   );
 }

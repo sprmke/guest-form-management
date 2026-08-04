@@ -6,13 +6,15 @@ import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { Plus } from 'lucide-react';
 
 import { AdminListPagination } from '@/features/dashboard/bookings/components/AdminListToolbar';
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { BookingDateRangeFilter } from '@/features/dashboard/bookings/components/BookingDateRangeFilter';
 import {
   useDateNavigation,
   useSyncDateRangeWithQuery,
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
-import { FinanceExportMenu } from '@/features/dashboard/finance/components/FinanceExportMenu';
+import {
+  FinanceExportMenu,
+  financeAddTransactionAction,
+} from '@/features/dashboard/finance/components/FinanceExportMenu';
 import { FinanceLedgerCalendarView } from '@/features/dashboard/finance/components/FinanceLedgerCalendarView';
 import { FinanceLedgerCardGrid } from '@/features/dashboard/finance/components/FinanceLedgerCardGrid';
 import { FinanceLedgerTable } from '@/features/dashboard/finance/components/FinanceLedgerTable';
@@ -44,12 +46,13 @@ import {
 } from '@/features/dashboard/finance/lib/financeSummaryStats';
 import type { FinanceLineItem, FinanceQuery } from '@/features/dashboard/finance/lib/types';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { FinanceOverviewSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { useAdminMobileCardViewGuard } from '@/hooks/useAdminMobileCardViewGuard';
 import { useIsBelowLg, useIsBelowMd } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems } from '@/lib/table/pagination';
-import { cn } from '@/lib/utils';
 
 export function ParkingFinancePage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -182,48 +185,63 @@ export function ParkingFinancePage() {
     setSeriesAnchor(entry.transaction);
   }
 
-  return (
-    <div className="space-y-3 sm:space-y-4 lg:space-y-5">
-      <AdminPageHeader
-        id="finance-heading"
-        variant="compact"
-        card={false}
-        title="Finance"
-        subtitle="Track income and expenses for this parking slot."
-        actions={
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-            <BookingDateRangeFilter
-              {...dateNav}
-              isActive={!!(query.from || query.to)}
-              onClear={handleClearDate}
-              fullWidth={isBelowMd}
-            />
-            <FinanceExportMenu
-              query={query}
-              summary={summaryQuery.data}
-              operating={lineItemsQuery.data}
-            />
-            <button
-              type="button"
-              className={cn(
-                'inline-flex min-h-[44px] items-center gap-1.5 rounded-xl px-3.5 py-2',
-                'gradient-primary text-primary-foreground shadow-soft text-[13px] font-semibold',
-                'hover:shadow-primary-glow transition-all duration-200 motion-safe:active:scale-[0.98]'
-              )}
-              onClick={() => {
-                setEditingItem(null);
-                setCreateOpen(true);
-              }}
-            >
-              <Plus className="size-4" aria-hidden />
-              <span className="hidden sm:inline">Add Transaction</span>
-              <span className="sm:hidden">Add</span>
-            </button>
-          </div>
-        }
-        actionsClassName="w-full sm:w-auto"
-      />
+  function handleOpenCreate() {
+    setEditingItem(null);
+    setCreateOpen(true);
+  }
 
+  const desktopActions = (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive={!!(query.from || query.to)}
+        onClear={handleClearDate}
+        fullWidth={isBelowMd}
+      />
+      <FinanceExportMenu
+        query={query}
+        summary={summaryQuery.data}
+        operating={lineItemsQuery.data}
+      />
+      <button type="button" className="native-cta sm:px-3.5" onClick={handleOpenCreate}>
+        <Plus className="size-4" aria-hidden />
+        <span className="hidden sm:inline">Add Transaction</span>
+        <span className="sm:hidden">Add</span>
+      </button>
+    </div>
+  );
+
+  const overlapControls = (
+    <FloatingToolbar>
+      <BookingDateRangeFilter
+        {...dateNav}
+        isActive={!!(query.from || query.to)}
+        onClear={handleClearDate}
+        fullWidth
+      />
+    </FloatingToolbar>
+  );
+
+  const heroActions = (
+    <FinanceExportMenu
+      variant="hero"
+      query={query}
+      summary={summaryQuery.data}
+      operating={lineItemsQuery.data}
+      leadingActions={[financeAddTransactionAction(handleOpenCreate)]}
+    />
+  );
+
+  return (
+    <AdminMobilePage
+      title="Finance"
+      subtitle="Track income and expenses for this parking slot."
+      titleId="finance-heading"
+      heroTrailing={heroActions}
+      overlap={overlapControls}
+      desktopActions={desktopActions}
+      desktopActionsClassName="w-full sm:w-auto"
+    >
       {summaryQuery.isLoading && !summaryStats ? (
         <FinanceOverviewSkeleton />
       ) : summaryStats ? (
@@ -237,25 +255,29 @@ export function ParkingFinancePage() {
         isLoading={chartsLoading}
       />
 
-      <FinanceLedgerToolbar
-        query={query}
-        categories={categories}
-        onChange={setQuery}
-        hideTableView={isMobileLayout}
-        showPerPage={!showCalendarView}
-      />
+      <FloatingToolbar>
+        <FinanceLedgerToolbar
+          query={query}
+          categories={categories}
+          onChange={setQuery}
+          hideTableView={isMobileLayout}
+          showPerPage={!showCalendarView}
+        />
+      </FloatingToolbar>
 
       {showCalendarView ? (
-        <FinanceLedgerCalendarView
-          rows={sortedEntries}
-          isLoading={isLedgerLoading}
-          isRefreshing={isLedgerRefreshing}
-          initialMonth={dateNav.dateRange.from ?? undefined}
-          onMonthChange={handleCalendarMonthChange}
-          onEditTransaction={handleEditEntry}
-          onDeleteTransaction={handleDeleteEntry}
-          onOpenSeries={handleOpenSeries}
-        />
+        <FloatingPanel padding="md" className="overflow-hidden">
+          <FinanceLedgerCalendarView
+            rows={sortedEntries}
+            isLoading={isLedgerLoading}
+            isRefreshing={isLedgerRefreshing}
+            initialMonth={dateNav.dateRange.from ?? undefined}
+            onMonthChange={handleCalendarMonthChange}
+            onEditTransaction={handleEditEntry}
+            onDeleteTransaction={handleDeleteEntry}
+            onOpenSeries={handleOpenSeries}
+          />
+        </FloatingPanel>
       ) : null}
 
       {showTableView ? (
@@ -269,9 +291,12 @@ export function ParkingFinancePage() {
 
       {showCardView ? (
         pagedEntries.rows.length === 0 && !isLedgerLoading ? (
-          <div className="border-border/60 flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
+          <FloatingPanel
+            padding="lg"
+            className="flex flex-col items-center justify-center py-14 text-center"
+          >
             <p className="text-foreground text-sm font-semibold">No transactions in this period</p>
-          </div>
+          </FloatingPanel>
         ) : (
           <FinanceLedgerCardGrid
             rows={pagedEntries.rows}
@@ -308,6 +333,6 @@ export function ParkingFinancePage() {
         onDeletingChange={setDeletingItem}
         onSeriesAnchorChange={setSeriesAnchor}
       />
-    </div>
+    </AdminMobilePage>
   );
 }

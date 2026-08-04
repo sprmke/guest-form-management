@@ -1,12 +1,13 @@
 import { Link, useParams } from 'react-router-dom';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
 import { StatusBadge } from '@/features/dashboard/bookings/components/StatusBadge';
 import { useBooking } from '@/features/dashboard/bookings/hooks/useBooking';
 import { useParkingContext } from '@/features/dashboard/org/components/RequireParkingContext';
 import { parkingSectionPath } from '@/features/dashboard/org/lib/tenantPaths';
 import { useTransitionParkingBooking } from '@/features/dashboard/parking/hooks/useParkingBookingMutations';
 
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import { FloatingPanel } from '@/components/mobile/FloatingPanel';
 import { Button } from '@/components/ui/button';
 import { formatBookingDate } from '@/utils/format/bookingDisplay';
 
@@ -26,55 +27,65 @@ export function ParkingBookingDetailPage() {
     booking?.status && booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED';
 
   if (isLoading) {
-    return <p className="text-muted-foreground p-4 text-sm">Loading…</p>;
+    return (
+      <AdminMobilePage title="Booking" subtitle={parking.name} titleId="parking-booking-heading">
+        <p className="text-muted-foreground text-sm">Loading…</p>
+      </AdminMobilePage>
+    );
   }
 
   if (error || !booking) {
     return (
-      <div className="space-y-3 p-4">
-        <p className="text-destructive text-sm">Could not load booking.</p>
-        <Link
-          to={parkingSectionPath(orgSlug, parkingSlug, 'bookings')}
-          className="text-sm underline"
-        >
-          Back to bookings
-        </Link>
-      </div>
+      <AdminMobilePage title="Booking" subtitle={parking.name} titleId="parking-booking-heading">
+        <FloatingPanel padding="lg" className="space-y-3">
+          <p className="text-destructive text-sm">Could not load booking.</p>
+          <Link
+            to={parkingSectionPath(orgSlug, parkingSlug, 'bookings')}
+            className="text-sm underline"
+          >
+            Back to bookings
+          </Link>
+        </FloatingPanel>
+      </AdminMobilePage>
     );
   }
 
-  return (
-    <div className="space-y-4 p-3 sm:p-4 lg:p-6">
-      <AdminPageHeader
-        variant="compact"
-        title={booking.primary_guest_name || 'Parking booking'}
-        subtitle={parking.name}
-        actions={
-          <div className="flex flex-wrap gap-2">
-            {next ? (
-              <Button
-                type="button"
-                disabled={transition.isPending}
-                onClick={() => transition.mutate({ bookingId: booking.id, toStatus: next.to })}
-              >
-                {next.label}
-              </Button>
-            ) : null}
-            {canCancel ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={transition.isPending}
-                onClick={() => transition.mutate({ bookingId: booking.id, toStatus: 'CANCELLED' })}
-              >
-                Cancel
-              </Button>
-            ) : null}
-          </div>
-        }
-      />
+  const desktopActions = (
+    <div className="flex flex-wrap gap-2">
+      {next ? (
+        <Button
+          type="button"
+          disabled={transition.isPending}
+          onClick={() => transition.mutate({ bookingId: booking.id, toStatus: next.to })}
+        >
+          {next.label}
+        </Button>
+      ) : null}
+      {canCancel ? (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={transition.isPending}
+          onClick={() => transition.mutate({ bookingId: booking.id, toStatus: 'CANCELLED' })}
+        >
+          Cancel
+        </Button>
+      ) : null}
+    </div>
+  );
 
-      <div className="surface-card space-y-4 p-4 sm:p-5">
+  return (
+    <AdminMobilePage
+      title={booking.primary_guest_name || 'Parking booking'}
+      subtitle={parking.name}
+      titleId="parking-booking-heading"
+      desktopActions={desktopActions}
+    >
+      {(next || canCancel) && (
+        <div className="flex flex-wrap gap-2 lg:hidden">{desktopActions}</div>
+      )}
+
+      <FloatingPanel padding="lg" className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={booking.status} />
         </div>
@@ -106,7 +117,7 @@ export function ParkingBookingDetailPage() {
             </dd>
           </div>
         </dl>
-      </div>
-    </div>
+      </FloatingPanel>
+    </AdminMobilePage>
   );
 }
