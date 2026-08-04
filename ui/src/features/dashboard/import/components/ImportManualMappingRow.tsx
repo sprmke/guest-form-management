@@ -78,7 +78,7 @@ export function ImportManualMappingRow({ entry, samples, value, onChange, usedTa
       <div className="flex items-center gap-2">
         {statusBadge(entry.status)}
         <Select value={selectValue} onValueChange={handleChange}>
-          <SelectTrigger className="h-8 min-w-0 flex-1 text-xs" aria-label={`Map column ${entry.rawHeader}`}>
+          <SelectTrigger className="h-8 min-h-11 min-w-0 flex-1 text-xs" aria-label={`Map column ${entry.rawHeader}`}>
             <SelectValue placeholder="Map to field…" />
           </SelectTrigger>
           <SelectContent>

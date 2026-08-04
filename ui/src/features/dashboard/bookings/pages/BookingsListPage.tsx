@@ -40,6 +40,7 @@ import {
 } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
@@ -143,6 +144,8 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [importOpen, setImportOpen] = useState(false);
+
+  const { data: propertiesData } = useProperties(orgSlug ?? undefined);
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
   const view = useMemo(
@@ -526,6 +529,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     <ImportWizardModal
       open={importOpen}
       onOpenChange={setImportOpen}
+      properties={propertiesData?.properties ?? []}
       onViewHistory={() => {
         setImportOpen(false);
         if (orgSlug && propertySlug) {

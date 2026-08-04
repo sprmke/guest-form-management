@@ -2,7 +2,7 @@ import { format, parseISO } from 'date-fns';
 import { ArrowLeft, Clock, FileSpreadsheet, Loader2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-import { useImportBatches, useRevertImportBatch } from '@/features/dashboard/import/hooks/useImportBatches';
+import { useImportBatches } from '@/features/dashboard/import/hooks/useImportBatches';
 import type { ImportBatch } from '@/features/dashboard/import/types/importBatch';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
@@ -36,8 +36,6 @@ function statusLabel(status: ImportBatch['status']): string {
 }
 
 function ImportBatchRow({ batch }: { batch: ImportBatch }) {
-  const revert = useRevertImportBatch();
-
   return (
     <div className="flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5 text-sm">
       <div className="min-w-0 flex-1 space-y-0.5">
@@ -52,6 +50,7 @@ function ImportBatchRow({ batch }: { batch: ImportBatch }) {
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Badge variant={statusVariant(batch.status)}>{statusLabel(batch.status)}</Badge>
+        {/* Revert wired in Task 6 — button hidden until real implementation lands. */}
         {batch.status === 'committed' && (
           <Button
             type="button"
@@ -59,8 +58,7 @@ function ImportBatchRow({ batch }: { batch: ImportBatch }) {
             size="icon"
             className="size-8"
             aria-label="Revert import"
-            disabled={revert.isPending}
-            onClick={() => void revert.mutateAsync(batch.id)}
+            disabled
           >
             <RotateCcw className="size-3.5" aria-hidden />
           </Button>

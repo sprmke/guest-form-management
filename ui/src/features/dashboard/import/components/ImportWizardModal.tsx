@@ -325,6 +325,8 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   const [aiResult, setAiResult] = React.useState<AiMapColumnsResult | null>(null);
   const [aiError, setAiError] = React.useState<string | null>(null);
   const [mappingState, setMappingState] = React.useState<Record<string, string | null>>({});
+  // True only after a successful import-commit call (Tasks 5–6). Guards cancel-on-close.
+  const [isBatchCommitted, setIsBatchCommitted] = React.useState(false);
 
   const aiMapMutation = useAiMapColumns();
   const saveMappingMutation = useSaveImportMapping();
@@ -338,6 +340,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       setAiResult(null);
       setAiError(null);
       setMappingState({});
+      setIsBatchCommitted(false);
     }
   }, [open]);
 
@@ -353,11 +356,13 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       const result = await aiMapMutation.mutateAsync(parseResult.batchId);
       setAiResult(result);
 
-      // Pre-fill mappingState from AI suggestions (likely_matched/ambiguous only).
+      // Pre-fill only likely_matched — ambiguous/unmatched start blank (null).
       const initial: Record<string, string | null> = {};
       for (const entry of result.columnMapping.mappings) {
-        if (entry.status !== 'matched') {
+        if (entry.status === 'likely_matched') {
           initial[entry.rawHeader] = entry.suggestedTarget;
+        } else if (entry.status !== 'matched') {
+          initial[entry.rawHeader] = null;
         }
       }
       setMappingState(initial);
@@ -382,9 +387,9 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   };
 
   const handleClose = () => {
-    // Before mapped/committed: cancel the batch.
-    const committed = aiResult?.status === 'committed' || step === 'commit';
-    if (parseResult?.batchId && !committed) {
+    // Only skip cancel-delete when the batch has been truly committed via API.
+    // step === 'commit' alone is a placeholder and does NOT mean committed.
+    if (parseResult?.batchId && !isBatchCommitted) {
       void handleCancelBatch();
     } else {
       onOpenChange(false);
