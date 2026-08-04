@@ -637,7 +637,6 @@ const TRANSITION_ACTION_LABEL: Partial<Record<BookingStatus, string>> = {
   COMPLETED: 'Complete Booking',
   PENDING_REVIEW: 'Revert to Pending Review',
   CANCELLED: 'Cancel Booking',
-  IMPORTED: 'Imported',
 };
 
 export function transitionActionLabel(to: BookingStatus): string {

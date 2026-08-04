@@ -8,6 +8,8 @@ updated: 2026-08-05
 
 # Smart AI Data Importer — Implementation Plan
 
+> **Task status (2026-08-05):** Tasks 1–6 implemented on `feature/smart-ai-data-importer`. Task 7 (docs sync + automated verification) complete — manual wizard/Playwright QA and workflow-done move deferred to controller.
+
 ## Context
 
 Hosts onboarding onto GFM currently keep their existing bookings in ad-hoc Google Sheets/Excel/CSV files, each with a different column layout, naming, and structure per host. Today there is no way to bring that history into GFM except manual re-entry per booking — a real adoption blocker for hosts with months or years of history. The ask (`docs/workflow/intake/_to-plan.md`) is to let a host upload their existing file and have GFM auto-analyze it, auto-match obvious columns to our schema using AI, ask the host to manually resolve anything ambiguous via a field-mapping UI, preview the fully-mapped data, and let the host accept, correct, cancel, or revert the import — maximizing how much of their existing data can be imported with the least manual re-entry.

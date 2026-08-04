@@ -29,4 +29,20 @@ For booking status/transition/side-effect specifics, start at `.cursor/rules/boo
 
 ---
 
+## Smart AI Data Importer (bookings CSV)
+
+Property-scoped CSV import wizard — upload host spreadsheet history into `guest_submissions` without triggering live booking side effects.
+
+| Concern | Detail |
+| ------- | ------ |
+| **Tables** | `import_batches` (batch lifecycle + column mapping), `import_batch_rows` (staged raw/mapped rows). `guest_submissions.imported_from_batch_id` → `import_batches.id`. |
+| **Storage** | Private bucket **`import-uploads`** — CSV only, 15 MB cap; path `{orgId}/{batchId}/{filename}`. |
+| **Booking status** | Committed rows get **`status = 'IMPORTED'`** (direct insert from `import-commit`, not `workflowOrchestrator`). Manual overrides only: `IMPORTED → PENDING_REVIEW` \| `CANCELLED`. Excluded from action-required stage cards, SD-refund cron, and guest calendar availability. |
+| **Permissions** | **`org:import:manage`** (org owner + admin by default) and property **`import:manage`** (explicit per-member grant only — not in built-in role defaults). All `import-*` endpoints use `resolveImportAccess` → `verifyPropertyAccess(..., 'import:manage')`. |
+| **Edge functions** | `import-parse-file`, `import-ai-map-columns`, `import-save-mapping`, `import-preview`, `import-update-row`, `import-commit`, `import-revert`, `import-cancel`, `import-list-batches` — see [`docs/architecture/edge-functions.md`](architecture/edge-functions.md). |
+| **UI** | **Import** button on property bookings list → `ImportWizardModal`; history at `/org/:orgSlug/property/:propertySlug/import-history`. |
+| **Route guides** | [`docs/guides/routes/org/property/bookings.md`](guides/routes/org/property/bookings.md), [`docs/guides/routes/org/property/import-history.md`](guides/routes/org/property/import-history.md). |
+
+---
+
 _Last updated from repository analysis (internal documentation)._

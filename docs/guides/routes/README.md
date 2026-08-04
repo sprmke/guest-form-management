@@ -30,6 +30,7 @@ Per-page documentation mirrors the app routes. Each guide tracks **behavior**, *
 | `/org/:orgSlug/property/:propertySlug/inbox`               | [org/property/inbox.md](./org/property/inbox.md)                     | Documented — scoped web + Meta inherit/override                    |
 | `/org/:orgSlug/property/:propertySlug`                     | [org/property/dashboard.md](./org/property/dashboard.md)             | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/bookings`            | [org/property/bookings.md](./org/property/bookings.md)               | Documented                                                         |
+| `/org/:orgSlug/property/:propertySlug/import-history`      | [org/property/import-history.md](./org/property/import-history.md)   | Documented — CSV import batch history + revert                     |
 | `/org/:orgSlug/property/:propertySlug/bookings/:bookingId` | [org/property/bookings-detail.md](./org/property/bookings-detail.md) | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/finance`             | [org/property/finance.md](./org/property/finance.md)                 | Documented                                                         |
 | `/org/:orgSlug/property/:propertySlug/calendar`            | [org/property/calendar.md](./org/property/calendar.md)               | Documented — Occupancy + Pricing + date blocks                     |

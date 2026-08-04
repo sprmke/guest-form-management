@@ -2,7 +2,7 @@
 title: 'Bookings List — operator guide'
 status: active
 tags: [guides, routes, org, property]
-updated: 2026-08-04
+updated: 2026-08-05
 ---
 
 # Bookings List — operator guide
@@ -19,6 +19,7 @@ Route: `/org/:orgSlug/property/:propertySlug/bookings`
 | Filter bar                    | —         | —          | Done | Mobile: search + refine sheet + view; desktop: inline filters     |
 | Table / card / calendar views | —         | —          | Done | Existing behavior                                                 |
 | Kanban view                   | via modal | —          | Done | Reuses `WorkflowPanel` from detail page                           |
+| CSV import (modal wizard)     | via modal | server     | Done | Property-scoped; gated on `import:manage`                         |
 | Mobile shell                  | —         | —          | Done | Brand hero + overlap filters (`max-lg` only)                      |
 
 ---
@@ -29,8 +30,8 @@ Paginated booking list with PMA-style **stage summary cards** and four view mode
 
 Layout (top → bottom):
 
-1. **Mobile (`max-lg`):** brand hero with tenant switcher + **New booking** icon (property scope); overlapping floating toolbar with date range (property scope) + filters; layout frosted header hidden on this route.
-2. **Desktop (`lg+`):** page header — **date range** (top right) + **New booking** → `/properties/:propertySlug/form`
+1. **Mobile (`max-lg`):** brand hero with tenant switcher + **Import** icon + **New booking** icon (property scope); overlapping floating toolbar with date range (property scope) + filters; layout frosted header hidden on this route.
+2. **Desktop (`lg+`):** page header — **date range** (top right) + **Import** (outline) + **New booking** → `/properties/:propertySlug/form`
 3. **Summary cards** — Action Required, Pending Docs, Confirmed Stays, History (Finance-style `surface-card`; count + inline status hints; click toggles `?stage=` filter)
 4. **Toolbar** (`BookingFilters`):
    - **Mobile (`max-lg`):** search + refine icon (opens sheet for status / more filters / sort / per-page) + view toggle. Date range stays above when shown.
@@ -51,8 +52,30 @@ This page is your main dashboard for all bookings at this property. Summary card
   A: Yes — in kanban view you can drag bookings between columns or click a card to open a quick workflow panel with the same actions as the full booking page.
 - Q: How do I create a new booking?
   A: Use **New booking** in the page header — it opens the guest booking form for this property.
+- Q: Can I bulk-import bookings from a spreadsheet?
+  A: Yes — use **Import** beside **New booking** (property bookings only). Upload a CSV, confirm column mapping, preview rows, then commit. Imported bookings start in **Imported** status and do not trigger new-booking emails or calendar events. See [Import history](./import-history.md).
 
 ---
+
+## CSV import (modal wizard)
+
+**Gated:** org owner/admin, or property team members explicitly granted **`import:manage`**. Hidden at org-wide bookings scope.
+
+**Entry:** **Import** button in the page header (desktop) or hero icon (mobile). Opens `ImportWizardModal` — no route change. Target property is fixed from the current page context (no property picker).
+
+**Steps:**
+
+1. **Upload** — CSV only, max 2,000 rows / 15 MB. Calls `import-parse-file`.
+2. **Auto-map** — AI suggests column → field matches (`import-ai-map-columns`). Works without AI keys (all columns manual).
+3. **Manual mapping** — resolve ambiguous/unmatched headers; `import-save-mapping`.
+4. **Preview** — row validation errors (blocking) vs property mismatch warnings (non-blocking); skip/include rows via `import-update-row`.
+5. **Commit** — `import-commit` inserts rows with **`status = IMPORTED`** and **`imported_from_batch_id`**; no email/calendar/PDF side effects. List refreshes on success.
+
+**Cancel** (before commit): `import-cancel` deletes batch + storage. **History:** link inside modal → [Import history](./import-history.md).
+
+**Manual override after commit:** from booking detail, admin can move **`IMPORTED → PENDING_REVIEW`** or **`IMPORTED → CANCELLED`** (manual-only).
+
+**Filters:** **Imported** appears in the status filter and **History** stage card (`?stage=history`). Imported rows are excluded from Action Required, SD-refund cron, and guest calendar availability.
 
 ## Stage summary cards
 
@@ -63,7 +86,7 @@ Click a card to filter the list (table, card, kanban, calendar). Click again to 
 | Action Required | Action Required                            | `PENDING_REVIEW`, `READY_FOR_CHECKOUT`, `PENDING_SD_REFUND`                          |
 | Pending Docs    | **Pending Docs** (not “Awaiting Response”) | `PENDING_DOCUMENTS`, `PENDING_GAF`, `PENDING_PARKING_REQUEST`, `PENDING_PET_REQUEST` |
 | Confirmed Stays | Confirmed Stays                            | `READY_FOR_CHECKIN`                                                                  |
-| History         | History                                    | `COMPLETED`, `CANCELLED`                                                             |
+| History         | History                                    | `COMPLETED`, `CANCELLED`, `IMPORTED`                                                 |
 
 **URL:** `?stage=action_required|pending_docs|confirmed|history` (omit for all).
 
@@ -107,6 +130,7 @@ New: `stage` (see above).
 ## API
 
 - `list-bookings` edge function — admin JWT; see [[PROJECT|Guest Form Management — Project Documentation]] API table.
+- CSV import: `import-parse-file`, `import-ai-map-columns`, `import-save-mapping`, `import-preview`, `import-update-row`, `import-commit`, `import-cancel` — all require **`import:manage`** (or org owner/admin) + `?property_id=`.
 
 ---
 
@@ -115,6 +139,8 @@ New: `stage` (see above).
 | Concern               | Path                                                                           |
 | --------------------- | ------------------------------------------------------------------------------ |
 | Page                  | `ui/src/features/dashboard/bookings/pages/BookingsListPage.tsx`                |
+| Import wizard modal   | `ui/src/features/dashboard/import/components/ImportWizardModal.tsx`            |
+| Import hooks / types  | `ui/src/features/dashboard/import/hooks/`, `lib/`, `types/`                    |
 | Stage mapping         | `ui/src/features/dashboard/bookings/lib/bookingStages.ts`                      |
 | Summary cards         | `ui/src/features/dashboard/bookings/components/BookingsSummaryCards.tsx`       |
 | Kanban board          | `ui/src/features/dashboard/bookings/components/BookingKanban.tsx`              |
@@ -129,6 +155,7 @@ New: `stage` (see above).
 ## Related docs
 
 - [Booking detail](./bookings-detail.md)
+- [Import history](./import-history.md)
 - [Route index](../../README.md)
 - [Booking workflow rule](../../../../.cursor/rules/booking-workflow.mdc)
 - [`docs/PROJECT.md`](../../../PROJECT.md)

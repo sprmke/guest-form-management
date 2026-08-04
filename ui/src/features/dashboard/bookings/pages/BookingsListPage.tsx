@@ -42,6 +42,8 @@ import { useOptionalOrgContext } from '@/features/dashboard/org/components/Requi
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
 import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
+import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
+import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
 import { MobileHeroActionButton, MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
@@ -144,6 +146,10 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [importOpen, setImportOpen] = useState(false);
+  const { data: propertyAccess } = usePropertyPermissions();
+  const canImport =
+    scope !== 'org' &&
+    hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
 
   const { data: propertiesData } = useProperties(orgSlug ?? undefined);
   const isMobileLayout = useIsBelowLg();
@@ -364,16 +370,18 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           onClear={handleClearDate}
           fullWidth={isMobileLayout}
         />
-        <Button
-          type="button"
-          variant="outline"
-          className="native-cta sm:w-auto sm:px-3.5"
-          onClick={() => setImportOpen(true)}
-        >
-          <Upload className="size-4" aria-hidden />
-          <span className="sm:hidden">Import</span>
-          <span className="hidden sm:inline">Import</span>
-        </Button>
+        {canImport ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="native-cta sm:w-auto sm:px-3.5"
+            onClick={() => setImportOpen(true)}
+          >
+            <Upload className="size-4" aria-hidden />
+            <span className="sm:hidden">Import</span>
+            <span className="hidden sm:inline">Import</span>
+          </Button>
+        ) : null}
         <Link
           to={propertySlug ? guestFormPath(propertySlug) : '#'}
           className="native-cta sm:w-auto sm:px-3.5"
@@ -392,12 +400,14 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const heroNewBooking =
     scope === 'org' ? undefined : (
       <>
-        <MobileHeroActionButton
-          aria-label="Import bookings"
-          onClick={() => setImportOpen(true)}
-        >
-          <Upload className="size-5" aria-hidden />
-        </MobileHeroActionButton>
+        {canImport ? (
+          <MobileHeroActionButton
+            aria-label="Import bookings"
+            onClick={() => setImportOpen(true)}
+          >
+            <Upload className="size-5" aria-hidden />
+          </MobileHeroActionButton>
+        ) : null}
         <MobileHeroActionLink
           to={propertySlug ? guestFormPath(propertySlug) : '#'}
           aria-label="New booking"
@@ -526,17 +536,19 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
       ) : null}
     </AdminMobilePage>
 
-    <ImportWizardModal
-      open={importOpen}
-      onOpenChange={setImportOpen}
-      properties={propertiesData?.properties ?? []}
-      onViewHistory={() => {
-        setImportOpen(false);
-        if (orgSlug && propertySlug) {
-          navigate(`/org/${orgSlug}/property/${propertySlug}/import-history`);
-        }
-      }}
-    />
+    {canImport ? (
+      <ImportWizardModal
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        properties={propertiesData?.properties ?? []}
+        onViewHistory={() => {
+          setImportOpen(false);
+          if (orgSlug && propertySlug) {
+            navigate(`/org/${orgSlug}/property/${propertySlug}/import-history`);
+          }
+        }}
+      />
+    ) : null}
     </>
   );
 }
