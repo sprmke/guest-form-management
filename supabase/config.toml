@@ -684,6 +684,12 @@ verify_jwt = false
 [functions.import-list-batches]
 verify_jwt = false
 
+[functions.import-preview]
+verify_jwt = false
+
+[functions.import-update-row]
+verify_jwt = false
+
 # ── kept for reference (cloud schedule lines, never uncomment locally) ─────────
 # [functions.gmail-listener] schedule = "*/5 * * * *"
 # [functions.sd-refund-cron] schedule = "*/5 * * * *"

@@ -12,8 +12,11 @@ import {
 
 import { ImportFileDropzone } from '@/features/dashboard/import/components/ImportFileDropzone';
 import { ImportManualMappingRow } from '@/features/dashboard/import/components/ImportManualMappingRow';
+import { ImportPreviewTable } from '@/features/dashboard/import/components/ImportPreviewTable';
 import { useAiMapColumns } from '@/features/dashboard/import/hooks/useAiMapColumns';
 import { useCancelImportBatch } from '@/features/dashboard/import/hooks/useCancelImportBatch';
+import { useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
+import { useImportPreview } from '@/features/dashboard/import/hooks/useImportPreview';
 import { useSaveImportMapping } from '@/features/dashboard/import/hooks/useSaveImportMapping';
 import type {
   AiMapColumnsResult,
@@ -284,19 +287,32 @@ function ManualMappingStep({
   );
 }
 
-// ── Placeholder steps (Tasks 5–6) ─────────────────────────────────────────────
+// ── Preview step ──────────────────────────────────────────────────────────────
 
-function PreviewStepPlaceholder() {
+type PreviewStepProps = {
+  batchId: string;
+  isLoading: boolean;
+  error: string | null;
+  onRunPreview: (force?: boolean) => void;
+};
+
+function PreviewStep({ batchId, isLoading, error, onRunPreview }: PreviewStepProps) {
+  React.useEffect(() => {
+    onRunPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchId]);
+
   return (
-    <div className="flex flex-col items-center gap-3 py-10 text-center">
-      <Clock className="size-8 text-muted-foreground" aria-hidden />
-      <div className="space-y-1">
-        <p className="text-sm font-medium">Preview coming in the next task</p>
-        <p className="text-xs text-muted-foreground">Row-level preview and validation will be available soon.</p>
-      </div>
-    </div>
+    <ImportPreviewTable
+      batchId={batchId}
+      isLoading={isLoading}
+      error={error}
+      onRetry={() => onRunPreview(true)}
+    />
   );
 }
+
+// ── Commit placeholder (Task 6) ───────────────────────────────────────────────
 
 function CommitStepPlaceholder() {
   return (
@@ -330,7 +346,11 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
 
   const aiMapMutation = useAiMapColumns();
   const saveMappingMutation = useSaveImportMapping();
+  const previewMutation = useImportPreview();
   const cancelMutation = useCancelImportBatch();
+  const { summary: previewSummary, isReady: previewReady } = useImportBatchRows(
+    parseResult?.batchId ?? null
+  );
 
   // Reset wizard state when modal opens.
   React.useEffect(() => {
@@ -341,8 +361,9 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       setAiError(null);
       setMappingState({});
       setIsBatchCommitted(false);
+      previewMutation.reset();
     }
-  }, [open]);
+  }, [open, previewMutation]);
 
   const handleParsed = (result: ImportParseResult) => {
     setParseResult(result);
@@ -431,9 +452,24 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
     }
   };
 
+  const handleRunPreview = async (force = false) => {
+    if (!parseResult?.batchId || previewMutation.isPending) return;
+    if (!force && previewReady) return;
+    try {
+      await previewMutation.mutateAsync(parseResult.batchId);
+    } catch (err) {
+      console.error('[ImportWizardModal] preview failed:', err);
+    }
+  };
+
+  const handleContinueFromPreview = () => {
+    setStep('commit');
+  };
+
   const isBusy =
     aiMapMutation.isPending ||
     saveMappingMutation.isPending ||
+    previewMutation.isPending ||
     cancelMutation.isPending;
 
   const title = `Import bookings — ${STEP_LABELS[step]}`;
@@ -441,7 +477,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   return (
     <ResponsiveModal open={open} onOpenChange={handleClose}>
       <ResponsiveModalContent
-        className="sm:max-w-lg"
+        className={cn('sm:max-w-lg', step === 'preview' && 'sm:max-w-2xl')}
         sheetLayout="split"
         showCloseButton={false}
         aria-label={title}
@@ -500,7 +536,14 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
             />
           )}
 
-          {step === 'preview' && <PreviewStepPlaceholder />}
+          {step === 'preview' && parseResult && (
+            <PreviewStep
+              batchId={parseResult.batchId}
+              isLoading={previewMutation.isPending}
+              error={previewMutation.isError ? (previewMutation.error as Error).message : null}
+              onRunPreview={(force) => void handleRunPreview(force)}
+            />
+          )}
           {step === 'commit' && <CommitStepPlaceholder />}
         </div>
 
@@ -509,6 +552,12 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
           {saveMappingMutation.isError && (
             <p className="mb-2 text-xs text-destructive">
               {(saveMappingMutation.error as Error).message}
+            </p>
+          )}
+
+          {previewMutation.isError && step === 'preview' && (
+            <p className="mb-2 text-xs text-destructive">
+              {(previewMutation.error as Error).message}
             </p>
           )}
 
@@ -552,9 +601,20 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
               </Button>
             )}
 
-            {(step === 'preview' || step === 'commit') && (
-              <Button type="button" size="sm" disabled>
+            {step === 'preview' && previewReady && !previewMutation.isPending && (
+              <Button
+                type="button"
+                size="sm"
+                disabled={isBusy || previewSummary.valid === 0}
+                onClick={handleContinueFromPreview}
+              >
                 Continue
+              </Button>
+            )}
+
+            {step === 'commit' && (
+              <Button type="button" size="sm" disabled>
+                Import
               </Button>
             )}
           </ResponsiveModalFooter>

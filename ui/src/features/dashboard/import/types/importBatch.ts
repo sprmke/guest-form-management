@@ -58,3 +58,37 @@ export type ImportBatchListResult = {
   page: number;
   limit: number;
 };
+
+// ── Preview & validation ──────────────────────────────────────────────────────
+
+export type ImportValidationSeverity = 'error' | 'warning';
+
+export type ImportValidationError = {
+  field?: string;
+  code: string;
+  message: string;
+  severity: ImportValidationSeverity;
+};
+
+export type ImportBatchRowPreview = {
+  id: string;
+  rowIndex: number;
+  mappedData: Record<string, string | null>;
+  validationStatus: 'valid' | 'error' | 'skipped';
+  validationErrors: ImportValidationError[];
+};
+
+export type ImportPreviewSummary = {
+  total: number;
+  valid: number;
+  error: number;
+  skipped: number;
+  warning: number;
+};
+
+export type ImportPreviewResult = {
+  batchId: string;
+  status: ImportBatchStatus;
+  summary: ImportPreviewSummary;
+  rows: ImportBatchRowPreview[];
+};
