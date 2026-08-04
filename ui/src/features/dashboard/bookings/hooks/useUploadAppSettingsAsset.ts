@@ -9,7 +9,11 @@ import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org
 import { supabase } from '@/lib/supabase/client';
 
 export type AppSettingsAssetType =
-  'gcash_qr' | 'gaf_unit_owner_signature' | 'external_review_image' | 'superhost_proof';
+  | 'gcash_qr'
+  | 'gaf_unit_owner_signature'
+  | 'external_review_image'
+  | 'external_review_stay_photo'
+  | 'superhost_proof';
 
 type UploadAppSettingsAssetResult = {
   url: string;
@@ -29,6 +33,7 @@ type UploadArgs = {
   assetType: AppSettingsAssetType;
   file: File;
   reviewId?: string;
+  photoIndex?: number;
 };
 
 export function useUploadAppSettingsAsset() {
@@ -40,6 +45,7 @@ export function useUploadAppSettingsAsset() {
       assetType,
       file,
       reviewId,
+      photoIndex,
     }: UploadArgs): Promise<UploadAppSettingsAssetResult> => {
       const jwt = await getAdminJwt();
       const ext = file.name.includes('.') ? `.${file.name.split('.').pop()}` : '';
@@ -50,6 +56,7 @@ export function useUploadAppSettingsAsset() {
       body.append('file', file);
       body.append('fileName', storageName);
       if (reviewId) body.append('reviewId', reviewId);
+      if (photoIndex != null) body.append('photoIndex', String(photoIndex));
 
       const res = await fetch(scopedFunctionsUrl('/upload-app-settings-asset', propertyId), {
         method: 'POST',

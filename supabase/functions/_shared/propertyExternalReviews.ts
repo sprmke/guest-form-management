@@ -6,6 +6,8 @@
 import type { PublicGuestReviewDto } from './guestReviewService.ts';
 
 export const MAX_PROPERTY_EXTERNAL_REVIEWS = 5;
+export const MAX_EXTERNAL_REVIEW_STAY_PHOTOS = 3;
+export const MAX_EXTERNAL_REVIEW_TEXT_LENGTH = 2000;
 
 export type ExternalReviewSource = 'facebook' | 'airbnb';
 
@@ -21,6 +23,7 @@ export type PropertyExternalReview = {
   starRating: number | null;
   imageUrl: string | null;
   proofUrl: string | null;
+  stayPhotoUrls: string[];
   moderationStatus: ExternalReviewModerationStatus;
   createdAt: string | null;
 };
@@ -42,6 +45,7 @@ export function createEmptyExternalReview(
     starRating: 5,
     imageUrl: null,
     proofUrl: null,
+    stayPhotoUrls: [],
     moderationStatus: 'pending',
     createdAt: null,
   };
@@ -69,6 +73,34 @@ function normalizeStarRating(raw: unknown): number | null {
   return rounded;
 }
 
+export function normalizeStayPhotoUrls(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .slice(0, MAX_EXTERNAL_REVIEW_STAY_PHOTOS);
+}
+
+export function stayPhotoUrlsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((url, index) => url === b[index]);
+}
+
+export function externalReviewContentEqual(
+  a: PropertyExternalReview,
+  b: PropertyExternalReview
+): boolean {
+  return (
+    a.source === b.source &&
+    a.reviewText.trim() === b.reviewText.trim() &&
+    a.reviewerName.trim() === b.reviewerName.trim() &&
+    a.starRating === b.starRating &&
+    (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
+    (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
+  );
+}
+
 export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalReview[] {
   if (!Array.isArray(raw)) return [];
   const parsed: PropertyExternalReview[] = [];
@@ -85,6 +117,7 @@ export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalRev
         typeof row.imageUrl === 'string' && row.imageUrl.trim() ? row.imageUrl.trim() : null,
       proofUrl:
         typeof row.proofUrl === 'string' && row.proofUrl.trim() ? row.proofUrl.trim() : null,
+      stayPhotoUrls: normalizeStayPhotoUrls(row.stayPhotoUrls),
       moderationStatus: normalizeModerationStatus(row.moderationStatus),
       createdAt:
         typeof row.createdAt === 'string' && row.createdAt.trim() ? row.createdAt.trim() : null,
@@ -101,7 +134,9 @@ export function validateExternalReviews(reviews: PropertyExternalReview[]): stri
     const review = reviews[i];
     const label = `Review ${i + 1}`;
     if (!review.reviewText.trim()) return `${label}: Enter review text`;
-    if (review.reviewText.trim().length > 2000) return `${label}: Review text is too long`;
+    if (review.reviewText.trim().length > MAX_EXTERNAL_REVIEW_TEXT_LENGTH) {
+      return `${label}: Review text is too long`;
+    }
     if (review.proofUrl?.trim()) {
       try {
         const url = new URL(review.proofUrl.trim());
@@ -114,6 +149,10 @@ export function validateExternalReviews(reviews: PropertyExternalReview[]): stri
     }
     if (!review.imageUrl?.trim() && !review.proofUrl?.trim()) {
       return `${label}: Add a screenshot or proof URL`;
+    }
+    const stayCount = review.stayPhotoUrls.length;
+    if (stayCount > MAX_EXTERNAL_REVIEW_STAY_PHOTOS) {
+      return `${label}: You can add up to ${MAX_EXTERNAL_REVIEW_STAY_PHOTOS} stay photos`;
     }
   }
   return null;
@@ -131,14 +170,11 @@ export function serializeExternalReviewsForOwnerPatch(
 
   return incoming.map((review) => {
     const prior = existingById.get(review.id);
-    const contentChanged =
-      !prior ||
-      prior.source !== review.source ||
-      prior.reviewText.trim() !== review.reviewText.trim() ||
-      prior.reviewerName.trim() !== review.reviewerName.trim() ||
-      prior.starRating !== review.starRating ||
-      (prior.imageUrl ?? '') !== (review.imageUrl ?? '') ||
-      (prior.proofUrl ?? '') !== (review.proofUrl ?? '');
+    const contentChanged = !prior || !externalReviewContentEqual(prior, review);
+    const resubmitted =
+      contentChanged &&
+      prior != null &&
+      (prior.moderationStatus === 'approved' || prior.moderationStatus === 'rejected');
 
     return {
       id: review.id.trim() || newReviewId(),
@@ -148,10 +184,73 @@ export function serializeExternalReviewsForOwnerPatch(
       starRating: normalizeStarRating(review.starRating),
       imageUrl: review.imageUrl?.trim() || null,
       proofUrl: review.proofUrl?.trim() || null,
+      stayPhotoUrls: normalizeStayPhotoUrls(review.stayPhotoUrls),
       moderationStatus: contentChanged ? 'pending' : (prior?.moderationStatus ?? 'pending'),
-      createdAt: prior?.createdAt ?? new Date().toISOString(),
+      createdAt: resubmitted
+        ? new Date().toISOString()
+        : (prior?.createdAt ?? new Date().toISOString()),
     };
   });
+}
+
+export type ExternalReviewAssetUploadType = 'external_review_image' | 'external_review_stay_photo';
+
+/** After proof/stay photo upload: mark review pending and persist new asset URL when review exists in JSONB. */
+export function applyExternalReviewAssetUpload(
+  reviews: PropertyExternalReview[],
+  reviewId: string,
+  assetType: ExternalReviewAssetUploadType,
+  url: string,
+  photoIndex?: number
+): PropertyExternalReview[] | null {
+  const id = reviewId.trim();
+  const safeUrl = url.trim();
+  if (!id || !safeUrl) return null;
+
+  let found = false;
+  const next = reviews.map((review) => {
+    if (review.id !== id) return review;
+
+    found = true;
+    const wasModerated =
+      review.moderationStatus === 'approved' || review.moderationStatus === 'rejected';
+
+    if (assetType === 'external_review_image') {
+      const contentChanged = (review.imageUrl ?? '') !== safeUrl;
+      if (!contentChanged && !wasModerated) return review;
+      return {
+        ...review,
+        imageUrl: safeUrl,
+        moderationStatus: 'pending' as const,
+        createdAt: wasModerated || contentChanged ? new Date().toISOString() : review.createdAt,
+      };
+    }
+
+    const photos = normalizeStayPhotoUrls(review.stayPhotoUrls);
+    const idx = Math.min(
+      Math.max(photoIndex ?? photos.length, 0),
+      MAX_EXTERNAL_REVIEW_STAY_PHOTOS - 1
+    );
+    const nextPhotos = [...photos];
+    if (idx === nextPhotos.length && nextPhotos.length < MAX_EXTERNAL_REVIEW_STAY_PHOTOS) {
+      nextPhotos.push(safeUrl);
+    } else {
+      nextPhotos[idx] = safeUrl;
+    }
+    const normalizedPhotos = normalizeStayPhotoUrls(nextPhotos);
+    const contentChanged = !stayPhotoUrlsEqual(photos, normalizedPhotos);
+
+    if (!contentChanged && !wasModerated) return review;
+
+    return {
+      ...review,
+      stayPhotoUrls: normalizedPhotos,
+      moderationStatus: 'pending' as const,
+      createdAt: wasModerated || contentChanged ? new Date().toISOString() : review.createdAt,
+    };
+  });
+
+  return found ? next : null;
 }
 
 export function externalReviewsEqual(
@@ -171,7 +270,8 @@ export function externalReviewsEqual(
       review.reviewerName === other.reviewerName &&
       review.starRating === other.starRating &&
       (review.imageUrl ?? '') === (other.imageUrl ?? '') &&
-      (review.proofUrl ?? '') === (other.proofUrl ?? '')
+      (review.proofUrl ?? '') === (other.proofUrl ?? '') &&
+      stayPhotoUrlsEqual(review.stayPhotoUrls, other.stayPhotoUrls)
     );
   });
 }
@@ -199,7 +299,10 @@ export function listApprovedPublicExternalReviews(raw: unknown): PublicGuestRevi
       rating: review.starRating ?? 5,
       comment: review.reviewText,
       feedbackTags: [],
-      media: review.imageUrl ? [{ url: review.imageUrl, type: 'image' as const }] : [],
+      media: normalizeStayPhotoUrls(review.stayPhotoUrls).map((url) => ({
+        url,
+        type: 'image' as const,
+      })),
       source: review.source,
     }));
 }
@@ -208,4 +311,65 @@ export function normalizeSuperhostStatus(raw: unknown): SuperhostStatus {
   const value = typeof raw === 'string' ? raw.trim().toLowerCase() : '';
   if (value === 'pending' || value === 'approved' || value === 'rejected') return value;
   return 'none';
+}
+
+export type ExternalReviewModerationDecision = 'approved' | 'rejected';
+
+/** Super-admin: set moderation status on one review; throws if missing or not pending. */
+export function updateExternalReviewModerationStatus(
+  reviews: PropertyExternalReview[],
+  reviewId: string,
+  decision: ExternalReviewModerationDecision
+): PropertyExternalReview[] {
+  const id = reviewId.trim();
+  if (!id) throw new Error('reviewId is required');
+
+  let found = false;
+  const next = reviews.map((review) => {
+    if (review.id !== id) return review;
+    found = true;
+    if (review.moderationStatus !== 'pending') {
+      throw new Error('Review is not pending moderation');
+    }
+    return { ...review, moderationStatus: decision };
+  });
+
+  if (!found) throw new Error('Review not found');
+  return next;
+}
+
+/** Extract storage object path from a public app-settings-assets URL, if present. */
+export function externalReviewImageStoragePath(
+  imageUrl: string | null,
+  propertyId: string,
+  reviewId: string
+): string | null {
+  if (!imageUrl?.trim()) return null;
+  const trimmed = imageUrl.trim();
+  const marker = '/app-settings-assets/';
+  const idx = trimmed.indexOf(marker);
+  if (idx >= 0) {
+    const path = trimmed.slice(idx + marker.length).split('?')[0];
+    return path || null;
+  }
+  return `external-review/${propertyId}/${reviewId}.jpg`;
+}
+
+/** Storage path for stay photo at index 0–2. */
+export function externalReviewStayPhotoStoragePath(
+  photoUrl: string | null,
+  propertyId: string,
+  reviewId: string,
+  photoIndex: number
+): string | null {
+  if (!photoUrl?.trim()) return null;
+  const trimmed = photoUrl.trim();
+  const marker = '/app-settings-assets/';
+  const idx = trimmed.indexOf(marker);
+  if (idx >= 0) {
+    const path = trimmed.slice(idx + marker.length).split('?')[0];
+    return path || null;
+  }
+  const safeIndex = Math.min(Math.max(photoIndex, 0), MAX_EXTERNAL_REVIEW_STAY_PHOTOS - 1);
+  return `external-review-stay/${propertyId}/${reviewId}/${safeIndex}.jpg`;
 }
