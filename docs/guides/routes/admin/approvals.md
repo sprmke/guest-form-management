@@ -53,6 +53,7 @@ The platform team uses this page to approve host identity documents, **request c
 
 - Search filters by organization name, owner name, and owner email.
 - Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review.
+- Queue order: orgs with **Recommended in review** (`enhancedStatus === pending`) appear first; within each group, newest submit first (Tier 2 submit time when set, else Tier 1).
 - Dialog title shows tier under review: **Verified** (Tier 1) or **Recommended** (Tier 2). When both tiers were submitted, a **Verified / Recommended** tab switcher shows both statuses; admins can review either tier independently (including Recommended while Verified is still pending).
 - Rows with `hasActiveUnitConflict` show a **Succession** badge (another org already has an ACTIVE listing for the same tower+unit).
 - Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Active listing** peers when present (org name, tower+unit, status), then **Documents** with inline image/PDF previews.
@@ -72,7 +73,7 @@ The platform team uses this page to approve host identity documents, **request c
 
 | Function                      | Method | Auth                         | Notes                                                                                                                                                                                                                   |
 | ----------------------------- | ------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `list-org-verifications`      | GET    | super admin JWT              | Orgs with `baseStatus ≠ none` or `enhancedStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`; `enhancedStatus` / `enhancedSubmittedAt`                                     |
+| `list-org-verifications`      | GET    | super admin JWT              | Orgs with `baseStatus ≠ none` or `enhancedStatus ≠ none`; owner profile; **Recommended pending first**, then newest submit; `unitConflicts[]` / `hasActiveUnitConflict`; `enhancedStatus` / `enhancedSubmittedAt`       |
 | `get-org-verification-assets` | GET    | super admin JWT or org owner | `?orgId=` — verification state + signed asset URLs (`azurePmoConfirmationUrl` for Tier 2 PMO doc; legacy `pmoEmailUrls` / `opsProofUrl` aliases)                                                                        |
 | `approve-org-verification`    | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced' }` — only when that tier is pending; clears rejection reason/kind for that tier                                                                                                    |
 | `reject-org-verification`     | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }` — Tier 1 `changes` supports per-doc picker; Tier 2 `changes` is notes-only (host re-uploads all Recommended docs) |

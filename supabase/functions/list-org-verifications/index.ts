@@ -121,6 +121,11 @@ serveAuthenticated('list-org-verifications', async (req) => {
   );
 
   approvals.sort((a, b) => {
+    const aRecommendedPending = a.enhancedStatus === 'pending' ? 1 : 0;
+    const bRecommendedPending = b.enhancedStatus === 'pending' ? 1 : 0;
+    if (bRecommendedPending !== aRecommendedPending) {
+      return bRecommendedPending - aRecommendedPending;
+    }
     const aTime = a.enhancedSubmittedAt ?? a.baseSubmittedAt ?? '';
     const bTime = b.enhancedSubmittedAt ?? b.baseSubmittedAt ?? '';
     return bTime.localeCompare(aTime);

@@ -15,7 +15,6 @@ import {
   type ListingHostInfo,
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
-import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildPropertyPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
@@ -133,12 +132,7 @@ export function PropertyOverview({
               Superhost
             </span>
           ) : null}
-          {verifiedBadge ? <ListingRecommendedBadge size="md" /> : null}
         </motion.div>
-
-        {verifiedBadge ? (
-          <p className="text-muted-foreground mb-2 text-xs sm:text-[13px]">Recommended host</p>
-        ) : null}
 
         <motion.h1
           initial={{ opacity: 0, y: 10 }}

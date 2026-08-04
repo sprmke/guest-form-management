@@ -8,7 +8,7 @@ tags: [workflow, planned, verification, onboarding]
 
 # Host verification tiers
 
-**Status: Phase 1 shipped (2026-08-04). Phase 2 shipped in branch (2026-08-04).** Phase 3 remains roadmap in this file.
+**Status: Phase 1–2 shipped (2026-08-04). Phase 3 partial — admin queue priority shipped; browse search boost deferred until public property listings API.**
 
 **Tier naming (2026-08-04):** Tier 1 is **Verified**, Tier 2 is **Recommended**. Two tiers only — a third tier was considered and dropped.
 
@@ -35,11 +35,11 @@ Tier 2 may be submitted anytime; tiers reviewed independently. Forced non-dismis
 
 ## Phase status
 
-| Phase | Focus                                               | Status                          |
-| ----- | --------------------------------------------------- | ------------------------------- |
-| 1     | Modal polish, benefits copy, public badge/tooltip   | **Shipped**                     |
-| 2     | Better Tier 2 document requirements                 | **Shipped (pending commit/QA)** |
-| 3     | Real product benefits (trust strip, ranking, queue) | Roadmap                         |
+| Phase | Focus                                             | Status                                       |
+| ----- | ------------------------------------------------- | -------------------------------------------- |
+| 1     | Modal polish, benefits copy, public badge/tooltip | **Shipped**                                  |
+| 2     | Better Tier 2 document requirements               | **Shipped**                                  |
+| 3     | Real product benefits (ranking, queue)            | Partial — admin queue; search boost deferred |
 
 ---
 
@@ -207,15 +207,26 @@ Guest tooltip stays file-local on `ListingRecommendedBadge` (avoid dashboard→g
 
 ---
 
-## Phase 3 — real product benefits (later)
+## Phase 3 — real product benefits (partial)
 
-Do not start until Phase 2 is done (or explicitly skipped by product).
+Do not start browse ranking until public property listings are live (see `smart-search-bar` / list-public-properties backlog).
 
-1. Trust strip near Reserve on listing detail (stronger than pill alone).
-2. Explore/search boost for Recommended hosts (same tower/dev).
-3. Optional: priority in `/admin/approvals` for Recommended orgs (promise carefully).
+1. ~~Trust strip near Reserve~~ — **dropped** (host card badge is enough).
+2. Explore/search boost for Recommended hosts (same tower/dev) — **deferred** (mock browse only today; ship with public list API + `verifiedBadge` per row).
+3. Priority in `/admin/approvals` for Recommended orgs — **shipped**.
 
 Do **not** promise skipping Tier 1 or instant go-live.
+
+### Phase 3 tasks
+
+- [ ] ~~Trust strip~~ — dropped.
+- [ ] Explore/search boost — deferred until public property catalog API.
+- [x] `/admin/approvals` queue priority: Recommended (`enhancedStatus === pending`) rows sort before other pending orgs (newest submit within each group).
+- [ ] Manual QA: admin queue ordering when both Verified-only and Recommended-pending orgs are in review.
+
+### Phase 3 testing checklist (admin queue)
+
+- `/admin/approvals` (**In review**): org with Recommended pending appears above Verified-only pending rows (same filter).
 
 ---
 

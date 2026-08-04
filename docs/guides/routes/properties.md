@@ -117,7 +117,7 @@ Gap analysis (ratings, nearby POIs, etc.): **[[public-property-catalog|Public pr
 | Location    | `PropertyLocation` + `PropertyMapEmbed`                                               | Google/OSM iframe when pinned; decorative fallback if no pin                                                                                             |
 | Rules       | `PropertyRules`                                                                       | House rules preview (6) + modal; cancellation live; safety mock-only                                                                                     |
 | Reviews     | `PropertyReviews`                                                                     | Mock only (hidden for live API)                                                                                                                          |
-| Booking     | `BookingCard` + `GuestBookingFormModal`                                               | API pricing; cancellation trust badge when highlight; Reserve → in-page `GuestForm` modal                                                                |
+| Booking     | `BookingCard` + `GuestBookingFormModal`                                               | API pricing; Reserve → in-page `GuestForm` modal                                                                                                         |
 | Similar     | `SimilarProperties`                                                                   | other mock listings (unchanged)                                                                                                                          |
 | Parking CTA | Link when `getParkingFormForProperty` returns a form → development parking form route |
 

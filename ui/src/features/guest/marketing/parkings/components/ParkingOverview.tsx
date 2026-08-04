@@ -14,7 +14,6 @@ import {
   type ListingHostInfo,
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
-import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
 import { buildParkingPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
@@ -76,12 +75,7 @@ export function ParkingOverview({
             <Car className="h-3.5 w-3.5" aria-hidden />
             {parkingTypeLabel(parkingType)}
           </span>
-          {host?.verifiedBadge ? <ListingRecommendedBadge size="md" /> : null}
         </motion.div>
-
-        {host?.verifiedBadge ? (
-          <p className="text-muted-foreground mb-2 text-xs sm:text-[13px]">Recommended host</p>
-        ) : null}
 
         <motion.h1
           initial={{ opacity: 0, y: 10 }}
