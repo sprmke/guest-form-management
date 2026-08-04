@@ -162,7 +162,7 @@ I think there are a lot of existing projects like this, what we need to plan and
 
 ===
 
-Provide chat app that can access and manage entire dashboard
+✅ Provide chat app that can access and manage entire dashboard
 
 Another big module that I'd like to support is to have a chat app that can access and manage entire dashboard. This should be a chat app that can understand natural language, and can do actions like booking, check-in, check-out, etc. It should be able to understand the context of the conversation and respond accordingly.
 
@@ -175,6 +175,9 @@ This should be very smart and it will act like an assistant that have all inform
 This is a very important feature that will make our system much more powerful and helpful and reasons for user to subscribe and use our system.
 
 Again, this should not provide any sensitive or execute any harmful actions that may affect the system. We should implement a strong guard rails or security measures for this feature.
+
+Also, we need to make sure that this is connected to our AI receptionist, or may share same util, process, flow since both of these modules are using AI.
+We need to plan the architecture, flow, process for both module to build a production ready chat app.
 
 Also, this should be tied app with our pricing and subscription module so that we can limit the free usages of this feature to a certain amount and charge for additional usage.
 
@@ -275,7 +278,7 @@ Prod readiness checklist
 
 ===
 
-Optimize how AI integrated in our app
+✅ Optimize how AI integrated in our app
 
 Make a research and find the best optimal way to connect our application with AI for faster info retrieval, action execution, etc.
 
@@ -323,3 +326,9 @@ The end goal is after this, our booking detail, edit and workflow is refined & f
 Review each dashboard pages, section & actions based on user role
 
 After we refine the roles & permissions that we have on both org and property level, we need to revisit and review each pages within the dashboard and make sure that each section, elements, action, process, flow, basically everything is well thought and only be accessible based on user role
+
+===
+
+In app notification for chat & other activity
+
+When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.

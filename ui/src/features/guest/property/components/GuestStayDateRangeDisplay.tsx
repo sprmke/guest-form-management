@@ -114,7 +114,7 @@ export function GuestStayDateRangeDisplay({
       <div className="hidden items-center gap-3 py-3.5 pl-5 pr-4 sm:flex">
         <div
           className={cn(
-            'icon-well-sm shrink-0 border',
+            'icon-well-sm inline-flex shrink-0 items-center justify-center border',
             isSuccess
               ? 'border-emerald-500/20 bg-emerald-500/10'
               : 'border-primary/15 bg-primary/10'

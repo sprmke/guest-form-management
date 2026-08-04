@@ -40,7 +40,7 @@ export function HowItWorks() {
   return (
     <section className="bg-background relative overflow-hidden py-20 lg:py-32">
       {/* Background decoration */}
-      <div className="bg-grid absolute inset-0 opacity-50" />
+      <div className="bg-mesh-wash absolute inset-0 opacity-50" />
       <div className="bg-primary/5 absolute left-1/2 top-1/2 h-[800px] w-[800px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl" />
 
       <div className="container relative mx-auto px-4 sm:px-6 lg:px-8">
