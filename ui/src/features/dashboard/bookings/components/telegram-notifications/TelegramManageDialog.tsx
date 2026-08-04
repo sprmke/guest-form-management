@@ -1,7 +1,10 @@
 import * as React from 'react';
 
+import { X } from 'lucide-react';
+
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -39,25 +42,39 @@ export function TelegramManageDialog({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(sizeClass[size], 'gap-0 overflow-hidden p-0 sm:p-0')}>
+      <DialogContent
+        showCloseButton={false}
+        className={cn(
+          sizeClass[size],
+          'flex max-h-[min(92dvh,820px)] flex-col gap-0 overflow-hidden p-0 sm:p-0'
+        )}
+      >
         <DialogHeader className="border-border/60 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
-          <div className="flex items-start justify-between gap-3 pr-8">
-            <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
-            {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <DialogTitle className="min-w-0 flex-1 text-base sm:text-lg">{title}</DialogTitle>
+            {headerAction ? (
+              <div className="flex shrink-0 items-center gap-2">{headerAction}</div>
+            ) : null}
+            <DialogClose
+              className="text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              aria-label="Close"
+            >
+              <X className="size-5 shrink-0" aria-hidden />
+            </DialogClose>
           </div>
         </DialogHeader>
         <div
           className={cn(
-            'max-h-[min(calc(92dvh-8rem),640px)] overflow-y-auto px-4 py-4 sm:px-5',
-            size === 'sidebar' &&
-              'flex max-h-[min(calc(92dvh-7rem),680px)] flex-col overflow-hidden sm:px-5',
+            'min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5',
+            !footer && 'max-h-[min(calc(92dvh-8rem),640px)]',
+            size === 'sidebar' && 'flex flex-col sm:px-5',
             bodyClassName
           )}
         >
           {children}
         </div>
         {footer ? (
-          <DialogFooter className="border-border/60 border-t px-4 py-3 sm:px-5">
+          <DialogFooter className="border-border/60 bg-background shrink-0 border-t px-4 py-3 sm:px-5">
             {footer}
           </DialogFooter>
         ) : null}

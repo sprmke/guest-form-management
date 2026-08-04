@@ -3,6 +3,8 @@
  */
 
 export const MAX_PROPERTY_EXTERNAL_REVIEWS = 5;
+export const MAX_EXTERNAL_REVIEW_STAY_PHOTOS = 3;
+export const MAX_EXTERNAL_REVIEW_TEXT_LENGTH = 2000;
 
 export type ExternalReviewSource = 'facebook' | 'airbnb';
 
@@ -18,9 +20,52 @@ export type PropertyExternalReview = {
   starRating: number | null;
   imageUrl: string | null;
   proofUrl: string | null;
+  stayPhotoUrls: string[];
   moderationStatus: ExternalReviewModerationStatus;
   createdAt: string | null;
 };
+
+export function normalizeStayPhotoUrls(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    .map((entry) => entry.trim())
+    .slice(0, MAX_EXTERNAL_REVIEW_STAY_PHOTOS);
+}
+
+export function stayPhotoUrlsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((url, index) => url === b[index]);
+}
+
+export function externalReviewContentEqual(
+  a: PropertyExternalReview,
+  b: PropertyExternalReview
+): boolean {
+  return (
+    a.source === b.source &&
+    a.reviewText.trim() === b.reviewText.trim() &&
+    a.reviewerName.trim() === b.reviewerName.trim() &&
+    a.starRating === b.starRating &&
+    (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
+    (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
+  );
+}
+
+/** Host draft edits to approved/rejected reviews return to pending for re-moderation. */
+export function applyExternalReviewDraftChange(
+  before: PropertyExternalReview,
+  after: PropertyExternalReview
+): PropertyExternalReview {
+  if (before.moderationStatus !== 'approved' && before.moderationStatus !== 'rejected') {
+    return after;
+  }
+  if (externalReviewContentEqual(before, after)) {
+    return after;
+  }
+  return { ...after, moderationStatus: 'pending' };
+}
 
 export function createEmptyExternalReview(
   source: ExternalReviewSource = 'airbnb'
@@ -33,6 +78,7 @@ export function createEmptyExternalReview(
     starRating: 5,
     imageUrl: null,
     proofUrl: null,
+    stayPhotoUrls: [],
     moderationStatus: 'pending',
     createdAt: null,
   };
@@ -55,6 +101,7 @@ export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalRev
       starRating: star,
       imageUrl: row.imageUrl?.trim() || null,
       proofUrl: row.proofUrl?.trim() || null,
+      stayPhotoUrls: normalizeStayPhotoUrls(row.stayPhotoUrls),
       moderationStatus:
         row.moderationStatus === 'approved' || row.moderationStatus === 'rejected'
           ? row.moderationStatus
@@ -62,6 +109,43 @@ export function normalizeExternalReviewsDraft(raw: unknown): PropertyExternalRev
       createdAt: row.createdAt?.trim() || null,
     };
   });
+}
+
+export function externalReviewEqual(a: PropertyExternalReview, b: PropertyExternalReview): boolean {
+  return (
+    a.id === b.id &&
+    a.source === b.source &&
+    a.reviewText === b.reviewText &&
+    a.reviewerName === b.reviewerName &&
+    a.starRating === b.starRating &&
+    (a.imageUrl ?? '') === (b.imageUrl ?? '') &&
+    (a.proofUrl ?? '') === (b.proofUrl ?? '') &&
+    stayPhotoUrlsEqual(a.stayPhotoUrls, b.stayPhotoUrls)
+  );
+}
+
+export function externalReviewDirty(
+  draft: PropertyExternalReview,
+  baseline: PropertyExternalReview | undefined
+): boolean {
+  if (!baseline) return true;
+  return !externalReviewEqual(draft, baseline);
+}
+
+/** Persist one review without applying unsaved edits from other draft rows. */
+export function mergeExternalReviewsForSingleReviewSave(
+  reviewId: string,
+  draftReviews: PropertyExternalReview[],
+  baselineReviews: PropertyExternalReview[]
+): PropertyExternalReview[] | null {
+  const draftReview = draftReviews.find((review) => review.id === reviewId);
+  if (!draftReview) return null;
+
+  if (baselineReviews.some((review) => review.id === reviewId)) {
+    return baselineReviews.map((review) => (review.id === reviewId ? draftReview : review));
+  }
+
+  return [...baselineReviews, draftReview];
 }
 
 export function externalReviewsEqual(
@@ -72,18 +156,7 @@ export function externalReviewsEqual(
   const sortKey = (review: PropertyExternalReview) => review.id;
   const sortedA = [...a].sort((x, y) => sortKey(x).localeCompare(sortKey(y)));
   const sortedB = [...b].sort((x, y) => sortKey(x).localeCompare(sortKey(y)));
-  return sortedA.every((review, index) => {
-    const other = sortedB[index];
-    return (
-      review.id === other.id &&
-      review.source === other.source &&
-      review.reviewText === other.reviewText &&
-      review.reviewerName === other.reviewerName &&
-      review.starRating === other.starRating &&
-      (review.imageUrl ?? '') === (other.imageUrl ?? '') &&
-      (review.proofUrl ?? '') === (other.proofUrl ?? '')
-    );
-  });
+  return sortedA.every((review, index) => externalReviewEqual(review, sortedB[index]!));
 }
 
 export function externalReviewSourceLabel(source: ExternalReviewSource): string {
@@ -114,6 +187,10 @@ export function externalReviewModerationLabel(status: ExternalReviewModerationSt
   }
 }
 
+export function rejectedExternalReviewCount(reviews: PropertyExternalReview[]): number {
+  return reviews.filter((review) => review.moderationStatus === 'rejected').length;
+}
+
 export function externalReviewsAggregateLabel(reviews: PropertyExternalReview[]): {
   label: string;
   tone: 'empty' | 'pending' | 'live' | 'mixed';
@@ -135,27 +212,41 @@ export function externalReviewsAggregateLabel(reviews: PropertyExternalReview[])
   };
 }
 
+export function validateExternalReviewDraft(
+  review: PropertyExternalReview,
+  label: string
+): string | null {
+  if (!review.reviewText.trim()) return `${label}: Enter review text`;
+  if (review.reviewText.trim().length > MAX_EXTERNAL_REVIEW_TEXT_LENGTH) {
+    return `${label}: Review text is too long`;
+  }
+  if (!review.imageUrl?.trim() && !review.proofUrl?.trim()) {
+    return `${label}: Add a screenshot or proof URL`;
+  }
+  const stayCount = review.stayPhotoUrls.length;
+  if (stayCount > MAX_EXTERNAL_REVIEW_STAY_PHOTOS) {
+    return `${label}: You can add up to ${MAX_EXTERNAL_REVIEW_STAY_PHOTOS} stay photos`;
+  }
+  if (review.proofUrl?.trim()) {
+    try {
+      const url = new URL(review.proofUrl.trim());
+      if (!['http:', 'https:'].includes(url.protocol)) {
+        return `${label}: Proof URL must start with http:// or https://`;
+      }
+    } catch {
+      return `${label}: Enter a valid proof URL`;
+    }
+  }
+  return null;
+}
+
 export function validateExternalReviewsDraft(reviews: PropertyExternalReview[]): string | null {
   if (reviews.length > MAX_PROPERTY_EXTERNAL_REVIEWS) {
     return `You can add up to ${MAX_PROPERTY_EXTERNAL_REVIEWS} external reviews`;
   }
   for (let i = 0; i < reviews.length; i++) {
-    const review = reviews[i];
-    const label = `Review ${i + 1}`;
-    if (!review.reviewText.trim()) return `${label}: Enter review text`;
-    if (!review.imageUrl?.trim() && !review.proofUrl?.trim()) {
-      return `${label}: Add a screenshot or proof URL`;
-    }
-    if (review.proofUrl?.trim()) {
-      try {
-        const url = new URL(review.proofUrl.trim());
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          return `${label}: Proof URL must start with http:// or https://`;
-        }
-      } catch {
-        return `${label}: Enter a valid proof URL`;
-      }
-    }
+    const err = validateExternalReviewDraft(reviews[i]!, `Review ${i + 1}`);
+    if (err) return err;
   }
   return null;
 }

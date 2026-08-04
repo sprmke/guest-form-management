@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { MessageSquare, Plus, Star } from 'lucide-react';
+import { MessageSquare, Plus, Save, Star } from 'lucide-react';
 
 import { TelegramManageDialog } from '@/features/dashboard/bookings/components/telegram-notifications/TelegramManageDialog';
 import { withStorageUrlCacheBust } from '@/features/dashboard/bookings/lib/storageUrls';
+import { MarketingResetConfirmDialog } from '@/features/dashboard/marketing/components/shared/MarketingResetConfirmDialog';
 import { PropertyExternalReviewImageField } from '@/features/dashboard/org/components/property-settings/PropertyExternalReviewImageField';
+import { PropertyExternalReviewStayPhotosField } from '@/features/dashboard/org/components/property-settings/PropertyExternalReviewStayPhotosField';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
+  applyExternalReviewDraftChange,
   createEmptyExternalReview,
+  externalReviewDirty,
   externalReviewModerationLabel,
   externalReviewSourceLabel,
   externalReviewsAggregateLabel,
+  MAX_EXTERNAL_REVIEW_TEXT_LENGTH,
   MAX_PROPERTY_EXTERNAL_REVIEWS,
   type ExternalReviewSource,
   type ExternalReviewModerationStatus,
@@ -139,7 +144,8 @@ function ReviewNavItem({
   disabled?: boolean;
   onSelect: () => void;
 }) {
-  const thumb = review.imageUrl?.trim() ? withStorageUrlCacheBust(review.imageUrl, null) : null;
+  const thumbSource = review.stayPhotoUrls[0]?.trim() || review.imageUrl?.trim() || null;
+  const thumb = thumbSource ? withStorageUrlCacheBust(thumbSource, null) : null;
 
   return (
     <button
@@ -207,7 +213,8 @@ function ReviewMobileNavTile({
   disabled?: boolean;
   onSelect: () => void;
 }) {
-  const thumb = review.imageUrl?.trim() ? withStorageUrlCacheBust(review.imageUrl, null) : null;
+  const thumbSource = review.stayPhotoUrls[0]?.trim() || review.imageUrl?.trim() || null;
+  const thumb = thumbSource ? withStorageUrlCacheBust(thumbSource, null) : null;
   const label = reviewNavLabel(review, index);
 
   return (
@@ -292,13 +299,23 @@ function ReviewEditorPanel({
   index,
   disabled,
   onChange,
-  onRemove,
+  onDeleteRequest,
+  deleteDisabled,
+  onSaveRequest,
+  saveDisabled,
+  saveBusy,
+  reviewDirty,
 }: {
   review: PropertyExternalReview;
   index: number;
   disabled?: boolean;
   onChange: (next: PropertyExternalReview) => void;
-  onRemove: () => void;
+  onDeleteRequest?: () => void;
+  deleteDisabled?: boolean;
+  onSaveRequest?: () => void;
+  saveDisabled?: boolean;
+  saveBusy?: boolean;
+  reviewDirty?: boolean;
 }) {
   return (
     <div className="min-w-0 flex-1 space-y-4">
@@ -311,16 +328,35 @@ function ReviewEditorPanel({
             {externalReviewModerationLabel(review.moderationStatus)}
           </Badge>
         </div>
-        <Button
-          type="button"
-          variant="link"
-          size="sm"
-          disabled={disabled}
-          className="text-destructive hover:text-destructive/80 min-h-[44px] shrink-0 px-1"
-          onClick={onRemove}
-        >
-          Delete
-        </Button>
+        {onDeleteRequest || onSaveRequest ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {onDeleteRequest ? (
+              <Button
+                type="button"
+                variant="outline-destructive"
+                size="sm"
+                disabled={deleteDisabled}
+                className="h-8 px-2.5 text-xs"
+                onClick={onDeleteRequest}
+              >
+                Delete
+              </Button>
+            ) : null}
+            {onSaveRequest ? (
+              <Button
+                type="button"
+                variant="outline-success"
+                size="sm"
+                disabled={saveDisabled || !reviewDirty}
+                className="h-8 gap-1 px-2.5 text-xs"
+                onClick={onSaveRequest}
+              >
+                <Save className="size-3.5" aria-hidden />
+                {saveBusy ? 'Saving...' : 'Save'}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-4">
@@ -364,14 +400,26 @@ function ReviewEditorPanel({
         </SettingsField>
 
         <SettingsField id={`review-text-${review.id}`} label="Review">
-          <Textarea
-            id={`review-text-${review.id}`}
-            disabled={disabled}
-            value={review.reviewText}
-            onChange={(event) => onChange({ ...review, reviewText: event.target.value })}
-            rows={4}
-            className="min-h-[112px] resize-y"
-          />
+          <div className="space-y-3">
+            <Textarea
+              id={`review-text-${review.id}`}
+              disabled={disabled}
+              value={review.reviewText}
+              onChange={(event) => onChange({ ...review, reviewText: event.target.value })}
+              rows={4}
+              maxLength={MAX_EXTERNAL_REVIEW_TEXT_LENGTH}
+              className="min-h-[112px] resize-y"
+            />
+            <p className="text-muted-foreground text-xs tabular-nums">
+              {review.reviewText.length}/{MAX_EXTERNAL_REVIEW_TEXT_LENGTH}
+            </p>
+            <PropertyExternalReviewStayPhotosField
+              reviewId={review.id}
+              stayPhotoUrls={review.stayPhotoUrls}
+              disabled={disabled}
+              onStayPhotoUrlsChange={(stayPhotoUrls) => onChange({ ...review, stayPhotoUrls })}
+            />
+          </div>
         </SettingsField>
 
         <Separator className="bg-border/60" />
@@ -407,19 +455,27 @@ function ReviewEditorPanel({
 
 export function PropertyExternalReviewsBlock({
   reviews,
+  baselineReviews,
   disabled,
   error,
   onReviewsChange,
   onInteract,
+  onSaveReview,
+  savingReviewId,
 }: {
   reviews: PropertyExternalReview[];
+  baselineReviews?: PropertyExternalReview[];
   disabled?: boolean;
   error?: string | null;
   onReviewsChange: (reviews: PropertyExternalReview[]) => void;
   onInteract: () => void;
+  onSaveReview?: (reviewId: string) => void;
+  savingReviewId?: string | null;
 }) {
   const [manageOpen, setManageOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const visibleReviews = useMemo(() => reviews.slice(0, MAX_PROPERTY_EXTERNAL_REVIEWS), [reviews]);
   const reviewCount = visibleReviews.length;
@@ -429,6 +485,13 @@ export function PropertyExternalReviewsBlock({
   const selectedIndex = visibleReviews.findIndex((review) => review.id === selectedId);
   const activeIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const activeReview = visibleReviews[activeIndex] ?? null;
+  const activeReviewBaseline = activeReview
+    ? baselineReviews?.find((review) => review.id === activeReview.id)
+    : undefined;
+  const activeReviewDirty = activeReview
+    ? externalReviewDirty(activeReview, activeReviewBaseline)
+    : false;
+  const activeReviewSaving = activeReview != null && savingReviewId === activeReview.id;
 
   useEffect(() => {
     if (!manageOpen) return;
@@ -443,7 +506,9 @@ export function PropertyExternalReviewsBlock({
 
   function updateReview(index: number, next: PropertyExternalReview) {
     onInteract();
-    onReviewsChange(visibleReviews.map((review, i) => (i === index ? next : review)));
+    const current = visibleReviews[index];
+    const merged = current ? applyExternalReviewDraftChange(current, next) : next;
+    onReviewsChange(visibleReviews.map((review, i) => (i === index ? merged : review)));
   }
 
   function removeReview(id: string) {
@@ -580,13 +645,39 @@ export function PropertyExternalReviewsBlock({
                   index={activeIndex}
                   disabled={disabled}
                   onChange={(next) => updateReview(activeIndex, next)}
-                  onRemove={() => removeReview(activeReview.id)}
+                  onDeleteRequest={() => {
+                    setPendingDeleteId(activeReview.id);
+                    setDeleteConfirmOpen(true);
+                  }}
+                  deleteDisabled={disabled || Boolean(savingReviewId)}
+                  onSaveRequest={onSaveReview ? () => onSaveReview(activeReview.id) : undefined}
+                  saveDisabled={disabled || Boolean(savingReviewId)}
+                  saveBusy={activeReviewSaving}
+                  reviewDirty={activeReviewDirty}
                 />
               </div>
             ) : null}
           </div>
         )}
       </TelegramManageDialog>
+
+      <MarketingResetConfirmDialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          setDeleteConfirmOpen(open);
+          if (!open) setPendingDeleteId(null);
+        }}
+        title="Delete review?"
+        description="Save changes to remove it from your listing."
+        confirmLabel="Delete"
+        overlayClassName="z-[110]"
+        contentClassName="z-[111]"
+        onConfirm={() => {
+          if (pendingDeleteId) removeReview(pendingDeleteId);
+          setPendingDeleteId(null);
+          setDeleteConfirmOpen(false);
+        }}
+      />
     </>
   );
 }

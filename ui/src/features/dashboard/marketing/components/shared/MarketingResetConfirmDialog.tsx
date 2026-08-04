@@ -8,6 +8,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 type Props = {
   open: boolean;
@@ -16,6 +18,8 @@ type Props = {
   title?: string;
   description?: string;
   confirmLabel?: string;
+  contentClassName?: string;
+  overlayClassName?: string;
 };
 
 export function MarketingResetConfirmDialog({
@@ -25,10 +29,15 @@ export function MarketingResetConfirmDialog({
   title = 'Reset to default?',
   description = 'All unsaved changes will be lost.',
   confirmLabel = 'Reset',
+  contentClassName,
+  overlayClassName,
 }: Props) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="max-w-[min(calc(100vw-1.5rem),24rem)]">
+      <AlertDialogContent
+        overlayClassName={overlayClassName}
+        className={cn('max-w-[min(calc(100vw-1.5rem),24rem)]', contentClassName)}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -36,7 +45,10 @@ export function MarketingResetConfirmDialog({
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
           <AlertDialogAction
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className={cn(
+              buttonVariants({ variant: 'destructive' }),
+              '!bg-destructive hover:!bg-destructive/90 [background-image:none]'
+            )}
             onClick={onConfirm}
           >
             {confirmLabel}

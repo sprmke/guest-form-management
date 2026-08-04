@@ -11,7 +11,10 @@ import { PropertySettingsSectionAlert } from '@/features/dashboard/org/component
 import { PropertySuperhostVerificationBlock } from '@/features/dashboard/org/components/property-settings/PropertySuperhostVerificationBlock';
 import { MainSocialPlatformPicker } from '@/features/dashboard/org/components/settings/MainSocialPlatformPicker';
 import { SocialLinkInheritField } from '@/features/dashboard/org/components/settings/SocialLinkInheritField';
-import type { SuperhostStatus } from '@/features/dashboard/org/lib/propertyExternalReviews';
+import type {
+  PropertyExternalReview,
+  SuperhostStatus,
+} from '@/features/dashboard/org/lib/propertyExternalReviews';
 import type { PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
 import { propertySettingsSectionBanner } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import type { OrgSocialLinks } from '@/features/dashboard/org/lib/propertySocialLinks';
@@ -37,9 +40,13 @@ export function PropertySocialsSection({
   markFieldInteracted,
   onChange,
   sectionMessages,
+  onSaveReview,
+  savingReviewId,
+  externalReviewsBaseline,
 }: {
   data: Pick<AppSettingsDto, 'superhostProofImageUrl' | 'superhostStatus' | 'updatedAt'>;
   draft: AppSettingsFormValues;
+  externalReviewsBaseline: PropertyExternalReview[];
   orgSocialLinks: OrgSocialLinks;
   disabled?: boolean;
   resolveFieldError: (fieldId: string) => string | null;
@@ -49,6 +56,8 @@ export function PropertySocialsSection({
     value: AppSettingsFormValues[K]
   ) => void;
   sectionMessages: Partial<Record<PropertySettingsSectionId, string>>;
+  onSaveReview?: (reviewId: string) => void;
+  savingReviewId?: string | null;
 }) {
   const externalReviewsError = resolveFieldError('property-external-reviews');
   const superhostError = resolveFieldError('property-superhost-verification-url');
@@ -137,10 +146,13 @@ export function PropertySocialsSection({
 
         <PropertyExternalReviewsBlock
           reviews={draft.externalReviews}
+          baselineReviews={externalReviewsBaseline}
           disabled={disabled}
           error={externalReviewsError}
           onReviewsChange={(reviews) => onChange('externalReviews', reviews)}
           onInteract={() => markFieldInteracted('property-external-reviews')}
+          onSaveReview={onSaveReview}
+          savingReviewId={savingReviewId}
         />
 
         <PropertySuperhostVerificationBlock

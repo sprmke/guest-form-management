@@ -72,6 +72,10 @@ import { publicPropertySlugUrlPrefix } from '@/features/dashboard/org/lib/guestP
 import { paymentMethodsDraftIsDirty } from '@/features/dashboard/org/lib/paymentMethods';
 import type { PropertyAutomationToggleKey } from '@/features/dashboard/org/lib/propertyEmailAutomation';
 import { type PropertySettingsSectionId } from '@/features/dashboard/org/lib/propertySettingsCompletion';
+import {
+  mergeExternalReviewsForSingleReviewSave,
+  validateExternalReviewDraft,
+} from '@/features/dashboard/org/lib/propertyExternalReviews';
 import { resolvePropertySettingsFieldError } from '@/features/dashboard/org/lib/propertySettingsFieldError';
 import {
   gafTowerUnitFromProfile,
@@ -181,6 +185,7 @@ export function PropertySettingsCard() {
   const [showValidationErrors, setShowValidationErrors] = useState(false);
   const [interactedFields, setInteractedFields] = useState<Record<string, boolean>>({});
   const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [savingReviewId, setSavingReviewId] = useState<string | null>(null);
 
   const markFieldInteracted = useCallback((fieldId: string) => {
     setInteractedFields((current) => {
@@ -296,6 +301,56 @@ export function PropertySettingsCard() {
       ? operationalSettingsDraftIsDirty(operationalDraft, operationalBaseline, inheritedBrandColor)
       : false;
   operationalDirtyRef.current = operationalDirty;
+
+  const handleSaveExternalReview = async (reviewId: string) => {
+    if (!operationalDraft || !operationalBaseline) return;
+
+    const draftReviews = operationalDraft.externalReviews;
+    const baselineReviews = operationalBaseline.externalReviews;
+    const reviewIndex = draftReviews.findIndex((review) => review.id === reviewId);
+    const draftReview = draftReviews[reviewIndex];
+    if (!draftReview) return;
+
+    const validationError = validateExternalReviewDraft(draftReview, `Review ${reviewIndex + 1}`);
+    if (validationError) {
+      setShowValidationErrors(true);
+      markFieldInteracted('property-external-reviews');
+      toast.error(validationError);
+      return;
+    }
+
+    const mergedReviews = mergeExternalReviewsForSingleReviewSave(
+      reviewId,
+      draftReviews,
+      baselineReviews
+    );
+    if (!mergedReviews) return;
+
+    setSavingReviewId(reviewId);
+    try {
+      const saved = await updateAppSettings.mutateAsync({ externalReviews: mergedReviews });
+      const values = appSettingsToFormValues(saved);
+      const savedReview = values.externalReviews.find((review) => review.id === reviewId);
+
+      setOperationalBaseline((current) =>
+        current ? { ...current, externalReviews: values.externalReviews } : current
+      );
+      setOperationalDraft((current) => {
+        if (!current || !savedReview) return current;
+        return {
+          ...current,
+          externalReviews: current.externalReviews.map((review) =>
+            review.id === reviewId ? savedReview : review
+          ),
+        };
+      });
+      toast.success('Review saved');
+    } catch (error) {
+      toast.error(friendlyToastError(error, 'Could not save review'));
+    } finally {
+      setSavingReviewId(null);
+    }
+  };
   const voiceDirty =
     voiceDraft && voiceBaseline ? voiceReceptionistFormIsDirty(voiceDraft, voiceBaseline) : false;
   voiceDirtyRef.current = voiceDirty;
@@ -670,12 +725,15 @@ export function PropertySettingsCard() {
           <PropertySocialsBrandingSection
             data={appSettings}
             draft={operationalDraft}
+            externalReviewsBaseline={operationalBaseline?.externalReviews ?? []}
             orgSocialLinks={orgSocialLinks}
             disabled={busy}
             resolveFieldError={resolveFieldError}
             markFieldInteracted={markFieldInteracted}
             onChange={setOperationalField}
             sectionMessages={settingsCompletion.sectionMessages}
+            onSaveReview={(reviewId) => void handleSaveExternalReview(reviewId)}
+            savingReviewId={savingReviewId}
           />
 
           <PropertyOperationalSettingsSections

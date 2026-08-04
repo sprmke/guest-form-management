@@ -10,6 +10,8 @@ import {
 } from '@/features/dashboard/bookings/hooks/useDateNavigation';
 import { useOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { usePropertyGoogleAttentionItem } from '@/features/dashboard/org/hooks/usePropertyGoogleAttentionItem';
+import { usePropertyRejectedExternalReviewsAttentionItem } from '@/features/dashboard/org/hooks/usePropertyRejectedExternalReviewsAttentionItem';
+import type { DashboardAttentionItem } from '@/features/dashboard/property/lib/types';
 import { DashboardAttentionStrip } from '@/features/dashboard/property/components/DashboardAttentionStrip';
 import { PropertyGuestPagesMenu } from '@/features/dashboard/property/components/PropertyGuestPagesMenu';
 import { DashboardFinanceCalendarSection } from '@/features/dashboard/property/components/DashboardFinanceCalendarSection';
@@ -67,12 +69,15 @@ export function DashboardPage() {
 
   const trendLabel = data?.trendWindow.label ?? '';
   const googleAttentionItem = usePropertyGoogleAttentionItem();
+  const rejectedReviewsAttentionItem = usePropertyRejectedExternalReviewsAttentionItem();
 
   const attentionItems = useMemo(() => {
-    if (!data) return [];
-    if (!googleAttentionItem) return data.attention;
-    return [googleAttentionItem, ...data.attention];
-  }, [data, googleAttentionItem]);
+    const clientItems = [googleAttentionItem, rejectedReviewsAttentionItem].filter(
+      (item): item is DashboardAttentionItem => item != null
+    );
+    if (!data) return clientItems;
+    return [...clientItems, ...data.attention];
+  }, [data, googleAttentionItem, rejectedReviewsAttentionItem]);
 
   const dashboardActions = (
     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
