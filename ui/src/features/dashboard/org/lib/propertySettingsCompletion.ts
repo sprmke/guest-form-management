@@ -128,8 +128,7 @@ function googleIntegrationReady(input: PropertySettingsCompletionInput): boolean
 
 function paymentQrConfigured(appSettings: AppSettingsDto | null): boolean {
   if (!appSettings) return false;
-  if (appSettings.fieldSources.gcashQrImageUrl === 'db') return true;
-  return appSettings.gcashQrImageUrl.trim().length > 0;
+  return appSettings.fieldSources.gcashQrImageUrl === 'db';
 }
 
 function signatureConfigured(appSettings: AppSettingsDto | null): boolean {
