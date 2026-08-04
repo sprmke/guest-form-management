@@ -687,6 +687,12 @@ verify_jwt = false
 [functions.import-preview]
 verify_jwt = false
 
+[functions.import-commit]
+verify_jwt = false
+
+[functions.import-revert]
+verify_jwt = false
+
 [functions.import-update-row]
 verify_jwt = false
 

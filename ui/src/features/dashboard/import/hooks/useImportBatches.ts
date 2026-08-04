@@ -51,7 +51,3 @@ export function useImportBatches(page = 1, limit = 20) {
   });
 }
 
-/** Placeholder hook — revert wired in Task 6. */
-export function useRevertImportBatch() {
-  return { mutateAsync: async (_batchId: string) => { throw new Error('Revert not yet available'); }, isPending: false };
-}

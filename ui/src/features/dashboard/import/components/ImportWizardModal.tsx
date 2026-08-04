@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  Clock,
   Loader2,
   X,
 } from 'lucide-react';
@@ -16,9 +15,12 @@ import { ImportManualMappingRow } from '@/features/dashboard/import/components/I
 import { ImportPreviewTable } from '@/features/dashboard/import/components/ImportPreviewTable';
 import { useAiMapColumns } from '@/features/dashboard/import/hooks/useAiMapColumns';
 import { useCancelImportBatch } from '@/features/dashboard/import/hooks/useCancelImportBatch';
+import { useCommitImportBatch } from '@/features/dashboard/import/hooks/useCommitImportBatch';
 import { clearImportPreviewCache, useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { useImportPreview } from '@/features/dashboard/import/hooks/useImportPreview';
 import { useSaveImportMapping } from '@/features/dashboard/import/hooks/useSaveImportMapping';
+import { IMPORT_BATCHES_KEY } from '@/features/dashboard/import/hooks/useImportBatches';
+import { BOOKINGS_QUERY_KEY } from '@/features/dashboard/bookings/hooks/useBookings';
 import type {
   AiMapColumnsResult,
   ImportColumnMappingEntry,
@@ -315,16 +317,35 @@ function PreviewStep({ batchId, previewRunKey, isLoading, error, onRunPreview }:
   );
 }
 
-// ── Commit placeholder (Task 6) ───────────────────────────────────────────────
+// ── Commit step ───────────────────────────────────────────────────────────────
 
-function CommitStepPlaceholder() {
+type CommitStepProps = {
+  validCount: number;
+  isCommitting: boolean;
+  error: string | null;
+};
+
+function CommitStep({ validCount, isCommitting, error }: CommitStepProps) {
   return (
-    <div className="flex flex-col items-center gap-3 py-10 text-center">
-      <Clock className="size-8 text-muted-foreground" aria-hidden />
+    <div className="flex flex-col items-center gap-4 py-8 text-center">
+      {isCommitting ? (
+        <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden />
+      ) : (
+        <CheckCircle2 className="size-8 text-primary" aria-hidden />
+      )}
       <div className="space-y-1">
-        <p className="text-sm font-medium">Import coming in the next task</p>
-        <p className="text-xs text-muted-foreground">Booking creation will be available after preview is ready.</p>
+        <p className="text-sm font-medium">
+          {isCommitting
+            ? 'Importing…'
+            : `Ready to import ${validCount.toLocaleString()} booking${validCount !== 1 ? 's' : ''}`}
+        </p>
+        {!isCommitting && (
+          <p className="text-xs text-muted-foreground">
+            Historical bookings will be created with status Imported and will not trigger emails or calendar events.
+          </p>
+        )}
       </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
@@ -354,6 +375,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   const saveMappingMutation = useSaveImportMapping();
   const previewMutation = useImportPreview();
   const cancelMutation = useCancelImportBatch();
+  const commitMutation = useCommitImportBatch();
   const { summary: previewSummary, isReady: previewReady } = useImportBatchRows(
     parseResult?.batchId ?? null
   );
@@ -369,7 +391,10 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       setIsBatchCommitted(false);
       setPreviewRunKey(0);
       previewMutation.reset();
+      commitMutation.reset();
     }
+    // commitMutation excluded from deps — reset() is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, previewMutation]);
 
   const invalidatePreviewCache = React.useCallback(
@@ -484,11 +509,28 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
     setStep('commit');
   };
 
+  const handleCommit = async () => {
+    if (!parseResult?.batchId || commitMutation.isPending) return;
+    try {
+      await commitMutation.mutateAsync(parseResult.batchId);
+      setIsBatchCommitted(true);
+      // Refresh bookings list and import history after successful commit.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: BOOKINGS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: [...IMPORT_BATCHES_KEY] }),
+      ]);
+      onOpenChange(false);
+    } catch (err) {
+      console.error('[ImportWizardModal] commit failed:', err);
+    }
+  };
+
   const isBusy =
     aiMapMutation.isPending ||
     saveMappingMutation.isPending ||
     previewMutation.isPending ||
-    cancelMutation.isPending;
+    cancelMutation.isPending ||
+    commitMutation.isPending;
 
   const title = `Import bookings — ${STEP_LABELS[step]}`;
 
@@ -563,7 +605,13 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
               onRunPreview={(force) => void handleRunPreview(force)}
             />
           )}
-          {step === 'commit' && <CommitStepPlaceholder />}
+          {step === 'commit' && (
+            <CommitStep
+              validCount={previewSummary.valid}
+              isCommitting={commitMutation.isPending}
+              error={commitMutation.isError ? (commitMutation.error as Error).message : null}
+            />
+          )}
         </div>
 
         {/* Footer */}
@@ -632,8 +680,20 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
             )}
 
             {step === 'commit' && (
-              <Button type="button" size="sm" disabled>
-                Import
+              <Button
+                type="button"
+                size="sm"
+                disabled={isBusy || previewSummary.valid === 0}
+                onClick={() => void handleCommit()}
+              >
+                {commitMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-3.5 animate-spin" aria-hidden />
+                    Importing…
+                  </>
+                ) : (
+                  'Import'
+                )}
               </Button>
             )}
           </ResponsiveModalFooter>
