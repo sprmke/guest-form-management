@@ -9,6 +9,7 @@ import { createServiceClient } from '../_shared/orgAuth.ts';
 import {
   IMPORT_MAX_FILE_BYTES,
   IMPORT_MAX_ROW_COUNT,
+  IMPORT_ROW_INSERT_CHUNK_SIZE,
   IMPORT_UPLOAD_BUCKET,
   importStoragePath,
   isAllowedImportCsvFile,
@@ -47,6 +48,31 @@ function parseCsvText(text: string): ParsedCsv {
 
 function sampleRows(rows: Record<string, string>[], limit = 5): Record<string, string>[] {
   return rows.slice(0, limit);
+}
+
+type ImportBatchRowRecord = {
+  batch_id: string;
+  row_index: number;
+  raw_data: Record<string, string>;
+};
+
+function chunkRecords<T>(items: T[], chunkSize: number): T[][] {
+  const chunks: T[][] = [];
+  for (let index = 0; index < items.length; index += chunkSize) {
+    chunks.push(items.slice(index, index + chunkSize));
+  }
+  return chunks;
+}
+
+async function insertImportBatchRowsInChunks(
+  supabase: ReturnType<typeof createServiceClient>,
+  rowRecords: ImportBatchRowRecord[]
+): Promise<string | null> {
+  for (const chunk of chunkRecords(rowRecords, IMPORT_ROW_INSERT_CHUNK_SIZE)) {
+    const { error } = await supabase.from('import_batch_rows').insert(chunk);
+    if (error) return error.message;
+  }
+  return null;
 }
 
 serveAuthenticated('import-parse-file', async (req) => {
@@ -132,10 +158,10 @@ serveAuthenticated('import-parse-file', async (req) => {
     raw_data: rawData,
   }));
 
-  const { error: rowsError } = await supabase.from('import_batch_rows').insert(rowRecords);
+  const rowsError = await insertImportBatchRowsInChunks(supabase, rowRecords);
 
   if (rowsError) {
-    console.error('[import-parse-file] row insert failed:', rowsError.message);
+    console.error('[import-parse-file] row insert failed:', rowsError);
     await supabase.from('import_batches').delete().eq('id', batchId);
     await supabase.storage.from(IMPORT_UPLOAD_BUCKET).remove([storagePath]);
     return jsonError(req, 'Failed to store parsed rows');

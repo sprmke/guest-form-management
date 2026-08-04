@@ -6,6 +6,9 @@ export const IMPORT_MAX_FILE_BYTES = 15 * 1024 * 1024;
 
 export const IMPORT_MAX_ROW_COUNT = 2000;
 
+/** PostgREST insert batch size for import_batch_rows (wide JSONB payloads). */
+export const IMPORT_ROW_INSERT_CHUNK_SIZE = 500;
+
 export const IMPORT_ALLOWED_MIME_TYPES = new Set(['text/csv', 'application/csv', 'text/plain']);
 
 export function importStoragePath(orgId: string, batchId: string, fileName: string): string {
