@@ -62,8 +62,10 @@ type RevertDialogProps = {
   open: boolean;
   dryRunResult: RevertDryRunResult | null;
   isDryRunLoading: boolean;
+  isDryRunFailed: boolean;
   includeMoved: boolean;
   onIncludeMovedChange: (checked: boolean) => void;
+  onRetryDryRun: () => void;
   onConfirm: () => void;
   onCancel: () => void;
   isReverting: boolean;
@@ -75,8 +77,10 @@ function RevertDialog({
   open,
   dryRunResult,
   isDryRunLoading,
+  isDryRunFailed,
   includeMoved,
   onIncludeMovedChange,
+  onRetryDryRun,
   onConfirm,
   onCancel,
   isReverting,
@@ -85,6 +89,14 @@ function RevertDialog({
   const hasMoved = (dryRunResult?.movedCount ?? 0) > 0;
   const hasModified = (dryRunResult?.modifiedCount ?? 0) > 0;
   const importedCount = dryRunResult?.importedCount ?? 0;
+  const movedCount = dryRunResult?.movedCount ?? 0;
+
+  // Total that will actually be cancelled given current checkbox state.
+  const totalToCancel = importedCount + (includeMoved ? movedCount : 0);
+
+  // Confirm is disabled only while actively loading or when we know nothing will be cancelled.
+  // If dryRun failed we still allow confirm — host shouldn't be permanently stuck.
+  const confirmDisabled = isReverting || isDryRunLoading || (dryRunResult !== null && totalToCancel === 0);
 
   return (
     <AlertDialog open={open}>
@@ -98,11 +110,36 @@ function RevertDialog({
                   <Loader2 className="size-3.5 animate-spin" aria-hidden />
                   <span>Checking import status…</span>
                 </div>
+              ) : isDryRunFailed ? (
+                // dryRun failed — show error, offer retry, still allow confirm with caution.
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                    <div className="flex-1 space-y-1">
+                      <span>Could not check import status. You can retry or proceed with caution.</span>
+                      <div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-0 py-0 text-xs font-medium underline-offset-2 hover:underline"
+                          onClick={onRetryDryRun}
+                        >
+                          Retry check
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <p>
+                    Cancel all <span className="font-medium text-foreground">Imported</span> bookings from{' '}
+                    <span className="font-medium text-foreground">{batch.original_file_name}</span>?
+                  </p>
+                </div>
               ) : dryRunResult ? (
                 <>
                   <p>
-                    <span className="font-medium text-foreground">{importedCount.toLocaleString()}</span>{' '}
-                    booking{importedCount !== 1 ? 's' : ''} from{' '}
+                    <span className="font-medium text-foreground">{totalToCancel.toLocaleString()}</span>{' '}
+                    booking{totalToCancel !== 1 ? 's' : ''} from{' '}
                     <span className="font-medium text-foreground">{batch.original_file_name}</span>{' '}
                     will be cancelled.
                   </p>
@@ -119,8 +156,8 @@ function RevertDialog({
                   {hasMoved && (
                     <div className="space-y-2">
                       <p>
-                        <span className="font-medium text-foreground">{dryRunResult.movedCount}</span>{' '}
-                        booking{dryRunResult.movedCount !== 1 ? 's have' : ' has'} already been moved into the workflow (e.g. Pending Review) and will be skipped unless you include them below.
+                        <span className="font-medium text-foreground">{movedCount}</span>{' '}
+                        booking{movedCount !== 1 ? 's have' : ' has'} already been moved into the workflow (e.g. Pending Review) and will be skipped unless you include them below.
                       </p>
                       <div className="flex items-center gap-2">
                         <Checkbox
@@ -136,6 +173,7 @@ function RevertDialog({
                   )}
                 </>
               ) : (
+                // dryRun not yet fired (shouldn't happen in practice — fired on open).
                 <p>
                   Cancel all <span className="font-medium text-foreground">Imported</span> bookings from{' '}
                   <span className="font-medium text-foreground">{batch.original_file_name}</span>?
@@ -152,7 +190,7 @@ function RevertDialog({
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            disabled={isReverting || isDryRunLoading || importedCount === 0}
+            disabled={confirmDisabled}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {isReverting ? (
@@ -226,6 +264,7 @@ export function ImportHistoryPage() {
   const [revertTarget, setRevertTarget] = React.useState<ImportBatch | null>(null);
   const [revertError, setRevertError] = React.useState<string | null>(null);
   const [dryRunResult, setDryRunResult] = React.useState<RevertDryRunResult | null>(null);
+  const [isDryRunFailed, setIsDryRunFailed] = React.useState(false);
   const [includeMoved, setIncludeMoved] = React.useState(false);
 
   const backPath =
@@ -233,16 +272,32 @@ export function ImportHistoryPage() {
       ? `/org/${orgSlug}/property/${propertySlug}/bookings`
       : -1;
 
+  const runDryRun = React.useCallback(
+    (batchId: string) => {
+      setDryRunResult(null);
+      setIsDryRunFailed(false);
+      dryRunMutation.mutate(batchId, {
+        onSuccess: (result) => {
+          setDryRunResult(result);
+          setIsDryRunFailed(false);
+        },
+        onError: () => {
+          setDryRunResult(null);
+          setIsDryRunFailed(true);
+        },
+      });
+    },
+    // dryRunMutation excluded from deps — mutate() is stable
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
   const handleRevertClick = (batch: ImportBatch) => {
     setRevertTarget(batch);
     setRevertError(null);
-    setDryRunResult(null);
     setIncludeMoved(false);
     // Fire dry-run immediately so counts/warnings are ready when dialog opens.
-    dryRunMutation.mutate(batch.id, {
-      onSuccess: (result) => setDryRunResult(result),
-      onError: () => setDryRunResult(null), // dialog still shows without counts
-    });
+    runDryRun(batch.id);
   };
 
   const handleRevertConfirm = async () => {
@@ -265,6 +320,7 @@ export function ImportHistoryPage() {
     setRevertTarget(null);
     setRevertError(null);
     setDryRunResult(null);
+    setIsDryRunFailed(false);
     setIncludeMoved(false);
     revertMutation.reset();
     dryRunMutation.reset();
@@ -322,8 +378,10 @@ export function ImportHistoryPage() {
           open={Boolean(revertTarget)}
           dryRunResult={dryRunResult}
           isDryRunLoading={dryRunMutation.isPending}
+          isDryRunFailed={isDryRunFailed}
           includeMoved={includeMoved}
           onIncludeMovedChange={setIncludeMoved}
+          onRetryDryRun={() => revertTarget && runDryRun(revertTarget.id)}
           onConfirm={() => void handleRevertConfirm()}
           onCancel={handleRevertCancel}
           isReverting={revertMutation.isPending}
