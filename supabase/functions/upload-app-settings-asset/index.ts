@@ -139,11 +139,15 @@ serve(async (req) => {
       data: { publicUrl },
     } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
     const safePublicUrl = formatPublicUrl(publicUrl);
+    const persistedUrl =
+      assetType === 'gaf_unit_owner_signature'
+        ? `${safePublicUrl}${safePublicUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
+        : safePublicUrl;
 
     const config = ASSET_CONFIG[assetType];
     if (config.column) {
       const patch: Record<string, string> = {
-        [config.column]: safePublicUrl,
+        [config.column]: persistedUrl,
       };
       if (config.persistStatusPending) {
         patch.superhost_status = 'pending';
@@ -169,13 +173,13 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[upload-app-settings-asset] Uploaded ${assetType}: ${safePublicUrl}`);
+    console.log(`[upload-app-settings-asset] Uploaded ${assetType}: ${persistedUrl}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          url: safePublicUrl,
+          url: persistedUrl,
           bucket: BUCKET,
           path: storagePath,
           column: config.column ?? null,
