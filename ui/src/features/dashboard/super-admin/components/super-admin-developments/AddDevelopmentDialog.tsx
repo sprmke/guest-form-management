@@ -8,12 +8,12 @@ import { DEVELOPMENT_TYPES } from '@/features/dashboard/super-admin/lib/developm
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -60,11 +60,11 @@ export function AddDevelopmentDialog({ open, onOpenChange, onCreated }: Props) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-        <DialogHeader>
-          <DialogTitle>Add development</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Add development</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="space-y-4">
           <div className="space-y-2">
             <label htmlFor="development-name" className="text-sm font-medium">
@@ -96,7 +96,7 @@ export function AddDevelopmentDialog({ open, onOpenChange, onCreated }: Props) {
             </Select>
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:gap-0">
+        <ResponsiveModalFooter className="gap-2 sm:gap-0">
           <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
@@ -112,8 +112,8 @@ export function AddDevelopmentDialog({ open, onOpenChange, onCreated }: Props) {
               'Create'
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

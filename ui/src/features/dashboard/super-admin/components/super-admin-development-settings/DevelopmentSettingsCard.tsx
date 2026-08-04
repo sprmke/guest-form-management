@@ -42,12 +42,12 @@ import { AppSettingsCardSkeleton } from '@/components/skeletons/AdminSkeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { friendlyToastError } from '@/lib/feedback/toastMessages';
 
 const SETTINGS_SECTIONS: AdminSectionNavItem[] = [
@@ -202,6 +202,7 @@ export function DevelopmentSettingsCard({ slug }: Props) {
           <AdminPageHeader
             variant="compact"
             title={development.name}
+            subtitle="Profile and media for this development."
             actions={
               isDirty ? (
                 <Button
@@ -255,15 +256,15 @@ export function DevelopmentSettingsCard({ slug }: Props) {
         />
       </AdminSectionNavLayout>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Delete development?</DialogTitle>
-          </DialogHeader>
+      <ResponsiveModal open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Delete development?</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
           <p className="text-muted-foreground text-sm">
             This permanently removes {development.name}. This cannot be undone.
           </p>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <ResponsiveModalFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => setDeleteOpen(false)}>
               Cancel
             </Button>
@@ -275,9 +276,9 @@ export function DevelopmentSettingsCard({ slug }: Props) {
             >
               Delete
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

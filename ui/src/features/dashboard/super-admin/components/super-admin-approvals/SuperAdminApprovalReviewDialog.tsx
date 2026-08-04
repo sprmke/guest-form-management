@@ -47,12 +47,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -264,22 +264,24 @@ function DocPreviewCard({
 
 function FullViewDialog({ asset, onClose }: { asset: PreviewAsset | null; onClose: () => void }) {
   return (
-    <Dialog open={Boolean(asset)} onOpenChange={(next) => (!next ? onClose() : null)}>
-      <DialogContent
+    <ResponsiveModal open={Boolean(asset)} onOpenChange={(next) => (!next ? onClose() : null)}>
+      <ResponsiveModalContent
         showCloseButton={false}
+        sheetLayout="split"
         className={cn(
-          'flex h-[min(90dvh,calc(100dvh-1.5rem))] max-h-[min(90dvh,calc(100dvh-1.5rem))] w-[min(calc(100vw-1.5rem),56rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-          'sm:w-[min(94vw,56rem)] sm:max-w-[56rem] sm:p-0'
+          'flex max-h-[min(92dvh,calc(100dvh-1.5rem))] w-[min(calc(100vw-1.5rem),56rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'sm:w-[min(94vw,56rem)] sm:max-w-[56rem] sm:p-0',
+          'lg:h-[min(90dvh,calc(100dvh-1.5rem))] lg:max-h-[min(90dvh,calc(100dvh-1.5rem))]'
         )}
       >
         {asset ? (
           <>
             <div className="border-border flex min-h-[52px] shrink-0 items-center justify-between gap-2 border-b px-2.5 sm:min-h-[56px] sm:px-4">
-              <DialogHeader className="min-w-0 flex-1 space-y-0 p-0 pr-0 text-left">
-                <DialogTitle className="truncate text-xs font-semibold sm:text-sm">
+              <ResponsiveModalHeader className="min-w-0 flex-1 space-y-0 p-0 pr-0 text-left">
+                <ResponsiveModalTitle className="truncate text-xs font-semibold sm:text-sm">
                   {asset.label}
-                </DialogTitle>
-              </DialogHeader>
+                </ResponsiveModalTitle>
+              </ResponsiveModalHeader>
               <div className="flex items-center gap-2">
                 <a
                   href={asset.url}
@@ -328,8 +330,8 @@ function FullViewDialog({ asset, onClose }: { asset: PreviewAsset | null; onClos
             </div>
           </>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 
@@ -492,15 +494,17 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => (!next ? close() : null)}>
-        <DialogContent
+      <ResponsiveModal open={open} onOpenChange={(next) => (!next ? close() : null)}>
+        <ResponsiveModalContent
           showCloseButton
+          sheetLayout="split"
           className={cn(
-            'flex h-[min(90dvh,44rem)] max-h-[min(90dvh,44rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-            'sm:w-[min(94vw,42rem)] sm:max-w-[42rem] sm:p-0'
+            'flex max-h-[min(92dvh,44rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+            'sm:w-[min(94vw,42rem)] sm:max-w-[42rem] sm:p-0',
+            'lg:h-[min(90dvh,44rem)] lg:max-h-[min(90dvh,44rem)]'
           )}
         >
-          <DialogHeader
+          <ResponsiveModalHeader
             className={cn(
               'border-border shrink-0 space-y-2 border-b px-5 pb-4 pt-5 text-left sm:px-6',
               panel === 'changes' && 'bg-orange-500/[0.04]',
@@ -513,7 +517,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <RefreshCw className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="text-lg font-semibold">Request changes</DialogTitle>
+                  <ResponsiveModalTitle className="text-lg font-semibold">
+                    Request changes
+                  </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
                     {approval.organizationName}
                     {approval.ownerName ? ` · ${approval.ownerName}` : ''}
@@ -526,7 +532,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <Ban className="size-5" aria-hidden />
                 </span>
                 <div className="min-w-0 space-y-1">
-                  <DialogTitle className="text-lg font-semibold">Reject</DialogTitle>
+                  <ResponsiveModalTitle className="text-lg font-semibold">
+                    Reject
+                  </ResponsiveModalTitle>
                   <p className="text-muted-foreground truncate text-xs">
                     {approval.organizationName}
                     {approval.ownerName ? ` · ${approval.ownerName}` : ''}
@@ -536,9 +544,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             ) : (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <DialogTitle className="text-lg font-semibold">
+                  <ResponsiveModalTitle className="text-lg font-semibold">
                     {approval.organizationName}
-                  </DialogTitle>
+                  </ResponsiveModalTitle>
                   <VerificationStatusBadge status={status} kind={rejectionKind} />
                 </div>
                 <p className="text-muted-foreground text-xs">
@@ -547,7 +555,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 </p>
               </>
             )}
-          </DialogHeader>
+          </ResponsiveModalHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
             {isLoading || !detail || !verification ? (
@@ -919,7 +927,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
             )}
           </div>
 
-          <DialogFooter className="border-border bg-background shrink-0 flex-col gap-2 border-t px-5 py-3.5 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6 sm:py-4">
+          <ResponsiveModalFooter className="border-border bg-background shrink-0 flex-col gap-2 border-t px-5 py-3.5 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6 sm:py-4">
             {decided ? (
               <Button type="button" variant="outline" onClick={close}>
                 Close
@@ -1001,9 +1009,9 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                 </Button>
               </>
             )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
       <AlertDialog open={approveConfirmOpen} onOpenChange={setApproveConfirmOpen}>
         <AlertDialogContent

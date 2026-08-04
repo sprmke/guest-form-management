@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 type Props = {
   filters: SuperAdminDevelopmentsFilters;
   viewMode: SuperAdminDevelopmentsViewMode;
+  hideTableView?: boolean;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: SuperAdminDevelopmentsFilters['status']) => void;
   onTypeChange: (value: string) => void;
@@ -32,6 +33,7 @@ type Props = {
 export function SuperAdminDevelopmentsToolbar({
   filters,
   viewMode,
+  hideTableView = false,
   onSearchChange,
   onStatusChange,
   onTypeChange,
@@ -90,7 +92,11 @@ export function SuperAdminDevelopmentsToolbar({
         </Select>
       </div>
 
-      <SuperAdminListViewToggle viewMode={viewMode} onViewModeChange={onViewModeChange} />
+      <SuperAdminListViewToggle
+        viewMode={viewMode}
+        onViewModeChange={onViewModeChange}
+        hideTableView={hideTableView}
+      />
     </div>
   );
 }

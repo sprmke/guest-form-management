@@ -24,6 +24,7 @@ import { cn } from '@/lib/utils';
 type Props = {
   filters: SuperAdminPlatformPropertiesFilters;
   viewMode: SuperAdminPlatformPropertiesViewMode;
+  hideTableView?: boolean;
   onSearchChange: (value: string) => void;
   onStatusChange: (value: SuperAdminPlatformPropertiesFilters['status']) => void;
   onTypeChange: (value: string) => void;
@@ -34,6 +35,7 @@ type Props = {
 export function SuperAdminPlatformPropertiesToolbar({
   filters,
   viewMode,
+  hideTableView = false,
   onSearchChange,
   onStatusChange,
   onTypeChange,
@@ -108,6 +110,7 @@ export function SuperAdminPlatformPropertiesToolbar({
       <SuperAdminListViewToggle
         viewMode={viewMode}
         onViewModeChange={onViewModeChange}
+        hideTableView={hideTableView}
         className="self-end sm:self-auto"
       />
     </div>
