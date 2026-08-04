@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { FileText, PawPrint } from 'lucide-react';
 
 import { GafOwnerSignatureUploadField } from '@/features/dashboard/bookings/components/GafOwnerSignatureUploadField';
 import { GafPdfPreview } from '@/features/dashboard/bookings/components/GafPdfPreview';
 import { PetPdfPreview } from '@/features/dashboard/bookings/components/PetPdfPreview';
-import type { AppSettingsFieldSource } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import type { GafDetailsValues } from '@/features/dashboard/bookings/lib/gafDefaults';
 import type { PetDetailsValues } from '@/features/dashboard/bookings/lib/petDefaults';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
@@ -41,7 +40,6 @@ type BuildingFormsSettingsSectionProps = {
   values: GafDetailsValues;
   towerUnitLabel: string;
   signatureImageUrl: string | null;
-  signatureSource?: AppSettingsFieldSource;
   disabled?: boolean;
   onChange: <K extends keyof GafDetailsValues>(key: K, value: GafDetailsValues[K]) => void;
   onSignatureInteracted?: () => void;
@@ -93,7 +91,6 @@ export function BuildingFormsSettingsSection({
   values,
   towerUnitLabel,
   signatureImageUrl,
-  signatureSource,
   disabled,
   onChange,
   onSignatureInteracted,
@@ -102,6 +99,38 @@ export function BuildingFormsSettingsSection({
   const fieldError = resolveFieldError;
 
   const [previewTab, setPreviewTab] = useState<PreviewTab>('gaf');
+  const [signaturePreviewOverride, setSignaturePreviewOverrideState] = useState<string | null>(
+    null
+  );
+  const signaturePreviewOverrideRef = useRef<string | null>(null);
+
+  const setSignaturePreviewOverride = useCallback((url: string | null) => {
+    const previous = signaturePreviewOverrideRef.current;
+    if (previous?.startsWith('blob:') && previous !== url) {
+      URL.revokeObjectURL(previous);
+    }
+    signaturePreviewOverrideRef.current = url;
+    setSignaturePreviewOverrideState(url);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      const pending = signaturePreviewOverrideRef.current;
+      if (pending?.startsWith('blob:')) {
+        URL.revokeObjectURL(pending);
+      }
+    };
+  }, []);
+
+  const effectiveSignatureUrl = signaturePreviewOverride ?? signatureImageUrl;
+
+  const handleSignatureSaved = useCallback(
+    (url: string) => {
+      setSignaturePreviewOverride(url);
+      onSignatureInteracted?.();
+    },
+    [onSignatureInteracted, setSignaturePreviewOverride]
+  );
 
   const petValues: PetDetailsValues = {
     gafUnitOwner: values.gafUnitOwner,
@@ -154,11 +183,12 @@ export function BuildingFormsSettingsSection({
         />
         <GafOwnerSignatureUploadField
           disabled={disabled}
-          previewUrl={signatureImageUrl}
-          source={signatureSource}
+          storedSignatureUrl={signatureImageUrl}
+          currentSignatureUrl={effectiveSignatureUrl}
           required
           error={fieldError('gaf-owner-signature')}
-          onUploaded={onSignatureInteracted}
+          onSignatureSaved={handleSignatureSaved}
+          onPreviewUrlChange={setSignaturePreviewOverride}
         />
       </div>
 
@@ -191,9 +221,9 @@ export function BuildingFormsSettingsSection({
           aria-labelledby={`building-form-preview-tab-${previewTab}`}
         >
           {previewTab === 'gaf' ? (
-            <GafPdfPreview details={values} signatureUrl={signatureImageUrl} />
+            <GafPdfPreview details={values} signatureUrl={effectiveSignatureUrl} />
           ) : (
-            <PetPdfPreview details={petValues} signatureUrl={signatureImageUrl} />
+            <PetPdfPreview details={petValues} signatureUrl={effectiveSignatureUrl} />
           )}
         </div>
       </div>

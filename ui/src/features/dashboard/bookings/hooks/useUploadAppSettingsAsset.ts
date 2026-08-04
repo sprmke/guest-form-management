@@ -4,6 +4,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 
 import { supabase } from '@/lib/supabase/client';
@@ -74,9 +75,26 @@ export function useUploadAppSettingsAsset() {
       }
       return json.data;
     },
-    onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ['app-settings'] });
-      await qc.invalidateQueries({ queryKey: ['guest-payment-info'] });
+    onSuccess: (data, variables) => {
+      if (
+        propertyId &&
+        (data.column === 'gaf_unit_owner_signature_url' ||
+          variables.assetType === 'gaf_unit_owner_signature')
+      ) {
+        qc.setQueryData(['app-settings', propertyId], (current: AppSettingsDto | undefined) => {
+          if (!current) return current;
+          return {
+            ...current,
+            gafUnitOwnerSignatureUrl: data.url,
+            fieldSources: {
+              ...current.fieldSources,
+              gafUnitOwnerSignatureUrl: 'db',
+            },
+          };
+        });
+      }
+      void qc.invalidateQueries({ queryKey: ['app-settings', propertyId] });
+      void qc.invalidateQueries({ queryKey: ['guest-payment-info'] });
     },
   });
 }
