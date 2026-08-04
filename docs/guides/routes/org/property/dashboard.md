@@ -13,14 +13,14 @@ Route: `/org/:orgSlug/property/:propertySlug`
 
 ## Progress overview
 
-| Section            | E2E save | Validation | Docs       | Notes                                                |
-| ------------------ | -------- | ---------- | ---------- | ---------------------------------------------------- |
-| Date range filter  | —        | —          | Documented | Week / Month / Year / Custom, `?from`/`?to`          |
-| Needs attention    | —        | —          | Documented | Booking/finance alerts + Connect Google chip         |
-| Stat cards         | —        | —          | Documented | Period KPIs                                          |
-| Finance + calendar | —        | —          | Documented | Period-scoped widgets                                |
-| Guest pages        | —        | —          | Documented | Public guest URLs (sheet on mobile; menu on desktop) |
-| Mobile shell       | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)    |
+| Section            | E2E save | Validation | Docs       | Notes                                                           |
+| ------------------ | -------- | ---------- | ---------- | --------------------------------------------------------------- |
+| Date range filter  | —        | —          | Documented | Week / Month / Year / Custom, `?from`/`?to`                     |
+| Needs attention    | —        | —          | Documented | Booking/finance alerts + Connect Google + rejected review chips |
+| Stat cards         | —        | —          | Documented | Period KPIs                                                     |
+| Finance + calendar | —        | —          | Documented | Period-scoped widgets                                           |
+| Guest pages        | —        | —          | Documented | Public guest URLs (sheet on mobile; menu on desktop)            |
+| Mobile shell       | —        | —          | Documented | Sticky collapsing brand hero + overlap (`max-lg`)               |
 
 ---
 
@@ -76,6 +76,7 @@ Mobile hero: icon-only trigger beside the tenant switcher. Desktop: labelled **G
 
 1. **Server attention items** — `dashboard-stats` `attention[]` (pending review, awaiting documents, check-ins/outs today, SD refunds, unpaid guest balance; same rules as the org dashboard).
 2. **Connect Google chip** (client-only, prepended first) — shown when Gmail, Calendar, or Spreadsheet is not fully connected for the property (`usePropertyGoogleAttentionItem`); links to **Settings**.
+3. **Rejected external review chip** (client-only) — shown when `app_settings.external_reviews` includes any row with `moderationStatus = rejected` (`usePropertyRejectedExternalReviewsAttentionItem`); label **Review rejected** (or **Reviews rejected** + count); links to **Settings** → Socials → External reviews. Clears when the host deletes the review or edits and resubmits (back to pending).
 
 Each chip shows a severity icon (critical / warning / info), a label, an optional count badge, and links to the relevant list or settings page. The whole section is hidden when there are no items. There is no separate "setup incomplete" banner — Connect Google folds into this same strip.
 

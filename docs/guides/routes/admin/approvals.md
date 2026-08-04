@@ -2,7 +2,7 @@
 title: 'Super Admin Approvals — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Super Admin Approvals — operator guide
@@ -13,16 +13,17 @@ Route: `/admin/approvals`
 
 ## Progress overview
 
-| Section         | E2E save | Validation | Docs | Notes                                                                            |
-| --------------- | -------- | ---------- | ---- | -------------------------------------------------------------------------------- |
-| Approvals queue | Done     | Done       | Done | Tier 1 (host) verification; Succession + Consideration badges                    |
-| Review dialog   | Done     | Done       | Done | Approve / Request changes / Reject; succession confirm; consideration Grant/Deny |
+| Section                | E2E save | Validation | Docs | Notes                                                                            |
+| ---------------------- | -------- | ---------- | ---- | -------------------------------------------------------------------------------- |
+| Approvals queue        | Done     | Done       | Done | Tier 1/2 verification; external reviews; Type filter; Succession + Consideration |
+| Org review dialog      | Done     | Done       | Done | Approve / Request changes / Reject; succession confirm; consideration Grant/Deny |
+| External review dialog | Done     | Done       | Done | Approve / Reject pending property external reviews                               |
 
 ---
 
 ## Overview
 
-Platform super-admins review **Tier 1 host verification** submissions from `/onboarding` (and host resubmits after a request for changes or rejection). Rows come from orgs where `organizations.settings.verification.baseStatus` is not `none`. Default filter is **In review** (`pending`).
+Platform super-admins review **Tier 1 (Verified)** and **Tier 2 (Recommended)** submissions plus **property external reviews** (Airbnb/Facebook screenshots). Org rows include organizations where `baseStatus ≠ none` or `enhancedStatus ≠ none`. External review rows come from `app_settings.external_reviews` with `moderationStatus = pending` (or other statuses when filtered). Default filters: **Type** = All types, **Status** = In review.
 
 **Consideration (Unit handoff Phase B):** when a sublessee / Auth Rep listing is in the post-contract grace window and the owner submitted **Request consideration** (note + date + proof file upload), the queue shows a **Consideration** badge. The review dialog offers **Grant** / **Deny** per property or parking leg (`decide-contract-consideration`). Grant is blocked if Phase A ACTIVE tower+unit peers exist. Daily lifecycle automation: **`contract-expiry-cron`** (see `supabase/snippets/contract-expiry-cron.sql`). **Manual E2E:** [`docs/guides/testing/contract-expiry-lifecycle-manual.md`](../../testing/contract-expiry-lifecycle-manual.md).
 
@@ -51,9 +52,11 @@ The platform team uses this page to approve host identity documents, **request c
 
 ## Behavior / edge cases
 
-- Search filters by organization name, owner name, and owner email.
-- Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review.
-- Row click opens a review dialog (no separate detail route).
+- Search filters org rows by organization name, owner name, and owner email; review rows by property name, organization name, review text, reviewer name, and source.
+- **Type filter:** All types / Property / Parking / Reviews. Property and Parking filter org verification rows by `hostModes` (orgs with both modes appear in both). Reviews shows external review rows only.
+- Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review. Review rows use pending / approved / rejected only (no changes-requested).
+- Queue order: orgs with **Recommended in review** (`enhancedStatus === pending`) appear first; within each group, newest submit first (Tier 2 submit time when set, else Tier 1).
+- Dialog title shows tier under review: **Verified** (Tier 1) or **Recommended** (Tier 2). When both tiers were submitted, a **Verified / Recommended** tab switcher shows both statuses; admins can review either tier independently (including Recommended while Verified is still pending).
 - Rows with `hasActiveUnitConflict` show a **Succession** badge (another org already has an ACTIVE listing for the same tower+unit).
 - Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Active listing** peers when present (org name, tower+unit, status), then **Documents** with inline image/PDF previews.
 - Each document has **Full view** (nested lightbox dialog) and **Open in new tab**. Images show inline thumbnails; PDFs show a first-page thumbnail (via pdf.js).
@@ -65,33 +68,38 @@ The platform team uses this page to approve host identity documents, **request c
 - Notes/reason are stored in `baseRejectionReason` with `baseRejectionKind` (`changes` \| `rejected`).
 - **Approve** / decide actions only when status is pending; otherwise show badge + Close (and any prior notes/reason).
 - Host resubmit after **changes** (`submit-org-verification` `tier: 'base'`) sets status back to pending and clears the rejection reason/kind; the org reappears in the In review queue. Hard-rejected orgs cannot resubmit; owners may create a new organization.
+- **External reviews:** one queue row per submitted review. Dialog shows property + org, source, reviewer, rating, review text with **0–3 guest photos**, platform screenshot under **Proof of guest's review**, optional proof URL. **Approve** publishes review text + guest photos on the public property page (screenshot stays internal proof). **Reject** sets `rejected` (hidden from public; host sees Rejected badge + dashboard attention chip). Any host edit to an **approved** or **rejected** review (including proof/stay photo uploads on a saved review) resets **`moderationStatus` to `pending`**, bumps `createdAt`, and re-queues the row for super-admin review; approved content is hidden from the public listing while pending.
 
 ---
 
 ## API reference
 
-| Function                      | Method | Auth            | Notes                                                                                                                            |
-| ----------------------------- | ------ | --------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `list-org-verifications`      | GET    | super admin JWT | Orgs with `baseStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`                   |
-| `get-org-verification-assets` | GET    | super admin JWT | `?orgId=` — verification state + signed asset URLs                                                                               |
-| `approve-org-verification`    | POST   | super admin JWT | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs; archives ACTIVE peers then activates this org’s property |
-| `reject-org-verification`     | POST   | super admin JWT | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }`                                          |
+| Function                      | Method | Auth                         | Notes                                                                                                                                                                                                                   |
+| ----------------------------- | ------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list-super-admin-approvals`  | GET    | super admin JWT              | Unified queue: org verifications + flattened external review rows (`type` discriminator). Primary data source for **`/admin/approvals`**.                                                                               |
+| `list-org-verifications`      | GET    | super admin JWT              | Org verifications only (legacy; same row shape without `type`).                                                                                                                                                         |
+| `moderate-external-review`    | POST   | super admin JWT              | `{ propertyId, reviewId, decision: 'approved' \| 'rejected' }` — pending review only. Updates `app_settings.external_reviews` JSONB.                                                                                    |
+| `get-external-review-assets`  | GET    | super admin JWT              | `?propertyId=&reviewId=` — signed/public screenshot URL + proof URL for review dialog.                                                                                                                                  |
+| `get-org-verification-assets` | GET    | super admin JWT or org owner | `?orgId=` — verification state + signed asset URLs (`azurePmoConfirmationUrl` for Tier 2 PMO doc; legacy `pmoEmailUrls` / `opsProofUrl` aliases)                                                                        |
+| `approve-org-verification`    | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced' }` — only when that tier is pending; clears rejection reason/kind for that tier                                                                                                    |
+| `reject-org-verification`     | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }` — Tier 1 `changes` supports per-doc picker; Tier 2 `changes` is notes-only (host re-uploads all Recommended docs) |
 
-Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `baseSubmittedAt`, `baseRejectionReason`, `baseRejectionKind` = `changes` \| `rejected`, `baseChangesRequestedDocs`, assets paths). No dedicated approvals table.
+Data lives in **`organizations.settings.verification`** JSONB (org tiers) and **`app_settings.external_reviews`** JSONB (property external reviews). No dedicated approvals table.
 
 ---
 
 ## Implementation map
 
-| Concern          | Path                                                                                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Page             | `ui/src/features/dashboard/super-admin/pages/SuperAdminApprovalsPage.tsx`                                                                              |
-| Table            | `ui/.../super-admin-approvals/SuperAdminApprovalsTable.tsx`                                                                                            |
-| Review dialog    | `ui/.../super-admin-approvals/SuperAdminApprovalReviewDialog.tsx` (review / request-changes / reject panels)                                           |
-| Hooks / filters  | `ui/.../hooks/useApprovals.ts`, `lib/superAdminApprovalsFilters.ts`, `lib/requestChangesMessage.ts`, `lib/rejectReasonOptions.ts`, `types/approval.ts` |
-| Host resubmit UI | `GetVerifiedModal.tsx` + `HostVerificationChangesGate` in `AdminLayout`                                                                                |
-| Edge             | `list-org-verifications`, `get-org-verification-assets`, `approve-org-verification`, `reject-org-verification`                                         |
-| Shared shape     | `supabase/functions/_shared/orgVerification.ts` (+ UI mirrors)                                                                                         |
+| Concern           | Path                                                                                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Page              | `ui/src/features/dashboard/super-admin/pages/SuperAdminApprovalsPage.tsx`                                                                                                                              |
+| Table             | `ui/.../super-admin-approvals/SuperAdminApprovalsTable.tsx`                                                                                                                                            |
+| Org review dialog | `ui/.../super-admin-approvals/SuperAdminApprovalReviewDialog.tsx` (review / request-changes / reject panels)                                                                                           |
+| Review dialog     | `ui/.../super-admin-approvals/SuperAdminExternalReviewDialog.tsx`                                                                                                                                      |
+| Hooks / filters   | `ui/.../hooks/useApprovals.ts`, `lib/superAdminApprovalsFilters.ts`, `lib/requestChangesMessage.ts`, `lib/rejectReasonOptions.ts`, `types/approval.ts`                                                 |
+| Host resubmit UI  | `GetVerifiedModal.tsx` + `HostVerificationChangesGate` in `AdminLayout`                                                                                                                                |
+| Edge              | `list-super-admin-approvals`, `moderate-external-review`, `get-external-review-assets`, `list-org-verifications`, `get-org-verification-assets`, `approve-org-verification`, `reject-org-verification` |
+| Shared shape      | `supabase/functions/_shared/orgVerification.ts`, `_shared/propertyExternalReviews.ts` (+ UI mirrors)                                                                                                   |
 
 ---
 
@@ -106,5 +114,7 @@ Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `ba
 
 ## Pending / follow-ups
 
-- [ ] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
+- [x] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
+- [x] External review moderation (approve/reject) on this page with Type = Reviews filter.
 - [ ] Optional email/Telegram notify on approve/reject.
+- [ ] Superhost moderation UI (same pending pattern as external reviews).

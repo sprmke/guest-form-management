@@ -26,6 +26,8 @@ const buttonVariants = cva(
           'border-primary text-primary hover:bg-primary hover:text-primary-foreground border-2 bg-transparent',
         'outline-destructive':
           'border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground border-2 bg-transparent',
+        'outline-success':
+          'border-success text-success hover:bg-success hover:text-success-foreground border-2 bg-transparent',
         soft: 'bg-primary/10 text-primary hover:bg-primary/20',
         'soft-destructive': 'bg-destructive/10 text-destructive hover:bg-destructive/20',
       },

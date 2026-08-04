@@ -366,6 +366,15 @@ verify_jwt = false
 [functions.list-org-verifications]
 verify_jwt = false
 
+[functions.list-super-admin-approvals]
+verify_jwt = false
+
+[functions.moderate-external-review]
+verify_jwt = false
+
+[functions.get-external-review-assets]
+verify_jwt = false
+
 [functions.get-org-verification-assets]
 verify_jwt = false
 

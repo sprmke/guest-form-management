@@ -116,8 +116,9 @@ export function readOrgVerificationSummary(
   };
 }
 
+/** Sidebar entry stays visible once verification has started (status + future contract renewals). */
 export function shouldShowGetVerifiedCta(summary: OrgVerificationSummary): boolean {
-  return summary.enhancedStatus !== 'approved';
+  return summary.baseStatus !== 'none' || summary.enhancedStatus !== 'none';
 }
 
 export const VERIFICATION_ACCEPT = 'image/jpeg,image/jpg,image/png,image/webp,application/pdf';

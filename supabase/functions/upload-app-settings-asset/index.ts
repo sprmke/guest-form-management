@@ -7,8 +7,13 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
 import { corsHeaders } from '../_shared/cors.ts';
 import { DatabaseService } from '../_shared/databaseService.ts';
-import { invalidateAppSettingsCache } from '../_shared/appSettings.ts';
+import { invalidateAppSettingsCache, loadAppSettingsRow } from '../_shared/appSettings.ts';
 import { resolveScopedPropertyAccess } from '../_shared/propertyScope.ts';
+import {
+  applyExternalReviewAssetUpload,
+  normalizeExternalReviewsDraft,
+  type ExternalReviewAssetUploadType,
+} from '../_shared/propertyExternalReviews.ts';
 import { formatPublicUrl } from '../_shared/utils.ts';
 
 const BUCKET = 'app-settings-assets';
@@ -33,6 +38,9 @@ const ASSET_CONFIG = {
   external_review_image: {
     storagePrefix: 'external-review',
   },
+  external_review_stay_photo: {
+    storagePrefix: 'external-review-stay',
+  },
   superhost_proof: {
     column: 'superhost_proof_image_url',
     storagePrefix: 'superhost-proof',
@@ -48,11 +56,18 @@ function storagePathForAsset(
   assetType: AssetType,
   propertyId: string,
   ext: string,
-  reviewId?: string
+  reviewId?: string,
+  photoIndex?: number
 ): string {
   if (assetType === 'external_review_image') {
     if (!reviewId) throw new Error('reviewId is required for external_review_image');
     return `${ASSET_CONFIG.external_review_image.storagePrefix}/${propertyId}/${reviewId}${ext}`;
+  }
+  if (assetType === 'external_review_stay_photo') {
+    if (!reviewId) throw new Error('reviewId is required for external_review_stay_photo');
+    const idx = photoIndex ?? 0;
+    if (idx < 0 || idx > 2) throw new Error('photoIndex must be 0, 1, or 2');
+    return `${ASSET_CONFIG.external_review_stay_photo.storagePrefix}/${propertyId}/${reviewId}/${idx}${ext}`;
   }
   return `${ASSET_CONFIG[assetType].storagePrefix}/${propertyId}/current${ext}`;
 }
@@ -75,6 +90,9 @@ serve(async (req) => {
     const file = formData.get('file') as File;
     const fileName = (formData.get('fileName') as string) || file?.name;
     const reviewId = (formData.get('reviewId') as string | null)?.trim() || undefined;
+    const photoIndexRaw = formData.get('photoIndex');
+    const photoIndex =
+      photoIndexRaw == null || photoIndexRaw === '' ? undefined : Number(photoIndexRaw);
 
     if (!assetType || !ASSET_CONFIG[assetType]) {
       throw new Error(`Invalid assetType: "${assetType}"`);
@@ -102,7 +120,7 @@ serve(async (req) => {
         : mime === 'image/webp'
           ? '.webp'
           : '.jpg';
-    const storagePath = storagePathForAsset(assetType, propertyId, ext, reviewId);
+    const storagePath = storagePathForAsset(assetType, propertyId, ext, reviewId, photoIndex);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -132,6 +150,23 @@ serve(async (req) => {
       }
       await DatabaseService.updateAppSettings(patch, propertyId);
       invalidateAppSettingsCache(propertyId);
+    } else if (
+      assetType === 'external_review_image' ||
+      assetType === 'external_review_stay_photo'
+    ) {
+      const currentRow = await loadAppSettingsRow(propertyId);
+      const existing = normalizeExternalReviewsDraft(currentRow?.external_reviews);
+      const nextReviews = applyExternalReviewAssetUpload(
+        existing,
+        reviewId ?? '',
+        assetType as ExternalReviewAssetUploadType,
+        safePublicUrl,
+        photoIndex
+      );
+      if (nextReviews) {
+        await DatabaseService.updateAppSettings({ external_reviews: nextReviews }, propertyId);
+        invalidateAppSettingsCache(propertyId);
+      }
     }
 
     console.log(`[upload-app-settings-asset] Uploaded ${assetType}: ${safePublicUrl}`);

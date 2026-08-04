@@ -332,3 +332,7 @@ After we refine the roles & permissions that we have on both org and property le
 In app notification for chat & other activity
 
 When we receive new chat or guest message from inbox, we should display a toast or notification message on our app as long as we are using the app and even we are not on inbox page.
+
+For now, I think this would be helpful for chat events, but if you can see other features and functionality that you think we can add to our notification. Feel free to suggest and plan it as well
+
+Maybe analyze all the activities, events and actions that we have on Notifications page module as support in app notification on all of it.

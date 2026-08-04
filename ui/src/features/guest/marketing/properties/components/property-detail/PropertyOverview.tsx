@@ -16,7 +16,6 @@ import {
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
-import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { buildPropertyPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
 import type { ResolvedCancellationPolicyDisplay } from '@/features/dashboard/org/lib/propertyCancellationPolicy';
@@ -133,7 +132,6 @@ export function PropertyOverview({
               Superhost
             </span>
           ) : null}
-          {verifiedBadge ? <ListingVerifiedBadge size="md" /> : null}
         </motion.div>
 
         <motion.h1

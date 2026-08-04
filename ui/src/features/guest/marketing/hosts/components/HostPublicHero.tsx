@@ -1,7 +1,6 @@
-import { BadgeCheck } from 'lucide-react';
-
 import { HostPublicSocialLinks } from '@/features/guest/marketing/hosts/components/HostPublicSocialLinks';
 import type { PublicHostProfile } from '@/features/guest/marketing/properties/hooks/usePublicHost';
+import { ListingRecommendedBadge } from '@/features/guest/marketing/shared/components/ListingRecommendedBadge';
 import { MarketingImage as Image } from '@/features/guest/marketing/shared/components/MarketingImage';
 
 import { cn } from '@/lib/utils';
@@ -53,13 +52,12 @@ export function HostPublicHero({ host, className }: Props) {
                 <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl lg:text-[2rem] lg:leading-tight">
                   {host.name}
                 </h1>
-                {host.verifiedBadge ? (
-                  <span className="bg-primary/10 text-primary inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold">
-                    <BadgeCheck className="size-3.5" aria-hidden />
-                    Verified
-                  </span>
-                ) : null}
+                {host.verifiedBadge ? <ListingRecommendedBadge size="md" /> : null}
               </div>
+
+              {host.verifiedBadge ? (
+                <p className="text-muted-foreground text-xs sm:text-[13px]">Recommended host</p>
+              ) : null}
 
               <div className="flex items-center justify-center gap-2.5 sm:justify-start">
                 <div className="from-primary to-primary/80 relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-gradient-to-br sm:h-9 sm:w-9">

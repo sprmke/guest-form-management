@@ -23,6 +23,8 @@ export type GuestDialogShellProps = {
   bodyClassName?: string;
   headerClassName?: string;
   footerClassName?: string;
+  /** Block overlay / Escape dismiss (e.g. nested full-screen layer on top). */
+  dismissLocked?: boolean;
 };
 
 /**
@@ -41,11 +43,21 @@ export function GuestDialogShell({
   bodyClassName,
   headerClassName,
   footerClassName,
+  dismissLocked = false,
 }: GuestDialogShellProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         showCloseButton={false}
+        onPointerDownOutside={(event) => {
+          if (dismissLocked) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          if (dismissLocked) event.preventDefault();
+        }}
+        onEscapeKeyDown={(event) => {
+          if (dismissLocked) event.preventDefault();
+        }}
         className={cn(
           'flex w-full flex-col gap-0 overflow-hidden p-0 pb-0 pt-0 sm:p-0',
           heightClassName,

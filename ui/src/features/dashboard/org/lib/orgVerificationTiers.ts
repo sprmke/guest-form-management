@@ -1,4 +1,9 @@
 import {
+  emptyContractLegLifecycle,
+  parseContractLegLifecycle,
+  type ContractLegLifecycle,
+} from '@/features/dashboard/org/lib/contractLifecycle';
+import {
   ORG_SOCIAL_PROOF_PLATFORMS,
   ORG_VERIFICATION_RIGHTS,
   ORG_VERIFICATION_STATUSES,
@@ -9,10 +14,9 @@ import {
   type OrgVerificationStatus,
 } from '@/features/dashboard/org/lib/orgVerification';
 import {
-  emptyContractLegLifecycle,
-  parseContractLegLifecycle,
-  type ContractLegLifecycle,
-} from '@/features/dashboard/org/lib/contractLifecycle';
+  VERIFICATION_TIER2_DOC_LABELS,
+  VERIFICATION_TIER2_SUBTITLE,
+} from '@/features/dashboard/org/lib/verificationCopy';
 
 export type { ContractLegLifecycle } from '@/features/dashboard/org/lib/contractLifecycle';
 
@@ -25,6 +29,7 @@ export type OrgVerificationAssets = {
   parkingSocialProofPath: string | null;
   selfieWithIdPath: string | null;
   ownershipProofPath: string | null;
+  azurePmoConfirmationPath: string | null;
   pmoEmailPaths: string[];
 };
 
@@ -81,6 +86,33 @@ export type VerificationChecklistItem = {
   complete: boolean;
   optional?: boolean;
 };
+
+/** Host Tier 1 checklist rows backed by an uploaded file (submitted-docs list + count). */
+const HOST_TIER_DOCUMENT_ITEM_IDS = new Set([
+  'valid-id',
+  'property-ownership',
+  'property-access',
+  'parking-proof',
+]);
+
+/** Recommended Tier 2 checklist rows backed by an uploaded file. */
+const RECOMMENDED_TIER_DOCUMENT_ITEM_IDS = new Set([
+  'selfie',
+  'ownership',
+  'azure-pmo-confirmation',
+]);
+
+export function hostTierDocumentChecklistItems(
+  items: VerificationChecklistItem[]
+): VerificationChecklistItem[] {
+  return items.filter((item) => HOST_TIER_DOCUMENT_ITEM_IDS.has(item.id));
+}
+
+export function recommendedTierDocumentChecklistItems(
+  items: VerificationChecklistItem[]
+): VerificationChecklistItem[] {
+  return items.filter((item) => RECOMMENDED_TIER_DOCUMENT_ITEM_IDS.has(item.id));
+}
 
 export type VerificationTierDefinition = {
   id: 'host' | 'verified';
@@ -141,6 +173,7 @@ const EMPTY_ASSETS: OrgVerificationAssets = {
   parkingSocialProofPath: null,
   selfieWithIdPath: null,
   ownershipProofPath: null,
+  azurePmoConfirmationPath: null,
   pmoEmailPaths: [],
 };
 
@@ -182,6 +215,11 @@ export function readOrgVerificationDetail(
         .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
         .map((p) => p.trim())
     : [];
+  const azurePmoConfirmationPath =
+    asPath(assetsRaw.azurePmoConfirmationPath) ??
+    asPath(assetsRaw.opsProofPath) ??
+    pmoEmailPaths[0] ??
+    null;
 
   const baseStatus = asStatus(v.baseStatus);
   const enhancedStatus = asStatus(v.enhancedStatus);
@@ -215,6 +253,7 @@ export function readOrgVerificationDetail(
       parkingSocialProofPath: asPath(assetsRaw.parkingSocialProofPath),
       selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
+      azurePmoConfirmationPath,
       pmoEmailPaths,
     },
     propertyLifecycle: parseContractLegLifecycle(v.propertyLifecycle),
@@ -314,24 +353,18 @@ export function buildVerifiedTierChecklist(
   return [
     {
       id: 'selfie',
-      label: 'Selfie with valid ID',
+      label: VERIFICATION_TIER2_DOC_LABELS.selfie,
       complete: Boolean(detail.assets.selfieWithIdPath),
     },
     {
       id: 'ownership',
-      label: 'Ownership or sublease proof',
+      label: VERIFICATION_TIER2_DOC_LABELS.ownership,
       complete: Boolean(detail.assets.ownershipProofPath),
     },
     {
-      id: 'pmo-1',
-      label: 'Azure PMO email screenshot',
-      complete: detail.assets.pmoEmailPaths.length >= 1,
-    },
-    {
-      id: 'pmo-2',
-      label: 'Second PMO screenshot',
-      complete: detail.assets.pmoEmailPaths.length >= 2,
-      optional: true,
+      id: 'azure-pmo-confirmation',
+      label: VERIFICATION_TIER2_DOC_LABELS.azurePmoConfirmation,
+      complete: Boolean(detail.assets.azurePmoConfirmationPath),
     },
   ];
 }
@@ -343,15 +376,15 @@ export function buildVerificationTiers(
     {
       id: 'host',
       level: 1,
-      title: 'Host',
+      title: 'Verified',
       benefit: 'Required to host on Kame Homes',
       status: detail.baseStatus,
     },
     {
       id: 'verified',
       level: 2,
-      title: 'Verified',
-      benefit: 'Verified badge on your host page and listings',
+      title: 'Recommended',
+      benefit: VERIFICATION_TIER2_SUBTITLE,
       status: detail.enhancedStatus,
     },
   ];
@@ -365,14 +398,17 @@ export function countApprovedTiers(detail: OrgVerificationDetail): number {
 }
 
 export function verificationSidebarLabel(detail: OrgVerificationDetail): string {
-  if (detail.enhancedStatus === 'approved') return 'Verified';
+  if (detail.baseStatus === 'approved' && detail.enhancedStatus === 'approved') {
+    return 'Verification';
+  }
+  if (detail.enhancedStatus === 'approved') return 'Recommended';
   if (detail.enhancedStatus === 'pending') return 'Badge in review';
   if (detail.enhancedStatus === 'rejected') return 'Resubmit badge';
   if (detail.baseStatus === 'pending') return 'Verification in review';
   if (detail.baseStatus === 'rejected') {
     return detail.baseRejectionKind === 'changes' ? 'Changes requested' : 'Verification declined';
   }
-  if (detail.enhancedStatus === 'none') return 'Get Verified badge';
+  if (detail.enhancedStatus === 'none') return 'Get Recommended badge';
   return 'Get Verified';
 }
 
@@ -421,13 +457,13 @@ export function canSubmitVerifiedTier(
   slots: {
     selfie: boolean;
     ownership: boolean;
-    pmo: boolean;
+    azurePmoConfirmation: boolean;
   }
 ): boolean {
   if (detail.enhancedStatus === 'approved' || detail.enhancedStatus === 'pending') {
     return false;
   }
-  return slots.selfie && slots.ownership && slots.pmo;
+  return slots.selfie && slots.ownership && slots.azurePmoConfirmation;
 }
 
 /** Client-side gate for Tier 1 resubmit after rejection (mirrors server `canSubmitBaseVerification`). */

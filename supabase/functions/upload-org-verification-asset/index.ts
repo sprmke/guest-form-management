@@ -160,7 +160,7 @@ serveAuthenticated('upload-org-verification-asset', async (req) => {
       hasParkingSocialProof: Boolean(verification.assets.parkingSocialProofPath),
       hasSelfieWithId: Boolean(verification.assets.selfieWithIdPath),
       hasOwnershipProof: Boolean(verification.assets.ownershipProofPath),
-      pmoEmailCount: verification.assets.pmoEmailPaths.length,
+      hasAzurePmoConfirmation: Boolean(verification.assets.azurePmoConfirmationPath),
     },
   });
 });

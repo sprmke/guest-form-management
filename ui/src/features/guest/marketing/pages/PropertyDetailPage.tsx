@@ -228,6 +228,7 @@ export function PropertyDetailPage() {
       rating: review.rating,
       comment: review.comment,
       feedbackTags: review.feedbackTags ?? [],
+      media: review.media ?? [],
       source: review.source,
       helpful: 0,
     })) ?? [];

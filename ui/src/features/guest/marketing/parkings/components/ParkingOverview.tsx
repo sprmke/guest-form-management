@@ -15,7 +15,6 @@ import {
 } from '@/features/guest/marketing/shared/components/ListingHostCard';
 import { ListingPlaceMeta } from '@/features/guest/marketing/shared/components/ListingPlaceMeta';
 import { ListingStatItem } from '@/features/guest/marketing/shared/components/ListingStatItem';
-import { ListingVerifiedBadge } from '@/features/guest/marketing/shared/components/ListingVerifiedBadge';
 import { buildParkingPlacementLabels } from '@/features/guest/marketing/shared/lib/listingPlacement';
 
 import {
@@ -76,7 +75,6 @@ export function ParkingOverview({
             <Car className="h-3.5 w-3.5" aria-hidden />
             {parkingTypeLabel(parkingType)}
           </span>
-          {host?.verifiedBadge ? <ListingVerifiedBadge size="md" /> : null}
         </motion.div>
 
         <motion.h1

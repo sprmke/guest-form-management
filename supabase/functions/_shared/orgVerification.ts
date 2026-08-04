@@ -83,8 +83,11 @@ export const ORG_VERIFICATION_ASSET_TYPES = [
   'parking_social_proof',
   'selfie_with_id',
   'ownership_proof',
+  'azure_pmo_confirmation',
+  /** @deprecated use azure_pmo_confirmation */
+  'ops_proof',
+  /** @deprecated maps to azurePmoConfirmationPath */
   'pmo_email_1',
-  'pmo_email_2',
 ] as const;
 export type OrgVerificationAssetType = (typeof ORG_VERIFICATION_ASSET_TYPES)[number];
 
@@ -95,6 +98,9 @@ export type OrgVerificationAssets = {
   parkingSocialProofPath: string | null;
   selfieWithIdPath: string | null;
   ownershipProofPath: string | null;
+  /** Azure Property Management email confirmation — e.g. approved GAF, gate pass, building pass. */
+  azurePmoConfirmationPath: string | null;
+  /** @deprecated read fallback — use azurePmoConfirmationPath */
   pmoEmailPaths: string[];
 };
 
@@ -158,6 +164,7 @@ const EMPTY_ASSETS: OrgVerificationAssets = {
   parkingSocialProofPath: null,
   selfieWithIdPath: null,
   ownershipProofPath: null,
+  azurePmoConfirmationPath: null,
   pmoEmailPaths: [],
 };
 
@@ -245,6 +252,11 @@ export function readOrgVerificationFromSettings(
         .filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
         .map((p) => p.trim())
     : [];
+  const azurePmoConfirmationPath =
+    asPath(assetsRaw.azurePmoConfirmationPath) ??
+    asPath(assetsRaw.opsProofPath) ??
+    pmoEmailPaths[0] ??
+    null;
 
   return {
     baseStatus: asStatus(v.baseStatus),
@@ -278,6 +290,7 @@ export function readOrgVerificationFromSettings(
       parkingSocialProofPath: asPath(assetsRaw.parkingSocialProofPath),
       selfieWithIdPath: asPath(assetsRaw.selfieWithIdPath),
       ownershipProofPath: asPath(assetsRaw.ownershipProofPath),
+      azurePmoConfirmationPath,
       pmoEmailPaths,
     },
     propertyLifecycle: parseContractLegLifecycle(v.propertyLifecycle),
@@ -311,6 +324,7 @@ export function orgVerificationToSettingsValue(
       parkingSocialProofPath: state.assets.parkingSocialProofPath,
       selfieWithIdPath: state.assets.selfieWithIdPath,
       ownershipProofPath: state.assets.ownershipProofPath,
+      azurePmoConfirmationPath: state.assets.azurePmoConfirmationPath,
       pmoEmailPaths: state.assets.pmoEmailPaths,
     },
     propertyLifecycle: contractLegLifecycleToSettingsValue(state.propertyLifecycle),
@@ -364,13 +378,13 @@ export function canSubmitEnhancedVerification(state: OrgVerificationState): bool
   return Boolean(
     state.assets.selfieWithIdPath &&
     state.assets.ownershipProofPath &&
-    state.assets.pmoEmailPaths.length >= 1
+    state.assets.azurePmoConfirmationPath
   );
 }
 
 export function assetTypeToPathKey(
   assetType: OrgVerificationAssetType
-): keyof OrgVerificationAssets | 'pmo_email' {
+): keyof OrgVerificationAssets {
   switch (assetType) {
     case 'valid_id':
       return 'validIdPath';
@@ -384,9 +398,10 @@ export function assetTypeToPathKey(
       return 'selfieWithIdPath';
     case 'ownership_proof':
       return 'ownershipProofPath';
+    case 'azure_pmo_confirmation':
+    case 'ops_proof':
     case 'pmo_email_1':
-    case 'pmo_email_2':
-      return 'pmo_email';
+      return 'azurePmoConfirmationPath';
   }
 }
 
@@ -395,24 +410,13 @@ export function applyAssetPath(
   assetType: OrgVerificationAssetType,
   path: string
 ): OrgVerificationState {
-  const next: OrgVerificationState = {
+  const key = assetTypeToPathKey(assetType);
+  return {
     ...state,
     assets: {
       ...state.assets,
       pmoEmailPaths: [...state.assets.pmoEmailPaths],
+      [key]: path,
     },
   };
-  const key = assetTypeToPathKey(assetType);
-  if (key === 'pmo_email') {
-    const slot0 = next.assets.pmoEmailPaths[0] ?? '';
-    const slot1 = next.assets.pmoEmailPaths[1] ?? '';
-    if (assetType === 'pmo_email_1') {
-      next.assets.pmoEmailPaths = slot1 ? [path, slot1] : [path];
-    } else {
-      next.assets.pmoEmailPaths = slot0 ? [path, slot1] : [path];
-    }
-    return next;
-  }
-  next.assets[key] = path;
-  return next;
 }
