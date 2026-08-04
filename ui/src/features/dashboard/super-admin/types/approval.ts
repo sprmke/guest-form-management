@@ -27,6 +27,8 @@ export type OrgApprovalSummary = {
   baseSubmittedAt: string | null;
   baseRejectionReason: string | null;
   baseRejectionKind: OrgVerificationRejectionKind | null;
+  enhancedStatus: OrgVerificationStatus;
+  enhancedSubmittedAt: string | null;
   createdAt: string;
   unitConflicts: OrgApprovalUnitConflict[];
   hasActiveUnitConflict: boolean;
@@ -44,6 +46,9 @@ export type OrgVerificationAssetUrls = {
   parkingSocialProofUrl: string | null;
   selfieWithIdUrl: string | null;
   ownershipProofUrl: string | null;
+  azurePmoConfirmationUrl: string | null;
+  /** @deprecated use azurePmoConfirmationUrl */
+  opsProofUrl?: string | null;
   pmoEmailUrls: (string | null)[];
 };
 

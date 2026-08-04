@@ -34,9 +34,10 @@ serveAuthenticated('list-org-verifications', async (req) => {
     'id' | 'name' | 'slug' | 'owner_id' | 'host_modes' | 'settings' | 'created_at'
   >[];
 
-  const submitted = rows.filter(
-    (row) => readOrgVerificationFromSettings(row.settings).baseStatus !== 'none'
-  );
+  const submitted = rows.filter((row) => {
+    const verification = readOrgVerificationFromSettings(row.settings);
+    return verification.baseStatus !== 'none' || verification.enhancedStatus !== 'none';
+  });
 
   const submittedIds = submitted.map((row) => row.id);
   const propsByOrg = new Map<
@@ -103,6 +104,8 @@ serveAuthenticated('list-org-verifications', async (req) => {
         baseSubmittedAt: verification.baseSubmittedAt,
         baseRejectionReason: verification.baseRejectionReason,
         baseRejectionKind: verification.baseRejectionKind,
+        enhancedStatus: verification.enhancedStatus,
+        enhancedSubmittedAt: verification.enhancedSubmittedAt,
         createdAt: row.created_at,
         unitConflicts,
         hasActiveUnitConflict,
@@ -118,8 +121,8 @@ serveAuthenticated('list-org-verifications', async (req) => {
   );
 
   approvals.sort((a, b) => {
-    const aTime = a.baseSubmittedAt ?? '';
-    const bTime = b.baseSubmittedAt ?? '';
+    const aTime = a.enhancedSubmittedAt ?? a.baseSubmittedAt ?? '';
+    const bTime = b.enhancedSubmittedAt ?? b.baseSubmittedAt ?? '';
     return bTime.localeCompare(aTime);
   });
 

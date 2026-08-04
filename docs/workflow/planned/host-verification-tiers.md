@@ -8,7 +8,7 @@ tags: [workflow, planned, verification, onboarding]
 
 # Host verification tiers
 
-**Status: Phase 1 shipped (2026-08-04).** Phases 2–3 remain roadmap in this file.
+**Status: Phase 1 shipped (2026-08-04). Phase 2 shipped in branch (2026-08-04).** Phase 3 remains roadmap in this file.
 
 **Tier naming (2026-08-04):** Tier 1 is **Verified**, Tier 2 is **Recommended**. Two tiers only — a third tier was considered and dropped.
 
@@ -35,11 +35,11 @@ Tier 2 may be submitted anytime; tiers reviewed independently. Forced non-dismis
 
 ## Phase status
 
-| Phase | Focus                                               | Status      |
-| ----- | --------------------------------------------------- | ----------- |
-| 1     | Modal polish, benefits copy, public badge/tooltip   | **Shipped** |
-| 2     | Better Tier 2 document requirements                 | Roadmap     |
-| 3     | Real product benefits (trust strip, ranking, queue) | Roadmap     |
+| Phase | Focus                                               | Status                          |
+| ----- | --------------------------------------------------- | ------------------------------- |
+| 1     | Modal polish, benefits copy, public badge/tooltip   | **Shipped**                     |
+| 2     | Better Tier 2 document requirements                 | **Shipped (pending commit/QA)** |
+| 3     | Real product benefits (trust strip, ranking, queue) | Roadmap                         |
 
 ---
 
@@ -177,18 +177,33 @@ Guest tooltip stays file-local on `ListingRecommendedBadge` (avoid dashboard→g
 
 ---
 
-## Phase 2 — better Tier 2 requirements (later)
+## Phase 2 — better Tier 2 requirements (shipped)
 
-Do not start until Phase 1 is shipped. Add a new task checklist here when kicking off.
+| Action                       | Requirement                                                                                    |
+| ---------------------------- | ---------------------------------------------------------------------------------------------- |
+| Keep                         | Selfie with ID (+ readable-ID tips in help toggle)                                             |
+| Clarify                      | **Additional Proof of Ownership/Authorization** (examples in help toggle)                      |
+| Replace dual PMO screenshots | **Azure Property Management email confirmation** (examples in help toggle)                     |
+| Admin                        | `/admin/approvals` — dual tier status in queue + Verified/Recommended tabs when both submitted |
 
-| Action                       | Requirement                                                                                                    |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Keep                         | Selfie with ID                                                                                                 |
-| Clarify                      | Single strong rights proof (title / deed / Azure sublease ack)                                                 |
-| Replace dual PMO screenshots | One proof of residence ops (billing / gate pass / access letter **or** one dated PMO thread with unit address) |
-| Add tips                     | Readable ID text, no filters (reduce reject churn)                                                             |
+**Asset model:** `azure_pmo_confirmation` → `assets.azurePmoConfirmationPath` (legacy `opsProofPath`, `pmoEmailPaths[0]`, `pmo_email_1` still read for in-flight submissions).
 
-Wire new asset types + admin review only in this phase.
+### Phase 2 tasks
+
+- [x] Shared schema: `azurePmoConfirmationPath`, `azure_pmo_confirmation` upload type, legacy read fallback
+- [x] Host modal: 3 docs (selfie, ownership/authorization proof, Azure PMO confirmation) + labels/help toggles
+- [x] Super-admin: Tier 2 doc previews + approve/reject with `tier: 'enhanced'`
+- [x] Queue: list/filter orgs with enhanced pending; Verified queue row when both tiers pending
+- [x] Docs: onboarding, approvals guide, `docs/architecture/edge-functions.md`
+- [x] Manual QA (see checklist below)
+
+### Phase 2 testing checklist
+
+- Host: upload 3 Recommended docs with help toggles; submit Recommended tier.
+- Admin: org in **In review**; dialog shows **Recommended** + 3 doc previews; approve → public badge.
+- Admin: when **both** tiers pending, row + dialog default to the most recently submitted tier; switch tabs to review the other tier.
+- Host: Tier 2 changes-requested → feedback on Recommended tab; resubmit without dashboard block.
+- Legacy: org with `opsProofPath` or `pmoEmailPaths[0]` still loads and previews.
 
 ---
 

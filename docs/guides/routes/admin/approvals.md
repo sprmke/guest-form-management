@@ -2,7 +2,7 @@
 title: 'Super Admin Approvals — operator guide'
 status: active
 tags: [guides, routes, admin]
-updated: 2026-08-02
+updated: 2026-08-04
 ---
 
 # Super Admin Approvals — operator guide
@@ -22,7 +22,7 @@ Route: `/admin/approvals`
 
 ## Overview
 
-Platform super-admins review **Tier 1 host verification** submissions from `/onboarding` (and host resubmits after a request for changes or rejection). Rows come from orgs where `organizations.settings.verification.baseStatus` is not `none`. Default filter is **In review** (`pending`).
+Platform super-admins review **Tier 1 (Verified)** and **Tier 2 (Recommended)** submissions. Rows include orgs where `baseStatus ≠ none` or `enhancedStatus ≠ none`. Default filter is **In review** (`pending` on either tier).
 
 **Consideration (Unit handoff Phase B):** when a sublessee / Auth Rep listing is in the post-contract grace window and the owner submitted **Request consideration** (note + date + proof file upload), the queue shows a **Consideration** badge. The review dialog offers **Grant** / **Deny** per property or parking leg (`decide-contract-consideration`). Grant is blocked if Phase A ACTIVE tower+unit peers exist. Daily lifecycle automation: **`contract-expiry-cron`** (see `supabase/snippets/contract-expiry-cron.sql`). **Manual E2E:** [`docs/guides/testing/contract-expiry-lifecycle-manual.md`](../../testing/contract-expiry-lifecycle-manual.md).
 
@@ -53,7 +53,7 @@ The platform team uses this page to approve host identity documents, **request c
 
 - Search filters by organization name, owner name, and owner email.
 - Status filter: All / In review / Approved / Changes requested / Rejected. Default: In review.
-- Row click opens a review dialog (no separate detail route).
+- Dialog title shows tier under review: **Verified** (Tier 1) or **Recommended** (Tier 2). When both tiers were submitted, a **Verified / Recommended** tab switcher shows both statuses; admins can review either tier independently (including Recommended while Verified is still pending).
 - Rows with `hasActiveUnitConflict` show a **Succession** badge (another org already has an ACTIVE listing for the same tower+unit).
 - Dialog shows **Information** first (hosting mode, rights, platform, contract dates, submitted date), then **Active listing** peers when present (org name, tower+unit, status), then **Documents** with inline image/PDF previews.
 - Each document has **Full view** (nested lightbox dialog) and **Open in new tab**. Images show inline thumbnails; PDFs show a first-page thumbnail (via pdf.js).
@@ -70,14 +70,14 @@ The platform team uses this page to approve host identity documents, **request c
 
 ## API reference
 
-| Function                      | Method | Auth                         | Notes                                                                                                                            |
-| ----------------------------- | ------ | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `list-org-verifications`      | GET    | super admin JWT              | Orgs with `baseStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`                   |
-| `get-org-verification-assets` | GET    | super admin JWT or org owner | `?orgId=` — verification state + signed asset URLs (host Get Verified modal + approvals review)                                  |
-| `approve-org-verification`    | POST   | super admin JWT              | `{ orgId, tier: 'base' }` — only when pending; clears reason/kind/docs; archives ACTIVE peers then activates this org’s property |
-| `reject-org-verification`     | POST   | super admin JWT              | `{ orgId, tier: 'base', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }`                                          |
+| Function                      | Method | Auth                         | Notes                                                                                                                                                                                                                   |
+| ----------------------------- | ------ | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `list-org-verifications`      | GET    | super admin JWT              | Orgs with `baseStatus ≠ none` or `enhancedStatus ≠ none`; owner profile; newest submit first; `unitConflicts[]` / `hasActiveUnitConflict`; `enhancedStatus` / `enhancedSubmittedAt`                                     |
+| `get-org-verification-assets` | GET    | super admin JWT or org owner | `?orgId=` — verification state + signed asset URLs (`azurePmoConfirmationUrl` for Tier 2 PMO doc; legacy `pmoEmailUrls` / `opsProofUrl` aliases)                                                                        |
+| `approve-org-verification`    | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced' }` — only when that tier is pending; clears rejection reason/kind for that tier                                                                                                    |
+| `reject-org-verification`     | POST   | super admin JWT              | `{ orgId, tier: 'base' \| 'enhanced', kind: 'changes' \| 'rejected', reason, changesRequestedDocs? }` — Tier 1 `changes` supports per-doc picker; Tier 2 `changes` is notes-only (host re-uploads all Recommended docs) |
 
-Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `baseSubmittedAt`, `baseRejectionReason`, `baseRejectionKind` = `changes` \| `rejected`, `baseChangesRequestedDocs`, assets paths). No dedicated approvals table.
+Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `enhancedStatus`, submit timestamps, rejection reason/kind per tier, `baseChangesRequestedDocs`, asset paths including **`azurePmoConfirmationPath`**). No dedicated approvals table.
 
 ---
 
@@ -106,5 +106,5 @@ Data lives in **`organizations.settings.verification`** JSONB (`baseStatus`, `ba
 
 ## Pending / follow-ups
 
-- [ ] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
+- [x] Tier 2 (`enhanced`) review UI on this page (approve/reject badge submissions).
 - [ ] Optional email/Telegram notify on approve/reject.

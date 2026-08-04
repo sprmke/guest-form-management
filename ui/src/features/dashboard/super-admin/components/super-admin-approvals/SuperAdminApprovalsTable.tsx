@@ -8,6 +8,10 @@ import {
   adminTableRowClass,
 } from '@/features/dashboard/bookings/components/AdminDataTable';
 import { VerificationStatusBadge } from '@/features/dashboard/org/components/verification/VerificationStatusBadge';
+import {
+  approvalHasDualTierQueue,
+  latestApprovalSubmittedAt,
+} from '@/features/dashboard/super-admin/lib/approvalReviewTier';
 import type { OrgApprovalSummary } from '@/features/dashboard/super-admin/types/approval';
 
 import { cn } from '@/lib/utils';
@@ -34,6 +38,33 @@ function hostModesLabel(hostModes: string[]): string {
   if (hasProperty && hasParking) return 'Property + Parking';
   if (hasParking) return 'Parking';
   return 'Property';
+}
+
+function ApprovalQueueStatusCell({ approval }: { approval: OrgApprovalSummary }) {
+  if (approvalHasDualTierQueue(approval)) {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+            Verified
+          </span>
+          <VerificationStatusBadge status={approval.baseStatus} kind={approval.baseRejectionKind} />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground text-[10px] font-semibold uppercase tracking-wide">
+            Recommended
+          </span>
+          <VerificationStatusBadge status={approval.enhancedStatus} />
+        </div>
+      </div>
+    );
+  }
+
+  const status =
+    approval.enhancedStatus === 'pending' ? approval.enhancedStatus : approval.baseStatus;
+  const kind = approval.enhancedStatus === 'pending' ? null : approval.baseRejectionKind;
+
+  return <VerificationStatusBadge status={status} kind={kind} />;
 }
 
 function formatSubmittedDate(value: string | null): string {
@@ -110,14 +141,11 @@ export function SuperAdminApprovalsTable({ approvals, onSelect }: Props) {
             </td>
             <td className={cn(adminTableCell.body, 'hidden md:table-cell')}>
               <span className={cn('tabular-nums', adminTableBodyText.secondary)}>
-                {formatSubmittedDate(approval.baseSubmittedAt)}
+                {formatSubmittedDate(latestApprovalSubmittedAt(approval))}
               </span>
             </td>
             <td className={adminTableCell.body}>
-              <VerificationStatusBadge
-                status={approval.baseStatus}
-                kind={approval.baseRejectionKind}
-              />
+              <ApprovalQueueStatusCell approval={approval} />
             </td>
             <td className={adminTableCell.action}>
               <AdminTableRowAffordance />

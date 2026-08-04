@@ -90,7 +90,7 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
     parkingSocialProofUrl,
     selfieWithIdUrl,
     ownershipProofUrl,
-    pmoEmailUrls,
+    azurePmoConfirmationUrl,
   ] = await Promise.all([
     signPath(supabase, verification.assets.validIdPath),
     signPath(supabase, verification.assets.socialProofPath),
@@ -98,8 +98,12 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
     signPath(supabase, verification.assets.parkingSocialProofPath),
     signPath(supabase, verification.assets.selfieWithIdPath),
     signPath(supabase, verification.assets.ownershipProofPath),
-    Promise.all(verification.assets.pmoEmailPaths.map((path) => signPath(supabase, path))),
+    signPath(supabase, verification.assets.azurePmoConfirmationPath),
   ]);
+  const legacyPmoUrls =
+    verification.assets.pmoEmailPaths.length > 0
+      ? await Promise.all(verification.assets.pmoEmailPaths.map((path) => signPath(supabase, path)))
+      : [];
 
   return jsonSuccess(req, {
     organization: serializeOrganization(org),
@@ -111,7 +115,10 @@ serveAuthenticated('get-org-verification-assets', async (req) => {
       parkingSocialProofUrl,
       selfieWithIdUrl,
       ownershipProofUrl,
-      pmoEmailUrls,
+      azurePmoConfirmationUrl,
+      /** @deprecated use azurePmoConfirmationUrl */
+      opsProofUrl: azurePmoConfirmationUrl,
+      pmoEmailUrls: azurePmoConfirmationUrl ? [azurePmoConfirmationUrl] : legacyPmoUrls,
     },
   });
 });

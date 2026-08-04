@@ -40,6 +40,8 @@ import {
 } from '@/features/dashboard/org/lib/orgVerification';
 import {
   buildHostTierChecklist,
+  buildVerifiedTierChecklist,
+  recommendedTierDocumentChecklistItems,
   hostTierDocumentChecklistItems,
   buildVerificationTiers,
   canSubmitHostTier,
@@ -57,7 +59,8 @@ import {
   VERIFICATION_REVIEW_TIMELINE,
   VERIFICATION_SIDEBAR_SUBLABEL,
   VERIFICATION_TIER2_APPROVED,
-  VERIFICATION_UPLOAD_HELP,
+  VERIFICATION_TIER2_DOC_HELP,
+  VERIFICATION_TIER2_DOC_LABELS,
 } from '@/features/dashboard/org/lib/verificationCopy';
 import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admin/lib/requestChangesMessage';
 
@@ -340,9 +343,63 @@ function VerifiedTierStepPanel({
   );
 }
 
+function RecommendedTierSubmittedDocs({
+  orgId,
+  modalOpen,
+  checklist,
+  tierStatus,
+  pendingNote = false,
+}: {
+  orgId: string;
+  modalOpen: boolean;
+  checklist: ReturnType<typeof buildVerifiedTierChecklist>;
+  tierStatus: OrgVerificationStatus;
+  pendingNote?: boolean;
+}) {
+  const documentChecklist = recommendedTierDocumentChecklistItems(checklist);
+  const doneCount = documentChecklist.filter((item) => item.complete).length;
+
+  if (documentChecklist.length === 0) return null;
+
+  return (
+    <section aria-labelledby="verification-tier-recommended-docs-title" className="space-y-4">
+      <div className="min-w-0 space-y-1">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          <h3
+            id="verification-tier-recommended-docs-title"
+            className="text-foreground text-sm font-semibold leading-tight"
+          >
+            Submitted documents
+          </h3>
+          <span className="text-muted-foreground text-xs leading-none">
+            {doneCount}/{documentChecklist.length} docs
+          </span>
+        </div>
+        {pendingNote ? (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {VERIFICATION_REVIEW_TIMELINE}
+          </p>
+        ) : null}
+      </div>
+
+      <VerificationTier1SubmittedDocs
+        orgId={orgId}
+        enabled={modalOpen}
+        items={checklist}
+        tierStatus={tierStatus}
+        tier="recommended"
+      />
+    </section>
+  );
+}
+
 function RecommendedTierStepPanel({
   tier,
   orgName,
+  orgId,
+  modalOpen,
+  checklist,
+  showSubmittedDocs,
   verifiedApproved,
   verifiedPending,
   enhancedStatus,
@@ -350,16 +407,18 @@ function RecommendedTierStepPanel({
   enhancedRejectionReason,
   selfie,
   ownership,
-  pmo1,
-  pmo2,
+  azurePmoConfirmation,
   verifiedTouched,
   onSelfieChange,
   onOwnershipChange,
-  onPmo1Change,
-  onPmo2Change,
+  onAzurePmoConfirmationChange,
 }: {
   tier: VerificationTierDefinition;
   orgName?: string | null;
+  orgId?: string;
+  modalOpen: boolean;
+  checklist: ReturnType<typeof buildVerifiedTierChecklist>;
+  showSubmittedDocs: boolean;
   verifiedApproved: boolean;
   verifiedPending: boolean;
   enhancedStatus: OrgVerificationStatus;
@@ -367,38 +426,56 @@ function RecommendedTierStepPanel({
   enhancedRejectionReason: string | null;
   selfie: ProofSlot;
   ownership: ProofSlot;
-  pmo1: ProofSlot;
-  pmo2: ProofSlot;
+  azurePmoConfirmation: ProofSlot;
   verifiedTouched: boolean;
   onSelfieChange: (file: File | null, previewUrl: string | null) => void;
   onOwnershipChange: (file: File | null, previewUrl: string | null) => void;
-  onPmo1Change: (file: File | null, previewUrl: string | null) => void;
-  onPmo2Change: (file: File | null, previewUrl: string | null) => void;
+  onAzurePmoConfirmationChange: (file: File | null, previewUrl: string | null) => void;
 }) {
+  const submittedDocsSection =
+    showSubmittedDocs && orgId ? (
+      <RecommendedTierSubmittedDocs
+        orgId={orgId}
+        modalOpen={modalOpen}
+        checklist={checklist}
+        tierStatus={tier.status}
+        pendingNote={verifiedPending}
+      />
+    ) : null;
+
   if (verifiedApproved) {
     return (
-      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-3">
+      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-4">
         <h3
           id="verification-tier-recommended-panel-title"
           className="text-foreground text-sm font-semibold leading-tight"
         >
           Recommended
         </h3>
-        <p className="text-foreground text-sm leading-relaxed">{VERIFICATION_TIER2_APPROVED}</p>
+        {submittedDocsSection ? (
+          <>
+            {submittedDocsSection}
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {VERIFICATION_TIER2_APPROVED}
+            </p>
+          </>
+        ) : (
+          <p className="text-foreground text-sm leading-relaxed">{VERIFICATION_TIER2_APPROVED}</p>
+        )}
       </section>
     );
   }
 
   if (verifiedPending) {
     return (
-      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-3">
+      <section aria-labelledby="verification-tier-recommended-panel-title" className="space-y-4">
         <h3
           id="verification-tier-recommended-panel-title"
           className="text-foreground text-sm font-semibold leading-tight"
         >
           Recommended
         </h3>
-        <VerificationPendingNote />
+        {submittedDocsSection ?? <VerificationPendingNote />}
       </section>
     );
   }
@@ -447,6 +524,15 @@ function RecommendedTierStepPanel({
         />
       ) : null}
 
+      {submittedDocsSection && enhancedStatus === 'rejected' ? (
+        <div className="space-y-2">
+          <p className="text-muted-foreground text-[11px] font-semibold uppercase tracking-wide">
+            Previously submitted
+          </p>
+          {submittedDocsSection}
+        </div>
+      ) : null}
+
       <div className="border-border bg-card overflow-hidden rounded-xl border">
         <div className="border-border border-b px-4 py-2.5 sm:px-4">
           <h4 className="text-foreground text-xs font-semibold">Docs required</h4>
@@ -454,8 +540,8 @@ function RecommendedTierStepPanel({
         <div className="space-y-4 p-4">
           <OnboardingProofUpload
             id="enhanced-selfie"
-            label="Selfie with valid ID"
-            help={VERIFICATION_UPLOAD_HELP.selfie}
+            label={VERIFICATION_TIER2_DOC_LABELS.selfie}
+            help={VERIFICATION_TIER2_DOC_HELP.selfie}
             file={selfie.file}
             previewUrl={selfie.previewUrl}
             error={verifiedTouched && !slotReady(selfie) ? 'Required' : null}
@@ -463,30 +549,21 @@ function RecommendedTierStepPanel({
           />
           <OnboardingProofUpload
             id="enhanced-ownership"
-            label="Supporting ownership proof"
-            help={VERIFICATION_UPLOAD_HELP.ownership}
+            label={VERIFICATION_TIER2_DOC_LABELS.ownership}
+            help={VERIFICATION_TIER2_DOC_HELP.ownership}
             file={ownership.file}
             previewUrl={ownership.previewUrl}
             error={verifiedTouched && !slotReady(ownership) ? 'Required' : null}
             onFileChange={onOwnershipChange}
           />
           <OnboardingProofUpload
-            id="enhanced-pmo-1"
-            label="Azure PMO email screenshot"
-            help={VERIFICATION_UPLOAD_HELP.pmo1}
-            file={pmo1.file}
-            previewUrl={pmo1.previewUrl}
-            error={verifiedTouched && !slotReady(pmo1) ? 'Required' : null}
-            onFileChange={onPmo1Change}
-          />
-          <OnboardingProofUpload
-            id="enhanced-pmo-2"
-            label="Second PMO screenshot"
-            help={VERIFICATION_UPLOAD_HELP.pmo2}
-            required={false}
-            file={pmo2.file}
-            previewUrl={pmo2.previewUrl}
-            onFileChange={onPmo2Change}
+            id="enhanced-azure-pmo-confirmation"
+            label={VERIFICATION_TIER2_DOC_LABELS.azurePmoConfirmation}
+            help={VERIFICATION_TIER2_DOC_HELP.azurePmoConfirmation}
+            file={azurePmoConfirmation.file}
+            previewUrl={azurePmoConfirmation.previewUrl}
+            error={verifiedTouched && !slotReady(azurePmoConfirmation) ? 'Required' : null}
+            onFileChange={onAzurePmoConfirmationChange}
           />
         </div>
       </div>
@@ -501,6 +578,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const hostModes = resolveHostModes(org);
   const tiers = buildVerificationTiers(detail);
   const hostChecklist = buildHostTierChecklist(detail, hostModes);
+  const verifiedChecklist = buildVerifiedTierChecklist(detail);
 
   const needsProperty = hostModes.includes('property');
   const needsParking = hostModes.includes('parking');
@@ -534,6 +612,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const showFullParkingResubmit = showAllChangeDocs && fixParkingProof;
 
   const showTier1SubmittedDocs = detail.baseStatus !== 'none';
+  const showTier2SubmittedDocs = detail.enhancedStatus !== 'none';
 
   const handleOpenChange = (next: boolean) => {
     if (blockDismiss && !next) return;
@@ -552,8 +631,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
 
   const [selfie, setSelfie] = useState<ProofSlot>(emptySlot);
   const [ownership, setOwnership] = useState<ProofSlot>(emptySlot);
-  const [pmo1, setPmo1] = useState<ProofSlot>(emptySlot);
-  const [pmo2, setPmo2] = useState<ProofSlot>(emptySlot);
+  const [azurePmoConfirmation, setAzurePmoConfirmation] = useState<ProofSlot>(emptySlot);
   const [submitting, setSubmitting] = useState<'base' | 'enhanced' | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [hostTouched, setHostTouched] = useState(false);
@@ -604,15 +682,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
     setParkingContractEndDate(next.parkingContractEndDate ?? '');
     setSelfie({ file: null, previewUrl: null, path: next.assets.selfieWithIdPath });
     setOwnership({ file: null, previewUrl: null, path: next.assets.ownershipProofPath });
-    setPmo1({
+    setAzurePmoConfirmation({
       file: null,
       previewUrl: null,
-      path: next.assets.pmoEmailPaths[0] ?? null,
-    });
-    setPmo2({
-      file: null,
-      previewUrl: null,
-      path: next.assets.pmoEmailPaths[1] ?? null,
+      path: next.assets.azurePmoConfirmationPath,
     });
     setHostTouched(false);
     setVerifiedTouched(false);
@@ -650,7 +723,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   const canSubmitVerified = canSubmitVerifiedTier(detail, {
     selfie: slotReady(selfie),
     ownership: slotReady(ownership),
-    pmo: slotReady(pmo1),
+    azurePmoConfirmation: slotReady(azurePmoConfirmation),
   });
 
   const propertyContractEndError =
@@ -752,13 +825,17 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
         const uploaded = await uploadVerificationAsset(org.id, 'ownership_proof', ownership.file);
         setOwnership({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
       }
-      if (pmo1.file) {
-        const uploaded = await uploadVerificationAsset(org.id, 'pmo_email_1', pmo1.file);
-        setPmo1({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
-      }
-      if (pmo2.file) {
-        const uploaded = await uploadVerificationAsset(org.id, 'pmo_email_2', pmo2.file);
-        setPmo2({ file: null, previewUrl: uploaded.previewUrl, path: uploaded.path });
+      if (azurePmoConfirmation.file) {
+        const uploaded = await uploadVerificationAsset(
+          org.id,
+          'azure_pmo_confirmation',
+          azurePmoConfirmation.file
+        );
+        setAzurePmoConfirmation({
+          file: null,
+          previewUrl: uploaded.previewUrl,
+          path: uploaded.path,
+        });
       }
 
       await callEdgeFunction('submit-org-verification', {
@@ -1074,6 +1151,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               <RecommendedTierStepPanel
                 tier={verifiedTier}
                 orgName={org?.name}
+                orgId={org?.id}
+                modalOpen={open}
+                checklist={verifiedChecklist}
+                showSubmittedDocs={showTier2SubmittedDocs}
                 verifiedApproved={verifiedApproved}
                 verifiedPending={verifiedPending}
                 enhancedStatus={detail.enhancedStatus}
@@ -1081,13 +1162,11 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
                 enhancedRejectionReason={detail.enhancedRejectionReason}
                 selfie={selfie}
                 ownership={ownership}
-                pmo1={pmo1}
-                pmo2={pmo2}
+                azurePmoConfirmation={azurePmoConfirmation}
                 verifiedTouched={verifiedTouched}
                 onSelfieChange={setSlot(setSelfie)}
                 onOwnershipChange={setSlot(setOwnership)}
-                onPmo1Change={setSlot(setPmo1)}
-                onPmo2Change={setSlot(setPmo2)}
+                onAzurePmoConfirmationChange={setSlot(setAzurePmoConfirmation)}
               />
             )}
           </div>

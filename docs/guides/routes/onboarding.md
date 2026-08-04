@@ -97,7 +97,7 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 ## Save path
 
 1. **Finish setup** → `POST create-organization` (contact + hostModes + property/parking; **`contactRole`** from verification rights)
-2. `POST upload-org-verification-asset` — `valid_id`; plus `social_proof` + `property_ownership_proof` when property mode; plus `parking_social_proof` when parking mode — private bucket **`org-verification-assets`**
+2. `POST upload-org-verification-asset` — Tier 1: `valid_id`; plus `social_proof` + `property_ownership_proof` when property mode; plus `parking_social_proof` when parking mode. **Get Verified (Tier 2):** `selfie_with_id`, `ownership_proof`, `azure_pmo_confirmation` — private bucket **`org-verification-assets`**
 3. `POST submit-org-verification` `{ tier: 'base', socialPlatform?, propertyRelationship?, propertyContractEndDate?, parkingRelationship?, parkingContractEndDate? }` → `organizations.settings.verification.baseStatus = pending`
 4. Redirect: property settings → parking settings → org dashboard
 
@@ -107,10 +107,10 @@ Selected rights are also saved as org **`contactRole`** on **`create-organizatio
 
 Two-tier model (see **Get Verified** sidebar modal):
 
-| Tier | Name            | Unlock                                        | Documents                                                                   |
-| ---- | --------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
-| 1    | **Verified**    | Required to host (onboarding)                 | Valid ID + property/parking verification per **`host_modes`**               |
-| 2    | **Recommended** | **Recommended** badge on host page + listings | Selfie with ID, supporting ownership proof, 1–2 Azure PMO email screenshots |
+| Tier | Name            | Unlock                                        | Documents                                                                                 |
+| ---- | --------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1    | **Verified**    | Required to host (onboarding)                 | Valid ID + property/parking verification per **`host_modes`**                             |
+| 2    | **Recommended** | **Recommended** badge on host page + listings | Selfie with ID, additional proof of ownership/authorization, Azure PMO email confirmation |
 
 Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanced`** (Tier 2), and the public flag stays **`verifiedBadge`**.
 
@@ -119,18 +119,18 @@ Tier names are display-only. Server tiers stay **`base`** (Tier 1) and **`enhanc
 - Modal persuasion when Tier 2 is editable: benefit bullets + compact **Recommended badge preview** live **inside** the Tier 2 card (above documents), not above Tier 1. Hidden on Tier 1 changes-requested and when Tier 2 is pending/approved.
 - **Tier rank cards** in the modal header: clickable Verified / Recommended cards with status badges; one tier panel visible at a time. Opens on the most relevant step (e.g. Recommended when Tier 1 is approved).
 - Modal title follows the active step: **Get Verified** / **Get Recommended**; **Changes requested** in forced resubmit (stepper hidden).
-- Sidebar CTA uses a soft primary wash and “Earn your Recommended badge.” when Tier 2 is not yet approved.
+- Sidebar CTA uses a soft primary wash and “Earn your Recommended badge.” when Tier 2 is not yet approved. Stays visible as **Verification** when both tiers are approved (status view; contract renewals / reverification later).
 - Public **Recommended** badge (`ListingRecommendedBadge`) has tooltip: identity, ownership, and Azure records checked by Kame Homes; **Recommended host** line on host page, property/parking overview, and listing host card.
 - Copy constants: `ui/.../lib/verificationCopy.ts`.
 
 ### Phase 2–3 roadmap
 
-- **Phase 2:** Tighten Tier 2 docs (keep selfie; clarify rights proof; one ops proof instead of dual PMO).
+- **Phase 2 (shipped in branch):** Tier 2 docs — selfie tips; **Additional Proof of Ownership/Authorization**; **Azure Property Management email confirmation** (help toggles with examples). Super-admin reviews Recommended tier at `/admin/approvals`. Asset key: **`azurePmoConfirmationPath`**; upload type **`azure_pmo_confirmation`**.
 - **Phase 3:** Trust strip near Reserve; search boost; optional approvals-queue priority. No skip Tier 1 / instant go-live.
 
 ### Behavior
 
-- Modal shows **Tier 1 status** from onboarding as a document checklist (uploads only — not property/parking rights or contract dates); each row has a **View** button that opens a full preview (signed URLs via `get-org-verification-assets`).
+- Modal shows **Tier 1 status** from onboarding as a document checklist (uploads only — not property/parking rights or contract dates); each row has a **View** button that opens a full preview (signed URLs via `get-org-verification-assets`). **Recommended (Tier 2)** uses the same submitted-docs list + **View** when `enhancedStatus ≠ none`.
 - When **Tier 1 has changes requested**, a **non-dismissible** modal opens on dashboard login (no X / Close / Escape / outside click). Only the documents the admin asked to re-upload are shown; previously submitted files remain visible below the upload fields. The host must replace those and tap **Resubmit**. After resubmit, status returns to pending and the modal closes. Tier 2 persuasion is hidden in this mode.
 - When **Tier 1 is hard-rejected**, the host is blocked from the dashboard (`/verification-rejected`) and must **Start a new application** (new org). In-app resubmit is not allowed.
 - **Tier 2 can be submitted anytime** — does not require Tier 1 approval first; each tier is reviewed independently.

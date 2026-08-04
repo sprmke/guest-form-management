@@ -12,6 +12,7 @@ import { useOrgVerificationAssets } from '@/features/dashboard/org/hooks/useOrgV
 import type { OrgVerificationStatus } from '@/features/dashboard/org/lib/orgVerification';
 import {
   hostTierDocumentChecklistItems,
+  recommendedTierDocumentChecklistItems,
   type VerificationChecklistItem,
 } from '@/features/dashboard/org/lib/orgVerificationTiers';
 import type { OrgVerificationAssetUrls } from '@/features/dashboard/super-admin/types/approval';
@@ -25,6 +26,8 @@ type Props = {
   items: VerificationChecklistItem[];
   /** Tier tab owns status copy — rows only flag gaps or approved docs. */
   tierStatus: OrgVerificationStatus;
+  /** Host Tier 1 vs Recommended Tier 2 document ids and asset URLs. */
+  tier?: 'host' | 'recommended';
 };
 
 type DocRowVariant = 'uploaded' | 'approved' | 'missing' | 'optional';
@@ -43,6 +46,12 @@ function previewUrlForItem(
       return assetUrls.socialProofUrl;
     case 'parking-proof':
       return assetUrls.parkingSocialProofUrl;
+    case 'selfie':
+      return assetUrls.selfieWithIdUrl;
+    case 'ownership':
+      return assetUrls.ownershipProofUrl;
+    case 'azure-pmo-confirmation':
+      return assetUrls.azurePmoConfirmationUrl;
     default:
       return null;
   }
@@ -118,13 +127,22 @@ function openPreview(
   });
 }
 
-export function VerificationTier1SubmittedDocs({ orgId, enabled, items, tierStatus }: Props) {
+export function VerificationTier1SubmittedDocs({
+  orgId,
+  enabled,
+  items,
+  tierStatus,
+  tier = 'host',
+}: Props) {
   const { data, isLoading } = useOrgVerificationAssets(orgId, enabled);
   const [fullView, setFullView] = useState<VerificationPreviewAsset | null>(null);
 
   if (!enabled) return null;
 
-  const documentItems = hostTierDocumentChecklistItems(items);
+  const documentItems =
+    tier === 'recommended'
+      ? recommendedTierDocumentChecklistItems(items)
+      : hostTierDocumentChecklistItems(items);
   const assetUrls = data?.assetUrls;
   const hasPreviewItems = documentItems.some((item) => previewUrlForItem(item.id, assetUrls));
 

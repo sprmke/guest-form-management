@@ -20,10 +20,17 @@ export const VERIFICATION_REVIEW_TIMELINE = 'Review usually takes a few hours up
 export const VERIFICATION_TIER2_APPROVED =
   'Recommended badge is live on your host page and listings.';
 
-export const VERIFICATION_UPLOAD_HELP = {
-  selfie: 'Hold your valid ID next to your face in one photo so we can match you to the ID.',
+export const VERIFICATION_TIER2_DOC_LABELS = {
+  selfie: 'Selfie with valid ID',
+  ownership: 'Additional Proof of Ownership/Authorization',
+  azurePmoConfirmation: 'Azure Property Management email confirmation',
+} as const;
+
+export const VERIFICATION_TIER2_DOC_HELP = {
+  selfie:
+    'Hold your valid ID next to your face. Use good light, no filters, and keep ID text readable.',
   ownership:
-    'Upload a unit ownership certificate, or an email from Azure acknowledging your sublease.',
-  pmo1: 'Screenshot of a past email thread with Azure PMO about your unit (dates and address visible).',
-  pmo2: 'Optional second email screenshot if you have another PMO thread.',
+    'e.g. Certificate of Title, Deed of Sale, Sublease Contract Agreement, Notarized Authorization (SPA), etc.',
+  azurePmoConfirmation:
+    'e.g. Property Management Email confirmation, approved GAF, gate pass, or building pass.',
 } as const;

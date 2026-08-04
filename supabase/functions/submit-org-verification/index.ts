@@ -178,7 +178,7 @@ serveAuthenticated('submit-org-verification', async (req) => {
     if (!canSubmitEnhancedVerification(verification)) {
       return jsonError(
         req,
-        'Selfie with ID, ownership proof, and at least one PMO email screenshot are required'
+        'Selfie with ID, additional proof of ownership/authorization, and Azure PMO email confirmation are required'
       );
     }
     if (verification.enhancedStatus === 'approved') {

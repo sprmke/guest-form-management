@@ -23,6 +23,7 @@ import {
   ORG_VERIFICATION_RIGHTS,
 } from '@/features/dashboard/org/lib/orgVerification';
 import { formatTowerAndUnit } from '@/features/dashboard/org/lib/propertyTowerUnit';
+import { VERIFICATION_TIER2_DOC_LABELS } from '@/features/dashboard/org/lib/verificationCopy';
 import {
   buildChangeDocOptions,
   buildRequestChangesMessage,
@@ -35,9 +36,15 @@ import {
   HOST_REJECTION_REASON_OPTIONS,
   type HostRejectionReasonId,
 } from '@/features/dashboard/super-admin/lib/rejectReasonOptions';
+import {
+  approvalHasDualTierQueue,
+  defaultApprovalReviewTier,
+  type ApprovalReviewTier,
+} from '@/features/dashboard/super-admin/lib/approvalReviewTier';
 import type {
   OrgApprovalSummary,
   OrgApprovalUnitConflict,
+  OrgApprovalVerification,
 } from '@/features/dashboard/super-admin/types/approval';
 
 import {
@@ -116,6 +123,57 @@ function unitConflictsOf(approval: OrgApprovalSummary): OrgApprovalUnitConflict[
   return Array.isArray(approval.unitConflicts) ? approval.unitConflicts : [];
 }
 
+function ApprovalReviewTierSwitcher({
+  reviewTier,
+  verification,
+  onChange,
+}: {
+  reviewTier: ApprovalReviewTier;
+  verification: OrgApprovalVerification;
+  onChange: (tier: ApprovalReviewTier) => void;
+}) {
+  const tiers: Array<{ id: ApprovalReviewTier; label: string }> = [
+    { id: 'base', label: 'Verified' },
+    { id: 'enhanced', label: 'Recommended' },
+  ];
+
+  return (
+    <div
+      className="border-border bg-muted/30 flex flex-wrap gap-1 rounded-xl border p-1"
+      role="tablist"
+      aria-label="Verification tier"
+    >
+      {tiers.map((tier) => {
+        const status =
+          tier.id === 'enhanced' ? verification.enhancedStatus : verification.baseStatus;
+        const kind =
+          tier.id === 'enhanced'
+            ? verification.enhancedRejectionKind
+            : verification.baseRejectionKind;
+        const selected = reviewTier === tier.id;
+        return (
+          <button
+            key={tier.id}
+            type="button"
+            role="tab"
+            aria-selected={selected}
+            className={cn(
+              'flex min-h-[44px] min-w-0 flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-left transition-colors',
+              selected
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+            )}
+            onClick={() => onChange(tier.id)}
+          >
+            <span className="text-xs font-semibold">{tier.label}</span>
+            <VerificationStatusBadge status={status} kind={kind} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function successionConfirmMessage(conflicts: OrgApprovalUnitConflict[]): string {
   const orgNames = [...new Set(conflicts.map((c) => c.orgName.trim()).filter(Boolean))];
   const orgLabel = orgNames[0] || 'the current host';
@@ -189,6 +247,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   const [selectedDocs, setSelectedDocs] = useState<Set<ChangeDocId>>(() => new Set());
   const [fullView, setFullView] = useState<VerificationPreviewAsset | null>(null);
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false);
+  const [reviewTier, setReviewTier] = useState<ApprovalReviewTier>('base');
 
   const hostModes = detail?.organization.hostModes ?? approval?.hostModes ?? [];
   const changeDocOptions = useMemo(
@@ -219,15 +278,30 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setApproveConfirmOpen(false);
   }, [open, orgId]);
 
+  useEffect(() => {
+    if (!open || !approval) return;
+    setReviewTier(defaultApprovalReviewTier(approval, detail?.verification));
+  }, [open, approval, detail?.verification]);
+
   if (!approval) return null;
 
   const unitConflicts = unitConflictsOf(approval);
   const hasActiveUnitConflict = approval.hasActiveUnitConflict === true || unitConflicts.length > 0;
   const needsProperty = hostModes.includes('property');
   const needsParking = hostModes.includes('parking');
-  const status = detail?.verification.baseStatus ?? approval.baseStatus;
+  const dualTierQueue = approvalHasDualTierQueue(approval);
+  const status =
+    reviewTier === 'enhanced'
+      ? (detail?.verification.enhancedStatus ?? approval.enhancedStatus)
+      : (detail?.verification.baseStatus ?? approval.baseStatus);
   const rejectionKind =
-    detail?.verification.baseRejectionKind ?? approval.baseRejectionKind ?? null;
+    reviewTier === 'enhanced'
+      ? (detail?.verification.enhancedRejectionKind ?? null)
+      : (detail?.verification.baseRejectionKind ?? approval.baseRejectionKind ?? null);
+  const rejectionReason =
+    reviewTier === 'enhanced'
+      ? (detail?.verification.enhancedRejectionReason ?? null)
+      : (detail?.verification.baseRejectionReason ?? approval.baseRejectionReason ?? null);
   const decided = status !== 'pending';
   const verification = detail?.verification;
   const busy = approveMutation.isPending || rejectMutation.isPending;
@@ -242,6 +316,11 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     setFullView(null);
     setApproveConfirmOpen(false);
     onOpenChange(false);
+  };
+
+  const switchReviewTier = (tier: ApprovalReviewTier) => {
+    setReviewTier(tier);
+    backToReview();
   };
 
   const backToReview = () => {
@@ -273,8 +352,12 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
 
   const handleApprove = async () => {
     try {
-      await approveMutation.mutateAsync({ orgId: approval.organizationId, tier: 'base' });
-      toast.success(`${approval.organizationName} approved`);
+      await approveMutation.mutateAsync({ orgId: approval.organizationId, tier: reviewTier });
+      toast.success(
+        reviewTier === 'enhanced'
+          ? `${approval.organizationName} Recommended tier approved`
+          : `${approval.organizationName} approved`
+      );
       setApproveConfirmOpen(false);
       close();
     } catch (err) {
@@ -283,7 +366,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
   };
 
   const requestApprove = () => {
-    if (hasActiveUnitConflict) {
+    if (reviewTier === 'base' && hasActiveUnitConflict) {
       setApproveConfirmOpen(true);
       return;
     }
@@ -295,7 +378,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     try {
       await rejectMutation.mutateAsync({
         orgId: approval.organizationId,
-        tier: 'base',
+        tier: reviewTier,
         kind: 'rejected',
         reason: rejectMessage,
       });
@@ -311,10 +394,10 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
     try {
       await rejectMutation.mutateAsync({
         orgId: approval.organizationId,
-        tier: 'base',
+        tier: reviewTier,
         kind: 'changes',
         reason: changesMessage,
-        changesRequestedDocs: Array.from(selectedDocs),
+        ...(reviewTier === 'base' ? { changesRequestedDocs: Array.from(selectedDocs) } : {}),
       });
       toast.success(`${approval.organizationName}: changes requested`);
       close();
@@ -372,7 +455,14 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   <DialogTitle className="text-lg font-semibold">
                     {approval.organizationName}
                   </DialogTitle>
-                  <VerificationStatusBadge status={status} kind={rejectionKind} />
+                  {!dualTierQueue ? (
+                    <span className="text-muted-foreground text-xs font-medium">
+                      {reviewTier === 'enhanced' ? 'Recommended' : 'Verified'}
+                    </span>
+                  ) : null}
+                  {!dualTierQueue ? (
+                    <VerificationStatusBadge status={status} kind={rejectionKind} />
+                  ) : null}
                 </div>
                 <p className="text-muted-foreground text-xs">
                   {approval.ownerName}
@@ -581,6 +671,13 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
               </div>
             ) : (
               <div className="space-y-6">
+                {dualTierQueue ? (
+                  <ApprovalReviewTierSwitcher
+                    reviewTier={reviewTier}
+                    verification={verification}
+                    onChange={switchReviewTier}
+                  />
+                ) : null}
                 {approval.hasPendingConsideration ? (
                   <section className="border-border space-y-3 rounded-xl border p-3">
                     <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
@@ -653,10 +750,12 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                     <InfoRow
                       label="Submitted"
                       value={formatApprovalDate(
-                        verification.baseSubmittedAt ?? approval.baseSubmittedAt
+                        reviewTier === 'enhanced'
+                          ? (verification.enhancedSubmittedAt ?? approval.enhancedSubmittedAt)
+                          : (verification.baseSubmittedAt ?? approval.baseSubmittedAt)
                       )}
                     />
-                    {needsProperty ? (
+                    {reviewTier === 'base' && needsProperty ? (
                       <>
                         <InfoRow
                           label="Property rights"
@@ -674,7 +773,7 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                         />
                       </>
                     ) : null}
-                    {needsParking ? (
+                    {reviewTier === 'base' && needsParking ? (
                       <>
                         <InfoRow
                           label="Parking rights"
@@ -691,61 +790,81 @@ export function SuperAdminApprovalReviewDialog({ approval, onOpenChange }: Props
                   </dl>
                 </section>
 
-                <UnitConflictList conflicts={unitConflicts} />
+                {reviewTier === 'base' ? <UnitConflictList conflicts={unitConflicts} /> : null}
 
                 <section className="space-y-3">
                   <p className="text-foreground text-xs font-semibold uppercase tracking-wide">
                     Documents
                   </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <VerificationDocPreviewCard
-                      label="Valid ID"
-                      url={detail.assetUrls.validIdUrl}
-                      onFullView={setFullView}
-                    />
-                    {needsProperty ? (
+                    {reviewTier === 'enhanced' ? (
                       <>
                         <VerificationDocPreviewCard
-                          label={
-                            platformLabel(verification.socialPlatform)
-                              ? `${platformLabel(verification.socialPlatform)} access`
-                              : 'Listing access'
-                          }
-                          url={detail.assetUrls.socialProofUrl}
+                          label={VERIFICATION_TIER2_DOC_LABELS.selfie}
+                          url={detail.assetUrls.selfieWithIdUrl}
                           onFullView={setFullView}
                         />
                         <VerificationDocPreviewCard
-                          label="Ownership / management"
-                          url={detail.assetUrls.propertyOwnershipProofUrl}
+                          label={VERIFICATION_TIER2_DOC_LABELS.ownership}
+                          url={detail.assetUrls.ownershipProofUrl}
+                          onFullView={setFullView}
+                        />
+                        <VerificationDocPreviewCard
+                          label={VERIFICATION_TIER2_DOC_LABELS.azurePmoConfirmation}
+                          url={detail.assetUrls.azurePmoConfirmationUrl}
                           onFullView={setFullView}
                         />
                       </>
-                    ) : null}
-                    {needsParking ? (
-                      <VerificationDocPreviewCard
-                        label="Parking ownership / management"
-                        url={detail.assetUrls.parkingSocialProofUrl}
-                        onFullView={setFullView}
-                      />
-                    ) : null}
+                    ) : (
+                      <>
+                        <VerificationDocPreviewCard
+                          label="Valid ID"
+                          url={detail.assetUrls.validIdUrl}
+                          onFullView={setFullView}
+                        />
+                        {needsProperty ? (
+                          <>
+                            <VerificationDocPreviewCard
+                              label={
+                                platformLabel(verification.socialPlatform)
+                                  ? `${platformLabel(verification.socialPlatform)} access`
+                                  : 'Listing access'
+                              }
+                              url={detail.assetUrls.socialProofUrl}
+                              onFullView={setFullView}
+                            />
+                            <VerificationDocPreviewCard
+                              label="Ownership / management"
+                              url={detail.assetUrls.propertyOwnershipProofUrl}
+                              onFullView={setFullView}
+                            />
+                          </>
+                        ) : null}
+                        {needsParking ? (
+                          <VerificationDocPreviewCard
+                            label="Parking ownership / management"
+                            url={detail.assetUrls.parkingSocialProofUrl}
+                            onFullView={setFullView}
+                          />
+                        ) : null}
+                      </>
+                    )}
                   </div>
                 </section>
 
-                {status === 'rejected' && verification.baseRejectionReason ? (
+                {status === 'rejected' && rejectionReason ? (
                   <div
                     className={cn(
                       'rounded-lg border px-3 py-2.5 text-xs leading-relaxed',
-                      verification.baseRejectionKind === 'changes'
+                      rejectionKind === 'changes'
                         ? 'border-orange-500/25 bg-orange-500/5 text-orange-950'
                         : 'border-destructive/25 bg-destructive/5 text-destructive'
                     )}
                   >
                     <p className="font-semibold">
-                      {verification.baseRejectionKind === 'changes'
-                        ? 'Changes requested'
-                        : 'Rejection reason'}
+                      {rejectionKind === 'changes' ? 'Changes requested' : 'Rejection reason'}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap">{verification.baseRejectionReason}</p>
+                    <p className="mt-1 whitespace-pre-wrap">{rejectionReason}</p>
                   </div>
                 ) : null}
               </div>

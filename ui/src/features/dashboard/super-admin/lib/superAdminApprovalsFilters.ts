@@ -20,16 +20,23 @@ export function filterSuperAdminApprovals(
   const search = filters.search.trim().toLowerCase();
 
   return approvals.filter((approval) => {
+    const queuePending = approval.baseStatus === 'pending' || approval.enhancedStatus === 'pending';
+
     if (filters.status === 'changes') {
       if (approval.baseStatus !== 'rejected' || approval.baseRejectionKind !== 'changes') {
         return false;
       }
     } else if (filters.status === 'rejected') {
-      if (approval.baseStatus !== 'rejected' || approval.baseRejectionKind === 'changes') {
+      const baseHard =
+        approval.baseStatus === 'rejected' && approval.baseRejectionKind !== 'changes';
+      const enhancedHard = approval.enhancedStatus === 'rejected';
+      if (!baseHard && !enhancedHard) return false;
+    } else if (filters.status === 'pending') {
+      if (!queuePending) return false;
+    } else if (filters.status !== 'all') {
+      if (approval.baseStatus !== filters.status && approval.enhancedStatus !== filters.status) {
         return false;
       }
-    } else if (filters.status !== 'all' && approval.baseStatus !== filters.status) {
-      return false;
     }
 
     if (!search) return true;
