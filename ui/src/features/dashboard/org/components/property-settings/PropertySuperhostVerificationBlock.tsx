@@ -11,7 +11,7 @@ import {
 } from '@/features/dashboard/org/lib/propertyExternalReviews';
 
 import { ImageUploadDropzone } from '@/components/forms/ImageUploadDropzone';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ResponsiveModal, ResponsiveModalContent, ResponsiveModalHeader, ResponsiveModalTitle } from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -138,11 +138,11 @@ export function PropertySuperhostVerificationBlock({
         </div>
       </div>
 
-      <Dialog open={manageOpen} onOpenChange={setManageOpen}>
-        <DialogContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),32rem)] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Superhost</DialogTitle>
-          </DialogHeader>
+      <ResponsiveModal open={manageOpen} onOpenChange={setManageOpen}>
+        <ResponsiveModalContent className="max-h-[min(90dvh,640px)] max-w-[min(calc(100vw-1.5rem),32rem)] overflow-y-auto">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Superhost</ResponsiveModalTitle>
+          </ResponsiveModalHeader>
 
           <div className="space-y-4">
             <div className="space-y-1.5">
@@ -175,8 +175,8 @@ export function PropertySuperhostVerificationBlock({
               />
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </>
   );
 }

@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import { Loader2, Plus, Star, Trash2, Upload } from 'lucide-react';
+import { ImagePlus, Loader2, Plus, Star, Trash2, Upload } from 'lucide-react';
 
 import type { AppSettingsDto } from '@/features/dashboard/bookings/hooks/useAppSettings';
+import { resolvePrimaryPaymentQrDisplayUrl } from '@/features/dashboard/lib/storedMediaDisplay';
 import { PaymentProviderSelect } from '@/features/dashboard/org/components/property-settings/PaymentProviderSelect';
 import { SettingsField } from '@/features/dashboard/org/components/property-settings/PropertySettingsFields';
 import {
@@ -48,13 +49,14 @@ function PaymentQrUpload({
   onFile,
 }: {
   provider: string;
-  imageUrl: string;
+  imageUrl: string | null;
   disabled?: boolean;
   busy?: boolean;
   error?: string | null;
   onFile: (file: File) => void;
 }) {
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const hasImage = Boolean(imageUrl?.trim());
 
   return (
     <SettingsField
@@ -65,49 +67,62 @@ function PaymentQrUpload({
     >
       <div className="w-fit max-w-full">
         <div className="group/qr relative mx-auto w-fit max-w-full shrink-0 sm:mx-0">
-          <button
-            type="button"
-            disabled={disabled || busy}
-            onClick={() => fileRef.current?.click()}
-            aria-label={busy ? 'Uploading QR code' : 'Upload QR code image'}
-            className={cn(
-              'border-border/60 bg-muted/15 relative overflow-hidden rounded-xl border p-2 transition-shadow',
-              'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
-              !disabled && !busy && 'hover:shadow-md',
-              error && 'border-destructive/50 ring-destructive/20 ring-1',
-              (disabled || busy) && 'cursor-not-allowed opacity-70'
-            )}
-          >
-            <img
-              src={imageUrl}
-              alt={paymentQrAltText(provider)}
+          {busy ? (
+            <div className="border-border/60 bg-muted/15 flex min-h-[9.5rem] min-w-[9.5rem] flex-col items-center justify-center gap-2 rounded-xl border p-2 text-xs font-medium">
+              <Loader2 className="text-primary size-5 animate-spin" aria-hidden />
+              Uploading…
+            </div>
+          ) : hasImage ? (
+            <button
+              type="button"
+              disabled={disabled || busy}
+              onClick={() => fileRef.current?.click()}
+              aria-label="Replace QR code image"
               className={cn(
-                'block h-auto max-h-36 w-auto max-w-[9.5rem] object-contain transition-opacity sm:max-h-40',
-                busy && 'opacity-40'
+                'border-border/60 bg-muted/15 relative overflow-hidden rounded-xl border p-2 transition-shadow',
+                'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                !disabled && !busy && 'hover:shadow-md',
+                error && 'border-destructive/50 ring-destructive/20 ring-1',
+                (disabled || busy) && 'cursor-not-allowed opacity-70'
               )}
-            />
-            <span
-              className={cn(
-                'bg-background/85 text-foreground absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2 text-center text-xs font-medium transition-opacity',
-                busy
-                  ? 'opacity-100'
-                  : 'opacity-0 group-focus-within/qr:opacity-100 group-hover/qr:opacity-100'
-              )}
-              aria-hidden
             >
-              {busy ? (
-                <>
-                  <Loader2 className="text-primary size-5 animate-spin" />
-                  Uploading…
-                </>
-              ) : (
-                <>
-                  <Upload className="text-primary size-5" />
-                  Replace
-                </>
+              <img
+                src={imageUrl!}
+                alt={paymentQrAltText(provider)}
+                className="block h-auto max-h-36 w-auto max-w-[9.5rem] object-contain sm:max-h-40"
+              />
+              <span
+                className={cn(
+                  'bg-background/85 text-foreground absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2 text-center text-xs font-medium opacity-0 transition-opacity group-focus-within/qr:opacity-100 group-hover/qr:opacity-100'
+                )}
+                aria-hidden
+              >
+                <Upload className="text-primary size-5" />
+                Replace
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled || busy}
+              onClick={() => fileRef.current?.click()}
+              aria-label="Upload QR code image"
+              className={cn(
+                'border-border/60 bg-muted/15 text-muted-foreground flex min-h-[9.5rem] min-w-[9.5rem] flex-col items-center justify-center gap-2 rounded-xl border border-dashed p-4 text-center text-xs font-medium',
+                'focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
+                !disabled &&
+                  !busy &&
+                  'hover:border-primary/40 hover:bg-muted/25 hover:text-foreground cursor-pointer',
+                error && 'border-destructive/50',
+                (disabled || busy) && 'cursor-not-allowed opacity-70'
               )}
-            </span>
-          </button>
+            >
+              <span className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-full">
+                <ImagePlus className="size-4" aria-hidden />
+              </span>
+              Upload QR
+            </button>
+          )}
         </div>
 
         <input
@@ -147,7 +162,7 @@ function PaymentMethodCard({
   isPrimary: boolean;
   canRemove: boolean;
   disabled?: boolean;
-  qrImageUrl?: string;
+  qrImageUrl?: string | null;
   qrUploadBusy?: boolean;
   qrError?: string | null;
   resolveFieldError: (fieldId: string) => string | null;
@@ -279,7 +294,7 @@ function PaymentMethodCard({
         </SettingsField>
       </div>
 
-      {isPrimary && qrImageUrl && onQrFile ? (
+      {isPrimary && onQrFile ? (
         <div
           className={cn(
             'border-t px-3 py-4 sm:px-4',
@@ -288,7 +303,7 @@ function PaymentMethodCard({
         >
           <PaymentQrUpload
             provider={method.provider}
-            imageUrl={qrImageUrl}
+            imageUrl={qrImageUrl ?? null}
             disabled={disabled}
             busy={qrUploadBusy}
             error={qrError}
@@ -334,8 +349,11 @@ export function PropertyPaymentMethodsSection({
 
   const primary = methods.find((m) => m.isPrimary) ?? methods[0];
   const atMethodLimit = methods.length >= MAX_PROPERTY_PAYMENT_METHODS;
-  const primaryQrUrl =
-    primary?.qrImageUrl?.trim() || data.gcashQrImageUrl || '/images/kame-home-gcash-qr-payment.jpg';
+  const primaryQrUrl = resolvePrimaryPaymentQrDisplayUrl({
+    methodQrUrl: primary?.qrImageUrl,
+    legacyQrUrl: data.gcashQrImageUrl,
+    legacyQrSource: data.fieldSources?.gcashQrImageUrl,
+  });
   const qrError = resolveFieldError('payment-qr-image');
 
   return (

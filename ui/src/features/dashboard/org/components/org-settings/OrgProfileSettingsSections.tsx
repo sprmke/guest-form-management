@@ -18,11 +18,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { storedOrgSettingsMediaUrl } from '@/features/dashboard/lib/storedMediaDisplay';
+
 import { FORM_PLACEHOLDERS } from '@/lib/constants/formPlaceholders';
 import { DEFAULT_ORG_BRAND_COLOR } from '@/lib/theme/brandColor';
 import { cn } from '@/lib/utils';
-
-const DEFAULT_ORG_LOGO_URL = 'https://kamehomes.space/images/logo.png';
 
 export function OrgBasicInformationSection({
   draft,
@@ -77,7 +77,7 @@ export function OrgBasicInformationSection({
             hint="This logo will appear on guest forms, emails, and invoices."
             source={logoSource}
             disabled={disabled}
-            imageUrl={logoUrl || DEFAULT_ORG_LOGO_URL}
+            imageUrl={storedOrgSettingsMediaUrl(logoUrl, logoSource)}
             previewAlt="Organization logo preview"
             uploadLabel="Upload logo"
             replaceLabel="Replace logo"

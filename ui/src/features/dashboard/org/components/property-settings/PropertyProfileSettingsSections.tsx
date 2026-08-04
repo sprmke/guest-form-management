@@ -68,13 +68,13 @@ import { Button } from '@/components/ui/button';
 import { Checkbox, CheckboxDisplay } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalDescription,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -1122,16 +1122,16 @@ export function PropertyDangerZoneSection({
         </div>
       </div>
 
-      <Dialog open={archiveOpen} onOpenChange={setArchiveOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Archive {propertyName}?</DialogTitle>
-            <DialogDescription>
+      <ResponsiveModal open={archiveOpen} onOpenChange={setArchiveOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Archive {propertyName}?</ResponsiveModalTitle>
+            <ResponsiveModalDescription>
               The property will be marked Inactive. Existing bookings and records stay in place. You
               can restore it anytime from this section.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
+          <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -1149,19 +1149,19 @@ export function PropertyDangerZoneSection({
             >
               {archivePending ? 'Archiving…' : 'Archive property'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Dialog open={restoreOpen} onOpenChange={setRestoreOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle>Restore {propertyName}?</DialogTitle>
-            <DialogDescription>
+      <ResponsiveModal open={restoreOpen} onOpenChange={setRestoreOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle>Restore {propertyName}?</ResponsiveModalTitle>
+            <ResponsiveModalDescription>
               The property will be marked Active and appear in active listings again.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
+          <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -1179,15 +1179,15 @@ export function PropertyDangerZoneSection({
             >
               {restorePending ? 'Restoring…' : 'Restore property'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
 
-      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <DialogContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
-          <DialogHeader>
-            <DialogTitle className="text-destructive">Delete {propertyName}?</DialogTitle>
-            <DialogDescription asChild>
+      <ResponsiveModal open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <ResponsiveModalContent className="max-w-[min(calc(100vw-1.5rem),28rem)]">
+          <ResponsiveModalHeader>
+            <ResponsiveModalTitle className="text-destructive">Delete {propertyName}?</ResponsiveModalTitle>
+            <ResponsiveModalDescription asChild>
               <div className="text-muted-foreground space-y-2 text-sm">
                 <p>
                   This permanently deletes the property profile, gallery media, payment settings,
@@ -1200,9 +1200,9 @@ export function PropertyDangerZoneSection({
                 </p>
                 <p className="text-destructive font-medium">This action cannot be undone.</p>
               </div>
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex-col gap-2 sm:flex-row">
+            </ResponsiveModalDescription>
+          </ResponsiveModalHeader>
+          <ResponsiveModalFooter className="flex-col gap-2 sm:flex-row">
             <Button
               type="button"
               variant="outline"
@@ -1221,9 +1221,9 @@ export function PropertyDangerZoneSection({
             >
               {deletePending ? 'Deleting…' : 'Delete permanently'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </ResponsiveModalFooter>
+        </ResponsiveModalContent>
+      </ResponsiveModal>
     </AdminSection>
   );
 }

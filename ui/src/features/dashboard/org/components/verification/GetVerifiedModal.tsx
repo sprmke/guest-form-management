@@ -51,12 +51,12 @@ import { resolveHostChangesRequestedDocs } from '@/features/dashboard/super-admi
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import {
   Select,
   SelectContent,
@@ -538,9 +538,10 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent
+    <ResponsiveModal open={open} onOpenChange={handleOpenChange}>
+      <ResponsiveModalContent
         showCloseButton={!blockDismiss}
+        sheetLayout="split"
         onPointerDownOutside={(event) => {
           if (blockDismiss) event.preventDefault();
         }}
@@ -551,26 +552,30 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           if (blockDismiss) event.preventDefault();
         }}
         className={cn(
-          'flex h-[min(90dvh,40rem)] max-h-[min(90dvh,40rem)] w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
-          'sm:h-[min(90dvh,42rem)] sm:max-h-[min(90dvh,42rem)] sm:w-[min(92vw,40rem)] sm:max-w-[40rem] sm:p-0'
+          /* Desktop: fixed dialog height. Mobile: BottomSheet split uses min(92dvh, max-content). */
+          'flex w-[min(calc(100vw-1.5rem),40rem)] max-w-none flex-col gap-0 overflow-hidden p-0',
+          'max-h-[min(92dvh,40rem)] sm:max-h-[min(92dvh,42rem)] sm:w-[min(92vw,40rem)] sm:max-w-[40rem] sm:p-0',
+          'lg:h-[min(90dvh,40rem)] lg:max-h-[min(90dvh,40rem)]',
+          /* Don’t let the 40rem desktop cap shrink the phone/tablet sheet. */
+          'max-lg:!h-[min(92dvh,max-content)] max-lg:!max-h-[min(92dvh,100%)]'
         )}
       >
-        <DialogHeader
+        <ResponsiveModalHeader
           className={cn(
             'border-border shrink-0 space-y-4 border-b px-5 pb-4 pt-5 text-left sm:px-6',
             blockDismiss && 'pr-5 sm:pr-6'
           )}
         >
-          <DialogTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
+          <ResponsiveModalTitle className="flex items-center gap-2.5 text-left text-lg font-semibold sm:text-lg">
             <span className="bg-primary/10 text-primary flex size-9 shrink-0 items-center justify-center rounded-full">
               <BadgeCheck className="size-5" aria-hidden />
             </span>
             {hostChangesRequested ? 'Changes requested' : 'Get Verified'}
-          </DialogTitle>
+          </ResponsiveModalTitle>
           {!blockDismiss ? <VerificationTierProgress tiers={tiers} /> : null}
-        </DialogHeader>
+        </ResponsiveModalHeader>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6">
+        <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] sm:px-6">
           <div className="space-y-4 pb-1">
             <HostTierSummary
               tier={hostTier}
@@ -912,7 +917,7 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
           </div>
         </div>
 
-        <DialogFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
+        <ResponsiveModalFooter className="border-border bg-background shrink-0 gap-2 border-t px-5 py-3.5 sm:flex-row sm:justify-end sm:px-6 sm:py-4">
           {!blockDismiss ? (
             <Button
               type="button"
@@ -957,13 +962,20 @@ export function GetVerifiedModal({ open, onOpenChange, forced = false }: Props) 
               )}
             </Button>
           ) : null}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 
-export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
+export function GetVerifiedSidebarCta({
+  collapsed,
+  variant = 'sidebar',
+}: {
+  collapsed?: boolean;
+  /** `icon` — compact control for account rows (e.g. More sheet). */
+  variant?: 'sidebar' | 'icon';
+}) {
   const [open, setOpen] = useState(false);
   const org = useCurrentOrganization();
   const detail = readOrgVerificationDetail(org?.settings);
@@ -972,6 +984,27 @@ export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
   if (!org || !shouldShowGetVerifiedCta(detail)) return null;
 
   const label = verificationSidebarLabel(detail);
+  const modal = !forced ? <GetVerifiedModal open={open} onOpenChange={setOpen} /> : null;
+
+  if (variant === 'icon') {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label={label}
+          title={label}
+          className={cn(
+            'border-primary/25 bg-primary/[0.06] text-primary hover:bg-primary/10 active:bg-primary/15',
+            'inline-flex size-11 shrink-0 items-center justify-center rounded-xl border transition-colors'
+          )}
+        >
+          <Shield className="size-4" aria-hidden />
+        </button>
+        {modal}
+      </>
+    );
+  }
 
   return (
     <>
@@ -994,7 +1027,7 @@ export function GetVerifiedSidebarCta({ collapsed }: { collapsed?: boolean }) {
         </button>
       </div>
       {/* Forced modal is mounted once via HostVerificationChangesGate (avoids mobile+desktop double mount). */}
-      {!forced ? <GetVerifiedModal open={open} onOpenChange={setOpen} /> : null}
+      {modal}
     </>
   );
 }
