@@ -14,12 +14,12 @@ import type {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -59,11 +59,11 @@ export function EditPermissionsDialog({
   const config = getTeamScopeConfig(scope);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Permissions</DialogTitle>
-        </DialogHeader>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent className="max-h-[min(90dvh,40rem)] max-w-[min(calc(100vw-1.5rem),28rem)] overflow-y-auto">
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>Edit Permissions</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="space-y-4 py-2">
           <p className="text-muted-foreground text-sm">{member.email}</p>
 
@@ -115,16 +115,16 @@ export function EditPermissionsDialog({
             ))}
           </div>
         </div>
-        <DialogFooter className="gap-1">
+        <ResponsiveModalFooter className="gap-1">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={onSave} disabled={savePending}>
             Save
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </ResponsiveModalFooter>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }
 
