@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { endOfMonth, format, startOfMonth } from 'date-fns';
-import { CalendarPlus } from 'lucide-react';
+import { CalendarPlus, Upload } from 'lucide-react';
 
 import { guestFormPath } from '@/features/guest/lib/guestPublicPaths';
 
@@ -40,9 +40,11 @@ import {
 } from '@/features/dashboard/bookings/lib/types';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
+import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
-import { MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
+import { MobileHeroActionButton, MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
+import { Button } from '@/components/ui/button';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
 import { buildPageItems, normalizeAdminPageLimit } from '@/lib/table/pagination';
@@ -139,6 +141,8 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const showProperty = scope === 'org';
   const hideKanban = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [importOpen, setImportOpen] = useState(false);
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
   const view = useMemo(
@@ -357,6 +361,16 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           onClear={handleClearDate}
           fullWidth={isMobileLayout}
         />
+        <Button
+          type="button"
+          variant="outline"
+          className="native-cta sm:w-auto sm:px-3.5"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="size-4" aria-hidden />
+          <span className="sm:hidden">Import</span>
+          <span className="hidden sm:inline">Import</span>
+        </Button>
         <Link
           to={propertySlug ? guestFormPath(propertySlug) : '#'}
           className="native-cta sm:w-auto sm:px-3.5"
@@ -374,12 +388,20 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
 
   const heroNewBooking =
     scope === 'org' ? undefined : (
-      <MobileHeroActionLink
-        to={propertySlug ? guestFormPath(propertySlug) : '#'}
-        aria-label="New booking"
-      >
-        <CalendarPlus className="size-5" aria-hidden />
-      </MobileHeroActionLink>
+      <>
+        <MobileHeroActionButton
+          aria-label="Import bookings"
+          onClick={() => setImportOpen(true)}
+        >
+          <Upload className="size-5" aria-hidden />
+        </MobileHeroActionButton>
+        <MobileHeroActionLink
+          to={propertySlug ? guestFormPath(propertySlug) : '#'}
+          aria-label="New booking"
+        >
+          <CalendarPlus className="size-5" aria-hidden />
+        </MobileHeroActionLink>
+      </>
     );
 
   const dateFilter =
@@ -424,7 +446,8 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   );
 
   return (
-    <AdminMobilePage
+    <>
+      <AdminMobilePage
       title="Bookings"
       subtitle={bookingsSubtitle}
       titleId="bookings-heading"
@@ -499,5 +522,17 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
         />
       ) : null}
     </AdminMobilePage>
+
+    <ImportWizardModal
+      open={importOpen}
+      onOpenChange={setImportOpen}
+      onViewHistory={() => {
+        setImportOpen(false);
+        if (orgSlug && propertySlug) {
+          navigate(`/org/${orgSlug}/property/${propertySlug}/import-history`);
+        }
+      }}
+    />
+    </>
   );
 }

@@ -8,6 +8,7 @@ import { BookingDetailPage } from '@/features/dashboard/bookings/pages/BookingDe
 import { BookingsListPage } from '@/features/dashboard/bookings/pages/BookingsListPage';
 import { NotificationsPage } from '@/features/dashboard/bookings/pages/NotificationsPage';
 import { TemplatesPage } from '@/features/dashboard/bookings/pages/TemplatesPage';
+import { ImportHistoryPage } from '@/features/dashboard/import/pages/ImportHistoryPage';
 import type { PropertyRouteFn } from '@/features/dashboard/org/routes/guards';
 
 export function adminPropertyRoutes(propertyRoute: PropertyRouteFn): ReactNode {
@@ -20,6 +21,7 @@ export function adminPropertyRoutes(propertyRoute: PropertyRouteFn): ReactNode {
       />
       <Route path="notifications" element={propertyRoute('notifications', <NotificationsPage />)} />
       <Route path="templates" element={propertyRoute('templates', <TemplatesPage />)} />
+      <Route path="import-history" element={propertyRoute('bookings', <ImportHistoryPage />)} />
       <Route
         path="staff"
         element={propertyRoute('notifications', <NotificationModuleRedirect module="staff" />)}
