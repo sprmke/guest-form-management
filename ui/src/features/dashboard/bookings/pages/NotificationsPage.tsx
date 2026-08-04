@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import { Bell, DollarSign, HardHat, Megaphone, MessageCircle, Wrench } from 'lucide-react';
 
-import { AdminPageHeader } from '@/features/dashboard/bookings/components/AdminPageHeader';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
 import {
   AdminSection,
   AdminSectionGroupHeading,
@@ -77,82 +77,80 @@ export function NotificationsPage() {
 
   return (
     <TelegramNotificationsGlobalBotProvider>
-      <AdminSectionNavLayout
-        className="min-h-0 flex-1"
-        sectionGroups={NOTIFICATION_SECTION_GROUPS}
-        header={
-          <AdminPageHeader
-            id="notifications-heading"
-            variant="compact"
-            title="Notifications"
-            subtitle="Configure Telegram notifications for this property."
-          />
-        }
+      <AdminMobilePage
+        title="Notifications"
+        subtitle="Configure Telegram notifications for this property."
+        titleId="notifications-heading"
       >
-        <div className="space-y-3 sm:space-y-4">
-          <AdminSectionGroupHeading
-            title="Telegram notifications"
-            count={MODULE_SECTIONS.length}
-            action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
-          />
+        <AdminSectionNavLayout
+          className="min-h-0 flex-1"
+          sectionGroups={NOTIFICATION_SECTION_GROUPS}
+        >
+          <div className="space-y-3 sm:space-y-4">
+            <AdminSectionGroupHeading
+              title="Telegram notifications"
+              count={MODULE_SECTIONS.length}
+              action={<TelegramHelpDialog defaultTab="bot-token" triggerLabel="Get Help" />}
+            />
 
-          <TelegramGlobalBotTokenCard />
+            <TelegramGlobalBotTokenCard />
 
-          <AdminSection
-            id="marketing"
-            title="Marketing"
-            icon={Megaphone}
-            description={MODULE_DESCRIPTIONS.marketing}
-          >
-            <TelegramMarketingSettingsCard embedded />
-          </AdminSection>
+            <AdminSection
+              id="marketing"
+              title="Marketing"
+              icon={Megaphone}
+              description={MODULE_DESCRIPTIONS.marketing}
+            >
+              <TelegramMarketingSettingsCard embedded />
+            </AdminSection>
 
-          <AdminSection
-            id="staff"
-            title="Staff"
-            icon={HardHat}
-            description={MODULE_DESCRIPTIONS.staff}
-          >
-            <TelegramStaffSettingsCard embedded />
-          </AdminSection>
+            <AdminSection
+              id="staff"
+              title="Staff"
+              icon={HardHat}
+              description={MODULE_DESCRIPTIONS.staff}
+            >
+              <TelegramStaffSettingsCard embedded />
+            </AdminSection>
 
-          <AdminSection
-            id="operations"
-            title="Operations"
-            icon={Bell}
-            description={MODULE_DESCRIPTIONS.operations}
-          >
-            <TelegramAdminSettingsCard embedded />
-          </AdminSection>
+            <AdminSection
+              id="operations"
+              title="Operations"
+              icon={Bell}
+              description={MODULE_DESCRIPTIONS.operations}
+            >
+              <TelegramAdminSettingsCard embedded />
+            </AdminSection>
 
-          <AdminSection
-            id="finance"
-            title="Finance"
-            icon={DollarSign}
-            description={MODULE_DESCRIPTIONS.finance}
-          >
-            <TelegramFinanceSettingsCard embedded />
-          </AdminSection>
+            <AdminSection
+              id="finance"
+              title="Finance"
+              icon={DollarSign}
+              description={MODULE_DESCRIPTIONS.finance}
+            >
+              <TelegramFinanceSettingsCard embedded />
+            </AdminSection>
 
-          <AdminSection
-            id="maintenance"
-            title="Maintenance"
-            icon={Wrench}
-            description={MODULE_DESCRIPTIONS.maintenance}
-          >
-            <TelegramMaintenanceSettingsCard embedded />
-          </AdminSection>
+            <AdminSection
+              id="maintenance"
+              title="Maintenance"
+              icon={Wrench}
+              description={MODULE_DESCRIPTIONS.maintenance}
+            >
+              <TelegramMaintenanceSettingsCard embedded />
+            </AdminSection>
 
-          <AdminSection
-            id="chat"
-            title="Chat"
-            icon={MessageCircle}
-            description={MODULE_DESCRIPTIONS.chat}
-          >
-            <TelegramChatSettingsCard embedded />
-          </AdminSection>
-        </div>
-      </AdminSectionNavLayout>
+            <AdminSection
+              id="chat"
+              title="Chat"
+              icon={MessageCircle}
+              description={MODULE_DESCRIPTIONS.chat}
+            >
+              <TelegramChatSettingsCard embedded />
+            </AdminSection>
+          </div>
+        </AdminSectionNavLayout>
+      </AdminMobilePage>
     </TelegramNotificationsGlobalBotProvider>
   );
 }
