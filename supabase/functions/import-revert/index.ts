@@ -186,6 +186,23 @@ serveAuthenticated('import-revert', async (req) => {
 
   const toCancel = includeMoved ? allSubmissions : importedRows;
 
+  // Guard: if there is nothing to cancel, roll back to committed and surface a clear error.
+  // This prevents a silent no-op from corrupting the batch status.
+  if (toCancel.length === 0) {
+    await supabase
+      .from('import_batches')
+      .update({ status: 'committed', updated_at: new Date().toISOString() })
+      .eq('id', batchId);
+
+    const message =
+      allSubmissions.length === 0
+        ? 'No bookings found for this import batch.'
+        : 'Nothing to cancel — all bookings have been moved out of Imported status. Enable "Also cancel moved bookings" to include them.';
+
+    console.warn(`[import-revert] no-op guard triggered for batch ${batchId}: ${message}`);
+    return jsonError(req, message);
+  }
+
   let cancelled = 0;
   const revertFailed: RevertFailure[] = [];
 
@@ -211,7 +228,24 @@ serveAuthenticated('import-revert', async (req) => {
 
   const now = new Date().toISOString();
 
-  // Finalize batch → reverted.
+  // Guard: if every attempt failed (cancelled=0 but we had rows to cancel),
+  // roll back to committed so the host can retry.
+  if (cancelled === 0) {
+    await supabase
+      .from('import_batches')
+      .update({ status: 'committed', updated_at: now })
+      .eq('id', batchId);
+
+    console.error(
+      `[import-revert] all cancellations failed for batch ${batchId}; rolled back to committed`
+    );
+    return jsonError(
+      req,
+      `Revert failed — could not cancel any bookings (${revertFailed.length} error${revertFailed.length !== 1 ? 's' : ''}). The batch remains committed; you may retry.`
+    );
+  }
+
+  // Finalize batch → reverted (partial success is acceptable: some cancelled, some failed).
   const { error: finalizeError } = await supabase
     .from('import_batches')
     .update({ status: 'reverted', reverted_at: now, updated_at: now })
@@ -219,7 +253,7 @@ serveAuthenticated('import-revert', async (req) => {
 
   if (finalizeError) {
     console.error('[import-revert] batch finalize failed:', finalizeError.message);
-    // Non-fatal: the submissions were cancelled; mark status best-effort.
+    // Non-fatal: at least some submissions were cancelled; mark best-effort.
   }
 
   console.log(

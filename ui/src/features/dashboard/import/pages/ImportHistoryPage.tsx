@@ -94,9 +94,11 @@ function RevertDialog({
   // Total that will actually be cancelled given current checkbox state.
   const totalToCancel = importedCount + (includeMoved ? movedCount : 0);
 
-  // Confirm is disabled only while actively loading or when we know nothing will be cancelled.
-  // If dryRun failed we still allow confirm — host shouldn't be permanently stuck.
-  const confirmDisabled = isReverting || isDryRunLoading || (dryRunResult !== null && totalToCancel === 0);
+  // Confirm requires a successful dry-run result; disabled while loading, on failure,
+  // or when the effective cancel count is zero. The server enforces the same no-op guard
+  // as a backstop, but we keep the UI gate to prevent accidental corrupt batch status.
+  const confirmDisabled =
+    isReverting || isDryRunLoading || isDryRunFailed || dryRunResult === null || totalToCancel === 0;
 
   return (
     <AlertDialog open={open}>
@@ -111,29 +113,23 @@ function RevertDialog({
                   <span>Checking import status…</span>
                 </div>
               ) : isDryRunFailed ? (
-                // dryRun failed — show error, offer retry, still allow confirm with caution.
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-                    <div className="flex-1 space-y-1">
-                      <span>Could not check import status. You can retry or proceed with caution.</span>
-                      <div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto px-0 py-0 text-xs font-medium underline-offset-2 hover:underline"
-                          onClick={onRetryDryRun}
-                        >
-                          Retry check
-                        </Button>
-                      </div>
+                // dryRun failed — require Retry before Confirm becomes available.
+                <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+                  <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <div className="flex-1 space-y-1">
+                    <span>Could not check import status. Retry before continuing.</span>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto px-0 py-0 text-xs font-medium underline-offset-2 hover:underline"
+                        onClick={onRetryDryRun}
+                      >
+                        Retry check
+                      </Button>
                     </div>
                   </div>
-                  <p>
-                    Cancel all <span className="font-medium text-foreground">Imported</span> bookings from{' '}
-                    <span className="font-medium text-foreground">{batch.original_file_name}</span>?
-                  </p>
                 </div>
               ) : dryRunResult ? (
                 <>
