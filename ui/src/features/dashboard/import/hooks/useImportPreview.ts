@@ -6,7 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import type { ImportPreviewResult } from '@/features/dashboard/import/types/importBatch';
-import { IMPORT_PREVIEW_KEY } from '@/features/dashboard/import/hooks/useImportBatchRows';
+import { importPreviewQueryKey } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { supabase } from '@/lib/supabase/client';
 
 async function getSessionJwt(): Promise<string> {
@@ -47,7 +47,8 @@ export function useImportPreview() {
       return json.data;
     },
     onSuccess: (data) => {
-      queryClient.setQueryData([...IMPORT_PREVIEW_KEY, propertyId, data.batchId], data);
+      if (!propertyId) return;
+      queryClient.setQueryData(importPreviewQueryKey(propertyId, data.batchId), data);
     },
   });
 }

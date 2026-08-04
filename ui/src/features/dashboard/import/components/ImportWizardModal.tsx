@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -15,7 +16,7 @@ import { ImportManualMappingRow } from '@/features/dashboard/import/components/I
 import { ImportPreviewTable } from '@/features/dashboard/import/components/ImportPreviewTable';
 import { useAiMapColumns } from '@/features/dashboard/import/hooks/useAiMapColumns';
 import { useCancelImportBatch } from '@/features/dashboard/import/hooks/useCancelImportBatch';
-import { useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
+import { clearImportPreviewCache, useImportBatchRows } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { useImportPreview } from '@/features/dashboard/import/hooks/useImportPreview';
 import { useSaveImportMapping } from '@/features/dashboard/import/hooks/useSaveImportMapping';
 import type {
@@ -24,6 +25,7 @@ import type {
 } from '@/features/dashboard/import/types/importBatch';
 import type { ImportParseResult } from '@/features/dashboard/import/types/importParse';
 import type { Property } from '@/features/dashboard/org/types';
+import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { Button } from '@/components/ui/button';
 import {
   ResponsiveModal,
@@ -291,16 +293,17 @@ function ManualMappingStep({
 
 type PreviewStepProps = {
   batchId: string;
+  previewRunKey: number;
   isLoading: boolean;
   error: string | null;
   onRunPreview: (force?: boolean) => void;
 };
 
-function PreviewStep({ batchId, isLoading, error, onRunPreview }: PreviewStepProps) {
+function PreviewStep({ batchId, previewRunKey, isLoading, error, onRunPreview }: PreviewStepProps) {
   React.useEffect(() => {
     onRunPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [batchId]);
+  }, [batchId, previewRunKey]);
 
   return (
     <ImportPreviewTable
@@ -343,7 +346,10 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   const [mappingState, setMappingState] = React.useState<Record<string, string | null>>({});
   // True only after a successful import-commit call (Tasks 5–6). Guards cancel-on-close.
   const [isBatchCommitted, setIsBatchCommitted] = React.useState(false);
+  const [previewRunKey, setPreviewRunKey] = React.useState(0);
 
+  const queryClient = useQueryClient();
+  const propertyId = usePropertyIdParam();
   const aiMapMutation = useAiMapColumns();
   const saveMappingMutation = useSaveImportMapping();
   const previewMutation = useImportPreview();
@@ -361,9 +367,19 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
       setAiError(null);
       setMappingState({});
       setIsBatchCommitted(false);
+      setPreviewRunKey(0);
       previewMutation.reset();
     }
   }, [open, previewMutation]);
+
+  const invalidatePreviewCache = React.useCallback(
+    (batchId: string) => {
+      clearImportPreviewCache(queryClient, propertyId, batchId);
+      previewMutation.reset();
+      setPreviewRunKey((key) => key + 1);
+    },
+    [queryClient, propertyId, previewMutation]
+  );
 
   const handleParsed = (result: ImportParseResult) => {
     setParseResult(result);
@@ -418,11 +434,12 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
   };
 
   const handleContinueFromAutomap = () => {
-    if (!aiResult) return;
+    if (!aiResult || !parseResult) return;
     const hasReview = aiResult.columnMapping.mappings.some((e) => e.status !== 'matched');
     if (hasReview) {
       setStep('manual');
     } else {
+      invalidatePreviewCache(parseResult.batchId);
       setStep('preview');
     }
   };
@@ -445,6 +462,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
         batchId: parseResult.batchId,
         columnMapping: finalMapping,
       });
+      invalidatePreviewCache(parseResult.batchId);
       setStep('preview');
     } catch (err) {
       // Error shown in footer.
@@ -539,6 +557,7 @@ export function ImportWizardModal({ open, onOpenChange, properties = [], onViewH
           {step === 'preview' && parseResult && (
             <PreviewStep
               batchId={parseResult.batchId}
+              previewRunKey={previewRunKey}
               isLoading={previewMutation.isPending}
               error={previewMutation.isError ? (previewMutation.error as Error).message : null}
               onRunPreview={(force) => void handleRunPreview(force)}

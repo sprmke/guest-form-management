@@ -2,7 +2,7 @@
  * useImportBatchRows — read preview rows from TanStack Query cache.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import type {
@@ -12,6 +12,20 @@ import type {
 } from '@/features/dashboard/import/types/importBatch';
 
 export const IMPORT_PREVIEW_KEY = ['import-preview'] as const;
+
+export function importPreviewQueryKey(propertyId: string, batchId: string) {
+  return [...IMPORT_PREVIEW_KEY, propertyId, batchId] as const;
+}
+
+/** Drop cached preview so the next Preview step re-runs import-preview. */
+export function clearImportPreviewCache(
+  queryClient: QueryClient,
+  propertyId: string | undefined,
+  batchId: string | null | undefined
+): void {
+  if (!propertyId || !batchId) return;
+  queryClient.removeQueries({ queryKey: importPreviewQueryKey(propertyId, batchId) });
+}
 
 const EMPTY_SUMMARY: ImportPreviewSummary = {
   total: 0,
@@ -26,17 +40,11 @@ export function useImportBatchRows(batchId: string | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: [...IMPORT_PREVIEW_KEY, propertyId, batchId] as const,
+    queryKey: propertyId && batchId ? importPreviewQueryKey(propertyId, batchId) : IMPORT_PREVIEW_KEY,
     enabled: Boolean(propertyId && batchId),
     queryFn: (): ImportPreviewResult | null => {
       if (!propertyId || !batchId) return null;
-      return (
-        queryClient.getQueryData<ImportPreviewResult>([
-          ...IMPORT_PREVIEW_KEY,
-          propertyId,
-          batchId,
-        ]) ?? null
-      );
+      return queryClient.getQueryData<ImportPreviewResult>(importPreviewQueryKey(propertyId, batchId)) ?? null;
     },
     staleTime: Infinity,
   });
@@ -50,9 +58,10 @@ export function useImportBatchRows(batchId: string | null) {
     summary,
     status: preview?.status ?? null,
     isReady: Boolean(preview?.rows.length),
+    clearPreviewCache: () => clearImportPreviewCache(queryClient, propertyId, batchId),
     updatePreviewCache: (next: ImportPreviewResult) => {
       if (!propertyId || !batchId) return;
-      queryClient.setQueryData([...IMPORT_PREVIEW_KEY, propertyId, batchId], next);
+      queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), next);
     },
     patchRow: (
       rowId: string,
@@ -65,11 +74,11 @@ export function useImportBatchRows(batchId: string | null) {
         summary: nextSummary ?? preview.summary,
         rows: preview.rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row)),
       };
-      queryClient.setQueryData([...IMPORT_PREVIEW_KEY, propertyId, batchId], updated);
+      queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), updated);
     },
     patchSummary: (nextSummary: ImportPreviewSummary) => {
       if (!propertyId || !batchId || !preview) return;
-      queryClient.setQueryData([...IMPORT_PREVIEW_KEY, propertyId, batchId], {
+      queryClient.setQueryData(importPreviewQueryKey(propertyId, batchId), {
         ...preview,
         summary: nextSummary,
       });

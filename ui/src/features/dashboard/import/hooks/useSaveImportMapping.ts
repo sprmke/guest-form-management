@@ -2,8 +2,9 @@
  * useSaveImportMapping — persist user-confirmed column mapping via import-save-mapping.
  */
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { clearImportPreviewCache } from '@/features/dashboard/import/hooks/useImportBatchRows';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import { supabase } from '@/lib/supabase/client';
 
@@ -27,6 +28,7 @@ type SaveMappingResult = {
 
 export function useSaveImportMapping() {
   const propertyId = usePropertyIdParam();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ batchId, columnMapping }: SaveMappingInput): Promise<SaveMappingResult> => {
@@ -53,6 +55,9 @@ export function useSaveImportMapping() {
       }
 
       return json.data;
+    },
+    onSuccess: (_data, { batchId }) => {
+      clearImportPreviewCache(queryClient, propertyId, batchId);
     },
   });
 }
