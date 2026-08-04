@@ -1,12 +1,12 @@
 import * as React from 'react';
 
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalFooter,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+} from '@/components/ui/responsive-modal';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -38,30 +38,32 @@ export function TelegramManageDialog({
   bodyClassName,
 }: Props) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(sizeClass[size], 'gap-0 overflow-hidden p-0 sm:p-0')}>
-        <DialogHeader className="border-border/60 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent
+        sheetLayout="split"
+        className={cn(sizeClass[size], 'flex flex-col gap-0 overflow-hidden p-0 sm:p-0')}
+      >
+        <ResponsiveModalHeader className="border-border/60 shrink-0 space-y-0 border-b px-4 py-3 sm:px-5 sm:py-4">
           <div className="flex items-start justify-between gap-3 pr-8">
-            <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
+            <ResponsiveModalTitle className="text-base sm:text-lg">{title}</ResponsiveModalTitle>
             {headerAction ? <div className="shrink-0">{headerAction}</div> : null}
           </div>
-        </DialogHeader>
+        </ResponsiveModalHeader>
         <div
           className={cn(
-            'max-h-[min(calc(92dvh-8rem),640px)] overflow-y-auto px-4 py-4 sm:px-5',
-            size === 'sidebar' &&
-              'flex max-h-[min(calc(92dvh-7rem),680px)] flex-col overflow-hidden sm:px-5',
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 [-webkit-overflow-scrolling:touch] sm:px-5',
+            size === 'sidebar' && 'flex flex-col',
             bodyClassName
           )}
         >
           {children}
         </div>
         {footer ? (
-          <DialogFooter className="border-border/60 border-t px-4 py-3 sm:px-5">
+          <ResponsiveModalFooter className="border-border/60 shrink-0 border-t px-4 py-3 sm:px-5">
             {footer}
-          </DialogFooter>
+          </ResponsiveModalFooter>
         ) : null}
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

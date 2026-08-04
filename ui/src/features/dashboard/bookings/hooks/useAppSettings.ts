@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { legacyGcashQrForPaymentMethods } from '@/features/dashboard/lib/storedMediaDisplay';
 import { scopedFunctionsUrl, usePropertyIdParam } from '@/features/dashboard/org/lib/adminApiScope';
 import {
   normalizePaymentMethodsDraft,
@@ -182,6 +183,17 @@ function sdRefundLeadMinutesToHours(minutes: number): number {
 }
 
 export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormValues {
+  const legacyGcashQr = legacyGcashQrForPaymentMethods(
+    data.gcashQrImageUrl,
+    data.fieldSources.gcashQrImageUrl
+  );
+  const paymentMethods = normalizePaymentMethodsDraft(data.paymentMethods, {
+    paymentProvider: data.paymentProvider,
+    gcashName: data.gcashName,
+    gcashNumber: data.gcashNumber,
+    gcashQrImageUrl: legacyGcashQr,
+  });
+
   return {
     emailTo: data.emailTo,
     emailReplyTo: data.emailReplyTo,
@@ -192,20 +204,8 @@ export function appSettingsToFormValues(data: AppSettingsDto): AppSettingsFormVa
     automationToggles: {
       ...(data.automationToggles ?? DEFAULT_PROPERTY_AUTOMATION_TOGGLES),
     },
-    paymentMethods: normalizePaymentMethodsDraft(data.paymentMethods, {
-      paymentProvider: data.paymentProvider,
-      gcashName: data.gcashName,
-      gcashNumber: data.gcashNumber,
-      gcashQrImageUrl: data.gcashQrImageUrl,
-    }),
-    ...syncLegacyPaymentFieldsFromMethods(
-      normalizePaymentMethodsDraft(data.paymentMethods, {
-        paymentProvider: data.paymentProvider,
-        gcashName: data.gcashName,
-        gcashNumber: data.gcashNumber,
-        gcashQrImageUrl: data.gcashQrImageUrl,
-      })
-    ),
+    paymentMethods,
+    ...syncLegacyPaymentFieldsFromMethods(paymentMethods),
     gafUnitOwner: data.gafUnitOwner,
     gafTowerAndUnitNumber: data.gafTowerAndUnitNumber,
     gafGuestsOnsiteContactPerson: data.gafGuestsOnsiteContactPerson,
