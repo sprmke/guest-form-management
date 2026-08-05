@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { endOfMonth, format, startOfMonth } from 'date-fns';
 import { CalendarPlus, Upload } from 'lucide-react';
@@ -38,15 +38,19 @@ import {
   type BookingsQuery,
   type BookingsSort,
 } from '@/features/dashboard/bookings/lib/types';
+import { ImportHistoryModal } from '@/features/dashboard/import/components/ImportHistoryModal';
+import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { useOptionalOrgContext } from '@/features/dashboard/org/components/RequireOrgContext';
 import { useOrgSlugParam } from '@/features/dashboard/org/lib/adminApiScope';
-import { useProperties } from '@/features/dashboard/org/hooks/useOrganizations';
-import { ImportWizardModal } from '@/features/dashboard/import/components/ImportWizardModal';
 import { usePropertyPermissions } from '@/features/dashboard/team/hooks/usePropertyPermissions';
 import { hasPropertyPermission } from '@/features/dashboard/team/lib/propertyPermissions';
-import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+
 import { FloatingPanel, FloatingToolbar } from '@/components/mobile/FloatingPanel';
-import { MobileHeroActionButton, MobileHeroActionLink } from '@/components/mobile/MobileHeroActionButton';
+import { AdminMobilePage } from '@/components/mobile/MobileBrandHero';
+import {
+  MobileHeroActionButton,
+  MobileHeroActionLink,
+} from '@/components/mobile/MobileHeroActionButton';
 import { Button } from '@/components/ui/button';
 import { useIsBelowLg } from '@/hooks/useMediaQuery';
 import { fromIsoDate } from '@/lib/date/navigation';
@@ -144,14 +148,12 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   const showProperty = scope === 'org';
   const hideKanban = scope === 'org';
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [importOpen, setImportOpen] = useState(false);
+  const [importHistoryOpen, setImportHistoryOpen] = useState(false);
   const { data: propertyAccess } = usePropertyPermissions();
   const canImport =
-    scope !== 'org' &&
-    hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
+    scope !== 'org' && hasPropertyPermission(propertyAccess?.permissions, 'import:manage');
 
-  const { data: propertiesData } = useProperties(orgSlug ?? undefined);
   const isMobileLayout = useIsBelowLg();
   const query = useMemo(() => parseQueryFromParams(searchParams), [searchParams]);
   const view = useMemo(
@@ -374,12 +376,11 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
           <Button
             type="button"
             variant="outline"
-            className="native-cta sm:w-auto sm:px-3.5"
+            className="native-cta-secondary sm:w-auto sm:px-3.5"
             onClick={() => setImportOpen(true)}
           >
             <Upload className="size-4" aria-hidden />
-            <span className="sm:hidden">Import</span>
-            <span className="hidden sm:inline">Import</span>
+            Import
           </Button>
         ) : null}
         <Link
@@ -401,10 +402,7 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
     scope === 'org' ? undefined : (
       <>
         {canImport ? (
-          <MobileHeroActionButton
-            aria-label="Import bookings"
-            onClick={() => setImportOpen(true)}
-          >
+          <MobileHeroActionButton aria-label="Import bookings" onClick={() => setImportOpen(true)}>
             <Upload className="size-5" aria-hidden />
           </MobileHeroActionButton>
         ) : null}
@@ -461,94 +459,101 @@ export function BookingsListPage({ scope = 'property' }: BookingsListPageProps) 
   return (
     <>
       <AdminMobilePage
-      title="Bookings"
-      subtitle={bookingsSubtitle}
-      titleId="bookings-heading"
-      heroTrailing={heroNewBooking}
-      overlap={overlapControls}
-      stickyPrimary={dateFilter ?? undefined}
-      stickyMore={filterControls}
-      stickyMoreActiveCount={stickyMoreActiveCount}
-      stickyMoreAriaLabel="Refine bookings"
-      desktopActions={bookingActions}
-      desktopActionsClassName="w-full sm:w-auto"
-      dense
-    >
-      <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
-      {/* Active view */}
-      {showTableView && (
-        <BookingTable
-          rows={rows}
-          isLoading={isLoading}
-          error={error ? (error as Error).message : null}
-          isRefreshing={isFetching}
-          sort={query.sort}
-          onStaySortChange={handleStaySortChange}
-          showProperty={showProperty}
-          resolveBookingHref={resolveBookingHref}
-        />
-      )}
-      {view === 'card' && (
-        <BookingCardGrid
-          rows={rows}
-          isLoading={isLoading}
-          error={error ? (error as Error).message : null}
-          isRefreshing={isFetching}
-          showProperty={showProperty}
-          resolveBookingHref={resolveBookingHref}
-        />
-      )}
-      {view === 'kanban' && !hideKanban ? (
-        <BookingKanban
-          rows={rows}
-          isLoading={isLoading}
-          error={error ? (error as Error).message : null}
-          isRefreshing={isFetching}
-          showProperty={showProperty}
-          documentRequirements={documentRequirements}
-        />
-      ) : null}
-      {view === 'calendar' ? (
-        <FloatingPanel padding="md" className="overflow-hidden">
-          <BookingCalendarView
+        title="Bookings"
+        subtitle={bookingsSubtitle}
+        titleId="bookings-heading"
+        heroTrailing={heroNewBooking}
+        overlap={overlapControls}
+        stickyPrimary={dateFilter ?? undefined}
+        stickyMore={filterControls}
+        stickyMoreActiveCount={stickyMoreActiveCount}
+        stickyMoreAriaLabel="Refine bookings"
+        desktopActions={bookingActions}
+        desktopActionsClassName="w-full sm:w-auto"
+        dense
+      >
+        <BookingsSummaryCards counts={stageCounts} activeStage={stage} onStageChange={setStage} />
+        {/* Active view */}
+        {showTableView && (
+          <BookingTable
             rows={rows}
             isLoading={isLoading}
             error={error ? (error as Error).message : null}
             isRefreshing={isFetching}
-            initialMonth={dateNav.dateRange.from}
-            onMonthChange={handleCalendarMonthChange}
+            sort={query.sort}
+            onStaySortChange={handleStaySortChange}
             showProperty={showProperty}
             resolveBookingHref={resolveBookingHref}
           />
-        </FloatingPanel>
-      ) : null}
+        )}
+        {view === 'card' && (
+          <BookingCardGrid
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+            showProperty={showProperty}
+            resolveBookingHref={resolveBookingHref}
+          />
+        )}
+        {view === 'kanban' && !hideKanban ? (
+          <BookingKanban
+            rows={rows}
+            isLoading={isLoading}
+            error={error ? (error as Error).message : null}
+            isRefreshing={isFetching}
+            showProperty={showProperty}
+            documentRequirements={documentRequirements}
+          />
+        ) : null}
+        {view === 'calendar' ? (
+          <FloatingPanel padding="md" className="overflow-hidden">
+            <BookingCalendarView
+              rows={rows}
+              isLoading={isLoading}
+              error={error ? (error as Error).message : null}
+              isRefreshing={isFetching}
+              initialMonth={dateNav.dateRange.from}
+              onMonthChange={handleCalendarMonthChange}
+              showProperty={showProperty}
+              resolveBookingHref={resolveBookingHref}
+            />
+          </FloatingPanel>
+        ) : null}
 
-      {/* Pagination — hidden in calendar view (range already filters scope) */}
-      {showPagination ? (
-        <AdminListPagination
-          ariaLabel="Bookings pagination"
-          page={query.page}
-          pageCount={pageCount}
-          pageItems={pageItems}
-          isLoading={isLoading}
-          onPageChange={(page) => patch({ page })}
-        />
-      ) : null}
-    </AdminMobilePage>
+        {/* Pagination — hidden in calendar view (range already filters scope) */}
+        {showPagination ? (
+          <AdminListPagination
+            ariaLabel="Bookings pagination"
+            page={query.page}
+            pageCount={pageCount}
+            pageItems={pageItems}
+            isLoading={isLoading}
+            onPageChange={(page) => patch({ page })}
+          />
+        ) : null}
+      </AdminMobilePage>
 
-    {canImport ? (
-      <ImportWizardModal
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        properties={propertiesData?.properties ?? []}
-        onViewHistory={() => {
-          setImportOpen(false);
-          if (orgSlug && propertySlug) {
-            navigate(`/org/${orgSlug}/property/${propertySlug}/import-history`);
-          }
-        }}
-      />
-    ) : null}
+      {canImport ? (
+        <>
+          <ImportWizardModal
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            onViewHistory={() => {
+              setImportOpen(false);
+              setImportHistoryOpen(true);
+            }}
+          />
+          <ImportHistoryModal
+            open={importHistoryOpen}
+            onOpenChange={setImportHistoryOpen}
+            onBackToImport={() => {
+              setImportHistoryOpen(false);
+              setImportOpen(true);
+            }}
+          />
+        </>
+      ) : null}
     </>
   );
 }
