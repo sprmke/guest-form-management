@@ -1,5 +1,5 @@
 ---
-stage: in-progress
+stage: done
 title: 'Smart AI Data Importer — Implementation Plan'
 status: in-progress
 tags: [planning, planned-modules, ai, import, onboarding, bookings]
