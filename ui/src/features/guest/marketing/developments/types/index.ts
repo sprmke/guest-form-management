@@ -46,6 +46,8 @@ export interface Development {
   established?: number;
   totalUnits?: number;
   propertyIds: string[];
+  latitude?: number | null;
+  longitude?: number | null;
   /** Optional parking form slug for development-level parking registration */
   parkingFormId?: string;
   /** Optional list of guest forms available at the development level */
