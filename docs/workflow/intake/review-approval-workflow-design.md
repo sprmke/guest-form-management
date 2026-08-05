@@ -9,7 +9,7 @@ stage: intake
 # Review approval workflow — design spec
 
 **Approved:** 2026-08-04  
-**Implementation plan:** [`docs/workflow/planned/review-approval-workflow.md`](../planned/review-approval-workflow.md)
+**Implementation plan:** [`docs/workflow/done/review-approval-workflow.md`](../done/review-approval-workflow.md)
 
 ---
 
